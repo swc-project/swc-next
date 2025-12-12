@@ -7,6 +7,7 @@ pub enum TestResult {
     Passed { path: PathBuf },
     Failed { path: PathBuf, error: String },
     Ignored { path: PathBuf },
+    Panic { path: PathBuf },
 }
 
 impl Display for TestResult {
@@ -17,6 +18,7 @@ impl Display for TestResult {
                 write!(f, "Failed: {} - {}", path.display(), error)
             }
             TestResult::Ignored { path } => write!(f, "Ignored: {}", path.display()),
+            TestResult::Panic { path } => write!(f, "Panic: {}", path.display()),
         }
     }
 }

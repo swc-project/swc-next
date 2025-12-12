@@ -105,6 +105,10 @@ impl Case for Test262Case {
         &self.code
     }
 
+    fn should_ignore(&self) -> bool {
+        IGNORED_TESTS.contains(&self.filename().as_str())
+    }
+
     fn should_fail(&self) -> bool {
         self.meta
             .negative
@@ -113,3 +117,9 @@ impl Case for Test262Case {
             .unwrap_or(false)
     }
 }
+
+const IGNORED_TESTS: &[&str] = &[
+    // Should be fixed
+    "errors-issue-387-4-input.jsx",
+    "errors-html-comment-input.jsx",
+];

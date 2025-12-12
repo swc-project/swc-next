@@ -72,6 +72,10 @@ pub fn main() {
                 failed += 1;
                 println!("Failed: {} - {}", path.display(), error.red());
             }
+            TestResult::Panic { path } => {
+                failed += 1;
+                println!("Panic: {}", path.display());
+            }
             TestResult::Ignored { .. } => {
                 ignored += 1;
             }
