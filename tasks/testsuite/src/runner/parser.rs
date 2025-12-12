@@ -1,10 +1,12 @@
 use colored::Colorize;
 use rayon::prelude::*;
-use swc_core::common::comments::SingleThreadedComments;
-use swc_experimental_ecma_ast::Program;
-use swc_experimental_ecma_parser::{Lexer, Parser, StringSource};
 
-use crate::{AppArgs, cases::Case, suite::TestResult};
+use crate::{
+    AppArgs,
+    cases::Case,
+    runner::{ParseResult, parse},
+    suite::TestResult,
+};
 
 pub struct ParserRunner;
 
@@ -23,56 +25,26 @@ impl ParserRunner {
                     };
                 }
 
-                let syntax = case.syntax();
-                let input = StringSource::new(case.code());
-                let comments = SingleThreadedComments::default();
-                let lexer = Lexer::new(syntax, Default::default(), input, Some(&comments));
-                let parser = Parser::new_from(lexer);
-                let ret = match case.ext().as_str() {
-                    "cjs" => parser
-                        .parse_script()
-                        .map(|ret| ret.map_root(Program::Script)),
-                    "mjs" => parser
-                        .parse_module()
-                        .map(|ret| ret.map_root(Program::Module)),
-                    "js" => {
-                        if case.filename().ends_with(".module.js") {
-                            parser
-                                .parse_module()
-                                .map(|ret| ret.map_root(Program::Module))
-                        } else {
-                            parser
-                                .parse_script()
-                                .map(|ret| ret.map_root(Program::Script))
-                        }
-                    }
-                    "jsx" => parser.parse_program(),
-                    "ts" | "tsx" => {
-                        return TestResult::Ignored {
-                            path: case.path().to_owned(),
-                        };
-                    }
-                    _ => unreachable!(),
-                };
-
-                let errors = match ret {
-                    Ok(ret) => ret.errors,
-                    Err(e) => vec![e],
-                };
-                match (case.should_fail(), !errors.is_empty()) {
-                    (true, false) => TestResult::Failed {
+                match (case.should_fail(), parse(case)) {
+                    (false, ParseResult::Succ(_)) => TestResult::Passed {
+                        path: case.relative_path().to_owned(),
+                    },
+                    (true, ParseResult::Succ(_)) => TestResult::Failed {
                         path: case.relative_path().to_owned(),
                         error: "Expected failure, but parsed successfully".to_string(),
                     },
-                    (true, true) => TestResult::Passed {
-                        path: case.relative_path().to_owned(),
-                    },
-                    (false, false) => TestResult::Passed {
-                        path: case.relative_path().to_owned(),
-                    },
-                    (false, true) => TestResult::Failed {
+                    (false, ParseResult::Fail(errors)) => TestResult::Failed {
                         path: case.relative_path().to_owned(),
                         error: format!("{:?}", errors),
+                    },
+                    (true, ParseResult::Fail(_)) => TestResult::Passed {
+                        path: case.relative_path().to_owned(),
+                    },
+                    (_, ParseResult::Panic) => TestResult::Panic {
+                        path: case.relative_path().to_owned(),
+                    },
+                    (_, ParseResult::Ignore) => TestResult::Ignored {
+                        path: case.relative_path().to_owned(),
                     },
                 }
             })

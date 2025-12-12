@@ -2,11 +2,14 @@ use std::collections::{HashMap, hash_map::Entry};
 
 use colored::Colorize;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use swc_core::common::comments::SingleThreadedComments;
-use swc_experimental_ecma_ast::{Ast, NodeId, Program, Visit};
-use swc_experimental_ecma_parser::{Lexer, Parser, StringSource};
+use swc_experimental_ecma_ast::{Ast, NodeId, Visit};
 
-use crate::{AppArgs, cases::Case, suite::TestResult};
+use crate::{
+    AppArgs,
+    cases::Case,
+    runner::{ParseResult, parse},
+    suite::TestResult,
+};
 
 pub struct NoMemoryHoleRunner;
 
@@ -19,43 +22,19 @@ impl NoMemoryHoleRunner {
                     println!("[{}] {:?}", "Debug".green(), case.relative_path());
                 }
 
-                if case.should_fail() {
-                    return None;
-                }
-
-                let syntax = case.syntax();
-                let input = StringSource::new(case.code());
-                let comments = SingleThreadedComments::default();
-                let lexer = Lexer::new(syntax, Default::default(), input, Some(&comments));
-                let parser = Parser::new_from(lexer);
-                let ret = match case.ext().as_str() {
-                    "js" | "jsx" => parser.parse_program(),
-                    "cjs" => parser
-                        .parse_script()
-                        .map(|ret| ret.map_root(Program::Script)),
-                    "mjs" => parser
-                        .parse_module()
-                        .map(|ret| ret.map_root(Program::Module)),
-                    "ts" | "tsx" => {
-                        return Some(TestResult::Ignored {
-                            path: case.path().to_owned(),
-                        });
-                    }
-                    _ => unreachable!(),
-                };
-
-                let Ok(ret) = ret else {
-                    return None;
+                let (root, ast) = match parse(case) {
+                    ParseResult::Succ(ret) => ret,
+                    _ => return None,
                 };
 
                 let mut use_visitor = Use {
-                    ast: &ret.ast,
+                    ast: &ast,
                     used: Default::default(),
                 };
 
-                use_visitor.visit_program(ret.root);
+                use_visitor.visit_program(root);
 
-                if use_visitor.used.len() != ret.ast.nodes_len() as usize {
+                if use_visitor.used.len() != ast.nodes_len() as usize {
                     return Some(TestResult::Failed {
                         path: case.path().to_owned(),
                         error: "Memory hole is detected".to_string(),
