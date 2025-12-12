@@ -4,6 +4,7 @@ use std::{
 };
 
 use jwalk::WalkDir;
+use saphyr::{LoadableYamlNode, Yaml};
 
 use crate::cases::{Case, fixtures};
 
@@ -11,7 +12,36 @@ use crate::cases::{Case, fixtures};
 pub struct Test262Case {
     path: PathBuf,
     code: String,
-    should_fail: bool,
+    meta: Meta,
+}
+
+#[derive(Default)]
+struct Meta {
+    negative: Option<MetaNegative>,
+}
+
+struct MetaNegative {
+    phase: Phase,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum Phase {
+    Parse,
+    Early,
+    Resolution,
+    Runtime,
+}
+
+impl From<&str> for Phase {
+    fn from(value: &str) -> Self {
+        match value {
+            "parse" => Self::Parse,
+            "early" => Self::Early,
+            "resolution" => Self::Resolution,
+            "runtime" => Self::Runtime,
+            _ => panic!("invalid meta phase"),
+        }
+    }
 }
 
 impl Test262Case {
@@ -32,15 +62,38 @@ impl Test262Case {
             }
 
             let code = read_to_string(path).unwrap();
+            let Some(meta) = parse_meta(&code) else {
+                continue;
+            };
             cases.push(Self {
                 code,
                 path: file.path(),
-                should_fail: false,
+                meta,
             });
         }
 
         cases
     }
+}
+
+fn parse_meta(source: &str) -> Option<Meta> {
+    let meta_start = source.find("/*---")?;
+    let meta_end = source.find("--*/")?;
+    let meta_str = &source[meta_start + 5..meta_end];
+
+    let yaml = Yaml::load_from_str(meta_str).unwrap_or_default();
+    let Some(yaml) = yaml.first() else {
+        return Some(Meta::default());
+    };
+
+    Some(Meta {
+        negative: yaml
+            .as_mapping_get("negative")
+            .filter(|yaml| !yaml.is_null() && !yaml.is_badvalue())
+            .map(|yaml| MetaNegative {
+                phase: Phase::from(yaml["phase"].as_str().unwrap()),
+            }),
+    })
 }
 
 impl Case for Test262Case {
@@ -53,6 +106,10 @@ impl Case for Test262Case {
     }
 
     fn should_fail(&self) -> bool {
-        self.should_fail
+        self.meta
+            .negative
+            .as_ref()
+            .map(|neg| neg.phase == Phase::Parse)
+            .unwrap_or(false)
     }
 }

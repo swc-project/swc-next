@@ -9,6 +9,7 @@ colored   = { workspace = true }
 jwalk     = { workspace = true }
 pico-args = { workspace = true }
 rayon     = { workspace = true }
+saphyr    = { workspace = true }
 swc_core  = { workspace = true }
 
 swc_experimental_ecma_ast             = { workspace = true }
