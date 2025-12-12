@@ -65,6 +65,10 @@ impl Case for MiscCase {
         self.should_fail
     }
 
+    fn should_ignore(&self) -> bool {
+        self.should_fail() && IGNORED_FAIL_TESTS.contains(&self.filename().as_str())
+    }
+
     fn syntax(&self) -> Syntax {
         let ext = self.ext();
         match ext.as_str() {
@@ -92,3 +96,9 @@ impl Case for MiscCase {
         }
     }
 }
+
+const IGNORED_FAIL_TESTS: &[&str] = &[
+    // SWC passes these cases, which seems like bugs.
+    "errors-issue-387-4-input.jsx",
+    "errors-html-comment-input.jsx",
+];

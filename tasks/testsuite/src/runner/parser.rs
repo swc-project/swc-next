@@ -6,9 +6,9 @@ use swc_experimental_ecma_parser::{Lexer, Parser, StringSource};
 
 use crate::{AppArgs, cases::Case, suite::TestResult};
 
-pub struct MiscParserRunner;
+pub struct ParserRunner;
 
-impl MiscParserRunner {
+impl ParserRunner {
     pub fn run<C: Case>(args: &AppArgs, cases: &[C]) -> Vec<TestResult> {
         cases
             .par_iter()
@@ -17,7 +17,7 @@ impl MiscParserRunner {
                     println!("[{}] {:?}", "Debug".green(), case.relative_path());
                 }
 
-                if case.should_fail() && IGNORED_FAIL_TESTS.contains(&case.filename().as_str()) {
+                if case.should_ignore() {
                     return TestResult::Ignored {
                         path: case.relative_path().to_path_buf(),
                     };
@@ -29,13 +29,24 @@ impl MiscParserRunner {
                 let lexer = Lexer::new(syntax, Default::default(), input, Some(&comments));
                 let parser = Parser::new_from(lexer);
                 let ret = match case.ext().as_str() {
-                    "js" | "jsx" => parser.parse_program(),
                     "cjs" => parser
                         .parse_script()
                         .map(|ret| ret.map_root(Program::Script)),
                     "mjs" => parser
                         .parse_module()
                         .map(|ret| ret.map_root(Program::Module)),
+                    "js" => {
+                        if case.filename().ends_with(".module.js") {
+                            parser
+                                .parse_module()
+                                .map(|ret| ret.map_root(Program::Module))
+                        } else {
+                            parser
+                                .parse_script()
+                                .map(|ret| ret.map_root(Program::Script))
+                        }
+                    }
+                    "jsx" => parser.parse_program(),
                     "ts" | "tsx" => {
                         return TestResult::Ignored {
                             path: case.path().to_owned(),
@@ -68,9 +79,3 @@ impl MiscParserRunner {
             .collect()
     }
 }
-
-const IGNORED_FAIL_TESTS: &[&str] = &[
-    // SWC passes these cases, which seems like bugs.
-    "errors-issue-387-4-input.jsx",
-    "errors-html-comment-input.jsx",
-];

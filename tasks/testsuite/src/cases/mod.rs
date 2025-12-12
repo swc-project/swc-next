@@ -13,6 +13,10 @@ pub trait Case: Sync {
     fn code(&self) -> &str;
     fn should_fail(&self) -> bool;
 
+    fn should_ignore(&self) -> bool {
+        false
+    }
+
     fn syntax(&self) -> Syntax {
         Syntax::default()
     }
