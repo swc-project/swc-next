@@ -42,10 +42,14 @@ pub fn main() {
     results.extend(ParserRunner::run(&args, &test262_cases));
     results.extend(ParserRunner::run(&args, &test262_parser_cases));
     results.extend(NoMemoryHoleRunner::run(&args, &misc_cases));
+    results.extend(NoMemoryHoleRunner::run(&args, &test262_cases));
     results.extend(NoMemoryHoleRunner::run(&args, &test262_parser_cases));
     results.extend(SemanticRunner::run(&args, &misc_cases));
+    results.extend(SemanticRunner::run(&args, &test262_cases));
     results.extend(SemanticRunner::run(&args, &test262_parser_cases));
     results.extend(RemoveParenRunner::run(&args, &misc_cases));
+    results.extend(RemoveParenRunner::run(&args, &test262_cases));
+    results.extend(RemoveParenRunner::run(&args, &test262_parser_cases));
 
     // Collect results
     let mut passed = 0;
