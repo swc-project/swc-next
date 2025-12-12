@@ -1,5 +1,6 @@
 use colored::*;
 use pico_args::Arguments;
+use rayon::ThreadPoolBuilder;
 
 use crate::{
     cases::{
@@ -32,6 +33,13 @@ pub fn main() {
         debug: args.contains("--debug"),
         cases: args.values_from_str("--cases").unwrap(),
     };
+
+    if args.debug {
+        ThreadPoolBuilder::new()
+            .num_threads(1)
+            .build_global()
+            .unwrap();
+    }
 
     // Run tests
     let mut results = Vec::new();

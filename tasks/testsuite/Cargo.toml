@@ -6,10 +6,10 @@ version = "0.1.0"
 
 [dependencies]
 colored   = { workspace = true }
+jwalk     = { workspace = true }
 pico-args = { workspace = true }
 rayon     = { workspace = true }
 swc_core  = { workspace = true }
-walkdir   = { workspace = true }
 
 swc_experimental_ecma_ast             = { workspace = true }
 swc_experimental_ecma_parser          = { workspace = true }

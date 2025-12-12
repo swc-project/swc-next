@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use walkdir::WalkDir;
+use jwalk::WalkDir;
 
 use crate::cases::{Case, fixtures};
 
@@ -34,7 +34,7 @@ impl Test262Case {
             let code = read_to_string(path).unwrap();
             cases.push(Self {
                 code,
-                path: file.into_path(),
+                path: file.path(),
                 should_fail: false,
             });
         }
