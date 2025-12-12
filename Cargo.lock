@@ -1572,6 +1572,7 @@ dependencies = [
  "swc_experimental_ecma_parser",
  "swc_experimental_ecma_semantic",
  "swc_experimental_ecma_transforms_base",
+ "walkdir",
 ]
 
 [[package]]

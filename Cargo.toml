@@ -54,6 +54,7 @@ colored   = "3.0.0"
 criterion = { package = "codspeed-criterion-compat", version = "*" }
 mimalloc  = "0.1.48"
 pico-args = "0.5.0"
+walkdir   = "2.5.0"
 
 [profile.bench]
 codegen-units = 1

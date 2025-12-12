@@ -5,6 +5,7 @@ use swc_experimental_ecma_parser::Syntax;
 use crate::util::crate_root;
 
 pub mod misc;
+pub mod test262;
 pub mod test262_parser;
 
 pub trait Case {

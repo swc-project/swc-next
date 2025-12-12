@@ -8,6 +8,7 @@ version = "0.1.0"
 colored   = { workspace = true }
 pico-args = { workspace = true }
 swc_core  = { workspace = true }
+walkdir   = { workspace = true }
 
 swc_experimental_ecma_ast             = { workspace = true }
 swc_experimental_ecma_parser          = { workspace = true }

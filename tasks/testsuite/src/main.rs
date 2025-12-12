@@ -5,12 +5,13 @@ use crate::{
     cases::{
         Case,
         misc::MiscCase,
+        test262,
         test262_parser::{self},
     },
     runner::{
         parser_misc::MiscParserRunner, parser_no_memory_hole::NoMemoryHoleRunner,
-        parser_test262::Test262ParserRunner, semantic::SemanticRunner,
-        transform_remove_paren::RemoveParenRunner,
+        parser_test262::Test262Runner, parser_test262_parser::Test262ParserRunner,
+        semantic::SemanticRunner, transform_remove_paren::RemoveParenRunner,
     },
     suite::TestResult,
 };
@@ -36,8 +37,10 @@ pub fn main() {
     // Run tests
     let mut results = Vec::new();
     let misc_cases = filter(&args, MiscCase::read());
+    let test262_cases = filter(&args, test262::Test262Case::read());
     let test262_parser_cases = filter(&args, test262_parser::Test262ParserCase::read());
     results.extend(MiscParserRunner::run(&args, &misc_cases));
+    results.extend(Test262Runner::run(&args, &test262_cases));
     results.extend(Test262ParserRunner::run(&args, &test262_parser_cases));
     results.extend(NoMemoryHoleRunner::run(&args, &misc_cases));
     results.extend(NoMemoryHoleRunner::run(&args, &test262_parser_cases));
