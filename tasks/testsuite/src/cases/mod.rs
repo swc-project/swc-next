@@ -8,7 +8,7 @@ pub mod misc;
 pub mod test262;
 pub mod test262_parser;
 
-pub trait Case {
+pub trait Case: Sync {
     fn path(&self) -> &Path;
     fn code(&self) -> &str;
     fn should_fail(&self) -> bool;

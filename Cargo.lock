@@ -1567,6 +1567,7 @@ version = "0.1.0"
 dependencies = [
  "colored 3.0.0",
  "pico-args",
+ "rayon",
  "swc_core",
  "swc_experimental_ecma_ast",
  "swc_experimental_ecma_parser",
