@@ -101,13 +101,13 @@ pub fn main() {
             }
             TestResult::Failed { path, error } => {
                 failed += 1;
-                if args.failures.contains("failed") {
+                if args.failures.is_empty() || args.failures.contains("failed") {
                     println!("Failed: {} - {}", path.display(), error.red());
                 }
             }
             TestResult::Panic { path } => {
                 panicked += 1;
-                if args.failures.contains("panic") {
+                if args.failures.is_empty() || args.failures.contains("panic") {
                     println!("Panic: {}", path.display());
                 }
             }
