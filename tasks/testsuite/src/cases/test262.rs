@@ -122,10 +122,6 @@ impl Case for Test262Case {
 
 const IGNORED_TESTS: &[&str] = &[
     // Should be fixed
-    "fixtures/test262/test/built-ins/Temporal/PlainMonthDay/argument-invalid.js",
-    "fixtures/test262/test/built-ins/Temporal/PlainYearMonth/argument-invalid.js",
-    "fixtures/test262/test/built-ins/Array/prototype/reverse/length-exceeding-integer-limit-with-proxy.js",
-    "fixtures/test262/test/built-ins/Iterator/zipKeyed/iterables-iteration.js",
     "fixtures/test262/test/language/comments/hashbang/line-terminator-paragraph-separator.js",
     "fixtures/test262/test/language/comments/hashbang/line-terminator-line-separator.js",
     "fixtures/test262/test/language/literals/bigint/numeric-separators/numeric-separator-literal-hil-hd-nsl-hd-err.js",
