@@ -92,6 +92,7 @@ pub fn main() {
     // Collect results
     let mut passed = 0;
     let mut failed = 0;
+    let mut panicked = 0;
     let mut ignored = 0;
     for result in results {
         match result {
@@ -105,7 +106,7 @@ pub fn main() {
                 }
             }
             TestResult::Panic { path } => {
-                failed += 1;
+                panicked += 1;
                 if args.failures.contains("panic") {
                     println!("Panic: {}", path.display());
                 }
@@ -120,6 +121,7 @@ pub fn main() {
     println!("Passed: {}", passed.to_string().green());
     println!("Failed: {}", failed.to_string().red());
     println!("Ignored: {}", ignored.to_string().yellow());
+    println!("Panicked: {}", panicked.to_string().yellow());
 
     if failed > 0 {
         std::process::exit(1);
