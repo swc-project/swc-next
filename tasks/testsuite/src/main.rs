@@ -27,6 +27,7 @@ pub struct AppArgs {
     pub debug: bool,
     pub cases: HashSet<String>,
     pub runners: HashSet<String>,
+    pub failures: HashSet<String>,
 }
 
 pub fn main() {
@@ -41,6 +42,11 @@ pub fn main() {
             .collect(),
         runners: args
             .values_from_str("--runners")
+            .unwrap()
+            .into_iter()
+            .collect(),
+        failures: args
+            .values_from_str("--failures")
             .unwrap()
             .into_iter()
             .collect(),
@@ -94,11 +100,15 @@ pub fn main() {
             }
             TestResult::Failed { path, error } => {
                 failed += 1;
-                println!("Failed: {} - {}", path.display(), error.red());
+                if args.failures.contains("failed") {
+                    println!("Failed: {} - {}", path.display(), error.red());
+                }
             }
             TestResult::Panic { path } => {
                 failed += 1;
-                println!("Panic: {}", path.display());
+                if args.failures.contains("panic") {
+                    println!("Panic: {}", path.display());
+                }
             }
             TestResult::Ignored { .. } => {
                 ignored += 1;
