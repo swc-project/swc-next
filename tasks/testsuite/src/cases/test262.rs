@@ -48,7 +48,7 @@ impl From<&str> for Phase {
 impl Test262Case {
     pub fn read() -> Vec<Self> {
         let mut cases = Vec::new();
-        for file in WalkDir::new(fixtures().join("test262")) {
+        for file in WalkDir::new(fixtures().join("test262").join("test")) {
             let file = file.unwrap();
             if !file.file_type().is_file() {
                 continue;
