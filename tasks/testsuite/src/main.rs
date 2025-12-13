@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use colored::*;
 use pico_args::Arguments;
 use rayon::ThreadPoolBuilder;
@@ -23,7 +25,8 @@ mod util;
 
 pub struct AppArgs {
     pub debug: bool,
-    pub cases: Vec<String>,
+    pub cases: HashSet<String>,
+    pub runners: HashSet<String>,
 }
 
 pub fn main() {
@@ -31,7 +34,16 @@ pub fn main() {
     let mut args = Arguments::from_env();
     let args = AppArgs {
         debug: args.contains("--debug"),
-        cases: args.values_from_str("--cases").unwrap(),
+        cases: args
+            .values_from_str("--cases")
+            .unwrap()
+            .into_iter()
+            .collect(),
+        runners: args
+            .values_from_str("--runners")
+            .unwrap()
+            .into_iter()
+            .collect(),
     };
 
     if args.debug {
@@ -46,18 +58,30 @@ pub fn main() {
     let misc_cases = filter(&args, MiscCase::read());
     let test262_cases = filter(&args, test262::Test262Case::read());
     let test262_parser_cases = filter(&args, test262_parser::Test262ParserCase::read());
-    results.extend(ParserRunner::run(&args, &misc_cases));
-    results.extend(ParserRunner::run(&args, &test262_cases));
-    results.extend(ParserRunner::run(&args, &test262_parser_cases));
-    results.extend(NoMemoryHoleRunner::run(&args, &misc_cases));
-    results.extend(NoMemoryHoleRunner::run(&args, &test262_cases));
-    results.extend(NoMemoryHoleRunner::run(&args, &test262_parser_cases));
-    results.extend(SemanticRunner::run(&args, &misc_cases));
-    results.extend(SemanticRunner::run(&args, &test262_cases));
-    results.extend(SemanticRunner::run(&args, &test262_parser_cases));
-    results.extend(RemoveParenRunner::run(&args, &misc_cases));
-    results.extend(RemoveParenRunner::run(&args, &test262_cases));
-    results.extend(RemoveParenRunner::run(&args, &test262_parser_cases));
+
+    if args.runners.is_empty() || args.runners.contains("parser") {
+        results.extend(ParserRunner::run(&args, &misc_cases));
+        results.extend(ParserRunner::run(&args, &test262_cases));
+        results.extend(ParserRunner::run(&args, &test262_parser_cases));
+    }
+
+    if args.runners.is_empty() || args.runners.contains("no_memory_hole") {
+        results.extend(NoMemoryHoleRunner::run(&args, &misc_cases));
+        results.extend(NoMemoryHoleRunner::run(&args, &test262_cases));
+        results.extend(NoMemoryHoleRunner::run(&args, &test262_parser_cases));
+    }
+
+    if args.runners.is_empty() || args.runners.contains("semantic") {
+        results.extend(SemanticRunner::run(&args, &misc_cases));
+        results.extend(SemanticRunner::run(&args, &test262_cases));
+        results.extend(SemanticRunner::run(&args, &test262_parser_cases));
+    }
+
+    if args.runners.is_empty() || args.runners.contains("remove_paren") {
+        results.extend(RemoveParenRunner::run(&args, &misc_cases));
+        results.extend(RemoveParenRunner::run(&args, &test262_cases));
+        results.extend(RemoveParenRunner::run(&args, &test262_parser_cases));
+    }
 
     // Collect results
     let mut passed = 0;
@@ -98,10 +122,6 @@ fn filter<T: Case>(args: &AppArgs, list: Vec<T>) -> Vec<T> {
     }
 
     list.into_iter()
-        .filter(|case| {
-            args.cases
-                .iter()
-                .any(|filter| case.path().to_string_lossy().contains(filter))
-        })
+        .filter(|case| args.cases.contains(case.path().to_string_lossy().as_ref()))
         .collect()
 }
