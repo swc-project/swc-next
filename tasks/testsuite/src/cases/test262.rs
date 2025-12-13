@@ -15,11 +15,12 @@ pub struct Test262Case {
     meta: Meta,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct Meta {
     negative: Option<MetaNegative>,
 }
 
+#[derive(Debug)]
 struct MetaNegative {
     phase: Phase,
 }
@@ -78,7 +79,7 @@ impl Test262Case {
 
 fn parse_meta(source: &str) -> Option<Meta> {
     let meta_start = source.find("/*---")?;
-    let meta_end = source.find("--*/")?;
+    let meta_end = source.find("---*/")?;
     let meta_str = &source[meta_start + 5..meta_end];
 
     let yaml = Yaml::load_from_str(meta_str).unwrap_or_default();
@@ -90,8 +91,19 @@ fn parse_meta(source: &str) -> Option<Meta> {
         negative: yaml
             .as_mapping_get("negative")
             .filter(|yaml| !yaml.is_null() && !yaml.is_badvalue())
-            .map(|yaml| MetaNegative {
-                phase: Phase::from(yaml["phase"].as_str().unwrap()),
+            .map(|yaml| {
+                if yaml.as_str() == Some("SyntaxError") {
+                    return MetaNegative {
+                        phase: Phase::Parse,
+                    };
+                }
+
+                MetaNegative {
+                    phase: yaml
+                        .as_mapping_get("phase")
+                        .map(|p| Phase::from(p.as_str().unwrap()))
+                        .unwrap_or(Phase::Parse),
+                }
             }),
     })
 }
