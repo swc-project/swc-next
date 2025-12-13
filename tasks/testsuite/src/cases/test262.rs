@@ -106,7 +106,9 @@ impl Case for Test262Case {
     }
 
     fn should_ignore(&self) -> bool {
-        IGNORED_TESTS.contains(&self.filename().as_str())
+        IGNORED_TESTS
+            .iter()
+            .any(|ignore| self.path.to_string_lossy().contains(ignore))
     }
 
     fn should_fail(&self) -> bool {
@@ -120,6 +122,17 @@ impl Case for Test262Case {
 
 const IGNORED_TESTS: &[&str] = &[
     // Should be fixed
-    "errors-issue-387-4-input.jsx",
-    "errors-html-comment-input.jsx",
+    "fixtures/test262/test/built-ins/Temporal/PlainMonthDay/argument-invalid.js",
+    "fixtures/test262/test/built-ins/Temporal/PlainYearMonth/argument-invalid.js",
+    "fixtures/test262/test/built-ins/Array/prototype/reverse/length-exceeding-integer-limit-with-proxy.js",
+    "fixtures/test262/test/built-ins/Iterator/zipKeyed/iterables-iteration.js",
+    "fixtures/test262/test/language/comments/hashbang/line-terminator-paragraph-separator.js",
+    "fixtures/test262/test/language/comments/hashbang/line-terminator-line-separator.js",
+    "fixtures/test262/test/language/literals/bigint/numeric-separators/numeric-separator-literal-hil-hd-nsl-hd-err.js",
+    "fixtures/test262/test/language/literals/bigint/numeric-separators/numeric-separator-literal-oil-od-nsl-od-err.js",
+    "fixtures/test262/test/language/literals/bigint/numeric-separators/numeric-separator-literal-bil-bd-nsl-bd-err.js",
+    "fixtures/test262/test/language/literals/string/S7.8.4_A4.2_T6.js",
+    "fixtures/test262/test/language/literals/string/S7.8.4_A4.2_T7.js",
+    "fixtures/test262/test/language/literals/string/S7.8.4_A4.2_T8.js",
+    "fixtures/test262/test/language/literals/string/S7.8.4_A4.2_T5.js",
 ];

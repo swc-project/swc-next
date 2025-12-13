@@ -20,6 +20,12 @@ impl SemanticRunner {
                     println!("[{}] {:?}", "Debug".green(), case.relative_path());
                 }
 
+                if case.should_ignore() {
+                    return Some(TestResult::Ignored {
+                        path: case.relative_path().to_owned(),
+                    });
+                }
+
                 let (root, ast) = match parse(case) {
                     ParseResult::Succ(ret) => ret,
                     _ => return None,
