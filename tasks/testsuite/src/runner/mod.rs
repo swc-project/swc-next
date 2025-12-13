@@ -43,11 +43,7 @@ pub fn parse<C: Case>(case: &C) -> ParseResult {
                         .map(|ret| ret.map_root(Program::Module))
                 }))
             } else {
-                catch_unwind(AssertUnwindSafe(|| {
-                    parser
-                        .parse_script()
-                        .map(|ret| ret.map_root(Program::Script))
-                }))
+                catch_unwind(AssertUnwindSafe(|| parser.parse_program()))
             }
         }
         "jsx" => catch_unwind(AssertUnwindSafe(|| parser.parse_program())),
