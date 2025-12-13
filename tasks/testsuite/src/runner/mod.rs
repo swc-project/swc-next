@@ -9,7 +9,7 @@ use swc_core::common::comments::SingleThreadedComments;
 use swc_experimental_ecma_ast::{Ast, Program};
 use swc_experimental_ecma_parser::{Lexer, Parser, StringSource, error::Error};
 
-use crate::cases::Case;
+use crate::cases::{Case, IsModule};
 
 pub enum ParseResult {
     Succ((Program, Ast)),
@@ -24,33 +24,21 @@ pub fn parse<C: Case>(case: &C) -> ParseResult {
     let comments = SingleThreadedComments::default();
     let lexer = Lexer::new(syntax, Default::default(), input, Some(&comments));
     let parser = Parser::new_from(lexer);
-    let ret = match case.ext().as_str() {
-        "cjs" => catch_unwind(AssertUnwindSafe(|| {
+    let ret = match case.is_module() {
+        IsModule::Script => catch_unwind(AssertUnwindSafe(|| {
             parser
                 .parse_script()
                 .map(|ret| ret.map_root(Program::Script))
         })),
-        "mjs" => catch_unwind(AssertUnwindSafe(|| {
+        IsModule::Module => catch_unwind(AssertUnwindSafe(|| {
             parser
                 .parse_module()
                 .map(|ret| ret.map_root(Program::Module))
         })),
-        "js" => {
-            if case.filename().ends_with(".module.js") {
-                catch_unwind(AssertUnwindSafe(|| {
-                    parser
-                        .parse_module()
-                        .map(|ret| ret.map_root(Program::Module))
-                }))
-            } else {
-                catch_unwind(AssertUnwindSafe(|| parser.parse_program()))
-            }
-        }
-        "jsx" => catch_unwind(AssertUnwindSafe(|| parser.parse_program())),
-        "ts" | "tsx" => {
+        IsModule::Unknown => catch_unwind(AssertUnwindSafe(|| parser.parse_program())),
+        IsModule::Skip => {
             return ParseResult::Ignore;
         }
-        _ => unreachable!(),
     };
 
     match ret {

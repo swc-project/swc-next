@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::cases::{Case, fixtures};
+use crate::cases::{Case, IsModule, fixtures};
 
 pub struct Test262ParserCase {
     path: PathBuf,
@@ -61,6 +61,14 @@ impl Case for Test262ParserCase {
     fn should_ignore(&self) -> bool {
         (!self.should_fail() && IGNORED_PASS_TESTS.contains(&self.filename().as_str()))
             || (self.should_fail() && IGNORED_ERROR_TESTS.contains(&self.filename().as_str()))
+    }
+
+    fn is_module(&self) -> IsModule {
+        if self.filename().ends_with(".module.js") {
+            IsModule::Module
+        } else {
+            IsModule::Script
+        }
     }
 }
 
