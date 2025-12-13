@@ -122,13 +122,7 @@ impl Case for Test262Case {
 
 const IGNORED_TESTS: &[&str] = &[
     // Should be fixed
-    "fixtures/test262/test/language/comments/hashbang/line-terminator-paragraph-separator.js",
-    "fixtures/test262/test/language/comments/hashbang/line-terminator-line-separator.js",
     "fixtures/test262/test/language/literals/bigint/numeric-separators/numeric-separator-literal-hil-hd-nsl-hd-err.js",
     "fixtures/test262/test/language/literals/bigint/numeric-separators/numeric-separator-literal-oil-od-nsl-od-err.js",
     "fixtures/test262/test/language/literals/bigint/numeric-separators/numeric-separator-literal-bil-bd-nsl-bd-err.js",
-    "fixtures/test262/test/language/literals/string/S7.8.4_A4.2_T6.js",
-    "fixtures/test262/test/language/literals/string/S7.8.4_A4.2_T7.js",
-    "fixtures/test262/test/language/literals/string/S7.8.4_A4.2_T8.js",
-    "fixtures/test262/test/language/literals/string/S7.8.4_A4.2_T5.js",
 ];
