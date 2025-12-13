@@ -28,6 +28,7 @@ pub struct AppArgs {
     pub cases: Vec<String>,
     pub runners: HashSet<String>,
     pub failures: HashSet<String>,
+    pub test262: bool,
 }
 
 pub fn main() {
@@ -35,6 +36,7 @@ pub fn main() {
     let mut args = Arguments::from_env();
     let args = AppArgs {
         debug: args.contains("--debug"),
+        test262: args.contains("--test262"),
         cases: args.values_from_str("--cases").unwrap(),
         runners: args
             .values_from_str("--runners")
@@ -57,32 +59,45 @@ pub fn main() {
 
     // Run tests
     let mut results = Vec::new();
+
     let misc_cases = filter(&args, MiscCase::read());
     let test262_cases = filter(&args, test262::Test262Case::read());
     let test262_parser_cases = filter(&args, test262_parser::Test262ParserCase::read());
 
     if args.runners.is_empty() || args.runners.contains("parser") {
         results.extend(ParserRunner::run(&args, &misc_cases));
-        results.extend(ParserRunner::run(&args, &test262_cases));
         results.extend(ParserRunner::run(&args, &test262_parser_cases));
+
+        if args.test262 {
+            results.extend(ParserRunner::run(&args, &test262_cases));
+        }
     }
 
     if args.runners.is_empty() || args.runners.contains("no_memory_hole") {
         results.extend(NoMemoryHoleRunner::run(&args, &misc_cases));
-        results.extend(NoMemoryHoleRunner::run(&args, &test262_cases));
         results.extend(NoMemoryHoleRunner::run(&args, &test262_parser_cases));
+
+        if args.test262 {
+            results.extend(NoMemoryHoleRunner::run(&args, &test262_cases));
+        }
     }
 
     if args.runners.is_empty() || args.runners.contains("semantic") {
         results.extend(SemanticRunner::run(&args, &misc_cases));
-        results.extend(SemanticRunner::run(&args, &test262_cases));
         results.extend(SemanticRunner::run(&args, &test262_parser_cases));
+
+        if args.test262 {
+            results.extend(SemanticRunner::run(&args, &test262_cases));
+        }
     }
 
     if args.runners.is_empty() || args.runners.contains("remove_paren") {
         results.extend(RemoveParenRunner::run(&args, &misc_cases));
-        results.extend(RemoveParenRunner::run(&args, &test262_cases));
         results.extend(RemoveParenRunner::run(&args, &test262_parser_cases));
+
+        if args.test262 {
+            results.extend(RemoveParenRunner::run(&args, &test262_cases));
+        }
     }
 
     // Collect results
