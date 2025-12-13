@@ -25,7 +25,7 @@ mod util;
 
 pub struct AppArgs {
     pub debug: bool,
-    pub cases: HashSet<String>,
+    pub cases: Vec<String>,
     pub runners: HashSet<String>,
     pub failures: HashSet<String>,
 }
@@ -35,11 +35,7 @@ pub fn main() {
     let mut args = Arguments::from_env();
     let args = AppArgs {
         debug: args.contains("--debug"),
-        cases: args
-            .values_from_str("--cases")
-            .unwrap()
-            .into_iter()
-            .collect(),
+        cases: args.values_from_str("--cases").unwrap(),
         runners: args
             .values_from_str("--runners")
             .unwrap()
@@ -134,6 +130,10 @@ fn filter<T: Case>(args: &AppArgs, list: Vec<T>) -> Vec<T> {
     }
 
     list.into_iter()
-        .filter(|case| args.cases.contains(case.path().to_string_lossy().as_ref()))
+        .filter(|case| {
+            args.cases
+                .iter()
+                .any(|f| case.path().to_string_lossy().as_ref().contains(f))
+        })
         .collect()
 }
