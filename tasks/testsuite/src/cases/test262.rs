@@ -54,7 +54,7 @@ impl Test262Case {
                 continue;
             }
 
-            let path = file.path().to_string_lossy().to_string();
+            let path = file.path().to_string_lossy().replace('\\', "/");
             if !path.ends_with(".js")
                 || path.contains("_FIXTURE")
                 || path.contains("test262/test/staging")
@@ -118,9 +118,12 @@ impl Case for Test262Case {
     }
 
     fn should_ignore(&self) -> bool {
-        IGNORED_TESTS
-            .iter()
-            .any(|ignore| self.path.to_string_lossy().contains(ignore))
+        IGNORED_TESTS.iter().any(|ignore| {
+            self.path
+                .to_string_lossy()
+                .replace('\\', "/")
+                .contains(ignore)
+        })
     }
 
     fn should_fail(&self) -> bool {
