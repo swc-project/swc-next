@@ -57,10 +57,13 @@ pub fn main() {
     };
 
     if args.test262 {
-        test_test262_snapshots(&args);
-        return;
+        return test_test262_snapshots(&args);
     }
 
+    test_normal(&args);
+}
+
+fn test_normal(args: &AppArgs) {
     if args.debug {
         ThreadPoolBuilder::new()
             .num_threads(1)
@@ -68,7 +71,6 @@ pub fn main() {
             .unwrap();
     }
 
-    // Run tests
     let mut results = Vec::new();
 
     let misc_cases = filter(&args, MiscCase::read());
