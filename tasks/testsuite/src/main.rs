@@ -144,7 +144,8 @@ fn test_test262_snapshots(args: &AppArgs) {
         let mut failed = 0;
         let mut panicked = 0;
         let mut ignored = 0;
-        let mut diagnostics = String::new();
+        let mut diagnostics_vec = Vec::new();
+
         for result in results {
             match result {
                 TestResult::Passed { .. } => {
@@ -152,17 +153,20 @@ fn test_test262_snapshots(args: &AppArgs) {
                 }
                 TestResult::Failed { path, error } => {
                     failed += 1;
-                    diagnostics.push_str(&format!("Failed: {} - {}\n", path.display(), error));
+                    diagnostics_vec.push(format!("Failed: {} - {}", path.display(), error));
                 }
                 TestResult::Panic { path } => {
                     panicked += 1;
-                    diagnostics.push_str(&format!("Panic: {}\n", path.display()));
+                    diagnostics_vec.push(format!("Panic: {}", path.display()));
                 }
                 TestResult::Ignored { .. } => {
                     ignored += 1;
                 }
             }
         }
+
+        // 按字典顺序排序 diagnostics
+        diagnostics_vec.sort();
 
         let total = results.len();
         let mut result = String::from("Test Summary: \n");
@@ -182,7 +186,11 @@ fn test_test262_snapshots(args: &AppArgs) {
             "Ignored: {ignored}/{total} ({:.2}%)\n",
             (ignored as f64 / total as f64) * 100.0,
         ));
-        result.push_str(&diagnostics);
+
+        for diag in diagnostics_vec {
+            result.push_str(&diag);
+            result.push('\n');
+        }
 
         result
     };
