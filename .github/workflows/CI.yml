@@ -73,7 +73,7 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Clone test fixtures
         shell: bash
-        run: ./scripts/clone_fixtures.sh
+        run: chmod +x ./scripts/clone_fixtures.sh && ./scripts/clone_fixtures.sh
       - name: Run testsuite
         run: cargo run -p testsuite
       - name: Run test262
