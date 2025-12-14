@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, fs};
 
 use colored::*;
 use pico_args::Arguments;
@@ -16,6 +16,7 @@ use crate::{
         transform_remove_paren::RemoveParenRunner,
     },
     suite::TestResult,
+    util::crate_root,
 };
 
 mod cases;
@@ -50,6 +51,11 @@ pub fn main() {
             .collect(),
     };
 
+    if args.test262 {
+        test_test262_snapshots(&args);
+        return;
+    }
+
     if args.debug {
         ThreadPoolBuilder::new()
             .num_threads(1)
@@ -61,43 +67,26 @@ pub fn main() {
     let mut results = Vec::new();
 
     let misc_cases = filter(&args, MiscCase::read());
-    let test262_cases = filter(&args, test262::Test262Case::read());
     let test262_parser_cases = filter(&args, test262_parser::Test262ParserCase::read());
 
     if args.runners.is_empty() || args.runners.contains("parser") {
         results.extend(ParserRunner::run(&args, &misc_cases));
         results.extend(ParserRunner::run(&args, &test262_parser_cases));
-
-        if args.test262 {
-            results.extend(ParserRunner::run(&args, &test262_cases));
-        }
     }
 
     if args.runners.is_empty() || args.runners.contains("no_memory_hole") {
         results.extend(NoMemoryHoleRunner::run(&args, &misc_cases));
         results.extend(NoMemoryHoleRunner::run(&args, &test262_parser_cases));
-
-        if args.test262 {
-            results.extend(NoMemoryHoleRunner::run(&args, &test262_cases));
-        }
     }
 
     if args.runners.is_empty() || args.runners.contains("semantic") {
         results.extend(SemanticRunner::run(&args, &misc_cases));
         results.extend(SemanticRunner::run(&args, &test262_parser_cases));
-
-        if args.test262 {
-            results.extend(SemanticRunner::run(&args, &test262_cases));
-        }
     }
 
     if args.runners.is_empty() || args.runners.contains("remove_paren") {
         results.extend(RemoveParenRunner::run(&args, &misc_cases));
         results.extend(RemoveParenRunner::run(&args, &test262_parser_cases));
-
-        if args.test262 {
-            results.extend(RemoveParenRunner::run(&args, &test262_cases));
-        }
     }
 
     // Collect results
@@ -137,6 +126,88 @@ pub fn main() {
     if failed > 0 {
         std::process::exit(1);
     }
+}
+
+fn test_test262_snapshots(args: &AppArgs) {
+    let cases = filter(&args, test262::Test262Case::read());
+
+    let to_snapshot = |results: &[TestResult]| {
+        // Collect results
+        let mut passed = 0;
+        let mut failed = 0;
+        let mut panicked = 0;
+        let mut ignored = 0;
+        let mut diagnostics = String::new();
+        for result in results {
+            match result {
+                TestResult::Passed { .. } => {
+                    passed += 1;
+                }
+                TestResult::Failed { path, error } => {
+                    failed += 1;
+                    diagnostics.push_str(&format!("Failed: {} - {}\n", path.display(), error));
+                }
+                TestResult::Panic { path } => {
+                    panicked += 1;
+                    diagnostics.push_str(&format!("Panic: {}\n", path.display()));
+                }
+                TestResult::Ignored { .. } => {
+                    ignored += 1;
+                }
+            }
+        }
+
+        let total = results.len();
+        let mut result = String::from("Test Summary: \n");
+        result.push_str(&format!(
+            "Passed: {passed}/{total} ({:.2}%)\n",
+            (passed as f64 / total as f64) * 100.0,
+        ));
+        result.push_str(&format!(
+            "Failed: {failed}/{total} ({:.2}%)\n",
+            (failed as f64 / total as f64) * 100.0,
+        ));
+        result.push_str(&format!(
+            "Panicked: {panicked}/{total} ({:.2}%)\n",
+            (panicked as f64 / total as f64) * 100.0,
+        ));
+        result.push_str(&format!(
+            "Ignored: {ignored}/{total} ({:.2}%)\n",
+            (ignored as f64 / total as f64) * 100.0,
+        ));
+        result.push_str(&diagnostics);
+
+        result
+    };
+
+    let snapshot_dir = crate_root().join("snapshots");
+    let results = ParserRunner::run(&args, &cases);
+    fs::write(
+        snapshot_dir.join("parser_test262.snap"),
+        to_snapshot(&results),
+    )
+    .unwrap();
+
+    let results = SemanticRunner::run(&args, &cases);
+    fs::write(
+        snapshot_dir.join("semantic_test262.snap"),
+        to_snapshot(&results),
+    )
+    .unwrap();
+
+    let results = NoMemoryHoleRunner::run(&args, &cases);
+    fs::write(
+        snapshot_dir.join("no_memory_hole_test262.snap"),
+        to_snapshot(&results),
+    )
+    .unwrap();
+
+    let results = RemoveParenRunner::run(&args, &cases);
+    fs::write(
+        snapshot_dir.join("remove_paren_test262.snap"),
+        to_snapshot(&results),
+    )
+    .unwrap();
 }
 
 fn filter<T: Case>(args: &AppArgs, list: Vec<T>) -> Vec<T> {
