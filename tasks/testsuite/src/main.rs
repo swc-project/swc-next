@@ -73,27 +73,27 @@ fn test_normal(args: &AppArgs) {
 
     let mut results = Vec::new();
 
-    let misc_cases = filter(&args, MiscCase::read());
-    let test262_parser_cases = filter(&args, test262_parser::Test262ParserCase::read());
+    let misc_cases = filter(args, MiscCase::read());
+    let test262_parser_cases = filter(args, test262_parser::Test262ParserCase::read());
 
     if args.runners.is_empty() || args.runners.contains(PARSER_RUNNER) {
-        results.extend(ParserRunner::run(&args, &misc_cases));
-        results.extend(ParserRunner::run(&args, &test262_parser_cases));
+        results.extend(ParserRunner::run(args, &misc_cases));
+        results.extend(ParserRunner::run(args, &test262_parser_cases));
     }
 
     if args.runners.is_empty() || args.runners.contains(NO_MEMORY_HOLE_RUNNER) {
-        results.extend(NoMemoryHoleRunner::run(&args, &misc_cases));
-        results.extend(NoMemoryHoleRunner::run(&args, &test262_parser_cases));
+        results.extend(NoMemoryHoleRunner::run(args, &misc_cases));
+        results.extend(NoMemoryHoleRunner::run(args, &test262_parser_cases));
     }
 
     if args.runners.is_empty() || args.runners.contains(SEMANTIC_RUNNER) {
-        results.extend(SemanticRunner::run(&args, &misc_cases));
-        results.extend(SemanticRunner::run(&args, &test262_parser_cases));
+        results.extend(SemanticRunner::run(args, &misc_cases));
+        results.extend(SemanticRunner::run(args, &test262_parser_cases));
     }
 
     if args.runners.is_empty() || args.runners.contains(REMOVE_PAREN_RUNNER) {
-        results.extend(RemoveParenRunner::run(&args, &misc_cases));
-        results.extend(RemoveParenRunner::run(&args, &test262_parser_cases));
+        results.extend(RemoveParenRunner::run(args, &misc_cases));
+        results.extend(RemoveParenRunner::run(args, &test262_parser_cases));
     }
 
     // Collect results
@@ -136,7 +136,7 @@ fn test_normal(args: &AppArgs) {
 }
 
 fn test_test262_snapshots(args: &AppArgs) {
-    let cases = filter(&args, test262::Test262Case::read());
+    let cases = filter(args, test262::Test262Case::read());
 
     let to_snapshot = |results: &[TestResult]| {
         // Collect results
@@ -189,7 +189,7 @@ fn test_test262_snapshots(args: &AppArgs) {
 
     let snapshot_dir = crate_root().join("snapshots");
     if args.runners.is_empty() || args.runners.contains(PARSER_RUNNER) {
-        let results = ParserRunner::run(&args, &cases);
+        let results = ParserRunner::run(args, &cases);
         fs::write(
             snapshot_dir.join("parser_test262.snap"),
             to_snapshot(&results),
@@ -198,7 +198,7 @@ fn test_test262_snapshots(args: &AppArgs) {
     }
 
     if args.runners.is_empty() || args.runners.contains(SEMANTIC_RUNNER) {
-        let results = SemanticRunner::run(&args, &cases);
+        let results = SemanticRunner::run(args, &cases);
         fs::write(
             snapshot_dir.join("semantic_test262.snap"),
             to_snapshot(&results),
@@ -207,7 +207,7 @@ fn test_test262_snapshots(args: &AppArgs) {
     }
 
     if args.runners.is_empty() || args.runners.contains(NO_MEMORY_HOLE_RUNNER) {
-        let results = NoMemoryHoleRunner::run(&args, &cases);
+        let results = NoMemoryHoleRunner::run(args, &cases);
         fs::write(
             snapshot_dir.join("no_memory_hole_test262.snap"),
             to_snapshot(&results),
@@ -216,7 +216,7 @@ fn test_test262_snapshots(args: &AppArgs) {
     }
 
     if args.runners.is_empty() || args.runners.contains(REMOVE_PAREN_RUNNER) {
-        let results = RemoveParenRunner::run(&args, &cases);
+        let results = RemoveParenRunner::run(args, &cases);
         fs::write(
             snapshot_dir.join("remove_paren_test262.snap"),
             to_snapshot(&results),
