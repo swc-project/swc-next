@@ -194,8 +194,6 @@ fn test_test262_snapshots(args: &AppArgs) {
             result.push('\n');
         }
 
-        println!("{}", &result);
-
         result
     };
 

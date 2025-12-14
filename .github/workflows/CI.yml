@@ -78,6 +78,7 @@ jobs:
         run: cargo run -p testsuite
       - name: Run test262
         shell: bash
+        if: ${{ matrix.os != 'windows-latest' }} # Skip windows snapshot because of difference error spans
         run: |
           cargo run -p testsuite -- --test262
           git diff --quiet -- . || (git diff --name-status -- . && exit 1)
