@@ -153,11 +153,13 @@ fn test_test262_snapshots(args: &AppArgs) {
                 }
                 TestResult::Failed { path, error } => {
                     failed += 1;
-                    diagnostics_vec.push(format!("Failed: {} - {}", path.display(), error));
+                    let path = path.display().to_string().replace('\\', "/");
+                    diagnostics_vec.push(format!("Failed: {} - {}", path, error));
                 }
                 TestResult::Panic { path } => {
                     panicked += 1;
-                    diagnostics_vec.push(format!("Panic: {}", path.display()));
+                    let path = path.display().to_string().replace('\\', "/");
+                    diagnostics_vec.push(format!("Panic: {}", path));
                 }
                 TestResult::Ignored { .. } => {
                     ignored += 1;
