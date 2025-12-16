@@ -451,6 +451,11 @@ impl Ast {
     }
 
     #[inline]
+    pub fn get_big_int(&self, big_int_id: BigIntId) -> &BigIntValue {
+        &self.bigint[big_int_id]
+    }
+
+    #[inline]
     pub fn into_string_allocator(self) -> StringAllocator {
         self.string_allocator
     }

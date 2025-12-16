@@ -1,8 +1,8 @@
 use swc_core::atoms::{Atom, Wtf8Atom};
-use swc_core::ecma::ast as legacy;
+use swc_core::ecma::ast::{self as legacy};
 use swc_experimental_ecma_ast::{
-    self as experimental, Ast, NodeIdTrait, OptionalUtf8Ref, OptionalWtf8Ref, TypedSubRange,
-    Utf8Ref, Wtf8Ref,
+    self as experimental, Ast, BigIntId, NodeIdTrait, OptionalUtf8Ref, OptionalWtf8Ref,
+    TypedSubRange, Utf8Ref, Wtf8Ref,
 };
 use swc_experimental_ecma_semantic::resolver::Semantic;
 
@@ -786,10 +786,10 @@ impl AstCompat<'_> {
                     expr: Box::new(self.compat_expr(c.expr(self.ast))),
                 })
             }
-            experimental::PropName::BigInt(b) => legacy::PropName::Num(legacy::Number {
+            experimental::PropName::BigInt(b) => legacy::PropName::BigInt(legacy::BigInt {
                 span: b.span(self.ast),
-                value: 0.0,
-                raw: None,
+                value: Box::new(self.compat_big_int(b.value(self.ast))),
+                raw: self.compat_opt_utf8_ref(b.raw(self.ast)),
             }),
         }
     }
@@ -1142,10 +1142,10 @@ impl AstCompat<'_> {
                 value: n.value(self.ast),
                 raw: self.compat_opt_utf8_ref(n.raw(self.ast)),
             }),
-            experimental::Lit::BigInt(b) => legacy::Lit::Num(legacy::Number {
+            experimental::Lit::BigInt(b) => legacy::Lit::BigInt(legacy::BigInt {
                 span: b.span(self.ast),
-                value: 0.0,
-                raw: None,
+                value: Box::new(self.compat_big_int(b.value(self.ast))),
+                raw: self.compat_opt_utf8_ref(b.raw(self.ast)),
             }),
             experimental::Lit::Regex(r) => legacy::Lit::Regex(legacy::Regex {
                 span: r.span(self.ast),
@@ -1547,6 +1547,10 @@ impl AstCompat<'_> {
         wtf8_ref
             .to_option()
             .map(|wtf8_ref| self.compat_wtf8_ref(wtf8_ref))
+    }
+
+    fn compat_big_int(&mut self, big_int: BigIntId) -> legacy::BigIntValue {
+        self.ast.get_big_int(big_int).clone()
     }
 
     fn compat_type_sub_range<T: NodeIdTrait, U, F: Fn(&mut Self, T) -> U>(
