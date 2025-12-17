@@ -15,10 +15,7 @@ use crate::{
 pub enum TokenValue {
     /// unknown ident, jsx name and shebang
     Word(MaybeSubUtf8),
-    Template {
-        raw: MaybeSubUtf8,
-        cooked: LexResult<MaybeSubWtf8>,
-    },
+    Template(LexResult<MaybeSubWtf8>),
     // string, jsx text
     Str(MaybeSubWtf8),
     // regexp
@@ -336,12 +333,8 @@ impl<'a> Token {
     }
 
     #[inline(always)]
-    pub fn template(
-        cooked: LexResult<MaybeSubWtf8>,
-        raw: MaybeSubUtf8,
-        lexer: &mut crate::Lexer<'a>,
-    ) -> Self {
-        lexer.set_token_value(Some(TokenValue::Template { cooked, raw }));
+    pub fn template(cooked: LexResult<MaybeSubWtf8>, lexer: &mut crate::Lexer<'a>) -> Self {
+        lexer.set_token_value(Some(TokenValue::Template(cooked)));
         Token::Template
     }
 
@@ -395,14 +388,6 @@ impl<'a> Token {
     #[inline(always)]
     pub fn take_unknown_ident_ref<'b, I: Tokens>(&'b self, buffer: &'b Buffer<I>) -> MaybeSubUtf8 {
         buffer.expect_word_token_value_ref()
-    }
-
-    #[inline(always)]
-    pub fn take_template<I: Tokens>(
-        self,
-        buffer: &mut Buffer<I>,
-    ) -> (LexResult<MaybeSubWtf8>, MaybeSubUtf8) {
-        buffer.expect_template_token_value()
     }
 
     #[inline(always)]

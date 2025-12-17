@@ -398,7 +398,6 @@ impl Lexer<'_> {
         let mut cooked = Ok(self.string_allocator.alloc_wtf8());
         self.bump(1); // `}` or `\``
         let mut cooked_slice_start = self.cur_pos();
-        let raw_slice_start = cooked_slice_start;
         macro_rules! consume_cooked {
             () => {{
                 if let Ok(cooked) = &mut cooked {
@@ -417,27 +416,25 @@ impl Lexer<'_> {
             if c == b'`' {
                 consume_cooked!();
                 let cooked = cooked.map(|cooked| cooked.finish(&mut self.string_allocator));
-                let raw = MaybeSubUtf8::new_from_source(raw_slice_start, self.cur_pos());
                 self.bump(1);
                 return Ok(if started_with_backtick {
-                    self.set_token_value(Some(TokenValue::Template { raw, cooked }));
+                    self.set_token_value(Some(TokenValue::Template(cooked)));
                     Token::NoSubstitutionTemplateLiteral
                 } else {
-                    self.set_token_value(Some(TokenValue::Template { raw, cooked }));
+                    self.set_token_value(Some(TokenValue::Template(cooked)));
                     Token::TemplateTail
                 });
             } else if c == b'$' && self.input.peek_2() == Some(b'{') {
                 consume_cooked!();
                 let cooked = cooked.map(|cooked| cooked.finish(&mut self.string_allocator));
-                let raw = MaybeSubUtf8::new_from_source(raw_slice_start, self.cur_pos());
 
                 // Safety: `self.input.peek_2() == Some(b'{')`
                 self.bump(2);
                 return Ok(if started_with_backtick {
-                    self.set_token_value(Some(TokenValue::Template { raw, cooked }));
+                    self.set_token_value(Some(TokenValue::Template(cooked)));
                     Token::TemplateHead
                 } else {
-                    self.set_token_value(Some(TokenValue::Template { raw, cooked }));
+                    self.set_token_value(Some(TokenValue::Template(cooked)));
                     Token::TemplateMiddle
                 });
             } else if c == b'\\' {
