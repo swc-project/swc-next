@@ -1670,7 +1670,7 @@ impl<'a> Lexer<'a> {
 
         let (mut escaped, mut in_class) = (false, false);
 
-        while let Some(c) = self.peek() {
+        while let Some(c) = self.input.peek_char() {
             // This is ported from babel.
             // Seems like regexp literal cannot contain linebreak.
             if c.is_line_terminator() {
@@ -1686,17 +1686,17 @@ impl<'a> Lexer<'a> {
                 escaped = false;
             } else {
                 match c {
-                    b'[' => in_class = true,
-                    b']' if in_class => in_class = false,
+                    '[' => in_class = true,
+                    ']' if in_class => in_class = false,
                     // Terminates content part of regex literal
-                    b'/' if !in_class => break,
+                    '/' if !in_class => break,
                     _ => {}
                 }
 
-                escaped = c == b'\\';
+                escaped = c == '\\';
             }
 
-            self.bump(1); // c is u8
+            self.bump(c.len_utf8());
         }
 
         let exp_end = self.cur_pos();
