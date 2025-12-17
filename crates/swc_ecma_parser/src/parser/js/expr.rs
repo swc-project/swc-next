@@ -1,5 +1,4 @@
 use either::Either;
-use rustc_hash::FxHashMap;
 use swc_core::common::{BytePos, Span};
 use swc_experimental_ecma_ast::*;
 
@@ -2502,32 +2501,25 @@ impl<I: Tokens> Parser<I> {
         let cur = self.input().cur();
         if cur == Token::Regex {
             self.input_mut().set_next_regexp(None);
-            let (exp, flags) = self.input_mut().expect_regex_token_and_bump();
+            let token_span = self.input.cur_span();
+            let exp_end = self.input_mut().expect_regex_token_value();
+
+            let exp_start = token_span.lo + BytePos(1); // +1 to exclude left `/`
+            let exp = self.to_utf8_ref(MaybeSubUtf8::new_from_span(Span::new_with_checked(
+                exp_start, exp_end,
+            )));
+            let flags_start = exp_end + BytePos(1); // +1 to exclude right `/`
+            let flags = if flags_start <= token_span.hi {
+                self.to_utf8_ref(MaybeSubUtf8::new_from_span(Span::new_with_checked(
+                    flags_start,
+                    token_span.hi,
+                )))
+            } else {
+                Utf8Ref::new_empty()
+            };
+
+            self.bump();
             let span = self.span(start);
-
-            let mut flags_count = self.input.iter.get_maybe_sub_utf8(flags).chars().fold(
-                FxHashMap::<char, usize>::default(),
-                |mut map, flag| {
-                    let key = match flag {
-                        // https://tc39.es/ecma262/#sec-isvalidregularexpressionliteral
-                        'd' | 'g' | 'i' | 'm' | 's' | 'u' | 'v' | 'y' => flag,
-                        _ => '\u{0000}', // special marker for unknown flags
-                    };
-                    map.entry(key).and_modify(|count| *count += 1).or_insert(1);
-                    map
-                },
-            );
-
-            if flags_count.remove(&'\u{0000}').is_some() {
-                self.emit_err(span, SyntaxError::UnknownRegExpFlags);
-            }
-
-            if let Some((flag, _)) = flags_count.iter().find(|(_, count)| **count > 1) {
-                self.emit_err(span, SyntaxError::DuplicatedRegExpFlags(*flag));
-            }
-
-            let exp = self.to_utf8_ref(exp);
-            let flags = self.to_utf8_ref(flags);
             Some(self.ast.expr_lit_regex(span, exp, flags))
         } else {
             None

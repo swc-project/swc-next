@@ -4,6 +4,7 @@ use std::{borrow::Cow, char, iter::FusedIterator};
 
 use either::Either::{self, Left, Right};
 use num_bigint::BigInt as BigIntValue;
+use rustc_hash::FxHashMap;
 use smartstring::{LazyCompact, SmartString};
 use swc_core::atoms::{Atom, wtf8::CodePoint};
 use swc_core::common::{
@@ -1657,7 +1658,7 @@ impl<'a> Lexer<'a> {
     /// Expects current char to be '/'
     fn read_regexp(&mut self, start: BytePos) -> LexResult<Token> {
         unsafe {
-            // Safety: start is valid position, and cur() is Some('/')
+            // Safety: start is valid position, and peek() is Some('/')
             self.input_mut().reset_to(start);
         }
 
@@ -1667,11 +1668,9 @@ impl<'a> Lexer<'a> {
 
         self.bump(1); // bump '/'
 
-        let slice_start = self.cur_pos();
-
         let (mut escaped, mut in_class) = (false, false);
 
-        while let Some(c) = self.input.peek_char() {
+        while let Some(c) = self.peek() {
             // This is ported from babel.
             // Seems like regexp literal cannot contain linebreak.
             if c.is_line_terminator() {
@@ -1687,25 +1686,24 @@ impl<'a> Lexer<'a> {
                 escaped = false;
             } else {
                 match c {
-                    '[' => in_class = true,
-                    ']' if in_class => in_class = false,
+                    b'[' => in_class = true,
+                    b']' if in_class => in_class = false,
                     // Terminates content part of regex literal
-                    '/' if !in_class => break,
+                    b'/' if !in_class => break,
                     _ => {}
                 }
 
-                escaped = c == '\\';
+                escaped = c == b'\\';
             }
 
-            self.bump(c.len_utf8());
+            self.bump(1); // c is u8
         }
 
-        let content = MaybeSubUtf8::new_from_source(slice_start, self.cur_pos());
+        let exp_end = self.cur_pos();
 
         // input is terminated without following `/`
         if !self.is(b'/') {
             let span = self.span(start);
-
             return Err(crate::error::Error::new(
                 span,
                 SyntaxError::UnterminatedRegExp,
@@ -1727,7 +1725,33 @@ impl<'a> Lexer<'a> {
             }
         }?;
 
-        Ok(Token::regexp(content, flags, self))
+        let flags = self.get_maybe_sub_utf8(flags);
+        if !flags.is_empty() {
+            let mut flags_count =
+                flags
+                    .chars()
+                    .fold(FxHashMap::<char, usize>::default(), |mut map, flag| {
+                        let key = match flag {
+                            // https://tc39.es/ecma262/#sec-isvalidregularexpressionliteral
+                            'd' | 'g' | 'i' | 'm' | 's' | 'u' | 'v' | 'y' => flag,
+                            _ => '\u{0000}', // special marker for unknown flags
+                        };
+                        map.entry(key).and_modify(|count| *count += 1).or_insert(1);
+                        map
+                    });
+
+            if flags_count.remove(&'\u{0000}').is_some() {
+                let span = self.span(start);
+                self.emit_error_span(span, SyntaxError::UnknownRegExpFlags);
+            }
+
+            if let Some((flag, _)) = flags_count.iter().find(|(_, count)| **count > 1) {
+                let span = self.span(start);
+                self.emit_error_span(span, SyntaxError::DuplicatedRegExpFlags(*flag));
+            }
+        }
+
+        Ok(Token::regexp(exp_end, self))
     }
 
     /// This method is optimized for texts without escape sequences.

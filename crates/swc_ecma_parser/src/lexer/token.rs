@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use swc_core::common::Span;
+use swc_core::common::{BytePos, Span};
 use swc_experimental_ecma_ast::AssignOp;
 
 use super::LexResult;
@@ -19,10 +19,7 @@ pub enum TokenValue {
     // string, jsx text
     Str(MaybeSubWtf8),
     // regexp
-    Regex {
-        value: MaybeSubUtf8,
-        flags: MaybeSubUtf8,
-    },
+    Regex(BytePos),
     Num(f64),
     BigInt(Box<num_bigint::BigInt>),
     Error(crate::error::Error),
@@ -339,15 +336,8 @@ impl<'a> Token {
     }
 
     #[inline(always)]
-    pub fn regexp(
-        content: MaybeSubUtf8,
-        flags: MaybeSubUtf8,
-        lexer: &mut crate::Lexer<'a>,
-    ) -> Self {
-        lexer.set_token_value(Some(TokenValue::Regex {
-            value: content,
-            flags,
-        }));
+    pub fn regexp(exp_end: BytePos, lexer: &mut crate::Lexer<'a>) -> Self {
+        lexer.set_token_value(Some(TokenValue::Regex(exp_end)));
         Token::Regex
     }
 
@@ -394,11 +384,6 @@ impl<'a> Token {
     pub fn jsx_text(value: MaybeSubWtf8, lexer: &mut Lexer) -> Self {
         lexer.set_token_value(Some(TokenValue::Str(value)));
         Token::JSXText
-    }
-
-    #[inline(always)]
-    pub fn take_regexp<I: Tokens>(self, buffer: &mut Buffer<I>) -> (MaybeSubUtf8, MaybeSubUtf8) {
-        buffer.expect_regex_token_value()
     }
 
     #[inline(always)]

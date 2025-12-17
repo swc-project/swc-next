@@ -119,12 +119,11 @@ impl<I: Tokens> Buffer<I> {
         value
     }
 
-    pub fn expect_regex_token_value(&mut self) -> (MaybeSubUtf8, MaybeSubUtf8) {
-        let Some(crate::lexer::TokenValue::Regex { value, flags }) = self.iter.take_token_value()
-        else {
+    pub fn expect_regex_token_value(&mut self) -> BytePos {
+        let Some(crate::lexer::TokenValue::Regex(exp_end)) = self.iter.take_token_value() else {
             unreachable!()
         };
-        (value, flags)
+        exp_end
     }
 
     pub fn expect_template_token_value(&mut self) -> LexResult<MaybeSubWtf8> {
@@ -314,13 +313,6 @@ impl<I: Tokens> Buffer<I> {
         let word = cur.take_jsx_name(self);
         self.bump();
         word
-    }
-
-    pub fn expect_regex_token_and_bump(&mut self) -> (MaybeSubUtf8, MaybeSubUtf8) {
-        let cur = self.cur();
-        let ret = cur.take_regexp(self);
-        self.bump();
-        ret
     }
 
     pub fn expect_error_token_and_bump(&mut self) -> Error {
