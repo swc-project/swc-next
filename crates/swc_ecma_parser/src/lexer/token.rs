@@ -1,6 +1,5 @@
 use std::fmt::Display;
 
-use num_bigint::BigInt;
 use swc_core::common::Span;
 use swc_experimental_ecma_ast::AssignOp;
 
@@ -34,10 +33,7 @@ pub enum TokenValue {
         value: f64,
         raw: MaybeSubUtf8,
     },
-    BigInt {
-        value: Box<num_bigint::BigInt>,
-        raw: MaybeSubUtf8,
-    },
+    BigInt(Box<num_bigint::BigInt>),
     Error(crate::error::Error),
 }
 
@@ -375,12 +371,8 @@ impl<'a> Token {
     }
 
     #[inline(always)]
-    pub fn bigint(
-        value: Box<num_bigint::BigInt>,
-        raw: MaybeSubUtf8,
-        lexer: &mut crate::Lexer<'a>,
-    ) -> Self {
-        lexer.set_token_value(Some(TokenValue::BigInt { value, raw }));
+    pub fn bigint(value: Box<num_bigint::BigInt>, lexer: &mut crate::Lexer<'a>) -> Self {
+        lexer.set_token_value(Some(TokenValue::BigInt(value)));
         Self::BigInt
     }
 
@@ -403,11 +395,6 @@ impl<'a> Token {
     #[inline(always)]
     pub fn take_num<I: Tokens>(self, buffer: &mut Buffer<I>) -> (f64, MaybeSubUtf8) {
         buffer.expect_number_token_value()
-    }
-
-    #[inline(always)]
-    pub fn take_bigint<I: Tokens>(self, buffer: &mut Buffer<I>) -> (Box<BigInt>, MaybeSubUtf8) {
-        buffer.expect_bigint_token_value()
     }
 
     #[inline]
@@ -779,8 +766,8 @@ impl Display for Token {
             Token::DotDotDot => "...",
             Token::PlusPlus => "++",
             Token::MinusMinus => "--",
-            Token::PlusEq => "+",
-            Token::MinusEq => "-",
+            Token::PlusEq => "+=",
+            Token::MinusEq => "-=",
             Token::MulEq => "*",
             Token::DivEq => "/=",
             Token::ModEq => "%=",

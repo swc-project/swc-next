@@ -105,7 +105,7 @@ impl From<UnicodeEscape> for CodePoint {
 }
 
 pub type LexResult<T> = Result<T, crate::error::Error>;
-type NumberEither = Either<(f64, MaybeSubUtf8), (Box<BigIntValue>, MaybeSubUtf8)>;
+type NumberEither = Either<(f64, MaybeSubUtf8), Box<BigIntValue>>;
 
 fn remove_underscore(s: &str, has_underscore: bool) -> Cow<'_, str> {
     if has_underscore {
@@ -1008,9 +1008,8 @@ impl<'a> Lexer<'a> {
             if (!START_WITH_ZERO || lazy_integer.end - lazy_integer.start == BytePos(1))
                 && self.eat(b'n')
             {
-                let raw = MaybeSubUtf8::new_from_source(start, self.cur_pos());
                 let bigint_value = num_bigint::BigInt::parse_bytes(s.as_bytes(), 10).unwrap();
-                return Ok(Either::Right((Box::new(bigint_value), raw)));
+                return Ok(Either::Right(Box::new(bigint_value)));
             }
 
             if START_WITH_ZERO {
@@ -1163,9 +1162,8 @@ impl<'a> Lexer<'a> {
             self.input_slice_to_cur(lazy_integer.start)
         };
         if self.eat(b'n') {
-            let raw = MaybeSubUtf8::new_from_source(start, self.cur_pos());
             let bigint_value = num_bigint::BigInt::parse_bytes(s.as_bytes(), RADIX as _).unwrap();
-            return Ok(Either::Right((Box::new(bigint_value), raw)));
+            return Ok(Either::Right(Box::new(bigint_value)));
         }
         let s = remove_underscore(s, has_underscore);
         let val = parse_integer::<RADIX>(&s);
@@ -1981,14 +1979,14 @@ impl<'a> Lexer<'a> {
             _ => {
                 return self.read_number::<false, true>().map(|v| match v {
                     Left((value, raw)) => Token::num(value, raw, self),
-                    Right((value, raw)) => Token::bigint(value, raw, self),
+                    Right(value) => Token::bigint(value, self),
                 });
             }
         };
 
         bigint.map(|v| match v {
             Left((value, raw)) => Token::num(value, raw, self),
-            Right((value, raw)) => Token::bigint(value, raw, self),
+            Right(value) => Token::bigint(value, self),
         })
     }
 

@@ -114,12 +114,11 @@ impl<I: Tokens> Buffer<I> {
         (value, raw)
     }
 
-    pub fn expect_bigint_token_value(&mut self) -> (Box<num_bigint::BigInt>, MaybeSubUtf8) {
-        let Some(crate::lexer::TokenValue::BigInt { value, raw }) = self.iter.take_token_value()
-        else {
+    pub fn expect_bigint_token_value(&mut self) -> Box<num_bigint::BigInt> {
+        let Some(crate::lexer::TokenValue::BigInt(value)) = self.iter.take_token_value() else {
             unreachable!()
         };
-        (value, raw)
+        value
     }
 
     pub fn expect_regex_token_value(&mut self) -> (MaybeSubUtf8, MaybeSubUtf8) {
@@ -330,13 +329,6 @@ impl<I: Tokens> Buffer<I> {
     pub fn expect_string_token_and_bump(&mut self) -> (MaybeSubWtf8, MaybeSubUtf8) {
         let cur = self.cur();
         let ret = cur.take_str(self);
-        self.bump();
-        ret
-    }
-
-    pub fn expect_bigint_token_and_bump(&mut self) -> (Box<num_bigint::BigInt>, MaybeSubUtf8) {
-        let cur = self.cur();
-        let ret = cur.take_bigint(self);
         self.bump();
         ret
     }

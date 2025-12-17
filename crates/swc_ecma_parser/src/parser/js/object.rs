@@ -2,6 +2,7 @@ use swc_core::common::{DUMMY_SP, Span};
 use swc_experimental_ecma_ast::*;
 
 use crate::parser::js::is_not_this;
+use crate::string_alloc::MaybeSubUtf8;
 use crate::{Context, PResult, Parser, error::SyntaxError, input::Tokens, lexer::Token};
 
 impl<I: Tokens> Parser<I> {
@@ -481,9 +482,10 @@ impl<I: Tokens> Parser<I> {
                 let raw = p.to_utf8_ref(raw);
                 p.ast.prop_name_number(p.span(start), value, raw.into())
             } else if cur == Token::BigInt {
-                let (value, raw) = p.input_mut().expect_bigint_token_and_bump();
+                let raw = p.to_utf8_ref(MaybeSubUtf8::new_from_span(p.input.cur_span()));
+                let value = p.input_mut().expect_bigint_token_value();
                 let value = p.ast.add_bigint(*value);
-                let raw = p.to_utf8_ref(raw);
+                p.bump();
                 p.ast.prop_name_big_int(p.span(start), value, raw.into())
             } else if cur.is_word() {
                 let w = p.input_mut().expect_word_token_and_bump();

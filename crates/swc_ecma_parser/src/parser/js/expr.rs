@@ -4,6 +4,7 @@ use swc_core::common::{BytePos, Span, source_map::SmallPos};
 use swc_experimental_ecma_ast::*;
 
 use crate::parser::util::ExprExt;
+use crate::string_alloc::MaybeSubUtf8;
 use crate::{
     Context, PResult,
     error::{Error, SyntaxError},
@@ -869,10 +870,11 @@ impl<I: Tokens> Parser<I> {
             let raw = self.to_utf8_ref(raw);
             self.ast.lit_number(self.span(start), value, raw.into())
         } else if cur == Token::BigInt {
-            let (value, raw) = self.input_mut().expect_bigint_token_and_bump();
+            let raw = self.to_utf8_ref(MaybeSubUtf8::new_from_span(token_and_span.span));
+            let value = self.input_mut().expect_bigint_token_value();
+            self.bump();
 
             let value = self.ast.add_bigint(*value);
-            let raw = self.to_utf8_ref(raw);
             self.ast.lit_big_int(self.span(start), value, raw.into())
         } else if cur == Token::Error {
             let err = self.input_mut().expect_error_token_and_bump();
