@@ -478,8 +478,9 @@ impl<I: Tokens> Parser<I> {
             let v = if cur == Token::Str {
                 PropName::Str(p.parse_str_lit())
             } else if cur == Token::Num {
-                let (value, raw) = p.input_mut().expect_number_token_and_bump();
-                let raw = p.to_utf8_ref(raw);
+                let raw = p.to_utf8_ref(MaybeSubUtf8::new_from_span(p.input.cur_span()));
+                let value = p.input_mut().expect_number_token_value();
+                p.bump();
                 p.ast.prop_name_number(p.span(start), value, raw.into())
             } else if cur == Token::BigInt {
                 let raw = p.to_utf8_ref(MaybeSubUtf8::new_from_span(p.input.cur_span()));

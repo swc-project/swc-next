@@ -29,10 +29,7 @@ pub enum TokenValue {
         value: MaybeSubUtf8,
         flags: MaybeSubUtf8,
     },
-    Num {
-        value: f64,
-        raw: MaybeSubUtf8,
-    },
+    Num(f64),
     BigInt(Box<num_bigint::BigInt>),
     Error(crate::error::Error),
 }
@@ -365,8 +362,8 @@ impl<'a> Token {
     }
 
     #[inline(always)]
-    pub fn num(value: f64, raw: MaybeSubUtf8, lexer: &mut crate::Lexer<'a>) -> Self {
-        lexer.set_token_value(Some(TokenValue::Num { value, raw }));
+    pub fn num(value: f64, lexer: &mut crate::Lexer<'a>) -> Self {
+        lexer.set_token_value(Some(TokenValue::Num(value)));
         Self::Num
     }
 
@@ -390,11 +387,6 @@ impl<'a> Token {
     #[inline(always)]
     pub fn take_str<I: Tokens>(self, buffer: &mut Buffer<I>) -> (MaybeSubWtf8, MaybeSubUtf8) {
         buffer.expect_string_token_value()
-    }
-
-    #[inline(always)]
-    pub fn take_num<I: Tokens>(self, buffer: &mut Buffer<I>) -> (f64, MaybeSubUtf8) {
-        buffer.expect_number_token_value()
     }
 
     #[inline]

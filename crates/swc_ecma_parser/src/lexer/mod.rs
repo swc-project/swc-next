@@ -105,7 +105,7 @@ impl From<UnicodeEscape> for CodePoint {
 }
 
 pub type LexResult<T> = Result<T, crate::error::Error>;
-type NumberEither = Either<(f64, MaybeSubUtf8), Box<BigIntValue>>;
+type NumberEither = Either<f64, Box<BigIntValue>>;
 
 fn remove_underscore(s: &str, has_underscore: bool) -> Cow<'_, str> {
     if has_underscore {
@@ -1023,10 +1023,7 @@ impl<'a> Lexer<'a> {
                     //
                     // e.g. `000` is octal
                     if start.0 != self.last_pos().0 - 1 {
-                        let raw = MaybeSubUtf8::new_from_source(start, self.cur_pos());
-                        return self
-                            .make_legacy_octal(start, 0f64)
-                            .map(|value| Either::Left((value, raw)));
+                        return self.make_legacy_octal(start, 0f64).map(Either::Left);
                     }
                 } else if lazy_integer.not_octal {
                     // if it contains '8' or '9', it's decimal.
@@ -1035,10 +1032,7 @@ impl<'a> Lexer<'a> {
                     // It's Legacy octal, and we should reinterpret value.
                     let s = remove_underscore(s, lazy_integer.has_underscore);
                     let val = parse_integer::<8>(&s);
-                    let raw = MaybeSubUtf8::new_from_source(start, self.cur_pos());
-                    return self
-                        .make_legacy_octal(start, val)
-                        .map(|value| Either::Left((value, raw)));
+                    return self.make_legacy_octal(start, val).map(Either::Left);
                 }
             }
 
@@ -1104,8 +1098,7 @@ impl<'a> Lexer<'a> {
 
         self.ensure_not_ident()?;
 
-        let raw_str = MaybeSubUtf8::new_from_source(start, self.cur_pos());
-        Ok(Either::Left((val, raw_str)))
+        Ok(Either::Left(val))
     }
 
     fn read_int_u32<const RADIX: u8>(&mut self, len: u8) -> LexResult<Option<u32>> {
@@ -1143,7 +1136,6 @@ impl<'a> Lexer<'a> {
             RADIX == 2 || RADIX == 8 || RADIX == 16,
             "radix should be one of 2, 8, 16, but got {RADIX}"
         );
-        let start = self.cur_pos();
 
         debug_assert_eq!(self.peek(), Some(b'0'));
         self.bump(1);
@@ -1170,8 +1162,7 @@ impl<'a> Lexer<'a> {
 
         self.ensure_not_ident()?;
 
-        let raw = MaybeSubUtf8::new_from_source(start, self.cur_pos());
-        Ok(Either::Left((val, raw)))
+        Ok(Either::Left(val))
     }
 
     /// Consume pending comments.
@@ -1924,7 +1915,7 @@ impl<'a> Lexer<'a> {
         };
         if next.is_ascii_digit() {
             return self.read_number::<true, false>().map(|v| match v {
-                Left((value, raw)) => Token::num(value, raw, self),
+                Left(value) => Token::num(value, self),
                 Right(_) => unreachable!("read_number should not return bigint for leading dot"),
             });
         }
@@ -1978,14 +1969,14 @@ impl<'a> Lexer<'a> {
             Some(b'b') | Some(b'B') => self.read_radix_number::<2>(),
             _ => {
                 return self.read_number::<false, true>().map(|v| match v {
-                    Left((value, raw)) => Token::num(value, raw, self),
+                    Left(value) => Token::num(value, self),
                     Right(value) => Token::bigint(value, self),
                 });
             }
         };
 
         bigint.map(|v| match v {
-            Left((value, raw)) => Token::num(value, raw, self),
+            Left(value) => Token::num(value, self),
             Right(value) => Token::bigint(value, self),
         })
     }

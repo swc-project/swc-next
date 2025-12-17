@@ -866,8 +866,9 @@ impl<I: Tokens> Parser<I> {
         } else if cur == Token::Str {
             Lit::Str(self.parse_str_lit())
         } else if cur == Token::Num {
-            let (value, raw) = self.input_mut().expect_number_token_and_bump();
-            let raw = self.to_utf8_ref(raw);
+            let raw = self.to_utf8_ref(MaybeSubUtf8::new_from_span(token_and_span.span));
+            let value = self.input_mut().expect_number_token_value();
+            self.bump();
             self.ast.lit_number(self.span(start), value, raw.into())
         } else if cur == Token::BigInt {
             let raw = self.to_utf8_ref(MaybeSubUtf8::new_from_span(token_and_span.span));

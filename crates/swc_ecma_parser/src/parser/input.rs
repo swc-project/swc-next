@@ -98,12 +98,11 @@ impl<I: Tokens> Buffer<I> {
         *word
     }
 
-    pub fn expect_number_token_value(&mut self) -> (f64, MaybeSubUtf8) {
-        let Some(crate::lexer::TokenValue::Num { value, raw }) = self.iter.take_token_value()
-        else {
+    pub fn expect_number_token_value(&mut self) -> f64 {
+        let Some(crate::lexer::TokenValue::Num(value)) = self.iter.take_token_value() else {
             unreachable!()
         };
-        (value, raw)
+        value
     }
 
     pub fn expect_string_token_value(&mut self) -> (MaybeSubWtf8, MaybeSubUtf8) {
@@ -317,13 +316,6 @@ impl<I: Tokens> Buffer<I> {
         let word = cur.take_jsx_name(self);
         self.bump();
         word
-    }
-
-    pub fn expect_number_token_and_bump(&mut self) -> (f64, MaybeSubUtf8) {
-        let cur = self.cur();
-        let ret = cur.take_num(self);
-        self.bump();
-        ret
     }
 
     pub fn expect_string_token_and_bump(&mut self) -> (MaybeSubWtf8, MaybeSubUtf8) {
