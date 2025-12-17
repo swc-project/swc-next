@@ -1369,8 +1369,7 @@ impl<'a> Lexer<'a> {
             self.bump(1);
         }
 
-        let raw = MaybeSubUtf8::new_from_source(start, self.cur_pos());
-        Ok(Token::str(value, raw, self))
+        Ok(Token::str(value, self))
     }
 
     // Modified based on <https://github.com/oxc-project/oxc/blob/f0e1510b44efdb1b0d9a09f950181b0e4c435abe/crates/oxc_parser/src/lexer/unicode.rs#L237>
@@ -2126,9 +2125,7 @@ impl<'a> Lexer<'a> {
 
                     self.emit_error(start, SyntaxError::UnterminatedStrLit);
 
-                    let end = self.cur_pos();
-                    let raw = MaybeSubUtf8::new_from_source(start, end);
-                    return Ok(Token::str(s, raw, self));
+                    return Ok(Token::str(s, self));
                 },
             };
             // dbg!(char::from_u32(fast_path_result as u32));
@@ -2153,9 +2150,7 @@ impl<'a> Lexer<'a> {
 
                     self.bump(1);
 
-                    let end = self.cur_pos();
-                    let raw = MaybeSubUtf8::new_from_source(start, end);
-                    return Ok(Token::str(value, raw, self));
+                    return Ok(Token::str(value, self));
                 }
                 b'\\' => {
                     let end = self.cur_pos();
@@ -2190,10 +2185,7 @@ impl<'a> Lexer<'a> {
 
                     self.emit_error(start, SyntaxError::UnterminatedStrLit);
 
-                    let end = self.cur_pos();
-
-                    let raw = MaybeSubUtf8::new_from_source(start, end);
-                    return Ok(Token::str(s, raw, self));
+                    return Ok(Token::str(s, self));
                 }
                 _ => self.bump(1),
             }

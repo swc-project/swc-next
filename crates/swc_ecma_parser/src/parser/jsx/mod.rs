@@ -5,6 +5,7 @@ use swc_core::common::{BytePos, Span};
 use swc_experimental_ecma_ast::*;
 
 use super::{Parser, input::Tokens};
+use crate::string_alloc::MaybeSubUtf8;
 use crate::{
     Context, PResult,
     error::SyntaxError,
@@ -59,13 +60,14 @@ impl<I: Tokens> Parser<I> {
         debug_assert!(self.input().syntax().jsx());
         let cur = self.input_mut().cur();
         debug_assert!(cur == Token::JSXText);
-        let (value, raw) = cur.take_jsx_text(self.input_mut());
-        self.input_mut().scan_jsx_token(true);
-        let span = self.input().prev_span();
 
+        let raw = self.to_utf8_ref(MaybeSubUtf8::new_from_span(self.input.cur_span()));
+        let value = self.input.expect_string_token_value();
         let value = self.input.iter.get_maybe_sub_wtf8(value).as_str().unwrap();
         let value = self.ast.add_utf8(value);
-        let raw = self.to_utf8_ref(raw);
+
+        self.input_mut().scan_jsx_token(true);
+        let span = self.input().prev_span();
         self.ast.jsx_text(span, value, raw)
     }
 

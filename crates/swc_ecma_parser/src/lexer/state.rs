@@ -495,7 +495,6 @@ impl Lexer<'_> {
             }
         }
 
-        let raw = MaybeSubUtf8::new_from_source(start, self.cur_pos());
         let value = if value.is_empty(&self.string_allocator) {
             MaybeSubWtf8::new_from_source(start, self.cur_pos())
         } else {
@@ -507,7 +506,7 @@ impl Lexer<'_> {
             value.finish(&mut self.string_allocator)
         };
 
-        self.state.set_token_value(TokenValue::Str { raw, value });
+        self.state.set_token_value(TokenValue::Str(value));
         Ok(Token::JSXText)
     }
 

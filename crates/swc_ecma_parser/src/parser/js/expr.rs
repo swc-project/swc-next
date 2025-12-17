@@ -844,9 +844,11 @@ impl<I: Tokens> Parser<I> {
         debug_assert!(self.input().cur() == Token::Str);
         let token_and_span = self.input().get_cur();
         let start = token_and_span.span.lo;
-        let (value, raw) = self.input_mut().expect_string_token_and_bump();
+
+        let raw = self.to_utf8_ref(MaybeSubUtf8::new_from_span(token_and_span.span));
+        let value = self.input.expect_string_token_value();
         let value = self.to_wtf8_ref(value);
-        let raw = self.to_utf8_ref(raw);
+        self.bump();
         self.ast.str(self.span(start), value, raw.into())
     }
 
