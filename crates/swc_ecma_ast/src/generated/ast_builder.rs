@@ -2367,11 +2367,9 @@ impl Ast {
         UnaryExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::UnaryExpr,
-            inline_data: (0u32 | ((arg.node_id().index() as u32) >> 24usize)).into(),
+            inline_data: (0u32 | op as u32).into(),
             data: NodeData {
-                inline_data: 0u32
-                    | op as u32
-                    | (((arg.node_id().index() as u32) & 16777215u32) << 8usize),
+                inline_data: 0u32 | arg.node_id().index() as u32,
             },
         }))
     }
@@ -2380,12 +2378,9 @@ impl Ast {
         UpdateExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::UpdateExpr,
-            inline_data: (0u32 | ((arg.node_id().index() as u32) >> 16usize)).into(),
+            inline_data: (0u32 | op as u32 | ((prefix as u32) << 8usize)).into(),
             data: NodeData {
-                inline_data: 0u32
-                    | op as u32
-                    | ((prefix as u32) << 8usize)
-                    | (((arg.node_id().index() as u32) & 65535u32) << 16usize),
+                inline_data: 0u32 | arg.node_id().index() as u32,
             },
         }))
     }
@@ -3569,11 +3564,9 @@ impl Ast {
         OptChainExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::OptChainExpr,
-            inline_data: (0u32 | ((base.node_id().index() as u32) >> 24usize)).into(),
+            inline_data: (0u32 | optional as u32).into(),
             data: NodeData {
-                inline_data: 0u32
-                    | optional as u32
-                    | (((base.node_id().index() as u32) & 16777215u32) << 8usize),
+                inline_data: 0u32 | base.node_id().index() as u32,
             },
         }))
     }

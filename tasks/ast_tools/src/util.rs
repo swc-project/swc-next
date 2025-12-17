@@ -69,23 +69,77 @@ pub struct InlineLayout {
 
 /// Calculate the inline layout for a struct
 /// Returns None if the struct cannot be inlined
+///
+/// This function uses an optimized bin-packing strategy to minimize fields
+/// spanning across the u32 (bytes 0-3) and u24 (bytes 4-6) boundary.
 pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<InlineLayout> {
-    let mut fields: Vec<(usize, usize, usize)> = Vec::new();
-    let mut current_offset = 0usize;
+    // Collect all fields with their sizes
+    let mut field_info: Vec<(usize, usize)> = Vec::new(); // (field_index, size)
+    let mut total_size = 0usize;
 
     for (index, field) in ast.fields.iter().enumerate() {
         let field_ty = &schema.types[field.type_id];
         let size = field_byte_size(field_ty, schema)?;
+        field_info.push((index, size));
+        total_size += size;
+    }
 
-        if current_offset + size > INLINE_TOTAL_SIZE {
-            return None; // Exceeds 7 bytes
+    if total_size > INLINE_TOTAL_SIZE {
+        return None; // Exceeds 7 bytes
+    }
+
+    // Sort fields by size (descending) for better packing, but keep original indices
+    let mut sorted_fields = field_info.clone();
+    sorted_fields.sort_by(|a, b| b.1.cmp(&a.1));
+
+    // Try to pack fields optimally into u32 region (4 bytes) and u24 region (3 bytes)
+    let mut u32_fields: Vec<(usize, usize)> = Vec::new(); // (field_index, size)
+    let mut u24_fields: Vec<(usize, usize)> = Vec::new(); // (field_index, size)
+    let mut u32_used = 0usize;
+    let mut u24_used = 0usize;
+
+    // Greedy bin-packing: try to fill u32 region first, then u24 region
+    for (field_index, size) in sorted_fields {
+        if u32_used + size <= INLINE_DATA_U32_SIZE {
+            // Fits in u32 region
+            u32_fields.push((field_index, size));
+            u32_used += size;
+        } else if u24_used + size <= INLINE_DATA_U24_SIZE {
+            // Fits in u24 region
+            u24_fields.push((field_index, size));
+            u24_used += size;
+        } else {
+            // Try to fit in u32 region if there's space
+            if u32_used + size <= INLINE_DATA_U32_SIZE {
+                u32_fields.push((field_index, size));
+                u32_used += size;
+            } else {
+                // This shouldn't happen if total_size <= INLINE_TOTAL_SIZE
+                return None;
+            }
         }
+    }
 
-        fields.push((index, current_offset, size));
+    // Assign offsets: u32 fields get offsets 0-3, u24 fields get offsets 4-6
+    let mut fields: Vec<(usize, usize, usize)> = Vec::new(); // (field_index, offset, size)
+
+    let mut current_offset = 0usize;
+    for (field_index, size) in &u32_fields {
+        fields.push((*field_index, current_offset, *size));
         current_offset += size;
     }
 
-    let mode = if current_offset <= INLINE_DATA_U32_SIZE {
+    // Start u24 region at offset 4
+    current_offset = INLINE_DATA_U32_SIZE;
+    for (field_index, size) in &u24_fields {
+        fields.push((*field_index, current_offset, *size));
+        current_offset += size;
+    }
+
+    // Sort fields back by original field index for consistent ordering
+    fields.sort_by_key(|(field_index, _, _)| *field_index);
+
+    let mode = if total_size <= INLINE_DATA_U32_SIZE {
         InlineStorageMode::FourBytes
     } else {
         InlineStorageMode::Full
