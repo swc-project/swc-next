@@ -2215,8 +2215,8 @@ impl<'a> Lexer<'a> {
         debug_assert!(self.peek().is_some());
 
         let start = self.cur_pos();
-        let (s, has_escape) = self.read_keyword_as_str_with()?;
-        if let Some(word) = convert(self.get_maybe_sub_utf8(s)) {
+        let (slice_without_start, s, has_escape) = self.read_keyword_as_str_with()?;
+        if let Some(word) = convert(slice_without_start) {
             // Note: ctx is store in lexer because of this error.
             // 'await' and 'yield' may have semantic of reserved word, which means lexer
             // should know context or parser should handle this error. Our approach to this
@@ -2239,13 +2239,14 @@ impl<'a> Lexer<'a> {
     /// This is a performant version of [Lexer::read_word_as_str_with] for
     /// reading keywords. We should make sure the first byte is a valid
     /// ASCII.
-    fn read_keyword_as_str_with(&mut self) -> LexResult<(MaybeSubUtf8, bool)> {
+    fn read_keyword_as_str_with(&mut self) -> LexResult<(&str, MaybeSubUtf8, bool)> {
         let slice_start = self.cur_pos();
 
         // Fast path: try to scan ASCII identifier using byte_search
         // Performance optimization: check if first char disqualifies as keyword
         // Advance past first byte
         self.bump(1);
+        let slice_start_without_leading = self.cur_pos();
 
         // Use byte_search to quickly scan to end of ASCII identifier
         let next_byte = byte_search! {
@@ -2254,19 +2255,22 @@ impl<'a> Lexer<'a> {
             handle_eof: {
                 // Reached EOF, entire remainder is identifier
                 let s = MaybeSubUtf8::new_from_source(slice_start, self.cur_pos());
-                return Ok((s, false));
+                let slice_without_leading = unsafe { self.input.slice_to_cur(slice_start_without_leading) };
+                return Ok((slice_without_leading, s, false));
             },
         };
 
+        let slice_without_leading = unsafe { self.input.slice_to_cur(slice_start_without_leading) };
         // Check if we hit end of identifier or need to fall back to slow path
         if !next_byte.is_ascii() || next_byte == b'\\' {
             // Hit Unicode character or escape sequence, fall back to slow path from current
             // position
-            self.read_word_as_str_with_slow_path(slice_start)
+            let (s, escape) = self.read_word_as_str_with_slow_path(slice_start)?;
+            Ok((slice_without_leading, s, escape))
         } else {
             // Hit end of identifier (non-continue ASCII char)
             let s = MaybeSubUtf8::new_from_source(slice_start, self.cur_pos());
-            Ok((s, false))
+            Ok((slice_without_leading, s, false))
         }
     }
 }
