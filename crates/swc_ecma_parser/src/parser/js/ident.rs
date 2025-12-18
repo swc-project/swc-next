@@ -105,9 +105,9 @@ impl<I: Tokens> Parser<I> {
         let ident = self.parse_ident(true, true)?;
         let ctx = self.ctx();
         if (ctx.intersects(Context::InAsync.union(Context::InStaticBlock))
-            && self.ast.get_utf8(ident.sym(&self.ast)) == "await")
+            && self.input.iter.read_utf8(ident.sym(&self.ast)) == "await")
             || (ctx.contains(Context::InGenerator)
-                && self.ast.get_utf8(ident.sym(&self.ast)) == "yield")
+                && self.input.iter.read_utf8(ident.sym(&self.ast)) == "yield")
         {
             self.emit_err(ident.span(&self.ast), SyntaxError::ExpectedIdent);
         }
