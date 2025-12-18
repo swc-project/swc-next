@@ -8,7 +8,7 @@ use crate::{
     error::SyntaxError,
     input::Tokens,
     lexer::Token,
-    parser::{js::is_not_this, state::State, util::IsSimpleParameterList},
+    parser::{state::State, util::IsSimpleParameterList},
 };
 
 struct MakeMethodArgs {
@@ -1152,7 +1152,7 @@ impl<I: Tokens> Parser<I> {
 
                         if params
                             .iter()
-                            .any(|param| is_not_this(&p.ast, p.ast.get_node_in_sub_range(param)))
+                            .any(|param| p.is_not_this(p.ast.get_node_in_sub_range(param)))
                         {
                             p.emit_err(key_span, SyntaxError::GetterParam);
                         }
@@ -1179,9 +1179,7 @@ impl<I: Tokens> Parser<I> {
 
                         if params
                             .iter()
-                            .filter(|param| {
-                                is_not_this(&p.ast, p.ast.get_node_in_sub_range(*param))
-                            })
+                            .filter(|param| p.is_not_this(p.ast.get_node_in_sub_range(*param)))
                             .count()
                             != 1
                         {

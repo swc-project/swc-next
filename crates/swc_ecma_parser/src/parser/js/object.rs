@@ -1,7 +1,6 @@
 use swc_core::common::{DUMMY_SP, Span};
 use swc_experimental_ecma_ast::*;
 
-use crate::parser::js::is_not_this;
 use crate::{Context, PResult, Parser, error::SyntaxError, input::Tokens, lexer::Token};
 
 impl<I: Tokens> Parser<I> {
@@ -329,7 +328,7 @@ impl<I: Tokens> Parser<I> {
                                     let params = p.parse_formal_params()?;
 
                                     if params.iter().any(|param| {
-                                        is_not_this(&p.ast, p.ast.get_node_in_sub_range(param))
+                                        p.is_not_this(p.ast.get_node_in_sub_range(param))
                                     }) {
                                         p.emit_err(key_span, SyntaxError::GetterParam);
                                     }
@@ -365,7 +364,7 @@ impl<I: Tokens> Parser<I> {
                                     if params
                                         .iter()
                                         .filter(|param| {
-                                            is_not_this(&p.ast, p.ast.get_node_in_sub_range(*param))
+                                            p.is_not_this(p.ast.get_node_in_sub_range(*param))
                                         })
                                         .count()
                                         != 1

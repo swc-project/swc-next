@@ -8,10 +8,16 @@ mod stmt;
 
 use swc_experimental_ecma_ast::*;
 
-pub(crate) fn is_not_this(ast: &Ast, p: Param) -> bool {
-    let Pat::Ident(ident) = p.pat(ast) else {
-        return true;
-    };
+use crate::{Parser, input::Tokens};
 
-    ast.get_utf8(ident.id(ast).sym(ast)) != "this"
+impl<I: Tokens> Parser<I> {
+    fn is_not_this(&self, p: Param) -> bool {
+        let Pat::Ident(ident) = p.pat(&self.ast) else {
+            return true;
+        };
+        self.input
+            .iter
+            .read_utf8(ident.id(&self.ast).sym(&self.ast))
+            != "this"
+    }
 }
