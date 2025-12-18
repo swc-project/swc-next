@@ -5,7 +5,7 @@ use crate::{
     error::SyntaxError,
     input::Tokens,
     lexer::Token,
-    parser::{Parser, js::expr::AssignTargetOrSpread, util::ExprExt},
+    parser::{Parser, js::expr::AssignTargetOrSpread},
 };
 use swc_core::common::BytePos;
 use swc_experimental_ecma_ast::*;
@@ -40,7 +40,9 @@ impl<I: Tokens> Parser<I> {
         debug_assert!(self.ctx().contains(Context::Strict));
         match pat {
             Pat::Ident(i) => {
-                if i.is_reserved_in_strict_bind(&self.ast) {
+                if is_reserved_in_strict_bind(
+                    self.input.iter.read_utf8(i.id(&self.ast).sym(&self.ast)),
+                ) {
                     self.emit_strict_mode_err(
                         i.span(&self.ast),
                         SyntaxError::EvalAndArgumentsInStrict,
@@ -68,7 +70,9 @@ impl<I: Tokens> Parser<I> {
                         }
                         ObjectPatProp::Assign(assign) => {
                             let key = assign.key(&self.ast);
-                            if key.is_reserved_in_strict_bind(&self.ast) {
+                            if is_reserved_in_strict_bind(
+                                self.input.iter.read_utf8(key.id(&self.ast).sym(&self.ast)),
+                            ) {
                                 self.emit_strict_mode_err(
                                     key.span(&self.ast),
                                     SyntaxError::EvalAndArgumentsInStrict,
@@ -161,7 +165,7 @@ impl<I: Tokens> Parser<I> {
                 | Expr::Paren(..)
                 // | Expr::TsAs(..) 
                 | Expr::Tpl(..)=> {
-                    if !expr.is_valid_simple_assignment_target(&self.ast, self.ctx().contains(Context::Strict))
+                    if !self.is_expr_valid_simple_assignment_target(expr, self.ctx().contains(Context::Strict))
                     {
                         self.emit_err(span, SyntaxError::NotSimpleAssign)
                     }

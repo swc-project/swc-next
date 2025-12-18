@@ -9,7 +9,7 @@ pub(crate) mod builder;
 
 /// A string allocator that can be used to allocate strings for the AST.
 /// All the strings are stored in a single buffer to avoid memory fragmentation.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct StringAllocator {
     allocated_utf8: String,
     allocated_wtf8: Wtf8Buf,

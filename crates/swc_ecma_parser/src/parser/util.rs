@@ -48,16 +48,64 @@ pub(crate) fn invalid_class_name(name: &str) -> bool {
     }
 }
 
-pub trait ExprExt {
-    fn is_valid_simple_assignment_target(&self, ast: &Ast, strict: bool) -> bool;
+pub trait FromStmt: NodeIdTrait {
+    fn from_stmt(stmt: Stmt) -> Self;
 }
 
-impl ExprExt for Expr {
+impl FromStmt for ModuleItem {
+    fn from_stmt(stmt: Stmt) -> Self {
+        ModuleItem::Stmt(stmt)
+    }
+}
+
+impl FromStmt for Stmt {
+    fn from_stmt(stmt: Stmt) -> Self {
+        stmt
+    }
+}
+
+pub(crate) struct ScratchIndex<N: NodeIdTrait> {
+    start: usize,
+    _p: PhantomData<N>,
+}
+
+impl<N: NodeIdTrait> ScratchIndex<N> {
+    pub(crate) fn new(start: usize) -> Self {
+        Self {
+            start,
+            _p: PhantomData,
+        }
+    }
+
+    pub(crate) fn end<I: Tokens>(self, p: &mut Parser<I>) -> TypedSubRange<N> {
+        let range = p.ast.add_typed_sub_range(&p.scratch[self.start..]);
+        unsafe { p.scratch.set_len(self.start) };
+        range
+    }
+
+    pub(crate) fn push<I: Tokens>(&mut self, p: &mut Parser<I>, node: N) {
+        p.scratch.push(node.node_id());
+    }
+}
+
+impl<I: Tokens> Parser<I> {
+    pub(crate) fn is_not_this(&self, p: Param) -> bool {
+        let Pat::Ident(ident) = p.pat(&self.ast) else {
+            return true;
+        };
+        self.input
+            .iter
+            .read_utf8(ident.id(&self.ast).sym(&self.ast))
+            != "this"
+    }
+
     /// "IsValidSimpleAssignmentTarget" from spec.
-    fn is_valid_simple_assignment_target(&self, ast: &Ast, strict: bool) -> bool {
-        match self {
+    pub(crate) fn is_expr_valid_simple_assignment_target(&self, expr: Expr, strict: bool) -> bool {
+        match expr {
             Expr::Ident(ident) => {
-                if strict && ident.is_reserved_in_strict_bind(ast) {
+                if strict
+                    && is_reserved_in_strict_bind(self.input.iter.read_utf8(ident.sym(&self.ast)))
+                {
                     return false;
                 }
                 true
@@ -71,13 +119,13 @@ impl ExprExt for Expr {
             | Expr::Class(..)
             | Expr::Tpl(..)
             | Expr::TaggedTpl(..) => false,
-            Expr::Paren(paren) => paren
-                .expr(ast)
-                .is_valid_simple_assignment_target(ast, strict),
+            Expr::Paren(paren) => {
+                self.is_expr_valid_simple_assignment_target(paren.expr(&self.ast), strict)
+            }
             Expr::Member(member) => {
-                let obj = member.obj(ast);
+                let obj = member.obj(&self.ast);
                 match obj {
-                    Expr::Member(..) => obj.is_valid_simple_assignment_target(ast, strict),
+                    Expr::Member(..) => self.is_expr_valid_simple_assignment_target(obj, strict),
                     Expr::OptChain(..) => false,
                     _ => true,
                 }
@@ -127,45 +175,5 @@ impl ExprExt for Expr {
             #[cfg(swc_ast_unknown)]
             _ => unreachable!(),
         }
-    }
-}
-
-pub trait FromStmt: NodeIdTrait {
-    fn from_stmt(stmt: Stmt) -> Self;
-}
-
-impl FromStmt for ModuleItem {
-    fn from_stmt(stmt: Stmt) -> Self {
-        ModuleItem::Stmt(stmt)
-    }
-}
-
-impl FromStmt for Stmt {
-    fn from_stmt(stmt: Stmt) -> Self {
-        stmt
-    }
-}
-
-pub(crate) struct ScratchIndex<N: NodeIdTrait> {
-    start: usize,
-    _p: PhantomData<N>,
-}
-
-impl<N: NodeIdTrait> ScratchIndex<N> {
-    pub(crate) fn new(start: usize) -> Self {
-        Self {
-            start,
-            _p: PhantomData,
-        }
-    }
-
-    pub(crate) fn end<I: Tokens>(self, p: &mut Parser<I>) -> TypedSubRange<N> {
-        let range = p.ast.add_typed_sub_range(&p.scratch[self.start..]);
-        unsafe { p.scratch.set_len(self.start) };
-        range
-    }
-
-    pub(crate) fn push<I: Tokens>(&mut self, p: &mut Parser<I>, node: N) {
-        p.scratch.push(node.node_id());
     }
 }

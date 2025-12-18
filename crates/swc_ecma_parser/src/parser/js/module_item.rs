@@ -694,7 +694,9 @@ impl<I: Tokens> Parser<I> {
                             );
                         }
                         ExportSpecifier::Named(named) => match named.orig(&self.ast) {
-                            ModuleExportName::Ident(id) if id.is_reserved(&self.ast) => {
+                            ModuleExportName::Ident(id)
+                                if is_reserved(self.input.iter.read_utf8(id.sym(&self.ast))) =>
+                            {
                                 self.emit_err(
                                     id.span(&self.ast),
                                     SyntaxError::ExportExpectFrom(Atom::new(

@@ -12,9 +12,9 @@ use crate::{
     parser::{
         input::Tokens,
         state::{State, WithState},
-        util::{ExprExt, ScratchIndex},
     },
     syntax::SyntaxFlags,
+    util::ScratchIndex,
 };
 
 use crate::error::Error;
@@ -559,7 +559,7 @@ impl<I: Tokens> Parser<I> {
     }
 
     pub fn check_assign_target(&mut self, expr: Expr, _deny_call: bool) {
-        if !expr.is_valid_simple_assignment_target(&self.ast, self.ctx().contains(Context::Strict))
+        if !self.is_expr_valid_simple_assignment_target(expr, self.ctx().contains(Context::Strict))
         {
             self.emit_err(expr.span(&self.ast), SyntaxError::TS2406);
         }

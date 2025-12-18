@@ -2,7 +2,6 @@ use either::Either;
 use swc_core::common::{BytePos, Span};
 use swc_experimental_ecma_ast::*;
 
-use crate::parser::util::ExprExt;
 use crate::{
     Context, PResult,
     error::{Error, SyntaxError},
@@ -943,8 +942,8 @@ impl<I: Tokens> Parser<I> {
             } else {
                 // It is an early Reference Error if IsValidSimpleAssignmentTarget of
                 // LeftHandSideExpression is false.
-                if !cond.is_valid_simple_assignment_target(
-                    &self.ast,
+                if !self.is_expr_valid_simple_assignment_target(
+                    cond,
                     self.ctx().contains(Context::Strict),
                 ) {
                     if self.input().syntax().typescript() {
@@ -956,7 +955,9 @@ impl<I: Tokens> Parser<I> {
                 if self.input().syntax().typescript()
                     && cond
                         .as_ident()
-                        .map(|i| i.is_reserved_in_strict_bind(&self.ast))
+                        .map(|i| {
+                            is_reserved_in_strict_bind(self.input.iter.read_utf8(i.sym(&self.ast)))
+                        })
                         .unwrap_or(false)
                 {
                     self.emit_strict_mode_err(cond.span(&self.ast), SyntaxError::TS1100);
@@ -2436,7 +2437,9 @@ impl<I: Tokens> Parser<I> {
                         .ast
                         .expr_arrow_expr(p.span(start), params, body, true, false));
                 } else if p.input_mut().eat(Token::Arrow) {
-                    if p.ctx().contains(Context::Strict) && id.is_reserved_in_strict_bind(&p.ast) {
+                    if p.ctx().contains(Context::Strict)
+                        && is_reserved_in_strict_bind(p.input.iter.read_utf8(id.sym(&p.ast)))
+                    {
                         p.emit_strict_mode_err(
                             id.span(&p.ast),
                             SyntaxError::EvalAndArgumentsInStrict,
