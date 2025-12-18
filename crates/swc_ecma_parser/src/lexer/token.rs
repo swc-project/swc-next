@@ -1,23 +1,22 @@
 use std::fmt::Display;
 
 use swc_core::common::{BytePos, Span};
-use swc_experimental_ecma_ast::AssignOp;
+use swc_experimental_ecma_ast::{AssignOp, Utf8Ref, Wtf8Ref};
 
 use super::LexResult;
 use crate::{
     Context, Lexer,
     error::Error,
     input::{Buffer, Tokens},
-    string_alloc::{MaybeSubUtf8, MaybeSubWtf8},
 };
 
 #[derive(Debug, Clone)]
 pub enum TokenValue {
     /// unknown ident, jsx name and shebang
-    Word(MaybeSubUtf8),
-    Template(LexResult<MaybeSubWtf8>),
+    Word(Utf8Ref),
+    Template(LexResult<Wtf8Ref>),
     // string, jsx text
-    Str(MaybeSubWtf8),
+    Str(Wtf8Ref),
     // regexp
     Regex(BytePos),
     Num(f64),
@@ -319,18 +318,18 @@ impl Token {
 
 impl<'a> Token {
     #[inline(always)]
-    pub fn take_jsx_name<I: Tokens>(self, buffer: &mut Buffer<I>) -> MaybeSubUtf8 {
+    pub fn take_jsx_name<I: Tokens>(self, buffer: &mut Buffer<I>) -> Utf8Ref {
         buffer.expect_word_token_value()
     }
 
     #[inline(always)]
-    pub fn str(value: MaybeSubWtf8, lexer: &mut crate::Lexer<'a>) -> Self {
+    pub fn str(value: Wtf8Ref, lexer: &mut crate::Lexer<'a>) -> Self {
         lexer.set_token_value(Some(TokenValue::Str(value)));
         Token::Str
     }
 
     #[inline(always)]
-    pub fn template(cooked: LexResult<MaybeSubWtf8>, lexer: &mut crate::Lexer<'a>) -> Self {
+    pub fn template(cooked: LexResult<Wtf8Ref>, lexer: &mut crate::Lexer<'a>) -> Self {
         lexer.set_token_value(Some(TokenValue::Template(cooked)));
         Token::Template
     }
@@ -354,7 +353,7 @@ impl<'a> Token {
     }
 
     #[inline(always)]
-    pub fn unknown_ident(value: MaybeSubUtf8, lexer: &mut crate::Lexer<'a>) -> Self {
+    pub fn unknown_ident(value: Utf8Ref, lexer: &mut crate::Lexer<'a>) -> Self {
         lexer.set_token_value(Some(TokenValue::Word(value)));
         Token::Ident
     }
@@ -365,35 +364,43 @@ impl<'a> Token {
     }
 
     #[inline]
-    pub fn take_word<I: Tokens>(self, buffer: &Buffer<I>) -> MaybeSubUtf8 {
+    pub fn take_word<I: Tokens>(self, buffer: &mut Buffer<I>) -> Utf8Ref {
+        match self {
+            Token::Ident | Token::JSXName => {
+                if let Some(TokenValue::Word(w)) = buffer.iter.get_token_value() {
+                    return w.clone();
+                }
+            }
+            _ => {}
+        }
         let span = buffer.cur.span;
-        MaybeSubUtf8::new_from_source(span.lo, span.hi)
+        buffer.iter.make_utf8_from_source(span.lo, span.hi)
     }
 
     #[inline(always)]
-    pub fn take_unknown_ident<I: Tokens>(self, buffer: &mut Buffer<I>) -> MaybeSubUtf8 {
+    pub fn take_unknown_ident<I: Tokens>(self, buffer: &mut Buffer<I>) -> Utf8Ref {
         buffer.expect_word_token_value()
     }
 
     #[inline(always)]
-    pub fn take_unknown_ident_ref<'b, I: Tokens>(&'b self, buffer: &'b Buffer<I>) -> MaybeSubUtf8 {
+    pub fn take_unknown_ident_ref<'b, I: Tokens>(&'b self, buffer: &'b Buffer<I>) -> Utf8Ref {
         buffer.expect_word_token_value_ref()
     }
 
     #[inline(always)]
-    pub fn jsx_text(value: MaybeSubWtf8, lexer: &mut Lexer) -> Self {
+    pub fn jsx_text(value: Wtf8Ref, lexer: &mut Lexer) -> Self {
         lexer.set_token_value(Some(TokenValue::Str(value)));
         Token::JSXText
     }
 
     #[inline(always)]
-    pub fn shebang(value: MaybeSubUtf8, lexer: &mut Lexer) -> Self {
+    pub fn shebang(value: Utf8Ref, lexer: &mut Lexer) -> Self {
         lexer.set_token_value(Some(TokenValue::Word(value)));
         Token::Shebang
     }
 
     #[inline(always)]
-    pub fn take_shebang<I: Tokens>(self, buffer: &mut Buffer<I>) -> MaybeSubUtf8 {
+    pub fn take_shebang<I: Tokens>(self, buffer: &mut Buffer<I>) -> Utf8Ref {
         buffer.expect_word_token_value()
     }
 }

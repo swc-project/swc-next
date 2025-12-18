@@ -2,9 +2,9 @@
 #[derive(Debug, Clone, Copy)]
 pub struct Wtf8Ref {
     /// The start pos of the wtf8 string in the string allocator.
-    lo: u32,
+    pub(crate) lo: u32,
     /// The end pos of the wtf8 string in the string allocator.
-    hi: u32,
+    pub(crate) hi: u32,
 }
 
 impl Wtf8Ref {
@@ -26,8 +26,8 @@ impl Wtf8Ref {
 /// We regard it as `None` if `OptionalWtf8Ref::hi` is `u32::MAX`.
 #[derive(Debug, Clone, Copy, Hash)]
 pub struct OptionalWtf8Ref {
-    lo: u32,
-    hi: u32,
+    pub(crate) lo: u32,
+    pub(crate) hi: u32,
 }
 impl OptionalWtf8Ref {
     pub const fn new_ref(lo: u32, hi: u32) -> Self {

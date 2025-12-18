@@ -63,10 +63,9 @@ impl<I: Tokens> Parser<I> {
                     && self.ast.get_utf8(orig_ident.sym(&self.ast)) == "type"
                     && self.input().cur().is_word()
                 {
-                    let possibly_orig = self.parse_ident_name().map(|(span, sym)| {
-                        let sym = self.to_utf8_ref(sym);
-                        self.ast.ident(span, sym, false)
-                    })?;
+                    let possibly_orig = self
+                        .parse_ident_name()
+                        .map(|(span, sym)| self.ast.ident(span, sym, false))?;
                     if self.ast.get_utf8(possibly_orig.sym(&self.ast)) == "as" {
                         // `export { type as }`
                         if !self.input().cur().is_word() {
@@ -82,18 +81,16 @@ impl<I: Tokens> Parser<I> {
                             ));
                         }
 
-                        let maybe_as = self.parse_ident_name().map(|(span, sym)| {
-                            let sym = self.to_utf8_ref(sym);
-                            self.ast.ident(span, sym, false)
-                        })?;
+                        let maybe_as = self
+                            .parse_ident_name()
+                            .map(|(span, sym)| self.ast.ident(span, sym, false))?;
                         if self.ast.get_utf8(maybe_as.sym(&self.ast)) == "as" {
                             if self.input().cur().is_word() {
                                 // `export { type as as as }`
                                 // `export { type as as foo }`
-                                let exported = self.parse_ident_name().map(|(span, sym)| {
-                                    let sym = self.to_utf8_ref(sym);
-                                    self.ast.ident(span, sym, false)
-                                })?;
+                                let exported = self
+                                    .parse_ident_name()
+                                    .map(|(span, sym)| self.ast.ident(span, sym, false))?;
 
                                 if type_only {
                                     self.emit_err(orig_ident.span(&self.ast), SyntaxError::TS2207);
@@ -180,10 +177,9 @@ impl<I: Tokens> Parser<I> {
                     && self.ast.get_utf8(orig_name.sym(&self.ast)) == "type"
                     && self.input().cur().is_word()
                 {
-                    let possibly_orig_name = self.parse_ident_name().map(|(span, sym)| {
-                        let sym = self.to_utf8_ref(sym);
-                        self.ast.ident(span, sym, false)
-                    })?;
+                    let possibly_orig_name = self
+                        .parse_ident_name()
+                        .map(|(span, sym)| self.ast.ident(span, sym, false))?;
 
                     let possibly_orig_name_str =
                         self.ast.get_utf8(possibly_orig_name.sym(&self.ast));
@@ -822,10 +818,9 @@ impl<I: Tokens> Parser<I> {
                                 local = p.parse_imported_default_binding()?;
                             } else if peek!(p).is_some_and(|cur| cur == Token::Eq) {
                                 type_only = true;
-                                local = p.parse_ident_name().map(|(span, sym)| {
-                                    let sym = p.to_utf8_ref(sym);
-                                    p.ast.ident(span, sym, false)
-                                })?;
+                                local = p
+                                    .parse_ident_name()
+                                    .map(|(span, sym)| p.ast.ident(span, sym, false))?;
                             }
                         }
                     }

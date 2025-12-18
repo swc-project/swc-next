@@ -1,11 +1,13 @@
 use std::mem;
 
+use swc_core::common::BytePos;
+use swc_experimental_ecma_ast::{StringAllocator, Utf8Ref, Wtf8Ref};
+
 use crate::{
     Context,
     error::Error,
     input::Tokens,
     lexer::{TokenFlags, token::TokenAndSpan},
-    string_alloc::{MaybeSubUtf8, MaybeSubWtf8},
     syntax::SyntaxFlags,
 };
 
@@ -208,11 +210,27 @@ impl<I: Tokens> Tokens for Capturing<I> {
         ts
     }
 
-    fn get_maybe_sub_utf8(&self, atom_ref: MaybeSubUtf8) -> &str {
-        self.inner.get_maybe_sub_utf8(atom_ref)
+    fn read_utf8(&self, atom_ref: Utf8Ref) -> &str {
+        self.inner.read_utf8(atom_ref)
     }
 
-    fn get_maybe_sub_wtf8(&self, atom_ref: MaybeSubWtf8) -> &swc_core::atoms::wtf8::Wtf8 {
-        self.inner.get_maybe_sub_wtf8(atom_ref)
+    fn read_wtf8(&self, atom_ref: Wtf8Ref) -> &swc_core::atoms::wtf8::Wtf8 {
+        self.inner.read_wtf8(atom_ref)
+    }
+
+    fn take_string_allocator(&mut self) -> StringAllocator {
+        self.inner.take_string_allocator()
+    }
+
+    fn make_utf8_from_source(&mut self, start: BytePos, end: BytePos) -> Utf8Ref {
+        self.inner.make_utf8_from_source(start, end)
+    }
+
+    fn make_wtf8_from_source(&mut self, start: BytePos, end: BytePos) -> Wtf8Ref {
+        self.inner.make_wtf8_from_source(start, end)
+    }
+
+    fn read_string(&self, start: BytePos, end: BytePos) -> &str {
+        self.inner.read_string(start, end)
     }
 }

@@ -30,8 +30,12 @@ pub use node_id::{
     BigIntId, ExtraDataId, NodeId, NodeIdTrait, OptionalNodeId, OptionalUtf8Ref, OptionalWtf8Ref,
     SubRange, TypedSubRange, Utf8Ref, Wtf8Ref,
 };
+pub use string_allocator::{
+    StringAllocator,
+    builder::{Utf8Builder, Wtf8Builder},
+};
 
-use crate::{ast_list::NodeList, node_id::OptionalSubRange, string_allocator::StringAllocator};
+use crate::{ast_list::NodeList, node_id::OptionalSubRange};
 
 /// AST context that stores everything about the flattening AST.
 pub struct Ast {
@@ -362,6 +366,10 @@ impl Ast {
             bigint: IndexVec::new(),
             string_allocator: StringAllocator::new(source_len),
         }
+    }
+
+    pub fn set_string_allocator(&mut self, allocator: StringAllocator) {
+        self.string_allocator = allocator;
     }
 
     #[inline]

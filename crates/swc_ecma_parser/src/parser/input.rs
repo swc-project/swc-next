@@ -1,12 +1,11 @@
 use swc_core::atoms::wtf8::Wtf8;
 use swc_core::common::{BytePos, Span};
-use swc_experimental_ecma_ast::EsVersion;
+use swc_experimental_ecma_ast::{EsVersion, StringAllocator, Utf8Ref, Wtf8Ref};
 
 use crate::{
     Context,
     error::Error,
     lexer::{LexResult, NextTokenAndSpan, Token, TokenAndSpan, TokenFlags, TokenValue},
-    string_alloc::{MaybeSubUtf8, MaybeSubWtf8},
     syntax::SyntaxFlags,
 };
 
@@ -24,8 +23,12 @@ pub trait Tokens: Clone + Iterator<Item = TokenAndSpan> {
     fn checkpoint_save(&self) -> Self::Checkpoint;
     fn checkpoint_load(&mut self, checkpoint: Self::Checkpoint);
 
-    fn get_maybe_sub_utf8(&self, atom_ref: MaybeSubUtf8) -> &str;
-    fn get_maybe_sub_wtf8(&self, atom_ref: MaybeSubWtf8) -> &Wtf8;
+    fn read_string(&self, start: BytePos, end: BytePos) -> &str;
+    fn make_utf8_from_source(&mut self, start: BytePos, end: BytePos) -> Utf8Ref;
+    fn make_wtf8_from_source(&mut self, start: BytePos, end: BytePos) -> Wtf8Ref;
+    fn read_utf8(&self, utf8_ref: Utf8Ref) -> &str;
+    fn read_wtf8(&self, wtf8_ref: Wtf8Ref) -> &Wtf8;
+    fn take_string_allocator(&mut self) -> StringAllocator;
 
     fn start_pos(&self) -> BytePos {
         BytePos(0)
@@ -84,14 +87,14 @@ pub struct Buffer<I> {
 }
 
 impl<I: Tokens> Buffer<I> {
-    pub fn expect_word_token_value(&mut self) -> MaybeSubUtf8 {
+    pub fn expect_word_token_value(&mut self) -> Utf8Ref {
         let Some(crate::lexer::TokenValue::Word(word)) = self.iter.take_token_value() else {
             unreachable!()
         };
         word
     }
 
-    pub fn expect_word_token_value_ref(&self) -> MaybeSubUtf8 {
+    pub fn expect_word_token_value_ref(&self) -> Utf8Ref {
         let Some(crate::lexer::TokenValue::Word(word)) = self.iter.get_token_value() else {
             unreachable!("token_value: {:?}", self.iter.get_token_value())
         };
@@ -105,7 +108,7 @@ impl<I: Tokens> Buffer<I> {
         value
     }
 
-    pub fn expect_string_token_value(&mut self) -> MaybeSubWtf8 {
+    pub fn expect_string_token_value(&mut self) -> Wtf8Ref {
         let Some(crate::lexer::TokenValue::Str(value)) = self.iter.take_token_value() else {
             unreachable!()
         };
@@ -126,7 +129,7 @@ impl<I: Tokens> Buffer<I> {
         exp_end
     }
 
-    pub fn expect_template_token_value(&mut self) -> LexResult<MaybeSubWtf8> {
+    pub fn expect_template_token_value(&mut self) -> LexResult<Wtf8Ref> {
         let Some(crate::lexer::TokenValue::Template(cooked)) = self.iter.take_token_value() else {
             unreachable!()
         };
@@ -294,21 +297,21 @@ impl<I: Tokens> Buffer<I> {
         self.set_cur(next);
     }
 
-    pub fn expect_word_token_and_bump(&mut self) -> MaybeSubUtf8 {
+    pub fn expect_word_token_and_bump(&mut self) -> Utf8Ref {
         let cur = self.cur();
         let word = cur.take_word(self);
         self.bump();
         word
     }
 
-    pub fn expect_shebang_token_and_bump(&mut self) -> MaybeSubUtf8 {
+    pub fn expect_shebang_token_and_bump(&mut self) -> Utf8Ref {
         let cur = self.cur();
         let ret = cur.take_shebang(self);
         self.bump();
         ret
     }
 
-    pub fn expect_jsx_name_token_and_bump(&mut self) -> MaybeSubUtf8 {
+    pub fn expect_jsx_name_token_and_bump(&mut self) -> Utf8Ref {
         let cur = self.cur();
         let word = cur.take_jsx_name(self);
         self.bump();

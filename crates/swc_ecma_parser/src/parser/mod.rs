@@ -14,7 +14,6 @@ use crate::{
         state::{State, WithState},
         util::{ExprExt, ScratchIndex},
     },
-    string_alloc::{MaybeSubUtf8, MaybeSubWtf8},
     syntax::SyntaxFlags,
 };
 
@@ -108,16 +107,6 @@ impl<I: Tokens> Parser<I> {
         let range = scratch.end(self);
         ret.map(|_| range)
     }
-
-    #[inline]
-    fn to_utf8_ref(&mut self, maybe: MaybeSubUtf8) -> Utf8Ref {
-        self.ast.add_utf8(self.input.iter.get_maybe_sub_utf8(maybe))
-    }
-
-    #[inline]
-    fn to_wtf8_ref(&mut self, maybe: MaybeSubWtf8) -> Wtf8Ref {
-        self.ast.add_wtf8(self.input.iter.get_maybe_sub_wtf8(maybe))
-    }
 }
 
 impl<'a> Parser<crate::lexer::Lexer<'a>> {
@@ -172,6 +161,8 @@ impl<I: Tokens> Parser<I> {
         self.input_mut().bump();
 
         let errors = self.take_errors();
+        self.ast
+            .set_string_allocator(self.input.iter.take_string_allocator());
         Ok(ParseRet {
             ast: self.ast,
             root: ret,
@@ -199,6 +190,8 @@ impl<I: Tokens> Parser<I> {
         self.input_mut().bump();
 
         let errors = self.take_errors();
+        self.ast
+            .set_string_allocator(self.input.iter.take_string_allocator());
         Ok(ParseRet {
             ast: self.ast,
             root: ret,
@@ -227,6 +220,8 @@ impl<I: Tokens> Parser<I> {
         self.input_mut().bump();
 
         let errors = self.take_errors();
+        self.ast
+            .set_string_allocator(self.input.iter.take_string_allocator());
         Ok(ParseRet {
             ast: self.ast,
             root: ret,
@@ -287,6 +282,8 @@ impl<I: Tokens> Parser<I> {
         self.input_mut().bump();
 
         let errors = self.take_errors();
+        self.ast
+            .set_string_allocator(self.input.iter.take_string_allocator());
         Ok(ParseRet {
             ast: self.ast,
             root: ret,
@@ -314,6 +311,8 @@ impl<I: Tokens> Parser<I> {
         self.input_mut().bump();
 
         let errors = self.take_errors();
+        self.ast
+            .set_string_allocator(self.input.iter.take_string_allocator());
         Ok(ParseRet {
             ast: self.ast,
             root: ret,
@@ -329,6 +328,8 @@ impl<I: Tokens> Parser<I> {
 
         let expr = self.parse_expr_inner()?;
         let errors = self.take_errors();
+        self.ast
+            .set_string_allocator(self.input.iter.take_string_allocator());
         Ok(ParseRet {
             ast: self.ast,
             root: expr,

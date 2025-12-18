@@ -1,7 +1,7 @@
 use std::mem::take;
 
 use swc_core::atoms::wtf8::{CodePoint, Wtf8};
-use swc_experimental_ecma_ast::EsVersion;
+use swc_experimental_ecma_ast::{EsVersion, StringAllocator, Utf8Ref, Wtf8Ref};
 // use swc_core::atoms::wtf8::CodePoint;
 use swc_core::common::BytePos;
 
@@ -15,7 +15,6 @@ use crate::{
         comments_buffer::{BufferedCommentKind, CommentsBufferCheckpoint},
         token::{Token, TokenAndSpan, TokenValue},
     },
-    string_alloc::{MaybeSubUtf8, MaybeSubWtf8},
     syntax::SyntaxFlags,
 };
 
@@ -75,27 +74,35 @@ impl crate::input::Tokens for Lexer<'_> {
     }
 
     #[inline]
-    fn get_maybe_sub_utf8(&self, maybe: MaybeSubUtf8) -> &str {
-        match maybe {
-            MaybeSubUtf8::Empty => "",
-            MaybeSubUtf8::Inline((start, end)) => unsafe { self.input.slice(start, end) },
-            MaybeSubUtf8::Alloc((start, end)) => {
-                self.string_allocator.get_allocated_utf8(start, end)
-            }
-        }
+    fn read_string(&self, start: BytePos, end: BytePos) -> &str {
+        assert!(start <= end);
+        unsafe { self.input.slice(start, end) }
     }
 
     #[inline]
-    fn get_maybe_sub_wtf8(&self, maybe: MaybeSubWtf8) -> &Wtf8 {
-        match maybe {
-            MaybeSubWtf8::Empty => Wtf8::from_str(""),
-            MaybeSubWtf8::Inline((start, end)) => {
-                Wtf8::from_str(unsafe { self.input.slice(start, end) })
-            }
-            MaybeSubWtf8::Alloc((start, end)) => {
-                self.string_allocator.get_allocated_wtf8(start, end)
-            }
-        }
+    fn read_utf8(&self, utf8_ref: Utf8Ref) -> &str {
+        self.string_allocator.get_utf8(utf8_ref)
+    }
+
+    #[inline]
+    fn read_wtf8(&self, wtf8_ref: Wtf8Ref) -> &Wtf8 {
+        self.string_allocator.get_wtf8(wtf8_ref)
+    }
+
+    fn make_utf8_from_source(&mut self, start: BytePos, end: BytePos) -> Utf8Ref {
+        assert!(start <= end);
+        let s = unsafe { self.input_slice(start, end) };
+        self.string_allocator.add_utf8(s)
+    }
+
+    fn make_wtf8_from_source(&mut self, start: BytePos, end: BytePos) -> Wtf8Ref {
+        assert!(start <= end);
+        let s = unsafe { self.input_slice(start, end) };
+        self.string_allocator.add_wtf8(s.into())
+    }
+
+    fn take_string_allocator(&mut self) -> StringAllocator {
+        std::mem::take(&mut self.string_allocator)
     }
 
     #[inline]
@@ -126,7 +133,6 @@ impl crate::input::Tokens for Lexer<'_> {
         self.target
     }
 
-    #[inline]
     fn start_pos(&self) -> BytePos {
         self.start_pos
     }
@@ -282,7 +288,7 @@ impl crate::input::Tokens for Lexer<'_> {
                 builder.push_str(&mut self.string_allocator, &token.to_string());
                 builder.push_str(&mut self.string_allocator, &v);
             } else if let Some(TokenValue::Word(value)) = self.state.token_value.take() {
-                let value = self.get_maybe_sub_utf8(value).to_string();
+                let value = self.read_utf8(value).to_string();
                 builder.push_str(&mut self.string_allocator, &value);
                 builder.push_str(&mut self.string_allocator, &v);
             } else {
@@ -496,7 +502,7 @@ impl Lexer<'_> {
         }
 
         let value = if value.is_empty(&self.string_allocator) {
-            MaybeSubWtf8::new_from_source(start, self.cur_pos())
+            self.make_wtf8_from_source(start, self.cur_pos())
         } else {
             let s = unsafe {
                 // Safety: We already checked for the range

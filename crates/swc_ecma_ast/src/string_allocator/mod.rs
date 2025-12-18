@@ -1,9 +1,15 @@
 use swc_core::atoms::wtf8::{Wtf8, Wtf8Buf};
 
-use crate::{OptionalUtf8Ref, OptionalWtf8Ref, Utf8Ref, Wtf8Ref};
+use crate::{
+    OptionalUtf8Ref, OptionalWtf8Ref, Utf8Ref, Wtf8Ref,
+    string_allocator::builder::{Utf8Builder, Wtf8Builder},
+};
+
+pub(crate) mod builder;
 
 /// A string allocator that can be used to allocate strings for the AST.
 /// All the strings are stored in a single buffer to avoid memory fragmentation.
+#[derive(Clone)]
 pub struct StringAllocator {
     allocated_utf8: String,
     allocated_wtf8: Wtf8Buf,
@@ -21,11 +27,25 @@ impl StringAllocator {
     }
 
     #[inline]
+    pub fn alloc_utf8(&mut self) -> Utf8Builder {
+        Utf8Builder {
+            start: self.allocated_utf8.len(),
+        }
+    }
+
+    #[inline]
+    pub fn alloc_wtf8(&mut self) -> Wtf8Builder {
+        Wtf8Builder {
+            start: self.allocated_wtf8.len(),
+        }
+    }
+
+    #[inline]
     pub fn add_utf8(&mut self, s: &str) -> Utf8Ref {
         let lo = self.allocated_utf8.len() as u32;
         self.allocated_utf8.push_str(s);
         let hi = self.allocated_utf8.len() as u32;
-        Utf8Ref::new_ref(lo, hi)
+        Utf8Ref { lo, hi }
     }
 
     #[inline]
@@ -73,5 +93,11 @@ impl StringAllocator {
     pub fn get_optional_wtf8(&self, id: OptionalWtf8Ref) -> Option<&Wtf8> {
         let id = id.to_option()?;
         Some(self.get_wtf8(id))
+    }
+}
+
+impl Default for StringAllocator {
+    fn default() -> Self {
+        Self::new(0)
     }
 }

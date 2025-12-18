@@ -12,8 +12,8 @@ use swc_core::common::{
     comments::{Comment, CommentKind, Comments},
 };
 use swc_experimental_ecma_ast::{
-    EsVersion, is_valid_ascii_continue, is_valid_ascii_start, is_valid_non_ascii_continue,
-    is_valid_non_ascii_start,
+    EsVersion, StringAllocator, Utf8Ref, Wtf8Builder, is_valid_ascii_continue,
+    is_valid_ascii_start, is_valid_non_ascii_continue, is_valid_non_ascii_start,
 };
 
 use self::table::{BYTE_HANDLERS, ByteHandler};
@@ -31,7 +31,6 @@ use crate::{
         state::State,
     },
     safe_byte_match_table,
-    string_alloc::{MaybeSubUtf8, MaybeSubWtf8, StringAllocator, Wtf8Builder},
     syntax::SyntaxFlags,
 };
 
@@ -201,6 +200,7 @@ impl<'a> Lexer<'a> {
         comments: Option<&'a dyn Comments>,
     ) -> Self {
         let start_pos = input.cur_pos();
+        let source_len = input.as_str().len();
 
         Lexer {
             comments,
@@ -214,8 +214,7 @@ impl<'a> Lexer<'a> {
             errors: Default::default(),
             module_errors: Default::default(),
             token_flags: TokenFlags::empty(),
-
-            string_allocator: StringAllocator::new(),
+            string_allocator: StringAllocator::new(source_len),
         }
     }
 
@@ -1351,7 +1350,7 @@ impl<'a> Lexer<'a> {
         }
         let value = if out.is_empty(&self.string_allocator) {
             // Fast path: We don't need to allocate
-            MaybeSubWtf8::new_from_source(chunk_start, self.cur_pos())
+            self.make_wtf8_from_source(chunk_start, self.cur_pos())
         } else {
             let s = unsafe {
                 // Safety: We already checked for the range
@@ -1516,7 +1515,7 @@ impl<'a> Lexer<'a> {
     }
 
     #[cold]
-    fn read_shebang(&mut self) -> LexResult<Option<MaybeSubUtf8>> {
+    fn read_shebang(&mut self) -> LexResult<Option<Utf8Ref>> {
         if self.input().peek() != Some(b'#') || self.input().peek_2() != Some(b'!') {
             return Ok(None);
         }
@@ -1530,10 +1529,7 @@ impl<'a> Lexer<'a> {
             self.bump(c.len_utf8());
         }
 
-        Ok(Some(MaybeSubUtf8::new_from_source(
-            start_pos,
-            self.cur_pos(),
-        )))
+        Ok(Some(self.make_utf8_from_source(start_pos, self.cur_pos())))
     }
 
     /// Read an escaped character for string literal.
@@ -1721,11 +1717,11 @@ impl<'a> Lexer<'a> {
         let flags = {
             match self.peek() {
                 Some(c) if c.is_ident_start() => self.read_word_as_str_with().map(|(s, _)| s),
-                _ => Ok(MaybeSubUtf8::new_empty()),
+                _ => Ok(Utf8Ref::new_empty()),
             }
         }?;
 
-        let flags = self.get_maybe_sub_utf8(flags);
+        let flags = self.read_utf8(flags);
         if !flags.is_empty() {
             let mut flags_count =
                 flags
@@ -1755,7 +1751,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// This method is optimized for texts without escape sequences.
-    fn read_word_as_str_with(&mut self) -> LexResult<(MaybeSubUtf8, bool)> {
+    fn read_word_as_str_with(&mut self) -> LexResult<(Utf8Ref, bool)> {
         debug_assert!(self.peek().is_some());
         let slice_start = self.cur_pos();
 
@@ -1772,7 +1768,7 @@ impl<'a> Lexer<'a> {
                 table: NOT_ASCII_ID_CONTINUE_TABLE,
                 handle_eof: {
                     // Reached EOF, entire remainder is identifier
-                    return Ok((MaybeSubUtf8::new_from_source(slice_start, self.cur_pos()), false));
+                    return Ok((self.make_utf8_from_source(slice_start, self.cur_pos()), false));
                 },
             };
 
@@ -1785,7 +1781,7 @@ impl<'a> Lexer<'a> {
                 return self.read_word_as_str_with_slow_path(slice_start);
             } else {
                 // Hit end of identifier (non-continue ASCII char)
-                let s = MaybeSubUtf8::new_from_source(slice_start, self.cur_pos());
+                let s = self.make_utf8_from_source(slice_start, self.cur_pos());
                 return Ok((s, false));
             }
         }
@@ -1799,7 +1795,7 @@ impl<'a> Lexer<'a> {
     fn read_word_as_str_with_slow_path(
         &mut self,
         mut slice_start: BytePos,
-    ) -> LexResult<(MaybeSubUtf8, bool)> {
+    ) -> LexResult<(Utf8Ref, bool)> {
         let mut first = true;
         let mut has_escape = false;
 
@@ -1890,7 +1886,7 @@ impl<'a> Lexer<'a> {
         let end = self.cur_pos();
         let value = if !has_escape {
             // Fast path: raw slice is enough if there's no escape.
-            MaybeSubUtf8::new_from_source(slice_start, end)
+            self.make_utf8_from_source(slice_start, end)
         } else {
             let s = unsafe {
                 // Safety: slice_start and end are valid position because we got them from
@@ -2142,10 +2138,8 @@ impl<'a> Lexer<'a> {
                 table: table,
                 handle_eof: {
                     let value_end = self.cur_pos();
-                    let s = MaybeSubWtf8::new_from_source(slice_start, value_end);
-
+                    let s = self.make_wtf8_from_source(slice_start, value_end);
                     self.emit_error(start, SyntaxError::UnterminatedStrLit);
-
                     return Ok(Token::str(s, self));
                 },
             };
@@ -2166,7 +2160,7 @@ impl<'a> Lexer<'a> {
                         buf.push_str(&mut self.string_allocator, s);
                         buf.finish(&mut self.string_allocator)
                     } else {
-                        MaybeSubWtf8::new_from_source(slice_start, value_end)
+                        self.make_wtf8_from_source(slice_start, value_end)
                     };
 
                     self.bump(1);
@@ -2202,10 +2196,8 @@ impl<'a> Lexer<'a> {
                 }
                 b'\n' | b'\r' => {
                     let end = self.cur_pos();
-                    let s = MaybeSubWtf8::new_from_source(slice_start, end);
-
+                    let s = self.make_wtf8_from_source(slice_start, end);
                     self.emit_error(start, SyntaxError::UnterminatedStrLit);
-
                     return Ok(Token::str(s, self));
                 }
                 _ => self.bump(1),
@@ -2218,7 +2210,7 @@ impl<'a> Lexer<'a> {
 
         let start = self.cur_pos();
         let (s, has_escape) = self.read_keyword_as_str_with()?;
-        if let Some(word) = convert(self.get_maybe_sub_utf8(s)) {
+        if let Some(word) = convert(self.read_utf8(s)) {
             // Note: ctx is store in lexer because of this error.
             // 'await' and 'yield' may have semantic of reserved word, which means lexer
             // should know context or parser should handle this error. Our approach to this
@@ -2227,7 +2219,7 @@ impl<'a> Lexer<'a> {
                 self.error(
                     start,
                     SyntaxError::EscapeInReservedWord {
-                        word: Atom::new(self.get_maybe_sub_utf8(s)),
+                        word: Atom::new(self.read_utf8(s)),
                     },
                 )
             } else {
@@ -2241,7 +2233,7 @@ impl<'a> Lexer<'a> {
     /// This is a performant version of [Lexer::read_word_as_str_with] for
     /// reading keywords. We should make sure the first byte is a valid
     /// ASCII.
-    fn read_keyword_as_str_with(&mut self) -> LexResult<(MaybeSubUtf8, bool)> {
+    fn read_keyword_as_str_with(&mut self) -> LexResult<(Utf8Ref, bool)> {
         let slice_start = self.cur_pos();
 
         // Fast path: try to scan ASCII identifier using byte_search
@@ -2255,7 +2247,7 @@ impl<'a> Lexer<'a> {
             table: NOT_ASCII_ID_CONTINUE_TABLE,
             handle_eof: {
                 // Reached EOF, entire remainder is identifier
-                let s = MaybeSubUtf8::new_from_source(slice_start, self.cur_pos());
+                let s = self.make_utf8_from_source(slice_start, self.cur_pos());
                 return Ok((s, false));
             },
         };
@@ -2267,7 +2259,7 @@ impl<'a> Lexer<'a> {
             self.read_word_as_str_with_slow_path(slice_start)
         } else {
             // Hit end of identifier (non-continue ASCII char)
-            let s = MaybeSubUtf8::new_from_source(slice_start, self.cur_pos());
+            let s = self.make_utf8_from_source(slice_start, self.cur_pos());
             Ok((s, false))
         }
     }

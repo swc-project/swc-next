@@ -1,23 +1,13 @@
-use swc_core::common::Span;
-
 /// A reference to a utf8 string in the string allocator.
 #[derive(Debug, Clone, Copy)]
 pub struct Utf8Ref {
     /// The start pos of the utf8 string in the string allocator.
-    lo: u32,
+    pub(crate) lo: u32,
     /// The end pos of the utf8 string in the string allocator.
-    hi: u32,
+    pub(crate) hi: u32,
 }
 
 impl Utf8Ref {
-    pub const fn new_ref(lo: u32, hi: u32) -> Self {
-        Self { lo, hi }
-    }
-
-    pub const fn new_from_span(span: Span) -> Self {
-        Self::new_ref(span.lo.0, span.hi.0)
-    }
-
     pub const fn new_empty() -> Self {
         Self { lo: 0, hi: 0 }
     }
@@ -36,15 +26,11 @@ impl Utf8Ref {
 /// We regard it as `None` if `OptionalUtf8Ref::hi` is `u32::MAX`.
 #[derive(Debug, Clone, Copy, Hash)]
 pub struct OptionalUtf8Ref {
-    lo: u32,
-    hi: u32,
+    pub(crate) lo: u32,
+    pub(crate) hi: u32,
 }
 
 impl OptionalUtf8Ref {
-    pub const fn new_ref(lo: u32, hi: u32) -> Self {
-        Self { lo, hi }
-    }
-
     pub const fn new_none() -> Self {
         Self {
             lo: 0,
@@ -66,6 +52,9 @@ impl OptionalUtf8Ref {
 
 impl From<Utf8Ref> for OptionalUtf8Ref {
     fn from(value: Utf8Ref) -> Self {
-        Self::new_ref(value.lo, value.hi)
+        Self {
+            lo: value.lo,
+            hi: value.hi,
+        }
     }
 }
