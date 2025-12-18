@@ -76,7 +76,7 @@ impl<I: Tokens> Parser<I> {
         } else {
             if self
                 .ctx()
-                .is_reserved_word(self.ast.get_utf8(key.sym(&self.ast)))
+                .is_reserved_word(self.input.iter.read_utf8(key.sym(&self.ast)))
             {
                 self.emit_err(
                     key.span(&self.ast),
@@ -284,7 +284,10 @@ impl<I: Tokens> Parser<I> {
         // It means we should check for invalid expressions like { for, }
         let cur = self.input().cur();
         if matches!(cur, Token::Eq | Token::Comma | Token::RBrace) {
-            if self.ctx().is_reserved_word(self.ast.get_utf8(ident_sym)) {
+            if self
+                .ctx()
+                .is_reserved_word(self.input.iter.read_utf8(ident_sym))
+            {
                 self.emit_err(ident_span, SyntaxError::ReservedWordInObjShorthandOrPat);
             }
 
@@ -302,7 +305,7 @@ impl<I: Tokens> Parser<I> {
         // set a(v){}
         // async a(){}
 
-        let ident = self.ast.get_utf8(ident_sym);
+        let ident = self.input.iter.read_utf8(ident_sym);
         let is_get = ident == "get";
         let is_set = ident == "set";
         let is_async = ident == "async";

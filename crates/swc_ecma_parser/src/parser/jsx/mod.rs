@@ -176,14 +176,12 @@ impl<I: Tokens> Parser<I> {
             self.input_mut().scan_jsx_token(true);
         }
 
-        if get_qualified_jsx_name(&self.ast, open_name)
-            != get_qualified_jsx_name(&self.ast, tagname)
-        {
+        if self.get_qualified_jsx_name(open_name) != self.get_qualified_jsx_name(tagname) {
             syntax_error!(
                 self,
                 tagname.span(&self.ast),
                 SyntaxError::JSXExpectedClosingTag {
-                    tag: Atom::new(get_qualified_jsx_name(&self.ast, open_name)),
+                    tag: Atom::new(self.get_qualified_jsx_name(open_name)),
                 }
             )
         }
@@ -464,34 +462,41 @@ impl<I: Tokens> Parser<I> {
             }
         })
     }
-}
 
-fn get_qualified_jsx_name(ast: &'_ Ast, name: JSXElementName) -> Cow<'_, str> {
-    fn get_qualified_obj_name(ast: &'_ Ast, obj: JSXObject) -> Cow<'_, str> {
-        match obj {
-            JSXObject::Ident(i) => Cow::Borrowed(ast.get_utf8(i.sym(ast))),
-            JSXObject::JSXMemberExpr(member) => Cow::Owned(format!(
+    fn get_qualified_jsx_name(&self, name: JSXElementName) -> Cow<'_, str> {
+        match name {
+            JSXElementName::Ident(i) => Cow::Borrowed(self.input.iter.read_utf8(i.sym(&self.ast))),
+            JSXElementName::JSXNamespacedName(item) => Cow::Owned(format!(
+                "{}:{}",
+                self.input.iter.read_utf8(item.ns(&self.ast).sym(&self.ast)),
+                self.input
+                    .iter
+                    .read_utf8(item.name(&self.ast).sym(&self.ast))
+            )),
+            JSXElementName::JSXMemberExpr(item) => Cow::Owned(format!(
                 "{}.{}",
-                get_qualified_obj_name(ast, member.obj(ast)),
-                ast.get_utf8(member.prop(ast).sym(ast))
+                self.get_qualified_obj_name(item.obj(&self.ast)),
+                self.input
+                    .iter
+                    .read_utf8(item.prop(&self.ast).sym(&self.ast))
             )),
             #[cfg(swc_ast_unknown)]
             _ => unreachable!(),
         }
     }
-    match name {
-        JSXElementName::Ident(i) => Cow::Borrowed(ast.get_utf8(i.sym(ast))),
-        JSXElementName::JSXNamespacedName(item) => Cow::Owned(format!(
-            "{}:{}",
-            ast.get_utf8(item.ns(ast).sym(ast)),
-            ast.get_utf8(item.name(ast).sym(ast))
-        )),
-        JSXElementName::JSXMemberExpr(item) => Cow::Owned(format!(
-            "{}.{}",
-            get_qualified_obj_name(ast, item.obj(ast)),
-            ast.get_utf8(item.prop(ast).sym(ast))
-        )),
-        #[cfg(swc_ast_unknown)]
-        _ => unreachable!(),
+
+    fn get_qualified_obj_name(&self, obj: JSXObject) -> Cow<'_, str> {
+        match obj {
+            JSXObject::Ident(i) => Cow::Borrowed(self.input.iter.read_utf8(i.sym(&self.ast))),
+            JSXObject::JSXMemberExpr(member) => Cow::Owned(format!(
+                "{}.{}",
+                self.get_qualified_obj_name(member.obj(&self.ast)),
+                self.input
+                    .iter
+                    .read_utf8(member.prop(&self.ast).sym(&self.ast))
+            )),
+            #[cfg(swc_ast_unknown)]
+            _ => unreachable!(),
+        }
     }
 }

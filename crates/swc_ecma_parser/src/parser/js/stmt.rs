@@ -697,11 +697,11 @@ impl<I: Tokens> Parser<I> {
             p.do_outside_of_context(Context::AllowUsingDecl, |p| {
                 let start = l.span_lo(&p.ast);
                 let sym = l.sym(&p.ast);
-                let atom = p.ast.get_utf8(sym);
+                let atom = p.input.iter.read_utf8(sym);
 
                 let mut errors = Vec::new();
                 for lb in &p.state().labels {
-                    let lb = p.ast.get_utf8(*lb);
+                    let lb = p.input.iter.read_utf8(*lb);
                     if atom == lb {
                         errors.push(Error::new(
                             l.span(&p.ast),
@@ -733,11 +733,10 @@ impl<I: Tokens> Parser<I> {
                 }
 
                 {
-                    let pos = p
-                        .state()
-                        .labels
-                        .iter()
-                        .position(|v| p.ast.get_utf8(*v) == p.ast.get_utf8(sym));
+                    let pos =
+                        p.state().labels.iter().position(|v| {
+                            p.input.iter.read_utf8(*v) == p.input.iter.read_utf8(sym)
+                        });
                     if let Some(pos) = pos {
                         p.state_mut().labels.remove(pos);
                     }
@@ -969,8 +968,11 @@ impl<I: Tokens> Parser<I> {
             if is_break {
                 if label.is_some()
                     && !self.state().labels.iter().any(|l| {
-                        self.ast.get_utf8(*l)
-                            == self.ast.get_utf8(label.as_ref().unwrap().sym(&self.ast))
+                        self.input.iter.read_utf8(*l)
+                            == self
+                                .input
+                                .iter
+                                .read_utf8(label.as_ref().unwrap().sym(&self.ast))
                     })
                 {
                     self.emit_err(span, SyntaxError::TS1116);
@@ -981,8 +983,11 @@ impl<I: Tokens> Parser<I> {
                 self.emit_err(span, SyntaxError::TS1115);
             } else if label.is_some()
                 && !self.state().labels.iter().any(|l| {
-                    self.ast.get_utf8(*l)
-                        == self.ast.get_utf8(label.as_ref().unwrap().sym(&self.ast))
+                    self.input.iter.read_utf8(*l)
+                        == self
+                            .input
+                            .iter
+                            .read_utf8(label.as_ref().unwrap().sym(&self.ast))
                 })
             {
                 self.emit_err(span, SyntaxError::TS1107);
@@ -1123,7 +1128,7 @@ impl<I: Tokens> Parser<I> {
         };
 
         if let Expr::Ident(ref ident) = expr {
-            let ident_sym = self.ast.get_utf8(ident.sym(&self.ast));
+            let ident_sym = self.input.iter.read_utf8(ident.sym(&self.ast));
             if ident_sym == "interface" && self.input().had_line_break_before_cur() {
                 self.emit_strict_mode_err(
                     ident.span(&self.ast),
