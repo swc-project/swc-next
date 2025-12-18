@@ -408,15 +408,17 @@ impl<I: Tokens> Parser<I> {
 
         if self.input().syntax().explicit_resource_management() {
             // using foo
-            let mut maybe_using_decl = init.is_ident_ref_to(&self.ast, "using");
+            let mut maybe_using_decl = init
+                .as_ident()
+                .map(|ident| self.input.iter.read_utf8(ident.sym(&self.ast)) == "using")
+                .unwrap_or_default();
             let mut maybe_await_using_decl = false;
 
             // await using foo
             if !maybe_using_decl
-                && init
-                    .as_await()
-                    .filter(|e| e.arg(&self.ast).is_ident_ref_to(&self.ast, "using"))
-                    .is_some()
+                && let Expr::Await(init) = init
+                && let Expr::Ident(ident) = init.arg(&self.ast)
+                && self.input.iter.read_utf8(ident.sym(&self.ast)) == "using"
             {
                 maybe_using_decl = true;
                 maybe_await_using_decl = true;

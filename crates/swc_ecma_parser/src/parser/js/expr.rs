@@ -443,11 +443,17 @@ impl<I: Tokens> Parser<I> {
             // This is parsed using production MemberExpression,
             // which is left-recursive.
             let (callee, is_import) = match callee {
-                _ if callee.is_ident_ref_to(&self.ast, "import") => (
-                    self.ast
-                        .callee_import(callee.span(&self.ast), Default::default()),
-                    true,
-                ),
+                _ if callee
+                    .as_ident()
+                    .map(|ident| self.input.iter.read_utf8(ident.sym(&self.ast)) == "import")
+                    .unwrap_or_default() =>
+                {
+                    (
+                        self.ast
+                            .callee_import(callee.span(&self.ast), Default::default()),
+                        true,
+                    )
+                }
                 _ => (Callee::Expr(callee), false),
             };
             let args = self.parse_args(is_import)?;
@@ -515,7 +521,10 @@ impl<I: Tokens> Parser<I> {
     fn at_possible_async(&mut self, expr: Expr) -> bool {
         // TODO(kdy1): !this.state.containsEsc &&
         self.state().potential_arrow_start == Some(expr.span_lo(&self.ast))
-            && expr.is_ident_ref_to(&self.ast, "async")
+            && expr
+                .as_ident()
+                .map(|ident| self.input.iter.read_utf8(ident.sym(&self.ast)) == "async")
+                .unwrap_or_default()
     }
 
     fn parse_yield_expr(&mut self) -> PResult<Expr> {
