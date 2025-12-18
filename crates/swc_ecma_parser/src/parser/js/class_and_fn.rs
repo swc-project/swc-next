@@ -2,16 +2,13 @@ use swc_core::atoms::{atom, wtf8::Wtf8};
 use swc_core::common::{BytePos, Span};
 use swc_experimental_ecma_ast::*;
 
+use crate::util::invalid_class_name;
 use crate::{
     Context, PResult, Parser,
     error::SyntaxError,
     input::Tokens,
     lexer::Token,
-    parser::{
-        js::is_not_this,
-        state::State,
-        util::{IsInvalidClassName, IsSimpleParameterList},
-    },
+    parser::{js::is_not_this, state::State, util::IsSimpleParameterList},
 };
 
 struct MakeMethodArgs {
@@ -1502,9 +1499,10 @@ impl<I: Tokens> Parser<I> {
 
             let ident = p.parse_maybe_opt_binding_ident(is_ident_required, true)?;
             if p.input().syntax().typescript()
-                && let Some(span) = ident.invalid_class_name(&p.ast)
+                && let Some(ident) = ident
+                && invalid_class_name(p.input.iter.read_utf8(ident.sym(&p.ast)))
             {
-                p.emit_err(span, SyntaxError::TS2414);
+                p.emit_err(ident.span(&p.ast), SyntaxError::TS2414);
             }
 
             // let type_params = if p.input().syntax().typescript() {

@@ -1,6 +1,5 @@
 use std::marker::PhantomData;
 
-use swc_core::common::Span;
 use swc_experimental_ecma_ast::*;
 
 use crate::{Parser, input::Tokens};
@@ -41,22 +40,11 @@ impl IsSimpleParameterList for TypedSubRange<ParamOrTsParamProp> {
     }
 }
 
-pub trait IsInvalidClassName {
-    fn invalid_class_name(&self, ast: &Ast) -> Option<Span>;
-}
-
-impl IsInvalidClassName for Ident {
-    fn invalid_class_name(&self, ast: &Ast) -> Option<Span> {
-        match ast.get_utf8(self.sym(ast)) {
-            "string" | "null" | "number" | "object" | "any" | "unknown" | "boolean" | "bigint"
-            | "symbol" | "void" | "never" | "intrinsic" => Some(self.span(ast)),
-            _ => None,
-        }
-    }
-}
-impl IsInvalidClassName for Option<Ident> {
-    fn invalid_class_name(&self, ast: &Ast) -> Option<Span> {
-        self.as_ref().and_then(|i| i.invalid_class_name(ast))
+pub(crate) fn invalid_class_name(name: &str) -> bool {
+    match name {
+        "string" | "null" | "number" | "object" | "any" | "unknown" | "boolean" | "bigint"
+        | "symbol" | "void" | "never" | "intrinsic" => true,
+        _ => false,
     }
 }
 
@@ -174,23 +162,6 @@ impl<N: NodeIdTrait> ScratchIndex<N> {
     pub(crate) fn end<I: Tokens>(self, p: &mut Parser<I>) -> TypedSubRange<N> {
         let range = p.ast.add_typed_sub_range(&p.scratch[self.start..]);
         unsafe { p.scratch.set_len(self.start) };
-
-        // // Check if all nodes in range are of the same kind
-        // if cfg!(debug_assertions) {
-        //     if let Some(first) = range.first() {
-        //         let kind = p.ast.get_raw_node(first).kind;
-        //         for i in 0..range.len() {
-        //             let node = p.ast.get_raw_node(range.get(i));
-        //             debug_assert!(
-        //                 node.kind == kind,
-        //                 "expected {:?}, got {:?}",
-        //                 kind,
-        //                 node.kind
-        //             );
-        //         }
-        //     }
-        // }
-
         range
     }
 
