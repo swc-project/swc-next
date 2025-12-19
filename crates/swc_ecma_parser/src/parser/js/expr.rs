@@ -1832,7 +1832,10 @@ impl<I: Tokens> Parser<I> {
                 self.emit_err(span, SyntaxError::InvalidIdentInAsync);
             }
 
-            let sym = self.ast.add_utf8("await");
+            let sym = self
+                .input
+                .iter
+                .make_utf8_from_source(await_token.lo, await_token.hi);
             return Ok(self.ast.expr_ident(span, sym, false));
         }
 
@@ -2274,7 +2277,10 @@ impl<I: Tokens> Parser<I> {
 
         if let Some(async_span) = async_span {
             // It's a call expression
-            let sym = self.ast.add_utf8("async");
+            let sym = self
+                .input
+                .iter
+                .make_utf8_from_source(async_span.lo, async_span.hi);
             let callee = self.ast.callee_expr_ident(async_span, sym, false);
             return Ok(self.ast.expr_call_expr(
                 self.span(async_span.lo()),

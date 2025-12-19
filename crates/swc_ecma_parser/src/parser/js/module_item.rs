@@ -300,8 +300,9 @@ impl<I: Tokens> Parser<I> {
                         self,
                         orig_str.span(&self.ast),
                         SyntaxError::ImportBindingIsString(
-                            self.ast
-                                .get_wtf8(orig_str.value(&self.ast))
+                            self.input
+                                .iter
+                                .read_wtf8(orig_str.value(&self.ast))
                                 .to_string_lossy()
                                 .into()
                         )
@@ -414,6 +415,7 @@ impl<I: Tokens> Parser<I> {
         // Some("default") if default is exported from 'src'
         let mut export_default = None;
 
+        let default_token = self.input.cur_span();
         if !type_only && self.input_mut().eat(Token::Default) {
             if self.input().is(Token::At) {
                 let start = self.cur_pos();
@@ -484,7 +486,10 @@ impl<I: Tokens> Parser<I> {
                         && (peek!(self)
                             .is_some_and(|peek| matches!(peek, Token::Asterisk | Token::LBrace)))))
             {
-                let sym = self.ast.add_utf8("default");
+                let sym = self
+                    .input
+                    .iter
+                    .make_utf8_from_source(default_token.lo, default_token.hi);
                 export_default = Some(self.ast.ident(self.input().prev_span(), sym, false));
             } else {
                 let expr = self.allow_in_expr(Self::parse_assignment_expr)?;
@@ -672,8 +677,9 @@ impl<I: Tokens> Parser<I> {
                             self.emit_err(
                                 default.exported(&self.ast).span(&self.ast),
                                 SyntaxError::ExportExpectFrom(Atom::new(
-                                    self.ast
-                                        .get_utf8(default.exported(&self.ast).sym(&self.ast)),
+                                    self.input
+                                        .iter
+                                        .read_utf8(default.exported(&self.ast).sym(&self.ast)),
                                 )),
                             );
                         }
@@ -682,9 +688,11 @@ impl<I: Tokens> Parser<I> {
                                 ModuleExportName::Ident(i) => {
                                     Cow::Borrowed(self.input.iter.read_utf8(i.sym(&self.ast)))
                                 }
-                                ModuleExportName::Str(s) => {
-                                    self.ast.get_wtf8(s.value(&self.ast)).to_string_lossy()
-                                }
+                                ModuleExportName::Str(s) => self
+                                    .input
+                                    .iter
+                                    .read_wtf8(s.value(&self.ast))
+                                    .to_string_lossy(),
                                 #[cfg(swc_ast_unknown)]
                                 _ => unreachable!(),
                             };

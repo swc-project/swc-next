@@ -546,7 +546,7 @@ impl<I: Tokens> Parser<I> {
                 if p.input().is(Token::LBrace) {
                     p.parse_block(false).map(|block_stmt| {
                         if !is_simple_parameter_list
-                            && let Some(span) = has_use_strict(&p.ast, block_stmt)
+                            && let Some(span) = p.has_use_strict(block_stmt)
                         {
                             p.emit_err(span, SyntaxError::IllegalLanguageModeDirective);
                         }
@@ -637,9 +637,7 @@ impl<I: Tokens> Parser<I> {
                     return Ok(None);
                 }
                 p.allow_in_expr(|p| p.parse_block(true)).map(|block_stmt| {
-                    if !is_simple_parameter_list
-                        && let Some(span) = has_use_strict(&p.ast, block_stmt)
-                    {
+                    if !is_simple_parameter_list && let Some(span) = p.has_use_strict(block_stmt) {
                         p.emit_err(span, SyntaxError::IllegalLanguageModeDirective);
                     }
                     Some(block_stmt)
@@ -765,7 +763,7 @@ impl<I: Tokens> Parser<I> {
 
         let is_abstract = false;
         let is_override = false;
-        let readonly = None;
+        let readonly: Option<Span> = None;
         let modifier_span = None;
         let declare = declare_token.is_some();
         // while let Some(modifier) = if self.input().syntax().typescript() {
@@ -911,7 +909,10 @@ impl<I: Tokens> Parser<I> {
         let key = if let Some(readonly) = readonly
             && matches!(self.input().cur(), Token::Bang | Token::Colon)
         {
-            let sym = self.ast.add_utf8("readonly");
+            let sym = self
+                .input
+                .iter
+                .make_utf8_from_source(readonly.lo, readonly.hi);
             self.ast.key_prop_name_ident_name(readonly, sym)
         } else {
             self.parse_class_prop_name()?
@@ -1233,7 +1234,7 @@ impl<I: Tokens> Parser<I> {
         let declare_token = if declare {
             // Handle declare(){}
             if self.is_class_method() {
-                let sym = self.ast.add_utf8("declare");
+                let sym = self.input.iter.make_utf8_from_source(start, self.cur_pos());
                 let key = self.ast.key_prop_name_ident_name(self.span(start), sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
@@ -1258,7 +1259,7 @@ impl<I: Tokens> Parser<I> {
             {
                 // Property named `declare`
 
-                let sym = self.ast.add_utf8("declare");
+                let sym = self.input.iter.make_utf8_from_source(start, self.cur_pos());
                 let key = self.ast.key_prop_name_ident_name(self.span(start), sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
@@ -1305,7 +1306,10 @@ impl<I: Tokens> Parser<I> {
         if let Some(accessor_token) = accessor_token {
             // Handle accessor(){}
             if self.is_class_method() {
-                let sym = self.ast.add_utf8("accessor");
+                let sym = self
+                    .input
+                    .iter
+                    .make_utf8_from_source(accessor_token.lo, accessor_token.hi);
                 let key = self.ast.key_prop_name_ident_name(accessor_token, sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
@@ -1330,7 +1334,10 @@ impl<I: Tokens> Parser<I> {
             {
                 // Property named `accessor`
 
-                let sym = self.ast.add_utf8("accessor");
+                let sym = self
+                    .input
+                    .iter
+                    .make_utf8_from_source(accessor_token.lo, accessor_token.hi);
                 let key = self.ast.key_prop_name_ident_name(accessor_token, sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
@@ -1354,7 +1361,10 @@ impl<I: Tokens> Parser<I> {
         if let Some(static_token) = static_token {
             // Handle static(){}
             if self.is_class_method() {
-                let sym = self.ast.add_utf8("static");
+                let sym = self
+                    .input
+                    .iter
+                    .make_utf8_from_source(static_token.lo, static_token.hi);
                 let key = self.ast.key_prop_name_ident_name(static_token, sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
@@ -1384,7 +1394,10 @@ impl<I: Tokens> Parser<I> {
                 //   {}
                 let is_parsing_static_blocks = self.input().is(Token::LBrace);
                 if !is_parsing_static_blocks {
-                    let sym = self.ast.add_utf8("static");
+                    let sym = self
+                        .input
+                        .iter
+                        .make_utf8_from_source(static_token.lo, static_token.hi);
                     let key = self.ast.key_prop_name_ident_name(static_token, sym);
                     let is_optional = self.input().syntax().typescript()
                         && self.input_mut().eat(Token::QuestionMark);
@@ -1601,6 +1614,25 @@ impl<I: Tokens> Parser<I> {
             false
         }
     }
+
+    fn has_use_strict(&self, block: BlockStmt) -> Option<Span> {
+        block
+            .stmts(&self.ast)
+            .iter()
+            .map(|id| self.ast.get_node_in_sub_range(id))
+            .take_while(|s| s.can_precede_directive(&self.ast))
+            .find_map(|s| {
+                let expr = s.as_expr()?.expr(&self.ast);
+                let s = expr.as_lit()?.as_str()?;
+                let raw = s.raw(&self.ast).to_option()?;
+                let raw = self.input.iter.read_utf8(raw);
+                if raw == "\"use strict\"" || raw == "'use strict'" {
+                    Some(s.span(&self.ast))
+                } else {
+                    None
+                }
+            })
+    }
 }
 
 trait OutputType: Sized {
@@ -1708,19 +1740,4 @@ impl OutputType for Decl {
 
         Ok(ast.decl_class_decl(class.span(ast), ident, false, class))
     }
-}
-
-fn has_use_strict(ast: &Ast, block: BlockStmt) -> Option<Span> {
-    block
-        .stmts(ast)
-        .iter()
-        .map(|id| ast.get_node_in_sub_range(id))
-        .take_while(|s| s.can_precede_directive(ast))
-        .find_map(|s| {
-            if s.is_use_strict(ast) {
-                Some(s.span(ast))
-            } else {
-                None
-            }
-        })
 }

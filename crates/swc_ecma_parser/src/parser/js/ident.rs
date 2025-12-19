@@ -90,9 +90,7 @@ impl<I: Tokens> Parser<I> {
         } else if cur == Token::Ident {
             let span = self.input().cur_span();
             let word = self.input_mut().expect_word_token_and_bump();
-
             let word_str = self.input.iter.read_utf8(word);
-            let word = self.ast.add_utf8(word_str);
             if "arguments" == word_str || "eval" == word_str {
                 self.emit_strict_mode_err(span, SyntaxError::EvalAndArgumentsInStrict);
             }
@@ -121,7 +119,10 @@ impl<I: Tokens> Parser<I> {
         let cur = token_and_span.token;
         if cur == Token::This && self.input().syntax().typescript() {
             let start = token_and_span.span.lo;
-            let sym = self.ast.add_utf8("this");
+            let sym = self
+                .input
+                .iter
+                .make_utf8_from_source(token_and_span.span.lo, token_and_span.span.hi);
             let ident = self.ast.ident(self.span(start), sym, false);
             Ok(Some(ident))
         } else if cur.is_word() && !cur.is_reserved(self.ctx()) {
@@ -151,11 +152,8 @@ impl<I: Tokens> Parser<I> {
         // "package", "private", "protected", "public", "static", or "yield".
         if t == Token::Enum {
             let word = self.input_mut().expect_word_token_and_bump();
-
             let word_str = self.input.iter.read_utf8(word);
-            let word = self.ast.add_utf8(word_str);
             self.emit_err(span, SyntaxError::InvalidIdentInStrict(Atom::new(word_str)));
-
             return Ok(self.ast.ident(span, word, false));
         } else if t == Token::Yield
             || t == Token::Let
@@ -168,11 +166,8 @@ impl<I: Tokens> Parser<I> {
             || t == Token::Public
         {
             let word = self.input_mut().expect_word_token_and_bump();
-
             let word_str = self.input.iter.read_utf8(word);
-            let word = self.ast.add_utf8(word_str);
             self.emit_strict_mode_err(span, SyntaxError::InvalidIdentInStrict(Atom::new(word_str)));
-
             return Ok(self.ast.ident(span, word, false));
         };
 
@@ -202,7 +197,6 @@ impl<I: Tokens> Parser<I> {
         } else if t == Token::Ident {
             let word = self.input_mut().expect_word_token_and_bump();
             let word_str = self.input.iter.read_utf8(word);
-            let word = self.ast.add_utf8(word_str);
             if self.ctx().contains(Context::InClassField) && word_str == "arguments" {
                 self.emit_err(span, SyntaxError::ArgumentsInClassField)
             }
