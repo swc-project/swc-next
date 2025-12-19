@@ -112,6 +112,13 @@ impl<I: Tokens> Buffer<I> {
         value
     }
 
+    pub fn expect_jsx_token_value(&mut self) -> MaybeSubUtf8 {
+        let Some(crate::lexer::TokenValue::JsxText(value)) = self.iter.take_token_value() else {
+            unreachable!()
+        };
+        value
+    }
+
     pub fn expect_bigint_token_value(&mut self) -> Box<num_bigint::BigInt> {
         let Some(crate::lexer::TokenValue::BigInt(value)) = self.iter.take_token_value() else {
             unreachable!()

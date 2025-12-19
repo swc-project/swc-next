@@ -16,8 +16,10 @@ pub enum TokenValue {
     /// unknown ident, jsx name and shebang
     Word(MaybeSubUtf8),
     Template(LexResult<MaybeSubWtf8>),
-    // string, jsx text
+    // string
     Str(MaybeSubWtf8),
+    // jsx text
+    JsxText(MaybeSubUtf8),
     // regexp
     Regex(BytePos),
     Num(f64),
@@ -378,12 +380,6 @@ impl<'a> Token {
     #[inline(always)]
     pub fn take_unknown_ident_ref<'b, I: Tokens>(&'b self, buffer: &'b Buffer<I>) -> MaybeSubUtf8 {
         buffer.expect_word_token_value_ref()
-    }
-
-    #[inline(always)]
-    pub fn jsx_text(value: MaybeSubWtf8, lexer: &mut Lexer) -> Self {
-        lexer.set_token_value(Some(TokenValue::Str(value)));
-        Token::JSXText
     }
 
     #[inline(always)]

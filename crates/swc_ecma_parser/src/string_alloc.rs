@@ -108,6 +108,11 @@ impl Utf8Builder {
     pub(crate) fn finish(self, alloc: &mut StringAllocator) -> MaybeSubUtf8 {
         MaybeSubUtf8::new_from_allocated(self.start as u32, alloc.allocated_utf8.len() as u32)
     }
+
+    #[inline]
+    pub(crate) fn is_empty(&self, alloc: &StringAllocator) -> bool {
+        self.start == alloc.allocated_wtf8.len()
+    }
 }
 
 pub struct Wtf8Builder {

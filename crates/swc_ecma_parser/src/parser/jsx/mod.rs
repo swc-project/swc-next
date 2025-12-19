@@ -62,9 +62,8 @@ impl<I: Tokens> Parser<I> {
         debug_assert!(cur == Token::JSXText);
 
         let raw = self.to_utf8_ref(MaybeSubUtf8::new_from_span(self.input.cur_span()));
-        let value = self.input.expect_string_token_value();
-        let value = self.input.iter.get_maybe_sub_wtf8(value).as_str().unwrap();
-        let value = self.ast.add_utf8(value);
+        let value = self.input.expect_jsx_token_value();
+        let value = self.to_utf8_ref(value);
 
         self.input_mut().scan_jsx_token(true);
         let span = self.input().prev_span();

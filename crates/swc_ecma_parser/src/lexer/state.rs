@@ -441,7 +441,7 @@ impl Lexer<'_> {
         let start = self.input.cur_pos();
         let mut first_non_whitespace = 0;
         let mut chunk_start = start;
-        let mut value = self.string_allocator.alloc_wtf8();
+        let mut value = self.string_allocator.alloc_utf8();
 
         while let Some(ch) = self.input_mut().peek() {
             if ch == b'{' {
@@ -486,8 +486,7 @@ impl Lexer<'_> {
                 value.push_str(&mut self.string_allocator, s);
 
                 if let Ok(jsx_entity) = self.read_jsx_entity() {
-                    value.push_char(&mut self.string_allocator, jsx_entity.0);
-
+                    value.push(&mut self.string_allocator, jsx_entity.0);
                     chunk_start = self.input.cur_pos();
                 }
             } else {
@@ -496,7 +495,7 @@ impl Lexer<'_> {
         }
 
         let value = if value.is_empty(&self.string_allocator) {
-            MaybeSubWtf8::new_from_source(start, self.cur_pos())
+            MaybeSubUtf8::new_from_source(start, self.cur_pos())
         } else {
             let s = unsafe {
                 // Safety: We already checked for the range
@@ -506,7 +505,7 @@ impl Lexer<'_> {
             value.finish(&mut self.string_allocator)
         };
 
-        self.state.set_token_value(TokenValue::Str(value));
+        self.state.set_token_value(TokenValue::JsxText(value));
         Ok(Token::JSXText)
     }
 
