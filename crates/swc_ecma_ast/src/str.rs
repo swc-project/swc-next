@@ -92,6 +92,23 @@ impl Deref for Utf8Str<'_> {
     }
 }
 
+// Only use this `Hash` impl with `IdentHashMap`
+impl Hash for Utf8Str<'_> {
+    #[inline]
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        // Hash is stored in top 32 bits of `len_and_hash`.
+        // `hashbrown` only uses top 7 bits and bottom N bits of hash,
+        // where N is the exponent of number of buckets in the hash table.
+        // So just rotate by 25 bits, so 32-bit hash occupies top 7 bits
+        // and bottom 25 bits. This gives good entropy as long as HashMap
+        // contains less than 58 million entries ((1 << 25) * 7 / 8).
+        // The bits in the middle have low entropy, but that doesn't matter
+        // because `hashbrown` will ignore them anyway.
+        let hash = self.len_and_hash.rotate_left(32 - 7);
+        hasher.write_u64(hash);
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct Wtf8Str<'s> {
     ptr: NonNull<u8>,
