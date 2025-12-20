@@ -83,18 +83,18 @@ impl EsReserved for Atom {
 
 impl EsReserved for IdentName {
     fn as_str<'a>(&'a self, ast: &'a Ast) -> &'a str {
-        ast.get_utf8(self.sym(ast))
+        ast.get_utf8(self.sym(ast)).as_str()
     }
 }
 
 impl EsReserved for Ident {
     fn as_str<'a>(&'a self, ast: &'a Ast) -> &'a str {
-        ast.get_utf8(self.sym(ast))
+        ast.get_utf8(self.sym(ast)).as_str()
     }
 }
 
 impl EsReserved for BindingIdent {
     fn as_str<'a>(&'a self, ast: &'a Ast) -> &'a str {
-        ast.get_utf8(self.id(ast).sym(ast))
+        ast.get_utf8(self.id(ast).sym(ast)).as_str()
     }
 }

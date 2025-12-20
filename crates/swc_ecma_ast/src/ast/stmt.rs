@@ -162,7 +162,13 @@ impl Stmt {
             Stmt::Expr(expr) => match expr.expr(ast) {
                 Expr::Lit(Lit::Str(s)) => {
                     let raw = ast.get_optional_utf8(s.raw(ast));
-                    matches!(raw, Some(value) if value == "\"use strict\"" || value == "'use strict'")
+                    match raw {
+                        Some(value) => {
+                            let value = value.as_str();
+                            value == "\"use strict\"" || value == "'use strict'"
+                        }
+                        None => false,
+                    }
                 }
                 _ => false,
             },

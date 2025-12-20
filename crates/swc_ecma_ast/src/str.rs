@@ -1,4 +1,4 @@
-use std::{hash::Hash, marker::PhantomData, ptr::NonNull};
+use std::{hash::Hash, marker::PhantomData, ops::Deref, ptr::NonNull};
 
 use bumpalo::Bump;
 use oxc_index::IndexVec;
@@ -14,11 +14,82 @@ const ROTATE: u32 = 26;
 #[cfg(target_pointer_width = "32")]
 const ROTATE: u32 = 15;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq)]
 pub struct Utf8Str<'s> {
     ptr: NonNull<u8>,
     len_and_hash: u64,
     _marker: PhantomData<&'s ()>,
+}
+
+impl<'s> Utf8Str<'s> {
+    pub fn new(s: &str) -> Self {
+        let ptr = NonNull::from(s).cast::<u8>();
+
+        // Produce a hash of the string
+        let hash = {
+            let mut hasher = FxHasher::default();
+            s.hash(&mut hasher);
+            hasher.finish()
+        };
+
+        // `FxHasher::finish` performs a rotation.
+        // That's not what we want as we want the highest entropy bits in top 32 bits.
+        // Undo that rotation here by rotating back in the opposite direction.
+        // This code is the exact reverse of the code in `FxHasher::finish`,
+        // so compiler should see that together they make a no-op, and remove both rotations.
+        let hash = hash.rotate_right(ROTATE);
+
+        // With FxHasher, highest entropy is in top 32 bits. Clear bottom 32 bits.
+        let hash = hash & !(u32::MAX as u64);
+        // We know `s.len()` is <= u32::MAX so don't bother masking it
+        let len = s.len() as u64;
+
+        let len_and_hash = len | hash;
+
+        Self {
+            ptr,
+            len_and_hash,
+            _marker: PhantomData,
+        }
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.len_and_hash as u32 as usize
+    }
+
+    pub fn as_str(self) -> &'s str {
+        unsafe {
+            let slice = std::slice::from_raw_parts(self.ptr.as_ptr(), self.len());
+            std::str::from_utf8_unchecked(slice)
+        }
+    }
+}
+
+impl PartialEq for Utf8Str<'_> {
+    #[inline]
+    fn eq(&self, other: &Utf8Str<'_>) -> bool {
+        // Skip full string comparison unless *both* length and hash match.
+        // So we get faster `==` as well as faster hashing.
+        self.len_and_hash == other.len_and_hash && self.as_str() == other.as_str()
+    }
+}
+
+impl PartialEq<str> for Utf8Str<'_> {
+    #[inline]
+    fn eq(&self, other: &str) -> bool {
+        self.as_str() == other
+    }
+}
+
+impl Deref for Utf8Str<'_> {
+    type Target = str;
+
+    #[expect(clippy::inline_always)]
+    #[inline(always)] // Because this is a no-op
+    fn deref(&self) -> &Self::Target {
+        self.as_str()
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -26,6 +97,39 @@ pub struct Wtf8Str<'s> {
     ptr: NonNull<u8>,
     len_and_hash: u64,
     _marker: PhantomData<&'s ()>,
+}
+
+impl<'s> Wtf8Str<'s> {
+    pub fn new(s: &Wtf8) -> Self {
+        let ptr = NonNull::from(s).cast::<u8>();
+
+        // Produce a hash of the string
+        let hash = {
+            let mut hasher = FxHasher::default();
+            s.hash(&mut hasher);
+            hasher.finish()
+        };
+
+        // `FxHasher::finish` performs a rotation.
+        // That's not what we want as we want the highest entropy bits in top 32 bits.
+        // Undo that rotation here by rotating back in the opposite direction.
+        // This code is the exact reverse of the code in `FxHasher::finish`,
+        // so compiler should see that together they make a no-op, and remove both rotations.
+        let hash = hash.rotate_right(ROTATE);
+
+        // With FxHasher, highest entropy is in top 32 bits. Clear bottom 32 bits.
+        let hash = hash & !(u32::MAX as u64);
+        // We know `s.len()` is <= u32::MAX so don't bother masking it
+        let len = s.len() as u64;
+
+        let len_and_hash = len | hash;
+
+        Self {
+            ptr,
+            len_and_hash,
+            _marker: PhantomData,
+        }
+    }
 }
 
 self_cell! {
@@ -55,36 +159,7 @@ impl StringAllocator {
 
     #[inline]
     pub fn add_utf8(&mut self, s: &str) -> Utf8Ref {
-        self.with_dependent_mut(|_allocator, cell| {
-            let ptr = NonNull::from(s).cast::<u8>();
-
-            // Produce a hash of the string
-            let hash = {
-                let mut hasher = FxHasher::default();
-                s.hash(&mut hasher);
-                hasher.finish()
-            };
-
-            // `FxHasher::finish` performs a rotation.
-            // That's not what we want as we want the highest entropy bits in top 32 bits.
-            // Undo that rotation here by rotating back in the opposite direction.
-            // This code is the exact reverse of the code in `FxHasher::finish`,
-            // so compiler should see that together they make a no-op, and remove both rotations.
-            let hash = hash.rotate_right(ROTATE);
-
-            // With FxHasher, highest entropy is in top 32 bits. Clear bottom 32 bits.
-            let hash = hash & !(u32::MAX as u64);
-            // We know `s.len()` is <= u32::MAX so don't bother masking it
-            let len = s.len() as u64;
-
-            let len_and_hash = len | hash;
-
-            cell.allocated_utf8.push(Utf8Str {
-                ptr,
-                len_and_hash,
-                _marker: PhantomData,
-            })
-        })
+        self.with_dependent_mut(|_allocator, cell| cell.allocated_utf8.push(Utf8Str::new(s)))
     }
 
     #[inline]
@@ -97,36 +172,7 @@ impl StringAllocator {
 
     #[inline]
     pub fn add_wtf8(&mut self, s: &Wtf8) -> Wtf8Ref {
-        self.with_dependent_mut(|_allocator, cell| {
-            let ptr = NonNull::from(s).cast::<u8>();
-
-            // Produce a hash of the string
-            let hash = {
-                let mut hasher = FxHasher::default();
-                s.hash(&mut hasher);
-                hasher.finish()
-            };
-
-            // `FxHasher::finish` performs a rotation.
-            // That's not what we want as we want the highest entropy bits in top 32 bits.
-            // Undo that rotation here by rotating back in the opposite direction.
-            // This code is the exact reverse of the code in `FxHasher::finish`,
-            // so compiler should see that together they make a no-op, and remove both rotations.
-            let hash = hash.rotate_right(ROTATE);
-
-            // With FxHasher, highest entropy is in top 32 bits. Clear bottom 32 bits.
-            let hash = hash & !(u32::MAX as u64);
-            // We know `s.len()` is <= u32::MAX so don't bother masking it
-            let len = s.len() as u64;
-
-            let len_and_hash = len | hash;
-
-            cell.allocated_wtf8.push(Wtf8Str {
-                ptr,
-                len_and_hash,
-                _marker: PhantomData,
-            })
-        })
+        self.with_dependent_mut(|_allocator, cell| cell.allocated_wtf8.push(Wtf8Str::new(s)))
     }
 
     #[inline]
