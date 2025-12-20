@@ -304,7 +304,7 @@ impl<I: Tokens> Parser<I> {
         // set a(v){}
         // async a(){}
 
-        let ident = self.ast.get_utf8(ident_sym);
+        let ident = self.ast.get_utf8(ident_sym).as_str();
         let is_get = ident == "get";
         let is_set = ident == "set";
         let is_async = ident == "async";

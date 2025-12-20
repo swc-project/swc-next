@@ -447,6 +447,16 @@ impl Ast {
     }
 
     #[inline]
+    pub fn empty_utf8_ref(&self) -> Utf8Ref {
+        self.string_allocator.empty_utf8_ref()
+    }
+
+    #[inline]
+    pub fn into_string_allocator(self) -> StringAllocator {
+        self.string_allocator
+    }
+
+    #[inline]
     pub fn add_bigint(&mut self, big_int: BigIntValue) -> BigIntId {
         self.bigint.push(big_int)
     }
@@ -454,11 +464,6 @@ impl Ast {
     #[inline]
     pub fn get_big_int(&self, big_int_id: BigIntId) -> &BigIntValue {
         &self.bigint[big_int_id]
-    }
-
-    #[inline]
-    pub fn into_string_allocator(self) -> StringAllocator {
-        self.string_allocator
     }
 }
 

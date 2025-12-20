@@ -13,5 +13,5 @@ pub(crate) fn is_not_this(ast: &Ast, p: Param) -> bool {
         return true;
     };
 
-    ast.get_utf8(ident.id(ast).sym(ast)) != "this"
+    ast.get_utf8(ident.id(ast).sym(ast)).as_str() != "this"
 }

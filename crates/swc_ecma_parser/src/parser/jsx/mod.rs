@@ -467,27 +467,27 @@ impl<I: Tokens> Parser<I> {
 fn get_qualified_jsx_name(ast: &'_ Ast, name: JSXElementName) -> Cow<'_, str> {
     fn get_qualified_obj_name(ast: &'_ Ast, obj: JSXObject) -> Cow<'_, str> {
         match obj {
-            JSXObject::Ident(i) => Cow::Borrowed(ast.get_utf8(i.sym(ast))),
+            JSXObject::Ident(i) => Cow::Borrowed(ast.get_utf8(i.sym(ast)).as_str()),
             JSXObject::JSXMemberExpr(member) => Cow::Owned(format!(
                 "{}.{}",
                 get_qualified_obj_name(ast, member.obj(ast)),
-                ast.get_utf8(member.prop(ast).sym(ast))
+                ast.get_utf8(member.prop(ast).sym(ast)).as_str()
             )),
             #[cfg(swc_ast_unknown)]
             _ => unreachable!(),
         }
     }
     match name {
-        JSXElementName::Ident(i) => Cow::Borrowed(ast.get_utf8(i.sym(ast))),
+        JSXElementName::Ident(i) => Cow::Borrowed(ast.get_utf8(i.sym(ast)).as_str()),
         JSXElementName::JSXNamespacedName(item) => Cow::Owned(format!(
             "{}:{}",
-            ast.get_utf8(item.ns(ast).sym(ast)),
-            ast.get_utf8(item.name(ast).sym(ast))
+            ast.get_utf8(item.ns(ast).sym(ast)).as_str(),
+            ast.get_utf8(item.name(ast).sym(ast)).as_str()
         )),
         JSXElementName::JSXMemberExpr(item) => Cow::Owned(format!(
             "{}.{}",
             get_qualified_obj_name(ast, item.obj(ast)),
-            ast.get_utf8(item.prop(ast).sym(ast))
+            ast.get_utf8(item.prop(ast).sym(ast)).as_str()
         )),
         #[cfg(swc_ast_unknown)]
         _ => unreachable!(),

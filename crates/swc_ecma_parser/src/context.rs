@@ -1,3 +1,5 @@
+use swc_experimental_ecma_ast::Utf8Str;
+
 bitflags::bitflags! {
   #[derive(Debug, Clone, Copy, Default)]
   pub struct Context: u32 {
@@ -70,8 +72,8 @@ bitflags::bitflags! {
 
 impl Context {
     #[cfg_attr(not(feature = "verify"), inline(always))]
-    pub fn is_reserved_word(self, word: &str) -> bool {
-        match word {
+    pub fn is_reserved_word(self, word: Utf8Str<'_>) -> bool {
+        match word.as_str() {
             "let" => self.contains(Context::Strict),
             // SyntaxError in the module only, not in the strict.
             // ```JavaScript

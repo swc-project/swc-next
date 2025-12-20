@@ -706,7 +706,7 @@ impl<I: Tokens> Parser<I> {
                     if atom == lb {
                         errors.push(Error::new(
                             l.span(&p.ast),
-                            SyntaxError::DuplicateLabel(Atom::new(atom)),
+                            SyntaxError::DuplicateLabel(Atom::new(atom.as_str())),
                         ));
                     }
                 }
@@ -1124,7 +1124,7 @@ impl<I: Tokens> Parser<I> {
         };
 
         if let Expr::Ident(ref ident) = expr {
-            let ident_sym = self.ast.get_utf8(ident.sym(&self.ast));
+            let ident_sym = self.ast.get_utf8(ident.sym(&self.ast)).as_str();
             if ident_sym == "interface" && self.input().had_line_break_before_cur() {
                 self.emit_strict_mode_err(
                     ident.span(&self.ast),
@@ -1251,7 +1251,7 @@ impl<I: Tokens> Parser<I> {
             let atom = self.input_mut().expect_shebang_token_and_bump();
             self.to_utf8_ref(atom).into()
         } else {
-            OptionalUtf8Ref::new_none()
+            OptionalUtf8Ref::none()
         })
     }
 }

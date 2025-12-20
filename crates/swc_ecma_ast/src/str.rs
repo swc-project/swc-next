@@ -178,6 +178,7 @@ self_cell! {
 }
 
 pub struct StringAllocatorInner<'cell> {
+    empty_utf8_ref: Utf8Ref,
     allocated_utf8: IndexVec<Utf8Ref, Utf8Str<'cell>>,
     allocated_wtf8: IndexVec<Wtf8Ref, Wtf8Str<'cell>>,
 }
@@ -185,8 +186,11 @@ pub struct StringAllocatorInner<'cell> {
 impl StringAllocator {
     pub fn new_with_source_len(source_len: usize) -> Self {
         Self::new(Bump::with_capacity(source_len / 2), |_| {
+            let mut allocated_utf8 = IndexVec::new();
+            let empty_utf8_ref = allocated_utf8.push(Utf8Str::new(""));
             StringAllocatorInner {
-                allocated_utf8: IndexVec::new(),
+                empty_utf8_ref,
+                allocated_utf8,
                 allocated_wtf8: IndexVec::new(),
             }
         })
@@ -238,5 +242,10 @@ impl StringAllocator {
     pub fn get_optional_wtf8(&self, id: OptionalWtf8Ref) -> Option<Wtf8Str<'_>> {
         let id = id.to_option()?;
         Some(self.get_wtf8(id))
+    }
+
+    #[inline]
+    pub fn empty_utf8_ref(&self) -> Utf8Ref {
+        self.borrow_dependent().empty_utf8_ref
     }
 }

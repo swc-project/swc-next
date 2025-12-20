@@ -47,7 +47,7 @@ pub trait IsInvalidClassName {
 
 impl IsInvalidClassName for Ident {
     fn invalid_class_name(&self, ast: &Ast) -> Option<Span> {
-        match ast.get_utf8(self.sym(ast)) {
+        match ast.get_utf8(self.sym(ast)).as_str() {
             "string" | "null" | "number" | "object" | "any" | "unknown" | "boolean" | "bigint"
             | "symbol" | "void" | "never" | "intrinsic" => Some(self.span(ast)),
             _ => None,
