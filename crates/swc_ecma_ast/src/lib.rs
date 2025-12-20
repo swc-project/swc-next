@@ -4,7 +4,7 @@ mod ast_list;
 mod common;
 mod derive;
 mod node_id;
-mod string_allocator;
+mod str;
 mod visit;
 
 mod generated {
@@ -31,7 +31,11 @@ pub use node_id::{
     SubRange, TypedSubRange, Utf8Ref, Wtf8Ref,
 };
 
-use crate::{ast_list::NodeList, node_id::OptionalSubRange, string_allocator::StringAllocator};
+use crate::{
+    ast_list::NodeList,
+    node_id::OptionalSubRange,
+    str::{StringAllocator, Utf8Str, Wtf8Str},
+};
 
 /// AST context that stores everything about the flattening AST.
 pub struct Ast {
@@ -360,7 +364,7 @@ impl Ast {
             nodes: NodeList::default(),
             extra_data: IndexVec::new(),
             bigint: IndexVec::new(),
-            string_allocator: StringAllocator::new(source_len),
+            string_allocator: StringAllocator::new_with_source_len(source_len),
         }
     }
 
@@ -426,22 +430,22 @@ impl Ast {
     }
 
     #[inline]
-    pub fn get_utf8(&self, id: Utf8Ref) -> &str {
+    pub fn get_utf8(&self, id: Utf8Ref) -> Utf8Str<'_> {
         self.string_allocator.get_utf8(id)
     }
 
     #[inline]
-    pub fn get_optional_utf8(&self, id: OptionalUtf8Ref) -> Option<&str> {
+    pub fn get_optional_utf8(&self, id: OptionalUtf8Ref) -> Option<Utf8Str<'_>> {
         self.string_allocator.get_optional_utf8(id)
     }
 
     #[inline]
-    pub fn get_wtf8(&self, id: Wtf8Ref) -> &Wtf8 {
+    pub fn get_wtf8(&self, id: Wtf8Ref) -> Wtf8Str<'_> {
         self.string_allocator.get_wtf8(id)
     }
 
     #[inline]
-    pub fn get_optional_wtf8(&self, id: OptionalWtf8Ref) -> Option<&Wtf8> {
+    pub fn get_optional_wtf8(&self, id: OptionalWtf8Ref) -> Option<Wtf8Str<'_>> {
         self.string_allocator.get_optional_wtf8(id)
     }
 

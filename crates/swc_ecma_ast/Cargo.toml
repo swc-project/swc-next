@@ -9,8 +9,11 @@ repository.workspace  = true
 version               = "0.3.3"
 
 [dependencies]
+bumpalo          = { workspace = true }
 num-bigint       = { workspace = true }
 oxc_index        = { workspace = true }
+rustc-hash       = { workspace = true }
+self_cell        = { workspace = true }
 swc_core         = { workspace = true }
 unicode-id-start = { workspace = true }
 
