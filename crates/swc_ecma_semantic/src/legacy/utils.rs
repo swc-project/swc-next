@@ -1,15 +1,15 @@
-use swc_experimental_ecma_ast::{Ast, Expr, Ident, PropName};
+use swc_experimental_ecma_ast::{Ast, Expr, Ident, PropName, Utf8Str};
 use swc_experimental_ecma_visit::{Visit, VisitWith};
 
 pub struct DestructuringFinder<'ast> {
     ast: &'ast Ast,
-    found: Vec<&'ast str>,
+    found: Vec<Utf8Str<'ast>>,
 }
 
 pub fn find_pat_ids<'ast, N: VisitWith<DestructuringFinder<'ast>>>(
     ast: &'ast Ast,
     node: N,
-) -> Vec<&'ast str> {
+) -> Vec<Utf8Str<'ast>> {
     let mut v = DestructuringFinder {
         ast,
         found: Vec::new(),

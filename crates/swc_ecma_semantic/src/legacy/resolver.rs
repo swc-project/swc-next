@@ -217,10 +217,10 @@ struct Scope<'ast> {
     kind: ScopeKind,
 
     /// All declarations in the scope
-    declared_symbols: FxHashMap<&'ast str, DeclKind>,
+    declared_symbols: FxHashMap<Utf8Str<'ast>, DeclKind>,
 
     /// All types declared in the scope
-    declared_types: FxHashSet<&'ast str>,
+    declared_types: FxHashSet<Utf8Str<'ast>>,
 }
 
 impl Scope<'_> {
@@ -261,11 +261,11 @@ pub struct Resolver<'ast> {
 }
 
 impl<'ast> Resolver<'ast> {
-    fn is_declared(&self, symbol: &str, start_scope: ScopeId) -> Option<&DeclKind> {
+    fn is_declared(&self, symbol: Utf8Str<'ast>, start_scope: ScopeId) -> Option<&DeclKind> {
         let mut scope = Some(start_scope);
         while let Some(cur_scope) = scope {
             let cur_scope = &self.scopes[cur_scope];
-            if let Some(kind) = cur_scope.declared_symbols.get(symbol) {
+            if let Some(kind) = cur_scope.declared_symbols.get(&symbol) {
                 return Some(kind);
             }
             scope = cur_scope.parent;
@@ -310,11 +310,11 @@ impl<'ast> Resolver<'ast> {
     }
 
     /// Returns a [Mark] for an identifier reference.
-    fn mark_for_ref(&self, sym: &'ast str) -> Option<ScopeId> {
+    fn mark_for_ref(&self, sym: Utf8Str<'ast>) -> Option<ScopeId> {
         self.mark_for_ref_inner(sym, false)
     }
 
-    fn mark_for_ref_inner(&self, sym: &'ast str, stop_an_fn_scope: bool) -> Option<ScopeId> {
+    fn mark_for_ref_inner(&self, sym: Utf8Str<'ast>, stop_an_fn_scope: bool) -> Option<ScopeId> {
         // if self.config.handle_types && self.in_type {
         //     let mut mark = self.current.mark;
         //     let mut scope = Some(&self.current);
@@ -343,8 +343,8 @@ impl<'ast> Resolver<'ast> {
         let mut scope = Some(self.current);
         while let Some(cur) = scope {
             let cur_scope = &self.scopes[cur];
-            if cur_scope.declared_symbols.contains_key(sym) {
-                return match sym {
+            if cur_scope.declared_symbols.contains_key(&sym) {
+                return match sym.as_str() {
                     // https://tc39.es/ecma262/multipage/global-object.html#sec-value-properties-of-the-global-object-infinity
                     // non configurable global value
                     "undefined" | "NaN" | "Infinity"
@@ -1789,8 +1789,8 @@ struct Hoister<'resolver, 'ast> {
 
     in_catch_body: bool,
 
-    excluded_from_catch: FxHashSet<&'ast str>,
-    catch_param_decls: FxHashSet<&'ast str>,
+    excluded_from_catch: FxHashSet<Utf8Str<'ast>>,
+    catch_param_decls: FxHashSet<Utf8Str<'ast>>,
 }
 
 impl<'resolver, 'ast> Hoister<'resolver, 'ast> {
@@ -1800,7 +1800,7 @@ impl<'resolver, 'ast> Hoister<'resolver, 'ast> {
         if self.in_catch_body {
             // If we have a binding, it's different variable.
             if self.resolver.mark_for_ref_inner(sym, true).is_some()
-                && self.catch_param_decls.contains(sym)
+                && self.catch_param_decls.contains(&sym)
             {
                 return;
             }
@@ -1808,7 +1808,7 @@ impl<'resolver, 'ast> Hoister<'resolver, 'ast> {
             self.excluded_from_catch.insert(sym);
         } else {
             // Behavior is different
-            if self.catch_param_decls.contains(sym) && !self.excluded_from_catch.contains(&sym) {
+            if self.catch_param_decls.contains(&sym) && !self.excluded_from_catch.contains(&sym) {
                 return;
             }
         }
@@ -2017,7 +2017,8 @@ impl<'resolver, 'ast> Visit for Hoister<'resolver, 'ast> {
         // }
 
         if self.catch_param_decls.contains(
-            self.resolver
+            &self
+                .resolver
                 .ast
                 .get_utf8(node.ident(self.ast()).sym(self.ast())),
         ) {

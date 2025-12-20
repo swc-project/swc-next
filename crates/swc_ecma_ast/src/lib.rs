@@ -22,6 +22,7 @@ use swc_core::common::BytePos;
 use num_bigint::BigInt as BigIntValue;
 use oxc_index::IndexVec;
 
+pub use crate::str::{Utf8Str, Wtf8Str};
 pub use ast::*;
 pub use common::*;
 pub use derive::*;
@@ -31,11 +32,7 @@ pub use node_id::{
     SubRange, TypedSubRange, Utf8Ref, Wtf8Ref,
 };
 
-use crate::{
-    ast_list::NodeList,
-    node_id::OptionalSubRange,
-    str::{StringAllocator, Utf8Str, Wtf8Str},
-};
+use crate::{ast_list::NodeList, node_id::OptionalSubRange, str::StringAllocator};
 
 /// AST context that stores everything about the flattening AST.
 pub struct Ast {

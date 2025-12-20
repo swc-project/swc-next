@@ -1,4 +1,4 @@
-use std::{hash::Hash, marker::PhantomData, ops::Deref, ptr::NonNull};
+use std::{fmt::Debug, hash::Hash, marker::PhantomData, ops::Deref, ptr::NonNull};
 
 use bumpalo::Bump;
 use oxc_index::IndexVec;
@@ -89,6 +89,12 @@ impl Deref for Utf8Str<'_> {
     #[inline(always)] // Because this is a no-op
     fn deref(&self) -> &Self::Target {
         self.as_str()
+    }
+}
+
+impl Debug for Utf8Str<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self.as_str(), f)
     }
 }
 
