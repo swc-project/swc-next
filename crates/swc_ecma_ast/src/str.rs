@@ -153,6 +153,18 @@ impl<'s> Wtf8Str<'s> {
             _marker: PhantomData,
         }
     }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.len_and_hash as u32 as usize
+    }
+
+    pub fn as_wtf8(self) -> &'s Wtf8 {
+        unsafe {
+            let slice = std::slice::from_raw_parts(self.ptr.as_ptr(), self.len());
+            Wtf8::from_bytes_unchecked(slice)
+        }
+    }
 }
 
 self_cell! {
