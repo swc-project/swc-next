@@ -198,7 +198,10 @@ impl StringAllocator {
 
     #[inline]
     pub fn add_utf8(&mut self, s: &str) -> Utf8Ref {
-        self.with_dependent_mut(|_allocator, cell| cell.allocated_utf8.push(Utf8Str::new(s)))
+        self.with_dependent_mut(|allocator, cell| {
+            let s = allocator.alloc_str(s);
+            cell.allocated_utf8.push(Utf8Str::new(s))
+        })
     }
 
     #[inline]
@@ -211,7 +214,11 @@ impl StringAllocator {
 
     #[inline]
     pub fn add_wtf8(&mut self, s: &Wtf8) -> Wtf8Ref {
-        self.with_dependent_mut(|_allocator, cell| cell.allocated_wtf8.push(Wtf8Str::new(s)))
+        self.with_dependent_mut(|allocator, cell| {
+            let s = allocator.alloc_slice_copy(s.as_bytes());
+            cell.allocated_wtf8
+                .push(Wtf8Str::new(unsafe { Wtf8::from_bytes_unchecked(s) }))
+        })
     }
 
     #[inline]
