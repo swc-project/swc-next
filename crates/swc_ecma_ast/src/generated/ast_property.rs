@@ -2,7 +2,8 @@
     unused,
     clippy::useless_conversion,
     clippy::identity_op,
-    clippy::erasing_op
+    clippy::erasing_op,
+    clippy::let_and_return
 )]
 use crate::{ast::*, node_id::*};
 impl Program {
