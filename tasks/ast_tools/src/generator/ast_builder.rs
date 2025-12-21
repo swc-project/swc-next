@@ -232,9 +232,13 @@ fn generate_build_function_extra_data(
                     _ => quote!(#field_name.map(|n| n.node_id()).into()),
                 }
             }
-            AstType::Struct(_) | AstType::Enum(_) => {
+            AstType::Struct(_) => {
                 quote!( #field_name.node_id() )
             }
+            AstType::Enum(ast_enum) if ast_enum.name == "AssignTarget" => {
+                quote!( #field_name.node_id().into() )
+            }
+            AstType::Enum(_) => quote!( #field_name ),
             _ if extra_data_field == "other" => quote!( #field_name.to_extra_data() ),
             _ => quote!( #field_name.into() ),
         };

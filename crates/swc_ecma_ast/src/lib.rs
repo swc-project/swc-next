@@ -127,7 +127,7 @@ pub union NodeData {
 /// It is only access the by the property accesses of typed AST node, and the construction of typed AST is
 /// another safety guarantee.
 pub union ExtraData {
-    span: Span,
+    // Ids
     node: NodeId,
     bigint: BigIntId,
     utf8: Utf8Ref,
@@ -136,10 +136,32 @@ pub union ExtraData {
     optional_utf8: OptionalUtf8Ref,
     optional_wtf8: OptionalWtf8Ref,
 
+    // Primitives
+    span: Span,
     bool: bool,
     number: f64,
     sub_range: SubRange,
     optional_sub_range: OptionalSubRange,
+
+    // Typed enums
+    expr: Expr,
+    stmt: Stmt,
+    decl: Decl,
+    pat: Pat,
+    default_decl: DefaultDecl,
+    opt_chain_base: OptChainBase,
+    module_export_name: ModuleExportName,
+    for_head: ForHead,
+    member_prop: MemberProp,
+    super_prop: SuperProp,
+    callee: Callee,
+    block_stmt_or_expr: BlockStmtOrExpr,
+    prop_name: PropName,
+    key: Key,
+    jsx_object: JSXObject,
+    jsx_element_name: JSXElementName,
+    jsx_attr_name: JSXAttrName,
+    jsx_expr: JSXExpr,
 
     /// Any other data (usually enum) that can be representated within 8 bytes
     other: u64,

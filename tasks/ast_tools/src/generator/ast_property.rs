@@ -385,12 +385,23 @@ fn generate_extra_data_property_accessors(
                 };
                 (option_field_ident, cast_expr)
             }
-            AstType::Struct(_) | AstType::Enum(_) => {
+            AstType::Struct(_) => {
                 let field_inner_ty = field_ty.repr_ident(schema);
                 (
                     field_inner_ty.clone(),
                     quote!( unsafe { #field_inner_ty::from_node_id_unchecked(ret, ast) }),
                 )
+            }
+            AstType::Enum(ast_enum) if ast_enum.name == "AssignTarget" => {
+                let field_inner_ty = field_ty.repr_ident(schema);
+                (
+                    field_inner_ty.clone(),
+                    quote!( unsafe { #field_inner_ty::from_node_id_unchecked(ret, ast) }),
+                )
+            }
+            AstType::Enum(_) => {
+                let field_inner_ty = field_ty.repr_ident(schema);
+                (field_inner_ty.clone(), quote!(ret))
             }
             _ if extra_data_name == "other" => {
                 let field_ty = field_ty.repr_ident(schema);
@@ -420,7 +431,11 @@ fn generate_extra_data_property_accessors(
                     _ => quote!(#field_name.map(|n| n.node_id()).into()),
                 }
             }
-            AstType::Struct(_) | AstType::Enum(_) => quote!(#field_name.node_id().into()),
+            AstType::Struct(_) => quote!(#field_name.node_id().into()),
+            AstType::Enum(ast_enum) if ast_enum.name == "AssignTarget" => {
+                quote!(#field_name.node_id().into())
+            }
+            AstType::Enum(_) => quote!(#field_name),
             _ if extra_data_name == "other" => {
                 quote!(#field_name.to_extra_data())
             }

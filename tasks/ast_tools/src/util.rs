@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use convert_case::{Case, Casing};
 use phf::{Set as PhfSet, phf_set};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -25,7 +26,8 @@ pub enum InlineStorageMode {
 pub fn field_byte_size(ty: &AstType, schema: &Schema) -> Option<usize> {
     match ty {
         // NodeId types are 4 bytes (u32)
-        AstType::Struct(_) | AstType::Enum(_) => Some(4),
+        AstType::Struct(_) => Some(4),
+        AstType::Enum(_) => Some(8),
         // Vec requires SubRange (8 bytes) - too big for inline
         AstType::Vec(_) => None,
         // Option<NodeId> is 4 bytes (OptionalNodeId)
@@ -176,28 +178,39 @@ pub fn safe_ident(name: &str) -> Ident {
     }
 }
 
-pub fn map_field_type_to_extra_field<'a>(ast: &'a AstType, schema: &'a Schema) -> &'a str {
+pub fn map_field_type_to_extra_field(ast: &AstType, schema: &Schema) -> String {
     match ast {
-        AstType::Struct(_) | AstType::Enum(_) => "node",
-        AstType::Vec(_) => "sub_range",
+        AstType::Struct(_) => "node".to_owned(),
+        AstType::Enum(ast_enum) => {
+            if ast_enum.name == "AssignTarget" {
+                "node".to_owned()
+            } else {
+                ast_enum.name.to_case(Case::Snake)
+            }
+        }
+        AstType::Vec(_) => "sub_range".to_owned(),
         AstType::Option(ast_option) => {
             let inner_ty = &schema.types[ast_option.inner_type_id];
             match inner_ty {
                 AstType::Vec(_) => "optional_sub_range",
                 _ => "optional_node",
             }
+            .to_owned()
         }
-        AstType::Primitive(ast_primitive) => match ast_primitive.name {
-            "Span" => "span",
-            "Utf8Ref" => "utf8",
-            "Wtf8Ref" => "wtf8",
-            "OptionalUtf8Ref" => "optional_utf8",
-            "OptionalWtf8Ref" => "optional_wtf8",
-            "BigIntId" => "bigint",
-            "bool" => "bool",
-            "f64" => "number",
-            _ => "other",
-        },
+        AstType::Primitive(ast_primitive) => {
+            let name = match ast_primitive.name {
+                "Span" => "span",
+                "Utf8Ref" => "utf8",
+                "Wtf8Ref" => "wtf8",
+                "OptionalUtf8Ref" => "optional_utf8",
+                "OptionalWtf8Ref" => "optional_wtf8",
+                "BigIntId" => "bigint",
+                "bool" => "bool",
+                "f64" => "number",
+                _ => "other",
+            };
+            name.to_owned()
+        }
     }
 }
 
