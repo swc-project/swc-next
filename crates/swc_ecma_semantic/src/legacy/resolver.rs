@@ -135,12 +135,24 @@ pub fn resolver<'ast, N: VisitWith<Resolver<'ast>>>(root: N, ast: &'ast Ast) -> 
     let mut parent_ids = IndexVec::with_capacity(node_cap);
     parent_ids.resize(node_cap, NodeId::from_raw(0));
 
+    // Count the specified nodes to preallocate maps
+    let mut symbol_count = 0;
+    let mut block_count = 0;
+    for (_, node) in ast.nodes() {
+        match node.kind() {
+            NodeKind::Ident => symbol_count += 1,
+            NodeKind::BlockStmt => block_count += 1,
+            NodeKind::Function => block_count += 1,
+            _ => {}
+        }
+    }
+
     let mut resolver = Resolver {
         ast,
         current_node_id: NodeId::from_raw(0),
         parent_ids,
-        symbol_scopes: FxHashMap::default(),
-        block_scopes: FxHashMap::default(),
+        symbol_scopes: FxHashMap::with_capacity_and_hasher(symbol_count, Default::default()),
+        block_scopes: FxHashMap::with_capacity_and_hasher(block_count, Default::default()),
         scopes,
 
         top_level_scope_id,
