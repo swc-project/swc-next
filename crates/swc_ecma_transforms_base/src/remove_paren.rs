@@ -38,26 +38,28 @@ impl VisitMut for ParenRemover<'_> {
         self.ast
     }
 
-    fn visit_mut_expr(&mut self, node: Expr) {
+    fn visit_mut_expr(&mut self, node: Expr) -> Expr {
         node.visit_mut_children_with(self);
         if let Expr::Paren(expr) = node {
             let paren_span = expr.span(self.ast);
             let inner_expr = expr.expr(self.ast);
             let expr_span = inner_expr.span(self.ast);
-            self.ast.replace_node(node, inner_expr);
             self.span_map.insert(expr_span, paren_span);
+            return inner_expr;
         }
+        node
     }
 
-    fn visit_mut_simple_assign_target(&mut self, node: SimpleAssignTarget) {
+    fn visit_mut_simple_assign_target(&mut self, node: SimpleAssignTarget) -> SimpleAssignTarget {
         node.visit_mut_children_with(self);
         if let SimpleAssignTarget::Paren(expr) = node {
             let paren_expr = expr.span(self.ast);
             let inner_expr = expr.expr(self.ast);
             let expr_span = inner_expr.span(self.ast);
             let target = SimpleAssignTarget::try_from_expr(self.ast, inner_expr).unwrap();
-            self.ast.replace_node(node, target);
             self.span_map.insert(expr_span, paren_expr);
+            return target;
         }
+        node
     }
 }

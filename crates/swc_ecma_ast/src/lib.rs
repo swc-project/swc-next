@@ -498,7 +498,9 @@ impl Ast {
 
     #[inline]
     pub fn replace_node<T: NodeIdTrait>(&mut self, dest: T, source: T) {
-        self.nodes.replace_node(dest.node_id(), source.node_id());
+        if source.node_id() != dest.node_id() {
+            self.nodes.replace_node(dest.node_id(), source.node_id());
+        }
     }
 
     #[inline]
