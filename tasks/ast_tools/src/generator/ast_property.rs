@@ -378,6 +378,9 @@ fn generate_extra_data_property_accessors(
                     AstType::Vec(_) => {
                         quote!(unsafe { ret.cast_to_typed().to_option() })
                     }
+                    AstType::Enum(_) => {
+                        quote!(ret)
+                    }
                     _ => {
                         let field_inner_ident = schema.types[ast.inner_type_id].repr_ident(schema);
                         quote!( ret.map(|id| unsafe { #field_inner_ident::from_node_id_unchecked(id, ast) }) )
@@ -428,6 +431,7 @@ fn generate_extra_data_property_accessors(
                 let inner_ty = &schema.types[ast_option.inner_type_id];
                 match inner_ty {
                     AstType::Vec(_) => quote!(#field_name.map(|n| n.inner).into()),
+                    AstType::Enum(_) => quote!(#field_name),
                     _ => quote!(#field_name.map(|n| n.node_id()).into()),
                 }
             }

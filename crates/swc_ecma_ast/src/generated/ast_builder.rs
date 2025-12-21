@@ -444,7 +444,7 @@ impl Ast {
             node: local.node_id(),
         });
         let _f1 = self.add_extra(ExtraData {
-            optional_node: imported.map(|n| n.node_id()).into(),
+            optional_module_export_name: imported,
         });
         let _f2 = self.add_extra(ExtraData {
             bool: is_type_only.into(),
@@ -614,7 +614,7 @@ impl Ast {
             module_export_name: orig,
         });
         let _f1 = self.add_extra(ExtraData {
-            optional_node: exported.map(|n| n.node_id()).into(),
+            optional_module_export_name: exported,
         });
         let _f2 = self.add_extra(ExtraData {
             bool: is_type_only.into(),
@@ -895,12 +895,13 @@ impl Ast {
     }
     #[inline]
     pub fn return_stmt(&mut self, span: Span, arg: Option<Expr>) -> ReturnStmt {
+        let _f0 = self.add_extra(ExtraData { optional_expr: arg });
         ReturnStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::ReturnStmt,
             inline_data: 0u32.into(),
             data: NodeData {
-                inline_data: crate::OptionalNodeId::from(arg.map(|n| n.node_id())).into_raw(),
+                extra_data_start: _f0,
             },
         }))
     }
@@ -945,9 +946,7 @@ impl Ast {
     pub fn if_stmt(&mut self, span: Span, test: Expr, cons: Stmt, alt: Option<Stmt>) -> IfStmt {
         let _f0 = self.add_extra(ExtraData { expr: test });
         let _f1 = self.add_extra(ExtraData { stmt: cons });
-        let _f2 = self.add_extra(ExtraData {
-            optional_node: alt.map(|n| n.node_id()).into(),
-        });
+        let _f2 = self.add_extra(ExtraData { optional_stmt: alt });
         IfStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::IfStmt,
@@ -1051,13 +1050,13 @@ impl Ast {
         body: Stmt,
     ) -> ForStmt {
         let _f0 = self.add_extra(ExtraData {
-            optional_node: init.map(|n| n.node_id()).into(),
+            optional_var_decl_or_expr: init,
         });
         let _f1 = self.add_extra(ExtraData {
-            optional_node: test.map(|n| n.node_id()).into(),
+            optional_expr: test,
         });
         let _f2 = self.add_extra(ExtraData {
-            optional_node: update.map(|n| n.node_id()).into(),
+            optional_expr: update,
         });
         let _f3 = self.add_extra(ExtraData { stmt: body });
         ForStmt(self.add_node(AstNode {
@@ -1115,7 +1114,7 @@ impl Ast {
         cons: TypedSubRange<Stmt>,
     ) -> SwitchCase {
         let _f0 = self.add_extra(ExtraData {
-            optional_node: test.map(|n| n.node_id()).into(),
+            optional_expr: test,
         });
         let _f1 = self.add_extra(ExtraData {
             sub_range: cons.into(),
@@ -1132,7 +1131,7 @@ impl Ast {
     #[inline]
     pub fn catch_clause(&mut self, span: Span, param: Option<Pat>, body: BlockStmt) -> CatchClause {
         let _f0 = self.add_extra(ExtraData {
-            optional_node: param.map(|n| n.node_id()).into(),
+            optional_pat: param,
         });
         let _f1 = self.add_extra(ExtraData {
             node: body.node_id(),
@@ -1981,7 +1980,7 @@ impl Ast {
     pub fn var_declarator(&mut self, span: Span, name: Pat, init: Option<Expr>) -> VarDeclarator {
         let _f0 = self.add_extra(ExtraData { pat: name });
         let _f1 = self.add_extra(ExtraData {
-            optional_node: init.map(|n| n.node_id()).into(),
+            optional_expr: init,
         });
         VarDeclarator(self.add_node(AstNode {
             span,
@@ -2587,13 +2586,16 @@ impl Ast {
     }
     #[inline]
     pub fn yield_expr(&mut self, span: Span, arg: Option<Expr>, delegate: bool) -> YieldExpr {
+        let _f0 = self.add_extra(ExtraData { optional_expr: arg });
+        let _f1 = self.add_extra(ExtraData {
+            bool: delegate.into(),
+        });
         YieldExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::YieldExpr,
-            inline_data: (0u32 | delegate as u32).into(),
+            inline_data: 0u32.into(),
             data: NodeData {
-                inline_data: 0u32
-                    | crate::OptionalNodeId::from(arg.map(|n| n.node_id())).into_raw(),
+                extra_data_start: _f0,
             },
         }))
     }
@@ -3654,7 +3656,7 @@ impl Ast {
             sub_range: body.into(),
         });
         let _f2 = self.add_extra(ExtraData {
-            optional_node: super_class.map(|n| n.node_id()).into(),
+            optional_expr: super_class,
         });
         let _f3 = self.add_extra(ExtraData {
             bool: is_abstract.into(),
@@ -3767,7 +3769,7 @@ impl Ast {
     ) -> ClassProp {
         let _f0 = self.add_extra(ExtraData { prop_name: key });
         let _f1 = self.add_extra(ExtraData {
-            optional_node: value.map(|n| n.node_id()).into(),
+            optional_expr: value,
         });
         let _f2 = self.add_extra(ExtraData {
             bool: is_static.into(),
@@ -3797,7 +3799,7 @@ impl Ast {
             node: key.node_id(),
         });
         let _f1 = self.add_extra(ExtraData {
-            optional_node: value.map(|n| n.node_id()).into(),
+            optional_expr: value,
         });
         let _f2 = self.add_extra(ExtraData {
             bool: is_static.into(),
@@ -3961,7 +3963,7 @@ impl Ast {
     ) -> AutoAccessor {
         let _f0 = self.add_extra(ExtraData { key });
         let _f1 = self.add_extra(ExtraData {
-            optional_node: value.map(|n| n.node_id()).into(),
+            optional_expr: value,
         });
         let _f2 = self.add_extra(ExtraData {
             bool: is_static.into(),
@@ -4068,7 +4070,7 @@ impl Ast {
     ) -> SetterProp {
         let _f0 = self.add_extra(ExtraData { prop_name: key });
         let _f1 = self.add_extra(ExtraData {
-            optional_node: this_param.map(|n| n.node_id()).into(),
+            optional_pat: this_param,
         });
         let _f2 = self.add_extra(ExtraData { pat: param });
         let _f3 = self.add_extra(ExtraData {
@@ -4527,7 +4529,7 @@ impl Ast {
             node: key.node_id(),
         });
         let _f1 = self.add_extra(ExtraData {
-            optional_node: value.map(|n| n.node_id()).into(),
+            optional_expr: value,
         });
         AssignPatProp(self.add_node(AstNode {
             span,
@@ -5166,7 +5168,7 @@ impl Ast {
             jsx_attr_name: name,
         });
         let _f1 = self.add_extra(ExtraData {
-            optional_node: value.map(|n| n.node_id()).into(),
+            optional_jsx_attr_value: value,
         });
         JSXAttr(self.add_node(AstNode {
             span,

@@ -163,6 +163,13 @@ pub union ExtraData {
     jsx_attr_name: JSXAttrName,
     jsx_expr: JSXExpr,
 
+    optional_expr: Option<Expr>,
+    optional_pat: Option<Pat>,
+    optional_stmt: Option<Stmt>,
+    optional_module_export_name: Option<ModuleExportName>,
+    optional_var_decl_or_expr: Option<VarDeclOrExpr>,
+    optional_jsx_attr_value: Option<JSXAttrValue>,
+
     /// Any other data (usually enum) that can be representated within 8 bytes
     other: u64,
 }

@@ -36,8 +36,10 @@ pub fn field_byte_size(ty: &AstType, schema: &Schema) -> Option<usize> {
             match inner_ty {
                 // Option<Vec<T>> needs OptionalSubRange - too big
                 AstType::Vec(_) => None,
-                // Option<Struct/Enum> is OptionalNodeId (4 bytes)
-                AstType::Struct(_) | AstType::Enum(_) => Some(4),
+                // Option<Struct> is OptionalNodeId (4 bytes)
+                AstType::Struct(_) => Some(4),
+                // Option<Enum> is 8 bytes
+                AstType::Enum(_) => Some(8),
                 // Option<Primitive> not supported for inline storage
                 // (would need proper niche optimization handling)
                 _ => None,
@@ -192,10 +194,16 @@ pub fn map_field_type_to_extra_field(ast: &AstType, schema: &Schema) -> String {
         AstType::Option(ast_option) => {
             let inner_ty = &schema.types[ast_option.inner_type_id];
             match inner_ty {
-                AstType::Vec(_) => "optional_sub_range",
-                _ => "optional_node",
+                AstType::Vec(_) => "optional_sub_range".to_owned(),
+                AstType::Enum(ast_enum) => {
+                    if ast_enum.name == "AssignTarget" {
+                        "optional_node".to_owned()
+                    } else {
+                        format!("optional_{}", ast_enum.name.to_case(Case::Snake))
+                    }
+                }
+                _ => "optional_node".to_owned(),
             }
-            .to_owned()
         }
         AstType::Primitive(ast_primitive) => {
             let name = match ast_primitive.name {

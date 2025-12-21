@@ -229,6 +229,7 @@ fn generate_build_function_extra_data(
                 let inner_ty = &schema.types[ast_option.inner_type_id];
                 match inner_ty {
                     AstType::Vec(_) => quote!(#field_name.map(|n| n.inner).into()),
+                    AstType::Enum(_) => quote!(#field_name),
                     _ => quote!(#field_name.map(|n| n.node_id()).into()),
                 }
             }
