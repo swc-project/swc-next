@@ -85,7 +85,7 @@ fn generate_build_function_inline(
                 #ret_ty(self.add_node(AstNode {
                     span,
                     kind: NodeKind::#ret_ty,
-                    inline_data: 0u32.into(),
+                    _inline_data: 0u32.into(),
                     data: NodeData { empty: () },
                 }))
             }
@@ -115,7 +115,7 @@ fn generate_build_function_inline(
                     self.add_node(AstNode {
                         span,
                         kind: NodeKind::#ret_ty,
-                        inline_data: 0u32.into(),
+                        _inline_data: 0u32.into(),
                         data: NodeData {
                             inline_data: #u32_value,
                         },
@@ -180,7 +180,7 @@ fn generate_build_function_inline(
                         self.add_node(AstNode {
                             span,
                             kind: NodeKind::#ret_ty,
-                            inline_data: 0u32.into(),
+                            _inline_data: 0u32.into(),
                             data: NodeData {
                                 inline_data: 0u32 #pack_u32,
                             },
@@ -197,7 +197,7 @@ fn generate_build_function_inline(
                         self.add_node(AstNode {
                             span,
                             kind: NodeKind::#ret_ty,
-                            inline_data: (0u32 #pack_u24).into(),
+                            _inline_data: (0u32 #pack_u24).into(),
                             data: NodeData {
                                 inline_data: 0u32 #pack_u32,
                             },
@@ -264,7 +264,7 @@ fn generate_build_function_extra_data(
                 self.add_node(AstNode {
                     span,
                     kind: NodeKind::#ret_ty,
-                    inline_data: 0u32.into(),
+                    _inline_data: 0u32.into(),
                     data: NodeData {
                         #node_data
                     },

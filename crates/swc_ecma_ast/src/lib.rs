@@ -82,7 +82,7 @@ impl From<U24> for u32 {
 pub struct AstNode {
     span: Span,
     kind: NodeKind,
-    inline_data: U24,
+    _inline_data: U24,
     data: NodeData,
 }
 

@@ -36,7 +36,7 @@ impl Ast {
         Module(self.add_node(AstNode {
             span,
             kind: NodeKind::Module,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -58,7 +58,7 @@ impl Ast {
         Script(self.add_node(AstNode {
             span,
             kind: NodeKind::Script,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -397,7 +397,7 @@ impl Ast {
         ImportDecl(self.add_node(AstNode {
             span,
             kind: NodeKind::ImportDecl,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -452,7 +452,7 @@ impl Ast {
         ImportNamedSpecifier(self.add_node(AstNode {
             span,
             kind: NodeKind::ImportNamedSpecifier,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -463,7 +463,7 @@ impl Ast {
         ImportDefaultSpecifier(self.add_node(AstNode {
             span,
             kind: NodeKind::ImportDefaultSpecifier,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 inline_data: local.node_id().index() as u32,
             },
@@ -474,7 +474,7 @@ impl Ast {
         ImportStarAsSpecifier(self.add_node(AstNode {
             span,
             kind: NodeKind::ImportStarAsSpecifier,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 inline_data: local.node_id().index() as u32,
             },
@@ -486,7 +486,7 @@ impl Ast {
         ExportDecl(self.add_node(AstNode {
             span,
             kind: NodeKind::ExportDecl,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -516,7 +516,7 @@ impl Ast {
         NamedExport(self.add_node(AstNode {
             span,
             kind: NodeKind::NamedExport,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -563,7 +563,7 @@ impl Ast {
         ExportNamespaceSpecifier(self.add_node(AstNode {
             span,
             kind: NodeKind::ExportNamespaceSpecifier,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -596,7 +596,7 @@ impl Ast {
         ExportDefaultSpecifier(self.add_node(AstNode {
             span,
             kind: NodeKind::ExportDefaultSpecifier,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 inline_data: exported.node_id().index() as u32,
             },
@@ -622,7 +622,7 @@ impl Ast {
         ExportNamedSpecifier(self.add_node(AstNode {
             span,
             kind: NodeKind::ExportNamedSpecifier,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -634,7 +634,7 @@ impl Ast {
         ExportDefaultDecl(self.add_node(AstNode {
             span,
             kind: NodeKind::ExportDefaultDecl,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -664,7 +664,7 @@ impl Ast {
         ExportDefaultExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::ExportDefaultExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -690,7 +690,7 @@ impl Ast {
         ExportAll(self.add_node(AstNode {
             span,
             kind: NodeKind::ExportAll,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -704,7 +704,7 @@ impl Ast {
         BlockStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::BlockStmt,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -856,7 +856,7 @@ impl Ast {
         ExprStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::ExprStmt,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -867,7 +867,7 @@ impl Ast {
         EmptyStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::EmptyStmt,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData { empty: () },
         }))
     }
@@ -876,7 +876,7 @@ impl Ast {
         DebuggerStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::DebuggerStmt,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData { empty: () },
         }))
     }
@@ -887,7 +887,7 @@ impl Ast {
         WithStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::WithStmt,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -899,7 +899,7 @@ impl Ast {
         ReturnStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::ReturnStmt,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -914,7 +914,7 @@ impl Ast {
         LabeledStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::LabeledStmt,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -925,7 +925,7 @@ impl Ast {
         BreakStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::BreakStmt,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 inline_data: crate::OptionalNodeId::from(label.map(|n| n.node_id())).into_raw(),
             },
@@ -936,7 +936,7 @@ impl Ast {
         ContinueStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::ContinueStmt,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 inline_data: crate::OptionalNodeId::from(label.map(|n| n.node_id())).into_raw(),
             },
@@ -950,7 +950,7 @@ impl Ast {
         IfStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::IfStmt,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -970,7 +970,7 @@ impl Ast {
         SwitchStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::SwitchStmt,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -982,7 +982,7 @@ impl Ast {
         ThrowStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::ThrowStmt,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -1008,7 +1008,7 @@ impl Ast {
         TryStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::TryStmt,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -1021,7 +1021,7 @@ impl Ast {
         WhileStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::WhileStmt,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -1034,7 +1034,7 @@ impl Ast {
         DoWhileStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::DoWhileStmt,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -1062,7 +1062,7 @@ impl Ast {
         ForStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::ForStmt,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -1076,7 +1076,7 @@ impl Ast {
         ForInStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::ForInStmt,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -1100,7 +1100,7 @@ impl Ast {
         ForOfStmt(self.add_node(AstNode {
             span,
             kind: NodeKind::ForOfStmt,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -1122,7 +1122,7 @@ impl Ast {
         SwitchCase(self.add_node(AstNode {
             span,
             kind: NodeKind::SwitchCase,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -1139,7 +1139,7 @@ impl Ast {
         CatchClause(self.add_node(AstNode {
             span,
             kind: NodeKind::CatchClause,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -1918,7 +1918,7 @@ impl Ast {
         FnDecl(self.add_node(AstNode {
             span,
             kind: NodeKind::FnDecl,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -1944,7 +1944,7 @@ impl Ast {
         ClassDecl(self.add_node(AstNode {
             span,
             kind: NodeKind::ClassDecl,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -1970,7 +1970,7 @@ impl Ast {
         VarDecl(self.add_node(AstNode {
             span,
             kind: NodeKind::VarDecl,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -1985,7 +1985,7 @@ impl Ast {
         VarDeclarator(self.add_node(AstNode {
             span,
             kind: NodeKind::VarDeclarator,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2007,7 +2007,7 @@ impl Ast {
         UsingDecl(self.add_node(AstNode {
             span,
             kind: NodeKind::UsingDecl,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2213,7 +2213,7 @@ impl Ast {
         ThisExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::ThisExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData { empty: () },
         }))
     }
@@ -2229,7 +2229,7 @@ impl Ast {
         ArrayLit(self.add_node(AstNode {
             span,
             kind: NodeKind::ArrayLit,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2243,7 +2243,7 @@ impl Ast {
         ObjectLit(self.add_node(AstNode {
             span,
             kind: NodeKind::ObjectLit,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2325,7 +2325,7 @@ impl Ast {
         SpreadElement(self.add_node(AstNode {
             span,
             kind: NodeKind::SpreadElement,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2340,7 +2340,7 @@ impl Ast {
         UnaryExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::UnaryExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2358,7 +2358,7 @@ impl Ast {
         UpdateExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::UpdateExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2374,7 +2374,7 @@ impl Ast {
         BinExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::BinExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2391,7 +2391,7 @@ impl Ast {
         FnExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::FnExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2408,7 +2408,7 @@ impl Ast {
         ClassExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::ClassExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2432,7 +2432,7 @@ impl Ast {
         AssignExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::AssignExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2445,7 +2445,7 @@ impl Ast {
         MemberExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::MemberExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2472,7 +2472,7 @@ impl Ast {
         SuperPropExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::SuperPropExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2494,7 +2494,7 @@ impl Ast {
         CondExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::CondExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2514,7 +2514,7 @@ impl Ast {
         CallExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::CallExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2534,7 +2534,7 @@ impl Ast {
         NewExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::NewExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2548,7 +2548,7 @@ impl Ast {
         SeqExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::SeqExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2578,7 +2578,7 @@ impl Ast {
         ArrowExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::ArrowExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2593,7 +2593,7 @@ impl Ast {
         YieldExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::YieldExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2604,7 +2604,7 @@ impl Ast {
         MetaPropExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::MetaPropExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 inline_data: kind as u32,
             },
@@ -2616,7 +2616,7 @@ impl Ast {
         AwaitExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::AwaitExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2638,7 +2638,7 @@ impl Ast {
         Tpl(self.add_node(AstNode {
             span,
             kind: NodeKind::Tpl,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2653,7 +2653,7 @@ impl Ast {
         TaggedTpl(self.add_node(AstNode {
             span,
             kind: NodeKind::TaggedTpl,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2675,7 +2675,7 @@ impl Ast {
         TplElement(self.add_node(AstNode {
             span,
             kind: NodeKind::TplElement,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2687,7 +2687,7 @@ impl Ast {
         ParenExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::ParenExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -2987,7 +2987,7 @@ impl Ast {
         Super(self.add_node(AstNode {
             span,
             kind: NodeKind::Super,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData { empty: () },
         }))
     }
@@ -2996,7 +2996,7 @@ impl Ast {
         Import(self.add_node(AstNode {
             span,
             kind: NodeKind::Import,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 inline_data: phase as u32,
             },
@@ -3016,7 +3016,7 @@ impl Ast {
         ExprOrSpread(self.add_node(AstNode {
             span,
             kind: NodeKind::ExprOrSpread,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -3027,7 +3027,7 @@ impl Ast {
         SpreadDot3Token(self.add_node(AstNode {
             span,
             kind: NodeKind::SpreadDot3Token,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData { empty: () },
         }))
     }
@@ -3529,7 +3529,7 @@ impl Ast {
         OptChainExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::OptChainExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -3567,7 +3567,7 @@ impl Ast {
         OptCall(self.add_node(AstNode {
             span,
             kind: NodeKind::OptCall,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -3578,7 +3578,7 @@ impl Ast {
         Invalid(self.add_node(AstNode {
             span,
             kind: NodeKind::Invalid,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData { empty: () },
         }))
     }
@@ -3610,7 +3610,7 @@ impl Ast {
         Function(self.add_node(AstNode {
             span,
             kind: NodeKind::Function,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -3625,7 +3625,7 @@ impl Ast {
         Param(self.add_node(AstNode {
             span,
             kind: NodeKind::Param,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -3664,7 +3664,7 @@ impl Ast {
         Class(self.add_node(AstNode {
             span,
             kind: NodeKind::Class,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -3780,7 +3780,7 @@ impl Ast {
         ClassProp(self.add_node(AstNode {
             span,
             kind: NodeKind::ClassProp,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -3810,7 +3810,7 @@ impl Ast {
         PrivateProp(self.add_node(AstNode {
             span,
             kind: NodeKind::PrivateProp,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -3838,7 +3838,7 @@ impl Ast {
         ClassMethod(self.add_node(AstNode {
             span,
             kind: NodeKind::ClassMethod,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -3868,7 +3868,7 @@ impl Ast {
         PrivateMethod(self.add_node(AstNode {
             span,
             kind: NodeKind::PrivateMethod,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -3892,7 +3892,7 @@ impl Ast {
         Constructor(self.add_node(AstNode {
             span,
             kind: NodeKind::Constructor,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -3904,7 +3904,7 @@ impl Ast {
         Decorator(self.add_node(AstNode {
             span,
             kind: NodeKind::Decorator,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -3915,7 +3915,7 @@ impl Ast {
         StaticBlock(self.add_node(AstNode {
             span,
             kind: NodeKind::StaticBlock,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 inline_data: body.node_id().index() as u32,
             },
@@ -3974,7 +3974,7 @@ impl Ast {
         AutoAccessor(self.add_node(AstNode {
             span,
             kind: NodeKind::AutoAccessor,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4018,7 +4018,7 @@ impl Ast {
         KeyValueProp(self.add_node(AstNode {
             span,
             kind: NodeKind::KeyValueProp,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4033,7 +4033,7 @@ impl Ast {
         AssignProp(self.add_node(AstNode {
             span,
             kind: NodeKind::AssignProp,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4053,7 +4053,7 @@ impl Ast {
         GetterProp(self.add_node(AstNode {
             span,
             kind: NodeKind::GetterProp,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4079,7 +4079,7 @@ impl Ast {
         SetterProp(self.add_node(AstNode {
             span,
             kind: NodeKind::SetterProp,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4094,7 +4094,7 @@ impl Ast {
         MethodProp(self.add_node(AstNode {
             span,
             kind: NodeKind::MethodProp,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4131,7 +4131,7 @@ impl Ast {
         ComputedPropName(self.add_node(AstNode {
             span,
             kind: NodeKind::ComputedPropName,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4422,7 +4422,7 @@ impl Ast {
         ArrayPat(self.add_node(AstNode {
             span,
             kind: NodeKind::ArrayPat,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4444,7 +4444,7 @@ impl Ast {
         ObjectPat(self.add_node(AstNode {
             span,
             kind: NodeKind::ObjectPat,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4457,7 +4457,7 @@ impl Ast {
         AssignPat(self.add_node(AstNode {
             span,
             kind: NodeKind::AssignPat,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4472,7 +4472,7 @@ impl Ast {
         RestPat(self.add_node(AstNode {
             span,
             kind: NodeKind::RestPat,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4512,7 +4512,7 @@ impl Ast {
         KeyValuePatProp(self.add_node(AstNode {
             span,
             kind: NodeKind::KeyValuePatProp,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4534,7 +4534,7 @@ impl Ast {
         AssignPatProp(self.add_node(AstNode {
             span,
             kind: NodeKind::AssignPatProp,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4549,7 +4549,7 @@ impl Ast {
         Ident(self.add_node(AstNode {
             span,
             kind: NodeKind::Ident,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4561,7 +4561,7 @@ impl Ast {
         IdentName(self.add_node(AstNode {
             span,
             kind: NodeKind::IdentName,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4573,7 +4573,7 @@ impl Ast {
         PrivateName(self.add_node(AstNode {
             span,
             kind: NodeKind::PrivateName,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4584,7 +4584,7 @@ impl Ast {
         BindingIdent(self.add_node(AstNode {
             span,
             kind: NodeKind::BindingIdent,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 inline_data: id.node_id().index() as u32,
             },
@@ -4623,7 +4623,7 @@ impl Ast {
         Str(self.add_node(AstNode {
             span,
             kind: NodeKind::Str,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4634,7 +4634,7 @@ impl Ast {
         Bool(self.add_node(AstNode {
             span,
             kind: NodeKind::Bool,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 inline_data: value as u32,
             },
@@ -4645,7 +4645,7 @@ impl Ast {
         Null(self.add_node(AstNode {
             span,
             kind: NodeKind::Null,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData { empty: () },
         }))
     }
@@ -4660,7 +4660,7 @@ impl Ast {
         Number(self.add_node(AstNode {
             span,
             kind: NodeKind::Number,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4677,7 +4677,7 @@ impl Ast {
         BigInt(self.add_node(AstNode {
             span,
             kind: NodeKind::BigInt,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4690,7 +4690,7 @@ impl Ast {
         Regex(self.add_node(AstNode {
             span,
             kind: NodeKind::Regex,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4723,7 +4723,7 @@ impl Ast {
         JSXMemberExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::JSXMemberExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4743,7 +4743,7 @@ impl Ast {
         JSXNamespacedName(self.add_node(AstNode {
             span,
             kind: NodeKind::JSXNamespacedName,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -4754,7 +4754,7 @@ impl Ast {
         JSXEmptyExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::JSXEmptyExpr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData { empty: () },
         }))
     }
@@ -4764,7 +4764,7 @@ impl Ast {
         JSXExprContainer(self.add_node(AstNode {
             span,
             kind: NodeKind::JSXExprContainer,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -5066,7 +5066,7 @@ impl Ast {
         JSXSpreadChild(self.add_node(AstNode {
             span,
             kind: NodeKind::JSXSpreadChild,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -5119,7 +5119,7 @@ impl Ast {
         JSXOpeningElement(self.add_node(AstNode {
             span,
             kind: NodeKind::JSXOpeningElement,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -5151,7 +5151,7 @@ impl Ast {
         JSXClosingElement(self.add_node(AstNode {
             span,
             kind: NodeKind::JSXClosingElement,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -5173,7 +5173,7 @@ impl Ast {
         JSXAttr(self.add_node(AstNode {
             span,
             kind: NodeKind::JSXAttr,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -5232,7 +5232,7 @@ impl Ast {
         JSXText(self.add_node(AstNode {
             span,
             kind: NodeKind::JSXText,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -5258,7 +5258,7 @@ impl Ast {
         JSXElement(self.add_node(AstNode {
             span,
             kind: NodeKind::JSXElement,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -5329,7 +5329,7 @@ impl Ast {
         JSXFragment(self.add_node(AstNode {
             span,
             kind: NodeKind::JSXFragment,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -5340,7 +5340,7 @@ impl Ast {
         JSXOpeningFragment(self.add_node(AstNode {
             span,
             kind: NodeKind::JSXOpeningFragment,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData { empty: () },
         }))
     }
@@ -5349,7 +5349,7 @@ impl Ast {
         JSXClosingFragment(self.add_node(AstNode {
             span,
             kind: NodeKind::JSXClosingFragment,
-            inline_data: 0u32.into(),
+            _inline_data: 0u32.into(),
             data: NodeData { empty: () },
         }))
     }
