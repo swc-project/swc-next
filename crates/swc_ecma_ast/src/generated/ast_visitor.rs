@@ -1,5 +1,5 @@
 #![allow(unused, clippy::useless_conversion, clippy::single_match)]
-use crate::{Ast, ast::*, node_id::*};
+use crate::{Ast, NodeKind, ast::*, node_id::*};
 use swc_core::common::Span;
 pub trait Visit {
     fn ast(&self) -> &Ast;
@@ -3141,9 +3141,9 @@ impl<V: ?Sized + Visit> VisitWith<V> for Option<JSXClosingElement> {
 pub trait VisitMut {
     fn ast(&mut self) -> &mut Ast;
     #[inline]
-    fn enter_node(&mut self, node_id: NodeId) {}
+    fn enter_node(&mut self, node_kind: NodeKind) {}
     #[inline]
-    fn leave_node(&mut self, node_id: NodeId) {}
+    fn leave_node(&mut self, node_kind: NodeKind) {}
     #[inline]
     fn visit_mut_program(&mut self, node: Program) -> Program {
         <Program as VisitMutWith<Self>>::visit_mut_children_with(node, self);
@@ -3151,16 +3151,16 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_module(&mut self, node: Module) -> Module {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::Module);
         <Module as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::Module);
         node
     }
     #[inline]
     fn visit_mut_script(&mut self, node: Script) -> Script {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::Script);
         <Script as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::Script);
         node
     }
     #[inline]
@@ -3175,9 +3175,9 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_import_decl(&mut self, node: ImportDecl) -> ImportDecl {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ImportDecl);
         <ImportDecl as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ImportDecl);
         node
     }
     #[inline]
@@ -3190,9 +3190,9 @@ pub trait VisitMut {
         &mut self,
         node: ImportNamedSpecifier,
     ) -> ImportNamedSpecifier {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ImportNamedSpecifier);
         <ImportNamedSpecifier as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ImportNamedSpecifier);
         node
     }
     #[inline]
@@ -3200,9 +3200,9 @@ pub trait VisitMut {
         &mut self,
         node: ImportDefaultSpecifier,
     ) -> ImportDefaultSpecifier {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ImportDefaultSpecifier);
         <ImportDefaultSpecifier as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ImportDefaultSpecifier);
         node
     }
     #[inline]
@@ -3210,23 +3210,23 @@ pub trait VisitMut {
         &mut self,
         node: ImportStarAsSpecifier,
     ) -> ImportStarAsSpecifier {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ImportStarAsSpecifier);
         <ImportStarAsSpecifier as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ImportStarAsSpecifier);
         node
     }
     #[inline]
     fn visit_mut_export_decl(&mut self, node: ExportDecl) -> ExportDecl {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ExportDecl);
         <ExportDecl as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ExportDecl);
         node
     }
     #[inline]
     fn visit_mut_named_export(&mut self, node: NamedExport) -> NamedExport {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::NamedExport);
         <NamedExport as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::NamedExport);
         node
     }
     #[inline]
@@ -3239,9 +3239,9 @@ pub trait VisitMut {
         &mut self,
         node: ExportNamespaceSpecifier,
     ) -> ExportNamespaceSpecifier {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ExportNamespaceSpecifier);
         <ExportNamespaceSpecifier as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ExportNamespaceSpecifier);
         node
     }
     #[inline]
@@ -3254,9 +3254,9 @@ pub trait VisitMut {
         &mut self,
         node: ExportDefaultSpecifier,
     ) -> ExportDefaultSpecifier {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ExportDefaultSpecifier);
         <ExportDefaultSpecifier as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ExportDefaultSpecifier);
         node
     }
     #[inline]
@@ -3264,16 +3264,16 @@ pub trait VisitMut {
         &mut self,
         node: ExportNamedSpecifier,
     ) -> ExportNamedSpecifier {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ExportNamedSpecifier);
         <ExportNamedSpecifier as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ExportNamedSpecifier);
         node
     }
     #[inline]
     fn visit_mut_export_default_decl(&mut self, node: ExportDefaultDecl) -> ExportDefaultDecl {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ExportDefaultDecl);
         <ExportDefaultDecl as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ExportDefaultDecl);
         node
     }
     #[inline]
@@ -3283,23 +3283,23 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_export_default_expr(&mut self, node: ExportDefaultExpr) -> ExportDefaultExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ExportDefaultExpr);
         <ExportDefaultExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ExportDefaultExpr);
         node
     }
     #[inline]
     fn visit_mut_export_all(&mut self, node: ExportAll) -> ExportAll {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ExportAll);
         <ExportAll as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ExportAll);
         node
     }
     #[inline]
     fn visit_mut_block_stmt(&mut self, node: BlockStmt) -> BlockStmt {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::BlockStmt);
         <BlockStmt as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::BlockStmt);
         node
     }
     #[inline]
@@ -3309,135 +3309,135 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_expr_stmt(&mut self, node: ExprStmt) -> ExprStmt {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ExprStmt);
         <ExprStmt as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ExprStmt);
         node
     }
     #[inline]
     fn visit_mut_empty_stmt(&mut self, node: EmptyStmt) -> EmptyStmt {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::EmptyStmt);
         <EmptyStmt as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::EmptyStmt);
         node
     }
     #[inline]
     fn visit_mut_debugger_stmt(&mut self, node: DebuggerStmt) -> DebuggerStmt {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::DebuggerStmt);
         <DebuggerStmt as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::DebuggerStmt);
         node
     }
     #[inline]
     fn visit_mut_with_stmt(&mut self, node: WithStmt) -> WithStmt {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::WithStmt);
         <WithStmt as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::WithStmt);
         node
     }
     #[inline]
     fn visit_mut_return_stmt(&mut self, node: ReturnStmt) -> ReturnStmt {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ReturnStmt);
         <ReturnStmt as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ReturnStmt);
         node
     }
     #[inline]
     fn visit_mut_labeled_stmt(&mut self, node: LabeledStmt) -> LabeledStmt {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::LabeledStmt);
         <LabeledStmt as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::LabeledStmt);
         node
     }
     #[inline]
     fn visit_mut_break_stmt(&mut self, node: BreakStmt) -> BreakStmt {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::BreakStmt);
         <BreakStmt as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::BreakStmt);
         node
     }
     #[inline]
     fn visit_mut_continue_stmt(&mut self, node: ContinueStmt) -> ContinueStmt {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ContinueStmt);
         <ContinueStmt as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ContinueStmt);
         node
     }
     #[inline]
     fn visit_mut_if_stmt(&mut self, node: IfStmt) -> IfStmt {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::IfStmt);
         <IfStmt as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::IfStmt);
         node
     }
     #[inline]
     fn visit_mut_switch_stmt(&mut self, node: SwitchStmt) -> SwitchStmt {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::SwitchStmt);
         <SwitchStmt as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::SwitchStmt);
         node
     }
     #[inline]
     fn visit_mut_throw_stmt(&mut self, node: ThrowStmt) -> ThrowStmt {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ThrowStmt);
         <ThrowStmt as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ThrowStmt);
         node
     }
     #[inline]
     fn visit_mut_try_stmt(&mut self, node: TryStmt) -> TryStmt {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::TryStmt);
         <TryStmt as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::TryStmt);
         node
     }
     #[inline]
     fn visit_mut_while_stmt(&mut self, node: WhileStmt) -> WhileStmt {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::WhileStmt);
         <WhileStmt as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::WhileStmt);
         node
     }
     #[inline]
     fn visit_mut_do_while_stmt(&mut self, node: DoWhileStmt) -> DoWhileStmt {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::DoWhileStmt);
         <DoWhileStmt as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::DoWhileStmt);
         node
     }
     #[inline]
     fn visit_mut_for_stmt(&mut self, node: ForStmt) -> ForStmt {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ForStmt);
         <ForStmt as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ForStmt);
         node
     }
     #[inline]
     fn visit_mut_for_in_stmt(&mut self, node: ForInStmt) -> ForInStmt {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ForInStmt);
         <ForInStmt as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ForInStmt);
         node
     }
     #[inline]
     fn visit_mut_for_of_stmt(&mut self, node: ForOfStmt) -> ForOfStmt {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ForOfStmt);
         <ForOfStmt as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ForOfStmt);
         node
     }
     #[inline]
     fn visit_mut_switch_case(&mut self, node: SwitchCase) -> SwitchCase {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::SwitchCase);
         <SwitchCase as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::SwitchCase);
         node
     }
     #[inline]
     fn visit_mut_catch_clause(&mut self, node: CatchClause) -> CatchClause {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::CatchClause);
         <CatchClause as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::CatchClause);
         node
     }
     #[inline]
@@ -3457,37 +3457,37 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_fn_decl(&mut self, node: FnDecl) -> FnDecl {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::FnDecl);
         <FnDecl as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::FnDecl);
         node
     }
     #[inline]
     fn visit_mut_class_decl(&mut self, node: ClassDecl) -> ClassDecl {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ClassDecl);
         <ClassDecl as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ClassDecl);
         node
     }
     #[inline]
     fn visit_mut_var_decl(&mut self, node: VarDecl) -> VarDecl {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::VarDecl);
         <VarDecl as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::VarDecl);
         node
     }
     #[inline]
     fn visit_mut_var_declarator(&mut self, node: VarDeclarator) -> VarDeclarator {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::VarDeclarator);
         <VarDeclarator as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::VarDeclarator);
         node
     }
     #[inline]
     fn visit_mut_using_decl(&mut self, node: UsingDecl) -> UsingDecl {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::UsingDecl);
         <UsingDecl as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::UsingDecl);
         node
     }
     #[inline]
@@ -3497,23 +3497,23 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_this_expr(&mut self, node: ThisExpr) -> ThisExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ThisExpr);
         <ThisExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ThisExpr);
         node
     }
     #[inline]
     fn visit_mut_array_lit(&mut self, node: ArrayLit) -> ArrayLit {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ArrayLit);
         <ArrayLit as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ArrayLit);
         node
     }
     #[inline]
     fn visit_mut_object_lit(&mut self, node: ObjectLit) -> ObjectLit {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ObjectLit);
         <ObjectLit as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ObjectLit);
         node
     }
     #[inline]
@@ -3523,58 +3523,58 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_spread_element(&mut self, node: SpreadElement) -> SpreadElement {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::SpreadElement);
         <SpreadElement as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::SpreadElement);
         node
     }
     #[inline]
     fn visit_mut_unary_expr(&mut self, node: UnaryExpr) -> UnaryExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::UnaryExpr);
         <UnaryExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::UnaryExpr);
         node
     }
     #[inline]
     fn visit_mut_update_expr(&mut self, node: UpdateExpr) -> UpdateExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::UpdateExpr);
         <UpdateExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::UpdateExpr);
         node
     }
     #[inline]
     fn visit_mut_bin_expr(&mut self, node: BinExpr) -> BinExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::BinExpr);
         <BinExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::BinExpr);
         node
     }
     #[inline]
     fn visit_mut_fn_expr(&mut self, node: FnExpr) -> FnExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::FnExpr);
         <FnExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::FnExpr);
         node
     }
     #[inline]
     fn visit_mut_class_expr(&mut self, node: ClassExpr) -> ClassExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ClassExpr);
         <ClassExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ClassExpr);
         node
     }
     #[inline]
     fn visit_mut_assign_expr(&mut self, node: AssignExpr) -> AssignExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::AssignExpr);
         <AssignExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::AssignExpr);
         node
     }
     #[inline]
     fn visit_mut_member_expr(&mut self, node: MemberExpr) -> MemberExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::MemberExpr);
         <MemberExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::MemberExpr);
         node
     }
     #[inline]
@@ -3584,9 +3584,9 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_super_prop_expr(&mut self, node: SuperPropExpr) -> SuperPropExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::SuperPropExpr);
         <SuperPropExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::SuperPropExpr);
         node
     }
     #[inline]
@@ -3596,86 +3596,86 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_cond_expr(&mut self, node: CondExpr) -> CondExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::CondExpr);
         <CondExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::CondExpr);
         node
     }
     #[inline]
     fn visit_mut_call_expr(&mut self, node: CallExpr) -> CallExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::CallExpr);
         <CallExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::CallExpr);
         node
     }
     #[inline]
     fn visit_mut_new_expr(&mut self, node: NewExpr) -> NewExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::NewExpr);
         <NewExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::NewExpr);
         node
     }
     #[inline]
     fn visit_mut_seq_expr(&mut self, node: SeqExpr) -> SeqExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::SeqExpr);
         <SeqExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::SeqExpr);
         node
     }
     #[inline]
     fn visit_mut_arrow_expr(&mut self, node: ArrowExpr) -> ArrowExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ArrowExpr);
         <ArrowExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ArrowExpr);
         node
     }
     #[inline]
     fn visit_mut_yield_expr(&mut self, node: YieldExpr) -> YieldExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::YieldExpr);
         <YieldExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::YieldExpr);
         node
     }
     #[inline]
     fn visit_mut_meta_prop_expr(&mut self, node: MetaPropExpr) -> MetaPropExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::MetaPropExpr);
         <MetaPropExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::MetaPropExpr);
         node
     }
     #[inline]
     fn visit_mut_await_expr(&mut self, node: AwaitExpr) -> AwaitExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::AwaitExpr);
         <AwaitExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::AwaitExpr);
         node
     }
     #[inline]
     fn visit_mut_tpl(&mut self, node: Tpl) -> Tpl {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::Tpl);
         <Tpl as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::Tpl);
         node
     }
     #[inline]
     fn visit_mut_tagged_tpl(&mut self, node: TaggedTpl) -> TaggedTpl {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::TaggedTpl);
         <TaggedTpl as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::TaggedTpl);
         node
     }
     #[inline]
     fn visit_mut_tpl_element(&mut self, node: TplElement) -> TplElement {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::TplElement);
         <TplElement as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::TplElement);
         node
     }
     #[inline]
     fn visit_mut_paren_expr(&mut self, node: ParenExpr) -> ParenExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ParenExpr);
         <ParenExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ParenExpr);
         node
     }
     #[inline]
@@ -3685,30 +3685,30 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_super(&mut self, node: Super) -> Super {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::Super);
         <Super as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::Super);
         node
     }
     #[inline]
     fn visit_mut_import(&mut self, node: Import) -> Import {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::Import);
         <Import as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::Import);
         node
     }
     #[inline]
     fn visit_mut_expr_or_spread(&mut self, node: ExprOrSpread) -> ExprOrSpread {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ExprOrSpread);
         <ExprOrSpread as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ExprOrSpread);
         node
     }
     #[inline]
     fn visit_mut_spread_dot_3_token(&mut self, node: SpreadDot3Token) -> SpreadDot3Token {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::SpreadDot3Token);
         <SpreadDot3Token as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::SpreadDot3Token);
         node
     }
     #[inline]
@@ -3733,9 +3733,9 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_opt_chain_expr(&mut self, node: OptChainExpr) -> OptChainExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::OptChainExpr);
         <OptChainExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::OptChainExpr);
         node
     }
     #[inline]
@@ -3745,30 +3745,30 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_opt_call(&mut self, node: OptCall) -> OptCall {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::OptCall);
         <OptCall as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::OptCall);
         node
     }
     #[inline]
     fn visit_mut_invalid(&mut self, node: Invalid) -> Invalid {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::Invalid);
         <Invalid as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::Invalid);
         node
     }
     #[inline]
     fn visit_mut_function(&mut self, node: Function) -> Function {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::Function);
         <Function as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::Function);
         node
     }
     #[inline]
     fn visit_mut_param(&mut self, node: Param) -> Param {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::Param);
         <Param as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::Param);
         node
     }
     #[inline]
@@ -3778,9 +3778,9 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_class(&mut self, node: Class) -> Class {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::Class);
         <Class as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::Class);
         node
     }
     #[inline]
@@ -3790,51 +3790,51 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_class_prop(&mut self, node: ClassProp) -> ClassProp {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ClassProp);
         <ClassProp as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ClassProp);
         node
     }
     #[inline]
     fn visit_mut_private_prop(&mut self, node: PrivateProp) -> PrivateProp {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::PrivateProp);
         <PrivateProp as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::PrivateProp);
         node
     }
     #[inline]
     fn visit_mut_class_method(&mut self, node: ClassMethod) -> ClassMethod {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ClassMethod);
         <ClassMethod as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ClassMethod);
         node
     }
     #[inline]
     fn visit_mut_private_method(&mut self, node: PrivateMethod) -> PrivateMethod {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::PrivateMethod);
         <PrivateMethod as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::PrivateMethod);
         node
     }
     #[inline]
     fn visit_mut_constructor(&mut self, node: Constructor) -> Constructor {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::Constructor);
         <Constructor as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::Constructor);
         node
     }
     #[inline]
     fn visit_mut_decorator(&mut self, node: Decorator) -> Decorator {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::Decorator);
         <Decorator as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::Decorator);
         node
     }
     #[inline]
     fn visit_mut_static_block(&mut self, node: StaticBlock) -> StaticBlock {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::StaticBlock);
         <StaticBlock as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::StaticBlock);
         node
     }
     #[inline]
@@ -3844,9 +3844,9 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_auto_accessor(&mut self, node: AutoAccessor) -> AutoAccessor {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::AutoAccessor);
         <AutoAccessor as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::AutoAccessor);
         node
     }
     #[inline]
@@ -3856,37 +3856,37 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_key_value_prop(&mut self, node: KeyValueProp) -> KeyValueProp {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::KeyValueProp);
         <KeyValueProp as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::KeyValueProp);
         node
     }
     #[inline]
     fn visit_mut_assign_prop(&mut self, node: AssignProp) -> AssignProp {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::AssignProp);
         <AssignProp as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::AssignProp);
         node
     }
     #[inline]
     fn visit_mut_getter_prop(&mut self, node: GetterProp) -> GetterProp {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::GetterProp);
         <GetterProp as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::GetterProp);
         node
     }
     #[inline]
     fn visit_mut_setter_prop(&mut self, node: SetterProp) -> SetterProp {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::SetterProp);
         <SetterProp as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::SetterProp);
         node
     }
     #[inline]
     fn visit_mut_method_prop(&mut self, node: MethodProp) -> MethodProp {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::MethodProp);
         <MethodProp as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::MethodProp);
         node
     }
     #[inline]
@@ -3896,9 +3896,9 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_computed_prop_name(&mut self, node: ComputedPropName) -> ComputedPropName {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ComputedPropName);
         <ComputedPropName as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ComputedPropName);
         node
     }
     #[inline]
@@ -3908,30 +3908,30 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_array_pat(&mut self, node: ArrayPat) -> ArrayPat {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ArrayPat);
         <ArrayPat as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ArrayPat);
         node
     }
     #[inline]
     fn visit_mut_object_pat(&mut self, node: ObjectPat) -> ObjectPat {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::ObjectPat);
         <ObjectPat as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::ObjectPat);
         node
     }
     #[inline]
     fn visit_mut_assign_pat(&mut self, node: AssignPat) -> AssignPat {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::AssignPat);
         <AssignPat as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::AssignPat);
         node
     }
     #[inline]
     fn visit_mut_rest_pat(&mut self, node: RestPat) -> RestPat {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::RestPat);
         <RestPat as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::RestPat);
         node
     }
     #[inline]
@@ -3941,44 +3941,44 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_key_value_pat_prop(&mut self, node: KeyValuePatProp) -> KeyValuePatProp {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::KeyValuePatProp);
         <KeyValuePatProp as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::KeyValuePatProp);
         node
     }
     #[inline]
     fn visit_mut_assign_pat_prop(&mut self, node: AssignPatProp) -> AssignPatProp {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::AssignPatProp);
         <AssignPatProp as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::AssignPatProp);
         node
     }
     #[inline]
     fn visit_mut_ident(&mut self, node: Ident) -> Ident {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::Ident);
         <Ident as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::Ident);
         node
     }
     #[inline]
     fn visit_mut_ident_name(&mut self, node: IdentName) -> IdentName {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::IdentName);
         <IdentName as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::IdentName);
         node
     }
     #[inline]
     fn visit_mut_private_name(&mut self, node: PrivateName) -> PrivateName {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::PrivateName);
         <PrivateName as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::PrivateName);
         node
     }
     #[inline]
     fn visit_mut_binding_ident(&mut self, node: BindingIdent) -> BindingIdent {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::BindingIdent);
         <BindingIdent as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::BindingIdent);
         node
     }
     #[inline]
@@ -3988,44 +3988,44 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_str(&mut self, node: Str) -> Str {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::Str);
         <Str as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::Str);
         node
     }
     #[inline]
     fn visit_mut_bool(&mut self, node: Bool) -> Bool {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::Bool);
         <Bool as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::Bool);
         node
     }
     #[inline]
     fn visit_mut_null(&mut self, node: Null) -> Null {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::Null);
         <Null as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::Null);
         node
     }
     #[inline]
     fn visit_mut_number(&mut self, node: Number) -> Number {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::Number);
         <Number as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::Number);
         node
     }
     #[inline]
     fn visit_mut_big_int(&mut self, node: BigInt) -> BigInt {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::BigInt);
         <BigInt as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::BigInt);
         node
     }
     #[inline]
     fn visit_mut_regex(&mut self, node: Regex) -> Regex {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::Regex);
         <Regex as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::Regex);
         node
     }
     #[inline]
@@ -4035,30 +4035,30 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_jsx_member_expr(&mut self, node: JSXMemberExpr) -> JSXMemberExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::JSXMemberExpr);
         <JSXMemberExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::JSXMemberExpr);
         node
     }
     #[inline]
     fn visit_mut_jsx_namespaced_name(&mut self, node: JSXNamespacedName) -> JSXNamespacedName {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::JSXNamespacedName);
         <JSXNamespacedName as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::JSXNamespacedName);
         node
     }
     #[inline]
     fn visit_mut_jsx_empty_expr(&mut self, node: JSXEmptyExpr) -> JSXEmptyExpr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::JSXEmptyExpr);
         <JSXEmptyExpr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::JSXEmptyExpr);
         node
     }
     #[inline]
     fn visit_mut_jsx_expr_container(&mut self, node: JSXExprContainer) -> JSXExprContainer {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::JSXExprContainer);
         <JSXExprContainer as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::JSXExprContainer);
         node
     }
     #[inline]
@@ -4068,9 +4068,9 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_jsx_spread_child(&mut self, node: JSXSpreadChild) -> JSXSpreadChild {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::JSXSpreadChild);
         <JSXSpreadChild as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::JSXSpreadChild);
         node
     }
     #[inline]
@@ -4080,9 +4080,9 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_jsx_opening_element(&mut self, node: JSXOpeningElement) -> JSXOpeningElement {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::JSXOpeningElement);
         <JSXOpeningElement as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::JSXOpeningElement);
         node
     }
     #[inline]
@@ -4092,16 +4092,16 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_jsx_closing_element(&mut self, node: JSXClosingElement) -> JSXClosingElement {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::JSXClosingElement);
         <JSXClosingElement as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::JSXClosingElement);
         node
     }
     #[inline]
     fn visit_mut_jsx_attr(&mut self, node: JSXAttr) -> JSXAttr {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::JSXAttr);
         <JSXAttr as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::JSXAttr);
         node
     }
     #[inline]
@@ -4116,16 +4116,16 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_jsx_text(&mut self, node: JSXText) -> JSXText {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::JSXText);
         <JSXText as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::JSXText);
         node
     }
     #[inline]
     fn visit_mut_jsx_element(&mut self, node: JSXElement) -> JSXElement {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::JSXElement);
         <JSXElement as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::JSXElement);
         node
     }
     #[inline]
@@ -4135,23 +4135,23 @@ pub trait VisitMut {
     }
     #[inline]
     fn visit_mut_jsx_fragment(&mut self, node: JSXFragment) -> JSXFragment {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::JSXFragment);
         <JSXFragment as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::JSXFragment);
         node
     }
     #[inline]
     fn visit_mut_jsx_opening_fragment(&mut self, node: JSXOpeningFragment) -> JSXOpeningFragment {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::JSXOpeningFragment);
         <JSXOpeningFragment as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::JSXOpeningFragment);
         node
     }
     #[inline]
     fn visit_mut_jsx_closing_fragment(&mut self, node: JSXClosingFragment) -> JSXClosingFragment {
-        self.enter_node(node.node_id());
+        self.enter_node(NodeKind::JSXClosingFragment);
         <JSXClosingFragment as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        self.leave_node(node.node_id());
+        self.leave_node(NodeKind::JSXClosingFragment);
         node
     }
     #[inline]
