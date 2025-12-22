@@ -85,7 +85,7 @@ fn generate_build_function_inline(
                 #ret_ty(self.add_node(AstNode {
                     span,
                     kind: NodeKind::#ret_ty,
-                    _inline_data: 0u32.into(),
+                    inline_data: 0u32.into(),
                     data: NodeData { empty: () },
                 }))
             }
@@ -115,7 +115,7 @@ fn generate_build_function_inline(
                     self.add_node(AstNode {
                         span,
                         kind: NodeKind::#ret_ty,
-                        _inline_data: 0u32.into(),
+                        inline_data: 0u32.into(),
                         data: NodeData {
                             inline_data: #u32_value,
                         },
@@ -180,7 +180,7 @@ fn generate_build_function_inline(
                         self.add_node(AstNode {
                             span,
                             kind: NodeKind::#ret_ty,
-                            _inline_data: 0u32.into(),
+                            inline_data: 0u32.into(),
                             data: NodeData {
                                 inline_data: 0u32 #pack_u32,
                             },
@@ -197,9 +197,82 @@ fn generate_build_function_inline(
                         self.add_node(AstNode {
                             span,
                             kind: NodeKind::#ret_ty,
-                            _inline_data: (0u32 #pack_u24).into(),
+                            inline_data: (0u32 #pack_u24).into(),
                             data: NodeData {
                                 inline_data: 0u32 #pack_u32,
+                            },
+                        })
+                    )
+                }
+            }
+        }
+        InlineStorageMode::Partial => {
+            // Partial mode:
+            // 1. Pack u24 fields (bytes 4-6) into inline_data
+            // 2. Generate ExtraData entries for non-inlined fields
+            // 3. Store the first extra data index in data.extra_data_start
+
+            let mut add_extra_data = TokenStream::new();
+            let mut first_extra_data_id: Option<syn::Ident> = None;
+            let mut current_extra_data_index = 0usize;
+
+            for (index, field) in ast.fields.iter().enumerate() {
+                // Skip inlined fields
+                if layout.fields.iter().any(|(idx, _, _)| *idx == index) {
+                    continue;
+                }
+
+                let extra_data_id = format_ident!("_f{}", current_extra_data_index);
+                if first_extra_data_id.is_none() {
+                    first_extra_data_id = Some(extra_data_id.clone());
+                }
+
+                current_extra_data_index += 1;
+
+                let field_name = format_ident!("{}", field.name);
+                let field_ty = &schema.types[field.type_id];
+                let extra_data_field = map_field_type_to_extra_field(field_ty, schema);
+                let field_value = match field_ty {
+                    AstType::Option(ast_option) => {
+                        let inner_ty = &schema.types[ast_option.inner_type_id];
+                        match inner_ty {
+                            AstType::Vec(_) => quote!(#field_name.map(|n| n.inner).into()),
+                            AstType::Enum(_) => quote!(#field_name),
+                            _ => quote!(#field_name.map(|n| n.node_id()).into()),
+                        }
+                    }
+                    AstType::Struct(_) => {
+                        quote!( #field_name.node_id() )
+                    }
+                    AstType::Enum(ast_enum) if ast_enum.name == "AssignTarget" => {
+                        quote!( #field_name.node_id().into() )
+                    }
+                    AstType::Enum(_) => quote!( #field_name ),
+                    _ if extra_data_field == "other" => quote!( #field_name.to_extra_data() ),
+                    _ => quote!( #field_name.into() ),
+                };
+                let extra_data_field = format_ident!("{}", extra_data_field);
+
+                add_extra_data.extend(quote! {
+                    let #extra_data_id = self.add_extra(ExtraData { #extra_data_field: #field_value });
+                });
+            }
+
+            let start_id =
+                first_extra_data_id.expect("Partial mode must have at least one non-inlined field");
+
+            quote! {
+                #[inline]
+                pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
+                    #add_extra_data
+
+                    #ret_ty(
+                        self.add_node(AstNode {
+                            span,
+                            kind: NodeKind::#ret_ty,
+                            inline_data: (0u32 #pack_u24).into(),
+                            data: NodeData {
+                                extra_data_start: #start_id,
                             },
                         })
                     )
@@ -264,7 +337,7 @@ fn generate_build_function_extra_data(
                 self.add_node(AstNode {
                     span,
                     kind: NodeKind::#ret_ty,
-                    _inline_data: 0u32.into(),
+                    inline_data: 0u32.into(),
                     data: NodeData {
                         #node_data
                     },

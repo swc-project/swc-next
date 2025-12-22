@@ -2,3 +2,4 @@
 *.json.gz
 callgrind*
 input.*
+profile.json

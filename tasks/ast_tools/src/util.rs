@@ -20,6 +20,8 @@ pub enum InlineStorageMode {
     FourBytes,
     /// Total size >4 and ≤7 bytes: use NodeData.inline_data + AstNode.inline_data
     Full,
+    /// Total size >7 bytes: some fields in AstNode.inline_data (U24), others in ExtraData
+    Partial,
 }
 
 /// Get the byte size for a field type, or None if not inlinable
@@ -53,6 +55,7 @@ pub fn field_byte_size(ty: &AstType, schema: &Schema) -> Option<usize> {
                 "u16" | "i16" => Some(2),
                 "u32" | "i32" => Some(4),
                 "BigIntId" => Some(4),
+                "Utf8Ref" | "Wtf8Ref" | "OptionalUtf8Ref" | "OptionalWtf8Ref" => Some(8),
                 // For other types, check if they have #[repr(uN)] in schema
                 name => schema.repr_sizes.get(name).copied(),
             }
@@ -89,7 +92,43 @@ pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<Inlin
     }
 
     if total_size > INLINE_TOTAL_SIZE {
-        return None; // Exceeds 7 bytes
+        // Try partial inlining: pack small fields into u24 (bytes 4-6)
+        // Fields that don't fit will go to ExtraData
+
+        // Re-use sorted fields logic but only target u24
+        let mut sorted_fields = field_info.clone();
+        sorted_fields.sort_by(|a, b| b.1.cmp(&a.1));
+
+        let mut u24_fields: Vec<(usize, usize)> = Vec::new();
+        let mut u24_used = 0usize;
+
+        for (field_index, size) in sorted_fields {
+            if u24_used + size <= INLINE_DATA_U24_SIZE {
+                u24_fields.push((field_index, size));
+                u24_used += size;
+            }
+        }
+
+        if u24_fields.is_empty() {
+            return None; // No fields fit in u24, fall back to full ExtraData
+        }
+
+        // Layout for Partial mode
+        let mut fields: Vec<(usize, usize, usize)> = Vec::new(); // (field_index, offset, size)
+        let mut current_offset = INLINE_DATA_U32_SIZE; // Start at offset 4
+
+        for (field_index, size) in &u24_fields {
+            fields.push((*field_index, current_offset, *size));
+            current_offset += size;
+        }
+
+        // Sort fields back by index
+        fields.sort_by_key(|(field_index, _, _)| *field_index);
+
+        return Some(InlineLayout {
+            mode: InlineStorageMode::Partial,
+            fields,
+        });
     }
 
     // Sort fields by size (descending) for better packing, but keep original indices
