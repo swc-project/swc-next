@@ -41,7 +41,7 @@ impl VisitMut for ParenRemover<'_> {
     }
 
     fn visit_mut_expr(&mut self, node: Expr) -> Expr {
-        node.visit_mut_children_with(self);
+        let node = node.visit_mut_children_with(self);
         if let Expr::Paren(expr) = node {
             let paren_span = expr.span(self.ast);
             let inner_expr = expr.expr(self.ast);
@@ -55,7 +55,7 @@ impl VisitMut for ParenRemover<'_> {
     }
 
     fn visit_mut_simple_assign_target(&mut self, node: SimpleAssignTarget) -> SimpleAssignTarget {
-        node.visit_mut_children_with(self);
+        let node = node.visit_mut_children_with(self);
         if let SimpleAssignTarget::Paren(expr) = node {
             let paren_expr = expr.span(self.ast);
             let inner_expr = expr.expr(self.ast);

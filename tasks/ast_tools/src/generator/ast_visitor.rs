@@ -55,7 +55,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     #[inline]
                     fn #fn_mut_name(&mut self, node: #ty_ident) -> #ty_ident {
                         self.enter_node(NodeKind::#node_kind);
-                        <#ty_ident as VisitMutWith<Self>>::visit_mut_children_with(node, self);
+                        let node = <#ty_ident as VisitMutWith<Self>>::visit_mut_children_with(node, self);
                         self.leave_node(NodeKind::#node_kind);
                         node
                     }
@@ -101,8 +101,9 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                             <V as VisitMut>::#fn_mut_name(visitor, self)
                         }
 
-                        fn visit_mut_children_with(self, visitor: &mut V) {
+                        fn visit_mut_children_with(self, visitor: &mut V) -> Self {
                             #visit_mut_children
+                            self
                         }
                     }
                 });
@@ -122,8 +123,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 visit_mut_functions.extend(quote! {
                     #[inline]
                     fn #fn_mut_name(&mut self, node: #ty_ident) -> #ty_ident {
-                        <#ty_ident as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-                        node
+                        <#ty_ident as VisitMutWith<Self>>::visit_mut_children_with(node, self)
                     }
                 });
 
@@ -144,7 +144,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     });
                     visit_mut_children_arms.extend(quote! {
                         Self::#variant_name(it) => {
-                            <#variant_ty_ident as VisitMutWith<V>>::visit_mut_with(it, visitor);
+                            Self::#variant_name(<#variant_ty_ident as VisitMutWith<V>>::visit_mut_with(it, visitor))
                         },
                     });
                 }
@@ -168,7 +168,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                             <V as VisitMut>::#fn_mut_name(visitor, self)
                         }
 
-                        fn visit_mut_children_with(self, visitor: &mut V) {
+                        fn visit_mut_children_with(self, visitor: &mut V) -> Self {
                             match self {
                                 #visit_mut_children_arms
                             }
@@ -212,8 +212,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 visit_mut_functions.extend(quote! {
                     #[inline]
                     fn #fn_mut_name(&mut self, node: #ty_ident) -> #ty_ident {
-                        <#ty_ident as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-                        node
+                        <#ty_ident as VisitMutWith<Self>>::visit_mut_children_with(node, self)
                     }
                 });
 
@@ -238,12 +237,12 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                             <V as VisitMut>::#fn_mut_name(visitor, self)
                         }
 
-                        fn visit_mut_children_with(self, visitor: &mut V) {
+                        fn visit_mut_children_with(self, visitor: &mut V) -> Self {
                             match self {
                                 Some(it) => {
-                                    it.visit_mut_with(visitor);
+                                    Some(it.visit_mut_with(visitor))
                                 },
-                                None => {}
+                                None => None,
                             }
                         }
                     }
@@ -316,11 +315,12 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                             <V as VisitMut>::#fn_mut_name(visitor, self)
                         }
 
-                        fn visit_mut_children_with(self, visitor: &mut V) {
+                        fn visit_mut_children_with(self, visitor: &mut V) -> Self {
                             for child in self.iter() {
                                 #get_node
                                 child.visit_mut_with(visitor);
                             }
+                            self
                         }
                     }
                 });
@@ -351,7 +351,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
 
             pub trait VisitMutWith<V: ?Sized + VisitMut> {
                 fn visit_mut_with(self, visitor: &mut V) -> Self;
-                fn visit_mut_children_with(self, visitor: &mut V);
+                fn visit_mut_children_with(self, visitor: &mut V) -> Self;
             }
 
             #visit_mut_with_impls

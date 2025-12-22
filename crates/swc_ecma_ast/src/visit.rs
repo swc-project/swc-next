@@ -23,7 +23,9 @@ macro_rules! dummy_visit_mut_impl {
             }
 
             #[inline]
-            fn visit_mut_children_with(self, _visitor: &mut V) {}
+            fn visit_mut_children_with(self, _visitor: &mut V) -> Self {
+                self
+            }
         }
     };
 }
