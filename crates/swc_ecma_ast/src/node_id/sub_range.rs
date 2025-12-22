@@ -238,7 +238,7 @@ impl<T: NodeIdTrait> Iterator for TypedSubRangeIterator<T> {
         let next = self.cur;
         debug_assert!(next < self.end);
 
-        self.cur += 1;
+        self.cur = ExtraDataId::from_usize_unchecked(self.cur.index().wrapping_add(1));
         debug_assert!(self.cur <= self.end);
 
         Some(NodeExtraDataId {
@@ -254,7 +254,7 @@ impl<T: NodeIdTrait> DoubleEndedIterator for TypedSubRangeIterator<T> {
             return None;
         }
 
-        self.end -= 1;
+        self.end = ExtraDataId::from_usize_unchecked(self.end.index().wrapping_sub(1));
         debug_assert!(self.cur <= self.end);
 
         let next = self.end;
@@ -278,7 +278,7 @@ impl<T: NodeIdTrait> Iterator for TypedSubRangeIterator<Option<T>> {
         let next = self.cur;
         debug_assert!(next < self.end);
 
-        self.cur += 1;
+        self.cur = ExtraDataId::from_usize_unchecked(self.cur.index().wrapping_add(1));
         debug_assert!(self.cur <= self.end);
 
         Some(NodeExtraDataId {
@@ -294,7 +294,7 @@ impl<T: NodeIdTrait> DoubleEndedIterator for TypedSubRangeIterator<Option<T>> {
             return None;
         }
 
-        self.end -= 1;
+        self.end = ExtraDataId::from_usize_unchecked(self.end.index().wrapping_sub(1));
         debug_assert!(self.cur <= self.end);
 
         let next = self.end;
