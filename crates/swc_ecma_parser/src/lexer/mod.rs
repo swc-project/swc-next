@@ -1,6 +1,6 @@
 //! ECMAScript lexer.
 
-use std::{borrow::Cow, char, iter::FusedIterator};
+use std::{borrow::Cow, char};
 
 use either::Either::{self, Left, Right};
 use num_bigint::BigInt as BigIntValue;
@@ -138,8 +138,6 @@ pub struct Lexer<'a> {
 
     string_allocator: StringAllocator,
 }
-
-impl FusedIterator for Lexer<'_> {}
 
 impl<'a> Lexer<'a> {
     #[inline(always)]

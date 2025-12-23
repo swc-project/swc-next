@@ -145,7 +145,14 @@ impl<I: Tokens> Parser<I> {
             input: crate::parser::input::Buffer::new(input),
             found_module_item: false,
         };
-        p.input.bump(); // consume EOF
+
+        // consume EOF
+        p.input.bump();
+        // This is a workaround to make comments work
+        if p.input.cur.token == Token::Eof {
+            p.input.cur.span = Span::new_with_checked(BytePos(0), BytePos(0));
+        }
+
         p
     }
 

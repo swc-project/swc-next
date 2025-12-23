@@ -4,7 +4,7 @@ use crate::{
     Context,
     error::Error,
     input::Tokens,
-    lexer::{TokenFlags, token::TokenAndSpan},
+    lexer::{Token, TokenFlags, token::TokenAndSpan},
     string_alloc::{MaybeSubUtf8, MaybeSubWtf8},
     syntax::SyntaxFlags,
 };
@@ -66,22 +66,6 @@ impl<I: Tokens> Capturing<I> {
         }
 
         v.push(ts);
-    }
-}
-
-impl<I: Tokens> Iterator for Capturing<I> {
-    type Item = TokenAndSpan;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let next = self.inner.next();
-
-        match next {
-            Some(ts) => {
-                self.capture(ts);
-                Some(ts)
-            }
-            None => None,
-        }
     }
 }
 
@@ -158,6 +142,14 @@ impl<I: Tokens> Tokens for Capturing<I> {
 
     fn get_token_value(&self) -> Option<&super::TokenValue> {
         self.inner.get_token_value()
+    }
+
+    fn next_token(&mut self) -> TokenAndSpan {
+        let next = self.inner.next_token();
+        if next.token != Token::Eof {
+            self.capture(next);
+        }
+        next
     }
 
     fn set_token_value(&mut self, token_value: Option<super::TokenValue>) {
