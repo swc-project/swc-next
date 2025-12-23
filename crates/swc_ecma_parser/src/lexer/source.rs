@@ -77,11 +77,6 @@ impl<'a> StringSource<'a> {
     }
 
     #[inline]
-    pub(crate) fn is_end(&self) -> bool {
-        self.cur.index() == self.source.len()
-    }
-
-    #[inline]
     pub(crate) fn peek_char(&self) -> Option<char> {
         let byte = self.peek()?;
         if byte.is_ascii() {
