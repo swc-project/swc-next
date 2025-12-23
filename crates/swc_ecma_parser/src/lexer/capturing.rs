@@ -29,11 +29,18 @@ impl<I: Clone> Clone for Capturing<I> {
     }
 }
 
-impl<I> Capturing<I> {
+impl<I: Tokens> Capturing<I> {
     pub fn new(input: I) -> Self {
         Capturing {
             inner: input,
             captured: Default::default(),
+        }
+    }
+
+    pub fn with_capacity(input: I, capacity: usize) -> Self {
+        Capturing {
+            inner: input,
+            captured: Vec::with_capacity(capacity),
         }
     }
 
@@ -62,7 +69,7 @@ impl<I> Capturing<I> {
     }
 }
 
-impl<I: Iterator<Item = TokenAndSpan>> Iterator for Capturing<I> {
+impl<I: Tokens> Iterator for Capturing<I> {
     type Item = TokenAndSpan;
 
     fn next(&mut self) -> Option<Self::Item> {

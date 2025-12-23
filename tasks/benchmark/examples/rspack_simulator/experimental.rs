@@ -29,7 +29,8 @@ fn run_parse(src: &str, comments: &SingleThreadedComments) -> (Program, Ast, Vec
         Some(comments),
     );
 
-    let lexer = Capturing::new(parser_lexer);
+    // Empirically, 1/8 of the source length is a good capacity.
+    let lexer = Capturing::with_capacity(parser_lexer, src.len() / 8);
     let parser = Parser::new_from(lexer);
 
     let mut ret = parser.parse_program().unwrap();
