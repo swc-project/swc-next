@@ -385,9 +385,10 @@ impl Ast {
     /// Create a new AST with the given source length.
     /// The source length is used to pre-allocate memory for the string allocator.
     pub fn new(source_len: usize) -> Self {
+        let empirical_capacity = (source_len as f64 * 0.15) as usize;
         Self {
-            nodes: NodeList::default(),
-            extra_data: IndexVec::new(),
+            nodes: NodeList::with_capacity(empirical_capacity),
+            extra_data: IndexVec::with_capacity(empirical_capacity * 2),
             bigint: IndexVec::new(),
             string_allocator: StringAllocator::new(source_len),
         }

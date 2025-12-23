@@ -27,6 +27,14 @@ impl Default for NodeList {
 }
 
 impl NodeList {
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            inner: IndexVec::with_capacity(capacity),
+            free_head: OptionalNodeId::none(),
+            num_elems: Default::default(),
+        }
+    }
+
     #[inline]
     /// Add a new node to the arena.
     ///
