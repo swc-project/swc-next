@@ -1,7 +1,7 @@
 use std::mem::take;
 
 use swc_core::atoms::wtf8::{CodePoint, Wtf8};
-use swc_experimental_ecma_ast::EsVersion;
+use swc_experimental_ecma_ast::{EsVersion, Span};
 // use swc_core::atoms::wtf8::CodePoint;
 use swc_core::common::BytePos;
 
@@ -186,6 +186,33 @@ impl crate::input::Tokens for Lexer<'_> {
         self.state.token_value.take()
     }
 
+    fn first_token(&mut self) -> TokenAndSpan {
+        let mut start = self.cur_pos();
+        let token = match self.read_shebang() {
+            Ok(Some(shebang)) => {
+                self.state.set_token_value(TokenValue::Word(shebang));
+                Ok(Token::Shebang)
+            }
+            // Fallback to other tokens
+            Ok(None) => {
+                self.state.had_line_break = true;
+                self.skip_space();
+                start = self.input.cur_pos();
+                self.read_token()
+            }
+            Err(error) => Err(error),
+        };
+
+        let token = match token {
+            Ok(token) => token,
+            Err(error) => {
+                self.state.set_token_value(TokenValue::Error(error));
+                Token::Error
+            }
+        };
+        self.finish_next_token(self.span(start), token)
+    }
+
     fn next_token(&mut self) -> TokenAndSpan {
         let mut start = self.cur_pos();
 
@@ -197,21 +224,7 @@ impl crate::input::Tokens for Lexer<'_> {
             }
         };
 
-        let span = self.span(start);
-        if token == Token::Eof {
-            self.consume_pending_comments();
-        } else if let Some(comments) = self.comments_buffer.as_mut() {
-            comments.pending_to_comment(BufferedCommentKind::Leading, start);
-        }
-
-        self.state.set_token_type(token);
-        self.state.prev_hi = self.last_pos();
-        // Attach span to token.
-        TokenAndSpan {
-            token,
-            had_line_break: self.had_line_break_before_last(),
-            span,
-        }
+        self.finish_next_token(self.span(start), token)
     }
 
     fn rescan_jsx_token(&mut self, allow_multiline_jsx_text: bool, reset: BytePos) -> TokenAndSpan {
@@ -241,21 +254,7 @@ impl crate::input::Tokens for Lexer<'_> {
             Ok(t) => t,
             Err(e) => e,
         };
-        let span = self.span(start);
-        if token != Token::Eof {
-            if let Some(comments) = self.comments_buffer.as_mut() {
-                comments.pending_to_comment(BufferedCommentKind::Leading, start);
-            }
-
-            self.state.set_token_type(token);
-            self.state.prev_hi = self.last_pos();
-        }
-        // Attach span to token.
-        TokenAndSpan {
-            token,
-            had_line_break: self.had_line_break_before_last(),
-            span,
-        }
+        self.finish_next_token(self.span(start), token)
     }
 
     fn scan_jsx_open_el_terminal_token(&mut self) -> TokenAndSpan {
@@ -272,21 +271,7 @@ impl crate::input::Tokens for Lexer<'_> {
             Ok(t) => t,
             Err(e) => e,
         };
-        let span = self.span(start);
-        if token != Token::Eof {
-            if let Some(comments) = self.comments_buffer.as_mut() {
-                comments.pending_to_comment(BufferedCommentKind::Leading, start);
-            }
-
-            self.state.set_token_type(token);
-            self.state.prev_hi = self.last_pos();
-        }
-        // Attach span to token.
-        TokenAndSpan {
-            token,
-            had_line_break: self.had_line_break_before_last(),
-            span,
-        }
+        self.finish_next_token(self.span(start), token)
     }
 
     fn scan_jsx_identifier(&mut self, start: BytePos) -> TokenAndSpan {
@@ -438,6 +423,23 @@ impl Lexer<'_> {
         *start = self.input.cur_pos();
 
         self.read_token()
+    }
+
+    #[inline(always)]
+    fn finish_next_token(&mut self, span: Span, token: Token) -> TokenAndSpan {
+        if token == Token::Eof {
+            self.consume_pending_comments();
+        } else if let Some(comments) = self.comments_buffer.as_mut() {
+            comments.pending_to_comment(BufferedCommentKind::Leading, span.lo);
+        }
+
+        self.state.set_token_type(token);
+        self.state.prev_hi = self.last_pos();
+        TokenAndSpan {
+            token,
+            had_line_break: self.state.had_line_break,
+            span,
+        }
     }
 
     fn scan_jsx_token(&mut self, allow_multiline_jsx_text: bool) -> Result<Token, Error> {
