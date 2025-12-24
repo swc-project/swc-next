@@ -393,6 +393,7 @@ impl Lexer<'_> {
             return self.read_regexp(next_regexp);
         }
 
+        self.state.had_line_break = false;
         self.skip_space();
         *start = self.input.cur_pos();
 
