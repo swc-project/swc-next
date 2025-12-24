@@ -33,8 +33,6 @@ bitflags::bitflags! {
 pub struct State {
     /// if line break exists between previous token and new token?
     pub had_line_break: bool,
-    /// TODO: Remove this field.
-    is_first: bool,
     pub next_regexp: Option<BytePos>,
     pub prev_hi: BytePos,
 
@@ -319,7 +317,7 @@ impl crate::input::Tokens for Lexer<'_> {
         self.state.set_token_value(TokenValue::Word(v));
         TokenAndSpan {
             token: Token::JSXName,
-            had_line_break: self.had_line_break_before_last(),
+            had_line_break: self.state.had_line_break,
             span: self.span(start),
         }
     }
@@ -329,7 +327,7 @@ impl crate::input::Tokens for Lexer<'_> {
             let start = self.cur_pos();
             return TokenAndSpan {
                 token: Token::Eof,
-                had_line_break: self.had_line_break_before_last(),
+                had_line_break: self.state.had_line_break,
                 span: self.span(start),
             };
         };
@@ -344,7 +342,7 @@ impl crate::input::Tokens for Lexer<'_> {
                         self.state.set_token_value(TokenValue::Error(e));
                         return TokenAndSpan {
                             token: Token::Error,
-                            had_line_break: self.had_line_break_before_last(),
+                            had_line_break: self.state.had_line_break,
                             span: self.span(start),
                         };
                     }
@@ -356,7 +354,7 @@ impl crate::input::Tokens for Lexer<'_> {
                 debug_assert!(token == Token::Str);
                 TokenAndSpan {
                     token,
-                    had_line_break: self.had_line_break_before_last(),
+                    had_line_break: self.state.had_line_break,
                     span: self.span(start),
                 }
             }
@@ -384,21 +382,7 @@ impl crate::input::Tokens for Lexer<'_> {
             // `+ BytePos(1)` is used to skip `{`
             self.span(start + BytePos(1))
         };
-
-        if token != Token::Eof {
-            if let Some(comments) = self.comments_buffer.as_mut() {
-                comments.pending_to_comment(BufferedCommentKind::Leading, start);
-            }
-
-            self.state.set_token_type(token);
-            self.state.prev_hi = self.last_pos();
-        }
-        // Attach span to token.
-        TokenAndSpan {
-            token,
-            had_line_break: self.had_line_break_before_last(),
-            span,
-        }
+        self.finish_next_token(span, token)
     }
 }
 
@@ -408,16 +392,6 @@ impl Lexer<'_> {
             *start = next_regexp;
             return self.read_regexp(next_regexp);
         }
-
-        if self.state.is_first
-            && let Some(shebang) = self.read_shebang()?
-        {
-            self.state.set_token_value(TokenValue::Word(shebang));
-            return Ok(Token::Shebang);
-        }
-
-        self.state.had_line_break = self.state.is_first;
-        self.state.is_first = false;
 
         self.skip_space();
         *start = self.input.cur_pos();
@@ -575,7 +549,6 @@ impl State {
     pub fn new(start_pos: BytePos) -> Self {
         State {
             had_line_break: false,
-            is_first: true,
             next_regexp: None,
             prev_hi: start_pos,
             token_value: None,
@@ -589,16 +562,6 @@ impl State {
 }
 
 impl State {
-    #[inline(always)]
-    pub fn had_line_break(&self) -> bool {
-        self.had_line_break
-    }
-
-    #[inline(always)]
-    pub fn mark_had_line_break(&mut self) {
-        self.had_line_break = true;
-    }
-
     #[inline(always)]
     pub fn set_token_type(&mut self, token_type: Token) {
         self.token_type = Some(token_type);

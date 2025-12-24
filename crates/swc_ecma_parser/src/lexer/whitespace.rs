@@ -91,7 +91,7 @@ const NLN: ByteHandler = |lexer| {
     static NOT_REGULAR_WHITESPACE_OR_LINE_BREAK_TABLE: SafeByteMatchTable =
         safe_byte_match_table!(|b| !matches!(b, b' ' | b'\t' | B_VT | B_FF | b'\r' | b'\n'));
 
-    lexer.state.mark_had_line_break();
+    lexer.state.had_line_break = true;
     byte_search! {
         lexer: lexer,
         table: NOT_REGULAR_WHITESPACE_OR_LINE_BREAK_TABLE,
@@ -140,7 +140,7 @@ const UNI: ByteHandler = |lexer| {
         c if is_irregular_line_terminator(c) => {
             // Safety: `peek_char` returns `Some`
             unsafe { lexer.input.bump_bytes(c.len_utf8()) };
-            lexer.state.mark_had_line_break();
+            lexer.state.had_line_break = true;
             true
         }
         _ => false,
