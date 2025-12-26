@@ -2,7 +2,7 @@ use std::mem;
 
 use swc_experimental_ast_macros::ast;
 
-use crate::node_id::ExtraDataCompact;
+use crate::{Ast, ExtraData, node_id::ExtraDataCompact};
 
 #[ast]
 pub enum Decl {
@@ -46,12 +46,12 @@ pub enum VarDeclKind {
 }
 
 impl ExtraDataCompact for VarDeclKind {
-    fn to_extra_data(self) -> u64 {
-        self as u64
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData { other: self as u64 }
     }
 
-    fn from_extra_data(raw: u64) -> Self {
-        unsafe { mem::transmute(raw as u8) }
+    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast) -> Self {
+        unsafe { mem::transmute(data.other as u8) }
     }
 }
 

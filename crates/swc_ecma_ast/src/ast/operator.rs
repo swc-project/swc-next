@@ -1,6 +1,6 @@
 use std::mem;
 
-use crate::node_id::ExtraDataCompact;
+use crate::{Ast, ExtraData, node_id::ExtraDataCompact};
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash, Default)]
@@ -66,12 +66,12 @@ pub enum BinaryOp {
 }
 
 impl ExtraDataCompact for BinaryOp {
-    fn to_extra_data(self) -> u64 {
-        self as u64
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData { other: self as u64 }
     }
 
-    fn from_extra_data(raw: u64) -> Self {
-        unsafe { mem::transmute(raw as u8) }
+    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast) -> Self {
+        unsafe { mem::transmute(data.other as u8) }
     }
 }
 
@@ -157,12 +157,12 @@ pub enum AssignOp {
 }
 
 impl ExtraDataCompact for AssignOp {
-    fn to_extra_data(self) -> u64 {
-        self as u64
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData { other: self as u64 }
     }
 
-    fn from_extra_data(raw: u64) -> Self {
-        unsafe { mem::transmute(raw as u8) }
+    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast) -> Self {
+        unsafe { mem::transmute(data.other as u8) }
     }
 }
 
@@ -177,12 +177,12 @@ pub enum UpdateOp {
 }
 
 impl ExtraDataCompact for UpdateOp {
-    fn to_extra_data(self) -> u64 {
-        self as u64
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData { other: self as u64 }
     }
 
-    fn from_extra_data(raw: u64) -> Self {
-        unsafe { mem::transmute(raw as u8) }
+    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast) -> Self {
+        unsafe { mem::transmute(data.other as u8) }
     }
 }
 
@@ -207,11 +207,11 @@ pub enum UnaryOp {
 }
 
 impl ExtraDataCompact for UnaryOp {
-    fn to_extra_data(self) -> u64 {
-        self as u64
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData { other: self as u64 }
     }
 
-    fn from_extra_data(raw: u64) -> Self {
-        unsafe { mem::transmute(raw as u8) }
+    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast) -> Self {
+        unsafe { mem::transmute(data.other as u8) }
     }
 }
