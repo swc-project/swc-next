@@ -10,6 +10,7 @@ mod visit;
 mod generated {
     mod ast_builder;
     mod ast_clone_in;
+    pub(crate) mod ast_extra_compact;
     mod ast_node_id;
     mod ast_property;
     pub(crate) mod ast_visitor;
@@ -144,6 +145,9 @@ pub union ExtraData {
     optional_sub_range: OptionalSubRange,
 
     // Typed enums
+    program: Program,
+    module_item: ModuleItem,
+    module_decl: ModuleDecl,
     expr: Expr,
     stmt: Stmt,
     decl: Decl,
@@ -162,13 +166,56 @@ pub union ExtraData {
     jsx_element_name: JSXElementName,
     jsx_attr_name: JSXAttrName,
     jsx_expr: JSXExpr,
+    var_decl_or_expr: VarDeclOrExpr,
+    import_specifier: ImportSpecifier,
+    export_specifier: ExportSpecifier,
+    prop_or_spread: PropOrSpread,
+    assign_target_pat: AssignTargetPat,
+    simple_assign_target: SimpleAssignTarget,
+    param_or_ts_param_prop: ParamOrTsParamProp,
+    class_member: ClassMember,
+    prop: Prop,
+    object_pat_prop: ObjectPatProp,
+    lit: Lit,
+    jsx_attr_or_spread: JSXAttrOrSpread,
+    jsx_attr_value: JSXAttrValue,
+    jsx_element_child: JSXElementChild,
 
+    optional_program: Option<Program>,
+    optional_module_item: Option<ModuleItem>,
+    optional_module_decl: Option<ModuleDecl>,
     optional_expr: Option<Expr>,
     optional_pat: Option<Pat>,
     optional_stmt: Option<Stmt>,
     optional_module_export_name: Option<ModuleExportName>,
     optional_var_decl_or_expr: Option<VarDeclOrExpr>,
     optional_jsx_attr_value: Option<JSXAttrValue>,
+    optional_decl: Option<Decl>,
+    optional_default_decl: Option<DefaultDecl>,
+    optional_import_specifier: Option<ImportSpecifier>,
+    optional_export_specifier: Option<ExportSpecifier>,
+    optional_prop_or_spread: Option<PropOrSpread>,
+    optional_opt_chain_base: Option<OptChainBase>,
+    optional_for_head: Option<ForHead>,
+    optional_member_prop: Option<MemberProp>,
+    optional_super_prop: Option<SuperProp>,
+    optional_callee: Option<Callee>,
+    optional_block_stmt_or_expr: Option<BlockStmtOrExpr>,
+    optional_prop_name: Option<PropName>,
+    optional_key: Option<Key>,
+    optional_jsx_object: Option<JSXObject>,
+    optional_jsx_element_name: Option<JSXElementName>,
+    optional_jsx_attr_name: Option<JSXAttrName>,
+    optional_jsx_expr: Option<JSXExpr>,
+    optional_assign_target_pat: Option<AssignTargetPat>,
+    optional_simple_assign_target: Option<SimpleAssignTarget>,
+    optional_param_or_ts_param_prop: Option<ParamOrTsParamProp>,
+    optional_class_member: Option<ClassMember>,
+    optional_prop: Option<Prop>,
+    optional_object_pat_prop: Option<ObjectPatProp>,
+    optional_lit: Option<Lit>,
+    optional_jsx_attr_or_spread: Option<JSXAttrOrSpread>,
+    optional_jsx_element_child: Option<JSXElementChild>,
 
     /// Any other data (usually enum) that can be representated within 8 bytes
     other: u64,
