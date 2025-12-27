@@ -31,10 +31,12 @@ impl ExtraDataCompact for Script {
 }
 impl ExtraDataCompact for ModuleItem {
     fn to_extra_data(self) -> ExtraData {
-        ExtraData { module_item: self }
+        ExtraData {
+            node: self.node_id(),
+        }
     }
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.module_item }
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
     }
 }
 impl ExtraDataCompact for ModuleDecl {

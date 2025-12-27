@@ -223,7 +223,7 @@ pub fn map_field_type_to_extra_field(ast: &AstType, schema: &Schema) -> String {
     match ast {
         AstType::Struct(_) => "node".to_owned(),
         AstType::Enum(ast_enum) => {
-            if ast_enum.name == "AssignTarget" {
+            if ast_enum.name == "AssignTarget" || ast_enum.name == "ModuleItem" {
                 "node".to_owned()
             } else {
                 ast_enum.name.to_case(Case::Snake)
@@ -235,7 +235,7 @@ pub fn map_field_type_to_extra_field(ast: &AstType, schema: &Schema) -> String {
             match inner_ty {
                 AstType::Vec(_) => "optional_sub_range".to_owned(),
                 AstType::Enum(ast_enum) => {
-                    if ast_enum.name == "AssignTarget" {
+                    if ast_enum.name == "AssignTarget" || ast_enum.name == "ModuleItem" {
                         "optional_node".to_owned()
                     } else {
                         format!("optional_{}", ast_enum.name.to_case(Case::Snake))
