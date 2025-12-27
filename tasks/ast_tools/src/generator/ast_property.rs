@@ -432,7 +432,7 @@ fn generate_extra_data_property_accessors(
                 let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.get_unchecked(self.0).data.extra_data_start.index().wrapping_add(#offset)) };
 
                 debug_assert!(offset < ast.extra_data.len());
-                unsafe { 
+                unsafe {
                     ExtraDataCompact::from_extra_data(
                         *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                         ast,
