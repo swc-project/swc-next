@@ -472,49 +472,48 @@ impl<I: Tokens> Parser<I> {
 
         self.assert_and_bump(Token::LBracket);
 
-        let mut elems = Vec::new();
-
         let mut rest_span = Span::default();
+        let elems = self.scratch_start(|p, elems| {
+            while !p.input().is(Token::RBracket) {
+                if p.input_mut().eat(Token::Comma) {
+                    elems.push(p, None);
+                    continue;
+                }
 
-        while !self.input().is(Token::RBracket) {
-            if self.input_mut().eat(Token::Comma) {
-                elems.push(None);
-                continue;
-            }
+                if !rest_span.is_dummy() {
+                    p.emit_err(rest_span, SyntaxError::NonLastRestParam);
+                }
 
-            if !rest_span.is_dummy() {
-                self.emit_err(rest_span, SyntaxError::NonLastRestParam);
-            }
+                let start = p.cur_pos();
 
-            let start = self.cur_pos();
+                let mut is_rest = false;
+                if p.input_mut().eat(Token::DotDotDot) {
+                    is_rest = true;
+                    let dot3_token = p.span(start);
 
-            let mut is_rest = false;
-            if self.input_mut().eat(Token::DotDotDot) {
-                is_rest = true;
-                let dot3_token = self.span(start);
+                    let pat = p.parse_binding_pat_or_ident(false)?;
+                    rest_span = p.span(start);
 
-                let pat = self.parse_binding_pat_or_ident(false)?;
-                rest_span = self.span(start);
+                    let pat = p.ast.pat_rest_pat(rest_span, dot3_token, pat);
+                    elems.push(p, Some(pat));
+                } else {
+                    let binding_element = p.parse_binding_element()?;
+                    elems.push(p, Some(binding_element));
+                }
 
-                let pat = self.ast.pat_rest_pat(rest_span, dot3_token, pat);
-                elems.push(Some(pat));
-            } else {
-                elems.push(Some(self.parse_binding_element()?));
-            }
-
-            if !self.input().is(Token::RBracket) {
-                expect!(self, Token::Comma);
-                if is_rest && self.input().is(Token::RBracket) {
-                    self.emit_err(self.input().prev_span(), SyntaxError::CommaAfterRestElement);
+                if !p.input().is(Token::RBracket) {
+                    expect!(p, Token::Comma);
+                    if is_rest && p.input().is(Token::RBracket) {
+                        p.emit_err(p.input().prev_span(), SyntaxError::CommaAfterRestElement);
+                    }
                 }
             }
-        }
+            Ok(())
+        })?;
 
         expect!(self, Token::RBracket);
         let optional = (self.input().syntax().dts() || self.ctx().contains(Context::InDeclare))
             && self.input_mut().eat(Token::QuestionMark);
-
-        let elems = self.ast.add_typed_sub_range(elems);
         Ok(self.ast.pat_array_pat(self.span(start), elems, optional))
     }
 
