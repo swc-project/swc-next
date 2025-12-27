@@ -23,13 +23,15 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
 
                 impls.extend(quote! {
                    impl ExtraDataCompact for #ident {
-                       fn to_extra_data(self) -> ExtraData {
-                           #to_expr
-                       }
+                        #[inline]
+                        fn to_extra_data(self) -> ExtraData {
+                            #to_expr
+                        }
 
-                       unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-                           #from_expr
-                       }
+                        #[inline]
+                        unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+                            #from_expr
+                        }
                    }
                 });
             }
@@ -73,13 +75,15 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
 
                 impls.extend(quote! {
                    impl ExtraDataCompact for #ident {
-                       fn to_extra_data(self) -> ExtraData {
-                           #to_expr
-                       }
+                        #[inline]
+                        fn to_extra_data(self) -> ExtraData {
+                            #to_expr
+                        }
 
-                       unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-                           #from_expr
-                       }
+                        #[inline]
+                        unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+                            #from_expr
+                        }
                    }
                 });
             }
@@ -114,13 +118,15 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
                 let ty_ident = ty.repr_ident(schema);
                 impls.extend(quote! {
                    impl ExtraDataCompact for #ty_ident {
-                       fn to_extra_data(self) -> ExtraData {
-                           #opt_to
-                       }
+                        #[inline]
+                        fn to_extra_data(self) -> ExtraData {
+                            #opt_to
+                        }
 
-                       unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-                           #opt_from
-                       }
+                        #[inline]
+                        unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+                            #opt_from
+                        }
                    }
                 });
             }
