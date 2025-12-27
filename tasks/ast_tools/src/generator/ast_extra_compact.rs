@@ -85,6 +85,11 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
             }
             AstType::Option(ast_option) => {
                 let inner_type = &schema.types[ast_option.inner_type_id];
+                // Option<TypedSubRange<T>> is implemented manually
+                if matches!(inner_type, AstType::Vec(_)) {
+                    continue;
+                }
+
                 let optional_extra_field = map_field_type_to_extra_field(ty, schema);
                 let inner_ty_ident = inner_type.repr_ident(schema);
                 let opt_field_ident = format_ident!("{}", optional_extra_field);

@@ -700,7 +700,7 @@ impl ImportNamedSpecifier {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -720,7 +720,7 @@ impl ImportNamedSpecifier {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -752,7 +752,7 @@ impl ImportNamedSpecifier {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = local.to_extra_data();
         };
@@ -771,7 +771,7 @@ impl ImportNamedSpecifier {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = imported.to_extra_data();
         };
@@ -1303,7 +1303,7 @@ impl ExportNamedSpecifier {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -1323,7 +1323,7 @@ impl ExportNamedSpecifier {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -1355,7 +1355,7 @@ impl ExportNamedSpecifier {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = orig.to_extra_data();
         };
@@ -1374,7 +1374,7 @@ impl ExportNamedSpecifier {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = exported.to_extra_data();
         };
@@ -1578,7 +1578,7 @@ impl ExportAll {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -1598,7 +1598,7 @@ impl ExportAll {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -1630,7 +1630,7 @@ impl ExportAll {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = src.to_extra_data();
         };
@@ -1649,7 +1649,7 @@ impl ExportAll {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = with.to_extra_data();
         };
@@ -3373,7 +3373,7 @@ impl ForOfStmt {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -3393,7 +3393,7 @@ impl ForOfStmt {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -3413,7 +3413,7 @@ impl ForOfStmt {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -3445,7 +3445,7 @@ impl ForOfStmt {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = left.to_extra_data();
         };
@@ -3464,7 +3464,7 @@ impl ForOfStmt {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = right.to_extra_data();
         };
@@ -3483,7 +3483,7 @@ impl ForOfStmt {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = body.to_extra_data();
         };
@@ -3896,7 +3896,7 @@ impl FnDecl {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -3916,7 +3916,7 @@ impl FnDecl {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -3948,7 +3948,7 @@ impl FnDecl {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = ident.to_extra_data();
         };
@@ -3967,7 +3967,7 @@ impl FnDecl {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = function.to_extra_data();
         };
@@ -4007,7 +4007,7 @@ impl ClassDecl {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -4027,7 +4027,7 @@ impl ClassDecl {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -4059,7 +4059,7 @@ impl ClassDecl {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = ident.to_extra_data();
         };
@@ -4078,7 +4078,7 @@ impl ClassDecl {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = class.to_extra_data();
         };
@@ -5169,7 +5169,7 @@ impl UnaryExpr {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -5201,7 +5201,7 @@ impl UnaryExpr {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = arg.to_extra_data();
         };
@@ -5247,7 +5247,7 @@ impl UpdateExpr {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -5286,7 +5286,7 @@ impl UpdateExpr {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = arg.to_extra_data();
         };
@@ -5326,7 +5326,7 @@ impl BinExpr {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -5346,7 +5346,7 @@ impl BinExpr {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -5378,7 +5378,7 @@ impl BinExpr {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = left.to_extra_data();
         };
@@ -5397,7 +5397,7 @@ impl BinExpr {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = right.to_extra_data();
         };
@@ -5633,7 +5633,7 @@ impl AssignExpr {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -5653,7 +5653,7 @@ impl AssignExpr {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -5685,7 +5685,7 @@ impl AssignExpr {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = left.to_extra_data();
         };
@@ -5704,7 +5704,7 @@ impl AssignExpr {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = right.to_extra_data();
         };
@@ -6613,7 +6613,7 @@ impl YieldExpr {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -6645,7 +6645,7 @@ impl YieldExpr {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = arg.to_extra_data();
         };
@@ -6971,7 +6971,7 @@ impl TplElement {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -6991,7 +6991,7 @@ impl TplElement {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -7023,7 +7023,7 @@ impl TplElement {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = cooked.to_extra_data();
         };
@@ -7042,7 +7042,7 @@ impl TplElement {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = raw.to_extra_data();
         };
@@ -7618,7 +7618,7 @@ impl OptChainExpr {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -7650,7 +7650,7 @@ impl OptChainExpr {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = base.to_extra_data();
         };
@@ -8858,7 +8858,7 @@ impl ClassMethod {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -8878,7 +8878,7 @@ impl ClassMethod {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -8917,7 +8917,7 @@ impl ClassMethod {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = key.to_extra_data();
         };
@@ -8936,7 +8936,7 @@ impl ClassMethod {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = function.to_extra_data();
         };
@@ -8982,7 +8982,7 @@ impl PrivateMethod {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -9002,7 +9002,7 @@ impl PrivateMethod {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -9041,7 +9041,7 @@ impl PrivateMethod {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = key.to_extra_data();
         };
@@ -9060,7 +9060,7 @@ impl PrivateMethod {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = function.to_extra_data();
         };
@@ -11117,7 +11117,7 @@ impl Ident {
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
             ExtraDataCompact::from_extra_data(
-                ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
         }
@@ -11149,7 +11149,7 @@ impl Ident {
         };
         debug_assert!(offset < ast.extra_data.len());
         unsafe {
-            ast.extra_data
+            *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = sym.to_extra_data();
         };

@@ -485,8 +485,8 @@ fn generate_extra_data_property_accessors_partial(
                 debug_assert!(offset < ast.extra_data.len());
                 unsafe {
                     ExtraDataCompact::from_extra_data(
-                        ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
-                        ast
+                        *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                        ast,
                     )
                 }
             }
@@ -500,7 +500,7 @@ fn generate_extra_data_property_accessors_partial(
 
                 debug_assert!(offset < ast.extra_data.len());
                 unsafe {
-                    ast.extra_data.as_raw_slice_mut().get_unchecked_mut(offset.index()) = #field_name.to_extra_data();
+                    *ast.extra_data.as_raw_slice_mut().get_unchecked_mut(offset.index()) = #field_name.to_extra_data();
                 };
             }
         });

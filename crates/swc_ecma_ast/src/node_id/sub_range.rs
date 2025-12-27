@@ -25,11 +25,6 @@ impl SubRange {
             _phantom: PhantomData,
         }
     }
-
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.start == self.end
-    }
 }
 
 /// An 8 bytes optimized version of `Option<SubRange>` (12 bytes).
@@ -42,12 +37,10 @@ pub struct OptionalSubRange {
 }
 
 impl OptionalSubRange {
-    /// # Safety:
-    /// 1. The caller should make sure that the nodes in the range are all of type `T`.
-    pub(crate) unsafe fn cast_to_typed<T>(self) -> OptionalTypedSubRange<T> {
-        OptionalTypedSubRange {
-            inner: self,
-            _phantom: PhantomData,
+    pub const fn new_some(sub_range: SubRange) -> Self {
+        Self {
+            start: sub_range.start,
+            end: sub_range.end,
         }
     }
 
@@ -58,34 +51,21 @@ impl OptionalSubRange {
         }
     }
 
-    pub const fn is_none(&self) -> bool {
-        self.end.raw() == u32::MAX
-    }
-
-    pub const fn unwrap(self) -> SubRange {
-        assert!(!self.is_none());
-        SubRange {
+    pub const fn to_option(self) -> Option<SubRange> {
+        if self.end.raw() == u32::MAX {
+            return None;
+        }
+        Some(SubRange {
             start: self.start,
             end: self.end,
-        }
+        })
     }
-}
 
-impl From<SubRange> for OptionalSubRange {
-    fn from(value: SubRange) -> Self {
-        Self {
-            start: value.start,
-            end: value.end,
-        }
-    }
-}
-
-impl From<Option<SubRange>> for OptionalSubRange {
-    fn from(value: Option<SubRange>) -> Self {
-        match value {
-            Some(value) => value.into(),
-            None => OptionalSubRange::new_none(),
-        }
+    /// # Safety:
+    /// 1. The caller should make sure that the nodes in the range are all of type `T`.
+    pub(crate) unsafe fn cast_to_typed<T>(self) -> Option<TypedSubRange<T>> {
+        self.to_option()
+            .map(|sub_range| unsafe { sub_range.cast_to_typed() })
     }
 }
 
@@ -187,37 +167,11 @@ impl<T> TypedSubRange<T> {
     }
 }
 
-impl<T> From<TypedSubRange<T>> for SubRange {
-    fn from(value: TypedSubRange<T>) -> Self {
-        value.inner
-    }
-}
 impl<T> Deref for TypedSubRange<T> {
     type Target = SubRange;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
-    }
-}
-
-/// An 8 bytes optimized version of `Option<TypedSubRange<T>>` (12 bytes).
-///
-/// We regard it as `None` if `OptionalTypedSubRange::end` is `u32::MAX`.
-#[derive(Debug, Clone, Copy, Hash)]
-pub struct OptionalTypedSubRange<T> {
-    pub(crate) inner: OptionalSubRange,
-    pub(crate) _phantom: PhantomData<T>,
-}
-
-impl<T> OptionalTypedSubRange<T> {
-    pub const fn to_option(&self) -> Option<TypedSubRange<T>> {
-        if self.inner.is_none() {
-            return None;
-        }
-        Some(TypedSubRange {
-            inner: self.inner.unwrap(),
-            _phantom: PhantomData,
-        })
     }
 }
 

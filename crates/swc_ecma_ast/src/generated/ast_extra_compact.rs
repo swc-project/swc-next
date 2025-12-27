@@ -1615,16 +1615,6 @@ impl ExtraDataCompact for Option<ExprOrSpread> {
         }
     }
 }
-impl ExtraDataCompact for Option<TypedSubRange<ExprOrSpread>> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_sub_range: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_sub_range }
-    }
-}
 impl ExtraDataCompact for Option<SpreadDot3Token> {
     fn to_extra_data(self) -> ExtraData {
         ExtraData {
