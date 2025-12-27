@@ -8,14 +8,18 @@ oxc_index::define_index_type! {
 /// and this trait is used to convert between the AST field and the u64 value.
 pub trait ExtraDataCompact: Sized {
     fn to_extra_data(self) -> ExtraData;
+    /// # Safety
+    /// `data` must match the type of `Self`.
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self;
 }
 
 impl ExtraDataCompact for ExtraData {
+    #[inline]
     fn to_extra_data(self) -> ExtraData {
         self
     }
 
+    #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast) -> Self {
         data
     }
