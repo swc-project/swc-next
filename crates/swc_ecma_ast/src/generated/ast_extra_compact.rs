@@ -9,16 +9,6 @@ impl ExtraDataCompact for Program {
         unsafe { data.program }
     }
 }
-impl ExtraDataCompact for Option<Program> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_program: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_program }
-    }
-}
 impl ExtraDataCompact for Module {
     fn to_extra_data(self) -> ExtraData {
         ExtraData {
@@ -47,32 +37,12 @@ impl ExtraDataCompact for ModuleItem {
         unsafe { data.module_item }
     }
 }
-impl ExtraDataCompact for Option<ModuleItem> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_module_item: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_module_item }
-    }
-}
 impl ExtraDataCompact for ModuleDecl {
     fn to_extra_data(self) -> ExtraData {
         ExtraData { module_decl: self }
     }
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
         unsafe { data.module_decl }
-    }
-}
-impl ExtraDataCompact for Option<ModuleDecl> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_module_decl: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_module_decl }
     }
 }
 impl ExtraDataCompact for ImportDecl {
@@ -93,16 +63,6 @@ impl ExtraDataCompact for ImportSpecifier {
     }
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
         unsafe { data.import_specifier }
-    }
-}
-impl ExtraDataCompact for Option<ImportSpecifier> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_import_specifier: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_import_specifier }
     }
 }
 impl ExtraDataCompact for ImportNamedSpecifier {
@@ -165,16 +125,6 @@ impl ExtraDataCompact for ExportSpecifier {
         unsafe { data.export_specifier }
     }
 }
-impl ExtraDataCompact for Option<ExportSpecifier> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_export_specifier: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_export_specifier }
-    }
-}
 impl ExtraDataCompact for ExportNamespaceSpecifier {
     fn to_extra_data(self) -> ExtraData {
         ExtraData {
@@ -193,16 +143,6 @@ impl ExtraDataCompact for ModuleExportName {
     }
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
         unsafe { data.module_export_name }
-    }
-}
-impl ExtraDataCompact for Option<ModuleExportName> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_module_export_name: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_module_export_name }
     }
 }
 impl ExtraDataCompact for ExportDefaultSpecifier {
@@ -243,16 +183,6 @@ impl ExtraDataCompact for DefaultDecl {
         unsafe { data.default_decl }
     }
 }
-impl ExtraDataCompact for Option<DefaultDecl> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_default_decl: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_default_decl }
-    }
-}
 impl ExtraDataCompact for ExportDefaultExpr {
     fn to_extra_data(self) -> ExtraData {
         ExtraData {
@@ -289,16 +219,6 @@ impl ExtraDataCompact for Stmt {
     }
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
         unsafe { data.stmt }
-    }
-}
-impl ExtraDataCompact for Option<Stmt> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_stmt: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_stmt }
     }
 }
 impl ExtraDataCompact for ExprStmt {
@@ -499,16 +419,6 @@ impl ExtraDataCompact for ForHead {
         unsafe { data.for_head }
     }
 }
-impl ExtraDataCompact for Option<ForHead> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_for_head: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_for_head }
-    }
-}
 impl ExtraDataCompact for VarDeclOrExpr {
     fn to_extra_data(self) -> ExtraData {
         ExtraData {
@@ -519,32 +429,12 @@ impl ExtraDataCompact for VarDeclOrExpr {
         unsafe { data.var_decl_or_expr }
     }
 }
-impl ExtraDataCompact for Option<VarDeclOrExpr> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_var_decl_or_expr: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_var_decl_or_expr }
-    }
-}
 impl ExtraDataCompact for Decl {
     fn to_extra_data(self) -> ExtraData {
         ExtraData { decl: self }
     }
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
         unsafe { data.decl }
-    }
-}
-impl ExtraDataCompact for Option<Decl> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_decl: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_decl }
     }
 }
 impl ExtraDataCompact for FnDecl {
@@ -605,16 +495,6 @@ impl ExtraDataCompact for Expr {
         unsafe { data.expr }
     }
 }
-impl ExtraDataCompact for Option<Expr> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_expr: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_expr }
-    }
-}
 impl ExtraDataCompact for ThisExpr {
     fn to_extra_data(self) -> ExtraData {
         ExtraData {
@@ -653,16 +533,6 @@ impl ExtraDataCompact for PropOrSpread {
     }
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
         unsafe { data.prop_or_spread }
-    }
-}
-impl ExtraDataCompact for Option<PropOrSpread> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_prop_or_spread: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_prop_or_spread }
     }
 }
 impl ExtraDataCompact for SpreadElement {
@@ -753,16 +623,6 @@ impl ExtraDataCompact for MemberProp {
         unsafe { data.member_prop }
     }
 }
-impl ExtraDataCompact for Option<MemberProp> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_member_prop: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_member_prop }
-    }
-}
 impl ExtraDataCompact for SuperPropExpr {
     fn to_extra_data(self) -> ExtraData {
         ExtraData {
@@ -779,16 +639,6 @@ impl ExtraDataCompact for SuperProp {
     }
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
         unsafe { data.super_prop }
-    }
-}
-impl ExtraDataCompact for Option<SuperProp> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_super_prop: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_super_prop }
     }
 }
 impl ExtraDataCompact for CondExpr {
@@ -919,16 +769,6 @@ impl ExtraDataCompact for Callee {
         unsafe { data.callee }
     }
 }
-impl ExtraDataCompact for Option<Callee> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_callee: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_callee }
-    }
-}
 impl ExtraDataCompact for Super {
     fn to_extra_data(self) -> ExtraData {
         ExtraData {
@@ -979,16 +819,6 @@ impl ExtraDataCompact for BlockStmtOrExpr {
         unsafe { data.block_stmt_or_expr }
     }
 }
-impl ExtraDataCompact for Option<BlockStmtOrExpr> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_block_stmt_or_expr: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_block_stmt_or_expr }
-    }
-}
 impl ExtraDataCompact for AssignTarget {
     fn to_extra_data(self) -> ExtraData {
         ExtraData {
@@ -997,20 +827,6 @@ impl ExtraDataCompact for AssignTarget {
     }
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
         unsafe { Self::from_node_id_unchecked(data.node, ast) }
-    }
-}
-impl ExtraDataCompact for Option<AssignTarget> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_node: self.map(|n| n.node_id()).into(),
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe {
-            data.optional_node
-                .to_option()
-                .map(|id| AssignTarget::from_node_id_unchecked(id, ast))
-        }
     }
 }
 impl ExtraDataCompact for AssignTargetPat {
@@ -1023,16 +839,6 @@ impl ExtraDataCompact for AssignTargetPat {
         unsafe { data.assign_target_pat }
     }
 }
-impl ExtraDataCompact for Option<AssignTargetPat> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_assign_target_pat: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_assign_target_pat }
-    }
-}
 impl ExtraDataCompact for SimpleAssignTarget {
     fn to_extra_data(self) -> ExtraData {
         ExtraData {
@@ -1041,16 +847,6 @@ impl ExtraDataCompact for SimpleAssignTarget {
     }
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
         unsafe { data.simple_assign_target }
-    }
-}
-impl ExtraDataCompact for Option<SimpleAssignTarget> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_simple_assign_target: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_simple_assign_target }
     }
 }
 impl ExtraDataCompact for OptChainExpr {
@@ -1071,16 +867,6 @@ impl ExtraDataCompact for OptChainBase {
     }
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
         unsafe { data.opt_chain_base }
-    }
-}
-impl ExtraDataCompact for Option<OptChainBase> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_opt_chain_base: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_opt_chain_base }
     }
 }
 impl ExtraDataCompact for OptCall {
@@ -1133,16 +919,6 @@ impl ExtraDataCompact for ParamOrTsParamProp {
         unsafe { data.param_or_ts_param_prop }
     }
 }
-impl ExtraDataCompact for Option<ParamOrTsParamProp> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_param_or_ts_param_prop: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_param_or_ts_param_prop }
-    }
-}
 impl ExtraDataCompact for Class {
     fn to_extra_data(self) -> ExtraData {
         ExtraData {
@@ -1159,16 +935,6 @@ impl ExtraDataCompact for ClassMember {
     }
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
         unsafe { data.class_member }
-    }
-}
-impl ExtraDataCompact for Option<ClassMember> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_class_member: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_class_member }
     }
 }
 impl ExtraDataCompact for ClassProp {
@@ -1249,14 +1015,6 @@ impl ExtraDataCompact for Key {
         unsafe { data.key }
     }
 }
-impl ExtraDataCompact for Option<Key> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData { optional_key: self }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_key }
-    }
-}
 impl ExtraDataCompact for AutoAccessor {
     fn to_extra_data(self) -> ExtraData {
         ExtraData {
@@ -1273,16 +1031,6 @@ impl ExtraDataCompact for Prop {
     }
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
         unsafe { data.prop }
-    }
-}
-impl ExtraDataCompact for Option<Prop> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_prop: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_prop }
     }
 }
 impl ExtraDataCompact for KeyValueProp {
@@ -1343,16 +1091,6 @@ impl ExtraDataCompact for PropName {
         unsafe { data.prop_name }
     }
 }
-impl ExtraDataCompact for Option<PropName> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_prop_name: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_prop_name }
-    }
-}
 impl ExtraDataCompact for ComputedPropName {
     fn to_extra_data(self) -> ExtraData {
         ExtraData {
@@ -1369,14 +1107,6 @@ impl ExtraDataCompact for Pat {
     }
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
         unsafe { data.pat }
-    }
-}
-impl ExtraDataCompact for Option<Pat> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData { optional_pat: self }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_pat }
     }
 }
 impl ExtraDataCompact for ArrayPat {
@@ -1427,16 +1157,6 @@ impl ExtraDataCompact for ObjectPatProp {
     }
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
         unsafe { data.object_pat_prop }
-    }
-}
-impl ExtraDataCompact for Option<ObjectPatProp> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_object_pat_prop: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_object_pat_prop }
     }
 }
 impl ExtraDataCompact for KeyValuePatProp {
@@ -1507,14 +1227,6 @@ impl ExtraDataCompact for Lit {
         unsafe { data.lit }
     }
 }
-impl ExtraDataCompact for Option<Lit> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData { optional_lit: self }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_lit }
-    }
-}
 impl ExtraDataCompact for Str {
     fn to_extra_data(self) -> ExtraData {
         ExtraData {
@@ -1583,16 +1295,6 @@ impl ExtraDataCompact for JSXObject {
         unsafe { data.jsx_object }
     }
 }
-impl ExtraDataCompact for Option<JSXObject> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_jsx_object: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_jsx_object }
-    }
-}
 impl ExtraDataCompact for JSXMemberExpr {
     fn to_extra_data(self) -> ExtraData {
         ExtraData {
@@ -1641,16 +1343,6 @@ impl ExtraDataCompact for JSXExpr {
         unsafe { data.jsx_expr }
     }
 }
-impl ExtraDataCompact for Option<JSXExpr> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_jsx_expr: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_jsx_expr }
-    }
-}
 impl ExtraDataCompact for JSXSpreadChild {
     fn to_extra_data(self) -> ExtraData {
         ExtraData {
@@ -1671,16 +1363,6 @@ impl ExtraDataCompact for JSXElementName {
         unsafe { data.jsx_element_name }
     }
 }
-impl ExtraDataCompact for Option<JSXElementName> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_jsx_element_name: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_jsx_element_name }
-    }
-}
 impl ExtraDataCompact for JSXOpeningElement {
     fn to_extra_data(self) -> ExtraData {
         ExtraData {
@@ -1699,16 +1381,6 @@ impl ExtraDataCompact for JSXAttrOrSpread {
     }
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
         unsafe { data.jsx_attr_or_spread }
-    }
-}
-impl ExtraDataCompact for Option<JSXAttrOrSpread> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_jsx_attr_or_spread: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_jsx_attr_or_spread }
     }
 }
 impl ExtraDataCompact for JSXClosingElement {
@@ -1741,16 +1413,6 @@ impl ExtraDataCompact for JSXAttrName {
         unsafe { data.jsx_attr_name }
     }
 }
-impl ExtraDataCompact for Option<JSXAttrName> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_jsx_attr_name: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_jsx_attr_name }
-    }
-}
 impl ExtraDataCompact for JSXAttrValue {
     fn to_extra_data(self) -> ExtraData {
         ExtraData {
@@ -1759,16 +1421,6 @@ impl ExtraDataCompact for JSXAttrValue {
     }
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
         unsafe { data.jsx_attr_value }
-    }
-}
-impl ExtraDataCompact for Option<JSXAttrValue> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_jsx_attr_value: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_jsx_attr_value }
     }
 }
 impl ExtraDataCompact for JSXText {
@@ -1801,16 +1453,6 @@ impl ExtraDataCompact for JSXElementChild {
         unsafe { data.jsx_element_child }
     }
 }
-impl ExtraDataCompact for Option<JSXElementChild> {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_jsx_element_child: self,
-        }
-    }
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe { data.optional_jsx_element_child }
-    }
-}
 impl ExtraDataCompact for JSXFragment {
     fn to_extra_data(self) -> ExtraData {
         ExtraData {
@@ -1839,5 +1481,185 @@ impl ExtraDataCompact for JSXClosingFragment {
     }
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
         unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for Option<ObjectLit> {
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_node: self.map(|n| n.node_id()).into(),
+        }
+    }
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe {
+            data.optional_node
+                .to_option()
+                .map(|id| ObjectLit::from_node_id_unchecked(id, ast))
+        }
+    }
+}
+impl ExtraDataCompact for Option<ModuleExportName> {
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_module_export_name: self,
+        }
+    }
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.optional_module_export_name }
+    }
+}
+impl ExtraDataCompact for Option<Str> {
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_node: self.map(|n| n.node_id()).into(),
+        }
+    }
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe {
+            data.optional_node
+                .to_option()
+                .map(|id| Str::from_node_id_unchecked(id, ast))
+        }
+    }
+}
+impl ExtraDataCompact for Option<Expr> {
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_expr: self,
+        }
+    }
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.optional_expr }
+    }
+}
+impl ExtraDataCompact for Option<Ident> {
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_node: self.map(|n| n.node_id()).into(),
+        }
+    }
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe {
+            data.optional_node
+                .to_option()
+                .map(|id| Ident::from_node_id_unchecked(id, ast))
+        }
+    }
+}
+impl ExtraDataCompact for Option<Stmt> {
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_stmt: self,
+        }
+    }
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.optional_stmt }
+    }
+}
+impl ExtraDataCompact for Option<CatchClause> {
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_node: self.map(|n| n.node_id()).into(),
+        }
+    }
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe {
+            data.optional_node
+                .to_option()
+                .map(|id| CatchClause::from_node_id_unchecked(id, ast))
+        }
+    }
+}
+impl ExtraDataCompact for Option<BlockStmt> {
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_node: self.map(|n| n.node_id()).into(),
+        }
+    }
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe {
+            data.optional_node
+                .to_option()
+                .map(|id| BlockStmt::from_node_id_unchecked(id, ast))
+        }
+    }
+}
+impl ExtraDataCompact for Option<VarDeclOrExpr> {
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_var_decl_or_expr: self,
+        }
+    }
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.optional_var_decl_or_expr }
+    }
+}
+impl ExtraDataCompact for Option<Pat> {
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData { optional_pat: self }
+    }
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.optional_pat }
+    }
+}
+impl ExtraDataCompact for Option<ExprOrSpread> {
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_node: self.map(|n| n.node_id()).into(),
+        }
+    }
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe {
+            data.optional_node
+                .to_option()
+                .map(|id| ExprOrSpread::from_node_id_unchecked(id, ast))
+        }
+    }
+}
+impl ExtraDataCompact for Option<TypedSubRange<ExprOrSpread>> {
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_sub_range: self,
+        }
+    }
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.optional_sub_range }
+    }
+}
+impl ExtraDataCompact for Option<SpreadDot3Token> {
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_node: self.map(|n| n.node_id()).into(),
+        }
+    }
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe {
+            data.optional_node
+                .to_option()
+                .map(|id| SpreadDot3Token::from_node_id_unchecked(id, ast))
+        }
+    }
+}
+impl ExtraDataCompact for Option<JSXAttrValue> {
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_jsx_attr_value: self,
+        }
+    }
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.optional_jsx_attr_value }
+    }
+}
+impl ExtraDataCompact for Option<JSXClosingElement> {
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_node: self.map(|n| n.node_id()).into(),
+        }
+    }
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe {
+            data.optional_node
+                .to_option()
+                .map(|id| JSXClosingElement::from_node_id_unchecked(id, ast))
+        }
     }
 }

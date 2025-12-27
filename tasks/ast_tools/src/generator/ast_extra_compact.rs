@@ -14,26 +14,12 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
         match ty {
             AstType::Struct(ast_struct) => {
                 let ident = format_ident!("{}", ast_struct.name);
-                let extra_field = map_field_type_to_extra_field(ty, schema);
-
-                let (to_expr, from_expr) = if extra_field == "node" {
-                    (
-                        quote!(ExtraData {
-                            node: self.node_id()
-                        }),
-                        quote!(unsafe { Self::from_node_id_unchecked(data.node, ast) }),
-                    )
-                } else {
-                    let field_ident = format_ident!("{}", extra_field);
-                    if extra_field == "other" {
-                        continue;
-                    }
-
-                    (
-                        quote!(ExtraData { #field_ident: self }),
-                        quote!(unsafe { data.#field_ident }),
-                    )
-                };
+                let (to_expr, from_expr) = (
+                    quote!(ExtraData {
+                        node: self.node_id()
+                    }),
+                    quote!(unsafe { Self::from_node_id_unchecked(data.node, ast) }),
+                );
 
                 impls.extend(quote! {
                    impl ExtraDataCompact for #ident {
@@ -51,36 +37,38 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
                 let ident = format_ident!("{}", ast_enum.name);
                 let extra_field = map_field_type_to_extra_field(ty, schema);
 
-                let (to_expr, from_expr) = if extra_field == "node" {
-                    (
+                let (to_expr, from_expr) = match extra_field.as_str() {
+                    "node" => (
                         quote!(ExtraData {
                             node: self.node_id()
                         }),
                         quote!(unsafe { Self::from_node_id_unchecked(data.node, ast) }),
-                    )
-                } else if extra_field == "other" {
-                    if let Some(&size) = schema.repr_sizes.get(&ast_enum.name) {
-                        let cast_ty = match size {
-                            1 => quote!(u8),
-                            2 => quote!(u16),
-                            4 => quote!(u32),
-                            8 => quote!(u64),
-                            _ => quote!(u64),
-                        };
+                    ),
+                    "other" => {
+                        if let Some(&size) = schema.repr_sizes.get(&ast_enum.name) {
+                            let cast_ty = match size {
+                                1 => quote!(u8),
+                                2 => quote!(u16),
+                                4 => quote!(u32),
+                                8 => quote!(u64),
+                                _ => quote!(u64),
+                            };
 
-                        (
-                            quote!(ExtraData { other: self as #cast_ty as u64 }),
-                            quote!(unsafe { std::mem::transmute(data.other as #cast_ty) }),
-                        )
-                    } else {
-                        continue;
+                            (
+                                quote!(ExtraData { other: self as u64 }),
+                                quote!(unsafe { std::mem::transmute(data.other as #cast_ty) }),
+                            )
+                        } else {
+                            panic!("Invalid type size {}", ast_enum.name);
+                        }
                     }
-                } else {
-                    let field_ident = format_ident!("{}", extra_field);
-                    (
-                        quote!(ExtraData { #field_ident: self }),
-                        quote!(unsafe { data.#field_ident }),
-                    )
+                    _ => {
+                        let field_ident = format_ident!("{}", extra_field);
+                        (
+                            quote!(ExtraData { #field_ident: self }),
+                            quote!(unsafe { data.#field_ident }),
+                        )
+                    }
                 };
 
                 impls.extend(quote! {
@@ -94,52 +82,42 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
                        }
                    }
                 });
+            }
+            AstType::Option(ast_option) => {
+                let inner_type = &schema.types[ast_option.inner_type_id];
+                let optional_extra_field = map_field_type_to_extra_field(ty, schema);
+                let inner_ty_ident = inner_type.repr_ident(schema);
+                let opt_field_ident = format_ident!("{}", optional_extra_field);
+                let (opt_to, opt_from) = if optional_extra_field == "optional_node" {
+                    (
+                        quote!(ExtraData {
+                            optional_node: self.map(|n| n.node_id()).into()
+                        }),
+                        quote!(unsafe {
+                            data.optional_node
+                                .to_option()
+                                .map(|id| #inner_ty_ident::from_node_id_unchecked(id, ast))
+                        }),
+                    )
+                } else {
+                    (
+                        quote!(ExtraData { #opt_field_ident: self }),
+                        quote!(unsafe { data.#opt_field_ident }),
+                    )
+                };
 
-                // Also handle Option<T>
-                // We need to construct a dummy AstOption to check the extra field mapping
-                let inner_type_id = ast_enum.type_id;
-                let optional_extra_field = map_field_type_to_extra_field(
-                    &AstType::Option(crate::schema::AstOption {
-                        type_id: crate::schema::TypeId::DUMMY,
-                        name: "Option".to_string(),
-                        inner_type_id,
-                    }),
-                    schema,
-                );
-
-                if optional_extra_field.starts_with("optional_") {
-                    let opt_field_ident = format_ident!("{}", optional_extra_field);
-
-                    let (opt_to, opt_from) = if optional_extra_field == "optional_node" {
-                        (
-                            quote!(ExtraData {
-                                optional_node: self.map(|n| n.node_id()).into()
-                            }),
-                            quote!(unsafe {
-                                data.optional_node
-                                    .to_option()
-                                    .map(|id| #ident::from_node_id_unchecked(id, ast))
-                            }),
-                        )
-                    } else {
-                        (
-                            quote!(ExtraData { #opt_field_ident: self }),
-                            quote!(unsafe { data.#opt_field_ident }),
-                        )
-                    };
-
-                    impls.extend(quote! {
-                       impl ExtraDataCompact for Option<#ident> {
-                           fn to_extra_data(self) -> ExtraData {
-                               #opt_to
-                           }
-
-                           unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-                               #opt_from
-                           }
+                let ty_ident = ty.repr_ident(schema);
+                impls.extend(quote! {
+                   impl ExtraDataCompact for #ty_ident {
+                       fn to_extra_data(self) -> ExtraData {
+                           #opt_to
                        }
-                    });
-                }
+
+                       unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+                           #opt_from
+                       }
+                   }
+                });
             }
             _ => {}
         }
