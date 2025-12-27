@@ -484,31 +484,32 @@ impl<I: Tokens> Parser<I> {
 
         self.assert_and_bump(Token::LBracket);
 
-        let mut elems = Vec::with_capacity(8);
+        let elems = self.scratch_start(|p, elems| {
+            while !p.input().is(Token::RBracket) {
+                if p.input().is(Token::Comma) {
+                    expect!(p, Token::Comma);
+                    elems.push(p, None);
+                    continue;
+                }
 
-        while !self.input().is(Token::RBracket) {
-            if self.input().is(Token::Comma) {
-                expect!(self, Token::Comma);
-                elems.push(None);
-                continue;
-            }
+                let elem = p.allow_in_expr(|p| p.parse_expr_or_spread())?;
+                elems.push(p, Some(elem));
 
-            let elem = self.allow_in_expr(|p| p.parse_expr_or_spread())?;
-            elems.push(Some(elem));
-
-            if !self.input().is(Token::RBracket) {
-                expect!(self, Token::Comma);
-                if self.input().is(Token::RBracket) {
-                    let prev_span = self.input().prev_span();
-                    self.state_mut().trailing_commas.insert(start, prev_span);
+                if !p.input().is(Token::RBracket) {
+                    expect!(p, Token::Comma);
+                    if p.input().is(Token::RBracket) {
+                        let prev_span = p.input().prev_span();
+                        p.state_mut().trailing_commas.insert(start, prev_span);
+                    }
                 }
             }
-        }
 
-        expect!(self, Token::RBracket);
+            expect!(p, Token::RBracket);
+
+            Ok(())
+        })?;
 
         let span = self.span(start);
-        let elems = self.ast.add_typed_sub_range(elems);
         Ok(self.ast.expr_array_lit(span, elems))
     }
 
