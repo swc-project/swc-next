@@ -408,7 +408,7 @@ impl Ast {
             nodes: NodeList::with_capacity(empirical_capacity),
             extra_data: IndexVec::with_capacity(empirical_capacity * 2),
             bigint: IndexVec::new(),
-            string_allocator: StringAllocator::new(source_len),
+            string_allocator: StringAllocator::new_with_source_len(source_len),
         }
     }
 
@@ -477,6 +477,11 @@ impl Ast {
     #[inline]
     pub fn get_optional_wtf8(&self, id: OptionalWtf8Ref) -> Option<&Wtf8> {
         self.string_allocator.get_optional_wtf8(id)
+    }
+
+    #[inline]
+    pub fn empty_utf8_ref(&self) -> Utf8Ref {
+        self.string_allocator.empty_utf8_ref()
     }
 
     #[inline]
