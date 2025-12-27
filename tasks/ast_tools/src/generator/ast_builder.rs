@@ -8,7 +8,7 @@ use crate::{
     schema::{AstEnum, AstStruct, AstType, Schema},
     util::{
         INLINE_DATA_U32_SIZE, InlineStorageMode, calculate_inline_layout, generate_field_to_u32,
-        map_field_type_to_extra_field, safe_ident,
+        safe_ident,
     },
 };
 
@@ -230,31 +230,8 @@ fn generate_build_function_inline(
                 current_extra_data_index += 1;
 
                 let field_name = format_ident!("{}", field.name);
-                let field_ty = &schema.types[field.type_id];
-                let extra_data_field = map_field_type_to_extra_field(field_ty, schema);
-                let field_value = match field_ty {
-                    AstType::Option(ast_option) => {
-                        let inner_ty = &schema.types[ast_option.inner_type_id];
-                        match inner_ty {
-                            AstType::Vec(_) => quote!(#field_name.map(|n| n.inner).into()),
-                            AstType::Enum(_) => quote!(#field_name),
-                            _ => quote!(#field_name.map(|n| n.node_id()).into()),
-                        }
-                    }
-                    AstType::Struct(_) => {
-                        quote!( #field_name.node_id() )
-                    }
-                    AstType::Enum(ast_enum) if ast_enum.name == "AssignTarget" => {
-                        quote!( #field_name.node_id().into() )
-                    }
-                    AstType::Enum(_) => quote!( #field_name ),
-                    _ if extra_data_field == "other" => quote!( #field_name.to_extra_data() ),
-                    _ => quote!( #field_name.into() ),
-                };
-                let extra_data_field = format_ident!("{}", extra_data_field);
-
                 add_extra_data.extend(quote! {
-                    let #extra_data_id = self.add_extra(ExtraData { #extra_data_field: #field_value });
+                    let #extra_data_id = self.add_extra(#field_name.to_extra_data());
                 });
             }
 
@@ -285,7 +262,7 @@ fn generate_build_function_inline(
 /// Generate build function using extra_data storage (for large nodes)
 fn generate_build_function_extra_data(
     ast: &AstStruct,
-    schema: &Schema,
+    _schema: &Schema,
     fn_name: syn::Ident,
     ret_ty: syn::Ident,
     fn_params: TokenStream,
@@ -294,32 +271,8 @@ fn generate_build_function_extra_data(
     for (index, field) in ast.fields.iter().enumerate() {
         let extra_data_id = format_ident!("_f{}", index);
         let field_name = format_ident!("{}", field.name);
-
-        let field_ty = &schema.types[field.type_id];
-        let extra_data_field = map_field_type_to_extra_field(field_ty, schema);
-        let field_value = match field_ty {
-            AstType::Option(ast_option) => {
-                let inner_ty = &schema.types[ast_option.inner_type_id];
-                match inner_ty {
-                    AstType::Vec(_) => quote!(#field_name.map(|n| n.inner).into()),
-                    AstType::Enum(_) => quote!(#field_name),
-                    _ => quote!(#field_name.map(|n| n.node_id()).into()),
-                }
-            }
-            AstType::Struct(_) => {
-                quote!( #field_name.node_id() )
-            }
-            AstType::Enum(ast_enum) if ast_enum.name == "AssignTarget" => {
-                quote!( #field_name.node_id().into() )
-            }
-            AstType::Enum(_) => quote!( #field_name ),
-            _ if extra_data_field == "other" => quote!( #field_name.to_extra_data() ),
-            _ => quote!( #field_name.into() ),
-        };
-        let extra_data_field = format_ident!("{}", extra_data_field);
-
         add_extra_data.extend(quote! {
-            let #extra_data_id = self.add_extra(ExtraData { #extra_data_field: #field_value });
+            let #extra_data_id = self.add_extra(#field_name.to_extra_data());
         });
     }
 
