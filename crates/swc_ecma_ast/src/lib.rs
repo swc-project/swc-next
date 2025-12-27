@@ -127,6 +127,7 @@ pub union NodeData {
 /// # Safety:
 /// It is only access the by the property accesses of typed AST node, and the construction of typed AST is
 /// another safety guarantee.
+#[derive(Clone, Copy)]
 pub union ExtraData {
     // Ids
     node: NodeId,

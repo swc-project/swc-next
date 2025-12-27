@@ -8,7 +8,7 @@ use crate::{
     schema::{AstEnum, AstStruct, AstType, Schema},
     util::{
         INLINE_DATA_U32_SIZE, InlineLayout, InlineStorageMode, calculate_inline_layout,
-        generate_field_to_u32, generate_u32_to_field, map_field_type_to_extra_field, safe_ident,
+        generate_field_to_u32, generate_u32_to_field, safe_ident,
     },
 };
 
@@ -423,95 +423,34 @@ fn generate_extra_data_property_accessors(
 ) {
     for (offset, field) in ast.fields.iter().enumerate() {
         let field_name = format_ident!("{}", field.name);
-        let field_ty = &schema.types[field.type_id];
-
-        let extra_data_name = map_field_type_to_extra_field(field_ty, schema);
-        let (ret_ty, cast_expr) = match &field_ty {
-            AstType::Vec(_) => (
-                field_ty.repr_ident(schema),
-                quote!(unsafe { ret.cast_to_typed() }),
-            ),
-            AstType::Option(ast) => {
-                let option_field_ident = field_ty.repr_ident(schema);
-                let cast_expr = match &schema.types[ast.inner_type_id] {
-                    AstType::Vec(_) => {
-                        quote!(unsafe { ret.cast_to_typed().to_option() })
-                    }
-                    AstType::Enum(_) => {
-                        quote!(ret)
-                    }
-                    _ => {
-                        let field_inner_ident = schema.types[ast.inner_type_id].repr_ident(schema);
-                        quote!( ret.map(|id| unsafe { #field_inner_ident::from_node_id_unchecked(id, ast) }) )
-                    }
-                };
-                (option_field_ident, cast_expr)
-            }
-            AstType::Struct(_) => {
-                let field_inner_ty = field_ty.repr_ident(schema);
-                (
-                    field_inner_ty.clone(),
-                    quote!( unsafe { #field_inner_ty::from_node_id_unchecked(ret, ast) }),
-                )
-            }
-            AstType::Enum(ast_enum) if ast_enum.name == "AssignTarget" => {
-                let field_inner_ty = field_ty.repr_ident(schema);
-                (
-                    field_inner_ty.clone(),
-                    quote!( unsafe { #field_inner_ty::from_node_id_unchecked(ret, ast) }),
-                )
-            }
-            AstType::Enum(_) => {
-                let field_inner_ty = field_ty.repr_ident(schema);
-                (field_inner_ty.clone(), quote!(ret))
-            }
-            _ if extra_data_name == "other" => {
-                let field_ty = field_ty.repr_ident(schema);
-                (field_ty.clone(), quote!(#field_ty::from_extra_data(ret)))
-            }
-            _ => (field_ty.repr_ident(schema), quote!(ret.into())),
-        };
-        let extra_data_name = format_ident!("{extra_data_name}");
+        let field_ty = &schema.types[field.type_id].repr_ident(schema);
 
         let getter_name = safe_ident(&field.name.to_case(Case::Snake));
         field_getters.extend(quote! {
             #[inline]
-            pub fn #getter_name(&self, ast: &crate::Ast) -> #ret_ty {
+            pub fn #getter_name(&self, ast: &crate::Ast) -> #field_ty {
                 let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.get_unchecked(self.0).data.extra_data_start.index().wrapping_add(#offset)) };
 
                 debug_assert!(offset < ast.extra_data.len());
-                let ret = unsafe { ast.extra_data.as_raw_slice().get_unchecked(offset.index()).#extra_data_name };
-                #cast_expr
+                unsafe { 
+                    ExtraDataCompact::from_extra_data(
+                        *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                        ast,
+                    )
+                }
             }
         });
 
-        let extra_data_value = match &field_ty {
-            AstType::Option(ast_option) => {
-                let inner_ty = &schema.types[ast_option.inner_type_id];
-                match inner_ty {
-                    AstType::Vec(_) => quote!(#field_name.map(|n| n.inner).into()),
-                    AstType::Enum(_) => quote!(#field_name),
-                    _ => quote!(#field_name.map(|n| n.node_id()).into()),
-                }
-            }
-            AstType::Struct(_) => quote!(#field_name.node_id().into()),
-            AstType::Enum(ast_enum) if ast_enum.name == "AssignTarget" => {
-                quote!(#field_name.node_id().into())
-            }
-            AstType::Enum(_) => quote!(#field_name),
-            _ if extra_data_name == "other" => {
-                quote!(#field_name.to_extra_data())
-            }
-            _ => quote!(#field_name.into()),
-        };
         let setter_name = format_ident!("set_{}", field_name);
         field_setters.extend(quote! {
             #[inline]
-            pub fn #setter_name(&self, ast: &mut crate::Ast, #field_name: #ret_ty) {
+            pub fn #setter_name(&self, ast: &mut crate::Ast, #field_name: #field_ty) {
                 let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.get_unchecked(self.0).data.extra_data_start.index().wrapping_add(#offset)) };
 
                 debug_assert!(offset < ast.extra_data.len());
-                unsafe { ast.extra_data.as_raw_slice_mut().get_unchecked_mut(offset.index()).#extra_data_name = #extra_data_value };
+                unsafe {
+                    *ast.extra_data.as_raw_slice_mut().get_unchecked_mut(offset.index()) = #field_name.to_extra_data();
+                };
             }
         });
     }
@@ -534,98 +473,35 @@ fn generate_extra_data_property_accessors_partial(
         }
 
         let field_name = format_ident!("{}", field.name);
-        let field_ty = &schema.types[field.type_id];
-
-        let extra_data_name = map_field_type_to_extra_field(field_ty, schema);
-        let (ret_ty, cast_expr) = match &field_ty {
-            AstType::Vec(_) => (
-                field_ty.repr_ident(schema),
-                quote!(unsafe { ret.cast_to_typed() }),
-            ),
-            AstType::Option(ast) => {
-                let option_field_ident = field_ty.repr_ident(schema);
-                let cast_expr = match &schema.types[ast.inner_type_id] {
-                    AstType::Vec(_) => {
-                        quote!(unsafe { ret.cast_to_typed().to_option() })
-                    }
-                    AstType::Enum(_) => {
-                        quote!(ret)
-                    }
-                    _ => {
-                        let field_inner_ident = schema.types[ast.inner_type_id].repr_ident(schema);
-                        quote!( ret.map(|id| unsafe { #field_inner_ident::from_node_id_unchecked(id, ast) }) )
-                    }
-                };
-                (option_field_ident, cast_expr)
-            }
-            AstType::Struct(_) => {
-                let field_inner_ty = field_ty.repr_ident(schema);
-                (
-                    field_inner_ty.clone(),
-                    quote!( unsafe { #field_inner_ty::from_node_id_unchecked(ret, ast) }),
-                )
-            }
-            AstType::Enum(ast_enum) if ast_enum.name == "AssignTarget" => {
-                let field_inner_ty = field_ty.repr_ident(schema);
-                (
-                    field_inner_ty.clone(),
-                    quote!( unsafe { #field_inner_ty::from_node_id_unchecked(ret, ast) }),
-                )
-            }
-            AstType::Enum(_) => {
-                let field_inner_ty = field_ty.repr_ident(schema);
-                (field_inner_ty.clone(), quote!(ret))
-            }
-            _ if extra_data_name == "other" => {
-                let field_ty = field_ty.repr_ident(schema);
-                (field_ty.clone(), quote!(#field_ty::from_extra_data(ret)))
-            }
-            _ => (field_ty.repr_ident(schema), quote!(ret.into())),
-        };
-        let extra_data_name = format_ident!("{extra_data_name}");
-
-        let getter_name = safe_ident(&field.name.to_case(Case::Snake));
+        let field_ty = &schema.types[field.type_id].repr_ident(schema);
 
         let offset = current_extra_offset;
-
+        let getter_name = safe_ident(&field.name.to_case(Case::Snake));
         field_getters.extend(quote! {
             #[inline]
-            pub fn #getter_name(&self, ast: &crate::Ast) -> #ret_ty {
+            pub fn #getter_name(&self, ast: &crate::Ast) -> #field_ty {
                 let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.get_unchecked(self.0).data.extra_data_start.index().wrapping_add(#offset)) };
 
                 debug_assert!(offset < ast.extra_data.len());
-                let ret = unsafe { ast.extra_data.as_raw_slice().get_unchecked(offset.index()).#extra_data_name };
-                #cast_expr
+                unsafe {
+                    ExtraDataCompact::from_extra_data(
+                        ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                        ast
+                    )
+                }
             }
         });
 
-        let extra_data_value = match &field_ty {
-            AstType::Option(ast_option) => {
-                let inner_ty = &schema.types[ast_option.inner_type_id];
-                match inner_ty {
-                    AstType::Vec(_) => quote!(#field_name.map(|n| n.inner).into()),
-                    AstType::Enum(_) => quote!(#field_name),
-                    _ => quote!(#field_name.map(|n| n.node_id()).into()),
-                }
-            }
-            AstType::Struct(_) => quote!(#field_name.node_id().into()),
-            AstType::Enum(ast_enum) if ast_enum.name == "AssignTarget" => {
-                quote!(#field_name.node_id().into())
-            }
-            AstType::Enum(_) => quote!(#field_name),
-            _ if extra_data_name == "other" => {
-                quote!(#field_name.to_extra_data())
-            }
-            _ => quote!(#field_name.into()),
-        };
         let setter_name = format_ident!("set_{}", field_name);
         field_setters.extend(quote! {
             #[inline]
-            pub fn #setter_name(&self, ast: &mut crate::Ast, #field_name: #ret_ty) {
+            pub fn #setter_name(&self, ast: &mut crate::Ast, #field_name: #field_ty) {
                 let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.get_unchecked(self.0).data.extra_data_start.index().wrapping_add(#offset)) };
 
                 debug_assert!(offset < ast.extra_data.len());
-                unsafe { ast.extra_data.as_raw_slice_mut().get_unchecked_mut(offset.index()).#extra_data_name = #extra_data_value };
+                unsafe {
+                    ast.extra_data.as_raw_slice_mut().get_unchecked_mut(offset.index()) = #field_name.to_extra_data();
+                };
             }
         });
 

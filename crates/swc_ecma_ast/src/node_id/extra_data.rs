@@ -1,4 +1,4 @@
-use crate::{Ast, ExtraData};
+use crate::{Ast, ExtraData, node_id::OptionalTypedSubRange};
 
 oxc_index::define_index_type! {
     pub struct ExtraDataId = u32;
@@ -55,6 +55,34 @@ impl ExtraDataCompact for crate::OptionalSubRange {
     }
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast) -> Self {
         unsafe { data.optional_sub_range }
+    }
+}
+
+impl<T> ExtraDataCompact for crate::TypedSubRange<T> {
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            sub_range: self.inner,
+        }
+    }
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe {
+            let sub_range = crate::SubRange::from_extra_data(data, ast);
+            sub_range.cast_to_typed()
+        }
+    }
+}
+
+impl<T> ExtraDataCompact for OptionalTypedSubRange<T> {
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_sub_range: self.inner,
+        }
+    }
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe {
+            let sub_range = crate::OptionalSubRange::from_extra_data(data, ast);
+            sub_range.cast_to_typed()
+        }
     }
 }
 
