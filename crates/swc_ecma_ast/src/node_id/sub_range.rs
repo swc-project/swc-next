@@ -1,6 +1,9 @@
 use std::{marker::PhantomData, ops::Deref};
 
-use crate::{Ast, AstNode, NodeIdTrait, node_id::ExtraDataId};
+use crate::{
+    Ast, AstNode,
+    node_id::{ExtraDataCompact, ExtraDataId},
+};
 
 pub const EMPTY_SUB_RANGE: SubRange = SubRange {
     start: ExtraDataId::from_raw(0),
@@ -181,7 +184,7 @@ pub struct TypedSubRangeIterator<T> {
     _phantom: PhantomData<T>,
 }
 
-impl<T: NodeIdTrait> Iterator for TypedSubRangeIterator<T> {
+impl<T: ExtraDataCompact> Iterator for TypedSubRangeIterator<T> {
     type Item = NodeExtraDataId<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -202,47 +205,7 @@ impl<T: NodeIdTrait> Iterator for TypedSubRangeIterator<T> {
     }
 }
 
-impl<T: NodeIdTrait> DoubleEndedIterator for TypedSubRangeIterator<T> {
-    fn next_back(&mut self) -> Option<Self::Item> {
-        if self.cur == self.end {
-            return None;
-        }
-
-        self.end = ExtraDataId::from_usize_unchecked(self.end.index().wrapping_sub(1));
-        debug_assert!(self.cur <= self.end);
-
-        let next = self.end;
-        debug_assert!(next >= self.cur);
-
-        Some(NodeExtraDataId {
-            inner: next,
-            _phantom: PhantomData,
-        })
-    }
-}
-
-impl<T: NodeIdTrait> Iterator for TypedSubRangeIterator<Option<T>> {
-    type Item = NodeExtraDataId<Option<T>>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.cur == self.end {
-            return None;
-        }
-
-        let next = self.cur;
-        debug_assert!(next < self.end);
-
-        self.cur = ExtraDataId::from_usize_unchecked(self.cur.index().wrapping_add(1));
-        debug_assert!(self.cur <= self.end);
-
-        Some(NodeExtraDataId {
-            inner: next,
-            _phantom: PhantomData,
-        })
-    }
-}
-
-impl<T: NodeIdTrait> DoubleEndedIterator for TypedSubRangeIterator<Option<T>> {
+impl<T: ExtraDataCompact> DoubleEndedIterator for TypedSubRangeIterator<T> {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.cur == self.end {
             return None;
@@ -270,19 +233,9 @@ pub struct NodeExtraDataId<T> {
 }
 
 impl Ast {
-    pub fn get_node_in_sub_range<T: NodeIdTrait>(&self, id: NodeExtraDataId<T>) -> T {
-        let node_id = unsafe { self.extra_data[id.inner].node };
-
+    pub fn get_node_in_sub_range<T: ExtraDataCompact>(&self, id: NodeExtraDataId<T>) -> T {
         // Safety: `NodeExtraDataId<T>` should always be valid
-        unsafe { T::from_node_id_unchecked(node_id, self) }
-    }
-
-    pub fn get_opt_node_in_sub_range<T: NodeIdTrait>(
-        &self,
-        id: NodeExtraDataId<Option<T>>,
-    ) -> Option<T> {
-        let opt_node_id = unsafe { self.extra_data[id.inner].optional_node };
-        opt_node_id.map(|node_id| unsafe { T::from_node_id_unchecked(node_id, self) })
+        unsafe { T::from_extra_data(self.extra_data[id.inner], self) }
     }
 
     pub fn get_raw_node_in_sub_range<T>(&self, id: NodeExtraDataId<T>) -> &AstNode {

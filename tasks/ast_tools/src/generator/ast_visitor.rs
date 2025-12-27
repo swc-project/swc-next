@@ -289,12 +289,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 });
 
                 // VisitWith/VisitMutWith
-                let get_node = match inner_type {
-                    AstType::Option(_) => {
-                        quote!( let child = visitor.ast().get_opt_node_in_sub_range(child); )
-                    }
-                    _ => quote! ( let child = visitor.ast().get_node_in_sub_range(child); ),
-                };
+                let get_node = quote! ( let child = visitor.ast().get_node_in_sub_range(child); );
                 visit_with_impls.extend(quote! {
                     impl<V: ?Sized + Visit> VisitWith<V> for #ty_ident {
                         fn visit_with(self, visitor: &mut V) {

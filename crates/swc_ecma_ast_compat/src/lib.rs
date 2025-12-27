@@ -1,7 +1,7 @@
 use swc_core::atoms::{Atom, Wtf8Atom};
 use swc_core::ecma::ast::{self as legacy};
 use swc_experimental_ecma_ast::{
-    self as experimental, Ast, BigIntId, NodeIdTrait, OptionalUtf8Ref, OptionalWtf8Ref,
+    self as experimental, Ast, BigIntId, ExtraDataCompact, OptionalUtf8Ref, OptionalWtf8Ref,
     TypedSubRange, Utf8Ref, Wtf8Ref,
 };
 use swc_experimental_ecma_semantic::resolver::Semantic;
@@ -309,8 +309,9 @@ impl AstCompat<'_> {
             }),
             experimental::Expr::Array(a) => legacy::Expr::Array(legacy::ArrayLit {
                 span: a.span(self.ast),
-                elems: self
-                    .compat_opt_type_sub_range(a.elems(self.ast), Self::compat_expr_or_spread),
+                elems: self.compat_type_sub_range(a.elems(self.ast), |this, e| {
+                    e.map(|e| this.compat_expr_or_spread(e))
+                }),
             }),
             experimental::Expr::Object(o) => legacy::Expr::Object(self.compat_object_lit(o)),
             experimental::Expr::Fn(f) => legacy::Expr::Fn(self.compat_fn_expr(f)),
@@ -1045,7 +1046,9 @@ impl AstCompat<'_> {
             }),
             experimental::Pat::Array(a) => legacy::Pat::Array(legacy::ArrayPat {
                 span: a.span(self.ast),
-                elems: self.compat_opt_type_sub_range(a.elems(self.ast), Self::compat_pat),
+                elems: self.compat_type_sub_range(a.elems(self.ast), |this, p| {
+                    p.map(|p| this.compat_pat(p))
+                }),
                 optional: a.optional(self.ast),
                 type_ann: None,
             }),
@@ -1253,7 +1256,9 @@ impl AstCompat<'_> {
                 experimental::AssignTargetPat::Array(a) => {
                     legacy::AssignTargetPat::Array(legacy::ArrayPat {
                         span: a.span(self.ast),
-                        elems: self.compat_opt_type_sub_range(a.elems(self.ast), Self::compat_pat),
+                        elems: self.compat_type_sub_range(a.elems(self.ast), |this, pat| {
+                            pat.map(|pat| this.compat_pat(pat))
+                        }),
                         optional: false,
                         type_ann: None,
                     })
@@ -1553,7 +1558,7 @@ impl AstCompat<'_> {
         self.ast.get_big_int(big_int).clone()
     }
 
-    fn compat_type_sub_range<T: NodeIdTrait, U, F: Fn(&mut Self, T) -> U>(
+    fn compat_type_sub_range<T: ExtraDataCompact, U, F: Fn(&mut Self, T) -> U>(
         &mut self,
         typed_range: TypedSubRange<T>,
         transformer: F,
@@ -1561,22 +1566,6 @@ impl AstCompat<'_> {
         let mut ret = Vec::with_capacity(typed_range.len());
         for item in typed_range.iter() {
             ret.push(transformer(self, self.ast.get_node_in_sub_range(item)));
-        }
-        ret
-    }
-
-    fn compat_opt_type_sub_range<T: NodeIdTrait, U, F: Fn(&mut Self, T) -> U>(
-        &mut self,
-        typed_range: TypedSubRange<Option<T>>,
-        transformer: F,
-    ) -> Vec<Option<U>> {
-        let mut ret = Vec::with_capacity(typed_range.len());
-        for item in typed_range.iter() {
-            let v = self
-                .ast
-                .get_opt_node_in_sub_range(item)
-                .map(|n| transformer(self, n));
-            ret.push(v);
         }
         ret
     }

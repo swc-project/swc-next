@@ -142,7 +142,7 @@ impl ExprExt for Expr {
     }
 }
 
-pub trait FromStmt: NodeIdTrait {
+pub trait FromStmt: ExtraDataCompact {
     fn from_stmt(stmt: Stmt) -> Self;
 }
 
@@ -158,12 +158,12 @@ impl FromStmt for Stmt {
     }
 }
 
-pub(crate) struct ScratchIndex<N: NodeIdTrait> {
+pub(crate) struct ScratchIndex<N: ExtraDataCompact> {
     start: usize,
     _p: PhantomData<N>,
 }
 
-impl<N: NodeIdTrait> ScratchIndex<N> {
+impl<N: ExtraDataCompact> ScratchIndex<N> {
     pub(crate) fn new(start: usize) -> Self {
         Self {
             start,
@@ -172,29 +172,11 @@ impl<N: NodeIdTrait> ScratchIndex<N> {
     }
 
     pub(crate) fn end<I: Tokens>(self, p: &mut Parser<I>) -> TypedSubRange<N> {
-        let range = p.ast.add_typed_sub_range(&p.scratch[self.start..]);
-        unsafe { p.scratch.set_len(self.start) };
-
-        // // Check if all nodes in range are of the same kind
-        // if cfg!(debug_assertions) {
-        //     if let Some(first) = range.first() {
-        //         let kind = p.ast.get_raw_node(first).kind;
-        //         for i in 0..range.len() {
-        //             let node = p.ast.get_raw_node(range.get(i));
-        //             debug_assert!(
-        //                 node.kind == kind,
-        //                 "expected {:?}, got {:?}",
-        //                 kind,
-        //                 node.kind
-        //             );
-        //         }
-        //     }
-        // }
-
-        range
+        let range = p.ast.add_typed_sub_range(p.scratch.drain(self.start..));
+        unsafe { std::mem::transmute(range) }
     }
 
     pub(crate) fn push<I: Tokens>(&mut self, p: &mut Parser<I>, node: N) {
-        p.scratch.push(node.node_id());
+        p.scratch.push(node.to_extra_data());
     }
 }

@@ -6,9 +6,19 @@ oxc_index::define_index_type! {
 
 /// Some AST field can be represented as a single u64 value to store it as [crate::ExtraData],
 /// and this trait is used to convert between the AST field and the u64 value.
-pub(crate) trait ExtraDataCompact: Sized {
+pub trait ExtraDataCompact: Sized {
     fn to_extra_data(self) -> ExtraData;
     unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self;
+}
+
+impl ExtraDataCompact for ExtraData {
+    fn to_extra_data(self) -> ExtraData {
+        self
+    }
+
+    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast) -> Self {
+        data
+    }
 }
 
 impl ExtraDataCompact for crate::Span {

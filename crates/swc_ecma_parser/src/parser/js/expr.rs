@@ -489,12 +489,12 @@ impl<I: Tokens> Parser<I> {
         while !self.input().is(Token::RBracket) {
             if self.input().is(Token::Comma) {
                 expect!(self, Token::Comma);
-                elems.push(OptionalNodeId::none());
+                elems.push(None);
                 continue;
             }
 
             let elem = self.allow_in_expr(|p| p.parse_expr_or_spread())?;
-            elems.push(elem.node_id().into());
+            elems.push(Some(elem));
 
             if !self.input().is(Token::RBracket) {
                 expect!(self, Token::Comma);
@@ -508,7 +508,7 @@ impl<I: Tokens> Parser<I> {
         expect!(self, Token::RBracket);
 
         let span = self.span(start);
-        let elems = self.ast.add_typed_opt_sub_range(&elems);
+        let elems = self.ast.add_typed_sub_range(elems);
         Ok(self.ast.expr_array_lit(span, elems))
     }
 
@@ -571,17 +571,17 @@ impl<I: Tokens> Parser<I> {
         let mut exprs = Vec::new();
         let cur_elem = self.parse_template_head(is_tagged_tpl)?;
         let mut is_tail = cur_elem.tail(&self.ast);
-        let mut quasis = vec![cur_elem.node_id()];
+        let mut quasis = vec![cur_elem];
 
         while !is_tail {
-            exprs.push(self.allow_in_expr(|p| p.parse_expr_inner())?.node_id());
+            exprs.push(self.allow_in_expr(|p| p.parse_expr_inner())?);
             let elem = self.parse_tpl_element(is_tagged_tpl)?;
             is_tail = elem.tail(&self.ast);
-            quasis.push(elem.node_id());
+            quasis.push(elem);
         }
 
-        let exprs = self.ast.add_typed_sub_range(&exprs);
-        let quasis = self.ast.add_typed_sub_range(&quasis);
+        let exprs = self.ast.add_typed_sub_range(exprs);
+        let quasis = self.ast.add_typed_sub_range(quasis);
         Ok((exprs, quasis))
     }
 
@@ -639,7 +639,7 @@ impl<I: Tokens> Parser<I> {
             quasis.push(p, tpl_element);
             Ok(())
         })?;
-        let exprs = self.ast.add_typed_sub_range(&[]);
+        let exprs = self.ast.add_typed_sub_range([]);
         Ok(self.ast.tpl(self.span(start), exprs, quasis))
     }
 

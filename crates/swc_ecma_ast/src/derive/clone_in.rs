@@ -1,9 +1,9 @@
 use swc_core::common::Span;
 
 use crate::{
-    AssignOp, Ast, BigIntId, BinaryOp, ImportPhase, MetaPropKind, MethodKind, NodeIdTrait,
-    OptionalNodeId, OptionalUtf8Ref, OptionalWtf8Ref, TypedSubRange, UnaryOp, UpdateOp, Utf8Ref,
-    VarDeclKind, Wtf8Ref,
+    AssignOp, Ast, BigIntId, BinaryOp, ImportPhase, MetaPropKind, MethodKind, OptionalUtf8Ref,
+    OptionalWtf8Ref, TypedSubRange, UnaryOp, UpdateOp, Utf8Ref, VarDeclKind, Wtf8Ref,
+    node_id::ExtraDataCompact,
 };
 
 pub trait CloneIn: Sized {
@@ -61,31 +61,15 @@ impl<C, T: CloneIn<Cloned = C>> CloneIn for Option<T> {
     }
 }
 
-impl<C: NodeIdTrait, T: CloneIn<Cloned = C> + NodeIdTrait> CloneIn for TypedSubRange<T> {
+impl<C: ExtraDataCompact, T: CloneIn<Cloned = C> + ExtraDataCompact> CloneIn for TypedSubRange<T> {
     type Cloned = TypedSubRange<C>;
 
     fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
         let mut ids = Vec::with_capacity(self.len());
         for id in self.iter() {
             let node = ast.get_node_in_sub_range(id);
-            ids.push(node.clone_in(ast).node_id());
+            ids.push(node.clone_in(ast));
         }
-        ast.add_typed_sub_range(&ids)
-    }
-}
-
-impl<C: NodeIdTrait, T: CloneIn<Cloned = C> + NodeIdTrait> CloneIn for TypedSubRange<Option<T>> {
-    type Cloned = TypedSubRange<Option<C>>;
-
-    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
-        let mut ids = Vec::with_capacity(self.len());
-        for id in self.iter() {
-            let node = ast.get_opt_node_in_sub_range(id);
-            match node.clone_in(ast) {
-                Some(node) => ids.push(node.node_id().into()),
-                None => ids.push(OptionalNodeId::none()),
-            }
-        }
-        ast.add_typed_opt_sub_range(&ids)
+        ast.add_typed_sub_range(ids)
     }
 }

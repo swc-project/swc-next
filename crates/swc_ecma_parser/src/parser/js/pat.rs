@@ -49,7 +49,7 @@ impl<I: Tokens> Parser<I> {
             }
             Pat::Array(arr) => {
                 for pat in arr.elems(&self.ast).iter() {
-                    let pat = self.ast.get_opt_node_in_sub_range(pat);
+                    let pat = self.ast.get_node_in_sub_range(pat);
                     if let Some(pat) = pat {
                         self.pat_is_valid_argument_in_strict(pat);
                     }
@@ -328,7 +328,7 @@ impl<I: Tokens> Parser<I> {
                 let count_of_trailing_comma = exprs
                     .iter()
                     .rev()
-                    .take_while(|e| self.ast.get_opt_node_in_sub_range(*e).is_none())
+                    .take_while(|e| self.ast.get_node_in_sub_range(*e).is_none())
                     .count();
                 let len = exprs.len();
                 let mut params = Vec::with_capacity(exprs.len() - count_of_trailing_comma);
@@ -342,7 +342,7 @@ impl<I: Tokens> Parser<I> {
 
                 let after = exprs.split_off(idx_of_rest_not_allowed);
                 for expr in exprs.iter() {
-                    let expr = self.ast.get_opt_node_in_sub_range(expr);
+                    let expr = self.ast.get_node_in_sub_range(expr);
                     match expr {
                         Some(expr_or_spread) => match expr_or_spread.spread(&self.ast) {
                             Some(_) => self.emit_err(
@@ -352,22 +352,16 @@ impl<I: Tokens> Parser<I> {
                             None => {
                                 let expr = expr_or_spread.expr(&self.ast);
                                 self.ast.free_node(expr_or_spread.node_id());
-                                params.push(
-                                    self.reparse_expr_as_pat(pat_ty.element(), expr)?
-                                        .node_id()
-                                        .into(),
-                                )
+                                params.push(Some(self.reparse_expr_as_pat(pat_ty.element(), expr)?))
                             }
                         },
-                        None => params.push(OptionalNodeId::none()),
+                        None => params.push(None),
                     }
                 }
 
                 let exprs = after;
                 if count_of_trailing_comma == 0 {
-                    let expr = self
-                        .ast
-                        .get_opt_node_in_sub_range(exprs.iter().next().unwrap());
+                    let expr = self.ast.get_node_in_sub_range(exprs.iter().next().unwrap());
                     let last = match expr {
                         // Rest
                         Some(expr_or_spread) => {
@@ -392,29 +386,24 @@ impl<I: Tokens> Parser<I> {
                                     let spread_span = spread.span(&self.ast);
 
                                     self.ast.free_node(spread.node_id());
-                                    self.reparse_expr_as_pat(pat_ty.element(), expr)
-                                        .map(|pat| {
-                                            self.ast.pat_rest_pat(expr_span, spread_span, pat)
-                                        })?
-                                        .node_id()
-                                        .into()
+                                    Some(self.reparse_expr_as_pat(pat_ty.element(), expr).map(
+                                        |pat| self.ast.pat_rest_pat(expr_span, spread_span, pat),
+                                    )?)
                                 }
                                 None => {
                                     // TODO: is BindingPat correct?
-                                    self.reparse_expr_as_pat(pat_ty.element(), expr)?
-                                        .node_id()
-                                        .into()
+                                    Some(self.reparse_expr_as_pat(pat_ty.element(), expr)?)
                                 }
                             }
                         }
                         // TODO: syntax error if last element is ellison and ...rest exists.
-                        None => OptionalNodeId::none(),
+                        None => None,
                     };
                     params.push(last);
                 }
 
                 self.ast.free_node(array.node_id());
-                let params = self.ast.add_typed_opt_sub_range(&params);
+                let params = self.ast.add_typed_sub_range(params);
                 Ok(self.ast.pat_array_pat(span, params, false))
             }
 
@@ -489,7 +478,7 @@ impl<I: Tokens> Parser<I> {
 
         while !self.input().is(Token::RBracket) {
             if self.input_mut().eat(Token::Comma) {
-                elems.push(OptionalNodeId::none());
+                elems.push(None);
                 continue;
             }
 
@@ -508,9 +497,9 @@ impl<I: Tokens> Parser<I> {
                 rest_span = self.span(start);
 
                 let pat = self.ast.pat_rest_pat(rest_span, dot3_token, pat);
-                elems.push(pat.node_id().into());
+                elems.push(Some(pat));
             } else {
-                elems.push(self.parse_binding_element()?.node_id().into());
+                elems.push(Some(self.parse_binding_element()?));
             }
 
             if !self.input().is(Token::RBracket) {
@@ -525,7 +514,7 @@ impl<I: Tokens> Parser<I> {
         let optional = (self.input().syntax().dts() || self.ctx().contains(Context::InDeclare))
             && self.input_mut().eat(Token::QuestionMark);
 
-        let elems = self.ast.add_typed_opt_sub_range(&elems);
+        let elems = self.ast.add_typed_sub_range(elems);
         Ok(self.ast.pat_array_pat(self.span(start), elems, optional))
     }
 

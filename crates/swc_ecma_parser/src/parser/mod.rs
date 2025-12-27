@@ -44,7 +44,7 @@ pub struct ParserCheckpoint<I: Tokens> {
 pub struct Parser<I: self::input::Tokens> {
     ast: Ast,
     /// Don't mutable this directly. Use Parser::scratch_xxx instead for safety.
-    scratch: Vec<NodeId>,
+    scratch: Vec<ExtraData>,
     state: State,
     input: self::input::Buffer<I>,
     found_module_item: bool,
@@ -96,7 +96,7 @@ impl<I: Tokens> Parser<I> {
 
     #[inline]
     fn scratch_start<
-        N: NodeIdTrait,
+        N: ExtraDataCompact,
         F: FnOnce(&mut Self, &mut ScratchIndex<N>) -> PResult<R>,
         R,
     >(

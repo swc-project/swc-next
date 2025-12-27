@@ -6,7 +6,7 @@ use crate::string_alloc::MaybeSubUtf8;
 use crate::{Context, PResult, Parser, error::SyntaxError, input::Tokens, lexer::Token};
 
 impl<I: Tokens> Parser<I> {
-    pub(crate) fn parse_object<Object, ObjectProp: NodeIdTrait>(
+    pub(crate) fn parse_object<Object, ObjectProp: ExtraDataCompact>(
         &mut self,
         parse_prop: impl Fn(&mut Self) -> PResult<ObjectProp>,
         make_object: impl Fn(
