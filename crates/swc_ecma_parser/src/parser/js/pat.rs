@@ -331,79 +331,83 @@ impl<I: Tokens> Parser<I> {
                     .take_while(|e| self.ast.get_node_in_sub_range(*e).is_none())
                     .count();
                 let len = exprs.len();
-                let mut params = Vec::with_capacity(exprs.len() - count_of_trailing_comma);
-                // Comma or other pattern cannot follow a rest pattern.
-                let idx_of_rest_not_allowed = if count_of_trailing_comma == 0 {
-                    len - 1
-                } else {
-                    // last element is comma, so rest is not allowed for every pattern element.
-                    len - count_of_trailing_comma
-                };
 
-                let after = exprs.split_off(idx_of_rest_not_allowed);
-                for expr in exprs.iter() {
-                    let expr = self.ast.get_node_in_sub_range(expr);
-                    match expr {
-                        Some(expr_or_spread) => match expr_or_spread.spread(&self.ast) {
-                            Some(_) => self.emit_err(
-                                expr_or_spread.expr(&self.ast).span(&self.ast),
-                                SyntaxError::NonLastRestParam,
-                            ),
-                            None => {
-                                let expr = expr_or_spread.expr(&self.ast);
-                                self.ast.free_node(expr_or_spread.node_id());
-                                params.push(Some(self.reparse_expr_as_pat(pat_ty.element(), expr)?))
-                            }
-                        },
-                        None => params.push(None),
-                    }
-                }
-
-                let exprs = after;
-                if count_of_trailing_comma == 0 {
-                    let expr = self.ast.get_node_in_sub_range(exprs.iter().next().unwrap());
-                    let last = match expr {
-                        // Rest
-                        Some(expr_or_spread) => {
-                            let spread = expr_or_spread.spread(&self.ast);
-                            let expr = expr_or_spread.expr(&self.ast);
-                            self.ast.free_node(expr_or_spread.node_id());
-                            match spread {
-                                Some(spread) => {
-                                    // TODO: is BindingPat correct?
-                                    if let Expr::Assign(_) = expr {
-                                        self.emit_err(expr.span(&self.ast), SyntaxError::TS1048);
-                                    };
-                                    if let Some(trailing_comma) =
-                                        self.state().trailing_commas.get(&span.lo)
-                                    {
-                                        self.emit_err(
-                                            *trailing_comma,
-                                            SyntaxError::CommaAfterRestElement,
-                                        );
-                                    }
-                                    let expr_span = expr.span(&self.ast);
-                                    let spread_span = spread.span(&self.ast);
-
-                                    self.ast.free_node(spread.node_id());
-                                    Some(self.reparse_expr_as_pat(pat_ty.element(), expr).map(
-                                        |pat| self.ast.pat_rest_pat(expr_span, spread_span, pat),
-                                    )?)
-                                }
-                                None => {
-                                    // TODO: is BindingPat correct?
-                                    Some(self.reparse_expr_as_pat(pat_ty.element(), expr)?)
-                                }
-                            }
-                        }
-                        // TODO: syntax error if last element is ellison and ...rest exists.
-                        None => None,
+                let params = self.scratch_start(|p, params| {
+                    // Comma or other pattern cannot follow a rest pattern.
+                    let idx_of_rest_not_allowed = if count_of_trailing_comma == 0 {
+                        len - 1
+                    } else {
+                        // last element is comma, so rest is not allowed for every pattern element.
+                        len - count_of_trailing_comma
                     };
-                    params.push(last);
-                }
+
+                    let after = exprs.split_off(idx_of_rest_not_allowed);
+                    for expr in exprs.iter() {
+                        let expr = p.ast.get_node_in_sub_range(expr);
+                        match expr {
+                            Some(expr_or_spread) => match expr_or_spread.spread(&p.ast) {
+                                Some(_) => p.emit_err(
+                                    expr_or_spread.expr(&p.ast).span(&p.ast),
+                                    SyntaxError::NonLastRestParam,
+                                ),
+                                None => {
+                                    let expr = expr_or_spread.expr(&p.ast);
+                                    p.ast.free_node(expr_or_spread.node_id());
+
+                                    let pat = p.reparse_expr_as_pat(pat_ty.element(), expr)?;
+                                    params.push(p, Some(pat))
+                                }
+                            },
+                            None => params.push(p, None),
+                        }
+                    }
+
+                    let exprs = after;
+                    if count_of_trailing_comma == 0 {
+                        let expr = p.ast.get_node_in_sub_range(exprs.iter().next().unwrap());
+                        let last = match expr {
+                            // Rest
+                            Some(expr_or_spread) => {
+                                let spread = expr_or_spread.spread(&p.ast);
+                                let expr = expr_or_spread.expr(&p.ast);
+                                p.ast.free_node(expr_or_spread.node_id());
+                                match spread {
+                                    Some(spread) => {
+                                        // TODO: is BindingPat correct?
+                                        if let Expr::Assign(_) = expr {
+                                            p.emit_err(expr.span(&p.ast), SyntaxError::TS1048);
+                                        };
+                                        if let Some(trailing_comma) =
+                                            p.state().trailing_commas.get(&span.lo)
+                                        {
+                                            p.emit_err(
+                                                *trailing_comma,
+                                                SyntaxError::CommaAfterRestElement,
+                                            );
+                                        }
+                                        let expr_span = expr.span(&p.ast);
+                                        let spread_span = spread.span(&p.ast);
+
+                                        p.ast.free_node(spread.node_id());
+                                        Some(p.reparse_expr_as_pat(pat_ty.element(), expr).map(
+                                            |pat| p.ast.pat_rest_pat(expr_span, spread_span, pat),
+                                        )?)
+                                    }
+                                    None => {
+                                        // TODO: is BindingPat correct?
+                                        Some(p.reparse_expr_as_pat(pat_ty.element(), expr)?)
+                                    }
+                                }
+                            }
+                            // TODO: syntax error if last element is ellison and ...rest exists.
+                            None => None,
+                        };
+                        params.push(p, last);
+                    }
+                    Ok(())
+                })?;
 
                 self.ast.free_node(array.node_id());
-                let params = self.ast.add_typed_sub_range(params);
                 Ok(self.ast.pat_array_pat(span, params, false))
             }
 
