@@ -9,10 +9,12 @@ pub struct Class {
     decorators: Vec<Decorator>,
     body: Vec<ClassMember>,
     super_class: Option<Expr>,
+
+    // Typescript
     is_abstract: bool,
-    // type_params: Option<Box<TsTypeParamDecl>>,
-    // super_type_params: Option<Box<TsTypeParamInstantiation>>,
-    // implements: Vec<TsExprWithTypeArgs>,
+    type_params: Option<TsTypeParamDecl>,
+    super_type_params: Option<TsTypeParamInstantiation>,
+    implements: Vec<TsExprWithTypeArgs>,
 }
 
 #[ast]
@@ -25,37 +27,43 @@ pub enum ClassMember {
     Empty(EmptyStmt),
     StaticBlock(StaticBlock),
     AutoAccessor(AutoAccessor),
-    // TsIndexSignature(TsIndexSignature),
+
+    // Typescript
+    TsIndexSignature(TsIndexSignature),
 }
 
 #[ast]
 pub struct ClassProp {
     key: PropName,
     value: Option<Expr>,
-    // type_ann: Option<Box<TsTypeAnn>>,
     is_static: bool,
     decorators: Vec<Decorator>,
-    // accessibility: Option<Accessibility>,
-    // is_abstract: bool,
-    // is_optional: bool,
-    // is_override: bool,
-    // readonly: bool,
-    // declare: bool,
-    // definite: bool,
+
+    // Typescript
+    type_ann: Option<TsTypeAnn>,
+    accessibility: Option<Accessibility>,
+    is_abstract: bool,
+    is_optional: bool,
+    is_override: bool,
+    readonly: bool,
+    declare: bool,
+    definite: bool,
 }
 
 #[ast]
 pub struct PrivateProp {
     key: PrivateName,
     value: Option<Expr>,
-    // type_ann: Option<TsTypeAnn>,
     is_static: bool,
     decorators: Vec<Decorator>,
-    // accessibility: Option<Accessibility>,
-    // is_optional: bool,
-    // is_override: bool,
-    // readonly: bool,
-    // definite: bool,
+
+    // Typescript
+    type_ann: Option<TsTypeAnn>,
+    accessibility: Option<Accessibility>,
+    is_optional: bool,
+    is_override: bool,
+    readonly: bool,
+    definite: bool,
 }
 
 #[ast]
@@ -64,10 +72,12 @@ pub struct ClassMethod {
     function: Function,
     kind: MethodKind,
     is_static: bool,
-    // accessibility: Option<Accessibility>,
-    // is_abstract: bool,
-    // is_optional: bool,
-    // is_override: bool,
+
+    // Typescript
+    accessibility: Option<Accessibility>,
+    is_abstract: bool,
+    is_optional: bool,
+    is_override: bool,
 }
 
 #[ast]
@@ -76,10 +86,12 @@ pub struct PrivateMethod {
     function: Function,
     kind: MethodKind,
     is_static: bool,
-    // accessibility: Option<Accessibility>,
-    // is_abstract: bool,
-    // is_optional: bool,
-    // is_override: bool,
+
+    // Typescript
+    accessibility: Option<Accessibility>,
+    is_abstract: bool,
+    is_optional: bool,
+    is_override: bool,
 }
 
 #[ast]
@@ -87,8 +99,10 @@ pub struct Constructor {
     key: PropName,
     params: Vec<ParamOrTsParamProp>,
     body: Option<BlockStmt>,
-    // accessibility: Option<Accessibility>,
-    // is_optional: bool,
+
+    // Typescript
+    accessibility: Option<Accessibility>,
+    is_optional: bool,
 }
 
 #[ast]
@@ -129,11 +143,13 @@ pub enum Key {
 pub struct AutoAccessor {
     key: Key,
     value: Option<Expr>,
-    // type_ann: Option<TsTypeAnn>,
     is_static: bool,
     decorators: Vec<Decorator>,
-    // accessibility: Option<Accessibility>,
-    // is_abstract: bool,
-    // is_override: bool,
-    // definite: bool,
+
+    // Typescript
+    type_ann: Option<TsTypeAnn>,
+    accessibility: Option<Accessibility>,
+    is_abstract: bool,
+    is_override: bool,
+    definite: bool,
 }

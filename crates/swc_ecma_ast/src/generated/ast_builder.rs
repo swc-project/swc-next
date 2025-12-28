@@ -122,6 +122,40 @@ impl Ast {
         ))
     }
     #[inline]
+    pub fn module_item_module_decl_ts_import_equals_decl(
+        &mut self,
+        span: Span,
+        is_export: bool,
+        is_type_only: bool,
+        id: Ident,
+        module_ref: TsModuleRef,
+    ) -> ModuleItem {
+        ModuleItem::ModuleDecl(ModuleDecl::TsImportEquals(
+            self.ts_import_equals_decl(span, is_export, is_type_only, id, module_ref)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn module_item_module_decl_ts_export_assignment(
+        &mut self,
+        span: Span,
+        expr: Expr,
+    ) -> ModuleItem {
+        ModuleItem::ModuleDecl(ModuleDecl::TsExportAssignment(
+            self.ts_export_assignment(span, expr).into(),
+        ))
+    }
+    #[inline]
+    pub fn module_item_module_decl_ts_namespace_export_decl(
+        &mut self,
+        span: Span,
+        id: Ident,
+    ) -> ModuleItem {
+        ModuleItem::ModuleDecl(ModuleDecl::TsNamespaceExport(
+            self.ts_namespace_export_decl(span, id).into(),
+        ))
+    }
+    #[inline]
     pub fn module_item_stmt_block_stmt(
         &mut self,
         span: Span,
@@ -307,6 +341,64 @@ impl Ast {
         )))
     }
     #[inline]
+    pub fn module_item_stmt_decl_ts_interface_decl(
+        &mut self,
+        span: Span,
+        id: Ident,
+        declare: bool,
+        type_params: Option<TsTypeParamDecl>,
+        extends: TypedSubRange<TsExprWithTypeArgs>,
+        body: TsInterfaceBody,
+    ) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::Decl(Decl::TsInterface(
+            self.ts_interface_decl(span, id, declare, type_params, extends, body)
+                .into(),
+        )))
+    }
+    #[inline]
+    pub fn module_item_stmt_decl_ts_type_alias_decl(
+        &mut self,
+        span: Span,
+        declare: bool,
+        id: Ident,
+        type_params: Option<TsTypeParamDecl>,
+        type_ann: TsType,
+    ) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::Decl(Decl::TsTypeAlias(
+            self.ts_type_alias_decl(span, declare, id, type_params, type_ann)
+                .into(),
+        )))
+    }
+    #[inline]
+    pub fn module_item_stmt_decl_ts_enum_decl(
+        &mut self,
+        span: Span,
+        declare: bool,
+        is_const: bool,
+        id: Ident,
+        members: TypedSubRange<TsEnumMember>,
+    ) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::Decl(Decl::TsEnum(
+            self.ts_enum_decl(span, declare, is_const, id, members)
+                .into(),
+        )))
+    }
+    #[inline]
+    pub fn module_item_stmt_decl_ts_module_decl(
+        &mut self,
+        span: Span,
+        declare: bool,
+        global: bool,
+        namespace: bool,
+        id: TsModuleName,
+        body: Option<TsNamespaceBody>,
+    ) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::Decl(Decl::TsModule(
+            self.ts_module_decl(span, declare, global, namespace, id, body)
+                .into(),
+        )))
+    }
+    #[inline]
     pub fn module_item_stmt_expr_stmt(&mut self, span: Span, expr: Expr) -> ModuleItem {
         ModuleItem::Stmt(Stmt::Expr(self.expr_stmt(span, expr).into()))
     }
@@ -360,6 +452,28 @@ impl Ast {
         with: Option<ObjectLit>,
     ) -> ModuleDecl {
         ModuleDecl::ExportAll(self.export_all(span, src, type_only, with).into())
+    }
+    #[inline]
+    pub fn module_decl_ts_import_equals_decl(
+        &mut self,
+        span: Span,
+        is_export: bool,
+        is_type_only: bool,
+        id: Ident,
+        module_ref: TsModuleRef,
+    ) -> ModuleDecl {
+        ModuleDecl::TsImportEquals(
+            self.ts_import_equals_decl(span, is_export, is_type_only, id, module_ref)
+                .into(),
+        )
+    }
+    #[inline]
+    pub fn module_decl_ts_export_assignment(&mut self, span: Span, expr: Expr) -> ModuleDecl {
+        ModuleDecl::TsExportAssignment(self.ts_export_assignment(span, expr).into())
+    }
+    #[inline]
+    pub fn module_decl_ts_namespace_export_decl(&mut self, span: Span, id: Ident) -> ModuleDecl {
+        ModuleDecl::TsNamespaceExport(self.ts_namespace_export_decl(span, id).into())
     }
     #[inline]
     pub fn import_decl(
@@ -796,6 +910,64 @@ impl Ast {
         Stmt::Decl(Decl::Using(self.using_decl(span, is_await, decls).into()))
     }
     #[inline]
+    pub fn stmt_decl_ts_interface_decl(
+        &mut self,
+        span: Span,
+        id: Ident,
+        declare: bool,
+        type_params: Option<TsTypeParamDecl>,
+        extends: TypedSubRange<TsExprWithTypeArgs>,
+        body: TsInterfaceBody,
+    ) -> Stmt {
+        Stmt::Decl(Decl::TsInterface(
+            self.ts_interface_decl(span, id, declare, type_params, extends, body)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn stmt_decl_ts_type_alias_decl(
+        &mut self,
+        span: Span,
+        declare: bool,
+        id: Ident,
+        type_params: Option<TsTypeParamDecl>,
+        type_ann: TsType,
+    ) -> Stmt {
+        Stmt::Decl(Decl::TsTypeAlias(
+            self.ts_type_alias_decl(span, declare, id, type_params, type_ann)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn stmt_decl_ts_enum_decl(
+        &mut self,
+        span: Span,
+        declare: bool,
+        is_const: bool,
+        id: Ident,
+        members: TypedSubRange<TsEnumMember>,
+    ) -> Stmt {
+        Stmt::Decl(Decl::TsEnum(
+            self.ts_enum_decl(span, declare, is_const, id, members)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn stmt_decl_ts_module_decl(
+        &mut self,
+        span: Span,
+        declare: bool,
+        global: bool,
+        namespace: bool,
+        id: TsModuleName,
+        body: Option<TsNamespaceBody>,
+    ) -> Stmt {
+        Stmt::Decl(Decl::TsModule(
+            self.ts_module_decl(span, declare, global, namespace, id, body)
+                .into(),
+        ))
+    }
+    #[inline]
     pub fn stmt_expr_stmt(&mut self, span: Span, expr: Expr) -> Stmt {
         Stmt::Expr(self.expr_stmt(span, expr).into())
     }
@@ -1087,8 +1259,13 @@ impl Ast {
         ForHead::UsingDecl(self.using_decl(span, is_await, decls).into())
     }
     #[inline]
-    pub fn for_head_pat_binding_ident(&mut self, span: Span, id: Ident) -> ForHead {
-        ForHead::Pat(Pat::Ident(self.binding_ident(span, id).into()))
+    pub fn for_head_pat_binding_ident(
+        &mut self,
+        span: Span,
+        id: Ident,
+        type_ann: Option<TsTypeAnn>,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Ident(self.binding_ident(span, id, type_ann).into()))
     }
     #[inline]
     pub fn for_head_pat_array_pat(
@@ -1096,12 +1273,23 @@ impl Ast {
         span: Span,
         elems: TypedSubRange<Option<Pat>>,
         optional: bool,
+        type_ann: Option<TsTypeAnn>,
     ) -> ForHead {
-        ForHead::Pat(Pat::Array(self.array_pat(span, elems, optional).into()))
+        ForHead::Pat(Pat::Array(
+            self.array_pat(span, elems, optional, type_ann).into(),
+        ))
     }
     #[inline]
-    pub fn for_head_pat_rest_pat(&mut self, span: Span, dot3_token: Span, arg: Pat) -> ForHead {
-        ForHead::Pat(Pat::Rest(self.rest_pat(span, dot3_token, arg).into()))
+    pub fn for_head_pat_rest_pat(
+        &mut self,
+        span: Span,
+        dot3_token: Span,
+        arg: Pat,
+        type_ann: Option<TsTypeAnn>,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Rest(
+            self.rest_pat(span, dot3_token, arg, type_ann).into(),
+        ))
     }
     #[inline]
     pub fn for_head_pat_object_pat(
@@ -1109,8 +1297,11 @@ impl Ast {
         span: Span,
         props: TypedSubRange<ObjectPatProp>,
         optional: bool,
+        type_ann: Option<TsTypeAnn>,
     ) -> ForHead {
-        ForHead::Pat(Pat::Object(self.object_pat(span, props, optional).into()))
+        ForHead::Pat(Pat::Object(
+            self.object_pat(span, props, optional, type_ann).into(),
+        ))
     }
     #[inline]
     pub fn for_head_pat_assign_pat(&mut self, span: Span, left: Pat, right: Expr) -> ForHead {
@@ -1233,9 +1424,12 @@ impl Ast {
         span: Span,
         callee: Callee,
         args: TypedSubRange<ExprOrSpread>,
+        type_args: Option<TsTypeParamInstantiation>,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> ForHead {
         ForHead::Pat(Pat::Expr(Expr::Call(
-            self.call_expr(span, callee, args).into(),
+            self.call_expr(span, callee, args, type_args, type_params)
+                .into(),
         )))
     }
     #[inline]
@@ -1244,9 +1438,12 @@ impl Ast {
         span: Span,
         callee: Expr,
         args: Option<TypedSubRange<ExprOrSpread>>,
+        type_args: Option<TsTypeParamInstantiation>,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> ForHead {
         ForHead::Pat(Pat::Expr(Expr::New(
-            self.new_expr(span, callee, args).into(),
+            self.new_expr(span, callee, args, type_args, type_params)
+                .into(),
         )))
     }
     #[inline]
@@ -1318,6 +1515,17 @@ impl Ast {
         ))))
     }
     #[inline]
+    pub fn for_head_pat_expr_lit_jsx_text(
+        &mut self,
+        span: Span,
+        value: Utf8Ref,
+        raw: Utf8Ref,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Lit(Lit::JSXText(
+            self.jsx_text(span, value, raw).into(),
+        ))))
+    }
+    #[inline]
     pub fn for_head_pat_expr_tpl(
         &mut self,
         span: Span,
@@ -1327,9 +1535,15 @@ impl Ast {
         ForHead::Pat(Pat::Expr(Expr::Tpl(self.tpl(span, exprs, quasis).into())))
     }
     #[inline]
-    pub fn for_head_pat_expr_tagged_tpl(&mut self, span: Span, tag: Expr, tpl: Tpl) -> ForHead {
+    pub fn for_head_pat_expr_tagged_tpl(
+        &mut self,
+        span: Span,
+        tag: Expr,
+        tpl: Tpl,
+        type_params: Option<TsTypeParamInstantiation>,
+    ) -> ForHead {
         ForHead::Pat(Pat::Expr(Expr::TaggedTpl(
-            self.tagged_tpl(span, tag, tpl).into(),
+            self.tagged_tpl(span, tag, tpl, type_params).into(),
         )))
     }
     #[inline]
@@ -1340,10 +1554,20 @@ impl Ast {
         body: BlockStmtOrExpr,
         is_async: bool,
         is_generator: bool,
+        type_params: Option<TsTypeParamDecl>,
+        return_type: Option<TsTypeAnn>,
     ) -> ForHead {
         ForHead::Pat(Pat::Expr(Expr::Arrow(
-            self.arrow_expr(span, params, body, is_async, is_generator)
-                .into(),
+            self.arrow_expr(
+                span,
+                params,
+                body,
+                is_async,
+                is_generator,
+                type_params,
+                return_type,
+            )
+            .into(),
         )))
     }
     #[inline]
@@ -1452,6 +1676,62 @@ impl Ast {
     #[inline]
     pub fn for_head_pat_expr_invalid(&mut self, span: Span) -> ForHead {
         ForHead::Pat(Pat::Expr(Expr::Invalid(self.invalid(span).into())))
+    }
+    #[inline]
+    pub fn for_head_pat_expr_ts_type_assertion(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::TsTypeAssertion(
+            self.ts_type_assertion(span, expr, type_ann).into(),
+        )))
+    }
+    #[inline]
+    pub fn for_head_pat_expr_ts_const_assertion(&mut self, span: Span, expr: Expr) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::TsConstAssertion(
+            self.ts_const_assertion(span, expr).into(),
+        )))
+    }
+    #[inline]
+    pub fn for_head_pat_expr_ts_non_null_expr(&mut self, span: Span, expr: Expr) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::TsNonNull(
+            self.ts_non_null_expr(span, expr).into(),
+        )))
+    }
+    #[inline]
+    pub fn for_head_pat_expr_ts_as_expr(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::TsAs(
+            self.ts_as_expr(span, expr, type_ann).into(),
+        )))
+    }
+    #[inline]
+    pub fn for_head_pat_expr_ts_instantiation(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_args: TsTypeParamInstantiation,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::TsInstantiation(
+            self.ts_instantiation(span, expr, type_args).into(),
+        )))
+    }
+    #[inline]
+    pub fn for_head_pat_expr_ts_satisfies_expr(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::TsSatisfies(
+            self.ts_satisfies_expr(span, expr, type_ann).into(),
+        )))
     }
     #[inline]
     pub fn var_decl_or_expr_var_decl(
@@ -1567,8 +1847,13 @@ impl Ast {
         span: Span,
         callee: Callee,
         args: TypedSubRange<ExprOrSpread>,
+        type_args: Option<TsTypeParamInstantiation>,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> VarDeclOrExpr {
-        VarDeclOrExpr::Expr(Expr::Call(self.call_expr(span, callee, args).into()))
+        VarDeclOrExpr::Expr(Expr::Call(
+            self.call_expr(span, callee, args, type_args, type_params)
+                .into(),
+        ))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_new_expr(
@@ -1576,8 +1861,13 @@ impl Ast {
         span: Span,
         callee: Expr,
         args: Option<TypedSubRange<ExprOrSpread>>,
+        type_args: Option<TsTypeParamInstantiation>,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> VarDeclOrExpr {
-        VarDeclOrExpr::Expr(Expr::New(self.new_expr(span, callee, args).into()))
+        VarDeclOrExpr::Expr(Expr::New(
+            self.new_expr(span, callee, args, type_args, type_params)
+                .into(),
+        ))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_seq_expr(
@@ -1643,6 +1933,17 @@ impl Ast {
         VarDeclOrExpr::Expr(Expr::Lit(Lit::Regex(self.regex(span, exp, flags).into())))
     }
     #[inline]
+    pub fn var_decl_or_expr_expr_lit_jsx_text(
+        &mut self,
+        span: Span,
+        value: Utf8Ref,
+        raw: Utf8Ref,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Lit(Lit::JSXText(
+            self.jsx_text(span, value, raw).into(),
+        )))
+    }
+    #[inline]
     pub fn var_decl_or_expr_expr_tpl(
         &mut self,
         span: Span,
@@ -1657,8 +1958,11 @@ impl Ast {
         span: Span,
         tag: Expr,
         tpl: Tpl,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> VarDeclOrExpr {
-        VarDeclOrExpr::Expr(Expr::TaggedTpl(self.tagged_tpl(span, tag, tpl).into()))
+        VarDeclOrExpr::Expr(Expr::TaggedTpl(
+            self.tagged_tpl(span, tag, tpl, type_params).into(),
+        ))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_arrow_expr(
@@ -1668,10 +1972,20 @@ impl Ast {
         body: BlockStmtOrExpr,
         is_async: bool,
         is_generator: bool,
+        type_params: Option<TsTypeParamDecl>,
+        return_type: Option<TsTypeAnn>,
     ) -> VarDeclOrExpr {
         VarDeclOrExpr::Expr(Expr::Arrow(
-            self.arrow_expr(span, params, body, is_async, is_generator)
-                .into(),
+            self.arrow_expr(
+                span,
+                params,
+                body,
+                is_async,
+                is_generator,
+                type_params,
+                return_type,
+            )
+            .into(),
         ))
     }
     #[inline]
@@ -1782,6 +2096,66 @@ impl Ast {
         VarDeclOrExpr::Expr(Expr::Invalid(self.invalid(span).into()))
     }
     #[inline]
+    pub fn var_decl_or_expr_expr_ts_type_assertion(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::TsTypeAssertion(
+            self.ts_type_assertion(span, expr, type_ann).into(),
+        ))
+    }
+    #[inline]
+    pub fn var_decl_or_expr_expr_ts_const_assertion(
+        &mut self,
+        span: Span,
+        expr: Expr,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::TsConstAssertion(
+            self.ts_const_assertion(span, expr).into(),
+        ))
+    }
+    #[inline]
+    pub fn var_decl_or_expr_expr_ts_non_null_expr(
+        &mut self,
+        span: Span,
+        expr: Expr,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::TsNonNull(self.ts_non_null_expr(span, expr).into()))
+    }
+    #[inline]
+    pub fn var_decl_or_expr_expr_ts_as_expr(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::TsAs(self.ts_as_expr(span, expr, type_ann).into()))
+    }
+    #[inline]
+    pub fn var_decl_or_expr_expr_ts_instantiation(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_args: TsTypeParamInstantiation,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::TsInstantiation(
+            self.ts_instantiation(span, expr, type_args).into(),
+        ))
+    }
+    #[inline]
+    pub fn var_decl_or_expr_expr_ts_satisfies_expr(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::TsSatisfies(
+            self.ts_satisfies_expr(span, expr, type_ann).into(),
+        ))
+    }
+    #[inline]
     pub fn decl_class_decl(
         &mut self,
         span: Span,
@@ -1819,6 +2193,64 @@ impl Ast {
         decls: TypedSubRange<VarDeclarator>,
     ) -> Decl {
         Decl::Using(self.using_decl(span, is_await, decls).into())
+    }
+    #[inline]
+    pub fn decl_ts_interface_decl(
+        &mut self,
+        span: Span,
+        id: Ident,
+        declare: bool,
+        type_params: Option<TsTypeParamDecl>,
+        extends: TypedSubRange<TsExprWithTypeArgs>,
+        body: TsInterfaceBody,
+    ) -> Decl {
+        Decl::TsInterface(
+            self.ts_interface_decl(span, id, declare, type_params, extends, body)
+                .into(),
+        )
+    }
+    #[inline]
+    pub fn decl_ts_type_alias_decl(
+        &mut self,
+        span: Span,
+        declare: bool,
+        id: Ident,
+        type_params: Option<TsTypeParamDecl>,
+        type_ann: TsType,
+    ) -> Decl {
+        Decl::TsTypeAlias(
+            self.ts_type_alias_decl(span, declare, id, type_params, type_ann)
+                .into(),
+        )
+    }
+    #[inline]
+    pub fn decl_ts_enum_decl(
+        &mut self,
+        span: Span,
+        declare: bool,
+        is_const: bool,
+        id: Ident,
+        members: TypedSubRange<TsEnumMember>,
+    ) -> Decl {
+        Decl::TsEnum(
+            self.ts_enum_decl(span, declare, is_const, id, members)
+                .into(),
+        )
+    }
+    #[inline]
+    pub fn decl_ts_module_decl(
+        &mut self,
+        span: Span,
+        declare: bool,
+        global: bool,
+        namespace: bool,
+        id: TsModuleName,
+        body: Option<TsNamespaceBody>,
+    ) -> Decl {
+        Decl::TsModule(
+            self.ts_module_decl(span, declare, global, namespace, id, body)
+                .into(),
+        )
     }
     #[inline]
     pub fn fn_decl(
@@ -1879,13 +2311,19 @@ impl Ast {
         }))
     }
     #[inline]
-    pub fn var_declarator(&mut self, span: Span, name: Pat, init: Option<Expr>) -> VarDeclarator {
+    pub fn var_declarator(
+        &mut self,
+        span: Span,
+        name: Pat,
+        init: Option<Expr>,
+        definite: bool,
+    ) -> VarDeclarator {
         let _f0 = self.add_extra(name.to_extra_data());
         let _f1 = self.add_extra(init.to_extra_data());
         VarDeclarator(self.add_node(AstNode {
             span,
             kind: NodeKind::VarDeclarator,
-            inline_data: 0u32.into(),
+            inline_data: (0u32 | definite as u32).into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -1969,8 +2407,13 @@ impl Ast {
         span: Span,
         callee: Callee,
         args: TypedSubRange<ExprOrSpread>,
+        type_args: Option<TsTypeParamInstantiation>,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> Expr {
-        Expr::Call(self.call_expr(span, callee, args).into())
+        Expr::Call(
+            self.call_expr(span, callee, args, type_args, type_params)
+                .into(),
+        )
     }
     #[inline]
     pub fn expr_new_expr(
@@ -1978,8 +2421,13 @@ impl Ast {
         span: Span,
         callee: Expr,
         args: Option<TypedSubRange<ExprOrSpread>>,
+        type_args: Option<TsTypeParamInstantiation>,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> Expr {
-        Expr::New(self.new_expr(span, callee, args).into())
+        Expr::New(
+            self.new_expr(span, callee, args, type_args, type_params)
+                .into(),
+        )
     }
     #[inline]
     pub fn expr_seq_expr(&mut self, span: Span, exprs: TypedSubRange<Expr>) -> Expr {
@@ -2014,6 +2462,10 @@ impl Ast {
         Expr::Lit(Lit::Regex(self.regex(span, exp, flags).into()))
     }
     #[inline]
+    pub fn expr_lit_jsx_text(&mut self, span: Span, value: Utf8Ref, raw: Utf8Ref) -> Expr {
+        Expr::Lit(Lit::JSXText(self.jsx_text(span, value, raw).into()))
+    }
+    #[inline]
     pub fn expr_tpl(
         &mut self,
         span: Span,
@@ -2023,8 +2475,14 @@ impl Ast {
         Expr::Tpl(self.tpl(span, exprs, quasis).into())
     }
     #[inline]
-    pub fn expr_tagged_tpl(&mut self, span: Span, tag: Expr, tpl: Tpl) -> Expr {
-        Expr::TaggedTpl(self.tagged_tpl(span, tag, tpl).into())
+    pub fn expr_tagged_tpl(
+        &mut self,
+        span: Span,
+        tag: Expr,
+        tpl: Tpl,
+        type_params: Option<TsTypeParamInstantiation>,
+    ) -> Expr {
+        Expr::TaggedTpl(self.tagged_tpl(span, tag, tpl, type_params).into())
     }
     #[inline]
     pub fn expr_arrow_expr(
@@ -2034,10 +2492,20 @@ impl Ast {
         body: BlockStmtOrExpr,
         is_async: bool,
         is_generator: bool,
+        type_params: Option<TsTypeParamDecl>,
+        return_type: Option<TsTypeAnn>,
     ) -> Expr {
         Expr::Arrow(
-            self.arrow_expr(span, params, body, is_async, is_generator)
-                .into(),
+            self.arrow_expr(
+                span,
+                params,
+                body,
+                is_async,
+                is_generator,
+                type_params,
+                return_type,
+            )
+            .into(),
         )
     }
     #[inline]
@@ -2103,6 +2571,35 @@ impl Ast {
     #[inline]
     pub fn expr_invalid(&mut self, span: Span) -> Expr {
         Expr::Invalid(self.invalid(span).into())
+    }
+    #[inline]
+    pub fn expr_ts_type_assertion(&mut self, span: Span, expr: Expr, type_ann: TsType) -> Expr {
+        Expr::TsTypeAssertion(self.ts_type_assertion(span, expr, type_ann).into())
+    }
+    #[inline]
+    pub fn expr_ts_const_assertion(&mut self, span: Span, expr: Expr) -> Expr {
+        Expr::TsConstAssertion(self.ts_const_assertion(span, expr).into())
+    }
+    #[inline]
+    pub fn expr_ts_non_null_expr(&mut self, span: Span, expr: Expr) -> Expr {
+        Expr::TsNonNull(self.ts_non_null_expr(span, expr).into())
+    }
+    #[inline]
+    pub fn expr_ts_as_expr(&mut self, span: Span, expr: Expr, type_ann: TsType) -> Expr {
+        Expr::TsAs(self.ts_as_expr(span, expr, type_ann).into())
+    }
+    #[inline]
+    pub fn expr_ts_instantiation(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_args: TsTypeParamInstantiation,
+    ) -> Expr {
+        Expr::TsInstantiation(self.ts_instantiation(span, expr, type_args).into())
+    }
+    #[inline]
+    pub fn expr_ts_satisfies_expr(&mut self, span: Span, expr: Expr, type_ann: TsType) -> Expr {
+        Expr::TsSatisfies(self.ts_satisfies_expr(span, expr, type_ann).into())
     }
     #[inline]
     pub fn this_expr(&mut self, span: Span) -> ThisExpr {
@@ -2183,8 +2680,11 @@ impl Ast {
         span: Span,
         key: PropName,
         body: Option<BlockStmt>,
+        type_ann: Option<TsTypeAnn>,
     ) -> PropOrSpread {
-        PropOrSpread::Prop(Prop::Getter(self.getter_prop(span, key, body).into()))
+        PropOrSpread::Prop(Prop::Getter(
+            self.getter_prop(span, key, body, type_ann).into(),
+        ))
     }
     #[inline]
     pub fn prop_or_spread_prop_setter_prop(
@@ -2369,9 +2869,13 @@ impl Ast {
         span: Span,
         callee: Callee,
         args: TypedSubRange<ExprOrSpread>,
+        type_args: Option<TsTypeParamInstantiation>,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> CallExpr {
         let _f0 = self.add_extra(callee.to_extra_data());
         let _f1 = self.add_extra(args.to_extra_data());
+        let _f2 = self.add_extra(type_args.to_extra_data());
+        let _f3 = self.add_extra(type_params.to_extra_data());
         CallExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::CallExpr,
@@ -2387,9 +2891,13 @@ impl Ast {
         span: Span,
         callee: Expr,
         args: Option<TypedSubRange<ExprOrSpread>>,
+        type_args: Option<TsTypeParamInstantiation>,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> NewExpr {
         let _f0 = self.add_extra(callee.to_extra_data());
         let _f1 = self.add_extra(args.to_extra_data());
+        let _f2 = self.add_extra(type_args.to_extra_data());
+        let _f3 = self.add_extra(type_params.to_extra_data());
         NewExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::NewExpr,
@@ -2419,11 +2927,15 @@ impl Ast {
         body: BlockStmtOrExpr,
         is_async: bool,
         is_generator: bool,
+        type_params: Option<TsTypeParamDecl>,
+        return_type: Option<TsTypeAnn>,
     ) -> ArrowExpr {
         let _f0 = self.add_extra(params.to_extra_data());
         let _f1 = self.add_extra(body.to_extra_data());
         let _f2 = self.add_extra(is_async.to_extra_data());
         let _f3 = self.add_extra(is_generator.to_extra_data());
+        let _f4 = self.add_extra(type_params.to_extra_data());
+        let _f5 = self.add_extra(return_type.to_extra_data());
         ArrowExpr(self.add_node(AstNode {
             span,
             kind: NodeKind::ArrowExpr,
@@ -2487,9 +2999,16 @@ impl Ast {
         }))
     }
     #[inline]
-    pub fn tagged_tpl(&mut self, span: Span, tag: Expr, tpl: Tpl) -> TaggedTpl {
+    pub fn tagged_tpl(
+        &mut self,
+        span: Span,
+        tag: Expr,
+        tpl: Tpl,
+        type_params: Option<TsTypeParamInstantiation>,
+    ) -> TaggedTpl {
         let _f0 = self.add_extra(tag.to_extra_data());
         let _f1 = self.add_extra(tpl.to_extra_data());
+        let _f2 = self.add_extra(type_params.to_extra_data());
         TaggedTpl(self.add_node(AstNode {
             span,
             kind: NodeKind::TaggedTpl,
@@ -2632,8 +3151,13 @@ impl Ast {
         span: Span,
         callee: Callee,
         args: TypedSubRange<ExprOrSpread>,
+        type_args: Option<TsTypeParamInstantiation>,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> Callee {
-        Callee::Expr(Expr::Call(self.call_expr(span, callee, args).into()))
+        Callee::Expr(Expr::Call(
+            self.call_expr(span, callee, args, type_args, type_params)
+                .into(),
+        ))
     }
     #[inline]
     pub fn callee_expr_new_expr(
@@ -2641,8 +3165,13 @@ impl Ast {
         span: Span,
         callee: Expr,
         args: Option<TypedSubRange<ExprOrSpread>>,
+        type_args: Option<TsTypeParamInstantiation>,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> Callee {
-        Callee::Expr(Expr::New(self.new_expr(span, callee, args).into()))
+        Callee::Expr(Expr::New(
+            self.new_expr(span, callee, args, type_args, type_params)
+                .into(),
+        ))
     }
     #[inline]
     pub fn callee_expr_seq_expr(&mut self, span: Span, exprs: TypedSubRange<Expr>) -> Callee {
@@ -2694,6 +3223,12 @@ impl Ast {
         Callee::Expr(Expr::Lit(Lit::Regex(self.regex(span, exp, flags).into())))
     }
     #[inline]
+    pub fn callee_expr_lit_jsx_text(&mut self, span: Span, value: Utf8Ref, raw: Utf8Ref) -> Callee {
+        Callee::Expr(Expr::Lit(Lit::JSXText(
+            self.jsx_text(span, value, raw).into(),
+        )))
+    }
+    #[inline]
     pub fn callee_expr_tpl(
         &mut self,
         span: Span,
@@ -2703,8 +3238,16 @@ impl Ast {
         Callee::Expr(Expr::Tpl(self.tpl(span, exprs, quasis).into()))
     }
     #[inline]
-    pub fn callee_expr_tagged_tpl(&mut self, span: Span, tag: Expr, tpl: Tpl) -> Callee {
-        Callee::Expr(Expr::TaggedTpl(self.tagged_tpl(span, tag, tpl).into()))
+    pub fn callee_expr_tagged_tpl(
+        &mut self,
+        span: Span,
+        tag: Expr,
+        tpl: Tpl,
+        type_params: Option<TsTypeParamInstantiation>,
+    ) -> Callee {
+        Callee::Expr(Expr::TaggedTpl(
+            self.tagged_tpl(span, tag, tpl, type_params).into(),
+        ))
     }
     #[inline]
     pub fn callee_expr_arrow_expr(
@@ -2714,10 +3257,20 @@ impl Ast {
         body: BlockStmtOrExpr,
         is_async: bool,
         is_generator: bool,
+        type_params: Option<TsTypeParamDecl>,
+        return_type: Option<TsTypeAnn>,
     ) -> Callee {
         Callee::Expr(Expr::Arrow(
-            self.arrow_expr(span, params, body, is_async, is_generator)
-                .into(),
+            self.arrow_expr(
+                span,
+                params,
+                body,
+                is_async,
+                is_generator,
+                type_params,
+                return_type,
+            )
+            .into(),
         ))
     }
     #[inline]
@@ -2818,6 +3371,53 @@ impl Ast {
     #[inline]
     pub fn callee_expr_invalid(&mut self, span: Span) -> Callee {
         Callee::Expr(Expr::Invalid(self.invalid(span).into()))
+    }
+    #[inline]
+    pub fn callee_expr_ts_type_assertion(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> Callee {
+        Callee::Expr(Expr::TsTypeAssertion(
+            self.ts_type_assertion(span, expr, type_ann).into(),
+        ))
+    }
+    #[inline]
+    pub fn callee_expr_ts_const_assertion(&mut self, span: Span, expr: Expr) -> Callee {
+        Callee::Expr(Expr::TsConstAssertion(
+            self.ts_const_assertion(span, expr).into(),
+        ))
+    }
+    #[inline]
+    pub fn callee_expr_ts_non_null_expr(&mut self, span: Span, expr: Expr) -> Callee {
+        Callee::Expr(Expr::TsNonNull(self.ts_non_null_expr(span, expr).into()))
+    }
+    #[inline]
+    pub fn callee_expr_ts_as_expr(&mut self, span: Span, expr: Expr, type_ann: TsType) -> Callee {
+        Callee::Expr(Expr::TsAs(self.ts_as_expr(span, expr, type_ann).into()))
+    }
+    #[inline]
+    pub fn callee_expr_ts_instantiation(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_args: TsTypeParamInstantiation,
+    ) -> Callee {
+        Callee::Expr(Expr::TsInstantiation(
+            self.ts_instantiation(span, expr, type_args).into(),
+        ))
+    }
+    #[inline]
+    pub fn callee_expr_ts_satisfies_expr(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> Callee {
+        Callee::Expr(Expr::TsSatisfies(
+            self.ts_satisfies_expr(span, expr, type_ann).into(),
+        ))
     }
     #[inline]
     pub fn super_(&mut self, span: Span) -> Super {
@@ -2978,8 +3578,13 @@ impl Ast {
         span: Span,
         callee: Callee,
         args: TypedSubRange<ExprOrSpread>,
+        type_args: Option<TsTypeParamInstantiation>,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> BlockStmtOrExpr {
-        BlockStmtOrExpr::Expr(Expr::Call(self.call_expr(span, callee, args).into()))
+        BlockStmtOrExpr::Expr(Expr::Call(
+            self.call_expr(span, callee, args, type_args, type_params)
+                .into(),
+        ))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_new_expr(
@@ -2987,8 +3592,13 @@ impl Ast {
         span: Span,
         callee: Expr,
         args: Option<TypedSubRange<ExprOrSpread>>,
+        type_args: Option<TsTypeParamInstantiation>,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> BlockStmtOrExpr {
-        BlockStmtOrExpr::Expr(Expr::New(self.new_expr(span, callee, args).into()))
+        BlockStmtOrExpr::Expr(Expr::New(
+            self.new_expr(span, callee, args, type_args, type_params)
+                .into(),
+        ))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_seq_expr(
@@ -3054,6 +3664,17 @@ impl Ast {
         BlockStmtOrExpr::Expr(Expr::Lit(Lit::Regex(self.regex(span, exp, flags).into())))
     }
     #[inline]
+    pub fn block_stmt_or_expr_expr_lit_jsx_text(
+        &mut self,
+        span: Span,
+        value: Utf8Ref,
+        raw: Utf8Ref,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Lit(Lit::JSXText(
+            self.jsx_text(span, value, raw).into(),
+        )))
+    }
+    #[inline]
     pub fn block_stmt_or_expr_expr_tpl(
         &mut self,
         span: Span,
@@ -3068,8 +3689,11 @@ impl Ast {
         span: Span,
         tag: Expr,
         tpl: Tpl,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> BlockStmtOrExpr {
-        BlockStmtOrExpr::Expr(Expr::TaggedTpl(self.tagged_tpl(span, tag, tpl).into()))
+        BlockStmtOrExpr::Expr(Expr::TaggedTpl(
+            self.tagged_tpl(span, tag, tpl, type_params).into(),
+        ))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_arrow_expr(
@@ -3079,10 +3703,20 @@ impl Ast {
         body: BlockStmtOrExpr,
         is_async: bool,
         is_generator: bool,
+        type_params: Option<TsTypeParamDecl>,
+        return_type: Option<TsTypeAnn>,
     ) -> BlockStmtOrExpr {
         BlockStmtOrExpr::Expr(Expr::Arrow(
-            self.arrow_expr(span, params, body, is_async, is_generator)
-                .into(),
+            self.arrow_expr(
+                span,
+                params,
+                body,
+                is_async,
+                is_generator,
+                type_params,
+                return_type,
+            )
+            .into(),
         ))
     }
     #[inline]
@@ -3197,13 +3831,74 @@ impl Ast {
         BlockStmtOrExpr::Expr(Expr::Invalid(self.invalid(span).into()))
     }
     #[inline]
+    pub fn block_stmt_or_expr_expr_ts_type_assertion(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::TsTypeAssertion(
+            self.ts_type_assertion(span, expr, type_ann).into(),
+        ))
+    }
+    #[inline]
+    pub fn block_stmt_or_expr_expr_ts_const_assertion(
+        &mut self,
+        span: Span,
+        expr: Expr,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::TsConstAssertion(
+            self.ts_const_assertion(span, expr).into(),
+        ))
+    }
+    #[inline]
+    pub fn block_stmt_or_expr_expr_ts_non_null_expr(
+        &mut self,
+        span: Span,
+        expr: Expr,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::TsNonNull(self.ts_non_null_expr(span, expr).into()))
+    }
+    #[inline]
+    pub fn block_stmt_or_expr_expr_ts_as_expr(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::TsAs(self.ts_as_expr(span, expr, type_ann).into()))
+    }
+    #[inline]
+    pub fn block_stmt_or_expr_expr_ts_instantiation(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_args: TsTypeParamInstantiation,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::TsInstantiation(
+            self.ts_instantiation(span, expr, type_args).into(),
+        ))
+    }
+    #[inline]
+    pub fn block_stmt_or_expr_expr_ts_satisfies_expr(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::TsSatisfies(
+            self.ts_satisfies_expr(span, expr, type_ann).into(),
+        ))
+    }
+    #[inline]
     pub fn assign_target_simple_assign_target_binding_ident(
         &mut self,
         span: Span,
         id: Ident,
+        type_ann: Option<TsTypeAnn>,
     ) -> AssignTarget {
         AssignTarget::Simple(SimpleAssignTarget::Ident(
-            self.binding_ident(span, id).into(),
+            self.binding_ident(span, id, type_ann).into(),
         ))
     }
     #[inline]
@@ -3254,14 +3949,69 @@ impl Ast {
         AssignTarget::Simple(SimpleAssignTarget::Invalid(self.invalid(span).into()))
     }
     #[inline]
+    pub fn assign_target_simple_assign_target_ts_as_expr(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> AssignTarget {
+        AssignTarget::Simple(SimpleAssignTarget::TsAs(
+            self.ts_as_expr(span, expr, type_ann).into(),
+        ))
+    }
+    #[inline]
+    pub fn assign_target_simple_assign_target_ts_satisfies_expr(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> AssignTarget {
+        AssignTarget::Simple(SimpleAssignTarget::TsSatisfies(
+            self.ts_satisfies_expr(span, expr, type_ann).into(),
+        ))
+    }
+    #[inline]
+    pub fn assign_target_simple_assign_target_ts_non_null_expr(
+        &mut self,
+        span: Span,
+        expr: Expr,
+    ) -> AssignTarget {
+        AssignTarget::Simple(SimpleAssignTarget::TsNonNull(
+            self.ts_non_null_expr(span, expr).into(),
+        ))
+    }
+    #[inline]
+    pub fn assign_target_simple_assign_target_ts_type_assertion(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> AssignTarget {
+        AssignTarget::Simple(SimpleAssignTarget::TsTypeAssertion(
+            self.ts_type_assertion(span, expr, type_ann).into(),
+        ))
+    }
+    #[inline]
+    pub fn assign_target_simple_assign_target_ts_instantiation(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_args: TsTypeParamInstantiation,
+    ) -> AssignTarget {
+        AssignTarget::Simple(SimpleAssignTarget::TsInstantiation(
+            self.ts_instantiation(span, expr, type_args).into(),
+        ))
+    }
+    #[inline]
     pub fn assign_target_assign_target_pat_array_pat(
         &mut self,
         span: Span,
         elems: TypedSubRange<Option<Pat>>,
         optional: bool,
+        type_ann: Option<TsTypeAnn>,
     ) -> AssignTarget {
         AssignTarget::Pat(AssignTargetPat::Array(
-            self.array_pat(span, elems, optional).into(),
+            self.array_pat(span, elems, optional, type_ann).into(),
         ))
     }
     #[inline]
@@ -3270,9 +4020,10 @@ impl Ast {
         span: Span,
         props: TypedSubRange<ObjectPatProp>,
         optional: bool,
+        type_ann: Option<TsTypeAnn>,
     ) -> AssignTarget {
         AssignTarget::Pat(AssignTargetPat::Object(
-            self.object_pat(span, props, optional).into(),
+            self.object_pat(span, props, optional, type_ann).into(),
         ))
     }
     #[inline]
@@ -3285,8 +4036,9 @@ impl Ast {
         span: Span,
         elems: TypedSubRange<Option<Pat>>,
         optional: bool,
+        type_ann: Option<TsTypeAnn>,
     ) -> AssignTargetPat {
-        AssignTargetPat::Array(self.array_pat(span, elems, optional).into())
+        AssignTargetPat::Array(self.array_pat(span, elems, optional, type_ann).into())
     }
     #[inline]
     pub fn assign_target_pat_object_pat(
@@ -3294,8 +4046,9 @@ impl Ast {
         span: Span,
         props: TypedSubRange<ObjectPatProp>,
         optional: bool,
+        type_ann: Option<TsTypeAnn>,
     ) -> AssignTargetPat {
-        AssignTargetPat::Object(self.object_pat(span, props, optional).into())
+        AssignTargetPat::Object(self.object_pat(span, props, optional, type_ann).into())
     }
     #[inline]
     pub fn assign_target_pat_invalid(&mut self, span: Span) -> AssignTargetPat {
@@ -3306,8 +4059,9 @@ impl Ast {
         &mut self,
         span: Span,
         id: Ident,
+        type_ann: Option<TsTypeAnn>,
     ) -> SimpleAssignTarget {
-        SimpleAssignTarget::Ident(self.binding_ident(span, id).into())
+        SimpleAssignTarget::Ident(self.binding_ident(span, id, type_ann).into())
     }
     #[inline]
     pub fn simple_assign_target_member_expr(
@@ -3349,6 +4103,50 @@ impl Ast {
         SimpleAssignTarget::Invalid(self.invalid(span).into())
     }
     #[inline]
+    pub fn simple_assign_target_ts_as_expr(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> SimpleAssignTarget {
+        SimpleAssignTarget::TsAs(self.ts_as_expr(span, expr, type_ann).into())
+    }
+    #[inline]
+    pub fn simple_assign_target_ts_satisfies_expr(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> SimpleAssignTarget {
+        SimpleAssignTarget::TsSatisfies(self.ts_satisfies_expr(span, expr, type_ann).into())
+    }
+    #[inline]
+    pub fn simple_assign_target_ts_non_null_expr(
+        &mut self,
+        span: Span,
+        expr: Expr,
+    ) -> SimpleAssignTarget {
+        SimpleAssignTarget::TsNonNull(self.ts_non_null_expr(span, expr).into())
+    }
+    #[inline]
+    pub fn simple_assign_target_ts_type_assertion(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> SimpleAssignTarget {
+        SimpleAssignTarget::TsTypeAssertion(self.ts_type_assertion(span, expr, type_ann).into())
+    }
+    #[inline]
+    pub fn simple_assign_target_ts_instantiation(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_args: TsTypeParamInstantiation,
+    ) -> SimpleAssignTarget {
+        SimpleAssignTarget::TsInstantiation(self.ts_instantiation(span, expr, type_args).into())
+    }
+    #[inline]
     pub fn opt_chain_expr(
         &mut self,
         span: Span,
@@ -3380,8 +4178,13 @@ impl Ast {
         span: Span,
         callee: Expr,
         args: TypedSubRange<ExprOrSpread>,
+        type_args: Option<TsTypeParamInstantiation>,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> OptChainBase {
-        OptChainBase::Call(self.opt_call(span, callee, args).into())
+        OptChainBase::Call(
+            self.opt_call(span, callee, args, type_args, type_params)
+                .into(),
+        )
     }
     #[inline]
     pub fn opt_call(
@@ -3389,9 +4192,13 @@ impl Ast {
         span: Span,
         callee: Expr,
         args: TypedSubRange<ExprOrSpread>,
+        type_args: Option<TsTypeParamInstantiation>,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> OptCall {
         let _f0 = self.add_extra(callee.to_extra_data());
         let _f1 = self.add_extra(args.to_extra_data());
+        let _f2 = self.add_extra(type_args.to_extra_data());
+        let _f3 = self.add_extra(type_params.to_extra_data());
         OptCall(self.add_node(AstNode {
             span,
             kind: NodeKind::OptCall,
@@ -3419,12 +4226,16 @@ impl Ast {
         body: Option<BlockStmt>,
         is_generator: bool,
         is_async: bool,
+        type_params: Option<TsTypeParamDecl>,
+        return_type: Option<TsTypeAnn>,
     ) -> Function {
         let _f0 = self.add_extra(params.to_extra_data());
         let _f1 = self.add_extra(decorators.to_extra_data());
         let _f2 = self.add_extra(body.to_extra_data());
         let _f3 = self.add_extra(is_generator.to_extra_data());
         let _f4 = self.add_extra(is_async.to_extra_data());
+        let _f5 = self.add_extra(type_params.to_extra_data());
+        let _f6 = self.add_extra(return_type.to_extra_data());
         Function(self.add_node(AstNode {
             span,
             kind: NodeKind::Function,
@@ -3457,6 +4268,28 @@ impl Ast {
         ParamOrTsParamProp::Param(self.param(span, decorators, pat).into())
     }
     #[inline]
+    pub fn param_or_ts_param_prop_ts_param_prop(
+        &mut self,
+        span: Span,
+        decorators: TypedSubRange<Decorator>,
+        accessibility: Option<Accessibility>,
+        is_override: bool,
+        readonly: bool,
+        param: TsParamPropParam,
+    ) -> ParamOrTsParamProp {
+        ParamOrTsParamProp::TsParamProp(
+            self.ts_param_prop(
+                span,
+                decorators,
+                accessibility,
+                is_override,
+                readonly,
+                param,
+            )
+            .into(),
+        )
+    }
+    #[inline]
     pub fn class(
         &mut self,
         span: Span,
@@ -3464,11 +4297,17 @@ impl Ast {
         body: TypedSubRange<ClassMember>,
         super_class: Option<Expr>,
         is_abstract: bool,
+        type_params: Option<TsTypeParamDecl>,
+        super_type_params: Option<TsTypeParamInstantiation>,
+        implements: TypedSubRange<TsExprWithTypeArgs>,
     ) -> Class {
         let _f0 = self.add_extra(decorators.to_extra_data());
         let _f1 = self.add_extra(body.to_extra_data());
         let _f2 = self.add_extra(super_class.to_extra_data());
         let _f3 = self.add_extra(is_abstract.to_extra_data());
+        let _f4 = self.add_extra(type_params.to_extra_data());
+        let _f5 = self.add_extra(super_type_params.to_extra_data());
+        let _f6 = self.add_extra(implements.to_extra_data());
         Class(self.add_node(AstNode {
             span,
             kind: NodeKind::Class,
@@ -3485,8 +4324,13 @@ impl Ast {
         key: PropName,
         params: TypedSubRange<ParamOrTsParamProp>,
         body: Option<BlockStmt>,
+        accessibility: Option<Accessibility>,
+        is_optional: bool,
     ) -> ClassMember {
-        ClassMember::Constructor(self.constructor(span, key, params, body).into())
+        ClassMember::Constructor(
+            self.constructor(span, key, params, body, accessibility, is_optional)
+                .into(),
+        )
     }
     #[inline]
     pub fn class_member_class_method(
@@ -3496,10 +4340,24 @@ impl Ast {
         function: Function,
         kind: MethodKind,
         is_static: bool,
+        accessibility: Option<Accessibility>,
+        is_abstract: bool,
+        is_optional: bool,
+        is_override: bool,
     ) -> ClassMember {
         ClassMember::Method(
-            self.class_method(span, key, function, kind, is_static)
-                .into(),
+            self.class_method(
+                span,
+                key,
+                function,
+                kind,
+                is_static,
+                accessibility,
+                is_abstract,
+                is_optional,
+                is_override,
+            )
+            .into(),
         )
     }
     #[inline]
@@ -3510,10 +4368,24 @@ impl Ast {
         function: Function,
         kind: MethodKind,
         is_static: bool,
+        accessibility: Option<Accessibility>,
+        is_abstract: bool,
+        is_optional: bool,
+        is_override: bool,
     ) -> ClassMember {
         ClassMember::PrivateMethod(
-            self.private_method(span, key, function, kind, is_static)
-                .into(),
+            self.private_method(
+                span,
+                key,
+                function,
+                kind,
+                is_static,
+                accessibility,
+                is_abstract,
+                is_optional,
+                is_override,
+            )
+            .into(),
         )
     }
     #[inline]
@@ -3524,10 +4396,32 @@ impl Ast {
         value: Option<Expr>,
         is_static: bool,
         decorators: TypedSubRange<Decorator>,
+        type_ann: Option<TsTypeAnn>,
+        accessibility: Option<Accessibility>,
+        is_abstract: bool,
+        is_optional: bool,
+        is_override: bool,
+        readonly: bool,
+        declare: bool,
+        definite: bool,
     ) -> ClassMember {
         ClassMember::ClassProp(
-            self.class_prop(span, key, value, is_static, decorators)
-                .into(),
+            self.class_prop(
+                span,
+                key,
+                value,
+                is_static,
+                decorators,
+                type_ann,
+                accessibility,
+                is_abstract,
+                is_optional,
+                is_override,
+                readonly,
+                declare,
+                definite,
+            )
+            .into(),
         )
     }
     #[inline]
@@ -3538,10 +4432,28 @@ impl Ast {
         value: Option<Expr>,
         is_static: bool,
         decorators: TypedSubRange<Decorator>,
+        type_ann: Option<TsTypeAnn>,
+        accessibility: Option<Accessibility>,
+        is_optional: bool,
+        is_override: bool,
+        readonly: bool,
+        definite: bool,
     ) -> ClassMember {
         ClassMember::PrivateProp(
-            self.private_prop(span, key, value, is_static, decorators)
-                .into(),
+            self.private_prop(
+                span,
+                key,
+                value,
+                is_static,
+                decorators,
+                type_ann,
+                accessibility,
+                is_optional,
+                is_override,
+                readonly,
+                definite,
+            )
+            .into(),
         )
     }
     #[inline]
@@ -3560,9 +4472,39 @@ impl Ast {
         value: Option<Expr>,
         is_static: bool,
         decorators: TypedSubRange<Decorator>,
+        type_ann: Option<TsTypeAnn>,
+        accessibility: Option<Accessibility>,
+        is_abstract: bool,
+        is_override: bool,
+        definite: bool,
     ) -> ClassMember {
         ClassMember::AutoAccessor(
-            self.auto_accessor(span, key, value, is_static, decorators)
+            self.auto_accessor(
+                span,
+                key,
+                value,
+                is_static,
+                decorators,
+                type_ann,
+                accessibility,
+                is_abstract,
+                is_override,
+                definite,
+            )
+            .into(),
+        )
+    }
+    #[inline]
+    pub fn class_member_ts_index_signature(
+        &mut self,
+        span: Span,
+        params: TypedSubRange<TsFnParam>,
+        type_ann: Option<TsTypeAnn>,
+        readonly: bool,
+        is_static: bool,
+    ) -> ClassMember {
+        ClassMember::TsIndexSignature(
+            self.ts_index_signature(span, params, type_ann, readonly, is_static)
                 .into(),
         )
     }
@@ -3574,11 +4516,27 @@ impl Ast {
         value: Option<Expr>,
         is_static: bool,
         decorators: TypedSubRange<Decorator>,
+        type_ann: Option<TsTypeAnn>,
+        accessibility: Option<Accessibility>,
+        is_abstract: bool,
+        is_optional: bool,
+        is_override: bool,
+        readonly: bool,
+        declare: bool,
+        definite: bool,
     ) -> ClassProp {
         let _f0 = self.add_extra(key.to_extra_data());
         let _f1 = self.add_extra(value.to_extra_data());
         let _f2 = self.add_extra(is_static.to_extra_data());
         let _f3 = self.add_extra(decorators.to_extra_data());
+        let _f4 = self.add_extra(type_ann.to_extra_data());
+        let _f5 = self.add_extra(accessibility.to_extra_data());
+        let _f6 = self.add_extra(is_abstract.to_extra_data());
+        let _f7 = self.add_extra(is_optional.to_extra_data());
+        let _f8 = self.add_extra(is_override.to_extra_data());
+        let _f9 = self.add_extra(readonly.to_extra_data());
+        let _f10 = self.add_extra(declare.to_extra_data());
+        let _f11 = self.add_extra(definite.to_extra_data());
         ClassProp(self.add_node(AstNode {
             span,
             kind: NodeKind::ClassProp,
@@ -3596,11 +4554,23 @@ impl Ast {
         value: Option<Expr>,
         is_static: bool,
         decorators: TypedSubRange<Decorator>,
+        type_ann: Option<TsTypeAnn>,
+        accessibility: Option<Accessibility>,
+        is_optional: bool,
+        is_override: bool,
+        readonly: bool,
+        definite: bool,
     ) -> PrivateProp {
         let _f0 = self.add_extra(key.to_extra_data());
         let _f1 = self.add_extra(value.to_extra_data());
         let _f2 = self.add_extra(is_static.to_extra_data());
         let _f3 = self.add_extra(decorators.to_extra_data());
+        let _f4 = self.add_extra(type_ann.to_extra_data());
+        let _f5 = self.add_extra(accessibility.to_extra_data());
+        let _f6 = self.add_extra(is_optional.to_extra_data());
+        let _f7 = self.add_extra(is_override.to_extra_data());
+        let _f8 = self.add_extra(readonly.to_extra_data());
+        let _f9 = self.add_extra(definite.to_extra_data());
         PrivateProp(self.add_node(AstNode {
             span,
             kind: NodeKind::PrivateProp,
@@ -3618,13 +4588,23 @@ impl Ast {
         function: Function,
         kind: MethodKind,
         is_static: bool,
+        accessibility: Option<Accessibility>,
+        is_abstract: bool,
+        is_optional: bool,
+        is_override: bool,
     ) -> ClassMethod {
         let _f0 = self.add_extra(key.to_extra_data());
         let _f1 = self.add_extra(function.to_extra_data());
+        let _f2 = self.add_extra(kind.to_extra_data());
+        let _f3 = self.add_extra(is_static.to_extra_data());
+        let _f4 = self.add_extra(accessibility.to_extra_data());
+        let _f5 = self.add_extra(is_abstract.to_extra_data());
+        let _f6 = self.add_extra(is_optional.to_extra_data());
+        let _f7 = self.add_extra(is_override.to_extra_data());
         ClassMethod(self.add_node(AstNode {
             span,
             kind: NodeKind::ClassMethod,
-            inline_data: (0u32 | kind as u32 | ((is_static as u32) << 8usize)).into(),
+            inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -3638,13 +4618,23 @@ impl Ast {
         function: Function,
         kind: MethodKind,
         is_static: bool,
+        accessibility: Option<Accessibility>,
+        is_abstract: bool,
+        is_optional: bool,
+        is_override: bool,
     ) -> PrivateMethod {
         let _f0 = self.add_extra(key.to_extra_data());
         let _f1 = self.add_extra(function.to_extra_data());
+        let _f2 = self.add_extra(kind.to_extra_data());
+        let _f3 = self.add_extra(is_static.to_extra_data());
+        let _f4 = self.add_extra(accessibility.to_extra_data());
+        let _f5 = self.add_extra(is_abstract.to_extra_data());
+        let _f6 = self.add_extra(is_optional.to_extra_data());
+        let _f7 = self.add_extra(is_override.to_extra_data());
         PrivateMethod(self.add_node(AstNode {
             span,
             kind: NodeKind::PrivateMethod,
-            inline_data: (0u32 | kind as u32 | ((is_static as u32) << 8usize)).into(),
+            inline_data: 0u32.into(),
             data: NodeData {
                 extra_data_start: _f0,
             },
@@ -3657,10 +4647,14 @@ impl Ast {
         key: PropName,
         params: TypedSubRange<ParamOrTsParamProp>,
         body: Option<BlockStmt>,
+        accessibility: Option<Accessibility>,
+        is_optional: bool,
     ) -> Constructor {
         let _f0 = self.add_extra(key.to_extra_data());
         let _f1 = self.add_extra(params.to_extra_data());
         let _f2 = self.add_extra(body.to_extra_data());
+        let _f3 = self.add_extra(accessibility.to_extra_data());
+        let _f4 = self.add_extra(is_optional.to_extra_data());
         Constructor(self.add_node(AstNode {
             span,
             kind: NodeKind::Constructor,
@@ -3732,11 +4726,21 @@ impl Ast {
         value: Option<Expr>,
         is_static: bool,
         decorators: TypedSubRange<Decorator>,
+        type_ann: Option<TsTypeAnn>,
+        accessibility: Option<Accessibility>,
+        is_abstract: bool,
+        is_override: bool,
+        definite: bool,
     ) -> AutoAccessor {
         let _f0 = self.add_extra(key.to_extra_data());
         let _f1 = self.add_extra(value.to_extra_data());
         let _f2 = self.add_extra(is_static.to_extra_data());
         let _f3 = self.add_extra(decorators.to_extra_data());
+        let _f4 = self.add_extra(type_ann.to_extra_data());
+        let _f5 = self.add_extra(accessibility.to_extra_data());
+        let _f6 = self.add_extra(is_abstract.to_extra_data());
+        let _f7 = self.add_extra(is_override.to_extra_data());
+        let _f8 = self.add_extra(definite.to_extra_data());
         AutoAccessor(self.add_node(AstNode {
             span,
             kind: NodeKind::AutoAccessor,
@@ -3759,8 +4763,14 @@ impl Ast {
         Prop::Assign(self.assign_prop(span, key, value).into())
     }
     #[inline]
-    pub fn prop_getter_prop(&mut self, span: Span, key: PropName, body: Option<BlockStmt>) -> Prop {
-        Prop::Getter(self.getter_prop(span, key, body).into())
+    pub fn prop_getter_prop(
+        &mut self,
+        span: Span,
+        key: PropName,
+        body: Option<BlockStmt>,
+        type_ann: Option<TsTypeAnn>,
+    ) -> Prop {
+        Prop::Getter(self.getter_prop(span, key, body, type_ann).into())
     }
     #[inline]
     pub fn prop_setter_prop(
@@ -3809,9 +4819,11 @@ impl Ast {
         span: Span,
         key: PropName,
         body: Option<BlockStmt>,
+        type_ann: Option<TsTypeAnn>,
     ) -> GetterProp {
         let _f0 = self.add_extra(key.to_extra_data());
         let _f1 = self.add_extra(body.to_extra_data());
+        let _f2 = self.add_extra(type_ann.to_extra_data());
         GetterProp(self.add_node(AstNode {
             span,
             kind: NodeKind::GetterProp,
@@ -3894,8 +4906,8 @@ impl Ast {
         }))
     }
     #[inline]
-    pub fn pat_binding_ident(&mut self, span: Span, id: Ident) -> Pat {
-        Pat::Ident(self.binding_ident(span, id).into())
+    pub fn pat_binding_ident(&mut self, span: Span, id: Ident, type_ann: Option<TsTypeAnn>) -> Pat {
+        Pat::Ident(self.binding_ident(span, id, type_ann).into())
     }
     #[inline]
     pub fn pat_array_pat(
@@ -3903,12 +4915,19 @@ impl Ast {
         span: Span,
         elems: TypedSubRange<Option<Pat>>,
         optional: bool,
+        type_ann: Option<TsTypeAnn>,
     ) -> Pat {
-        Pat::Array(self.array_pat(span, elems, optional).into())
+        Pat::Array(self.array_pat(span, elems, optional, type_ann).into())
     }
     #[inline]
-    pub fn pat_rest_pat(&mut self, span: Span, dot3_token: Span, arg: Pat) -> Pat {
-        Pat::Rest(self.rest_pat(span, dot3_token, arg).into())
+    pub fn pat_rest_pat(
+        &mut self,
+        span: Span,
+        dot3_token: Span,
+        arg: Pat,
+        type_ann: Option<TsTypeAnn>,
+    ) -> Pat {
+        Pat::Rest(self.rest_pat(span, dot3_token, arg, type_ann).into())
     }
     #[inline]
     pub fn pat_object_pat(
@@ -3916,8 +4935,9 @@ impl Ast {
         span: Span,
         props: TypedSubRange<ObjectPatProp>,
         optional: bool,
+        type_ann: Option<TsTypeAnn>,
     ) -> Pat {
-        Pat::Object(self.object_pat(span, props, optional).into())
+        Pat::Object(self.object_pat(span, props, optional, type_ann).into())
     }
     #[inline]
     pub fn pat_assign_pat(&mut self, span: Span, left: Pat, right: Expr) -> Pat {
@@ -4000,8 +5020,13 @@ impl Ast {
         span: Span,
         callee: Callee,
         args: TypedSubRange<ExprOrSpread>,
+        type_args: Option<TsTypeParamInstantiation>,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> Pat {
-        Pat::Expr(Expr::Call(self.call_expr(span, callee, args).into()))
+        Pat::Expr(Expr::Call(
+            self.call_expr(span, callee, args, type_args, type_params)
+                .into(),
+        ))
     }
     #[inline]
     pub fn pat_expr_new_expr(
@@ -4009,8 +5034,13 @@ impl Ast {
         span: Span,
         callee: Expr,
         args: Option<TypedSubRange<ExprOrSpread>>,
+        type_args: Option<TsTypeParamInstantiation>,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> Pat {
-        Pat::Expr(Expr::New(self.new_expr(span, callee, args).into()))
+        Pat::Expr(Expr::New(
+            self.new_expr(span, callee, args, type_args, type_params)
+                .into(),
+        ))
     }
     #[inline]
     pub fn pat_expr_seq_expr(&mut self, span: Span, exprs: TypedSubRange<Expr>) -> Pat {
@@ -4052,6 +5082,12 @@ impl Ast {
         Pat::Expr(Expr::Lit(Lit::Regex(self.regex(span, exp, flags).into())))
     }
     #[inline]
+    pub fn pat_expr_lit_jsx_text(&mut self, span: Span, value: Utf8Ref, raw: Utf8Ref) -> Pat {
+        Pat::Expr(Expr::Lit(Lit::JSXText(
+            self.jsx_text(span, value, raw).into(),
+        )))
+    }
+    #[inline]
     pub fn pat_expr_tpl(
         &mut self,
         span: Span,
@@ -4061,8 +5097,16 @@ impl Ast {
         Pat::Expr(Expr::Tpl(self.tpl(span, exprs, quasis).into()))
     }
     #[inline]
-    pub fn pat_expr_tagged_tpl(&mut self, span: Span, tag: Expr, tpl: Tpl) -> Pat {
-        Pat::Expr(Expr::TaggedTpl(self.tagged_tpl(span, tag, tpl).into()))
+    pub fn pat_expr_tagged_tpl(
+        &mut self,
+        span: Span,
+        tag: Expr,
+        tpl: Tpl,
+        type_params: Option<TsTypeParamInstantiation>,
+    ) -> Pat {
+        Pat::Expr(Expr::TaggedTpl(
+            self.tagged_tpl(span, tag, tpl, type_params).into(),
+        ))
     }
     #[inline]
     pub fn pat_expr_arrow_expr(
@@ -4072,10 +5116,20 @@ impl Ast {
         body: BlockStmtOrExpr,
         is_async: bool,
         is_generator: bool,
+        type_params: Option<TsTypeParamDecl>,
+        return_type: Option<TsTypeAnn>,
     ) -> Pat {
         Pat::Expr(Expr::Arrow(
-            self.arrow_expr(span, params, body, is_async, is_generator)
-                .into(),
+            self.arrow_expr(
+                span,
+                params,
+                body,
+                is_async,
+                is_generator,
+                type_params,
+                return_type,
+            )
+            .into(),
         ))
     }
     #[inline]
@@ -4163,14 +5217,53 @@ impl Ast {
         Pat::Expr(Expr::Invalid(self.invalid(span).into()))
     }
     #[inline]
+    pub fn pat_expr_ts_type_assertion(&mut self, span: Span, expr: Expr, type_ann: TsType) -> Pat {
+        Pat::Expr(Expr::TsTypeAssertion(
+            self.ts_type_assertion(span, expr, type_ann).into(),
+        ))
+    }
+    #[inline]
+    pub fn pat_expr_ts_const_assertion(&mut self, span: Span, expr: Expr) -> Pat {
+        Pat::Expr(Expr::TsConstAssertion(
+            self.ts_const_assertion(span, expr).into(),
+        ))
+    }
+    #[inline]
+    pub fn pat_expr_ts_non_null_expr(&mut self, span: Span, expr: Expr) -> Pat {
+        Pat::Expr(Expr::TsNonNull(self.ts_non_null_expr(span, expr).into()))
+    }
+    #[inline]
+    pub fn pat_expr_ts_as_expr(&mut self, span: Span, expr: Expr, type_ann: TsType) -> Pat {
+        Pat::Expr(Expr::TsAs(self.ts_as_expr(span, expr, type_ann).into()))
+    }
+    #[inline]
+    pub fn pat_expr_ts_instantiation(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_args: TsTypeParamInstantiation,
+    ) -> Pat {
+        Pat::Expr(Expr::TsInstantiation(
+            self.ts_instantiation(span, expr, type_args).into(),
+        ))
+    }
+    #[inline]
+    pub fn pat_expr_ts_satisfies_expr(&mut self, span: Span, expr: Expr, type_ann: TsType) -> Pat {
+        Pat::Expr(Expr::TsSatisfies(
+            self.ts_satisfies_expr(span, expr, type_ann).into(),
+        ))
+    }
+    #[inline]
     pub fn array_pat(
         &mut self,
         span: Span,
         elems: TypedSubRange<Option<Pat>>,
         optional: bool,
+        type_ann: Option<TsTypeAnn>,
     ) -> ArrayPat {
         let _f0 = self.add_extra(elems.to_extra_data());
         let _f1 = self.add_extra(optional.to_extra_data());
+        let _f2 = self.add_extra(type_ann.to_extra_data());
         ArrayPat(self.add_node(AstNode {
             span,
             kind: NodeKind::ArrayPat,
@@ -4186,9 +5279,11 @@ impl Ast {
         span: Span,
         props: TypedSubRange<ObjectPatProp>,
         optional: bool,
+        type_ann: Option<TsTypeAnn>,
     ) -> ObjectPat {
         let _f0 = self.add_extra(props.to_extra_data());
         let _f1 = self.add_extra(optional.to_extra_data());
+        let _f2 = self.add_extra(type_ann.to_extra_data());
         ObjectPat(self.add_node(AstNode {
             span,
             kind: NodeKind::ObjectPat,
@@ -4212,9 +5307,16 @@ impl Ast {
         }))
     }
     #[inline]
-    pub fn rest_pat(&mut self, span: Span, dot3_token: Span, arg: Pat) -> RestPat {
+    pub fn rest_pat(
+        &mut self,
+        span: Span,
+        dot3_token: Span,
+        arg: Pat,
+        type_ann: Option<TsTypeAnn>,
+    ) -> RestPat {
         let _f0 = self.add_extra(dot3_token.to_extra_data());
         let _f1 = self.add_extra(arg.to_extra_data());
+        let _f2 = self.add_extra(type_ann.to_extra_data());
         RestPat(self.add_node(AstNode {
             span,
             kind: NodeKind::RestPat,
@@ -4248,8 +5350,9 @@ impl Ast {
         span: Span,
         dot3_token: Span,
         arg: Pat,
+        type_ann: Option<TsTypeAnn>,
     ) -> ObjectPatProp {
-        ObjectPatProp::Rest(self.rest_pat(span, dot3_token, arg).into())
+        ObjectPatProp::Rest(self.rest_pat(span, dot3_token, arg, type_ann).into())
     }
     #[inline]
     pub fn key_value_pat_prop(&mut self, span: Span, key: PropName, value: Pat) -> KeyValuePatProp {
@@ -4319,13 +5422,20 @@ impl Ast {
         }))
     }
     #[inline]
-    pub fn binding_ident(&mut self, span: Span, id: Ident) -> BindingIdent {
+    pub fn binding_ident(
+        &mut self,
+        span: Span,
+        id: Ident,
+        type_ann: Option<TsTypeAnn>,
+    ) -> BindingIdent {
+        let _f0 = self.add_extra(id.to_extra_data());
+        let _f1 = self.add_extra(type_ann.to_extra_data());
         BindingIdent(self.add_node(AstNode {
             span,
             kind: NodeKind::BindingIdent,
             inline_data: 0u32.into(),
             data: NodeData {
-                inline_data: id.node_id().index() as u32,
+                extra_data_start: _f0,
             },
         }))
     }
@@ -4352,6 +5462,10 @@ impl Ast {
     #[inline]
     pub fn lit_regex(&mut self, span: Span, exp: Utf8Ref, flags: Utf8Ref) -> Lit {
         Lit::Regex(self.regex(span, exp, flags).into())
+    }
+    #[inline]
+    pub fn lit_jsx_text(&mut self, span: Span, value: Utf8Ref, raw: Utf8Ref) -> Lit {
+        Lit::JSXText(self.jsx_text(span, value, raw).into())
     }
     #[inline]
     pub fn str(&mut self, span: Span, value: Wtf8Ref, raw: OptionalUtf8Ref) -> Str {
@@ -4598,8 +5712,13 @@ impl Ast {
         span: Span,
         callee: Callee,
         args: TypedSubRange<ExprOrSpread>,
+        type_args: Option<TsTypeParamInstantiation>,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> JSXExpr {
-        JSXExpr::Expr(Expr::Call(self.call_expr(span, callee, args).into()))
+        JSXExpr::Expr(Expr::Call(
+            self.call_expr(span, callee, args, type_args, type_params)
+                .into(),
+        ))
     }
     #[inline]
     pub fn jsx_expr_expr_new_expr(
@@ -4607,8 +5726,13 @@ impl Ast {
         span: Span,
         callee: Expr,
         args: Option<TypedSubRange<ExprOrSpread>>,
+        type_args: Option<TsTypeParamInstantiation>,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> JSXExpr {
-        JSXExpr::Expr(Expr::New(self.new_expr(span, callee, args).into()))
+        JSXExpr::Expr(Expr::New(
+            self.new_expr(span, callee, args, type_args, type_params)
+                .into(),
+        ))
     }
     #[inline]
     pub fn jsx_expr_expr_seq_expr(&mut self, span: Span, exprs: TypedSubRange<Expr>) -> JSXExpr {
@@ -4660,6 +5784,17 @@ impl Ast {
         JSXExpr::Expr(Expr::Lit(Lit::Regex(self.regex(span, exp, flags).into())))
     }
     #[inline]
+    pub fn jsx_expr_expr_lit_jsx_text(
+        &mut self,
+        span: Span,
+        value: Utf8Ref,
+        raw: Utf8Ref,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::Lit(Lit::JSXText(
+            self.jsx_text(span, value, raw).into(),
+        )))
+    }
+    #[inline]
     pub fn jsx_expr_expr_tpl(
         &mut self,
         span: Span,
@@ -4669,8 +5804,16 @@ impl Ast {
         JSXExpr::Expr(Expr::Tpl(self.tpl(span, exprs, quasis).into()))
     }
     #[inline]
-    pub fn jsx_expr_expr_tagged_tpl(&mut self, span: Span, tag: Expr, tpl: Tpl) -> JSXExpr {
-        JSXExpr::Expr(Expr::TaggedTpl(self.tagged_tpl(span, tag, tpl).into()))
+    pub fn jsx_expr_expr_tagged_tpl(
+        &mut self,
+        span: Span,
+        tag: Expr,
+        tpl: Tpl,
+        type_params: Option<TsTypeParamInstantiation>,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::TaggedTpl(
+            self.tagged_tpl(span, tag, tpl, type_params).into(),
+        ))
     }
     #[inline]
     pub fn jsx_expr_expr_arrow_expr(
@@ -4680,10 +5823,20 @@ impl Ast {
         body: BlockStmtOrExpr,
         is_async: bool,
         is_generator: bool,
+        type_params: Option<TsTypeParamDecl>,
+        return_type: Option<TsTypeAnn>,
     ) -> JSXExpr {
         JSXExpr::Expr(Expr::Arrow(
-            self.arrow_expr(span, params, body, is_async, is_generator)
-                .into(),
+            self.arrow_expr(
+                span,
+                params,
+                body,
+                is_async,
+                is_generator,
+                type_params,
+                return_type,
+            )
+            .into(),
         ))
     }
     #[inline]
@@ -4786,6 +5939,58 @@ impl Ast {
         JSXExpr::Expr(Expr::Invalid(self.invalid(span).into()))
     }
     #[inline]
+    pub fn jsx_expr_expr_ts_type_assertion(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::TsTypeAssertion(
+            self.ts_type_assertion(span, expr, type_ann).into(),
+        ))
+    }
+    #[inline]
+    pub fn jsx_expr_expr_ts_const_assertion(&mut self, span: Span, expr: Expr) -> JSXExpr {
+        JSXExpr::Expr(Expr::TsConstAssertion(
+            self.ts_const_assertion(span, expr).into(),
+        ))
+    }
+    #[inline]
+    pub fn jsx_expr_expr_ts_non_null_expr(&mut self, span: Span, expr: Expr) -> JSXExpr {
+        JSXExpr::Expr(Expr::TsNonNull(self.ts_non_null_expr(span, expr).into()))
+    }
+    #[inline]
+    pub fn jsx_expr_expr_ts_as_expr(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::TsAs(self.ts_as_expr(span, expr, type_ann).into()))
+    }
+    #[inline]
+    pub fn jsx_expr_expr_ts_instantiation(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_args: TsTypeParamInstantiation,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::TsInstantiation(
+            self.ts_instantiation(span, expr, type_args).into(),
+        ))
+    }
+    #[inline]
+    pub fn jsx_expr_expr_ts_satisfies_expr(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::TsSatisfies(
+            self.ts_satisfies_expr(span, expr, type_ann).into(),
+        ))
+    }
+    #[inline]
     pub fn jsx_spread_child(&mut self, span: Span, expr: Expr) -> JSXSpreadChild {
         let _f0 = self.add_extra(expr.to_extra_data());
         JSXSpreadChild(self.add_node(AstNode {
@@ -4831,10 +6036,12 @@ impl Ast {
         name: JSXElementName,
         attrs: TypedSubRange<JSXAttrOrSpread>,
         self_closing: bool,
+        type_args: Option<TsTypeParamInstantiation>,
     ) -> JSXOpeningElement {
         let _f0 = self.add_extra(name.to_extra_data());
         let _f1 = self.add_extra(attrs.to_extra_data());
         let _f2 = self.add_extra(self_closing.to_extra_data());
+        let _f3 = self.add_extra(type_args.to_extra_data());
         JSXOpeningElement(self.add_node(AstNode {
             span,
             kind: NodeKind::JSXOpeningElement,
@@ -5152,8 +6359,13 @@ impl Ast {
         }))
     }
     #[inline]
-    pub fn ts_param_prop_param_binding_ident(&mut self, span: Span, id: Ident) -> TsParamPropParam {
-        TsParamPropParam::Ident(self.binding_ident(span, id).into())
+    pub fn ts_param_prop_param_binding_ident(
+        &mut self,
+        span: Span,
+        id: Ident,
+        type_ann: Option<TsTypeAnn>,
+    ) -> TsParamPropParam {
+        TsParamPropParam::Ident(self.binding_ident(span, id, type_ann).into())
     }
     #[inline]
     pub fn ts_param_prop_param_assign_pat(
@@ -5684,8 +6896,13 @@ impl Ast {
         }))
     }
     #[inline]
-    pub fn ts_fn_param_binding_ident(&mut self, span: Span, id: Ident) -> TsFnParam {
-        TsFnParam::Ident(self.binding_ident(span, id).into())
+    pub fn ts_fn_param_binding_ident(
+        &mut self,
+        span: Span,
+        id: Ident,
+        type_ann: Option<TsTypeAnn>,
+    ) -> TsFnParam {
+        TsFnParam::Ident(self.binding_ident(span, id, type_ann).into())
     }
     #[inline]
     pub fn ts_fn_param_array_pat(
@@ -5693,12 +6910,19 @@ impl Ast {
         span: Span,
         elems: TypedSubRange<Option<Pat>>,
         optional: bool,
+        type_ann: Option<TsTypeAnn>,
     ) -> TsFnParam {
-        TsFnParam::Array(self.array_pat(span, elems, optional).into())
+        TsFnParam::Array(self.array_pat(span, elems, optional, type_ann).into())
     }
     #[inline]
-    pub fn ts_fn_param_rest_pat(&mut self, span: Span, dot3_token: Span, arg: Pat) -> TsFnParam {
-        TsFnParam::Rest(self.rest_pat(span, dot3_token, arg).into())
+    pub fn ts_fn_param_rest_pat(
+        &mut self,
+        span: Span,
+        dot3_token: Span,
+        arg: Pat,
+        type_ann: Option<TsTypeAnn>,
+    ) -> TsFnParam {
+        TsFnParam::Rest(self.rest_pat(span, dot3_token, arg, type_ann).into())
     }
     #[inline]
     pub fn ts_fn_param_object_pat(
@@ -5706,8 +6930,9 @@ impl Ast {
         span: Span,
         props: TypedSubRange<ObjectPatProp>,
         optional: bool,
+        type_ann: Option<TsTypeAnn>,
     ) -> TsFnParam {
-        TsFnParam::Object(self.object_pat(span, props, optional).into())
+        TsFnParam::Object(self.object_pat(span, props, optional, type_ann).into())
     }
     #[inline]
     pub fn ts_fn_type(

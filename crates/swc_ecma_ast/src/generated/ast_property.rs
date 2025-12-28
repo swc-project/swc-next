@@ -304,6 +304,9 @@ impl ModuleDecl {
             Self::ExportDefaultDecl(it) => it.span(ast),
             Self::ExportDefaultExpr(it) => it.span(ast),
             Self::ExportAll(it) => it.span(ast),
+            Self::TsImportEquals(it) => it.span(ast),
+            Self::TsExportAssignment(it) => it.span(ast),
+            Self::TsNamespaceExport(it) => it.span(ast),
         }
     }
     #[inline]
@@ -323,6 +326,9 @@ impl ModuleDecl {
             Self::ExportDefaultDecl(it) => it.set_span(ast, span),
             Self::ExportDefaultExpr(it) => it.set_span(ast, span),
             Self::ExportAll(it) => it.set_span(ast, span),
+            Self::TsImportEquals(it) => it.set_span(ast, span),
+            Self::TsExportAssignment(it) => it.set_span(ast, span),
+            Self::TsNamespaceExport(it) => it.set_span(ast, span),
         }
     }
     #[inline]
@@ -348,6 +354,18 @@ impl ModuleDecl {
     #[inline]
     pub fn is_export_all(&self) -> bool {
         matches!(self, Self::ExportAll(_))
+    }
+    #[inline]
+    pub fn is_ts_import_equals(&self) -> bool {
+        matches!(self, Self::TsImportEquals(_))
+    }
+    #[inline]
+    pub fn is_ts_export_assignment(&self) -> bool {
+        matches!(self, Self::TsExportAssignment(_))
+    }
+    #[inline]
+    pub fn is_ts_namespace_export(&self) -> bool {
+        matches!(self, Self::TsNamespaceExport(_))
     }
     #[inline]
     pub fn as_import(&self) -> Option<&ImportDecl> {
@@ -388,6 +406,27 @@ impl ModuleDecl {
     pub fn as_export_all(&self) -> Option<&ExportAll> {
         match self {
             Self::ExportAll(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_import_equals(&self) -> Option<&TsImportEqualsDecl> {
+        match self {
+            Self::TsImportEquals(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_export_assignment(&self) -> Option<&TsExportAssignment> {
+        match self {
+            Self::TsExportAssignment(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_namespace_export(&self) -> Option<&TsNamespaceExportDecl> {
+        match self {
+            Self::TsNamespaceExport(it) => Some(it),
             _ => None,
         }
     }
@@ -3798,6 +3837,10 @@ impl Decl {
             Self::Fn(it) => it.span(ast),
             Self::Var(it) => it.span(ast),
             Self::Using(it) => it.span(ast),
+            Self::TsInterface(it) => it.span(ast),
+            Self::TsTypeAlias(it) => it.span(ast),
+            Self::TsEnum(it) => it.span(ast),
+            Self::TsModule(it) => it.span(ast),
         }
     }
     #[inline]
@@ -3815,6 +3858,10 @@ impl Decl {
             Self::Fn(it) => it.set_span(ast, span),
             Self::Var(it) => it.set_span(ast, span),
             Self::Using(it) => it.set_span(ast, span),
+            Self::TsInterface(it) => it.set_span(ast, span),
+            Self::TsTypeAlias(it) => it.set_span(ast, span),
+            Self::TsEnum(it) => it.set_span(ast, span),
+            Self::TsModule(it) => it.set_span(ast, span),
         }
     }
     #[inline]
@@ -3832,6 +3879,22 @@ impl Decl {
     #[inline]
     pub fn is_using(&self) -> bool {
         matches!(self, Self::Using(_))
+    }
+    #[inline]
+    pub fn is_ts_interface(&self) -> bool {
+        matches!(self, Self::TsInterface(_))
+    }
+    #[inline]
+    pub fn is_ts_type_alias(&self) -> bool {
+        matches!(self, Self::TsTypeAlias(_))
+    }
+    #[inline]
+    pub fn is_ts_enum(&self) -> bool {
+        matches!(self, Self::TsEnum(_))
+    }
+    #[inline]
+    pub fn is_ts_module(&self) -> bool {
+        matches!(self, Self::TsModule(_))
     }
     #[inline]
     pub fn as_class(&self) -> Option<&ClassDecl> {
@@ -3858,6 +3921,34 @@ impl Decl {
     pub fn as_using(&self) -> Option<&UsingDecl> {
         match self {
             Self::Using(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_interface(&self) -> Option<&TsInterfaceDecl> {
+        match self {
+            Self::TsInterface(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_alias(&self) -> Option<&TsTypeAliasDecl> {
+        match self {
+            Self::TsTypeAlias(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_enum(&self) -> Option<&TsEnumDecl> {
+        match self {
+            Self::TsEnum(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_module(&self) -> Option<&TsModuleDecl> {
+        match self {
+            Self::TsModule(it) => Some(it),
             _ => None,
         }
     }
@@ -4235,6 +4326,12 @@ impl VarDeclarator {
         self.span(ast).hi
     }
     #[inline]
+    pub fn definite(&self, ast: &crate::Ast) -> bool {
+        let node = unsafe { ast.nodes.get_unchecked(self.0) };
+        let raw = u32::from(node.inline_data) & 255u32;
+        raw != 0
+    }
+    #[inline]
     pub fn name(&self, ast: &crate::Ast) -> Pat {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -4279,6 +4376,13 @@ impl VarDeclarator {
         unsafe {
             ast.nodes.get_unchecked_mut(self.0).span = span;
         }
+    }
+    #[inline]
+    pub fn set_definite(&self, ast: &mut crate::Ast, definite: bool) {
+        let node = unsafe { ast.nodes.get_unchecked_mut(self.0) };
+        let field_val: u32 = definite as u32;
+        let old = u32::from(node.inline_data);
+        node.inline_data = ((old & 16776960u32) | (field_val & 255u32)).into();
     }
     #[inline]
     pub fn set_name(&self, ast: &mut crate::Ast, name: Pat) {
@@ -4453,6 +4557,12 @@ impl Expr {
             Self::PrivateName(it) => it.span(ast),
             Self::OptChain(it) => it.span(ast),
             Self::Invalid(it) => it.span(ast),
+            Self::TsTypeAssertion(it) => it.span(ast),
+            Self::TsConstAssertion(it) => it.span(ast),
+            Self::TsNonNull(it) => it.span(ast),
+            Self::TsAs(it) => it.span(ast),
+            Self::TsInstantiation(it) => it.span(ast),
+            Self::TsSatisfies(it) => it.span(ast),
         }
     }
     #[inline]
@@ -4498,6 +4608,12 @@ impl Expr {
             Self::PrivateName(it) => it.set_span(ast, span),
             Self::OptChain(it) => it.set_span(ast, span),
             Self::Invalid(it) => it.set_span(ast, span),
+            Self::TsTypeAssertion(it) => it.set_span(ast, span),
+            Self::TsConstAssertion(it) => it.set_span(ast, span),
+            Self::TsNonNull(it) => it.set_span(ast, span),
+            Self::TsAs(it) => it.set_span(ast, span),
+            Self::TsInstantiation(it) => it.set_span(ast, span),
+            Self::TsSatisfies(it) => it.set_span(ast, span),
         }
     }
     #[inline]
@@ -4627,6 +4743,30 @@ impl Expr {
     #[inline]
     pub fn is_invalid(&self) -> bool {
         matches!(self, Self::Invalid(_))
+    }
+    #[inline]
+    pub fn is_ts_type_assertion(&self) -> bool {
+        matches!(self, Self::TsTypeAssertion(_))
+    }
+    #[inline]
+    pub fn is_ts_const_assertion(&self) -> bool {
+        matches!(self, Self::TsConstAssertion(_))
+    }
+    #[inline]
+    pub fn is_ts_non_null(&self) -> bool {
+        matches!(self, Self::TsNonNull(_))
+    }
+    #[inline]
+    pub fn is_ts_as(&self) -> bool {
+        matches!(self, Self::TsAs(_))
+    }
+    #[inline]
+    pub fn is_ts_instantiation(&self) -> bool {
+        matches!(self, Self::TsInstantiation(_))
+    }
+    #[inline]
+    pub fn is_ts_satisfies(&self) -> bool {
+        matches!(self, Self::TsSatisfies(_))
     }
     #[inline]
     pub fn as_this(&self) -> Option<&ThisExpr> {
@@ -4849,6 +4989,48 @@ impl Expr {
     pub fn as_invalid(&self) -> Option<&Invalid> {
         match self {
             Self::Invalid(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_assertion(&self) -> Option<&TsTypeAssertion> {
+        match self {
+            Self::TsTypeAssertion(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_const_assertion(&self) -> Option<&TsConstAssertion> {
+        match self {
+            Self::TsConstAssertion(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_non_null(&self) -> Option<&TsNonNullExpr> {
+        match self {
+            Self::TsNonNull(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_as(&self) -> Option<&TsAsExpr> {
+        match self {
+            Self::TsAs(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_instantiation(&self) -> Option<&TsInstantiation> {
+        match self {
+            Self::TsInstantiation(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_satisfies(&self) -> Option<&TsSatisfiesExpr> {
+        match self {
+            Self::TsSatisfies(it) => Some(it),
             _ => None,
         }
     }
@@ -6202,6 +6384,46 @@ impl CallExpr {
         }
     }
     #[inline]
+    pub fn type_args(&self, ast: &crate::Ast) -> Option<TsTypeParamInstantiation> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn type_params(&self, ast: &crate::Ast) -> Option<TsTypeParamInstantiation> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
         unsafe {
             ast.nodes.get_unchecked_mut(self.0).span = span;
@@ -6243,6 +6465,48 @@ impl CallExpr {
             *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = args.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_args(&self, ast: &mut crate::Ast, type_args: Option<TsTypeParamInstantiation>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = type_args.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_params(
+        &self,
+        ast: &mut crate::Ast,
+        type_params: Option<TsTypeParamInstantiation>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = type_params.to_extra_data();
         };
     }
 }
@@ -6300,6 +6564,46 @@ impl NewExpr {
         }
     }
     #[inline]
+    pub fn type_args(&self, ast: &crate::Ast) -> Option<TsTypeParamInstantiation> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn type_params(&self, ast: &crate::Ast) -> Option<TsTypeParamInstantiation> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
         unsafe {
             ast.nodes.get_unchecked_mut(self.0).span = span;
@@ -6341,6 +6645,48 @@ impl NewExpr {
             *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = args.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_args(&self, ast: &mut crate::Ast, type_args: Option<TsTypeParamInstantiation>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = type_args.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_params(
+        &self,
+        ast: &mut crate::Ast,
+        type_params: Option<TsTypeParamInstantiation>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = type_params.to_extra_data();
         };
     }
 }
@@ -6497,6 +6843,46 @@ impl ArrowExpr {
         }
     }
     #[inline]
+    pub fn type_params(&self, ast: &crate::Ast) -> Option<TsTypeParamDecl> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn return_type(&self, ast: &crate::Ast) -> Option<TsTypeAnn> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(5usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
         unsafe {
             ast.nodes.get_unchecked_mut(self.0).span = span;
@@ -6576,6 +6962,44 @@ impl ArrowExpr {
             *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = is_generator.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_params(&self, ast: &mut crate::Ast, type_params: Option<TsTypeParamDecl>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = type_params.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_return_type(&self, ast: &mut crate::Ast, return_type: Option<TsTypeAnn>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(5usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = return_type.to_extra_data();
         };
     }
 }
@@ -6893,6 +7317,26 @@ impl TaggedTpl {
         }
     }
     #[inline]
+    pub fn type_params(&self, ast: &crate::Ast) -> Option<TsTypeParamInstantiation> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
         unsafe {
             ast.nodes.get_unchecked_mut(self.0).span = span;
@@ -6934,6 +7378,29 @@ impl TaggedTpl {
             *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = tpl.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_params(
+        &self,
+        ast: &mut crate::Ast,
+        type_params: Option<TsTypeParamInstantiation>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = type_params.to_extra_data();
         };
     }
 }
@@ -7496,6 +7963,11 @@ impl SimpleAssignTarget {
             Self::Paren(it) => it.span(ast),
             Self::OptChain(it) => it.span(ast),
             Self::Invalid(it) => it.span(ast),
+            Self::TsAs(it) => it.span(ast),
+            Self::TsSatisfies(it) => it.span(ast),
+            Self::TsNonNull(it) => it.span(ast),
+            Self::TsTypeAssertion(it) => it.span(ast),
+            Self::TsInstantiation(it) => it.span(ast),
         }
     }
     #[inline]
@@ -7515,6 +7987,11 @@ impl SimpleAssignTarget {
             Self::Paren(it) => it.set_span(ast, span),
             Self::OptChain(it) => it.set_span(ast, span),
             Self::Invalid(it) => it.set_span(ast, span),
+            Self::TsAs(it) => it.set_span(ast, span),
+            Self::TsSatisfies(it) => it.set_span(ast, span),
+            Self::TsNonNull(it) => it.set_span(ast, span),
+            Self::TsTypeAssertion(it) => it.set_span(ast, span),
+            Self::TsInstantiation(it) => it.set_span(ast, span),
         }
     }
     #[inline]
@@ -7540,6 +8017,26 @@ impl SimpleAssignTarget {
     #[inline]
     pub fn is_invalid(&self) -> bool {
         matches!(self, Self::Invalid(_))
+    }
+    #[inline]
+    pub fn is_ts_as(&self) -> bool {
+        matches!(self, Self::TsAs(_))
+    }
+    #[inline]
+    pub fn is_ts_satisfies(&self) -> bool {
+        matches!(self, Self::TsSatisfies(_))
+    }
+    #[inline]
+    pub fn is_ts_non_null(&self) -> bool {
+        matches!(self, Self::TsNonNull(_))
+    }
+    #[inline]
+    pub fn is_ts_type_assertion(&self) -> bool {
+        matches!(self, Self::TsTypeAssertion(_))
+    }
+    #[inline]
+    pub fn is_ts_instantiation(&self) -> bool {
+        matches!(self, Self::TsInstantiation(_))
     }
     #[inline]
     pub fn as_ident(&self) -> Option<&BindingIdent> {
@@ -7580,6 +8077,41 @@ impl SimpleAssignTarget {
     pub fn as_invalid(&self) -> Option<&Invalid> {
         match self {
             Self::Invalid(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_as(&self) -> Option<&TsAsExpr> {
+        match self {
+            Self::TsAs(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_satisfies(&self) -> Option<&TsSatisfiesExpr> {
+        match self {
+            Self::TsSatisfies(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_non_null(&self) -> Option<&TsNonNullExpr> {
+        match self {
+            Self::TsNonNull(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_type_assertion(&self) -> Option<&TsTypeAssertion> {
+        match self {
+            Self::TsTypeAssertion(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_instantiation(&self) -> Option<&TsInstantiation> {
+        match self {
+            Self::TsInstantiation(it) => Some(it),
             _ => None,
         }
     }
@@ -7756,6 +8288,46 @@ impl OptCall {
         }
     }
     #[inline]
+    pub fn type_args(&self, ast: &crate::Ast) -> Option<TsTypeParamInstantiation> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn type_params(&self, ast: &crate::Ast) -> Option<TsTypeParamInstantiation> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
         unsafe {
             ast.nodes.get_unchecked_mut(self.0).span = span;
@@ -7797,6 +8369,48 @@ impl OptCall {
             *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = args.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_args(&self, ast: &mut crate::Ast, type_args: Option<TsTypeParamInstantiation>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = type_args.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_params(
+        &self,
+        ast: &mut crate::Ast,
+        type_params: Option<TsTypeParamInstantiation>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = type_params.to_extra_data();
         };
     }
 }
@@ -7934,6 +8548,46 @@ impl Function {
         }
     }
     #[inline]
+    pub fn type_params(&self, ast: &crate::Ast) -> Option<TsTypeParamDecl> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(5usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn return_type(&self, ast: &crate::Ast) -> Option<TsTypeAnn> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(6usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
         unsafe {
             ast.nodes.get_unchecked_mut(self.0).span = span;
@@ -8032,6 +8686,44 @@ impl Function {
             *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = is_async.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_params(&self, ast: &mut crate::Ast, type_params: Option<TsTypeParamDecl>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(5usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = type_params.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_return_type(&self, ast: &mut crate::Ast, return_type: Option<TsTypeAnn>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(6usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = return_type.to_extra_data();
         };
     }
 }
@@ -8138,6 +8830,7 @@ impl ParamOrTsParamProp {
     pub fn span(&self, ast: &crate::Ast) -> crate::Span {
         match self {
             Self::Param(it) => it.span(ast),
+            Self::TsParamProp(it) => it.span(ast),
         }
     }
     #[inline]
@@ -8152,6 +8845,7 @@ impl ParamOrTsParamProp {
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
         match self {
             Self::Param(it) => it.set_span(ast, span),
+            Self::TsParamProp(it) => it.set_span(ast, span),
         }
     }
     #[inline]
@@ -8159,9 +8853,20 @@ impl ParamOrTsParamProp {
         matches!(self, Self::Param(_))
     }
     #[inline]
+    pub fn is_ts_param_prop(&self) -> bool {
+        matches!(self, Self::TsParamProp(_))
+    }
+    #[inline]
     pub fn as_param(&self) -> Option<&Param> {
         match self {
             Self::Param(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_param_prop(&self) -> Option<&TsParamProp> {
+        match self {
+            Self::TsParamProp(it) => Some(it),
             _ => None,
         }
     }
@@ -8260,6 +8965,66 @@ impl Class {
         }
     }
     #[inline]
+    pub fn type_params(&self, ast: &crate::Ast) -> Option<TsTypeParamDecl> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn super_type_params(&self, ast: &crate::Ast) -> Option<TsTypeParamInstantiation> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(5usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn implements(&self, ast: &crate::Ast) -> TypedSubRange<TsExprWithTypeArgs> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(6usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
         unsafe {
             ast.nodes.get_unchecked_mut(self.0).span = span;
@@ -8341,6 +9106,71 @@ impl Class {
                 .get_unchecked_mut(offset.index()) = is_abstract.to_extra_data();
         };
     }
+    #[inline]
+    pub fn set_type_params(&self, ast: &mut crate::Ast, type_params: Option<TsTypeParamDecl>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = type_params.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_super_type_params(
+        &self,
+        ast: &mut crate::Ast,
+        super_type_params: Option<TsTypeParamInstantiation>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(5usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = super_type_params.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_implements(
+        &self,
+        ast: &mut crate::Ast,
+        implements: TypedSubRange<TsExprWithTypeArgs>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(6usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = implements.to_extra_data();
+        };
+    }
 }
 impl ClassMember {
     #[inline]
@@ -8354,6 +9184,7 @@ impl ClassMember {
             Self::Empty(it) => it.span(ast),
             Self::StaticBlock(it) => it.span(ast),
             Self::AutoAccessor(it) => it.span(ast),
+            Self::TsIndexSignature(it) => it.span(ast),
         }
     }
     #[inline]
@@ -8375,6 +9206,7 @@ impl ClassMember {
             Self::Empty(it) => it.set_span(ast, span),
             Self::StaticBlock(it) => it.set_span(ast, span),
             Self::AutoAccessor(it) => it.set_span(ast, span),
+            Self::TsIndexSignature(it) => it.set_span(ast, span),
         }
     }
     #[inline]
@@ -8408,6 +9240,10 @@ impl ClassMember {
     #[inline]
     pub fn is_auto_accessor(&self) -> bool {
         matches!(self, Self::AutoAccessor(_))
+    }
+    #[inline]
+    pub fn is_ts_index_signature(&self) -> bool {
+        matches!(self, Self::TsIndexSignature(_))
     }
     #[inline]
     pub fn as_constructor(&self) -> Option<&Constructor> {
@@ -8462,6 +9298,13 @@ impl ClassMember {
     pub fn as_auto_accessor(&self) -> Option<&AutoAccessor> {
         match self {
             Self::AutoAccessor(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_index_signature(&self) -> Option<&TsIndexSignature> {
+        match self {
+            Self::TsIndexSignature(it) => Some(it),
             _ => None,
         }
     }
@@ -8560,6 +9403,166 @@ impl ClassProp {
         }
     }
     #[inline]
+    pub fn type_ann(&self, ast: &crate::Ast) -> Option<TsTypeAnn> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn accessibility(&self, ast: &crate::Ast) -> Option<Accessibility> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(5usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_abstract(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(6usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_optional(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(7usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_override(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(8usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn readonly(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(9usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn declare(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(10usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn definite(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(11usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
         unsafe {
             ast.nodes.get_unchecked_mut(self.0).span = span;
@@ -8639,6 +9642,158 @@ impl ClassProp {
             *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = decorators.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_ann(&self, ast: &mut crate::Ast, type_ann: Option<TsTypeAnn>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = type_ann.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_accessibility(&self, ast: &mut crate::Ast, accessibility: Option<Accessibility>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(5usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = accessibility.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_abstract(&self, ast: &mut crate::Ast, is_abstract: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(6usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = is_abstract.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_optional(&self, ast: &mut crate::Ast, is_optional: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(7usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = is_optional.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_override(&self, ast: &mut crate::Ast, is_override: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(8usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = is_override.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_readonly(&self, ast: &mut crate::Ast, readonly: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(9usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = readonly.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_declare(&self, ast: &mut crate::Ast, declare: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(10usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = declare.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_definite(&self, ast: &mut crate::Ast, definite: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(11usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = definite.to_extra_data();
         };
     }
 }
@@ -8736,6 +9891,126 @@ impl PrivateProp {
         }
     }
     #[inline]
+    pub fn type_ann(&self, ast: &crate::Ast) -> Option<TsTypeAnn> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn accessibility(&self, ast: &crate::Ast) -> Option<Accessibility> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(5usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_optional(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(6usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_override(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(7usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn readonly(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(8usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn definite(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(9usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
         unsafe {
             ast.nodes.get_unchecked_mut(self.0).span = span;
@@ -8817,6 +10092,120 @@ impl PrivateProp {
                 .get_unchecked_mut(offset.index()) = decorators.to_extra_data();
         };
     }
+    #[inline]
+    pub fn set_type_ann(&self, ast: &mut crate::Ast, type_ann: Option<TsTypeAnn>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = type_ann.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_accessibility(&self, ast: &mut crate::Ast, accessibility: Option<Accessibility>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(5usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = accessibility.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_optional(&self, ast: &mut crate::Ast, is_optional: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(6usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = is_optional.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_override(&self, ast: &mut crate::Ast, is_override: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(7usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = is_override.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_readonly(&self, ast: &mut crate::Ast, readonly: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(8usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = readonly.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_definite(&self, ast: &mut crate::Ast, definite: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(9usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = definite.to_extra_data();
+        };
+    }
 }
 impl ClassMethod {
     #[inline]
@@ -8830,18 +10219,6 @@ impl ClassMethod {
     #[inline]
     pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
         self.span(ast).hi
-    }
-    #[inline]
-    pub fn kind(&self, ast: &crate::Ast) -> MethodKind {
-        let node = unsafe { ast.nodes.get_unchecked(self.0) };
-        let raw = u32::from(node.inline_data) & 255u32;
-        unsafe { std::mem::transmute::<u8, MethodKind>(raw as u8) }
-    }
-    #[inline]
-    pub fn is_static(&self, ast: &crate::Ast) -> bool {
-        let node = unsafe { ast.nodes.get_unchecked(self.0) };
-        let raw = (u32::from(node.inline_data) >> 8usize) & 255u32;
-        raw != 0
     }
     #[inline]
     pub fn key(&self, ast: &crate::Ast) -> PropName {
@@ -8884,24 +10261,130 @@ impl ClassMethod {
         }
     }
     #[inline]
+    pub fn kind(&self, ast: &crate::Ast) -> MethodKind {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_static(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn accessibility(&self, ast: &crate::Ast) -> Option<Accessibility> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_abstract(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(5usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_optional(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(6usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_override(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(7usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
         unsafe {
             ast.nodes.get_unchecked_mut(self.0).span = span;
         }
-    }
-    #[inline]
-    pub fn set_kind(&self, ast: &mut crate::Ast, kind: MethodKind) {
-        let node = unsafe { ast.nodes.get_unchecked_mut(self.0) };
-        let field_val: u32 = kind as u32;
-        let old = u32::from(node.inline_data);
-        node.inline_data = ((old & 16776960u32) | (field_val & 255u32)).into();
-    }
-    #[inline]
-    pub fn set_is_static(&self, ast: &mut crate::Ast, is_static: bool) {
-        let node = unsafe { ast.nodes.get_unchecked_mut(self.0) };
-        let field_val: u32 = is_static as u32;
-        let old = u32::from(node.inline_data);
-        node.inline_data = ((old & 16711935u32) | ((field_val & 255u32) << 8usize)).into();
     }
     #[inline]
     pub fn set_key(&self, ast: &mut crate::Ast, key: PropName) {
@@ -8941,6 +10424,120 @@ impl ClassMethod {
                 .get_unchecked_mut(offset.index()) = function.to_extra_data();
         };
     }
+    #[inline]
+    pub fn set_kind(&self, ast: &mut crate::Ast, kind: MethodKind) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = kind.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_static(&self, ast: &mut crate::Ast, is_static: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = is_static.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_accessibility(&self, ast: &mut crate::Ast, accessibility: Option<Accessibility>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = accessibility.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_abstract(&self, ast: &mut crate::Ast, is_abstract: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(5usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = is_abstract.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_optional(&self, ast: &mut crate::Ast, is_optional: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(6usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = is_optional.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_override(&self, ast: &mut crate::Ast, is_override: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(7usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = is_override.to_extra_data();
+        };
+    }
 }
 impl PrivateMethod {
     #[inline]
@@ -8954,18 +10551,6 @@ impl PrivateMethod {
     #[inline]
     pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
         self.span(ast).hi
-    }
-    #[inline]
-    pub fn kind(&self, ast: &crate::Ast) -> MethodKind {
-        let node = unsafe { ast.nodes.get_unchecked(self.0) };
-        let raw = u32::from(node.inline_data) & 255u32;
-        unsafe { std::mem::transmute::<u8, MethodKind>(raw as u8) }
-    }
-    #[inline]
-    pub fn is_static(&self, ast: &crate::Ast) -> bool {
-        let node = unsafe { ast.nodes.get_unchecked(self.0) };
-        let raw = (u32::from(node.inline_data) >> 8usize) & 255u32;
-        raw != 0
     }
     #[inline]
     pub fn key(&self, ast: &crate::Ast) -> PrivateName {
@@ -9008,24 +10593,130 @@ impl PrivateMethod {
         }
     }
     #[inline]
+    pub fn kind(&self, ast: &crate::Ast) -> MethodKind {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_static(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn accessibility(&self, ast: &crate::Ast) -> Option<Accessibility> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_abstract(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(5usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_optional(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(6usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_override(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(7usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
         unsafe {
             ast.nodes.get_unchecked_mut(self.0).span = span;
         }
-    }
-    #[inline]
-    pub fn set_kind(&self, ast: &mut crate::Ast, kind: MethodKind) {
-        let node = unsafe { ast.nodes.get_unchecked_mut(self.0) };
-        let field_val: u32 = kind as u32;
-        let old = u32::from(node.inline_data);
-        node.inline_data = ((old & 16776960u32) | (field_val & 255u32)).into();
-    }
-    #[inline]
-    pub fn set_is_static(&self, ast: &mut crate::Ast, is_static: bool) {
-        let node = unsafe { ast.nodes.get_unchecked_mut(self.0) };
-        let field_val: u32 = is_static as u32;
-        let old = u32::from(node.inline_data);
-        node.inline_data = ((old & 16711935u32) | ((field_val & 255u32) << 8usize)).into();
     }
     #[inline]
     pub fn set_key(&self, ast: &mut crate::Ast, key: PrivateName) {
@@ -9063,6 +10754,120 @@ impl PrivateMethod {
             *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = function.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_kind(&self, ast: &mut crate::Ast, kind: MethodKind) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = kind.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_static(&self, ast: &mut crate::Ast, is_static: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = is_static.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_accessibility(&self, ast: &mut crate::Ast, accessibility: Option<Accessibility>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = accessibility.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_abstract(&self, ast: &mut crate::Ast, is_abstract: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(5usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = is_abstract.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_optional(&self, ast: &mut crate::Ast, is_optional: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(6usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = is_optional.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_override(&self, ast: &mut crate::Ast, is_override: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(7usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = is_override.to_extra_data();
         };
     }
 }
@@ -9140,6 +10945,46 @@ impl Constructor {
         }
     }
     #[inline]
+    pub fn accessibility(&self, ast: &crate::Ast) -> Option<Accessibility> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_optional(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
         unsafe {
             ast.nodes.get_unchecked_mut(self.0).span = span;
@@ -9200,6 +11045,44 @@ impl Constructor {
             *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = body.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_accessibility(&self, ast: &mut crate::Ast, accessibility: Option<Accessibility>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = accessibility.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_optional(&self, ast: &mut crate::Ast, is_optional: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = is_optional.to_extra_data();
         };
     }
 }
@@ -9433,6 +11316,106 @@ impl AutoAccessor {
         }
     }
     #[inline]
+    pub fn type_ann(&self, ast: &crate::Ast) -> Option<TsTypeAnn> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn accessibility(&self, ast: &crate::Ast) -> Option<Accessibility> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(5usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_abstract(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(6usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_override(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(7usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn definite(&self, ast: &crate::Ast) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(8usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
         unsafe {
             ast.nodes.get_unchecked_mut(self.0).span = span;
@@ -9512,6 +11495,101 @@ impl AutoAccessor {
             *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = decorators.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_ann(&self, ast: &mut crate::Ast, type_ann: Option<TsTypeAnn>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = type_ann.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_accessibility(&self, ast: &mut crate::Ast, accessibility: Option<Accessibility>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(5usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = accessibility.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_abstract(&self, ast: &mut crate::Ast, is_abstract: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(6usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = is_abstract.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_override(&self, ast: &mut crate::Ast, is_override: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(7usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = is_override.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_definite(&self, ast: &mut crate::Ast, definite: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(8usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = definite.to_extra_data();
         };
     }
 }
@@ -9863,6 +11941,26 @@ impl GetterProp {
         }
     }
     #[inline]
+    pub fn type_ann(&self, ast: &crate::Ast) -> Option<TsTypeAnn> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
         unsafe {
             ast.nodes.get_unchecked_mut(self.0).span = span;
@@ -9904,6 +12002,25 @@ impl GetterProp {
             *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = body.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_ann(&self, ast: &mut crate::Ast, type_ann: Option<TsTypeAnn>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = type_ann.to_extra_data();
         };
     }
 }
@@ -10490,6 +12607,26 @@ impl ArrayPat {
         }
     }
     #[inline]
+    pub fn type_ann(&self, ast: &crate::Ast) -> Option<TsTypeAnn> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
         unsafe {
             ast.nodes.get_unchecked_mut(self.0).span = span;
@@ -10531,6 +12668,25 @@ impl ArrayPat {
             *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = optional.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_ann(&self, ast: &mut crate::Ast, type_ann: Option<TsTypeAnn>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = type_ann.to_extra_data();
         };
     }
 }
@@ -10588,6 +12744,26 @@ impl ObjectPat {
         }
     }
     #[inline]
+    pub fn type_ann(&self, ast: &crate::Ast) -> Option<TsTypeAnn> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
         unsafe {
             ast.nodes.get_unchecked_mut(self.0).span = span;
@@ -10629,6 +12805,25 @@ impl ObjectPat {
             *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = optional.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_ann(&self, ast: &mut crate::Ast, type_ann: Option<TsTypeAnn>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = type_ann.to_extra_data();
         };
     }
 }
@@ -10784,6 +12979,26 @@ impl RestPat {
         }
     }
     #[inline]
+    pub fn type_ann(&self, ast: &crate::Ast) -> Option<TsTypeAnn> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
         unsafe {
             ast.nodes.get_unchecked_mut(self.0).span = span;
@@ -10825,6 +13040,25 @@ impl RestPat {
             *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = arg.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_ann(&self, ast: &mut crate::Ast, type_ann: Option<TsTypeAnn>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = type_ann.to_extra_data();
         };
     }
 }
@@ -11288,9 +13522,43 @@ impl BindingIdent {
     }
     #[inline]
     pub fn id(&self, ast: &crate::Ast) -> Ident {
-        let node = unsafe { ast.nodes.get_unchecked(self.0) };
-        let raw = unsafe { node.data.inline_data };
-        unsafe { Ident::from_node_id_unchecked(crate::NodeId::from_raw_unchecked(raw), ast) }
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn type_ann(&self, ast: &crate::Ast) -> Option<TsTypeAnn> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
@@ -11300,8 +13568,41 @@ impl BindingIdent {
     }
     #[inline]
     pub fn set_id(&self, ast: &mut crate::Ast, id: Ident) {
-        let node = unsafe { ast.nodes.get_unchecked_mut(self.0) };
-        node.data.inline_data = id.node_id().index() as u32;
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = id.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_ann(&self, ast: &mut crate::Ast, type_ann: Option<TsTypeAnn>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = type_ann.to_extra_data();
+        };
     }
 }
 impl Lit {
@@ -11314,6 +13615,7 @@ impl Lit {
             Self::Num(it) => it.span(ast),
             Self::BigInt(it) => it.span(ast),
             Self::Regex(it) => it.span(ast),
+            Self::JSXText(it) => it.span(ast),
         }
     }
     #[inline]
@@ -11333,6 +13635,7 @@ impl Lit {
             Self::Num(it) => it.set_span(ast, span),
             Self::BigInt(it) => it.set_span(ast, span),
             Self::Regex(it) => it.set_span(ast, span),
+            Self::JSXText(it) => it.set_span(ast, span),
         }
     }
     #[inline]
@@ -11358,6 +13661,10 @@ impl Lit {
     #[inline]
     pub fn is_regex(&self) -> bool {
         matches!(self, Self::Regex(_))
+    }
+    #[inline]
+    pub fn is_jsx_text(&self) -> bool {
+        matches!(self, Self::JSXText(_))
     }
     #[inline]
     pub fn as_str(&self) -> Option<&Str> {
@@ -11398,6 +13705,13 @@ impl Lit {
     pub fn as_regex(&self) -> Option<&Regex> {
         match self {
             Self::Regex(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_jsx_text(&self) -> Option<&JSXText> {
+        match self {
+            Self::JSXText(it) => Some(it),
             _ => None,
         }
     }
@@ -12404,6 +14718,26 @@ impl JSXOpeningElement {
         }
     }
     #[inline]
+    pub fn type_args(&self, ast: &crate::Ast) -> Option<TsTypeParamInstantiation> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
     pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
         unsafe {
             ast.nodes.get_unchecked_mut(self.0).span = span;
@@ -12464,6 +14798,25 @@ impl JSXOpeningElement {
             *ast.extra_data
                 .as_raw_slice_mut()
                 .get_unchecked_mut(offset.index()) = self_closing.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_args(&self, ast: &mut crate::Ast, type_args: Option<TsTypeParamInstantiation>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0)
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_raw_slice_mut()
+                .get_unchecked_mut(offset.index()) = type_args.to_extra_data();
         };
     }
 }

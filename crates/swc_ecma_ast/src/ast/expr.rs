@@ -35,15 +35,17 @@ pub enum Expr {
     JSXEmpty(JSXEmptyExpr),
     JSXElement(JSXElement),
     JSXFragment(JSXFragment),
-    // TsTypeAssertion(TsTypeAssertion),
-    // TsConstAssertion(TsConstAssertion),
-    // TsNonNull(TsNonNullExpr),
-    // TsAs(TsAsExpr),
-    // TsInstantiation(TsInstantiation),
-    // TsSatisfies(TsSatisfiesExpr),
     PrivateName(PrivateName),
     OptChain(OptChainExpr),
     Invalid(Invalid),
+
+    // Typescript
+    TsTypeAssertion(TsTypeAssertion),
+    TsConstAssertion(TsConstAssertion),
+    TsNonNull(TsNonNullExpr),
+    TsAs(TsAsExpr),
+    TsInstantiation(TsInstantiation),
+    TsSatisfies(TsSatisfiesExpr),
 }
 
 #[ast]
@@ -145,16 +147,20 @@ pub struct CondExpr {
 pub struct CallExpr {
     callee: Callee,
     args: Vec<ExprOrSpread>,
-    // type_args: Option<Box<TsTypeParamInstantiation>>,
-    // pub type_params: Option<TsTypeParamInstantiation>,
+
+    // Typescript
+    type_args: Option<TsTypeParamInstantiation>,
+    type_params: Option<TsTypeParamInstantiation>,
 }
 
 #[ast]
 pub struct NewExpr {
     callee: Expr,
     args: Option<Vec<ExprOrSpread>>,
-    // type_args: Option<Box<TsTypeParamInstantiation>>,
-    // pub type_params: Option<TsTypeParamInstantiation>,
+
+    // Typescript
+    type_args: Option<TsTypeParamInstantiation>,
+    type_params: Option<TsTypeParamInstantiation>,
 }
 
 #[ast]
@@ -168,8 +174,10 @@ pub struct ArrowExpr {
     body: BlockStmtOrExpr,
     is_async: bool,
     is_generator: bool,
-    // type_params: Option<Box<TsTypeParamDecl>>,
-    // return_type: Option<Box<TsTypeAnn>>,
+
+    // Typescript
+    type_params: Option<TsTypeParamDecl>,
+    return_type: Option<TsTypeAnn>,
 }
 
 #[ast]
@@ -186,9 +194,7 @@ pub struct MetaPropExpr {
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum MetaPropKind {
-    /// `new.target`
     NewTarget,
-    /// `import.meta`
     ImportMeta,
 }
 
@@ -216,8 +222,10 @@ pub struct Tpl {
 #[ast]
 pub struct TaggedTpl {
     tag: Expr,
-    // type_params: Option<TsTypeParamInstantiation>,
     tpl: Tpl,
+
+    // Typescript
+    type_params: Option<TsTypeParamInstantiation>,
 }
 
 #[ast]
@@ -282,12 +290,14 @@ pub enum SimpleAssignTarget {
     SuperProp(SuperPropExpr),
     Paren(ParenExpr),
     OptChain(OptChainExpr),
-    // TsAs(TsAsExpr),
-    // TsSatisfies(TsSatisfiesExpr),
-    // TsNonNull(TsNonNullExpr),
-    // TsTypeAssertion(TsTypeAssertion),
-    // TsInstantiation(TsInstantiation),
     Invalid(Invalid),
+
+    // Typescript
+    TsAs(TsAsExpr),
+    TsSatisfies(TsSatisfiesExpr),
+    TsNonNull(TsNonNullExpr),
+    TsTypeAssertion(TsTypeAssertion),
+    TsInstantiation(TsInstantiation),
 }
 
 #[ast]
@@ -306,8 +316,10 @@ pub enum OptChainBase {
 pub struct OptCall {
     callee: Expr,
     args: Vec<ExprOrSpread>,
-    // type_args: Option<Box<TsTypeParamInstantiation>>,
-    // pub type_params: Option<TsTypeParamInstantiation>,
+
+    // Typescript
+    type_args: Option<TsTypeParamInstantiation>,
+    type_params: Option<TsTypeParamInstantiation>,
 }
 
 #[ast]
@@ -350,16 +362,16 @@ impl AssignTarget {
 impl SimpleAssignTarget {
     pub fn try_from_expr(ast: &mut Ast, e: Expr) -> Result<Self, Expr> {
         Ok(match e {
-            Expr::Ident(i) => SimpleAssignTarget::Ident(ast.binding_ident(i.span(ast), i)),
+            Expr::Ident(i) => SimpleAssignTarget::Ident(ast.binding_ident(i.span(ast), i, None)),
             Expr::Member(m) => SimpleAssignTarget::Member(m),
             Expr::SuperProp(s) => SimpleAssignTarget::SuperProp(s),
             Expr::OptChain(s) => SimpleAssignTarget::OptChain(s),
             Expr::Paren(s) => SimpleAssignTarget::Paren(s),
-            // Expr::TsAs(a) => SimpleAssignTarget::TsAs(a),
-            // Expr::TsSatisfies(s) => SimpleAssignTarget::TsSatisfies(s),
-            // Expr::TsNonNull(n) => SimpleAssignTarget::TsNonNull(n),
-            // Expr::TsTypeAssertion(a) => SimpleAssignTarget::TsTypeAssertion(a),
-            // Expr::TsInstantiation(a) => SimpleAssignTarget::TsInstantiation(a),
+            Expr::TsAs(a) => SimpleAssignTarget::TsAs(a),
+            Expr::TsSatisfies(s) => SimpleAssignTarget::TsSatisfies(s),
+            Expr::TsNonNull(n) => SimpleAssignTarget::TsNonNull(n),
+            Expr::TsTypeAssertion(a) => SimpleAssignTarget::TsTypeAssertion(a),
+            Expr::TsInstantiation(a) => SimpleAssignTarget::TsInstantiation(a),
             _ => return Err(e),
         })
     }

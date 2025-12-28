@@ -2791,6 +2791,54 @@ impl ExtraDataCompact for Option<ExprOrSpread> {
         }
     }
 }
+impl ExtraDataCompact for Option<TsTypeParamInstantiation> {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_node: self.map(|n| n.node_id()).into(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe {
+            data.optional_node
+                .to_option()
+                .map(|id| TsTypeParamInstantiation::from_node_id_unchecked(id, ast))
+        }
+    }
+}
+impl ExtraDataCompact for Option<TsTypeParamDecl> {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_node: self.map(|n| n.node_id()).into(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe {
+            data.optional_node
+                .to_option()
+                .map(|id| TsTypeParamDecl::from_node_id_unchecked(id, ast))
+        }
+    }
+}
+impl ExtraDataCompact for Option<TsTypeAnn> {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_node: self.map(|n| n.node_id()).into(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe {
+            data.optional_node
+                .to_option()
+                .map(|id| TsTypeAnn::from_node_id_unchecked(id, ast))
+        }
+    }
+}
 impl ExtraDataCompact for Option<SpreadDot3Token> {
     #[inline]
     fn to_extra_data(self) -> ExtraData {
@@ -2848,54 +2896,6 @@ impl ExtraDataCompact for Option<TsType> {
             data.optional_node
                 .to_option()
                 .map(|id| TsType::from_node_id_unchecked(id, ast))
-        }
-    }
-}
-impl ExtraDataCompact for Option<TsTypeAnn> {
-    #[inline]
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_node: self.map(|n| n.node_id()).into(),
-        }
-    }
-    #[inline]
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe {
-            data.optional_node
-                .to_option()
-                .map(|id| TsTypeAnn::from_node_id_unchecked(id, ast))
-        }
-    }
-}
-impl ExtraDataCompact for Option<TsTypeParamDecl> {
-    #[inline]
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_node: self.map(|n| n.node_id()).into(),
-        }
-    }
-    #[inline]
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe {
-            data.optional_node
-                .to_option()
-                .map(|id| TsTypeParamDecl::from_node_id_unchecked(id, ast))
-        }
-    }
-}
-impl ExtraDataCompact for Option<TsTypeParamInstantiation> {
-    #[inline]
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData {
-            optional_node: self.map(|n| n.node_id()).into(),
-        }
-    }
-    #[inline]
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
-        unsafe {
-            data.optional_node
-                .to_option()
-                .map(|id| TsTypeParamInstantiation::from_node_id_unchecked(id, ast))
         }
     }
 }

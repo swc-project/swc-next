@@ -844,7 +844,7 @@ impl<'ast> Visit for Resolver<'ast> {
                     .filter(|p| {
                         let p = self.ast.get_node_in_sub_range(*p);
                         match p {
-                            // ParamOrTsParamProp::TsParamProp(_) => false,
+                            ParamOrTsParamProp::TsParamProp(_) => false,
                             ParamOrTsParamProp::Param(p) => !p.pat(self.ast).is_rest(),
                         }
                     })

@@ -2,7 +2,10 @@ use std::mem;
 
 use swc_experimental_ast_macros::ast;
 
-use crate::{Ast, ExtraData, node_id::ExtraDataCompact};
+use crate::{
+    Ast, ExtraData, TsEnumDecl, TsInterfaceDecl, TsModuleDecl, TsTypeAliasDecl,
+    node_id::ExtraDataCompact,
+};
 
 #[ast]
 pub enum Decl {
@@ -10,10 +13,12 @@ pub enum Decl {
     Fn(FnDecl),
     Var(VarDecl),
     Using(UsingDecl),
-    // TsInterface(Box<TsInterfaceDecl>),
-    // TsTypeAlias(Box<TsTypeAliasDecl>),
-    // TsEnum(Box<TsEnumDecl>),
-    // TsModule(Box<TsModuleDecl>),
+
+    // Typescript
+    TsInterface(TsInterfaceDecl),
+    TsTypeAlias(TsTypeAliasDecl),
+    TsEnum(TsEnumDecl),
+    TsModule(TsModuleDecl),
 }
 
 #[ast]
@@ -59,7 +64,9 @@ impl ExtraDataCompact for VarDeclKind {
 pub struct VarDeclarator {
     name: Pat,
     init: Option<Expr>,
-    // pub definite: bool,
+
+    // Typescript
+    definite: bool,
 }
 
 #[ast]

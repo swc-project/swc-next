@@ -3,7 +3,7 @@ use std::mem;
 use swc_experimental_ast_macros::ast;
 
 use crate::{
-    Ast, ExtraData,
+    Ast, ExtraData, TsExportAssignment, TsImportEqualsDecl, TsNamespaceExportDecl,
     ast::{ClassExpr, FnExpr, Ident, Str},
     node_id::ExtraDataCompact,
 };
@@ -16,9 +16,11 @@ pub enum ModuleDecl {
     ExportDefaultDecl(ExportDefaultDecl),
     ExportDefaultExpr(ExportDefaultExpr),
     ExportAll(ExportAll),
-    // TsImportEquals(TsImportEqualsDecl),
-    // TsExportAssignment(TsExportAssignment),
-    // TsNamespaceExport(TsNamespaceExportDecl),
+
+    // Typescript
+    TsImportEquals(TsImportEqualsDecl),
+    TsExportAssignment(TsExportAssignment),
+    TsNamespaceExport(TsNamespaceExportDecl),
 }
 
 #[ast]

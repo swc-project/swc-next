@@ -51,7 +51,9 @@ pub struct JSXOpeningElement {
     name: JSXElementName,
     attrs: Vec<JSXAttrOrSpread>,
     self_closing: bool,
-    // type_args: Option<Box<TsTypeParamInstantiation>>,
+
+    // Typescript
+    type_args: Option<TsTypeParamInstantiation>,
 }
 
 #[ast]

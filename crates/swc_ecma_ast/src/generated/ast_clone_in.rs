@@ -52,6 +52,9 @@ impl CloneIn for ModuleDecl {
             Self::ExportDefaultDecl(it) => Self::ExportDefaultDecl(it.clone_in(ast)),
             Self::ExportDefaultExpr(it) => Self::ExportDefaultExpr(it.clone_in(ast)),
             Self::ExportAll(it) => Self::ExportAll(it.clone_in(ast)),
+            Self::TsImportEquals(it) => Self::TsImportEquals(it.clone_in(ast)),
+            Self::TsExportAssignment(it) => Self::TsExportAssignment(it.clone_in(ast)),
+            Self::TsNamespaceExport(it) => Self::TsNamespaceExport(it.clone_in(ast)),
         }
     }
 }
@@ -472,6 +475,10 @@ impl CloneIn for Decl {
             Self::Fn(it) => Self::Fn(it.clone_in(ast)),
             Self::Var(it) => Self::Var(it.clone_in(ast)),
             Self::Using(it) => Self::Using(it.clone_in(ast)),
+            Self::TsInterface(it) => Self::TsInterface(it.clone_in(ast)),
+            Self::TsTypeAlias(it) => Self::TsTypeAlias(it.clone_in(ast)),
+            Self::TsEnum(it) => Self::TsEnum(it.clone_in(ast)),
+            Self::TsModule(it) => Self::TsModule(it.clone_in(ast)),
         }
     }
 }
@@ -515,7 +522,8 @@ impl CloneIn for VarDeclarator {
         let span = self.span(ast).clone_in(ast);
         let name = self.name(ast).clone_in(ast);
         let init = self.init(ast).clone_in(ast);
-        ast.var_declarator(span, name, init)
+        let definite = self.definite(ast).clone_in(ast);
+        ast.var_declarator(span, name, init, definite)
     }
 }
 impl CloneIn for UsingDecl {
@@ -565,6 +573,12 @@ impl CloneIn for Expr {
             Self::PrivateName(it) => Self::PrivateName(it.clone_in(ast)),
             Self::OptChain(it) => Self::OptChain(it.clone_in(ast)),
             Self::Invalid(it) => Self::Invalid(it.clone_in(ast)),
+            Self::TsTypeAssertion(it) => Self::TsTypeAssertion(it.clone_in(ast)),
+            Self::TsConstAssertion(it) => Self::TsConstAssertion(it.clone_in(ast)),
+            Self::TsNonNull(it) => Self::TsNonNull(it.clone_in(ast)),
+            Self::TsAs(it) => Self::TsAs(it.clone_in(ast)),
+            Self::TsInstantiation(it) => Self::TsInstantiation(it.clone_in(ast)),
+            Self::TsSatisfies(it) => Self::TsSatisfies(it.clone_in(ast)),
         }
     }
 }
@@ -736,7 +750,9 @@ impl CloneIn for CallExpr {
         let span = self.span(ast).clone_in(ast);
         let callee = self.callee(ast).clone_in(ast);
         let args = self.args(ast).clone_in(ast);
-        ast.call_expr(span, callee, args)
+        let type_args = self.type_args(ast).clone_in(ast);
+        let type_params = self.type_params(ast).clone_in(ast);
+        ast.call_expr(span, callee, args, type_args, type_params)
     }
 }
 impl CloneIn for NewExpr {
@@ -746,7 +762,9 @@ impl CloneIn for NewExpr {
         let span = self.span(ast).clone_in(ast);
         let callee = self.callee(ast).clone_in(ast);
         let args = self.args(ast).clone_in(ast);
-        ast.new_expr(span, callee, args)
+        let type_args = self.type_args(ast).clone_in(ast);
+        let type_params = self.type_params(ast).clone_in(ast);
+        ast.new_expr(span, callee, args, type_args, type_params)
     }
 }
 impl CloneIn for SeqExpr {
@@ -767,7 +785,17 @@ impl CloneIn for ArrowExpr {
         let body = self.body(ast).clone_in(ast);
         let is_async = self.is_async(ast).clone_in(ast);
         let is_generator = self.is_generator(ast).clone_in(ast);
-        ast.arrow_expr(span, params, body, is_async, is_generator)
+        let type_params = self.type_params(ast).clone_in(ast);
+        let return_type = self.return_type(ast).clone_in(ast);
+        ast.arrow_expr(
+            span,
+            params,
+            body,
+            is_async,
+            is_generator,
+            type_params,
+            return_type,
+        )
     }
 }
 impl CloneIn for YieldExpr {
@@ -815,7 +843,8 @@ impl CloneIn for TaggedTpl {
         let span = self.span(ast).clone_in(ast);
         let tag = self.tag(ast).clone_in(ast);
         let tpl = self.tpl(ast).clone_in(ast);
-        ast.tagged_tpl(span, tag, tpl)
+        let type_params = self.type_params(ast).clone_in(ast);
+        ast.tagged_tpl(span, tag, tpl, type_params)
     }
 }
 impl CloneIn for TplElement {
@@ -926,6 +955,11 @@ impl CloneIn for SimpleAssignTarget {
             Self::Paren(it) => Self::Paren(it.clone_in(ast)),
             Self::OptChain(it) => Self::OptChain(it.clone_in(ast)),
             Self::Invalid(it) => Self::Invalid(it.clone_in(ast)),
+            Self::TsAs(it) => Self::TsAs(it.clone_in(ast)),
+            Self::TsSatisfies(it) => Self::TsSatisfies(it.clone_in(ast)),
+            Self::TsNonNull(it) => Self::TsNonNull(it.clone_in(ast)),
+            Self::TsTypeAssertion(it) => Self::TsTypeAssertion(it.clone_in(ast)),
+            Self::TsInstantiation(it) => Self::TsInstantiation(it.clone_in(ast)),
         }
     }
 }
@@ -956,7 +990,9 @@ impl CloneIn for OptCall {
         let span = self.span(ast).clone_in(ast);
         let callee = self.callee(ast).clone_in(ast);
         let args = self.args(ast).clone_in(ast);
-        ast.opt_call(span, callee, args)
+        let type_args = self.type_args(ast).clone_in(ast);
+        let type_params = self.type_params(ast).clone_in(ast);
+        ast.opt_call(span, callee, args, type_args, type_params)
     }
 }
 impl CloneIn for Invalid {
@@ -977,7 +1013,18 @@ impl CloneIn for Function {
         let body = self.body(ast).clone_in(ast);
         let is_generator = self.is_generator(ast).clone_in(ast);
         let is_async = self.is_async(ast).clone_in(ast);
-        ast.function(span, params, decorators, body, is_generator, is_async)
+        let type_params = self.type_params(ast).clone_in(ast);
+        let return_type = self.return_type(ast).clone_in(ast);
+        ast.function(
+            span,
+            params,
+            decorators,
+            body,
+            is_generator,
+            is_async,
+            type_params,
+            return_type,
+        )
     }
 }
 impl CloneIn for Param {
@@ -996,6 +1043,7 @@ impl CloneIn for ParamOrTsParamProp {
     fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
         match self {
             Self::Param(it) => Self::Param(it.clone_in(ast)),
+            Self::TsParamProp(it) => Self::TsParamProp(it.clone_in(ast)),
         }
     }
 }
@@ -1008,7 +1056,19 @@ impl CloneIn for Class {
         let body = self.body(ast).clone_in(ast);
         let super_class = self.super_class(ast).clone_in(ast);
         let is_abstract = self.is_abstract(ast).clone_in(ast);
-        ast.class(span, decorators, body, super_class, is_abstract)
+        let type_params = self.type_params(ast).clone_in(ast);
+        let super_type_params = self.super_type_params(ast).clone_in(ast);
+        let implements = self.implements(ast).clone_in(ast);
+        ast.class(
+            span,
+            decorators,
+            body,
+            super_class,
+            is_abstract,
+            type_params,
+            super_type_params,
+            implements,
+        )
     }
 }
 impl CloneIn for ClassMember {
@@ -1024,6 +1084,7 @@ impl CloneIn for ClassMember {
             Self::Empty(it) => Self::Empty(it.clone_in(ast)),
             Self::StaticBlock(it) => Self::StaticBlock(it.clone_in(ast)),
             Self::AutoAccessor(it) => Self::AutoAccessor(it.clone_in(ast)),
+            Self::TsIndexSignature(it) => Self::TsIndexSignature(it.clone_in(ast)),
         }
     }
 }
@@ -1036,7 +1097,29 @@ impl CloneIn for ClassProp {
         let value = self.value(ast).clone_in(ast);
         let is_static = self.is_static(ast).clone_in(ast);
         let decorators = self.decorators(ast).clone_in(ast);
-        ast.class_prop(span, key, value, is_static, decorators)
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        let accessibility = self.accessibility(ast).clone_in(ast);
+        let is_abstract = self.is_abstract(ast).clone_in(ast);
+        let is_optional = self.is_optional(ast).clone_in(ast);
+        let is_override = self.is_override(ast).clone_in(ast);
+        let readonly = self.readonly(ast).clone_in(ast);
+        let declare = self.declare(ast).clone_in(ast);
+        let definite = self.definite(ast).clone_in(ast);
+        ast.class_prop(
+            span,
+            key,
+            value,
+            is_static,
+            decorators,
+            type_ann,
+            accessibility,
+            is_abstract,
+            is_optional,
+            is_override,
+            readonly,
+            declare,
+            definite,
+        )
     }
 }
 impl CloneIn for PrivateProp {
@@ -1048,7 +1131,25 @@ impl CloneIn for PrivateProp {
         let value = self.value(ast).clone_in(ast);
         let is_static = self.is_static(ast).clone_in(ast);
         let decorators = self.decorators(ast).clone_in(ast);
-        ast.private_prop(span, key, value, is_static, decorators)
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        let accessibility = self.accessibility(ast).clone_in(ast);
+        let is_optional = self.is_optional(ast).clone_in(ast);
+        let is_override = self.is_override(ast).clone_in(ast);
+        let readonly = self.readonly(ast).clone_in(ast);
+        let definite = self.definite(ast).clone_in(ast);
+        ast.private_prop(
+            span,
+            key,
+            value,
+            is_static,
+            decorators,
+            type_ann,
+            accessibility,
+            is_optional,
+            is_override,
+            readonly,
+            definite,
+        )
     }
 }
 impl CloneIn for ClassMethod {
@@ -1060,7 +1161,21 @@ impl CloneIn for ClassMethod {
         let function = self.function(ast).clone_in(ast);
         let kind = self.kind(ast).clone_in(ast);
         let is_static = self.is_static(ast).clone_in(ast);
-        ast.class_method(span, key, function, kind, is_static)
+        let accessibility = self.accessibility(ast).clone_in(ast);
+        let is_abstract = self.is_abstract(ast).clone_in(ast);
+        let is_optional = self.is_optional(ast).clone_in(ast);
+        let is_override = self.is_override(ast).clone_in(ast);
+        ast.class_method(
+            span,
+            key,
+            function,
+            kind,
+            is_static,
+            accessibility,
+            is_abstract,
+            is_optional,
+            is_override,
+        )
     }
 }
 impl CloneIn for PrivateMethod {
@@ -1072,7 +1187,21 @@ impl CloneIn for PrivateMethod {
         let function = self.function(ast).clone_in(ast);
         let kind = self.kind(ast).clone_in(ast);
         let is_static = self.is_static(ast).clone_in(ast);
-        ast.private_method(span, key, function, kind, is_static)
+        let accessibility = self.accessibility(ast).clone_in(ast);
+        let is_abstract = self.is_abstract(ast).clone_in(ast);
+        let is_optional = self.is_optional(ast).clone_in(ast);
+        let is_override = self.is_override(ast).clone_in(ast);
+        ast.private_method(
+            span,
+            key,
+            function,
+            kind,
+            is_static,
+            accessibility,
+            is_abstract,
+            is_optional,
+            is_override,
+        )
     }
 }
 impl CloneIn for Constructor {
@@ -1083,7 +1212,9 @@ impl CloneIn for Constructor {
         let key = self.key(ast).clone_in(ast);
         let params = self.params(ast).clone_in(ast);
         let body = self.body(ast).clone_in(ast);
-        ast.constructor(span, key, params, body)
+        let accessibility = self.accessibility(ast).clone_in(ast);
+        let is_optional = self.is_optional(ast).clone_in(ast);
+        ast.constructor(span, key, params, body, accessibility, is_optional)
     }
 }
 impl CloneIn for Decorator {
@@ -1123,7 +1254,23 @@ impl CloneIn for AutoAccessor {
         let value = self.value(ast).clone_in(ast);
         let is_static = self.is_static(ast).clone_in(ast);
         let decorators = self.decorators(ast).clone_in(ast);
-        ast.auto_accessor(span, key, value, is_static, decorators)
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        let accessibility = self.accessibility(ast).clone_in(ast);
+        let is_abstract = self.is_abstract(ast).clone_in(ast);
+        let is_override = self.is_override(ast).clone_in(ast);
+        let definite = self.definite(ast).clone_in(ast);
+        ast.auto_accessor(
+            span,
+            key,
+            value,
+            is_static,
+            decorators,
+            type_ann,
+            accessibility,
+            is_abstract,
+            is_override,
+            definite,
+        )
     }
 }
 impl CloneIn for Prop {
@@ -1167,7 +1314,8 @@ impl CloneIn for GetterProp {
         let span = self.span(ast).clone_in(ast);
         let key = self.key(ast).clone_in(ast);
         let body = self.body(ast).clone_in(ast);
-        ast.getter_prop(span, key, body)
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        ast.getter_prop(span, key, body, type_ann)
     }
 }
 impl CloneIn for SetterProp {
@@ -1236,7 +1384,8 @@ impl CloneIn for ArrayPat {
         let span = self.span(ast).clone_in(ast);
         let elems = self.elems(ast).clone_in(ast);
         let optional = self.optional(ast).clone_in(ast);
-        ast.array_pat(span, elems, optional)
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        ast.array_pat(span, elems, optional, type_ann)
     }
 }
 impl CloneIn for ObjectPat {
@@ -1246,7 +1395,8 @@ impl CloneIn for ObjectPat {
         let span = self.span(ast).clone_in(ast);
         let props = self.props(ast).clone_in(ast);
         let optional = self.optional(ast).clone_in(ast);
-        ast.object_pat(span, props, optional)
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        ast.object_pat(span, props, optional, type_ann)
     }
 }
 impl CloneIn for AssignPat {
@@ -1266,7 +1416,8 @@ impl CloneIn for RestPat {
         let span = self.span(ast).clone_in(ast);
         let dot_3_token = self.dot_3_token(ast).clone_in(ast);
         let arg = self.arg(ast).clone_in(ast);
-        ast.rest_pat(span, dot_3_token, arg)
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        ast.rest_pat(span, dot_3_token, arg, type_ann)
     }
 }
 impl CloneIn for ObjectPatProp {
@@ -1334,7 +1485,8 @@ impl CloneIn for BindingIdent {
     fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
         let span = self.span(ast).clone_in(ast);
         let id = self.id(ast).clone_in(ast);
-        ast.binding_ident(span, id)
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        ast.binding_ident(span, id, type_ann)
     }
 }
 impl CloneIn for Lit {
@@ -1348,6 +1500,7 @@ impl CloneIn for Lit {
             Self::Num(it) => Self::Num(it.clone_in(ast)),
             Self::BigInt(it) => Self::BigInt(it.clone_in(ast)),
             Self::Regex(it) => Self::Regex(it.clone_in(ast)),
+            Self::JSXText(it) => Self::JSXText(it.clone_in(ast)),
         }
     }
 }
@@ -1493,7 +1646,8 @@ impl CloneIn for JSXOpeningElement {
         let name = self.name(ast).clone_in(ast);
         let attrs = self.attrs(ast).clone_in(ast);
         let self_closing = self.self_closing(ast).clone_in(ast);
-        ast.jsx_opening_element(span, name, attrs, self_closing)
+        let type_args = self.type_args(ast).clone_in(ast);
+        ast.jsx_opening_element(span, name, attrs, self_closing, type_args)
     }
 }
 impl CloneIn for JSXAttrOrSpread {

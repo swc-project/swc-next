@@ -143,12 +143,5 @@ impl<'a> Visit for SemanticBuilder<'a> {
     }
 
     // declarations
-    fn visit_decl(&mut self, node: Decl) {
-        match node {
-            Decl::Class(class_decl) => todo!(),
-            Decl::Fn(fn_decl) => todo!(),
-            Decl::Var(var_decl) => todo!(),
-            Decl::Using(using_decl) => todo!(),
-        }
-    }
+    fn visit_decl(&mut self, node: Decl) {}
 }

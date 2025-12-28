@@ -127,6 +127,31 @@ impl NodeIdTrait for ModuleItem {
                 ModuleItem::Stmt(Stmt::Throw({ ThrowStmt::from_node_id(id, ast) }))
             }
             NodeKind::TryStmt => ModuleItem::Stmt(Stmt::Try({ TryStmt::from_node_id(id, ast) })),
+            NodeKind::TsEnumDecl => ModuleItem::Stmt(Stmt::Decl(Decl::TsEnum({
+                TsEnumDecl::from_node_id(id, ast)
+            }))),
+            NodeKind::TsExportAssignment => {
+                ModuleItem::ModuleDecl(ModuleDecl::TsExportAssignment({
+                    TsExportAssignment::from_node_id(id, ast)
+                }))
+            }
+            NodeKind::TsImportEqualsDecl => ModuleItem::ModuleDecl(ModuleDecl::TsImportEquals({
+                TsImportEqualsDecl::from_node_id(id, ast)
+            })),
+            NodeKind::TsInterfaceDecl => ModuleItem::Stmt(Stmt::Decl(Decl::TsInterface({
+                TsInterfaceDecl::from_node_id(id, ast)
+            }))),
+            NodeKind::TsModuleDecl => ModuleItem::Stmt(Stmt::Decl(Decl::TsModule({
+                TsModuleDecl::from_node_id(id, ast)
+            }))),
+            NodeKind::TsNamespaceExportDecl => {
+                ModuleItem::ModuleDecl(ModuleDecl::TsNamespaceExport({
+                    TsNamespaceExportDecl::from_node_id(id, ast)
+                }))
+            }
+            NodeKind::TsTypeAliasDecl => ModuleItem::Stmt(Stmt::Decl(Decl::TsTypeAlias({
+                TsTypeAliasDecl::from_node_id(id, ast)
+            }))),
             NodeKind::UsingDecl => ModuleItem::Stmt(Stmt::Decl(Decl::Using({
                 UsingDecl::from_node_id(id, ast)
             }))),
@@ -155,6 +180,9 @@ impl NodeIdTrait for ModuleDecl {
             Self::ExportDefaultDecl(it) => it.node_id(),
             Self::ExportDefaultExpr(it) => it.node_id(),
             Self::ExportAll(it) => it.node_id(),
+            Self::TsImportEquals(it) => it.node_id(),
+            Self::TsExportAssignment(it) => it.node_id(),
+            Self::TsNamespaceExport(it) => it.node_id(),
         }
     }
     #[inline]
@@ -171,6 +199,15 @@ impl NodeIdTrait for ModuleDecl {
             NodeKind::ImportDecl => ModuleDecl::Import({ ImportDecl::from_node_id(id, ast) }),
             NodeKind::NamedExport => {
                 ModuleDecl::ExportNamed({ NamedExport::from_node_id(id, ast) })
+            }
+            NodeKind::TsExportAssignment => {
+                ModuleDecl::TsExportAssignment({ TsExportAssignment::from_node_id(id, ast) })
+            }
+            NodeKind::TsImportEqualsDecl => {
+                ModuleDecl::TsImportEquals({ TsImportEqualsDecl::from_node_id(id, ast) })
+            }
+            NodeKind::TsNamespaceExportDecl => {
+                ModuleDecl::TsNamespaceExport({ TsNamespaceExportDecl::from_node_id(id, ast) })
             }
             _ => unreachable!(),
         }
@@ -521,6 +558,16 @@ impl NodeIdTrait for Stmt {
             NodeKind::SwitchStmt => Stmt::Switch({ SwitchStmt::from_node_id(id, ast) }),
             NodeKind::ThrowStmt => Stmt::Throw({ ThrowStmt::from_node_id(id, ast) }),
             NodeKind::TryStmt => Stmt::Try({ TryStmt::from_node_id(id, ast) }),
+            NodeKind::TsEnumDecl => Stmt::Decl(Decl::TsEnum({ TsEnumDecl::from_node_id(id, ast) })),
+            NodeKind::TsInterfaceDecl => Stmt::Decl(Decl::TsInterface({
+                TsInterfaceDecl::from_node_id(id, ast)
+            })),
+            NodeKind::TsModuleDecl => {
+                Stmt::Decl(Decl::TsModule({ TsModuleDecl::from_node_id(id, ast) }))
+            }
+            NodeKind::TsTypeAliasDecl => Stmt::Decl(Decl::TsTypeAlias({
+                TsTypeAliasDecl::from_node_id(id, ast)
+            })),
             NodeKind::UsingDecl => Stmt::Decl(Decl::Using({ UsingDecl::from_node_id(id, ast) })),
             NodeKind::VarDecl => Stmt::Decl(Decl::Var({ VarDecl::from_node_id(id, ast) })),
             NodeKind::WhileStmt => Stmt::While({ WhileStmt::from_node_id(id, ast) }),
@@ -887,6 +934,9 @@ impl NodeIdTrait for ForHead {
             NodeKind::JSXNamespacedName => ForHead::Pat(Pat::Expr(Expr::JSXNamespacedName({
                 JSXNamespacedName::from_node_id(id, ast)
             }))),
+            NodeKind::JSXText => ForHead::Pat(Pat::Expr(Expr::Lit(Lit::JSXText({
+                JSXText::from_node_id(id, ast)
+            })))),
             NodeKind::MemberExpr => ForHead::Pat(Pat::Expr(Expr::Member({
                 MemberExpr::from_node_id(id, ast)
             }))),
@@ -935,6 +985,24 @@ impl NodeIdTrait for ForHead {
                 ForHead::Pat(Pat::Expr(Expr::This({ ThisExpr::from_node_id(id, ast) })))
             }
             NodeKind::Tpl => ForHead::Pat(Pat::Expr(Expr::Tpl({ Tpl::from_node_id(id, ast) }))),
+            NodeKind::TsAsExpr => {
+                ForHead::Pat(Pat::Expr(Expr::TsAs({ TsAsExpr::from_node_id(id, ast) })))
+            }
+            NodeKind::TsConstAssertion => ForHead::Pat(Pat::Expr(Expr::TsConstAssertion({
+                TsConstAssertion::from_node_id(id, ast)
+            }))),
+            NodeKind::TsInstantiation => ForHead::Pat(Pat::Expr(Expr::TsInstantiation({
+                TsInstantiation::from_node_id(id, ast)
+            }))),
+            NodeKind::TsNonNullExpr => ForHead::Pat(Pat::Expr(Expr::TsNonNull({
+                TsNonNullExpr::from_node_id(id, ast)
+            }))),
+            NodeKind::TsSatisfiesExpr => ForHead::Pat(Pat::Expr(Expr::TsSatisfies({
+                TsSatisfiesExpr::from_node_id(id, ast)
+            }))),
+            NodeKind::TsTypeAssertion => ForHead::Pat(Pat::Expr(Expr::TsTypeAssertion({
+                TsTypeAssertion::from_node_id(id, ast)
+            }))),
             NodeKind::UnaryExpr => {
                 ForHead::Pat(Pat::Expr(Expr::Unary({ UnaryExpr::from_node_id(id, ast) })))
             }
@@ -1013,6 +1081,9 @@ impl NodeIdTrait for VarDeclOrExpr {
             NodeKind::JSXNamespacedName => VarDeclOrExpr::Expr(Expr::JSXNamespacedName({
                 JSXNamespacedName::from_node_id(id, ast)
             })),
+            NodeKind::JSXText => {
+                VarDeclOrExpr::Expr(Expr::Lit(Lit::JSXText({ JSXText::from_node_id(id, ast) })))
+            }
             NodeKind::MemberExpr => {
                 VarDeclOrExpr::Expr(Expr::Member({ MemberExpr::from_node_id(id, ast) }))
             }
@@ -1055,6 +1126,24 @@ impl NodeIdTrait for VarDeclOrExpr {
                 VarDeclOrExpr::Expr(Expr::This({ ThisExpr::from_node_id(id, ast) }))
             }
             NodeKind::Tpl => VarDeclOrExpr::Expr(Expr::Tpl({ Tpl::from_node_id(id, ast) })),
+            NodeKind::TsAsExpr => {
+                VarDeclOrExpr::Expr(Expr::TsAs({ TsAsExpr::from_node_id(id, ast) }))
+            }
+            NodeKind::TsConstAssertion => VarDeclOrExpr::Expr(Expr::TsConstAssertion({
+                TsConstAssertion::from_node_id(id, ast)
+            })),
+            NodeKind::TsInstantiation => VarDeclOrExpr::Expr(Expr::TsInstantiation({
+                TsInstantiation::from_node_id(id, ast)
+            })),
+            NodeKind::TsNonNullExpr => {
+                VarDeclOrExpr::Expr(Expr::TsNonNull({ TsNonNullExpr::from_node_id(id, ast) }))
+            }
+            NodeKind::TsSatisfiesExpr => VarDeclOrExpr::Expr(Expr::TsSatisfies({
+                TsSatisfiesExpr::from_node_id(id, ast)
+            })),
+            NodeKind::TsTypeAssertion => VarDeclOrExpr::Expr(Expr::TsTypeAssertion({
+                TsTypeAssertion::from_node_id(id, ast)
+            })),
             NodeKind::UnaryExpr => {
                 VarDeclOrExpr::Expr(Expr::Unary({ UnaryExpr::from_node_id(id, ast) }))
             }
@@ -1081,6 +1170,10 @@ impl NodeIdTrait for Decl {
             Self::Fn(it) => it.node_id(),
             Self::Var(it) => it.node_id(),
             Self::Using(it) => it.node_id(),
+            Self::TsInterface(it) => it.node_id(),
+            Self::TsTypeAlias(it) => it.node_id(),
+            Self::TsEnum(it) => it.node_id(),
+            Self::TsModule(it) => it.node_id(),
         }
     }
     #[inline]
@@ -1088,6 +1181,14 @@ impl NodeIdTrait for Decl {
         match &ast.nodes[id].kind {
             NodeKind::ClassDecl => Decl::Class({ ClassDecl::from_node_id(id, ast) }),
             NodeKind::FnDecl => Decl::Fn({ FnDecl::from_node_id(id, ast) }),
+            NodeKind::TsEnumDecl => Decl::TsEnum({ TsEnumDecl::from_node_id(id, ast) }),
+            NodeKind::TsInterfaceDecl => {
+                Decl::TsInterface({ TsInterfaceDecl::from_node_id(id, ast) })
+            }
+            NodeKind::TsModuleDecl => Decl::TsModule({ TsModuleDecl::from_node_id(id, ast) }),
+            NodeKind::TsTypeAliasDecl => {
+                Decl::TsTypeAlias({ TsTypeAliasDecl::from_node_id(id, ast) })
+            }
             NodeKind::UsingDecl => Decl::Using({ UsingDecl::from_node_id(id, ast) }),
             NodeKind::VarDecl => Decl::Var({ VarDecl::from_node_id(id, ast) }),
             _ => unreachable!(),
@@ -1209,6 +1310,12 @@ impl NodeIdTrait for Expr {
             Self::PrivateName(it) => it.node_id(),
             Self::OptChain(it) => it.node_id(),
             Self::Invalid(it) => it.node_id(),
+            Self::TsTypeAssertion(it) => it.node_id(),
+            Self::TsConstAssertion(it) => it.node_id(),
+            Self::TsNonNull(it) => it.node_id(),
+            Self::TsAs(it) => it.node_id(),
+            Self::TsInstantiation(it) => it.node_id(),
+            Self::TsSatisfies(it) => it.node_id(),
         }
     }
     #[inline]
@@ -1234,6 +1341,7 @@ impl NodeIdTrait for Expr {
             NodeKind::JSXNamespacedName => {
                 Expr::JSXNamespacedName({ JSXNamespacedName::from_node_id(id, ast) })
             }
+            NodeKind::JSXText => Expr::Lit(Lit::JSXText({ JSXText::from_node_id(id, ast) })),
             NodeKind::MemberExpr => Expr::Member({ MemberExpr::from_node_id(id, ast) }),
             NodeKind::MetaPropExpr => Expr::MetaProp({ MetaPropExpr::from_node_id(id, ast) }),
             NodeKind::NewExpr => Expr::New({ NewExpr::from_node_id(id, ast) }),
@@ -1250,6 +1358,20 @@ impl NodeIdTrait for Expr {
             NodeKind::TaggedTpl => Expr::TaggedTpl({ TaggedTpl::from_node_id(id, ast) }),
             NodeKind::ThisExpr => Expr::This({ ThisExpr::from_node_id(id, ast) }),
             NodeKind::Tpl => Expr::Tpl({ Tpl::from_node_id(id, ast) }),
+            NodeKind::TsAsExpr => Expr::TsAs({ TsAsExpr::from_node_id(id, ast) }),
+            NodeKind::TsConstAssertion => {
+                Expr::TsConstAssertion({ TsConstAssertion::from_node_id(id, ast) })
+            }
+            NodeKind::TsInstantiation => {
+                Expr::TsInstantiation({ TsInstantiation::from_node_id(id, ast) })
+            }
+            NodeKind::TsNonNullExpr => Expr::TsNonNull({ TsNonNullExpr::from_node_id(id, ast) }),
+            NodeKind::TsSatisfiesExpr => {
+                Expr::TsSatisfies({ TsSatisfiesExpr::from_node_id(id, ast) })
+            }
+            NodeKind::TsTypeAssertion => {
+                Expr::TsTypeAssertion({ TsTypeAssertion::from_node_id(id, ast) })
+            }
             NodeKind::UnaryExpr => Expr::Unary({ UnaryExpr::from_node_id(id, ast) }),
             NodeKind::UpdateExpr => Expr::Update({ UpdateExpr::from_node_id(id, ast) }),
             NodeKind::YieldExpr => Expr::Yield({ YieldExpr::from_node_id(id, ast) }),
@@ -1756,6 +1878,9 @@ impl NodeIdTrait for Callee {
             NodeKind::JSXNamespacedName => Callee::Expr(Expr::JSXNamespacedName({
                 JSXNamespacedName::from_node_id(id, ast)
             })),
+            NodeKind::JSXText => {
+                Callee::Expr(Expr::Lit(Lit::JSXText({ JSXText::from_node_id(id, ast) })))
+            }
             NodeKind::MemberExpr => {
                 Callee::Expr(Expr::Member({ MemberExpr::from_node_id(id, ast) }))
             }
@@ -1789,6 +1914,22 @@ impl NodeIdTrait for Callee {
             }
             NodeKind::ThisExpr => Callee::Expr(Expr::This({ ThisExpr::from_node_id(id, ast) })),
             NodeKind::Tpl => Callee::Expr(Expr::Tpl({ Tpl::from_node_id(id, ast) })),
+            NodeKind::TsAsExpr => Callee::Expr(Expr::TsAs({ TsAsExpr::from_node_id(id, ast) })),
+            NodeKind::TsConstAssertion => Callee::Expr(Expr::TsConstAssertion({
+                TsConstAssertion::from_node_id(id, ast)
+            })),
+            NodeKind::TsInstantiation => Callee::Expr(Expr::TsInstantiation({
+                TsInstantiation::from_node_id(id, ast)
+            })),
+            NodeKind::TsNonNullExpr => {
+                Callee::Expr(Expr::TsNonNull({ TsNonNullExpr::from_node_id(id, ast) }))
+            }
+            NodeKind::TsSatisfiesExpr => Callee::Expr(Expr::TsSatisfies({
+                TsSatisfiesExpr::from_node_id(id, ast)
+            })),
+            NodeKind::TsTypeAssertion => Callee::Expr(Expr::TsTypeAssertion({
+                TsTypeAssertion::from_node_id(id, ast)
+            })),
             NodeKind::UnaryExpr => Callee::Expr(Expr::Unary({ UnaryExpr::from_node_id(id, ast) })),
             NodeKind::UpdateExpr => {
                 Callee::Expr(Expr::Update({ UpdateExpr::from_node_id(id, ast) }))
@@ -1924,6 +2065,9 @@ impl NodeIdTrait for BlockStmtOrExpr {
             NodeKind::JSXNamespacedName => BlockStmtOrExpr::Expr(Expr::JSXNamespacedName({
                 JSXNamespacedName::from_node_id(id, ast)
             })),
+            NodeKind::JSXText => {
+                BlockStmtOrExpr::Expr(Expr::Lit(Lit::JSXText({ JSXText::from_node_id(id, ast) })))
+            }
             NodeKind::MemberExpr => {
                 BlockStmtOrExpr::Expr(Expr::Member({ MemberExpr::from_node_id(id, ast) }))
             }
@@ -1970,6 +2114,24 @@ impl NodeIdTrait for BlockStmtOrExpr {
                 BlockStmtOrExpr::Expr(Expr::This({ ThisExpr::from_node_id(id, ast) }))
             }
             NodeKind::Tpl => BlockStmtOrExpr::Expr(Expr::Tpl({ Tpl::from_node_id(id, ast) })),
+            NodeKind::TsAsExpr => {
+                BlockStmtOrExpr::Expr(Expr::TsAs({ TsAsExpr::from_node_id(id, ast) }))
+            }
+            NodeKind::TsConstAssertion => BlockStmtOrExpr::Expr(Expr::TsConstAssertion({
+                TsConstAssertion::from_node_id(id, ast)
+            })),
+            NodeKind::TsInstantiation => BlockStmtOrExpr::Expr(Expr::TsInstantiation({
+                TsInstantiation::from_node_id(id, ast)
+            })),
+            NodeKind::TsNonNullExpr => {
+                BlockStmtOrExpr::Expr(Expr::TsNonNull({ TsNonNullExpr::from_node_id(id, ast) }))
+            }
+            NodeKind::TsSatisfiesExpr => BlockStmtOrExpr::Expr(Expr::TsSatisfies({
+                TsSatisfiesExpr::from_node_id(id, ast)
+            })),
+            NodeKind::TsTypeAssertion => BlockStmtOrExpr::Expr(Expr::TsTypeAssertion({
+                TsTypeAssertion::from_node_id(id, ast)
+            })),
             NodeKind::UnaryExpr => {
                 BlockStmtOrExpr::Expr(Expr::Unary({ UnaryExpr::from_node_id(id, ast) }))
             }
@@ -2022,6 +2184,25 @@ impl NodeIdTrait for AssignTarget {
             NodeKind::SuperPropExpr => AssignTarget::Simple(SimpleAssignTarget::SuperProp({
                 SuperPropExpr::from_node_id(id, ast)
             })),
+            NodeKind::TsAsExpr => AssignTarget::Simple(SimpleAssignTarget::TsAs({
+                TsAsExpr::from_node_id(id, ast)
+            })),
+            NodeKind::TsInstantiation => {
+                AssignTarget::Simple(SimpleAssignTarget::TsInstantiation({
+                    TsInstantiation::from_node_id(id, ast)
+                }))
+            }
+            NodeKind::TsNonNullExpr => AssignTarget::Simple(SimpleAssignTarget::TsNonNull({
+                TsNonNullExpr::from_node_id(id, ast)
+            })),
+            NodeKind::TsSatisfiesExpr => AssignTarget::Simple(SimpleAssignTarget::TsSatisfies({
+                TsSatisfiesExpr::from_node_id(id, ast)
+            })),
+            NodeKind::TsTypeAssertion => {
+                AssignTarget::Simple(SimpleAssignTarget::TsTypeAssertion({
+                    TsTypeAssertion::from_node_id(id, ast)
+                }))
+            }
             _ => unreachable!(),
         }
     }
@@ -2063,6 +2244,11 @@ impl NodeIdTrait for SimpleAssignTarget {
             Self::Paren(it) => it.node_id(),
             Self::OptChain(it) => it.node_id(),
             Self::Invalid(it) => it.node_id(),
+            Self::TsAs(it) => it.node_id(),
+            Self::TsSatisfies(it) => it.node_id(),
+            Self::TsNonNull(it) => it.node_id(),
+            Self::TsTypeAssertion(it) => it.node_id(),
+            Self::TsInstantiation(it) => it.node_id(),
         }
     }
     #[inline]
@@ -2081,6 +2267,19 @@ impl NodeIdTrait for SimpleAssignTarget {
             NodeKind::ParenExpr => SimpleAssignTarget::Paren({ ParenExpr::from_node_id(id, ast) }),
             NodeKind::SuperPropExpr => {
                 SimpleAssignTarget::SuperProp({ SuperPropExpr::from_node_id(id, ast) })
+            }
+            NodeKind::TsAsExpr => SimpleAssignTarget::TsAs({ TsAsExpr::from_node_id(id, ast) }),
+            NodeKind::TsInstantiation => {
+                SimpleAssignTarget::TsInstantiation({ TsInstantiation::from_node_id(id, ast) })
+            }
+            NodeKind::TsNonNullExpr => {
+                SimpleAssignTarget::TsNonNull({ TsNonNullExpr::from_node_id(id, ast) })
+            }
+            NodeKind::TsSatisfiesExpr => {
+                SimpleAssignTarget::TsSatisfies({ TsSatisfiesExpr::from_node_id(id, ast) })
+            }
+            NodeKind::TsTypeAssertion => {
+                SimpleAssignTarget::TsTypeAssertion({ TsTypeAssertion::from_node_id(id, ast) })
             }
             _ => unreachable!(),
         }
@@ -2191,12 +2390,16 @@ impl NodeIdTrait for ParamOrTsParamProp {
     fn node_id(&self) -> NodeId {
         match self {
             Self::Param(it) => it.node_id(),
+            Self::TsParamProp(it) => it.node_id(),
         }
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast) -> Self {
         match &ast.nodes[id].kind {
             NodeKind::Param => ParamOrTsParamProp::Param({ Param::from_node_id(id, ast) }),
+            NodeKind::TsParamProp => {
+                ParamOrTsParamProp::TsParamProp({ TsParamProp::from_node_id(id, ast) })
+            }
             _ => unreachable!(),
         }
     }
@@ -2232,6 +2435,7 @@ impl NodeIdTrait for ClassMember {
             Self::Empty(it) => it.node_id(),
             Self::StaticBlock(it) => it.node_id(),
             Self::AutoAccessor(it) => it.node_id(),
+            Self::TsIndexSignature(it) => it.node_id(),
         }
     }
     #[inline]
@@ -2254,6 +2458,9 @@ impl NodeIdTrait for ClassMember {
             }
             NodeKind::StaticBlock => {
                 ClassMember::StaticBlock({ StaticBlock::from_node_id(id, ast) })
+            }
+            NodeKind::TsIndexSignature => {
+                ClassMember::TsIndexSignature({ TsIndexSignature::from_node_id(id, ast) })
             }
             _ => unreachable!(),
         }
@@ -2609,6 +2816,9 @@ impl NodeIdTrait for Pat {
             NodeKind::JSXNamespacedName => Pat::Expr(Expr::JSXNamespacedName({
                 JSXNamespacedName::from_node_id(id, ast)
             })),
+            NodeKind::JSXText => {
+                Pat::Expr(Expr::Lit(Lit::JSXText({ JSXText::from_node_id(id, ast) })))
+            }
             NodeKind::MemberExpr => Pat::Expr(Expr::Member({ MemberExpr::from_node_id(id, ast) })),
             NodeKind::MetaPropExpr => {
                 Pat::Expr(Expr::MetaProp({ MetaPropExpr::from_node_id(id, ast) }))
@@ -2635,6 +2845,22 @@ impl NodeIdTrait for Pat {
             NodeKind::TaggedTpl => Pat::Expr(Expr::TaggedTpl({ TaggedTpl::from_node_id(id, ast) })),
             NodeKind::ThisExpr => Pat::Expr(Expr::This({ ThisExpr::from_node_id(id, ast) })),
             NodeKind::Tpl => Pat::Expr(Expr::Tpl({ Tpl::from_node_id(id, ast) })),
+            NodeKind::TsAsExpr => Pat::Expr(Expr::TsAs({ TsAsExpr::from_node_id(id, ast) })),
+            NodeKind::TsConstAssertion => Pat::Expr(Expr::TsConstAssertion({
+                TsConstAssertion::from_node_id(id, ast)
+            })),
+            NodeKind::TsInstantiation => Pat::Expr(Expr::TsInstantiation({
+                TsInstantiation::from_node_id(id, ast)
+            })),
+            NodeKind::TsNonNullExpr => {
+                Pat::Expr(Expr::TsNonNull({ TsNonNullExpr::from_node_id(id, ast) }))
+            }
+            NodeKind::TsSatisfiesExpr => Pat::Expr(Expr::TsSatisfies({
+                TsSatisfiesExpr::from_node_id(id, ast)
+            })),
+            NodeKind::TsTypeAssertion => Pat::Expr(Expr::TsTypeAssertion({
+                TsTypeAssertion::from_node_id(id, ast)
+            })),
             NodeKind::UnaryExpr => Pat::Expr(Expr::Unary({ UnaryExpr::from_node_id(id, ast) })),
             NodeKind::UpdateExpr => Pat::Expr(Expr::Update({ UpdateExpr::from_node_id(id, ast) })),
             NodeKind::YieldExpr => Pat::Expr(Expr::Yield({ YieldExpr::from_node_id(id, ast) })),
@@ -2833,6 +3059,7 @@ impl NodeIdTrait for Lit {
             Self::Num(it) => it.node_id(),
             Self::BigInt(it) => it.node_id(),
             Self::Regex(it) => it.node_id(),
+            Self::JSXText(it) => it.node_id(),
         }
     }
     #[inline]
@@ -2840,6 +3067,7 @@ impl NodeIdTrait for Lit {
         match &ast.nodes[id].kind {
             NodeKind::BigInt => Lit::BigInt({ BigInt::from_node_id(id, ast) }),
             NodeKind::Bool => Lit::Bool({ Bool::from_node_id(id, ast) }),
+            NodeKind::JSXText => Lit::JSXText({ JSXText::from_node_id(id, ast) }),
             NodeKind::Null => Lit::Null({ Null::from_node_id(id, ast) }),
             NodeKind::Number => Lit::Num({ Number::from_node_id(id, ast) }),
             NodeKind::Regex => Lit::Regex({ Regex::from_node_id(id, ast) }),
@@ -3068,6 +3296,9 @@ impl NodeIdTrait for JSXExpr {
             NodeKind::JSXNamespacedName => JSXExpr::Expr(Expr::JSXNamespacedName({
                 JSXNamespacedName::from_node_id(id, ast)
             })),
+            NodeKind::JSXText => {
+                JSXExpr::Expr(Expr::Lit(Lit::JSXText({ JSXText::from_node_id(id, ast) })))
+            }
             NodeKind::MemberExpr => {
                 JSXExpr::Expr(Expr::Member({ MemberExpr::from_node_id(id, ast) }))
             }
@@ -3102,6 +3333,22 @@ impl NodeIdTrait for JSXExpr {
             }
             NodeKind::ThisExpr => JSXExpr::Expr(Expr::This({ ThisExpr::from_node_id(id, ast) })),
             NodeKind::Tpl => JSXExpr::Expr(Expr::Tpl({ Tpl::from_node_id(id, ast) })),
+            NodeKind::TsAsExpr => JSXExpr::Expr(Expr::TsAs({ TsAsExpr::from_node_id(id, ast) })),
+            NodeKind::TsConstAssertion => JSXExpr::Expr(Expr::TsConstAssertion({
+                TsConstAssertion::from_node_id(id, ast)
+            })),
+            NodeKind::TsInstantiation => JSXExpr::Expr(Expr::TsInstantiation({
+                TsInstantiation::from_node_id(id, ast)
+            })),
+            NodeKind::TsNonNullExpr => {
+                JSXExpr::Expr(Expr::TsNonNull({ TsNonNullExpr::from_node_id(id, ast) }))
+            }
+            NodeKind::TsSatisfiesExpr => JSXExpr::Expr(Expr::TsSatisfies({
+                TsSatisfiesExpr::from_node_id(id, ast)
+            })),
+            NodeKind::TsTypeAssertion => JSXExpr::Expr(Expr::TsTypeAssertion({
+                TsTypeAssertion::from_node_id(id, ast)
+            })),
             NodeKind::UnaryExpr => JSXExpr::Expr(Expr::Unary({ UnaryExpr::from_node_id(id, ast) })),
             NodeKind::UpdateExpr => {
                 JSXExpr::Expr(Expr::Update({ UpdateExpr::from_node_id(id, ast) }))

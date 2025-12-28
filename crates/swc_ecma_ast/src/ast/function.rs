@@ -1,5 +1,7 @@
 use swc_experimental_ast_macros::ast;
 
+use crate::TsParamProp;
+
 #[ast]
 pub struct Function {
     params: Vec<Param>,
@@ -7,8 +9,10 @@ pub struct Function {
     body: Option<BlockStmt>,
     is_generator: bool,
     is_async: bool,
-    // pub type_params: Option<Box<TsTypeParamDecl>>,
-    // pub return_type: Option<Box<TsTypeAnn>>,
+
+    // Typescript
+    type_params: Option<TsTypeParamDecl>,
+    return_type: Option<TsTypeAnn>,
 }
 
 #[ast]
@@ -19,6 +23,7 @@ pub struct Param {
 
 #[ast]
 pub enum ParamOrTsParamProp {
-    // TsParamProp(TsParamProp),
     Param(Param),
+    // Typescript
+    TsParamProp(TsParamProp),
 }

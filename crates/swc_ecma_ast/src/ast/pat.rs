@@ -17,14 +17,18 @@ pub enum Pat {
 pub struct ArrayPat {
     elems: Vec<Option<Pat>>,
     optional: bool,
-    // type_ann: Option<TsTypeAnn>,
+
+    // Typescript
+    type_ann: Option<TsTypeAnn>,
 }
 
 #[ast]
 pub struct ObjectPat {
     pub props: Vec<ObjectPatProp>,
     pub optional: bool,
-    // pub type_ann: Option<Box<TsTypeAnn>>,
+
+    // Typescript
+    pub type_ann: Option<TsTypeAnn>,
 }
 
 #[ast]
@@ -37,7 +41,9 @@ pub struct AssignPat {
 pub struct RestPat {
     dot3_token: Span,
     arg: Pat,
-    // type_ann: Option<Box<TsTypeAnn>>,
+
+    // Typescript
+    type_ann: Option<TsTypeAnn>,
 }
 
 #[ast]

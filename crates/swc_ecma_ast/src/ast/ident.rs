@@ -22,7 +22,9 @@ pub struct PrivateName {
 #[ast]
 pub struct BindingIdent {
     id: Ident,
-    // pub type_ann: Option<Box<TsTypeAnn>>,
+
+    // Typescript
+    type_ann: Option<TsTypeAnn>,
 }
 
 pub trait EsReserved {

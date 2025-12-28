@@ -1326,6 +1326,10 @@ pub trait Visit {
         <TypedSubRange<ExprOrSpread> as VisitWith<Self>>::visit_children_with(node, self)
     }
     #[inline]
+    fn visit_opt_ts_type_param_instantiation(&mut self, node: Option<TsTypeParamInstantiation>) {
+        <Option<TsTypeParamInstantiation> as VisitWith<Self>>::visit_children_with(node, self);
+    }
+    #[inline]
     fn visit_opt_expr_or_spreads(&mut self, node: Option<TypedSubRange<ExprOrSpread>>) {
         <Option<TypedSubRange<ExprOrSpread>> as VisitWith<Self>>::visit_children_with(node, self);
     }
@@ -1336,6 +1340,14 @@ pub trait Visit {
     #[inline]
     fn visit_pats(&mut self, node: TypedSubRange<Pat>) {
         <TypedSubRange<Pat> as VisitWith<Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_opt_ts_type_param_decl(&mut self, node: Option<TsTypeParamDecl>) {
+        <Option<TsTypeParamDecl> as VisitWith<Self>>::visit_children_with(node, self);
+    }
+    #[inline]
+    fn visit_opt_ts_type_ann(&mut self, node: Option<TsTypeAnn>) {
+        <Option<TsTypeAnn> as VisitWith<Self>>::visit_children_with(node, self);
     }
     #[inline]
     fn visit_tpl_elements(&mut self, node: TypedSubRange<TplElement>) {
@@ -1356,6 +1368,10 @@ pub trait Visit {
     #[inline]
     fn visit_class_members(&mut self, node: TypedSubRange<ClassMember>) {
         <TypedSubRange<ClassMember> as VisitWith<Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_ts_expr_with_type_argss(&mut self, node: TypedSubRange<TsExprWithTypeArgs>) {
+        <TypedSubRange<TsExprWithTypeArgs> as VisitWith<Self>>::visit_children_with(node, self)
     }
     #[inline]
     fn visit_param_or_ts_param_props(&mut self, node: TypedSubRange<ParamOrTsParamProp>) {
@@ -1402,18 +1418,6 @@ pub trait Visit {
         <TypedSubRange<TsFnParam> as VisitWith<Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_opt_ts_type_ann(&mut self, node: Option<TsTypeAnn>) {
-        <Option<TsTypeAnn> as VisitWith<Self>>::visit_children_with(node, self);
-    }
-    #[inline]
-    fn visit_opt_ts_type_param_decl(&mut self, node: Option<TsTypeParamDecl>) {
-        <Option<TsTypeParamDecl> as VisitWith<Self>>::visit_children_with(node, self);
-    }
-    #[inline]
-    fn visit_opt_ts_type_param_instantiation(&mut self, node: Option<TsTypeParamInstantiation>) {
-        <Option<TsTypeParamInstantiation> as VisitWith<Self>>::visit_children_with(node, self);
-    }
-    #[inline]
     fn visit_opt_ts_entity_name(&mut self, node: Option<TsEntityName>) {
         <Option<TsEntityName> as VisitWith<Self>>::visit_children_with(node, self);
     }
@@ -1428,10 +1432,6 @@ pub trait Visit {
     #[inline]
     fn visit_ts_tuple_elements(&mut self, node: TypedSubRange<TsTupleElement>) {
         <TypedSubRange<TsTupleElement> as VisitWith<Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_ts_expr_with_type_argss(&mut self, node: TypedSubRange<TsExprWithTypeArgs>) {
-        <TypedSubRange<TsExprWithTypeArgs> as VisitWith<Self>>::visit_children_with(node, self)
     }
     #[inline]
     fn visit_ts_enum_members(&mut self, node: TypedSubRange<TsEnumMember>) {
@@ -1506,6 +1506,15 @@ impl<V: ?Sized + Visit> VisitWith<V> for ModuleDecl {
                 <ExportDefaultExpr as VisitWith<V>>::visit_with(it, visitor)
             }
             Self::ExportAll(it) => <ExportAll as VisitWith<V>>::visit_with(it, visitor),
+            Self::TsImportEquals(it) => {
+                <TsImportEqualsDecl as VisitWith<V>>::visit_with(it, visitor)
+            }
+            Self::TsExportAssignment(it) => {
+                <TsExportAssignment as VisitWith<V>>::visit_with(it, visitor)
+            }
+            Self::TsNamespaceExport(it) => {
+                <TsNamespaceExportDecl as VisitWith<V>>::visit_with(it, visitor)
+            }
         }
     }
 }
@@ -1964,6 +1973,10 @@ impl<V: ?Sized + Visit> VisitWith<V> for Decl {
             Self::Fn(it) => <FnDecl as VisitWith<V>>::visit_with(it, visitor),
             Self::Var(it) => <VarDecl as VisitWith<V>>::visit_with(it, visitor),
             Self::Using(it) => <UsingDecl as VisitWith<V>>::visit_with(it, visitor),
+            Self::TsInterface(it) => <TsInterfaceDecl as VisitWith<V>>::visit_with(it, visitor),
+            Self::TsTypeAlias(it) => <TsTypeAliasDecl as VisitWith<V>>::visit_with(it, visitor),
+            Self::TsEnum(it) => <TsEnumDecl as VisitWith<V>>::visit_with(it, visitor),
+            Self::TsModule(it) => <TsModuleDecl as VisitWith<V>>::visit_with(it, visitor),
         }
     }
 }
@@ -2015,6 +2028,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for VarDeclarator {
         <Pat as VisitWith<V>>::visit_with(field_value, visitor);
         let field_value = self.init(visitor.ast());
         <Option<Expr> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.definite(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for UsingDecl {
@@ -2068,6 +2083,14 @@ impl<V: ?Sized + Visit> VisitWith<V> for Expr {
             Self::PrivateName(it) => <PrivateName as VisitWith<V>>::visit_with(it, visitor),
             Self::OptChain(it) => <OptChainExpr as VisitWith<V>>::visit_with(it, visitor),
             Self::Invalid(it) => <Invalid as VisitWith<V>>::visit_with(it, visitor),
+            Self::TsTypeAssertion(it) => <TsTypeAssertion as VisitWith<V>>::visit_with(it, visitor),
+            Self::TsConstAssertion(it) => {
+                <TsConstAssertion as VisitWith<V>>::visit_with(it, visitor)
+            }
+            Self::TsNonNull(it) => <TsNonNullExpr as VisitWith<V>>::visit_with(it, visitor),
+            Self::TsAs(it) => <TsAsExpr as VisitWith<V>>::visit_with(it, visitor),
+            Self::TsInstantiation(it) => <TsInstantiation as VisitWith<V>>::visit_with(it, visitor),
+            Self::TsSatisfies(it) => <TsSatisfiesExpr as VisitWith<V>>::visit_with(it, visitor),
         }
     }
 }
@@ -2256,6 +2279,10 @@ impl<V: ?Sized + Visit> VisitWith<V> for CallExpr {
         <Callee as VisitWith<V>>::visit_with(field_value, visitor);
         let field_value = self.args(visitor.ast());
         <TypedSubRange<ExprOrSpread> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.type_args(visitor.ast());
+        <Option<TsTypeParamInstantiation> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.type_params(visitor.ast());
+        <Option<TsTypeParamInstantiation> as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for NewExpr {
@@ -2267,6 +2294,10 @@ impl<V: ?Sized + Visit> VisitWith<V> for NewExpr {
         <Expr as VisitWith<V>>::visit_with(field_value, visitor);
         let field_value = self.args(visitor.ast());
         <Option<TypedSubRange<ExprOrSpread>> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.type_args(visitor.ast());
+        <Option<TsTypeParamInstantiation> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.type_params(visitor.ast());
+        <Option<TsTypeParamInstantiation> as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for SeqExpr {
@@ -2291,6 +2322,10 @@ impl<V: ?Sized + Visit> VisitWith<V> for ArrowExpr {
         <bool as VisitWith<V>>::visit_with(field_value, visitor);
         let field_value = self.is_generator(visitor.ast());
         <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.type_params(visitor.ast());
+        <Option<TsTypeParamDecl> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.return_type(visitor.ast());
+        <Option<TsTypeAnn> as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for YieldExpr {
@@ -2342,6 +2377,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TaggedTpl {
         <Expr as VisitWith<V>>::visit_with(field_value, visitor);
         let field_value = self.tpl(visitor.ast());
         <Tpl as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.type_params(visitor.ast());
+        <Option<TsTypeParamInstantiation> as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for TplElement {
@@ -2456,6 +2493,11 @@ impl<V: ?Sized + Visit> VisitWith<V> for SimpleAssignTarget {
             Self::Paren(it) => <ParenExpr as VisitWith<V>>::visit_with(it, visitor),
             Self::OptChain(it) => <OptChainExpr as VisitWith<V>>::visit_with(it, visitor),
             Self::Invalid(it) => <Invalid as VisitWith<V>>::visit_with(it, visitor),
+            Self::TsAs(it) => <TsAsExpr as VisitWith<V>>::visit_with(it, visitor),
+            Self::TsSatisfies(it) => <TsSatisfiesExpr as VisitWith<V>>::visit_with(it, visitor),
+            Self::TsNonNull(it) => <TsNonNullExpr as VisitWith<V>>::visit_with(it, visitor),
+            Self::TsTypeAssertion(it) => <TsTypeAssertion as VisitWith<V>>::visit_with(it, visitor),
+            Self::TsInstantiation(it) => <TsInstantiation as VisitWith<V>>::visit_with(it, visitor),
         }
     }
 }
@@ -2490,6 +2532,10 @@ impl<V: ?Sized + Visit> VisitWith<V> for OptCall {
         <Expr as VisitWith<V>>::visit_with(field_value, visitor);
         let field_value = self.args(visitor.ast());
         <TypedSubRange<ExprOrSpread> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.type_args(visitor.ast());
+        <Option<TsTypeParamInstantiation> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.type_params(visitor.ast());
+        <Option<TsTypeParamInstantiation> as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for Invalid {
@@ -2513,6 +2559,10 @@ impl<V: ?Sized + Visit> VisitWith<V> for Function {
         <bool as VisitWith<V>>::visit_with(field_value, visitor);
         let field_value = self.is_async(visitor.ast());
         <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.type_params(visitor.ast());
+        <Option<TsTypeParamDecl> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.return_type(visitor.ast());
+        <Option<TsTypeAnn> as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for Param {
@@ -2533,6 +2583,7 @@ impl<V: ?Sized + Visit> VisitWith<V> for ParamOrTsParamProp {
     fn visit_children_with(self, visitor: &mut V) {
         match self {
             Self::Param(it) => <Param as VisitWith<V>>::visit_with(it, visitor),
+            Self::TsParamProp(it) => <TsParamProp as VisitWith<V>>::visit_with(it, visitor),
         }
     }
 }
@@ -2549,6 +2600,12 @@ impl<V: ?Sized + Visit> VisitWith<V> for Class {
         <Option<Expr> as VisitWith<V>>::visit_with(field_value, visitor);
         let field_value = self.is_abstract(visitor.ast());
         <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.type_params(visitor.ast());
+        <Option<TsTypeParamDecl> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.super_type_params(visitor.ast());
+        <Option<TsTypeParamInstantiation> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.implements(visitor.ast());
+        <TypedSubRange<TsExprWithTypeArgs> as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for ClassMember {
@@ -2565,6 +2622,9 @@ impl<V: ?Sized + Visit> VisitWith<V> for ClassMember {
             Self::Empty(it) => <EmptyStmt as VisitWith<V>>::visit_with(it, visitor),
             Self::StaticBlock(it) => <StaticBlock as VisitWith<V>>::visit_with(it, visitor),
             Self::AutoAccessor(it) => <AutoAccessor as VisitWith<V>>::visit_with(it, visitor),
+            Self::TsIndexSignature(it) => {
+                <TsIndexSignature as VisitWith<V>>::visit_with(it, visitor)
+            }
         }
     }
 }
@@ -2581,6 +2641,22 @@ impl<V: ?Sized + Visit> VisitWith<V> for ClassProp {
         <bool as VisitWith<V>>::visit_with(field_value, visitor);
         let field_value = self.decorators(visitor.ast());
         <TypedSubRange<Decorator> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.type_ann(visitor.ast());
+        <Option<TsTypeAnn> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.accessibility(visitor.ast());
+        <Option<Accessibility> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.is_abstract(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.is_optional(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.is_override(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.readonly(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.declare(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.definite(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for PrivateProp {
@@ -2596,6 +2672,18 @@ impl<V: ?Sized + Visit> VisitWith<V> for PrivateProp {
         <bool as VisitWith<V>>::visit_with(field_value, visitor);
         let field_value = self.decorators(visitor.ast());
         <TypedSubRange<Decorator> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.type_ann(visitor.ast());
+        <Option<TsTypeAnn> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.accessibility(visitor.ast());
+        <Option<Accessibility> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.is_optional(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.is_override(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.readonly(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.definite(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for ClassMethod {
@@ -2610,6 +2698,14 @@ impl<V: ?Sized + Visit> VisitWith<V> for ClassMethod {
         let field_value = self.kind(visitor.ast());
         <MethodKind as VisitWith<V>>::visit_with(field_value, visitor);
         let field_value = self.is_static(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.accessibility(visitor.ast());
+        <Option<Accessibility> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.is_abstract(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.is_optional(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.is_override(visitor.ast());
         <bool as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
@@ -2626,6 +2722,14 @@ impl<V: ?Sized + Visit> VisitWith<V> for PrivateMethod {
         <MethodKind as VisitWith<V>>::visit_with(field_value, visitor);
         let field_value = self.is_static(visitor.ast());
         <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.accessibility(visitor.ast());
+        <Option<Accessibility> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.is_abstract(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.is_optional(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.is_override(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for Constructor {
@@ -2639,6 +2743,10 @@ impl<V: ?Sized + Visit> VisitWith<V> for Constructor {
         <TypedSubRange<ParamOrTsParamProp> as VisitWith<V>>::visit_with(field_value, visitor);
         let field_value = self.body(visitor.ast());
         <Option<BlockStmt> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.accessibility(visitor.ast());
+        <Option<Accessibility> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.is_optional(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for Decorator {
@@ -2683,6 +2791,16 @@ impl<V: ?Sized + Visit> VisitWith<V> for AutoAccessor {
         <bool as VisitWith<V>>::visit_with(field_value, visitor);
         let field_value = self.decorators(visitor.ast());
         <TypedSubRange<Decorator> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.type_ann(visitor.ast());
+        <Option<TsTypeAnn> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.accessibility(visitor.ast());
+        <Option<Accessibility> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.is_abstract(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.is_override(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.definite(visitor.ast());
+        <bool as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for Prop {
@@ -2731,6 +2849,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for GetterProp {
         <PropName as VisitWith<V>>::visit_with(field_value, visitor);
         let field_value = self.body(visitor.ast());
         <Option<BlockStmt> as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.type_ann(visitor.ast());
+        <Option<TsTypeAnn> as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for SetterProp {
@@ -2807,6 +2927,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for ArrayPat {
         <TypedSubRange<Option<Pat>> as VisitWith<V>>::visit_with(field_value, visitor);
         let field_value = self.optional(visitor.ast());
         <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.type_ann(visitor.ast());
+        <Option<TsTypeAnn> as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for ObjectPat {
@@ -2818,6 +2940,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for ObjectPat {
         <TypedSubRange<ObjectPatProp> as VisitWith<V>>::visit_with(field_value, visitor);
         let field_value = self.optional(visitor.ast());
         <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.type_ann(visitor.ast());
+        <Option<TsTypeAnn> as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for AssignPat {
@@ -2840,6 +2964,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for RestPat {
         <Span as VisitWith<V>>::visit_with(field_value, visitor);
         let field_value = self.arg(visitor.ast());
         <Pat as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.type_ann(visitor.ast());
+        <Option<TsTypeAnn> as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for ObjectPatProp {
@@ -2912,6 +3038,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for BindingIdent {
     fn visit_children_with(self, visitor: &mut V) {
         let field_value = self.id(visitor.ast());
         <Ident as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.type_ann(visitor.ast());
+        <Option<TsTypeAnn> as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for Lit {
@@ -2926,6 +3054,7 @@ impl<V: ?Sized + Visit> VisitWith<V> for Lit {
             Self::Num(it) => <Number as VisitWith<V>>::visit_with(it, visitor),
             Self::BigInt(it) => <BigInt as VisitWith<V>>::visit_with(it, visitor),
             Self::Regex(it) => <Regex as VisitWith<V>>::visit_with(it, visitor),
+            Self::JSXText(it) => <JSXText as VisitWith<V>>::visit_with(it, visitor),
         }
     }
 }
@@ -3081,6 +3210,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for JSXOpeningElement {
         <TypedSubRange<JSXAttrOrSpread> as VisitWith<V>>::visit_with(field_value, visitor);
         let field_value = self.self_closing(visitor.ast());
         <bool as VisitWith<V>>::visit_with(field_value, visitor);
+        let field_value = self.type_args(visitor.ast());
+        <Option<TsTypeParamInstantiation> as VisitWith<V>>::visit_with(field_value, visitor);
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for JSXAttrOrSpread {
@@ -4309,6 +4440,17 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<ExprOrSpread> {
         }
     }
 }
+impl<V: ?Sized + Visit> VisitWith<V> for Option<TsTypeParamInstantiation> {
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit>::visit_opt_ts_type_param_instantiation(visitor, self)
+    }
+    fn visit_children_with(self, visitor: &mut V) {
+        match self {
+            Some(it) => it.visit_with(visitor),
+            None => {}
+        }
+    }
+}
 impl<V: ?Sized + Visit> VisitWith<V> for Option<TypedSubRange<ExprOrSpread>> {
     fn visit_with(self, visitor: &mut V) {
         <V as Visit>::visit_opt_expr_or_spreads(visitor, self)
@@ -4339,6 +4481,28 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<Pat> {
         for child_idx in self.iter() {
             let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
+        }
+    }
+}
+impl<V: ?Sized + Visit> VisitWith<V> for Option<TsTypeParamDecl> {
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit>::visit_opt_ts_type_param_decl(visitor, self)
+    }
+    fn visit_children_with(self, visitor: &mut V) {
+        match self {
+            Some(it) => it.visit_with(visitor),
+            None => {}
+        }
+    }
+}
+impl<V: ?Sized + Visit> VisitWith<V> for Option<TsTypeAnn> {
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit>::visit_opt_ts_type_ann(visitor, self)
+    }
+    fn visit_children_with(self, visitor: &mut V) {
+        match self {
+            Some(it) => it.visit_with(visitor),
+            None => {}
         }
     }
 }
@@ -4393,6 +4557,17 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<ClassMember> {
     fn visit_children_with(self, visitor: &mut V) {
         for child_idx in self.iter() {
             let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<TsExprWithTypeArgs> {
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit>::visit_ts_expr_with_type_argss(visitor, self)
+    }
+    fn visit_children_with(self, visitor: &mut V) {
+        for child in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child);
             child.visit_with(visitor);
         }
     }
@@ -4518,39 +4693,6 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<TsFnParam> {
         }
     }
 }
-impl<V: ?Sized + Visit> VisitWith<V> for Option<TsTypeAnn> {
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit>::visit_opt_ts_type_ann(visitor, self)
-    }
-    fn visit_children_with(self, visitor: &mut V) {
-        match self {
-            Some(it) => it.visit_with(visitor),
-            None => {}
-        }
-    }
-}
-impl<V: ?Sized + Visit> VisitWith<V> for Option<TsTypeParamDecl> {
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit>::visit_opt_ts_type_param_decl(visitor, self)
-    }
-    fn visit_children_with(self, visitor: &mut V) {
-        match self {
-            Some(it) => it.visit_with(visitor),
-            None => {}
-        }
-    }
-}
-impl<V: ?Sized + Visit> VisitWith<V> for Option<TsTypeParamInstantiation> {
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit>::visit_opt_ts_type_param_instantiation(visitor, self)
-    }
-    fn visit_children_with(self, visitor: &mut V) {
-        match self {
-            Some(it) => it.visit_with(visitor),
-            None => {}
-        }
-    }
-}
 impl<V: ?Sized + Visit> VisitWith<V> for Option<TsEntityName> {
     fn visit_with(self, visitor: &mut V) {
         <V as Visit>::visit_opt_ts_entity_name(visitor, self)
@@ -4587,17 +4729,6 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<TsTypeElement> {
 impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<TsTupleElement> {
     fn visit_with(self, visitor: &mut V) {
         <V as Visit>::visit_ts_tuple_elements(visitor, self)
-    }
-    fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_with(visitor);
-        }
-    }
-}
-impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<TsExprWithTypeArgs> {
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit>::visit_ts_expr_with_type_argss(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
         for child in self.iter() {
@@ -6227,6 +6358,15 @@ pub trait VisitMut {
         node
     }
     #[inline]
+    fn visit_mut_opt_ts_type_param_instantiation(
+        &mut self,
+        node: Option<TsTypeParamInstantiation>,
+    ) -> Option<TsTypeParamInstantiation> {
+        <Option<TsTypeParamInstantiation> as VisitMutWith<Self>>::visit_mut_children_with(
+            node, self,
+        )
+    }
+    #[inline]
     fn visit_mut_opt_expr_or_spreads(
         &mut self,
         node: Option<TypedSubRange<ExprOrSpread>>,
@@ -6244,6 +6384,17 @@ pub trait VisitMut {
     fn visit_mut_pats(&mut self, node: TypedSubRange<Pat>) -> TypedSubRange<Pat> {
         <TypedSubRange<Pat> as VisitMutWith<Self>>::visit_mut_children_with(node, self);
         node
+    }
+    #[inline]
+    fn visit_mut_opt_ts_type_param_decl(
+        &mut self,
+        node: Option<TsTypeParamDecl>,
+    ) -> Option<TsTypeParamDecl> {
+        <Option<TsTypeParamDecl> as VisitMutWith<Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_opt_ts_type_ann(&mut self, node: Option<TsTypeAnn>) -> Option<TsTypeAnn> {
+        <Option<TsTypeAnn> as VisitMutWith<Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_tpl_elements(
@@ -6276,6 +6427,16 @@ pub trait VisitMut {
         node: TypedSubRange<ClassMember>,
     ) -> TypedSubRange<ClassMember> {
         <TypedSubRange<ClassMember> as VisitMutWith<Self>>::visit_mut_children_with(node, self);
+        node
+    }
+    #[inline]
+    fn visit_mut_ts_expr_with_type_argss(
+        &mut self,
+        node: TypedSubRange<TsExprWithTypeArgs>,
+    ) -> TypedSubRange<TsExprWithTypeArgs> {
+        <TypedSubRange<TsExprWithTypeArgs> as VisitMutWith<Self>>::visit_mut_children_with(
+            node, self,
+        );
         node
     }
     #[inline]
@@ -6357,26 +6518,6 @@ pub trait VisitMut {
         node
     }
     #[inline]
-    fn visit_mut_opt_ts_type_ann(&mut self, node: Option<TsTypeAnn>) -> Option<TsTypeAnn> {
-        <Option<TsTypeAnn> as VisitMutWith<Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_opt_ts_type_param_decl(
-        &mut self,
-        node: Option<TsTypeParamDecl>,
-    ) -> Option<TsTypeParamDecl> {
-        <Option<TsTypeParamDecl> as VisitMutWith<Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_opt_ts_type_param_instantiation(
-        &mut self,
-        node: Option<TsTypeParamInstantiation>,
-    ) -> Option<TsTypeParamInstantiation> {
-        <Option<TsTypeParamInstantiation> as VisitMutWith<Self>>::visit_mut_children_with(
-            node, self,
-        )
-    }
-    #[inline]
     fn visit_mut_opt_ts_entity_name(&mut self, node: Option<TsEntityName>) -> Option<TsEntityName> {
         <Option<TsEntityName> as VisitMutWith<Self>>::visit_mut_children_with(node, self)
     }
@@ -6401,16 +6542,6 @@ pub trait VisitMut {
         node: TypedSubRange<TsTupleElement>,
     ) -> TypedSubRange<TsTupleElement> {
         <TypedSubRange<TsTupleElement> as VisitMutWith<Self>>::visit_mut_children_with(node, self);
-        node
-    }
-    #[inline]
-    fn visit_mut_ts_expr_with_type_argss(
-        &mut self,
-        node: TypedSubRange<TsExprWithTypeArgs>,
-    ) -> TypedSubRange<TsExprWithTypeArgs> {
-        <TypedSubRange<TsExprWithTypeArgs> as VisitMutWith<Self>>::visit_mut_children_with(
-            node, self,
-        );
         node
     }
     #[inline]
@@ -6515,6 +6646,15 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for ModuleDecl {
             Self::ExportAll(it) => {
                 Self::ExportAll(<ExportAll as VisitMutWith<V>>::visit_mut_with(it, visitor))
             }
+            Self::TsImportEquals(it) => Self::TsImportEquals(
+                <TsImportEqualsDecl as VisitMutWith<V>>::visit_mut_with(it, visitor),
+            ),
+            Self::TsExportAssignment(it) => Self::TsExportAssignment(
+                <TsExportAssignment as VisitMutWith<V>>::visit_mut_with(it, visitor),
+            ),
+            Self::TsNamespaceExport(it) => Self::TsNamespaceExport(
+                <TsNamespaceExportDecl as VisitMutWith<V>>::visit_mut_with(it, visitor),
+            ),
         }
     }
 }
@@ -7134,6 +7274,18 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Decl {
             Self::Using(it) => {
                 Self::Using(<UsingDecl as VisitMutWith<V>>::visit_mut_with(it, visitor))
             }
+            Self::TsInterface(it) => Self::TsInterface(
+                <TsInterfaceDecl as VisitMutWith<V>>::visit_mut_with(it, visitor),
+            ),
+            Self::TsTypeAlias(it) => Self::TsTypeAlias(
+                <TsTypeAliasDecl as VisitMutWith<V>>::visit_mut_with(it, visitor),
+            ),
+            Self::TsEnum(it) => {
+                Self::TsEnum(<TsEnumDecl as VisitMutWith<V>>::visit_mut_with(it, visitor))
+            }
+            Self::TsModule(it) => Self::TsModule(
+                <TsModuleDecl as VisitMutWith<V>>::visit_mut_with(it, visitor),
+            ),
         }
     }
 }
@@ -7200,6 +7352,9 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for VarDeclarator {
         let field_value = self.init(visitor.ast());
         let new_node = <Option<Expr> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
         self.set_init(visitor.ast(), new_node);
+        let field_value = self.definite(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_definite(visitor.ast(), new_node);
         self
     }
 }
@@ -7306,6 +7461,28 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Expr {
             Self::Invalid(it) => {
                 Self::Invalid(<Invalid as VisitMutWith<V>>::visit_mut_with(it, visitor))
             }
+            Self::TsTypeAssertion(it) => {
+                Self::TsTypeAssertion(<TsTypeAssertion as VisitMutWith<V>>::visit_mut_with(
+                    it, visitor,
+                ))
+            }
+            Self::TsConstAssertion(it) => Self::TsConstAssertion(
+                <TsConstAssertion as VisitMutWith<V>>::visit_mut_with(it, visitor),
+            ),
+            Self::TsNonNull(it) => Self::TsNonNull(
+                <TsNonNullExpr as VisitMutWith<V>>::visit_mut_with(it, visitor),
+            ),
+            Self::TsAs(it) => {
+                Self::TsAs(<TsAsExpr as VisitMutWith<V>>::visit_mut_with(it, visitor))
+            }
+            Self::TsInstantiation(it) => {
+                Self::TsInstantiation(<TsInstantiation as VisitMutWith<V>>::visit_mut_with(
+                    it, visitor,
+                ))
+            }
+            Self::TsSatisfies(it) => Self::TsSatisfies(
+                <TsSatisfiesExpr as VisitMutWith<V>>::visit_mut_with(it, visitor),
+            ),
         }
     }
 }
@@ -7553,6 +7730,18 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for CallExpr {
         let new_node =
             <TypedSubRange<ExprOrSpread> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
         self.set_args(visitor.ast(), new_node);
+        let field_value = self.type_args(visitor.ast());
+        let new_node = <Option<TsTypeParamInstantiation> as VisitMutWith<V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        self.set_type_args(visitor.ast(), new_node);
+        let field_value = self.type_params(visitor.ast());
+        let new_node = <Option<TsTypeParamInstantiation> as VisitMutWith<V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        self.set_type_params(visitor.ast(), new_node);
         self
     }
 }
@@ -7570,6 +7759,18 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for NewExpr {
             visitor,
         );
         self.set_args(visitor.ast(), new_node);
+        let field_value = self.type_args(visitor.ast());
+        let new_node = <Option<TsTypeParamInstantiation> as VisitMutWith<V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        self.set_type_args(visitor.ast(), new_node);
+        let field_value = self.type_params(visitor.ast());
+        let new_node = <Option<TsTypeParamInstantiation> as VisitMutWith<V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        self.set_type_params(visitor.ast(), new_node);
         self
     }
 }
@@ -7603,6 +7804,13 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for ArrowExpr {
         let field_value = self.is_generator(visitor.ast());
         let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
         self.set_is_generator(visitor.ast(), new_node);
+        let field_value = self.type_params(visitor.ast());
+        let new_node =
+            <Option<TsTypeParamDecl> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_type_params(visitor.ast(), new_node);
+        let field_value = self.return_type(visitor.ast());
+        let new_node = <Option<TsTypeAnn> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_return_type(visitor.ast(), new_node);
         self
     }
 }
@@ -7669,6 +7877,12 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TaggedTpl {
         let field_value = self.tpl(visitor.ast());
         let new_node = <Tpl as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
         self.set_tpl(visitor.ast(), new_node);
+        let field_value = self.type_params(visitor.ast());
+        let new_node = <Option<TsTypeParamInstantiation> as VisitMutWith<V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        self.set_type_params(visitor.ast(), new_node);
         self
     }
 }
@@ -7826,6 +8040,25 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for SimpleAssignTarget {
             Self::Invalid(it) => {
                 Self::Invalid(<Invalid as VisitMutWith<V>>::visit_mut_with(it, visitor))
             }
+            Self::TsAs(it) => {
+                Self::TsAs(<TsAsExpr as VisitMutWith<V>>::visit_mut_with(it, visitor))
+            }
+            Self::TsSatisfies(it) => Self::TsSatisfies(
+                <TsSatisfiesExpr as VisitMutWith<V>>::visit_mut_with(it, visitor),
+            ),
+            Self::TsNonNull(it) => Self::TsNonNull(
+                <TsNonNullExpr as VisitMutWith<V>>::visit_mut_with(it, visitor),
+            ),
+            Self::TsTypeAssertion(it) => {
+                Self::TsTypeAssertion(<TsTypeAssertion as VisitMutWith<V>>::visit_mut_with(
+                    it, visitor,
+                ))
+            }
+            Self::TsInstantiation(it) => {
+                Self::TsInstantiation(<TsInstantiation as VisitMutWith<V>>::visit_mut_with(
+                    it, visitor,
+                ))
+            }
         }
     }
 }
@@ -7868,6 +8101,18 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for OptCall {
         let new_node =
             <TypedSubRange<ExprOrSpread> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
         self.set_args(visitor.ast(), new_node);
+        let field_value = self.type_args(visitor.ast());
+        let new_node = <Option<TsTypeParamInstantiation> as VisitMutWith<V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        self.set_type_args(visitor.ast(), new_node);
+        let field_value = self.type_params(visitor.ast());
+        let new_node = <Option<TsTypeParamInstantiation> as VisitMutWith<V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        self.set_type_params(visitor.ast(), new_node);
         self
     }
 }
@@ -7901,6 +8146,13 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Function {
         let field_value = self.is_async(visitor.ast());
         let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
         self.set_is_async(visitor.ast(), new_node);
+        let field_value = self.type_params(visitor.ast());
+        let new_node =
+            <Option<TsTypeParamDecl> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_type_params(visitor.ast(), new_node);
+        let field_value = self.return_type(visitor.ast());
+        let new_node = <Option<TsTypeAnn> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_return_type(visitor.ast(), new_node);
         self
     }
 }
@@ -7926,6 +8178,9 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for ParamOrTsParamProp {
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
         match self {
             Self::Param(it) => Self::Param(<Param as VisitMutWith<V>>::visit_mut_with(it, visitor)),
+            Self::TsParamProp(it) => Self::TsParamProp(
+                <TsParamProp as VisitMutWith<V>>::visit_mut_with(it, visitor),
+            ),
         }
     }
 }
@@ -7948,6 +8203,22 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Class {
         let field_value = self.is_abstract(visitor.ast());
         let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
         self.set_is_abstract(visitor.ast(), new_node);
+        let field_value = self.type_params(visitor.ast());
+        let new_node =
+            <Option<TsTypeParamDecl> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_type_params(visitor.ast(), new_node);
+        let field_value = self.super_type_params(visitor.ast());
+        let new_node = <Option<TsTypeParamInstantiation> as VisitMutWith<V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        self.set_super_type_params(visitor.ast(), new_node);
+        let field_value = self.implements(visitor.ast());
+        let new_node = <TypedSubRange<TsExprWithTypeArgs> as VisitMutWith<V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        self.set_implements(visitor.ast(), new_node);
         self
     }
 }
@@ -7981,6 +8252,9 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for ClassMember {
             Self::AutoAccessor(it) => Self::AutoAccessor(
                 <AutoAccessor as VisitMutWith<V>>::visit_mut_with(it, visitor),
             ),
+            Self::TsIndexSignature(it) => Self::TsIndexSignature(
+                <TsIndexSignature as VisitMutWith<V>>::visit_mut_with(it, visitor),
+            ),
         }
     }
 }
@@ -8002,6 +8276,31 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for ClassProp {
         let new_node =
             <TypedSubRange<Decorator> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
         self.set_decorators(visitor.ast(), new_node);
+        let field_value = self.type_ann(visitor.ast());
+        let new_node = <Option<TsTypeAnn> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_type_ann(visitor.ast(), new_node);
+        let field_value = self.accessibility(visitor.ast());
+        let new_node =
+            <Option<Accessibility> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_accessibility(visitor.ast(), new_node);
+        let field_value = self.is_abstract(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_is_abstract(visitor.ast(), new_node);
+        let field_value = self.is_optional(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_is_optional(visitor.ast(), new_node);
+        let field_value = self.is_override(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_is_override(visitor.ast(), new_node);
+        let field_value = self.readonly(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_readonly(visitor.ast(), new_node);
+        let field_value = self.declare(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_declare(visitor.ast(), new_node);
+        let field_value = self.definite(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_definite(visitor.ast(), new_node);
         self
     }
 }
@@ -8023,6 +8322,25 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for PrivateProp {
         let new_node =
             <TypedSubRange<Decorator> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
         self.set_decorators(visitor.ast(), new_node);
+        let field_value = self.type_ann(visitor.ast());
+        let new_node = <Option<TsTypeAnn> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_type_ann(visitor.ast(), new_node);
+        let field_value = self.accessibility(visitor.ast());
+        let new_node =
+            <Option<Accessibility> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_accessibility(visitor.ast(), new_node);
+        let field_value = self.is_optional(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_is_optional(visitor.ast(), new_node);
+        let field_value = self.is_override(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_is_override(visitor.ast(), new_node);
+        let field_value = self.readonly(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_readonly(visitor.ast(), new_node);
+        let field_value = self.definite(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_definite(visitor.ast(), new_node);
         self
     }
 }
@@ -8043,6 +8361,19 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for ClassMethod {
         let field_value = self.is_static(visitor.ast());
         let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
         self.set_is_static(visitor.ast(), new_node);
+        let field_value = self.accessibility(visitor.ast());
+        let new_node =
+            <Option<Accessibility> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_accessibility(visitor.ast(), new_node);
+        let field_value = self.is_abstract(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_is_abstract(visitor.ast(), new_node);
+        let field_value = self.is_optional(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_is_optional(visitor.ast(), new_node);
+        let field_value = self.is_override(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_is_override(visitor.ast(), new_node);
         self
     }
 }
@@ -8063,6 +8394,19 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for PrivateMethod {
         let field_value = self.is_static(visitor.ast());
         let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
         self.set_is_static(visitor.ast(), new_node);
+        let field_value = self.accessibility(visitor.ast());
+        let new_node =
+            <Option<Accessibility> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_accessibility(visitor.ast(), new_node);
+        let field_value = self.is_abstract(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_is_abstract(visitor.ast(), new_node);
+        let field_value = self.is_optional(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_is_optional(visitor.ast(), new_node);
+        let field_value = self.is_override(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_is_override(visitor.ast(), new_node);
         self
     }
 }
@@ -8083,6 +8427,13 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Constructor {
         let field_value = self.body(visitor.ast());
         let new_node = <Option<BlockStmt> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
         self.set_body(visitor.ast(), new_node);
+        let field_value = self.accessibility(visitor.ast());
+        let new_node =
+            <Option<Accessibility> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_accessibility(visitor.ast(), new_node);
+        let field_value = self.is_optional(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_is_optional(visitor.ast(), new_node);
         self
     }
 }
@@ -8141,6 +8492,22 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for AutoAccessor {
         let new_node =
             <TypedSubRange<Decorator> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
         self.set_decorators(visitor.ast(), new_node);
+        let field_value = self.type_ann(visitor.ast());
+        let new_node = <Option<TsTypeAnn> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_type_ann(visitor.ast(), new_node);
+        let field_value = self.accessibility(visitor.ast());
+        let new_node =
+            <Option<Accessibility> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_accessibility(visitor.ast(), new_node);
+        let field_value = self.is_abstract(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_is_abstract(visitor.ast(), new_node);
+        let field_value = self.is_override(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_is_override(visitor.ast(), new_node);
+        let field_value = self.definite(visitor.ast());
+        let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_definite(visitor.ast(), new_node);
         self
     }
 }
@@ -8210,6 +8577,9 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for GetterProp {
         let field_value = self.body(visitor.ast());
         let new_node = <Option<BlockStmt> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
         self.set_body(visitor.ast(), new_node);
+        let field_value = self.type_ann(visitor.ast());
+        let new_node = <Option<TsTypeAnn> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_type_ann(visitor.ast(), new_node);
         self
     }
 }
@@ -8316,6 +8686,9 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for ArrayPat {
         let field_value = self.optional(visitor.ast());
         let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
         self.set_optional(visitor.ast(), new_node);
+        let field_value = self.type_ann(visitor.ast());
+        let new_node = <Option<TsTypeAnn> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_type_ann(visitor.ast(), new_node);
         self
     }
 }
@@ -8331,6 +8704,9 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for ObjectPat {
         let field_value = self.optional(visitor.ast());
         let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
         self.set_optional(visitor.ast(), new_node);
+        let field_value = self.type_ann(visitor.ast());
+        let new_node = <Option<TsTypeAnn> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_type_ann(visitor.ast(), new_node);
         self
     }
 }
@@ -8359,6 +8735,9 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for RestPat {
         let field_value = self.arg(visitor.ast());
         let new_node = <Pat as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
         self.set_arg(visitor.ast(), new_node);
+        let field_value = self.type_ann(visitor.ast());
+        let new_node = <Option<TsTypeAnn> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_type_ann(visitor.ast(), new_node);
         self
     }
 }
@@ -8450,6 +8829,9 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for BindingIdent {
         let field_value = self.id(visitor.ast());
         let new_node = <Ident as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
         self.set_id(visitor.ast(), new_node);
+        let field_value = self.type_ann(visitor.ast());
+        let new_node = <Option<TsTypeAnn> as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
+        self.set_type_ann(visitor.ast(), new_node);
         self
     }
 }
@@ -8467,6 +8849,9 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Lit {
                 Self::BigInt(<BigInt as VisitMutWith<V>>::visit_mut_with(it, visitor))
             }
             Self::Regex(it) => Self::Regex(<Regex as VisitMutWith<V>>::visit_mut_with(it, visitor)),
+            Self::JSXText(it) => {
+                Self::JSXText(<JSXText as VisitMutWith<V>>::visit_mut_with(it, visitor))
+            }
         }
     }
 }
@@ -8662,6 +9047,12 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for JSXOpeningElement {
         let field_value = self.self_closing(visitor.ast());
         let new_node = <bool as VisitMutWith<V>>::visit_mut_with(field_value, visitor);
         self.set_self_closing(visitor.ast(), new_node);
+        let field_value = self.type_args(visitor.ast());
+        let new_node = <Option<TsTypeParamInstantiation> as VisitMutWith<V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        self.set_type_args(visitor.ast(), new_node);
         self
     }
 }
@@ -10270,6 +10661,17 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<ExprOrSpread> {
         self
     }
 }
+impl<V: ?Sized + VisitMut> VisitMutWith<V> for Option<TsTypeParamInstantiation> {
+    fn visit_mut_with(self, visitor: &mut V) -> Self {
+        <V as VisitMut>::visit_mut_opt_ts_type_param_instantiation(visitor, self)
+    }
+    fn visit_mut_children_with(self, visitor: &mut V) -> Self {
+        match self {
+            Some(it) => Some(it.visit_mut_with(visitor)),
+            None => None,
+        }
+    }
+}
 impl<V: ?Sized + VisitMut> VisitMutWith<V> for Option<TypedSubRange<ExprOrSpread>> {
     fn visit_mut_with(self, visitor: &mut V) -> Self {
         <V as VisitMut>::visit_mut_opt_expr_or_spreads(visitor, self)
@@ -10305,6 +10707,28 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<Pat> {
             self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
+    }
+}
+impl<V: ?Sized + VisitMut> VisitMutWith<V> for Option<TsTypeParamDecl> {
+    fn visit_mut_with(self, visitor: &mut V) -> Self {
+        <V as VisitMut>::visit_mut_opt_ts_type_param_decl(visitor, self)
+    }
+    fn visit_mut_children_with(self, visitor: &mut V) -> Self {
+        match self {
+            Some(it) => Some(it.visit_mut_with(visitor)),
+            None => None,
+        }
+    }
+}
+impl<V: ?Sized + VisitMut> VisitMutWith<V> for Option<TsTypeAnn> {
+    fn visit_mut_with(self, visitor: &mut V) -> Self {
+        <V as VisitMut>::visit_mut_opt_ts_type_ann(visitor, self)
+    }
+    fn visit_mut_children_with(self, visitor: &mut V) -> Self {
+        match self {
+            Some(it) => Some(it.visit_mut_with(visitor)),
+            None => None,
+        }
     }
 }
 impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<TplElement> {
@@ -10366,6 +10790,18 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<ClassMember> {
             let child = visitor.ast().get_node_in_sub_range(child_idx);
             let new_child = child.visit_mut_with(visitor);
             self.replace_slot(visitor.ast(), child_idx, new_child);
+        }
+        self
+    }
+}
+impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<TsExprWithTypeArgs> {
+    fn visit_mut_with(self, visitor: &mut V) -> Self {
+        <V as VisitMut>::visit_mut_ts_expr_with_type_argss(visitor, self)
+    }
+    fn visit_mut_children_with(self, visitor: &mut V) -> Self {
+        for child in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child);
+            child.visit_mut_with(visitor);
         }
         self
     }
@@ -10504,39 +10940,6 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<TsFnParam> {
         self
     }
 }
-impl<V: ?Sized + VisitMut> VisitMutWith<V> for Option<TsTypeAnn> {
-    fn visit_mut_with(self, visitor: &mut V) -> Self {
-        <V as VisitMut>::visit_mut_opt_ts_type_ann(visitor, self)
-    }
-    fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        match self {
-            Some(it) => Some(it.visit_mut_with(visitor)),
-            None => None,
-        }
-    }
-}
-impl<V: ?Sized + VisitMut> VisitMutWith<V> for Option<TsTypeParamDecl> {
-    fn visit_mut_with(self, visitor: &mut V) -> Self {
-        <V as VisitMut>::visit_mut_opt_ts_type_param_decl(visitor, self)
-    }
-    fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        match self {
-            Some(it) => Some(it.visit_mut_with(visitor)),
-            None => None,
-        }
-    }
-}
-impl<V: ?Sized + VisitMut> VisitMutWith<V> for Option<TsTypeParamInstantiation> {
-    fn visit_mut_with(self, visitor: &mut V) -> Self {
-        <V as VisitMut>::visit_mut_opt_ts_type_param_instantiation(visitor, self)
-    }
-    fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        match self {
-            Some(it) => Some(it.visit_mut_with(visitor)),
-            None => None,
-        }
-    }
-}
 impl<V: ?Sized + VisitMut> VisitMutWith<V> for Option<TsEntityName> {
     fn visit_mut_with(self, visitor: &mut V) -> Self {
         <V as VisitMut>::visit_mut_opt_ts_entity_name(visitor, self)
@@ -10574,18 +10977,6 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<TsTypeElement> {
 impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<TsTupleElement> {
     fn visit_mut_with(self, visitor: &mut V) -> Self {
         <V as VisitMut>::visit_mut_ts_tuple_elements(visitor, self)
-    }
-    fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
-        }
-        self
-    }
-}
-impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<TsExprWithTypeArgs> {
-    fn visit_mut_with(self, visitor: &mut V) -> Self {
-        <V as VisitMut>::visit_mut_ts_expr_with_type_argss(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
         for child in self.iter() {

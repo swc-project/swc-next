@@ -30,8 +30,10 @@ pub struct AssignProp {
 #[ast]
 pub struct GetterProp {
     key: PropName,
-    // type_ann: Option<TsTypeAnn>,
     body: Option<BlockStmt>,
+
+    // Typescript
+    type_ann: Option<TsTypeAnn>,
 }
 #[ast]
 pub struct SetterProp {
