@@ -10,7 +10,7 @@ use crate::{
 
 pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
     let mut impls = TokenStream::new();
-    for ty in schema.types.iter() {
+    for ty in schema.types_without_primitive() {
         match ty {
             AstType::Struct(ast_struct) => {
                 let ident = format_ident!("{}", ast_struct.name);

@@ -5054,4 +5054,1531 @@ impl Ast {
             data: NodeData { empty: () },
         }))
     }
+    #[inline]
+    pub fn ts_type_ann(&mut self, span: Span, type_ann: TsType) -> TsTypeAnn {
+        let _f0 = self.add_extra(type_ann.to_extra_data());
+        TsTypeAnn(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsTypeAnn,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_type_param_decl(
+        &mut self,
+        span: Span,
+        params: TypedSubRange<TsTypeParam>,
+    ) -> TsTypeParamDecl {
+        let _f0 = self.add_extra(params.to_extra_data());
+        TsTypeParamDecl(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsTypeParamDecl,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_type_param(
+        &mut self,
+        span: Span,
+        name: Ident,
+        is_in: bool,
+        is_out: bool,
+        is_const: bool,
+        constraint: Option<TsType>,
+        default: Option<TsType>,
+    ) -> TsTypeParam {
+        let _f0 = self.add_extra(name.to_extra_data());
+        let _f1 = self.add_extra(constraint.to_extra_data());
+        let _f2 = self.add_extra(default.to_extra_data());
+        TsTypeParam(
+            self.add_node(AstNode {
+                span,
+                kind: NodeKind::TsTypeParam,
+                inline_data: (0u32
+                    | is_in as u32
+                    | ((is_out as u32) << 8usize)
+                    | ((is_const as u32) << 16usize))
+                    .into(),
+                data: NodeData {
+                    extra_data_start: _f0,
+                },
+            }),
+        )
+    }
+    #[inline]
+    pub fn ts_type_param_instantiation(
+        &mut self,
+        span: Span,
+        params: TypedSubRange<TsType>,
+    ) -> TsTypeParamInstantiation {
+        let _f0 = self.add_extra(params.to_extra_data());
+        TsTypeParamInstantiation(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsTypeParamInstantiation,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_param_prop(
+        &mut self,
+        span: Span,
+        decorators: TypedSubRange<Decorator>,
+        accessibility: Option<Accessibility>,
+        is_override: bool,
+        readonly: bool,
+        param: TsParamPropParam,
+    ) -> TsParamProp {
+        let _f0 = self.add_extra(decorators.to_extra_data());
+        let _f1 = self.add_extra(accessibility.to_extra_data());
+        let _f2 = self.add_extra(is_override.to_extra_data());
+        let _f3 = self.add_extra(readonly.to_extra_data());
+        let _f4 = self.add_extra(param.to_extra_data());
+        TsParamProp(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsParamProp,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_param_prop_param_binding_ident(&mut self, span: Span, id: Ident) -> TsParamPropParam {
+        TsParamPropParam::Ident(self.binding_ident(span, id).into())
+    }
+    #[inline]
+    pub fn ts_param_prop_param_assign_pat(
+        &mut self,
+        span: Span,
+        left: Pat,
+        right: Expr,
+    ) -> TsParamPropParam {
+        TsParamPropParam::Assign(self.assign_pat(span, left, right).into())
+    }
+    #[inline]
+    pub fn ts_qualified_name(
+        &mut self,
+        span: Span,
+        left: TsEntityName,
+        right: IdentName,
+    ) -> TsQualifiedName {
+        let _f0 = self.add_extra(left.to_extra_data());
+        let _f1 = self.add_extra(right.to_extra_data());
+        TsQualifiedName(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsQualifiedName,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_entity_name_ts_qualified_name(
+        &mut self,
+        span: Span,
+        left: TsEntityName,
+        right: IdentName,
+    ) -> TsEntityName {
+        TsEntityName::TsQualifiedName(self.ts_qualified_name(span, left, right).into())
+    }
+    #[inline]
+    pub fn ts_entity_name_ident(
+        &mut self,
+        span: Span,
+        sym: Utf8Ref,
+        optional: bool,
+    ) -> TsEntityName {
+        TsEntityName::Ident(self.ident(span, sym, optional).into())
+    }
+    #[inline]
+    pub fn ts_type_element_ts_call_signature_decl(
+        &mut self,
+        span: Span,
+        params: TypedSubRange<TsFnParam>,
+        type_ann: Option<TsTypeAnn>,
+        type_params: Option<TsTypeParamDecl>,
+    ) -> TsTypeElement {
+        TsTypeElement::TsCallSignatureDecl(
+            self.ts_call_signature_decl(span, params, type_ann, type_params)
+                .into(),
+        )
+    }
+    #[inline]
+    pub fn ts_type_element_ts_construct_signature_decl(
+        &mut self,
+        span: Span,
+        params: TypedSubRange<TsFnParam>,
+        type_ann: Option<TsTypeAnn>,
+        type_params: Option<TsTypeParamDecl>,
+    ) -> TsTypeElement {
+        TsTypeElement::TsConstructSignatureDecl(
+            self.ts_construct_signature_decl(span, params, type_ann, type_params)
+                .into(),
+        )
+    }
+    #[inline]
+    pub fn ts_type_element_ts_property_signature(
+        &mut self,
+        span: Span,
+        readonly: bool,
+        key: Expr,
+        computed: bool,
+        optional: bool,
+        type_ann: Option<TsTypeAnn>,
+    ) -> TsTypeElement {
+        TsTypeElement::TsPropertySignature(
+            self.ts_property_signature(span, readonly, key, computed, optional, type_ann)
+                .into(),
+        )
+    }
+    #[inline]
+    pub fn ts_type_element_ts_getter_signature(
+        &mut self,
+        span: Span,
+        key: Expr,
+        computed: bool,
+        type_ann: Option<TsTypeAnn>,
+    ) -> TsTypeElement {
+        TsTypeElement::TsGetterSignature(
+            self.ts_getter_signature(span, key, computed, type_ann)
+                .into(),
+        )
+    }
+    #[inline]
+    pub fn ts_type_element_ts_setter_signature(
+        &mut self,
+        span: Span,
+        key: Expr,
+        computed: bool,
+        param: TsFnParam,
+    ) -> TsTypeElement {
+        TsTypeElement::TsSetterSignature(
+            self.ts_setter_signature(span, key, computed, param).into(),
+        )
+    }
+    #[inline]
+    pub fn ts_type_element_ts_method_signature(
+        &mut self,
+        span: Span,
+        key: Expr,
+        computed: bool,
+        optional: bool,
+        params: TypedSubRange<TsFnParam>,
+        type_ann: Option<TsTypeAnn>,
+        type_params: Option<TsTypeParamDecl>,
+    ) -> TsTypeElement {
+        TsTypeElement::TsMethodSignature(
+            self.ts_method_signature(span, key, computed, optional, params, type_ann, type_params)
+                .into(),
+        )
+    }
+    #[inline]
+    pub fn ts_type_element_ts_index_signature(
+        &mut self,
+        span: Span,
+        params: TypedSubRange<TsFnParam>,
+        type_ann: Option<TsTypeAnn>,
+        readonly: bool,
+        is_static: bool,
+    ) -> TsTypeElement {
+        TsTypeElement::TsIndexSignature(
+            self.ts_index_signature(span, params, type_ann, readonly, is_static)
+                .into(),
+        )
+    }
+    #[inline]
+    pub fn ts_call_signature_decl(
+        &mut self,
+        span: Span,
+        params: TypedSubRange<TsFnParam>,
+        type_ann: Option<TsTypeAnn>,
+        type_params: Option<TsTypeParamDecl>,
+    ) -> TsCallSignatureDecl {
+        let _f0 = self.add_extra(params.to_extra_data());
+        let _f1 = self.add_extra(type_ann.to_extra_data());
+        let _f2 = self.add_extra(type_params.to_extra_data());
+        TsCallSignatureDecl(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsCallSignatureDecl,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_construct_signature_decl(
+        &mut self,
+        span: Span,
+        params: TypedSubRange<TsFnParam>,
+        type_ann: Option<TsTypeAnn>,
+        type_params: Option<TsTypeParamDecl>,
+    ) -> TsConstructSignatureDecl {
+        let _f0 = self.add_extra(params.to_extra_data());
+        let _f1 = self.add_extra(type_ann.to_extra_data());
+        let _f2 = self.add_extra(type_params.to_extra_data());
+        TsConstructSignatureDecl(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsConstructSignatureDecl,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_property_signature(
+        &mut self,
+        span: Span,
+        readonly: bool,
+        key: Expr,
+        computed: bool,
+        optional: bool,
+        type_ann: Option<TsTypeAnn>,
+    ) -> TsPropertySignature {
+        let _f0 = self.add_extra(key.to_extra_data());
+        let _f1 = self.add_extra(type_ann.to_extra_data());
+        TsPropertySignature(
+            self.add_node(AstNode {
+                span,
+                kind: NodeKind::TsPropertySignature,
+                inline_data: (0u32
+                    | readonly as u32
+                    | ((computed as u32) << 8usize)
+                    | ((optional as u32) << 16usize))
+                    .into(),
+                data: NodeData {
+                    extra_data_start: _f0,
+                },
+            }),
+        )
+    }
+    #[inline]
+    pub fn ts_getter_signature(
+        &mut self,
+        span: Span,
+        key: Expr,
+        computed: bool,
+        type_ann: Option<TsTypeAnn>,
+    ) -> TsGetterSignature {
+        let _f0 = self.add_extra(key.to_extra_data());
+        let _f1 = self.add_extra(type_ann.to_extra_data());
+        TsGetterSignature(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsGetterSignature,
+            inline_data: (0u32 | computed as u32).into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_setter_signature(
+        &mut self,
+        span: Span,
+        key: Expr,
+        computed: bool,
+        param: TsFnParam,
+    ) -> TsSetterSignature {
+        let _f0 = self.add_extra(key.to_extra_data());
+        let _f1 = self.add_extra(param.to_extra_data());
+        TsSetterSignature(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsSetterSignature,
+            inline_data: (0u32 | computed as u32).into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_method_signature(
+        &mut self,
+        span: Span,
+        key: Expr,
+        computed: bool,
+        optional: bool,
+        params: TypedSubRange<TsFnParam>,
+        type_ann: Option<TsTypeAnn>,
+        type_params: Option<TsTypeParamDecl>,
+    ) -> TsMethodSignature {
+        let _f0 = self.add_extra(key.to_extra_data());
+        let _f1 = self.add_extra(computed.to_extra_data());
+        let _f2 = self.add_extra(optional.to_extra_data());
+        let _f3 = self.add_extra(params.to_extra_data());
+        let _f4 = self.add_extra(type_ann.to_extra_data());
+        let _f5 = self.add_extra(type_params.to_extra_data());
+        TsMethodSignature(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsMethodSignature,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_index_signature(
+        &mut self,
+        span: Span,
+        params: TypedSubRange<TsFnParam>,
+        type_ann: Option<TsTypeAnn>,
+        readonly: bool,
+        is_static: bool,
+    ) -> TsIndexSignature {
+        let _f0 = self.add_extra(params.to_extra_data());
+        let _f1 = self.add_extra(type_ann.to_extra_data());
+        let _f2 = self.add_extra(readonly.to_extra_data());
+        let _f3 = self.add_extra(is_static.to_extra_data());
+        TsIndexSignature(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsIndexSignature,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_type_ts_keyword_type(&mut self, span: Span, kind: TsKeywordTypeKind) -> TsType {
+        TsType::TsKeywordType(self.ts_keyword_type(span, kind).into())
+    }
+    #[inline]
+    pub fn ts_type_ts_this_type(&mut self, span: Span) -> TsType {
+        TsType::TsThisType(self.ts_this_type(span).into())
+    }
+    #[inline]
+    pub fn ts_type_ts_fn_or_constructor_type_ts_fn_type(
+        &mut self,
+        span: Span,
+        params: TypedSubRange<TsFnParam>,
+        type_params: Option<TsTypeParamDecl>,
+        type_ann: TsTypeAnn,
+    ) -> TsType {
+        TsType::TsFnOrConstructorType(TsFnOrConstructorType::TsFnType(
+            self.ts_fn_type(span, params, type_params, type_ann).into(),
+        ))
+    }
+    #[inline]
+    pub fn ts_type_ts_fn_or_constructor_type_ts_constructor_type(
+        &mut self,
+        span: Span,
+        params: TypedSubRange<TsFnParam>,
+        type_params: Option<TsTypeParamDecl>,
+        type_ann: TsTypeAnn,
+        is_abstract: bool,
+    ) -> TsType {
+        TsType::TsFnOrConstructorType(TsFnOrConstructorType::TsConstructorType(
+            self.ts_constructor_type(span, params, type_params, type_ann, is_abstract)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn ts_type_ts_type_ref(
+        &mut self,
+        span: Span,
+        type_name: TsEntityName,
+        type_params: Option<TsTypeParamInstantiation>,
+    ) -> TsType {
+        TsType::TsTypeRef(self.ts_type_ref(span, type_name, type_params).into())
+    }
+    #[inline]
+    pub fn ts_type_ts_type_query(
+        &mut self,
+        span: Span,
+        expr_name: TsTypeQueryExpr,
+        type_args: Option<TsTypeParamInstantiation>,
+    ) -> TsType {
+        TsType::TsTypeQuery(self.ts_type_query(span, expr_name, type_args).into())
+    }
+    #[inline]
+    pub fn ts_type_ts_type_lit(
+        &mut self,
+        span: Span,
+        members: TypedSubRange<TsTypeElement>,
+    ) -> TsType {
+        TsType::TsTypeLit(self.ts_type_lit(span, members).into())
+    }
+    #[inline]
+    pub fn ts_type_ts_array_type(&mut self, span: Span, elem_type: TsType) -> TsType {
+        TsType::TsArrayType(self.ts_array_type(span, elem_type).into())
+    }
+    #[inline]
+    pub fn ts_type_ts_tuple_type(
+        &mut self,
+        span: Span,
+        elem_types: TypedSubRange<TsTupleElement>,
+    ) -> TsType {
+        TsType::TsTupleType(self.ts_tuple_type(span, elem_types).into())
+    }
+    #[inline]
+    pub fn ts_type_ts_optional_type(&mut self, span: Span, type_ann: TsType) -> TsType {
+        TsType::TsOptionalType(self.ts_optional_type(span, type_ann).into())
+    }
+    #[inline]
+    pub fn ts_type_ts_rest_type(&mut self, span: Span, type_ann: TsType) -> TsType {
+        TsType::TsRestType(self.ts_rest_type(span, type_ann).into())
+    }
+    #[inline]
+    pub fn ts_type_ts_union_or_intersection_type_ts_union_type(
+        &mut self,
+        span: Span,
+        types: TypedSubRange<TsType>,
+    ) -> TsType {
+        TsType::TsUnionOrIntersectionType(TsUnionOrIntersectionType::TsUnionType(
+            self.ts_union_type(span, types).into(),
+        ))
+    }
+    #[inline]
+    pub fn ts_type_ts_union_or_intersection_type_ts_intersection_type(
+        &mut self,
+        span: Span,
+        types: TypedSubRange<TsType>,
+    ) -> TsType {
+        TsType::TsUnionOrIntersectionType(TsUnionOrIntersectionType::TsIntersectionType(
+            self.ts_intersection_type(span, types).into(),
+        ))
+    }
+    #[inline]
+    pub fn ts_type_ts_conditional_type(
+        &mut self,
+        span: Span,
+        check_type: TsType,
+        extends_type: TsType,
+        true_type: TsType,
+        false_type: TsType,
+    ) -> TsType {
+        TsType::TsConditionalType(
+            self.ts_conditional_type(span, check_type, extends_type, true_type, false_type)
+                .into(),
+        )
+    }
+    #[inline]
+    pub fn ts_type_ts_infer_type(&mut self, span: Span, type_param: TsTypeParam) -> TsType {
+        TsType::TsInferType(self.ts_infer_type(span, type_param).into())
+    }
+    #[inline]
+    pub fn ts_type_ts_parenthesized_type(&mut self, span: Span, type_ann: TsType) -> TsType {
+        TsType::TsParenthesizedType(self.ts_parenthesized_type(span, type_ann).into())
+    }
+    #[inline]
+    pub fn ts_type_ts_type_operator(
+        &mut self,
+        span: Span,
+        op: TsTypeOperatorOp,
+        type_ann: TsType,
+    ) -> TsType {
+        TsType::TsTypeOperator(self.ts_type_operator(span, op, type_ann).into())
+    }
+    #[inline]
+    pub fn ts_type_ts_indexed_access_type(
+        &mut self,
+        span: Span,
+        readonly: bool,
+        obj_type: TsType,
+        index_type: TsType,
+    ) -> TsType {
+        TsType::TsIndexedAccessType(
+            self.ts_indexed_access_type(span, readonly, obj_type, index_type)
+                .into(),
+        )
+    }
+    #[inline]
+    pub fn ts_type_ts_mapped_type(
+        &mut self,
+        span: Span,
+        readonly: Option<TruePlusMinus>,
+        type_param: TsTypeParam,
+        name_type: Option<TsType>,
+        optional: Option<TruePlusMinus>,
+        type_ann: Option<TsType>,
+    ) -> TsType {
+        TsType::TsMappedType(
+            self.ts_mapped_type(span, readonly, type_param, name_type, optional, type_ann)
+                .into(),
+        )
+    }
+    #[inline]
+    pub fn ts_type_ts_lit_type(&mut self, span: Span, lit: TsLit) -> TsType {
+        TsType::TsLitType(self.ts_lit_type(span, lit).into())
+    }
+    #[inline]
+    pub fn ts_type_ts_type_predicate(
+        &mut self,
+        span: Span,
+        asserts: bool,
+        param_name: TsThisTypeOrIdent,
+        type_ann: Option<TsTypeAnn>,
+    ) -> TsType {
+        TsType::TsTypePredicate(
+            self.ts_type_predicate(span, asserts, param_name, type_ann)
+                .into(),
+        )
+    }
+    #[inline]
+    pub fn ts_type_ts_import_type(
+        &mut self,
+        span: Span,
+        arg: Str,
+        qualifier: Option<TsEntityName>,
+        type_args: Option<TsTypeParamInstantiation>,
+        attributes: Option<TsImportCallOptions>,
+    ) -> TsType {
+        TsType::TsImportType(
+            self.ts_import_type(span, arg, qualifier, type_args, attributes)
+                .into(),
+        )
+    }
+    #[inline]
+    pub fn ts_fn_or_constructor_type_ts_fn_type(
+        &mut self,
+        span: Span,
+        params: TypedSubRange<TsFnParam>,
+        type_params: Option<TsTypeParamDecl>,
+        type_ann: TsTypeAnn,
+    ) -> TsFnOrConstructorType {
+        TsFnOrConstructorType::TsFnType(self.ts_fn_type(span, params, type_params, type_ann).into())
+    }
+    #[inline]
+    pub fn ts_fn_or_constructor_type_ts_constructor_type(
+        &mut self,
+        span: Span,
+        params: TypedSubRange<TsFnParam>,
+        type_params: Option<TsTypeParamDecl>,
+        type_ann: TsTypeAnn,
+        is_abstract: bool,
+    ) -> TsFnOrConstructorType {
+        TsFnOrConstructorType::TsConstructorType(
+            self.ts_constructor_type(span, params, type_params, type_ann, is_abstract)
+                .into(),
+        )
+    }
+    #[inline]
+    pub fn ts_keyword_type(&mut self, span: Span, kind: TsKeywordTypeKind) -> TsKeywordType {
+        TsKeywordType(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsKeywordType,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                inline_data: kind as u32,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_this_type(&mut self, span: Span) -> TsThisType {
+        TsThisType(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsThisType,
+            inline_data: 0u32.into(),
+            data: NodeData { empty: () },
+        }))
+    }
+    #[inline]
+    pub fn ts_fn_param_binding_ident(&mut self, span: Span, id: Ident) -> TsFnParam {
+        TsFnParam::Ident(self.binding_ident(span, id).into())
+    }
+    #[inline]
+    pub fn ts_fn_param_array_pat(
+        &mut self,
+        span: Span,
+        elems: TypedSubRange<Option<Pat>>,
+        optional: bool,
+    ) -> TsFnParam {
+        TsFnParam::Array(self.array_pat(span, elems, optional).into())
+    }
+    #[inline]
+    pub fn ts_fn_param_rest_pat(&mut self, span: Span, dot3_token: Span, arg: Pat) -> TsFnParam {
+        TsFnParam::Rest(self.rest_pat(span, dot3_token, arg).into())
+    }
+    #[inline]
+    pub fn ts_fn_param_object_pat(
+        &mut self,
+        span: Span,
+        props: TypedSubRange<ObjectPatProp>,
+        optional: bool,
+    ) -> TsFnParam {
+        TsFnParam::Object(self.object_pat(span, props, optional).into())
+    }
+    #[inline]
+    pub fn ts_fn_type(
+        &mut self,
+        span: Span,
+        params: TypedSubRange<TsFnParam>,
+        type_params: Option<TsTypeParamDecl>,
+        type_ann: TsTypeAnn,
+    ) -> TsFnType {
+        let _f0 = self.add_extra(params.to_extra_data());
+        let _f1 = self.add_extra(type_params.to_extra_data());
+        let _f2 = self.add_extra(type_ann.to_extra_data());
+        TsFnType(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsFnType,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_constructor_type(
+        &mut self,
+        span: Span,
+        params: TypedSubRange<TsFnParam>,
+        type_params: Option<TsTypeParamDecl>,
+        type_ann: TsTypeAnn,
+        is_abstract: bool,
+    ) -> TsConstructorType {
+        let _f0 = self.add_extra(params.to_extra_data());
+        let _f1 = self.add_extra(type_params.to_extra_data());
+        let _f2 = self.add_extra(type_ann.to_extra_data());
+        let _f3 = self.add_extra(is_abstract.to_extra_data());
+        TsConstructorType(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsConstructorType,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_type_ref(
+        &mut self,
+        span: Span,
+        type_name: TsEntityName,
+        type_params: Option<TsTypeParamInstantiation>,
+    ) -> TsTypeRef {
+        let _f0 = self.add_extra(type_name.to_extra_data());
+        let _f1 = self.add_extra(type_params.to_extra_data());
+        TsTypeRef(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsTypeRef,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_type_predicate(
+        &mut self,
+        span: Span,
+        asserts: bool,
+        param_name: TsThisTypeOrIdent,
+        type_ann: Option<TsTypeAnn>,
+    ) -> TsTypePredicate {
+        let _f0 = self.add_extra(param_name.to_extra_data());
+        let _f1 = self.add_extra(type_ann.to_extra_data());
+        TsTypePredicate(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsTypePredicate,
+            inline_data: (0u32 | asserts as u32).into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_this_type_or_ident_ts_this_type(&mut self, span: Span) -> TsThisTypeOrIdent {
+        TsThisTypeOrIdent::TsThisType(self.ts_this_type(span).into())
+    }
+    #[inline]
+    pub fn ts_this_type_or_ident_ident(
+        &mut self,
+        span: Span,
+        sym: Utf8Ref,
+        optional: bool,
+    ) -> TsThisTypeOrIdent {
+        TsThisTypeOrIdent::Ident(self.ident(span, sym, optional).into())
+    }
+    #[inline]
+    pub fn ts_type_query(
+        &mut self,
+        span: Span,
+        expr_name: TsTypeQueryExpr,
+        type_args: Option<TsTypeParamInstantiation>,
+    ) -> TsTypeQuery {
+        let _f0 = self.add_extra(expr_name.to_extra_data());
+        let _f1 = self.add_extra(type_args.to_extra_data());
+        TsTypeQuery(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsTypeQuery,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_type_query_expr_ts_entity_name_ts_qualified_name(
+        &mut self,
+        span: Span,
+        left: TsEntityName,
+        right: IdentName,
+    ) -> TsTypeQueryExpr {
+        TsTypeQueryExpr::TsEntityName(TsEntityName::TsQualifiedName(
+            self.ts_qualified_name(span, left, right).into(),
+        ))
+    }
+    #[inline]
+    pub fn ts_type_query_expr_ts_entity_name_ident(
+        &mut self,
+        span: Span,
+        sym: Utf8Ref,
+        optional: bool,
+    ) -> TsTypeQueryExpr {
+        TsTypeQueryExpr::TsEntityName(TsEntityName::Ident(self.ident(span, sym, optional).into()))
+    }
+    #[inline]
+    pub fn ts_type_query_expr_ts_import_type(
+        &mut self,
+        span: Span,
+        arg: Str,
+        qualifier: Option<TsEntityName>,
+        type_args: Option<TsTypeParamInstantiation>,
+        attributes: Option<TsImportCallOptions>,
+    ) -> TsTypeQueryExpr {
+        TsTypeQueryExpr::Import(
+            self.ts_import_type(span, arg, qualifier, type_args, attributes)
+                .into(),
+        )
+    }
+    #[inline]
+    pub fn ts_import_call_options(&mut self, span: Span, with: ObjectLit) -> TsImportCallOptions {
+        TsImportCallOptions(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsImportCallOptions,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                inline_data: with.node_id().index() as u32,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_import_type(
+        &mut self,
+        span: Span,
+        arg: Str,
+        qualifier: Option<TsEntityName>,
+        type_args: Option<TsTypeParamInstantiation>,
+        attributes: Option<TsImportCallOptions>,
+    ) -> TsImportType {
+        let _f0 = self.add_extra(arg.to_extra_data());
+        let _f1 = self.add_extra(qualifier.to_extra_data());
+        let _f2 = self.add_extra(type_args.to_extra_data());
+        let _f3 = self.add_extra(attributes.to_extra_data());
+        TsImportType(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsImportType,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_type_lit(&mut self, span: Span, members: TypedSubRange<TsTypeElement>) -> TsTypeLit {
+        let _f0 = self.add_extra(members.to_extra_data());
+        TsTypeLit(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsTypeLit,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_array_type(&mut self, span: Span, elem_type: TsType) -> TsArrayType {
+        let _f0 = self.add_extra(elem_type.to_extra_data());
+        TsArrayType(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsArrayType,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_tuple_type(
+        &mut self,
+        span: Span,
+        elem_types: TypedSubRange<TsTupleElement>,
+    ) -> TsTupleType {
+        let _f0 = self.add_extra(elem_types.to_extra_data());
+        TsTupleType(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsTupleType,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_tuple_element(
+        &mut self,
+        span: Span,
+        label: Option<Pat>,
+        ty: TsType,
+    ) -> TsTupleElement {
+        let _f0 = self.add_extra(label.to_extra_data());
+        let _f1 = self.add_extra(ty.to_extra_data());
+        TsTupleElement(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsTupleElement,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_optional_type(&mut self, span: Span, type_ann: TsType) -> TsOptionalType {
+        let _f0 = self.add_extra(type_ann.to_extra_data());
+        TsOptionalType(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsOptionalType,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_rest_type(&mut self, span: Span, type_ann: TsType) -> TsRestType {
+        let _f0 = self.add_extra(type_ann.to_extra_data());
+        TsRestType(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsRestType,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_union_or_intersection_type_ts_union_type(
+        &mut self,
+        span: Span,
+        types: TypedSubRange<TsType>,
+    ) -> TsUnionOrIntersectionType {
+        TsUnionOrIntersectionType::TsUnionType(self.ts_union_type(span, types).into())
+    }
+    #[inline]
+    pub fn ts_union_or_intersection_type_ts_intersection_type(
+        &mut self,
+        span: Span,
+        types: TypedSubRange<TsType>,
+    ) -> TsUnionOrIntersectionType {
+        TsUnionOrIntersectionType::TsIntersectionType(self.ts_intersection_type(span, types).into())
+    }
+    #[inline]
+    pub fn ts_union_type(&mut self, span: Span, types: TypedSubRange<TsType>) -> TsUnionType {
+        let _f0 = self.add_extra(types.to_extra_data());
+        TsUnionType(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsUnionType,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_intersection_type(
+        &mut self,
+        span: Span,
+        types: TypedSubRange<TsType>,
+    ) -> TsIntersectionType {
+        let _f0 = self.add_extra(types.to_extra_data());
+        TsIntersectionType(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsIntersectionType,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_conditional_type(
+        &mut self,
+        span: Span,
+        check_type: TsType,
+        extends_type: TsType,
+        true_type: TsType,
+        false_type: TsType,
+    ) -> TsConditionalType {
+        let _f0 = self.add_extra(check_type.to_extra_data());
+        let _f1 = self.add_extra(extends_type.to_extra_data());
+        let _f2 = self.add_extra(true_type.to_extra_data());
+        let _f3 = self.add_extra(false_type.to_extra_data());
+        TsConditionalType(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsConditionalType,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_infer_type(&mut self, span: Span, type_param: TsTypeParam) -> TsInferType {
+        TsInferType(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsInferType,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                inline_data: type_param.node_id().index() as u32,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_parenthesized_type(&mut self, span: Span, type_ann: TsType) -> TsParenthesizedType {
+        let _f0 = self.add_extra(type_ann.to_extra_data());
+        TsParenthesizedType(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsParenthesizedType,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_type_operator(
+        &mut self,
+        span: Span,
+        op: TsTypeOperatorOp,
+        type_ann: TsType,
+    ) -> TsTypeOperator {
+        let _f0 = self.add_extra(type_ann.to_extra_data());
+        TsTypeOperator(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsTypeOperator,
+            inline_data: (0u32 | op as u32).into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_indexed_access_type(
+        &mut self,
+        span: Span,
+        readonly: bool,
+        obj_type: TsType,
+        index_type: TsType,
+    ) -> TsIndexedAccessType {
+        let _f0 = self.add_extra(obj_type.to_extra_data());
+        let _f1 = self.add_extra(index_type.to_extra_data());
+        TsIndexedAccessType(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsIndexedAccessType,
+            inline_data: (0u32 | readonly as u32).into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_mapped_type(
+        &mut self,
+        span: Span,
+        readonly: Option<TruePlusMinus>,
+        type_param: TsTypeParam,
+        name_type: Option<TsType>,
+        optional: Option<TruePlusMinus>,
+        type_ann: Option<TsType>,
+    ) -> TsMappedType {
+        let _f0 = self.add_extra(readonly.to_extra_data());
+        let _f1 = self.add_extra(type_param.to_extra_data());
+        let _f2 = self.add_extra(name_type.to_extra_data());
+        let _f3 = self.add_extra(optional.to_extra_data());
+        let _f4 = self.add_extra(type_ann.to_extra_data());
+        TsMappedType(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsMappedType,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_lit_type(&mut self, span: Span, lit: TsLit) -> TsLitType {
+        let _f0 = self.add_extra(lit.to_extra_data());
+        TsLitType(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsLitType,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_lit_number(&mut self, span: Span, value: f64, raw: OptionalUtf8Ref) -> TsLit {
+        TsLit::Number(self.number(span, value, raw).into())
+    }
+    #[inline]
+    pub fn ts_lit_str(&mut self, span: Span, value: Wtf8Ref, raw: OptionalUtf8Ref) -> TsLit {
+        TsLit::Str(self.str(span, value, raw).into())
+    }
+    #[inline]
+    pub fn ts_lit_bool(&mut self, span: Span, value: bool) -> TsLit {
+        TsLit::Bool(self.bool(span, value).into())
+    }
+    #[inline]
+    pub fn ts_lit_big_int(&mut self, span: Span, value: BigIntId, raw: OptionalUtf8Ref) -> TsLit {
+        TsLit::BigInt(self.big_int(span, value, raw).into())
+    }
+    #[inline]
+    pub fn ts_lit_ts_tpl_lit_type(
+        &mut self,
+        span: Span,
+        types: TypedSubRange<TsType>,
+        quasis: TypedSubRange<TplElement>,
+    ) -> TsLit {
+        TsLit::Tpl(self.ts_tpl_lit_type(span, types, quasis).into())
+    }
+    #[inline]
+    pub fn ts_tpl_lit_type(
+        &mut self,
+        span: Span,
+        types: TypedSubRange<TsType>,
+        quasis: TypedSubRange<TplElement>,
+    ) -> TsTplLitType {
+        let _f0 = self.add_extra(types.to_extra_data());
+        let _f1 = self.add_extra(quasis.to_extra_data());
+        TsTplLitType(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsTplLitType,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_interface_decl(
+        &mut self,
+        span: Span,
+        id: Ident,
+        declare: bool,
+        type_params: Option<TsTypeParamDecl>,
+        extends: TypedSubRange<TsExprWithTypeArgs>,
+        body: TsInterfaceBody,
+    ) -> TsInterfaceDecl {
+        let _f0 = self.add_extra(id.to_extra_data());
+        let _f1 = self.add_extra(declare.to_extra_data());
+        let _f2 = self.add_extra(type_params.to_extra_data());
+        let _f3 = self.add_extra(extends.to_extra_data());
+        let _f4 = self.add_extra(body.to_extra_data());
+        TsInterfaceDecl(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsInterfaceDecl,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_interface_body(
+        &mut self,
+        span: Span,
+        body: TypedSubRange<TsTypeElement>,
+    ) -> TsInterfaceBody {
+        let _f0 = self.add_extra(body.to_extra_data());
+        TsInterfaceBody(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsInterfaceBody,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_expr_with_type_args(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_args: Option<TsTypeParamInstantiation>,
+    ) -> TsExprWithTypeArgs {
+        let _f0 = self.add_extra(expr.to_extra_data());
+        let _f1 = self.add_extra(type_args.to_extra_data());
+        TsExprWithTypeArgs(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsExprWithTypeArgs,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_type_alias_decl(
+        &mut self,
+        span: Span,
+        declare: bool,
+        id: Ident,
+        type_params: Option<TsTypeParamDecl>,
+        type_ann: TsType,
+    ) -> TsTypeAliasDecl {
+        let _f0 = self.add_extra(id.to_extra_data());
+        let _f1 = self.add_extra(type_params.to_extra_data());
+        let _f2 = self.add_extra(type_ann.to_extra_data());
+        TsTypeAliasDecl(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsTypeAliasDecl,
+            inline_data: (0u32 | declare as u32).into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_enum_decl(
+        &mut self,
+        span: Span,
+        declare: bool,
+        is_const: bool,
+        id: Ident,
+        members: TypedSubRange<TsEnumMember>,
+    ) -> TsEnumDecl {
+        let _f0 = self.add_extra(declare.to_extra_data());
+        let _f1 = self.add_extra(is_const.to_extra_data());
+        let _f2 = self.add_extra(id.to_extra_data());
+        let _f3 = self.add_extra(members.to_extra_data());
+        TsEnumDecl(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsEnumDecl,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_enum_member(
+        &mut self,
+        span: Span,
+        id: TsEnumMemberId,
+        init: Option<Expr>,
+    ) -> TsEnumMember {
+        let _f0 = self.add_extra(id.to_extra_data());
+        let _f1 = self.add_extra(init.to_extra_data());
+        TsEnumMember(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsEnumMember,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_enum_member_id_ident(
+        &mut self,
+        span: Span,
+        sym: Utf8Ref,
+        optional: bool,
+    ) -> TsEnumMemberId {
+        TsEnumMemberId::Ident(self.ident(span, sym, optional).into())
+    }
+    #[inline]
+    pub fn ts_enum_member_id_str(
+        &mut self,
+        span: Span,
+        value: Wtf8Ref,
+        raw: OptionalUtf8Ref,
+    ) -> TsEnumMemberId {
+        TsEnumMemberId::Str(self.str(span, value, raw).into())
+    }
+    #[inline]
+    pub fn ts_module_decl(
+        &mut self,
+        span: Span,
+        declare: bool,
+        global: bool,
+        namespace: bool,
+        id: TsModuleName,
+        body: Option<TsNamespaceBody>,
+    ) -> TsModuleDecl {
+        let _f0 = self.add_extra(id.to_extra_data());
+        let _f1 = self.add_extra(body.to_extra_data());
+        TsModuleDecl(
+            self.add_node(AstNode {
+                span,
+                kind: NodeKind::TsModuleDecl,
+                inline_data: (0u32
+                    | declare as u32
+                    | ((global as u32) << 8usize)
+                    | ((namespace as u32) << 16usize))
+                    .into(),
+                data: NodeData {
+                    extra_data_start: _f0,
+                },
+            }),
+        )
+    }
+    #[inline]
+    pub fn ts_namespace_body_ts_module_block(
+        &mut self,
+        span: Span,
+        body: TypedSubRange<ModuleItem>,
+    ) -> TsNamespaceBody {
+        TsNamespaceBody::TsModuleBlock(self.ts_module_block(span, body).into())
+    }
+    #[inline]
+    pub fn ts_namespace_body_ts_namespace_decl(
+        &mut self,
+        span: Span,
+        declare: bool,
+        global: bool,
+        id: Ident,
+        body: TsNamespaceBody,
+    ) -> TsNamespaceBody {
+        TsNamespaceBody::TsNamespaceDecl(
+            self.ts_namespace_decl(span, declare, global, id, body)
+                .into(),
+        )
+    }
+    #[inline]
+    pub fn ts_module_block(
+        &mut self,
+        span: Span,
+        body: TypedSubRange<ModuleItem>,
+    ) -> TsModuleBlock {
+        let _f0 = self.add_extra(body.to_extra_data());
+        TsModuleBlock(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsModuleBlock,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_namespace_decl(
+        &mut self,
+        span: Span,
+        declare: bool,
+        global: bool,
+        id: Ident,
+        body: TsNamespaceBody,
+    ) -> TsNamespaceDecl {
+        let _f0 = self.add_extra(id.to_extra_data());
+        let _f1 = self.add_extra(body.to_extra_data());
+        TsNamespaceDecl(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsNamespaceDecl,
+            inline_data: (0u32 | declare as u32 | ((global as u32) << 8usize)).into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_module_name_ident(
+        &mut self,
+        span: Span,
+        sym: Utf8Ref,
+        optional: bool,
+    ) -> TsModuleName {
+        TsModuleName::Ident(self.ident(span, sym, optional).into())
+    }
+    #[inline]
+    pub fn ts_module_name_str(
+        &mut self,
+        span: Span,
+        value: Wtf8Ref,
+        raw: OptionalUtf8Ref,
+    ) -> TsModuleName {
+        TsModuleName::Str(self.str(span, value, raw).into())
+    }
+    #[inline]
+    pub fn ts_import_equals_decl(
+        &mut self,
+        span: Span,
+        is_export: bool,
+        is_type_only: bool,
+        id: Ident,
+        module_ref: TsModuleRef,
+    ) -> TsImportEqualsDecl {
+        let _f0 = self.add_extra(id.to_extra_data());
+        let _f1 = self.add_extra(module_ref.to_extra_data());
+        TsImportEqualsDecl(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsImportEqualsDecl,
+            inline_data: (0u32 | is_export as u32 | ((is_type_only as u32) << 8usize)).into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_module_ref_ts_entity_name_ts_qualified_name(
+        &mut self,
+        span: Span,
+        left: TsEntityName,
+        right: IdentName,
+    ) -> TsModuleRef {
+        TsModuleRef::TsEntityName(TsEntityName::TsQualifiedName(
+            self.ts_qualified_name(span, left, right).into(),
+        ))
+    }
+    #[inline]
+    pub fn ts_module_ref_ts_entity_name_ident(
+        &mut self,
+        span: Span,
+        sym: Utf8Ref,
+        optional: bool,
+    ) -> TsModuleRef {
+        TsModuleRef::TsEntityName(TsEntityName::Ident(self.ident(span, sym, optional).into()))
+    }
+    #[inline]
+    pub fn ts_module_ref_ts_external_module_ref(&mut self, span: Span, expr: Str) -> TsModuleRef {
+        TsModuleRef::TsExternalModuleRef(self.ts_external_module_ref(span, expr).into())
+    }
+    #[inline]
+    pub fn ts_external_module_ref(&mut self, span: Span, expr: Str) -> TsExternalModuleRef {
+        TsExternalModuleRef(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsExternalModuleRef,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                inline_data: expr.node_id().index() as u32,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_export_assignment(&mut self, span: Span, expr: Expr) -> TsExportAssignment {
+        let _f0 = self.add_extra(expr.to_extra_data());
+        TsExportAssignment(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsExportAssignment,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_namespace_export_decl(&mut self, span: Span, id: Ident) -> TsNamespaceExportDecl {
+        TsNamespaceExportDecl(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsNamespaceExportDecl,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                inline_data: id.node_id().index() as u32,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_as_expr(&mut self, span: Span, expr: Expr, type_ann: TsType) -> TsAsExpr {
+        let _f0 = self.add_extra(expr.to_extra_data());
+        let _f1 = self.add_extra(type_ann.to_extra_data());
+        TsAsExpr(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsAsExpr,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_type_assertion(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> TsTypeAssertion {
+        let _f0 = self.add_extra(expr.to_extra_data());
+        let _f1 = self.add_extra(type_ann.to_extra_data());
+        TsTypeAssertion(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsTypeAssertion,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_non_null_expr(&mut self, span: Span, expr: Expr) -> TsNonNullExpr {
+        let _f0 = self.add_extra(expr.to_extra_data());
+        TsNonNullExpr(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsNonNullExpr,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_satisfies_expr(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_ann: TsType,
+    ) -> TsSatisfiesExpr {
+        let _f0 = self.add_extra(expr.to_extra_data());
+        let _f1 = self.add_extra(type_ann.to_extra_data());
+        TsSatisfiesExpr(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsSatisfiesExpr,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_const_assertion(&mut self, span: Span, expr: Expr) -> TsConstAssertion {
+        let _f0 = self.add_extra(expr.to_extra_data());
+        TsConstAssertion(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsConstAssertion,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
+    #[inline]
+    pub fn ts_instantiation(
+        &mut self,
+        span: Span,
+        expr: Expr,
+        type_args: TsTypeParamInstantiation,
+    ) -> TsInstantiation {
+        let _f0 = self.add_extra(expr.to_extra_data());
+        let _f1 = self.add_extra(type_args.to_extra_data());
+        TsInstantiation(self.add_node(AstNode {
+            span,
+            kind: NodeKind::TsInstantiation,
+            inline_data: 0u32.into(),
+            data: NodeData {
+                extra_data_start: _f0,
+            },
+        }))
+    }
 }

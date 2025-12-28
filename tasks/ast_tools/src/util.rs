@@ -219,11 +219,16 @@ pub fn safe_ident(name: &str) -> Ident {
     }
 }
 
+// These ast enums have >8 bytes sizes
+pub(crate) static RESERVED_ENUMS: PhfSet<&'static str> = phf_set! {
+    "AssignTarget", "ModuleItem", "TsType"
+};
+
 pub fn map_field_type_to_extra_field(ast: &AstType, schema: &Schema) -> String {
     match ast {
         AstType::Struct(_) => "node".to_owned(),
         AstType::Enum(ast_enum) => {
-            if ast_enum.name == "AssignTarget" || ast_enum.name == "ModuleItem" {
+            if RESERVED_ENUMS.contains(&ast_enum.name) {
                 "node".to_owned()
             } else {
                 ast_enum.name.to_case(Case::Snake)
@@ -235,7 +240,7 @@ pub fn map_field_type_to_extra_field(ast: &AstType, schema: &Schema) -> String {
             match inner_ty {
                 AstType::Vec(_) => "optional_sub_range".to_owned(),
                 AstType::Enum(ast_enum) => {
-                    if ast_enum.name == "AssignTarget" || ast_enum.name == "ModuleItem" {
+                    if RESERVED_ENUMS.contains(&ast_enum.name) {
                         "optional_node".to_owned()
                     } else {
                         format!("optional_{}", ast_enum.name.to_case(Case::Snake))

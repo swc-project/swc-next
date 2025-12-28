@@ -1608,3 +1608,772 @@ impl CloneIn for JSXClosingFragment {
         ast.jsx_closing_fragment(span)
     }
 }
+impl CloneIn for TsTypeAnn {
+    type Cloned = TsTypeAnn;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        ast.ts_type_ann(span, type_ann)
+    }
+}
+impl CloneIn for TsTypeParamDecl {
+    type Cloned = TsTypeParamDecl;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let params = self.params(ast).clone_in(ast);
+        ast.ts_type_param_decl(span, params)
+    }
+}
+impl CloneIn for TsTypeParam {
+    type Cloned = TsTypeParam;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let name = self.name(ast).clone_in(ast);
+        let is_in = self.is_in(ast).clone_in(ast);
+        let is_out = self.is_out(ast).clone_in(ast);
+        let is_const = self.is_const(ast).clone_in(ast);
+        let constraint = self.constraint(ast).clone_in(ast);
+        let default = self.default(ast).clone_in(ast);
+        ast.ts_type_param(span, name, is_in, is_out, is_const, constraint, default)
+    }
+}
+impl CloneIn for TsTypeParamInstantiation {
+    type Cloned = TsTypeParamInstantiation;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let params = self.params(ast).clone_in(ast);
+        ast.ts_type_param_instantiation(span, params)
+    }
+}
+impl CloneIn for TsParamProp {
+    type Cloned = TsParamProp;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let decorators = self.decorators(ast).clone_in(ast);
+        let accessibility = self.accessibility(ast).clone_in(ast);
+        let is_override = self.is_override(ast).clone_in(ast);
+        let readonly = self.readonly(ast).clone_in(ast);
+        let param = self.param(ast).clone_in(ast);
+        ast.ts_param_prop(
+            span,
+            decorators,
+            accessibility,
+            is_override,
+            readonly,
+            param,
+        )
+    }
+}
+impl CloneIn for TsParamPropParam {
+    type Cloned = TsParamPropParam;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        match self {
+            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
+            Self::Assign(it) => Self::Assign(it.clone_in(ast)),
+        }
+    }
+}
+impl CloneIn for TsQualifiedName {
+    type Cloned = TsQualifiedName;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let left = self.left(ast).clone_in(ast);
+        let right = self.right(ast).clone_in(ast);
+        ast.ts_qualified_name(span, left, right)
+    }
+}
+impl CloneIn for TsEntityName {
+    type Cloned = TsEntityName;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        match self {
+            Self::TsQualifiedName(it) => Self::TsQualifiedName(it.clone_in(ast)),
+            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
+        }
+    }
+}
+impl CloneIn for TsTypeElement {
+    type Cloned = TsTypeElement;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        match self {
+            Self::TsCallSignatureDecl(it) => Self::TsCallSignatureDecl(it.clone_in(ast)),
+            Self::TsConstructSignatureDecl(it) => Self::TsConstructSignatureDecl(it.clone_in(ast)),
+            Self::TsPropertySignature(it) => Self::TsPropertySignature(it.clone_in(ast)),
+            Self::TsGetterSignature(it) => Self::TsGetterSignature(it.clone_in(ast)),
+            Self::TsSetterSignature(it) => Self::TsSetterSignature(it.clone_in(ast)),
+            Self::TsMethodSignature(it) => Self::TsMethodSignature(it.clone_in(ast)),
+            Self::TsIndexSignature(it) => Self::TsIndexSignature(it.clone_in(ast)),
+        }
+    }
+}
+impl CloneIn for TsCallSignatureDecl {
+    type Cloned = TsCallSignatureDecl;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let params = self.params(ast).clone_in(ast);
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        let type_params = self.type_params(ast).clone_in(ast);
+        ast.ts_call_signature_decl(span, params, type_ann, type_params)
+    }
+}
+impl CloneIn for TsConstructSignatureDecl {
+    type Cloned = TsConstructSignatureDecl;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let params = self.params(ast).clone_in(ast);
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        let type_params = self.type_params(ast).clone_in(ast);
+        ast.ts_construct_signature_decl(span, params, type_ann, type_params)
+    }
+}
+impl CloneIn for TsPropertySignature {
+    type Cloned = TsPropertySignature;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let readonly = self.readonly(ast).clone_in(ast);
+        let key = self.key(ast).clone_in(ast);
+        let computed = self.computed(ast).clone_in(ast);
+        let optional = self.optional(ast).clone_in(ast);
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        ast.ts_property_signature(span, readonly, key, computed, optional, type_ann)
+    }
+}
+impl CloneIn for TsGetterSignature {
+    type Cloned = TsGetterSignature;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let key = self.key(ast).clone_in(ast);
+        let computed = self.computed(ast).clone_in(ast);
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        ast.ts_getter_signature(span, key, computed, type_ann)
+    }
+}
+impl CloneIn for TsSetterSignature {
+    type Cloned = TsSetterSignature;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let key = self.key(ast).clone_in(ast);
+        let computed = self.computed(ast).clone_in(ast);
+        let param = self.param(ast).clone_in(ast);
+        ast.ts_setter_signature(span, key, computed, param)
+    }
+}
+impl CloneIn for TsMethodSignature {
+    type Cloned = TsMethodSignature;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let key = self.key(ast).clone_in(ast);
+        let computed = self.computed(ast).clone_in(ast);
+        let optional = self.optional(ast).clone_in(ast);
+        let params = self.params(ast).clone_in(ast);
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        let type_params = self.type_params(ast).clone_in(ast);
+        ast.ts_method_signature(span, key, computed, optional, params, type_ann, type_params)
+    }
+}
+impl CloneIn for TsIndexSignature {
+    type Cloned = TsIndexSignature;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let params = self.params(ast).clone_in(ast);
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        let readonly = self.readonly(ast).clone_in(ast);
+        let is_static = self.is_static(ast).clone_in(ast);
+        ast.ts_index_signature(span, params, type_ann, readonly, is_static)
+    }
+}
+impl CloneIn for TsType {
+    type Cloned = TsType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        match self {
+            Self::TsKeywordType(it) => Self::TsKeywordType(it.clone_in(ast)),
+            Self::TsThisType(it) => Self::TsThisType(it.clone_in(ast)),
+            Self::TsFnOrConstructorType(it) => Self::TsFnOrConstructorType(it.clone_in(ast)),
+            Self::TsTypeRef(it) => Self::TsTypeRef(it.clone_in(ast)),
+            Self::TsTypeQuery(it) => Self::TsTypeQuery(it.clone_in(ast)),
+            Self::TsTypeLit(it) => Self::TsTypeLit(it.clone_in(ast)),
+            Self::TsArrayType(it) => Self::TsArrayType(it.clone_in(ast)),
+            Self::TsTupleType(it) => Self::TsTupleType(it.clone_in(ast)),
+            Self::TsOptionalType(it) => Self::TsOptionalType(it.clone_in(ast)),
+            Self::TsRestType(it) => Self::TsRestType(it.clone_in(ast)),
+            Self::TsUnionOrIntersectionType(it) => {
+                Self::TsUnionOrIntersectionType(it.clone_in(ast))
+            }
+            Self::TsConditionalType(it) => Self::TsConditionalType(it.clone_in(ast)),
+            Self::TsInferType(it) => Self::TsInferType(it.clone_in(ast)),
+            Self::TsParenthesizedType(it) => Self::TsParenthesizedType(it.clone_in(ast)),
+            Self::TsTypeOperator(it) => Self::TsTypeOperator(it.clone_in(ast)),
+            Self::TsIndexedAccessType(it) => Self::TsIndexedAccessType(it.clone_in(ast)),
+            Self::TsMappedType(it) => Self::TsMappedType(it.clone_in(ast)),
+            Self::TsLitType(it) => Self::TsLitType(it.clone_in(ast)),
+            Self::TsTypePredicate(it) => Self::TsTypePredicate(it.clone_in(ast)),
+            Self::TsImportType(it) => Self::TsImportType(it.clone_in(ast)),
+        }
+    }
+}
+impl CloneIn for TsFnOrConstructorType {
+    type Cloned = TsFnOrConstructorType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        match self {
+            Self::TsFnType(it) => Self::TsFnType(it.clone_in(ast)),
+            Self::TsConstructorType(it) => Self::TsConstructorType(it.clone_in(ast)),
+        }
+    }
+}
+impl CloneIn for TsKeywordType {
+    type Cloned = TsKeywordType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let kind = self.kind(ast).clone_in(ast);
+        ast.ts_keyword_type(span, kind)
+    }
+}
+impl CloneIn for TsThisType {
+    type Cloned = TsThisType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        ast.ts_this_type(span)
+    }
+}
+impl CloneIn for TsFnParam {
+    type Cloned = TsFnParam;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        match self {
+            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
+            Self::Array(it) => Self::Array(it.clone_in(ast)),
+            Self::Rest(it) => Self::Rest(it.clone_in(ast)),
+            Self::Object(it) => Self::Object(it.clone_in(ast)),
+        }
+    }
+}
+impl CloneIn for TsFnType {
+    type Cloned = TsFnType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let params = self.params(ast).clone_in(ast);
+        let type_params = self.type_params(ast).clone_in(ast);
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        ast.ts_fn_type(span, params, type_params, type_ann)
+    }
+}
+impl CloneIn for TsConstructorType {
+    type Cloned = TsConstructorType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let params = self.params(ast).clone_in(ast);
+        let type_params = self.type_params(ast).clone_in(ast);
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        let is_abstract = self.is_abstract(ast).clone_in(ast);
+        ast.ts_constructor_type(span, params, type_params, type_ann, is_abstract)
+    }
+}
+impl CloneIn for TsTypeRef {
+    type Cloned = TsTypeRef;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let type_name = self.type_name(ast).clone_in(ast);
+        let type_params = self.type_params(ast).clone_in(ast);
+        ast.ts_type_ref(span, type_name, type_params)
+    }
+}
+impl CloneIn for TsTypePredicate {
+    type Cloned = TsTypePredicate;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let asserts = self.asserts(ast).clone_in(ast);
+        let param_name = self.param_name(ast).clone_in(ast);
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        ast.ts_type_predicate(span, asserts, param_name, type_ann)
+    }
+}
+impl CloneIn for TsThisTypeOrIdent {
+    type Cloned = TsThisTypeOrIdent;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        match self {
+            Self::TsThisType(it) => Self::TsThisType(it.clone_in(ast)),
+            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
+        }
+    }
+}
+impl CloneIn for TsTypeQuery {
+    type Cloned = TsTypeQuery;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let expr_name = self.expr_name(ast).clone_in(ast);
+        let type_args = self.type_args(ast).clone_in(ast);
+        ast.ts_type_query(span, expr_name, type_args)
+    }
+}
+impl CloneIn for TsTypeQueryExpr {
+    type Cloned = TsTypeQueryExpr;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        match self {
+            Self::TsEntityName(it) => Self::TsEntityName(it.clone_in(ast)),
+            Self::Import(it) => Self::Import(it.clone_in(ast)),
+        }
+    }
+}
+impl CloneIn for TsImportCallOptions {
+    type Cloned = TsImportCallOptions;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let with = self.with(ast).clone_in(ast);
+        ast.ts_import_call_options(span, with)
+    }
+}
+impl CloneIn for TsImportType {
+    type Cloned = TsImportType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let arg = self.arg(ast).clone_in(ast);
+        let qualifier = self.qualifier(ast).clone_in(ast);
+        let type_args = self.type_args(ast).clone_in(ast);
+        let attributes = self.attributes(ast).clone_in(ast);
+        ast.ts_import_type(span, arg, qualifier, type_args, attributes)
+    }
+}
+impl CloneIn for TsTypeLit {
+    type Cloned = TsTypeLit;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let members = self.members(ast).clone_in(ast);
+        ast.ts_type_lit(span, members)
+    }
+}
+impl CloneIn for TsArrayType {
+    type Cloned = TsArrayType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let elem_type = self.elem_type(ast).clone_in(ast);
+        ast.ts_array_type(span, elem_type)
+    }
+}
+impl CloneIn for TsTupleType {
+    type Cloned = TsTupleType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let elem_types = self.elem_types(ast).clone_in(ast);
+        ast.ts_tuple_type(span, elem_types)
+    }
+}
+impl CloneIn for TsTupleElement {
+    type Cloned = TsTupleElement;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let label = self.label(ast).clone_in(ast);
+        let ty = self.ty(ast).clone_in(ast);
+        ast.ts_tuple_element(span, label, ty)
+    }
+}
+impl CloneIn for TsOptionalType {
+    type Cloned = TsOptionalType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        ast.ts_optional_type(span, type_ann)
+    }
+}
+impl CloneIn for TsRestType {
+    type Cloned = TsRestType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        ast.ts_rest_type(span, type_ann)
+    }
+}
+impl CloneIn for TsUnionOrIntersectionType {
+    type Cloned = TsUnionOrIntersectionType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        match self {
+            Self::TsUnionType(it) => Self::TsUnionType(it.clone_in(ast)),
+            Self::TsIntersectionType(it) => Self::TsIntersectionType(it.clone_in(ast)),
+        }
+    }
+}
+impl CloneIn for TsUnionType {
+    type Cloned = TsUnionType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let types = self.types(ast).clone_in(ast);
+        ast.ts_union_type(span, types)
+    }
+}
+impl CloneIn for TsIntersectionType {
+    type Cloned = TsIntersectionType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let types = self.types(ast).clone_in(ast);
+        ast.ts_intersection_type(span, types)
+    }
+}
+impl CloneIn for TsConditionalType {
+    type Cloned = TsConditionalType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let check_type = self.check_type(ast).clone_in(ast);
+        let extends_type = self.extends_type(ast).clone_in(ast);
+        let true_type = self.true_type(ast).clone_in(ast);
+        let false_type = self.false_type(ast).clone_in(ast);
+        ast.ts_conditional_type(span, check_type, extends_type, true_type, false_type)
+    }
+}
+impl CloneIn for TsInferType {
+    type Cloned = TsInferType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let type_param = self.type_param(ast).clone_in(ast);
+        ast.ts_infer_type(span, type_param)
+    }
+}
+impl CloneIn for TsParenthesizedType {
+    type Cloned = TsParenthesizedType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        ast.ts_parenthesized_type(span, type_ann)
+    }
+}
+impl CloneIn for TsTypeOperator {
+    type Cloned = TsTypeOperator;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let op = self.op(ast).clone_in(ast);
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        ast.ts_type_operator(span, op, type_ann)
+    }
+}
+impl CloneIn for TsIndexedAccessType {
+    type Cloned = TsIndexedAccessType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let readonly = self.readonly(ast).clone_in(ast);
+        let obj_type = self.obj_type(ast).clone_in(ast);
+        let index_type = self.index_type(ast).clone_in(ast);
+        ast.ts_indexed_access_type(span, readonly, obj_type, index_type)
+    }
+}
+impl CloneIn for TsMappedType {
+    type Cloned = TsMappedType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let readonly = self.readonly(ast).clone_in(ast);
+        let type_param = self.type_param(ast).clone_in(ast);
+        let name_type = self.name_type(ast).clone_in(ast);
+        let optional = self.optional(ast).clone_in(ast);
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        ast.ts_mapped_type(span, readonly, type_param, name_type, optional, type_ann)
+    }
+}
+impl CloneIn for TsLitType {
+    type Cloned = TsLitType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let lit = self.lit(ast).clone_in(ast);
+        ast.ts_lit_type(span, lit)
+    }
+}
+impl CloneIn for TsLit {
+    type Cloned = TsLit;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        match self {
+            Self::Number(it) => Self::Number(it.clone_in(ast)),
+            Self::Str(it) => Self::Str(it.clone_in(ast)),
+            Self::Bool(it) => Self::Bool(it.clone_in(ast)),
+            Self::BigInt(it) => Self::BigInt(it.clone_in(ast)),
+            Self::Tpl(it) => Self::Tpl(it.clone_in(ast)),
+        }
+    }
+}
+impl CloneIn for TsTplLitType {
+    type Cloned = TsTplLitType;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let types = self.types(ast).clone_in(ast);
+        let quasis = self.quasis(ast).clone_in(ast);
+        ast.ts_tpl_lit_type(span, types, quasis)
+    }
+}
+impl CloneIn for TsInterfaceDecl {
+    type Cloned = TsInterfaceDecl;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let id = self.id(ast).clone_in(ast);
+        let declare = self.declare(ast).clone_in(ast);
+        let type_params = self.type_params(ast).clone_in(ast);
+        let extends = self.extends(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        ast.ts_interface_decl(span, id, declare, type_params, extends, body)
+    }
+}
+impl CloneIn for TsInterfaceBody {
+    type Cloned = TsInterfaceBody;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        ast.ts_interface_body(span, body)
+    }
+}
+impl CloneIn for TsExprWithTypeArgs {
+    type Cloned = TsExprWithTypeArgs;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let expr = self.expr(ast).clone_in(ast);
+        let type_args = self.type_args(ast).clone_in(ast);
+        ast.ts_expr_with_type_args(span, expr, type_args)
+    }
+}
+impl CloneIn for TsTypeAliasDecl {
+    type Cloned = TsTypeAliasDecl;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let declare = self.declare(ast).clone_in(ast);
+        let id = self.id(ast).clone_in(ast);
+        let type_params = self.type_params(ast).clone_in(ast);
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        ast.ts_type_alias_decl(span, declare, id, type_params, type_ann)
+    }
+}
+impl CloneIn for TsEnumDecl {
+    type Cloned = TsEnumDecl;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let declare = self.declare(ast).clone_in(ast);
+        let is_const = self.is_const(ast).clone_in(ast);
+        let id = self.id(ast).clone_in(ast);
+        let members = self.members(ast).clone_in(ast);
+        ast.ts_enum_decl(span, declare, is_const, id, members)
+    }
+}
+impl CloneIn for TsEnumMember {
+    type Cloned = TsEnumMember;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let id = self.id(ast).clone_in(ast);
+        let init = self.init(ast).clone_in(ast);
+        ast.ts_enum_member(span, id, init)
+    }
+}
+impl CloneIn for TsEnumMemberId {
+    type Cloned = TsEnumMemberId;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        match self {
+            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
+            Self::Str(it) => Self::Str(it.clone_in(ast)),
+        }
+    }
+}
+impl CloneIn for TsModuleDecl {
+    type Cloned = TsModuleDecl;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let declare = self.declare(ast).clone_in(ast);
+        let global = self.global(ast).clone_in(ast);
+        let namespace = self.namespace(ast).clone_in(ast);
+        let id = self.id(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        ast.ts_module_decl(span, declare, global, namespace, id, body)
+    }
+}
+impl CloneIn for TsNamespaceBody {
+    type Cloned = TsNamespaceBody;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        match self {
+            Self::TsModuleBlock(it) => Self::TsModuleBlock(it.clone_in(ast)),
+            Self::TsNamespaceDecl(it) => Self::TsNamespaceDecl(it.clone_in(ast)),
+        }
+    }
+}
+impl CloneIn for TsModuleBlock {
+    type Cloned = TsModuleBlock;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        ast.ts_module_block(span, body)
+    }
+}
+impl CloneIn for TsNamespaceDecl {
+    type Cloned = TsNamespaceDecl;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let declare = self.declare(ast).clone_in(ast);
+        let global = self.global(ast).clone_in(ast);
+        let id = self.id(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        ast.ts_namespace_decl(span, declare, global, id, body)
+    }
+}
+impl CloneIn for TsModuleName {
+    type Cloned = TsModuleName;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        match self {
+            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
+            Self::Str(it) => Self::Str(it.clone_in(ast)),
+        }
+    }
+}
+impl CloneIn for TsImportEqualsDecl {
+    type Cloned = TsImportEqualsDecl;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let is_export = self.is_export(ast).clone_in(ast);
+        let is_type_only = self.is_type_only(ast).clone_in(ast);
+        let id = self.id(ast).clone_in(ast);
+        let module_ref = self.module_ref(ast).clone_in(ast);
+        ast.ts_import_equals_decl(span, is_export, is_type_only, id, module_ref)
+    }
+}
+impl CloneIn for TsModuleRef {
+    type Cloned = TsModuleRef;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        match self {
+            Self::TsEntityName(it) => Self::TsEntityName(it.clone_in(ast)),
+            Self::TsExternalModuleRef(it) => Self::TsExternalModuleRef(it.clone_in(ast)),
+        }
+    }
+}
+impl CloneIn for TsExternalModuleRef {
+    type Cloned = TsExternalModuleRef;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let expr = self.expr(ast).clone_in(ast);
+        ast.ts_external_module_ref(span, expr)
+    }
+}
+impl CloneIn for TsExportAssignment {
+    type Cloned = TsExportAssignment;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let expr = self.expr(ast).clone_in(ast);
+        ast.ts_export_assignment(span, expr)
+    }
+}
+impl CloneIn for TsNamespaceExportDecl {
+    type Cloned = TsNamespaceExportDecl;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let id = self.id(ast).clone_in(ast);
+        ast.ts_namespace_export_decl(span, id)
+    }
+}
+impl CloneIn for TsAsExpr {
+    type Cloned = TsAsExpr;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let expr = self.expr(ast).clone_in(ast);
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        ast.ts_as_expr(span, expr, type_ann)
+    }
+}
+impl CloneIn for TsTypeAssertion {
+    type Cloned = TsTypeAssertion;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let expr = self.expr(ast).clone_in(ast);
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        ast.ts_type_assertion(span, expr, type_ann)
+    }
+}
+impl CloneIn for TsNonNullExpr {
+    type Cloned = TsNonNullExpr;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let expr = self.expr(ast).clone_in(ast);
+        ast.ts_non_null_expr(span, expr)
+    }
+}
+impl CloneIn for TsSatisfiesExpr {
+    type Cloned = TsSatisfiesExpr;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let expr = self.expr(ast).clone_in(ast);
+        let type_ann = self.type_ann(ast).clone_in(ast);
+        ast.ts_satisfies_expr(span, expr, type_ann)
+    }
+}
+impl CloneIn for TsConstAssertion {
+    type Cloned = TsConstAssertion;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let expr = self.expr(ast).clone_in(ast);
+        ast.ts_const_assertion(span, expr)
+    }
+}
+impl CloneIn for TsInstantiation {
+    type Cloned = TsInstantiation;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let expr = self.expr(ast).clone_in(ast);
+        let type_args = self.type_args(ast).clone_in(ast);
+        ast.ts_instantiation(span, expr, type_args)
+    }
+}

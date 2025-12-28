@@ -186,6 +186,10 @@ impl Parser {
             "UpdateOp" => primitive("UpdateOp"),
             "MetaPropKind" => primitive("MetaPropKind"),
             "MethodKind" => primitive("MethodKind"),
+            "Accessibility" => primitive("Accessibility"),
+            "TsTypeOperatorOp" => primitive("TsTypeOperatorOp"),
+            "TruePlusMinus" => primitive("TruePlusMinus"),
+            "TsKeywordTypeKind" => primitive("TsKeywordTypeKind"),
             _ => panic!("Unknown primitive {name}"),
         };
         self.create_new_type(type_def)

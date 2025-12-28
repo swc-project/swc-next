@@ -14,7 +14,7 @@ use crate::{
 
 pub fn ast_property(schema: &Schema) -> RawOutput {
     let mut impls = TokenStream::new();
-    for ty in schema.types.iter() {
+    for ty in schema.types_without_primitive() {
         match ty {
             AstType::Struct(ast_struct) => {
                 impls.extend(generate_property_for_struct(ast_struct, schema))

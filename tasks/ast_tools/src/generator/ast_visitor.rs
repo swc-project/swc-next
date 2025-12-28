@@ -33,7 +33,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
         fn leave_node(&mut self, node_kind: NodeKind) {}
     });
 
-    for ty in schema.types.iter() {
+    for ty in schema.types_without_primitive() {
         match ty {
             AstType::Struct(ast) => {
                 let fn_name = format_ident!("visit_{}", &ast.name.to_case(Case::Snake));

@@ -1,9 +1,9 @@
 use swc_core::common::Span;
 
 use crate::{
-    AssignOp, Ast, BigIntId, BinaryOp, ImportPhase, MetaPropKind, MethodKind, OptionalUtf8Ref,
-    OptionalWtf8Ref, TypedSubRange, UnaryOp, UpdateOp, Utf8Ref, VarDeclKind, Wtf8Ref,
-    node_id::ExtraDataCompact,
+    Accessibility, AssignOp, Ast, BigIntId, BinaryOp, ImportPhase, MetaPropKind, MethodKind,
+    OptionalUtf8Ref, OptionalWtf8Ref, TruePlusMinus, TsKeywordTypeKind, TsTypeOperatorOp,
+    TypedSubRange, UnaryOp, UpdateOp, Utf8Ref, VarDeclKind, Wtf8Ref, node_id::ExtraDataCompact,
 };
 
 pub trait CloneIn: Sized {
@@ -27,6 +27,11 @@ macro_rules! impl_clone_in_trivial {
 impl_clone_in_trivial!(Span);
 impl_clone_in_trivial!(bool);
 impl_clone_in_trivial!(f64);
+impl_clone_in_trivial!(BigIntId);
+impl_clone_in_trivial!(Utf8Ref);
+impl_clone_in_trivial!(Wtf8Ref);
+impl_clone_in_trivial!(OptionalUtf8Ref);
+impl_clone_in_trivial!(OptionalWtf8Ref);
 impl_clone_in_trivial!(UnaryOp);
 impl_clone_in_trivial!(UpdateOp);
 impl_clone_in_trivial!(BinaryOp);
@@ -35,11 +40,10 @@ impl_clone_in_trivial!(MetaPropKind);
 impl_clone_in_trivial!(ImportPhase);
 impl_clone_in_trivial!(VarDeclKind);
 impl_clone_in_trivial!(MethodKind);
-impl_clone_in_trivial!(BigIntId);
-impl_clone_in_trivial!(Utf8Ref);
-impl_clone_in_trivial!(Wtf8Ref);
-impl_clone_in_trivial!(OptionalUtf8Ref);
-impl_clone_in_trivial!(OptionalWtf8Ref);
+impl_clone_in_trivial!(TsKeywordTypeKind);
+impl_clone_in_trivial!(TsTypeOperatorOp);
+impl_clone_in_trivial!(TruePlusMinus);
+impl_clone_in_trivial!(Accessibility);
 
 impl<C, T: CloneIn<Cloned = C>> CloneIn for Vec<T> {
     type Cloned = Vec<C>;

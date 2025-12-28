@@ -19,6 +19,29 @@ pub struct Schema {
     pub repr_sizes: HashMap<String, usize>,
 }
 
+impl Schema {
+    pub fn types_without_primitive(&self) -> impl Iterator<Item = &AstType> {
+        self.types.iter().filter_map(|ty| match ty {
+            AstType::Option(ast) => {
+                let inner_ty = &self.types[ast.inner_type_id];
+                match inner_ty {
+                    AstType::Primitive(_) => None,
+                    _ => Some(ty),
+                }
+            }
+            AstType::Vec(ast) => {
+                let inner_ty = &self.types[ast.inner_type_id];
+                match inner_ty {
+                    AstType::Primitive(_) => None,
+                    _ => Some(ty),
+                }
+            }
+            AstType::Primitive(_) => None,
+            _ => Some(ty),
+        })
+    }
+}
+
 #[derive(Debug)]
 pub enum AstType {
     Struct(AstStruct),

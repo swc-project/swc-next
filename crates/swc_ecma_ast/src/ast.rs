@@ -11,6 +11,7 @@ mod operator;
 mod pat;
 mod prop;
 mod stmt;
+mod typescript;
 
 pub use class::*;
 pub use decl::*;
@@ -26,3 +27,4 @@ pub use pat::*;
 pub use prop::*;
 pub use stmt::*;
 pub use swc_core::common::Span;
+pub use typescript::*;

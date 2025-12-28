@@ -3387,3 +3387,1288 @@ impl NodeIdTrait for JSXClosingFragment {
         Self(node_id)
     }
 }
+impl NodeIdTrait for TsTypeAnn {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsTypeAnn);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsTypeParamDecl {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsTypeParamDecl);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsTypeParam {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsTypeParam);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsTypeParamInstantiation {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsTypeParamInstantiation);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsParamProp {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsParamProp);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsParamPropParam {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        match self {
+            Self::Ident(it) => it.node_id(),
+            Self::Assign(it) => it.node_id(),
+        }
+    }
+    #[inline]
+    fn from_node_id(id: NodeId, ast: &Ast) -> Self {
+        match &ast.nodes[id].kind {
+            NodeKind::AssignPat => TsParamPropParam::Assign({ AssignPat::from_node_id(id, ast) }),
+            NodeKind::BindingIdent => {
+                TsParamPropParam::Ident({ BindingIdent::from_node_id(id, ast) })
+            }
+            _ => unreachable!(),
+        }
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast) -> Self {
+        Self::from_node_id(id, ast)
+    }
+}
+impl NodeIdTrait for TsQualifiedName {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsQualifiedName);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsEntityName {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        match self {
+            Self::TsQualifiedName(it) => it.node_id(),
+            Self::Ident(it) => it.node_id(),
+        }
+    }
+    #[inline]
+    fn from_node_id(id: NodeId, ast: &Ast) -> Self {
+        match &ast.nodes[id].kind {
+            NodeKind::Ident => TsEntityName::Ident({ Ident::from_node_id(id, ast) }),
+            NodeKind::TsQualifiedName => {
+                TsEntityName::TsQualifiedName({ TsQualifiedName::from_node_id(id, ast) })
+            }
+            _ => unreachable!(),
+        }
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast) -> Self {
+        Self::from_node_id(id, ast)
+    }
+}
+impl NodeIdTrait for TsTypeElement {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        match self {
+            Self::TsCallSignatureDecl(it) => it.node_id(),
+            Self::TsConstructSignatureDecl(it) => it.node_id(),
+            Self::TsPropertySignature(it) => it.node_id(),
+            Self::TsGetterSignature(it) => it.node_id(),
+            Self::TsSetterSignature(it) => it.node_id(),
+            Self::TsMethodSignature(it) => it.node_id(),
+            Self::TsIndexSignature(it) => it.node_id(),
+        }
+    }
+    #[inline]
+    fn from_node_id(id: NodeId, ast: &Ast) -> Self {
+        match &ast.nodes[id].kind {
+            NodeKind::TsCallSignatureDecl => {
+                TsTypeElement::TsCallSignatureDecl({ TsCallSignatureDecl::from_node_id(id, ast) })
+            }
+            NodeKind::TsConstructSignatureDecl => TsTypeElement::TsConstructSignatureDecl({
+                TsConstructSignatureDecl::from_node_id(id, ast)
+            }),
+            NodeKind::TsGetterSignature => {
+                TsTypeElement::TsGetterSignature({ TsGetterSignature::from_node_id(id, ast) })
+            }
+            NodeKind::TsIndexSignature => {
+                TsTypeElement::TsIndexSignature({ TsIndexSignature::from_node_id(id, ast) })
+            }
+            NodeKind::TsMethodSignature => {
+                TsTypeElement::TsMethodSignature({ TsMethodSignature::from_node_id(id, ast) })
+            }
+            NodeKind::TsPropertySignature => {
+                TsTypeElement::TsPropertySignature({ TsPropertySignature::from_node_id(id, ast) })
+            }
+            NodeKind::TsSetterSignature => {
+                TsTypeElement::TsSetterSignature({ TsSetterSignature::from_node_id(id, ast) })
+            }
+            _ => unreachable!(),
+        }
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast) -> Self {
+        Self::from_node_id(id, ast)
+    }
+}
+impl NodeIdTrait for TsCallSignatureDecl {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsCallSignatureDecl);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsConstructSignatureDecl {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsConstructSignatureDecl);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsPropertySignature {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsPropertySignature);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsGetterSignature {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsGetterSignature);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsSetterSignature {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsSetterSignature);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsMethodSignature {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsMethodSignature);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsIndexSignature {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsIndexSignature);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        match self {
+            Self::TsKeywordType(it) => it.node_id(),
+            Self::TsThisType(it) => it.node_id(),
+            Self::TsFnOrConstructorType(it) => it.node_id(),
+            Self::TsTypeRef(it) => it.node_id(),
+            Self::TsTypeQuery(it) => it.node_id(),
+            Self::TsTypeLit(it) => it.node_id(),
+            Self::TsArrayType(it) => it.node_id(),
+            Self::TsTupleType(it) => it.node_id(),
+            Self::TsOptionalType(it) => it.node_id(),
+            Self::TsRestType(it) => it.node_id(),
+            Self::TsUnionOrIntersectionType(it) => it.node_id(),
+            Self::TsConditionalType(it) => it.node_id(),
+            Self::TsInferType(it) => it.node_id(),
+            Self::TsParenthesizedType(it) => it.node_id(),
+            Self::TsTypeOperator(it) => it.node_id(),
+            Self::TsIndexedAccessType(it) => it.node_id(),
+            Self::TsMappedType(it) => it.node_id(),
+            Self::TsLitType(it) => it.node_id(),
+            Self::TsTypePredicate(it) => it.node_id(),
+            Self::TsImportType(it) => it.node_id(),
+        }
+    }
+    #[inline]
+    fn from_node_id(id: NodeId, ast: &Ast) -> Self {
+        match &ast.nodes[id].kind {
+            NodeKind::TsArrayType => TsType::TsArrayType({ TsArrayType::from_node_id(id, ast) }),
+            NodeKind::TsConditionalType => {
+                TsType::TsConditionalType({ TsConditionalType::from_node_id(id, ast) })
+            }
+            NodeKind::TsConstructorType => {
+                TsType::TsFnOrConstructorType(TsFnOrConstructorType::TsConstructorType({
+                    TsConstructorType::from_node_id(id, ast)
+                }))
+            }
+            NodeKind::TsFnType => TsType::TsFnOrConstructorType(TsFnOrConstructorType::TsFnType({
+                TsFnType::from_node_id(id, ast)
+            })),
+            NodeKind::TsImportType => TsType::TsImportType({ TsImportType::from_node_id(id, ast) }),
+            NodeKind::TsIndexedAccessType => {
+                TsType::TsIndexedAccessType({ TsIndexedAccessType::from_node_id(id, ast) })
+            }
+            NodeKind::TsInferType => TsType::TsInferType({ TsInferType::from_node_id(id, ast) }),
+            NodeKind::TsIntersectionType => {
+                TsType::TsUnionOrIntersectionType(TsUnionOrIntersectionType::TsIntersectionType({
+                    TsIntersectionType::from_node_id(id, ast)
+                }))
+            }
+            NodeKind::TsKeywordType => {
+                TsType::TsKeywordType({ TsKeywordType::from_node_id(id, ast) })
+            }
+            NodeKind::TsLitType => TsType::TsLitType({ TsLitType::from_node_id(id, ast) }),
+            NodeKind::TsMappedType => TsType::TsMappedType({ TsMappedType::from_node_id(id, ast) }),
+            NodeKind::TsOptionalType => {
+                TsType::TsOptionalType({ TsOptionalType::from_node_id(id, ast) })
+            }
+            NodeKind::TsParenthesizedType => {
+                TsType::TsParenthesizedType({ TsParenthesizedType::from_node_id(id, ast) })
+            }
+            NodeKind::TsRestType => TsType::TsRestType({ TsRestType::from_node_id(id, ast) }),
+            NodeKind::TsThisType => TsType::TsThisType({ TsThisType::from_node_id(id, ast) }),
+            NodeKind::TsTupleType => TsType::TsTupleType({ TsTupleType::from_node_id(id, ast) }),
+            NodeKind::TsTypeLit => TsType::TsTypeLit({ TsTypeLit::from_node_id(id, ast) }),
+            NodeKind::TsTypeOperator => {
+                TsType::TsTypeOperator({ TsTypeOperator::from_node_id(id, ast) })
+            }
+            NodeKind::TsTypePredicate => {
+                TsType::TsTypePredicate({ TsTypePredicate::from_node_id(id, ast) })
+            }
+            NodeKind::TsTypeQuery => TsType::TsTypeQuery({ TsTypeQuery::from_node_id(id, ast) }),
+            NodeKind::TsTypeRef => TsType::TsTypeRef({ TsTypeRef::from_node_id(id, ast) }),
+            NodeKind::TsUnionType => {
+                TsType::TsUnionOrIntersectionType(TsUnionOrIntersectionType::TsUnionType({
+                    TsUnionType::from_node_id(id, ast)
+                }))
+            }
+            _ => unreachable!(),
+        }
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast) -> Self {
+        Self::from_node_id(id, ast)
+    }
+}
+impl NodeIdTrait for TsFnOrConstructorType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        match self {
+            Self::TsFnType(it) => it.node_id(),
+            Self::TsConstructorType(it) => it.node_id(),
+        }
+    }
+    #[inline]
+    fn from_node_id(id: NodeId, ast: &Ast) -> Self {
+        match &ast.nodes[id].kind {
+            NodeKind::TsConstructorType => TsFnOrConstructorType::TsConstructorType({
+                TsConstructorType::from_node_id(id, ast)
+            }),
+            NodeKind::TsFnType => {
+                TsFnOrConstructorType::TsFnType({ TsFnType::from_node_id(id, ast) })
+            }
+            _ => unreachable!(),
+        }
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast) -> Self {
+        Self::from_node_id(id, ast)
+    }
+}
+impl NodeIdTrait for TsKeywordType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsKeywordType);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsThisType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsThisType);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsFnParam {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        match self {
+            Self::Ident(it) => it.node_id(),
+            Self::Array(it) => it.node_id(),
+            Self::Rest(it) => it.node_id(),
+            Self::Object(it) => it.node_id(),
+        }
+    }
+    #[inline]
+    fn from_node_id(id: NodeId, ast: &Ast) -> Self {
+        match &ast.nodes[id].kind {
+            NodeKind::ArrayPat => TsFnParam::Array({ ArrayPat::from_node_id(id, ast) }),
+            NodeKind::BindingIdent => TsFnParam::Ident({ BindingIdent::from_node_id(id, ast) }),
+            NodeKind::ObjectPat => TsFnParam::Object({ ObjectPat::from_node_id(id, ast) }),
+            NodeKind::RestPat => TsFnParam::Rest({ RestPat::from_node_id(id, ast) }),
+            _ => unreachable!(),
+        }
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast) -> Self {
+        Self::from_node_id(id, ast)
+    }
+}
+impl NodeIdTrait for TsFnType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsFnType);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsConstructorType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsConstructorType);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsTypeRef {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsTypeRef);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsTypePredicate {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsTypePredicate);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsThisTypeOrIdent {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        match self {
+            Self::TsThisType(it) => it.node_id(),
+            Self::Ident(it) => it.node_id(),
+        }
+    }
+    #[inline]
+    fn from_node_id(id: NodeId, ast: &Ast) -> Self {
+        match &ast.nodes[id].kind {
+            NodeKind::Ident => TsThisTypeOrIdent::Ident({ Ident::from_node_id(id, ast) }),
+            NodeKind::TsThisType => {
+                TsThisTypeOrIdent::TsThisType({ TsThisType::from_node_id(id, ast) })
+            }
+            _ => unreachable!(),
+        }
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast) -> Self {
+        Self::from_node_id(id, ast)
+    }
+}
+impl NodeIdTrait for TsTypeQuery {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsTypeQuery);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsTypeQueryExpr {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        match self {
+            Self::TsEntityName(it) => it.node_id(),
+            Self::Import(it) => it.node_id(),
+        }
+    }
+    #[inline]
+    fn from_node_id(id: NodeId, ast: &Ast) -> Self {
+        match &ast.nodes[id].kind {
+            NodeKind::Ident => {
+                TsTypeQueryExpr::TsEntityName(TsEntityName::Ident({ Ident::from_node_id(id, ast) }))
+            }
+            NodeKind::TsImportType => {
+                TsTypeQueryExpr::Import({ TsImportType::from_node_id(id, ast) })
+            }
+            NodeKind::TsQualifiedName => {
+                TsTypeQueryExpr::TsEntityName(TsEntityName::TsQualifiedName({
+                    TsQualifiedName::from_node_id(id, ast)
+                }))
+            }
+            _ => unreachable!(),
+        }
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast) -> Self {
+        Self::from_node_id(id, ast)
+    }
+}
+impl NodeIdTrait for TsImportCallOptions {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsImportCallOptions);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsImportType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsImportType);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsTypeLit {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsTypeLit);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsArrayType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsArrayType);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsTupleType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsTupleType);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsTupleElement {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsTupleElement);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsOptionalType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsOptionalType);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsRestType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsRestType);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsUnionOrIntersectionType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        match self {
+            Self::TsUnionType(it) => it.node_id(),
+            Self::TsIntersectionType(it) => it.node_id(),
+        }
+    }
+    #[inline]
+    fn from_node_id(id: NodeId, ast: &Ast) -> Self {
+        match &ast.nodes[id].kind {
+            NodeKind::TsIntersectionType => TsUnionOrIntersectionType::TsIntersectionType({
+                TsIntersectionType::from_node_id(id, ast)
+            }),
+            NodeKind::TsUnionType => {
+                TsUnionOrIntersectionType::TsUnionType({ TsUnionType::from_node_id(id, ast) })
+            }
+            _ => unreachable!(),
+        }
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast) -> Self {
+        Self::from_node_id(id, ast)
+    }
+}
+impl NodeIdTrait for TsUnionType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsUnionType);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsIntersectionType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsIntersectionType);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsConditionalType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsConditionalType);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsInferType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsInferType);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsParenthesizedType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsParenthesizedType);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsTypeOperator {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsTypeOperator);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsIndexedAccessType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsIndexedAccessType);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsMappedType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsMappedType);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsLitType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsLitType);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsLit {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        match self {
+            Self::Number(it) => it.node_id(),
+            Self::Str(it) => it.node_id(),
+            Self::Bool(it) => it.node_id(),
+            Self::BigInt(it) => it.node_id(),
+            Self::Tpl(it) => it.node_id(),
+        }
+    }
+    #[inline]
+    fn from_node_id(id: NodeId, ast: &Ast) -> Self {
+        match &ast.nodes[id].kind {
+            NodeKind::BigInt => TsLit::BigInt({ BigInt::from_node_id(id, ast) }),
+            NodeKind::Bool => TsLit::Bool({ Bool::from_node_id(id, ast) }),
+            NodeKind::Number => TsLit::Number({ Number::from_node_id(id, ast) }),
+            NodeKind::Str => TsLit::Str({ Str::from_node_id(id, ast) }),
+            NodeKind::TsTplLitType => TsLit::Tpl({ TsTplLitType::from_node_id(id, ast) }),
+            _ => unreachable!(),
+        }
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast) -> Self {
+        Self::from_node_id(id, ast)
+    }
+}
+impl NodeIdTrait for TsTplLitType {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsTplLitType);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsInterfaceDecl {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsInterfaceDecl);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsInterfaceBody {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsInterfaceBody);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsExprWithTypeArgs {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsExprWithTypeArgs);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsTypeAliasDecl {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsTypeAliasDecl);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsEnumDecl {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsEnumDecl);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsEnumMember {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsEnumMember);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsEnumMemberId {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        match self {
+            Self::Ident(it) => it.node_id(),
+            Self::Str(it) => it.node_id(),
+        }
+    }
+    #[inline]
+    fn from_node_id(id: NodeId, ast: &Ast) -> Self {
+        match &ast.nodes[id].kind {
+            NodeKind::Ident => TsEnumMemberId::Ident({ Ident::from_node_id(id, ast) }),
+            NodeKind::Str => TsEnumMemberId::Str({ Str::from_node_id(id, ast) }),
+            _ => unreachable!(),
+        }
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast) -> Self {
+        Self::from_node_id(id, ast)
+    }
+}
+impl NodeIdTrait for TsModuleDecl {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsModuleDecl);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsNamespaceBody {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        match self {
+            Self::TsModuleBlock(it) => it.node_id(),
+            Self::TsNamespaceDecl(it) => it.node_id(),
+        }
+    }
+    #[inline]
+    fn from_node_id(id: NodeId, ast: &Ast) -> Self {
+        match &ast.nodes[id].kind {
+            NodeKind::TsModuleBlock => {
+                TsNamespaceBody::TsModuleBlock({ TsModuleBlock::from_node_id(id, ast) })
+            }
+            NodeKind::TsNamespaceDecl => {
+                TsNamespaceBody::TsNamespaceDecl({ TsNamespaceDecl::from_node_id(id, ast) })
+            }
+            _ => unreachable!(),
+        }
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast) -> Self {
+        Self::from_node_id(id, ast)
+    }
+}
+impl NodeIdTrait for TsModuleBlock {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsModuleBlock);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsNamespaceDecl {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsNamespaceDecl);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsModuleName {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        match self {
+            Self::Ident(it) => it.node_id(),
+            Self::Str(it) => it.node_id(),
+        }
+    }
+    #[inline]
+    fn from_node_id(id: NodeId, ast: &Ast) -> Self {
+        match &ast.nodes[id].kind {
+            NodeKind::Ident => TsModuleName::Ident({ Ident::from_node_id(id, ast) }),
+            NodeKind::Str => TsModuleName::Str({ Str::from_node_id(id, ast) }),
+            _ => unreachable!(),
+        }
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast) -> Self {
+        Self::from_node_id(id, ast)
+    }
+}
+impl NodeIdTrait for TsImportEqualsDecl {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsImportEqualsDecl);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsModuleRef {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        match self {
+            Self::TsEntityName(it) => it.node_id(),
+            Self::TsExternalModuleRef(it) => it.node_id(),
+        }
+    }
+    #[inline]
+    fn from_node_id(id: NodeId, ast: &Ast) -> Self {
+        match &ast.nodes[id].kind {
+            NodeKind::Ident => {
+                TsModuleRef::TsEntityName(TsEntityName::Ident({ Ident::from_node_id(id, ast) }))
+            }
+            NodeKind::TsExternalModuleRef => {
+                TsModuleRef::TsExternalModuleRef({ TsExternalModuleRef::from_node_id(id, ast) })
+            }
+            NodeKind::TsQualifiedName => {
+                TsModuleRef::TsEntityName(TsEntityName::TsQualifiedName({
+                    TsQualifiedName::from_node_id(id, ast)
+                }))
+            }
+            _ => unreachable!(),
+        }
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast) -> Self {
+        Self::from_node_id(id, ast)
+    }
+}
+impl NodeIdTrait for TsExternalModuleRef {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsExternalModuleRef);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsExportAssignment {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsExportAssignment);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsNamespaceExportDecl {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsNamespaceExportDecl);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsAsExpr {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsAsExpr);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsTypeAssertion {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsTypeAssertion);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsNonNullExpr {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsNonNullExpr);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsSatisfiesExpr {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsSatisfiesExpr);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsConstAssertion {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsConstAssertion);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}
+impl NodeIdTrait for TsInstantiation {
+    #[inline]
+    fn node_id(&self) -> NodeId {
+        self.0
+    }
+    #[inline]
+    fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
+        assert!(ast.nodes[node_id].kind == NodeKind::TsInstantiation);
+        Self(node_id)
+    }
+    #[inline]
+    unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+        Self(node_id)
+    }
+}

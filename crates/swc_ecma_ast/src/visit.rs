@@ -1,14 +1,16 @@
-use crate::{
-    AssignOp, BigIntId, BinaryOp, ImportPhase, MetaPropKind, MethodKind, OptionalUtf8Ref,
-    OptionalWtf8Ref, UnaryOp, UpdateOp, Utf8Ref, VarDeclKind, Wtf8Ref,
-};
 use swc_core::common::Span;
+
+use crate::{
+    Accessibility, AssignOp, BigIntId, BinaryOp, ImportPhase, MetaPropKind, MethodKind,
+    OptionalUtf8Ref, OptionalWtf8Ref, TruePlusMinus, TsKeywordTypeKind, TsTypeOperatorOp, UnaryOp,
+    UpdateOp, Utf8Ref, VarDeclKind, Wtf8Ref,
+};
 
 use crate::{Visit, VisitMut, VisitMutWith, VisitWith};
 
 macro_rules! dummy_visit_mut_impl {
-    ($ident:ident) => {
-        impl<V: ?Sized + Visit> VisitWith<V> for $ident {
+    ($ty:ty) => {
+        impl<V: ?Sized + Visit> VisitWith<V> for $ty {
             #[inline]
             fn visit_with(self, _visitor: &mut V) {}
 
@@ -16,7 +18,7 @@ macro_rules! dummy_visit_mut_impl {
             fn visit_children_with(self, _visitor: &mut V) {}
         }
 
-        impl<V: ?Sized + VisitMut> VisitMutWith<V> for $ident {
+        impl<V: ?Sized + VisitMut> VisitMutWith<V> for $ty {
             #[inline]
             fn visit_mut_with(self, _visitor: &mut V) -> Self {
                 self
@@ -46,3 +48,7 @@ dummy_visit_mut_impl!(BinaryOp);
 dummy_visit_mut_impl!(AssignOp);
 dummy_visit_mut_impl!(MetaPropKind);
 dummy_visit_mut_impl!(MethodKind);
+dummy_visit_mut_impl!(TsKeywordTypeKind);
+dummy_visit_mut_impl!(TsTypeOperatorOp);
+dummy_visit_mut_impl!(Option<TruePlusMinus>);
+dummy_visit_mut_impl!(Option<Accessibility>);

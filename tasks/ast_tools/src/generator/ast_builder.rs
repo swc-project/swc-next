@@ -14,7 +14,7 @@ use crate::{
 
 pub fn ast_builder(schema: &Schema) -> RawOutput {
     let mut build_functions = TokenStream::new();
-    for ty in schema.types.iter() {
+    for ty in schema.types_without_primitive() {
         match ty {
             AstType::Struct(ast_struct) => {
                 build_functions.extend(generate_build_function_for_struct(ast_struct, schema))

@@ -28,7 +28,7 @@ const SOURCE_PATHS: &[&str] = &[
     "crates/swc_ecma_ast/src/ast/lit.rs",
     "crates/swc_ecma_ast/src/ast/jsx.rs",
     "crates/swc_ecma_ast/src/ast/operator.rs",
-    // "crates/swc_ecma_ast/src/ast/typescript.rs",
+    "crates/swc_ecma_ast/src/ast/typescript.rs",
 ];
 
 const AST_CRATE_PATH: &str = "swc_ecma_ast";

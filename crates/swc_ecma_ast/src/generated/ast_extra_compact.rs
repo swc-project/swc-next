@@ -1789,6 +1789,854 @@ impl ExtraDataCompact for JSXClosingFragment {
         unsafe { Self::from_node_id_unchecked(data.node, ast) }
     }
 }
+impl ExtraDataCompact for TsTypeAnn {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsTypeParamDecl {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsTypeParam {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsTypeParamInstantiation {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsParamProp {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsParamPropParam {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            ts_param_prop_param: self,
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.ts_param_prop_param }
+    }
+}
+impl ExtraDataCompact for TsQualifiedName {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsEntityName {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            ts_entity_name: self,
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.ts_entity_name }
+    }
+}
+impl ExtraDataCompact for TsTypeElement {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            ts_type_element: self,
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.ts_type_element }
+    }
+}
+impl ExtraDataCompact for TsCallSignatureDecl {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsConstructSignatureDecl {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsPropertySignature {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsGetterSignature {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsSetterSignature {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsMethodSignature {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsIndexSignature {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsFnOrConstructorType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            ts_fn_or_constructor_type: self,
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.ts_fn_or_constructor_type }
+    }
+}
+impl ExtraDataCompact for TsKeywordType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsThisType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsFnParam {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData { ts_fn_param: self }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.ts_fn_param }
+    }
+}
+impl ExtraDataCompact for TsFnType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsConstructorType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsTypeRef {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsTypePredicate {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsThisTypeOrIdent {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            ts_this_type_or_ident: self,
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.ts_this_type_or_ident }
+    }
+}
+impl ExtraDataCompact for TsTypeQuery {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsTypeQueryExpr {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            ts_type_query_expr: self,
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.ts_type_query_expr }
+    }
+}
+impl ExtraDataCompact for TsImportCallOptions {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsImportType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsTypeLit {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsArrayType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsTupleType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsTupleElement {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsOptionalType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsRestType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsUnionOrIntersectionType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            ts_union_or_intersection_type: self,
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.ts_union_or_intersection_type }
+    }
+}
+impl ExtraDataCompact for TsUnionType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsIntersectionType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsConditionalType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsInferType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsParenthesizedType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsTypeOperator {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsIndexedAccessType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsMappedType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsLitType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsLit {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData { ts_lit: self }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.ts_lit }
+    }
+}
+impl ExtraDataCompact for TsTplLitType {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsInterfaceDecl {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsInterfaceBody {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsExprWithTypeArgs {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsTypeAliasDecl {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsEnumDecl {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsEnumMember {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsEnumMemberId {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            ts_enum_member_id: self,
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.ts_enum_member_id }
+    }
+}
+impl ExtraDataCompact for TsModuleDecl {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsNamespaceBody {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            ts_namespace_body: self,
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.ts_namespace_body }
+    }
+}
+impl ExtraDataCompact for TsModuleBlock {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsNamespaceDecl {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsModuleName {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            ts_module_name: self,
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.ts_module_name }
+    }
+}
+impl ExtraDataCompact for TsImportEqualsDecl {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsModuleRef {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            ts_module_ref: self,
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.ts_module_ref }
+    }
+}
+impl ExtraDataCompact for TsExternalModuleRef {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsExportAssignment {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsNamespaceExportDecl {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsAsExpr {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsTypeAssertion {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsNonNullExpr {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsSatisfiesExpr {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsConstAssertion {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
+impl ExtraDataCompact for TsInstantiation {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            node: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { Self::from_node_id_unchecked(data.node, ast) }
+    }
+}
 impl ExtraDataCompact for Option<ObjectLit> {
     #[inline]
     fn to_extra_data(self) -> ExtraData {
@@ -1985,5 +2833,109 @@ impl ExtraDataCompact for Option<JSXClosingElement> {
                 .to_option()
                 .map(|id| JSXClosingElement::from_node_id_unchecked(id, ast))
         }
+    }
+}
+impl ExtraDataCompact for Option<TsType> {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_node: self.map(|n| n.node_id()).into(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe {
+            data.optional_node
+                .to_option()
+                .map(|id| TsType::from_node_id_unchecked(id, ast))
+        }
+    }
+}
+impl ExtraDataCompact for Option<TsTypeAnn> {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_node: self.map(|n| n.node_id()).into(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe {
+            data.optional_node
+                .to_option()
+                .map(|id| TsTypeAnn::from_node_id_unchecked(id, ast))
+        }
+    }
+}
+impl ExtraDataCompact for Option<TsTypeParamDecl> {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_node: self.map(|n| n.node_id()).into(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe {
+            data.optional_node
+                .to_option()
+                .map(|id| TsTypeParamDecl::from_node_id_unchecked(id, ast))
+        }
+    }
+}
+impl ExtraDataCompact for Option<TsTypeParamInstantiation> {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_node: self.map(|n| n.node_id()).into(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe {
+            data.optional_node
+                .to_option()
+                .map(|id| TsTypeParamInstantiation::from_node_id_unchecked(id, ast))
+        }
+    }
+}
+impl ExtraDataCompact for Option<TsEntityName> {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_ts_entity_name: self,
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.optional_ts_entity_name }
+    }
+}
+impl ExtraDataCompact for Option<TsImportCallOptions> {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_node: self.map(|n| n.node_id()).into(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe {
+            data.optional_node
+                .to_option()
+                .map(|id| TsImportCallOptions::from_node_id_unchecked(id, ast))
+        }
+    }
+}
+impl ExtraDataCompact for Option<TsNamespaceBody> {
+    #[inline]
+    fn to_extra_data(self) -> ExtraData {
+        ExtraData {
+            optional_ts_namespace_body: self,
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, ast: &Ast) -> Self {
+        unsafe { data.optional_ts_namespace_body }
     }
 }
