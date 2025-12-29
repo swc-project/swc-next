@@ -189,7 +189,7 @@ impl<I: Tokens> Parser<I> {
         self.finish_assignment_expr(start, cond)
     }
 
-    pub(super) fn parse_unary_expr(&mut self) -> PResult<Expr> {
+    pub(crate) fn parse_unary_expr(&mut self) -> PResult<Expr> {
         trace_cur!(self, parse_unary_expr);
 
         let token_and_span = self.input().get_cur();
@@ -732,92 +732,92 @@ impl<I: Tokens> Parser<I> {
         Ok(self.ast.tpl_element(span, tail, cooked, raw))
     }
 
-    // fn parse_tpl_ty_elements(&mut self) -> PResult<(Vec<Box<TsType>>, Vec<TplElement>)> {
-    //     trace_cur!(self, parse_tpl_elements);
+    fn parse_tpl_ty_elements(&mut self) -> PResult<(Vec<Box<TsType>>, Vec<TplElement>)> {
+        trace_cur!(self, parse_tpl_elements);
 
-    //     let mut tys = Vec::new();
-    //     let cur_elem = self.parse_template_head(false)?;
-    //     let mut is_tail = cur_elem.tail(self.ast);
-    //     let mut quasis = vec![cur_elem];
+        let mut tys = Vec::new();
+        let cur_elem = self.parse_template_head(false)?;
+        let mut is_tail = cur_elem.tail(self.ast);
+        let mut quasis = vec![cur_elem];
 
-    //     while !is_tail {
-    //         tys.push(self.parse_ts_type()?);
-    //         let elem = self.parse_tpl_element(false)?;
-    //         is_tail = elem.tail(&self.ast);
-    //         quasis.push(elem);
-    //     }
-    //     Ok((tys, quasis))
-    // }
+        while !is_tail {
+            tys.push(self.parse_ts_type()?);
+            let elem = self.parse_tpl_element(false)?;
+            is_tail = elem.tail(&self.ast);
+            quasis.push(elem);
+        }
+        Ok((tys, quasis))
+    }
 
-    // fn parse_no_substitution_template_ty(&mut self) -> PResult<TsTplLitType> {
-    //     let start = self.input.cur_pos();
-    //     let cur = self.input.cur();
-    //     debug_assert!(matches!(cur, Token::NoSubstitutionTemplateLiteral));
+    fn parse_no_substitution_template_ty(&mut self) -> PResult<TsTplLitType> {
+        let start = self.input.cur_pos();
+        let cur = self.input.cur();
+        debug_assert!(matches!(cur, Token::NoSubstitutionTemplateLiteral));
 
-    //     let (cooked, raw) = cur.take_template(self.input_mut());
-    //     let (raw, cooked) = match cooked {
-    //         Ok(cooked) => (raw, Some(cooked)),
-    //         Err(_) => (raw, None),
-    //     };
-    //     self.bump();
-    //     let pos = self.input.prev_span().hi;
-    //     debug_assert!(start.0 <= pos.0);
-    //     let span = Span::new_with_checked(start, pos);
-    //     Ok(TsTplLitType {
-    //         span,
-    //         types: vec![],
-    //         quasis: vec![TplElement {
-    //             span: {
-    //                 debug_assert!(start.0 <= pos.0 - 2);
-    //                 // `____`
-    //                 // `start.0 + 1` means skip the first backtick
-    //                 // `pos.0 - 1` means skip the last backtick
-    //                 Span::new_with_checked(
-    //                     BytePos::from_u32(start.0 + 1),
-    //                     BytePos::from_u32(pos.0 - 1),
-    //                 )
-    //             },
-    //             tail: true,
-    //             raw,
-    //             cooked,
-    //         }],
-    //     })
-    // }
+        let (cooked, raw) = cur.take_template(self.input_mut());
+        let (raw, cooked) = match cooked {
+            Ok(cooked) => (raw, Some(cooked)),
+            Err(_) => (raw, None),
+        };
+        self.bump();
+        let pos = self.input.prev_span().hi;
+        debug_assert!(start.0 <= pos.0);
+        let span = Span::new_with_checked(start, pos);
+        Ok(TsTplLitType {
+            span,
+            types: vec![],
+            quasis: vec![TplElement {
+                span: {
+                    debug_assert!(start.0 <= pos.0 - 2);
+                    // `____`
+                    // `start.0 + 1` means skip the first backtick
+                    // `pos.0 - 1` means skip the last backtick
+                    Span::new_with_checked(
+                        BytePos::from_u32(start.0 + 1),
+                        BytePos::from_u32(pos.0 - 1),
+                    )
+                },
+                tail: true,
+                raw,
+                cooked,
+            }],
+        })
+    }
 
-    // fn parse_tpl_ty(&mut self) -> PResult<TsTplLitType> {
-    //     trace_cur!(self, parse_tpl_ty);
-    //     debug_assert!(matches!(self.input.cur(), Token::TemplateHead));
+    fn parse_tpl_ty(&mut self) -> PResult<TsTplLitType> {
+        trace_cur!(self, parse_tpl_ty);
+        debug_assert!(matches!(self.input.cur(), Token::TemplateHead));
 
-    //     let start = self.cur_pos();
+        let start = self.cur_pos();
 
-    //     let (types, quasis) = self.parse_tpl_ty_elements()?;
+        let (types, quasis) = self.parse_tpl_ty_elements()?;
 
-    //     let _ = self.input.cur();
+        let _ = self.input.cur();
 
-    //     Ok(TsTplLitType {
-    //         span: self.span(start),
-    //         types,
-    //         quasis,
-    //     })
-    // }
+        Ok(TsTplLitType {
+            span: self.span(start),
+            types,
+            quasis,
+        })
+    }
 
-    // pub(super) fn parse_tagged_tpl_ty(&mut self) -> PResult<TsLitType> {
-    //     let start = self.cur_pos();
-    //     debug_assert!(self.input().syntax().typescript());
-    //     trace_cur!(self, parse_tagged_tpl);
-    //     let tpl_ty = if self.input_mut().is(Token::NoSubstitutionTemplateLiteral) {
-    //         self.parse_no_substitution_template_ty()
-    //     } else {
-    //         self.parse_tpl_ty()
-    //     };
-    //     tpl_ty.map(|tpl_ty| {
-    //         let lit = TsLit::Tpl(tpl_ty);
-    //         TsLitType {
-    //             span: self.span(start),
-    //             lit,
-    //         }
-    //     })
-    // }
+    pub(crate) fn parse_tagged_tpl_ty(&mut self) -> PResult<TsLitType> {
+        let start = self.cur_pos();
+        debug_assert!(self.input().syntax().typescript());
+        trace_cur!(self, parse_tagged_tpl);
+        let tpl_ty = if self.input_mut().is(Token::NoSubstitutionTemplateLiteral) {
+            self.parse_no_substitution_template_ty()
+        } else {
+            self.parse_tpl_ty()
+        };
+        tpl_ty.map(|tpl_ty| {
+            let lit = TsLit::Tpl(tpl_ty);
+            TsLitType {
+                span: self.span(start),
+                lit,
+            }
+        })
+    }
 
     pub(crate) fn parse_str_lit(&mut self) -> Str {
         debug_assert!(self.input().cur() == Token::Str);

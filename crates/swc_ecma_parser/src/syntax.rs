@@ -4,8 +4,6 @@ pub enum Syntax {
     Es(EsSyntax),
     /// This variant requires the cargo feature `typescript` to be enabled.
     #[cfg(feature = "typescript")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "typescript")))]
-    #[serde(rename = "typescript")]
     Typescript(TsSyntax),
 }
 
@@ -182,7 +180,7 @@ pub struct TsSyntax {
 }
 
 impl TsSyntax {
-    fn _into_flags(self) -> SyntaxFlags {
+    fn into_flags(self) -> SyntaxFlags {
         let mut flags = SyntaxFlags::TS
             .union(SyntaxFlags::AUTO_ACCESSORS)
             .union(SyntaxFlags::IMPORT_ATTRIBUTES)

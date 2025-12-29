@@ -12,6 +12,10 @@ impl Wtf8Ref {
         Self { lo, hi }
     }
 
+    pub const fn new_empty() -> Self {
+        Self { lo: 0, hi: 0 }
+    }
+
     pub const fn lo(&self) -> u32 {
         self.lo
     }

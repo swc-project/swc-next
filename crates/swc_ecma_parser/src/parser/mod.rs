@@ -26,8 +26,8 @@ pub mod input;
 mod js;
 mod jsx;
 mod state;
-// #[cfg(feature = "typescript")]
-// mod typescript;
+#[cfg(feature = "typescript")]
+mod ts;
 pub(crate) mod util;
 
 pub type PResult<T> = Result<T, crate::error::Error>;

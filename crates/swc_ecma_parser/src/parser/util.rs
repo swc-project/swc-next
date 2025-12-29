@@ -36,6 +36,7 @@ impl IsSimpleParameterList for TypedSubRange<ParamOrTsParamProp> {
             let param = ast.get_node_in_sub_range(param);
             match param {
                 ParamOrTsParamProp::Param(param) => matches!(param.pat(ast), Pat::Ident(_)),
+                ParamOrTsParamProp::TsParamProp(_) => true,
             }
         })
     }
@@ -125,16 +126,18 @@ impl ExprExt for Expr {
             | Expr::JSXElement(..)
             | Expr::JSXFragment(..) => false,
 
-            // // typescript
-            // Expr::TsNonNull(TsNonNullExpr { ref expr, .. })
-            // | Expr::TsTypeAssertion(TsTypeAssertion { ref expr, .. })
-            // | Expr::TsAs(TsAsExpr { ref expr, .. })
-            // | Expr::TsInstantiation(TsInstantiation { ref expr, .. })
-            // | Expr::TsSatisfies(TsSatisfiesExpr { ref expr, .. }) => {
-            //     expr.is_valid_simple_assignment_target(strict)
-            // }
+            // typescript
+            Expr::TsNonNull(it) => it.expr(ast).is_valid_simple_assignment_target(ast, strict),
+            Expr::TsTypeAssertion(it) => {
+                it.expr(ast).is_valid_simple_assignment_target(ast, strict)
+            }
+            Expr::TsAs(it) => it.expr(ast).is_valid_simple_assignment_target(ast, strict),
+            Expr::TsInstantiation(it) => {
+                it.expr(ast).is_valid_simple_assignment_target(ast, strict)
+            }
+            Expr::TsSatisfies(it) => it.expr(ast).is_valid_simple_assignment_target(ast, strict),
+            Expr::TsConstAssertion(..) => false,
 
-            // Expr::TsConstAssertion(..) => false,
             Expr::Invalid(..) => false,
             #[cfg(swc_ast_unknown)]
             _ => unreachable!(),
@@ -158,19 +161,21 @@ impl FromStmt for Stmt {
     }
 }
 
-pub(crate) struct ScratchIndex<N: ExtraDataCompact> {
+pub(crate) struct ScratchIndex<N> {
     start: usize,
     _p: PhantomData<N>,
 }
 
-impl<N: ExtraDataCompact> ScratchIndex<N> {
+impl<N> ScratchIndex<N> {
     pub(crate) fn new(start: usize) -> Self {
         Self {
             start,
             _p: PhantomData,
         }
     }
+}
 
+impl<N: ExtraDataCompact> ScratchIndex<N> {
     pub(crate) fn end<I: Tokens>(self, p: &mut Parser<I>) -> TypedSubRange<N> {
         let range = p.ast.add_typed_sub_range(p.scratch.drain(self.start..));
         unsafe { std::mem::transmute(range) }
