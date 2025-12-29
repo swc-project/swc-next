@@ -404,23 +404,22 @@ impl<I: Tokens> Parser<I> {
         let callee = self.parse_new_expr()?;
         return_if_arrow!(self, callee);
 
-        // let type_args = None;
-        // let type_args = if self.input().syntax().typescript() && {
-        //     let cur = self.input().cur();
-        //     cur == Token::Lt || cur == Token::LShift
-        // } {
-        //     self.try_parse_ts(|p| {
-        //         let type_args = p.parse_ts_type_args()?;
-        //         p.assert_and_bump(Token::Gt);
-        //         if p.input().is(Token::LParen) {
-        //             Ok(Some(type_args))
-        //         } else {
-        //             Ok(None)
-        //         }
-        //     })
-        // } else {
-        //     None
-        // };
+        let type_args = if self.input().syntax().typescript() && {
+            let cur = self.input().cur();
+            cur == Token::Lt || cur == Token::LShift
+        } {
+            self.try_parse_ts(|p| {
+                let type_args = p.parse_ts_type_args()?;
+                p.assert_and_bump(Token::Gt);
+                if p.input().is(Token::LParen) {
+                    Ok(Some(type_args))
+                } else {
+                    Ok(None)
+                }
+            })
+        } else {
+            None
+        };
 
         if let Expr::New(new) = callee
             && new.args(&self.ast).is_none()
@@ -454,11 +453,19 @@ impl<I: Tokens> Parser<I> {
             let args = self.parse_args(is_import)?;
 
             let call_expr = match callee {
-                Callee::Expr(e) if unwrap_ts_non_null(e).is_opt_chain() => {
-                    let base = self.ast.opt_chain_base_opt_call(self.span(start), e, args);
+                Callee::Expr(e) if unwrap_ts_non_null(&self.ast, e).is_opt_chain() => {
+                    let base = self.ast.opt_chain_base_opt_call(
+                        self.span(start),
+                        e,
+                        args,
+                        type_args,
+                        None,
+                    );
                     self.ast.expr_opt_chain_expr(self.span(start), false, base)
                 }
-                _ => self.ast.expr_call_expr(self.span(start), callee, args),
+                _ => self
+                    .ast
+                    .expr_call_expr(self.span(start), callee, args, type_args, None),
             };
 
             return self.parse_subscripts(Callee::Expr(call_expr), false, false);
@@ -588,7 +595,7 @@ impl<I: Tokens> Parser<I> {
     fn parse_tagged_tpl(
         &mut self,
         tag: Expr,
-        // type_params: Option<Box<TsTypeParamInstantiation>>,
+        type_params: Option<TsTypeParamInstantiation>,
     ) -> PResult<TaggedTpl> {
         let tagged_tpl_start = tag.span_lo(&self.ast);
         trace_cur!(self, parse_tagged_tpl);
@@ -606,7 +613,7 @@ impl<I: Tokens> Parser<I> {
             self.emit_err(span, SyntaxError::TaggedTplInOptChain);
         }
 
-        Ok(self.ast.tagged_tpl(span, tag, tpl))
+        Ok(self.ast.tagged_tpl(span, tag, tpl, type_params))
     }
 
     pub(super) fn parse_no_substitution_template_literal(
@@ -732,12 +739,14 @@ impl<I: Tokens> Parser<I> {
         Ok(self.ast.tpl_element(span, tail, cooked, raw))
     }
 
-    fn parse_tpl_ty_elements(&mut self) -> PResult<(Vec<Box<TsType>>, Vec<TplElement>)> {
+    fn parse_tpl_ty_elements(
+        &mut self,
+    ) -> PResult<(TypedSubRange<TsType>, TypedSubRange<TplElement>)> {
         trace_cur!(self, parse_tpl_elements);
 
         let mut tys = Vec::new();
         let cur_elem = self.parse_template_head(false)?;
-        let mut is_tail = cur_elem.tail(self.ast);
+        let mut is_tail = cur_elem.tail(&self.ast);
         let mut quasis = vec![cur_elem];
 
         while !is_tail {
@@ -746,42 +755,37 @@ impl<I: Tokens> Parser<I> {
             is_tail = elem.tail(&self.ast);
             quasis.push(elem);
         }
+
+        let tys = self.ast.add_typed_sub_range(tys);
+        let quasis = self.ast.add_typed_sub_range(quasis);
         Ok((tys, quasis))
     }
 
     fn parse_no_substitution_template_ty(&mut self) -> PResult<TsTplLitType> {
         let start = self.input.cur_pos();
         let cur = self.input.cur();
+        let token_span = self.input.cur_span();
         debug_assert!(matches!(cur, Token::NoSubstitutionTemplateLiteral));
 
-        let (cooked, raw) = cur.take_template(self.input_mut());
-        let (raw, cooked) = match cooked {
-            Ok(cooked) => (raw, Some(cooked)),
-            Err(_) => (raw, None),
+        // exclude the leading and the trailing `\``
+        let span = Span::new_with_checked(token_span.lo + BytePos(1), token_span.hi - BytePos(1));
+        let raw = self.to_utf8_ref(MaybeSubUtf8::new_from_span(span));
+        let cooked = self.input.expect_template_token_value();
+        let cooked = match cooked {
+            Ok(cooked) => self.to_wtf8_ref(cooked).into(),
+            Err(_) => OptionalWtf8Ref::new_none(),
         };
         self.bump();
-        let pos = self.input.prev_span().hi;
-        debug_assert!(start.0 <= pos.0);
-        let span = Span::new_with_checked(start, pos);
-        Ok(TsTplLitType {
-            span,
-            types: vec![],
-            quasis: vec![TplElement {
-                span: {
-                    debug_assert!(start.0 <= pos.0 - 2);
-                    // `____`
-                    // `start.0 + 1` means skip the first backtick
-                    // `pos.0 - 1` means skip the last backtick
-                    Span::new_with_checked(
-                        BytePos::from_u32(start.0 + 1),
-                        BytePos::from_u32(pos.0 - 1),
-                    )
-                },
-                tail: true,
-                raw,
-                cooked,
-            }],
-        })
+
+        let tpl_element = self.ast.tpl_element(span, true, cooked, raw);
+        let quasis = self.scratch_start(|p, quasis| {
+            quasis.push(p, tpl_element);
+            Ok(())
+        })?;
+
+        Ok(self
+            .ast
+            .ts_tpl_lit_type(self.span(start), TypedSubRange::empty(), quasis))
     }
 
     fn parse_tpl_ty(&mut self) -> PResult<TsTplLitType> {
@@ -792,13 +796,7 @@ impl<I: Tokens> Parser<I> {
 
         let (types, quasis) = self.parse_tpl_ty_elements()?;
 
-        let _ = self.input.cur();
-
-        Ok(TsTplLitType {
-            span: self.span(start),
-            types,
-            quasis,
-        })
+        Ok(self.ast.ts_tpl_lit_type(self.span(start), types, quasis))
     }
 
     pub(crate) fn parse_tagged_tpl_ty(&mut self) -> PResult<TsLitType> {
@@ -812,10 +810,7 @@ impl<I: Tokens> Parser<I> {
         };
         tpl_ty.map(|tpl_ty| {
             let lit = TsLit::Tpl(tpl_ty);
-            TsLitType {
-                span: self.span(start),
-                lit,
-            }
+            self.ast.ts_lit_type(self.span(start), lit)
         })
     }
 
@@ -1036,105 +1031,94 @@ impl<I: Tokens> Parser<I> {
     ) -> PResult<(Expr, bool)> {
         trace_cur!(self, parse_subscript);
 
-        // if self.input().syntax().typescript() {
-        //     if !self.input().had_line_break_before_cur() && self.input().is(Token::Bang) {
-        //         self.assert_and_bump(Token::Bang);
+        if self.input().syntax().typescript() {
+            if !self.input().had_line_break_before_cur() && self.input().is(Token::Bang) {
+                self.assert_and_bump(Token::Bang);
+                let expr = self.ast.expr_ts_non_null_expr(self.span(start), callee);
+                return Ok((expr, true));
+            }
 
-        //         let expr = Box::new(Expr::TsNonNull(TsNonNullExpr {
-        //             span: self.span(start),
-        //             expr: callee,
-        //         }));
+            if self.input().is(Token::Lt) {
+                // tsTryParseAndCatch is expensive, so avoid if not necessary.
+                // There are number of things we are going to "maybe" parse, like type arguments
+                // on tagged template expressions. If any of them fail, walk it back and
+                // continue.
 
-        //         return Ok((expr, true));
-        //     }
+                let result = self.do_inside_of_context(Context::ShouldNotLexLtOrGtAsType, |p| {
+                    p.try_parse_ts(|p| {
+                        if !no_call && p.at_possible_async(callee) {
+                            // Almost certainly this is a generic async function `async <T>() =>
+                            // ... But it might be a call with a
+                            // type argument `async<T>();`
+                            let async_arrow_fn = p.try_parse_ts_generic_async_arrow_fn(start)?;
+                            if let Some(async_arrow_fn) = async_arrow_fn {
+                                return Ok(Some((Expr::Arrow(async_arrow_fn), true)));
+                            }
+                        }
 
-        //     if self.input().is(Token::Lt) {
-        //         // tsTryParseAndCatch is expensive, so avoid if not necessary.
-        //         // There are number of things we are going to "maybe" parse, like type arguments
-        //         // on tagged template expressions. If any of them fail, walk it back and
-        //         // continue.
+                        let type_args = p.parse_ts_type_args()?;
+                        p.assert_and_bump(Token::Gt);
+                        let cur = p.input().cur();
 
-        //         let result = None;
-        //         let result = self.do_inside_of_context(Context::ShouldNotLexLtOrGtAsType, |p| {
-        //             p.try_parse_ts(|p| {
-        //                 if !no_call && p.at_possible_async(&callee) {
-        //                     // Almost certainly this is a generic async function `async <T>() =>
-        //                     // ... But it might be a call with a
-        //                     // type argument `async<T>();`
-        //                     let async_arrow_fn = p.try_parse_ts_generic_async_arrow_fn(start)?;
-        //                     if let Some(async_arrow_fn) = async_arrow_fn {
-        //                         return Ok(Some((async_arrow_fn.into(), true)));
-        //                     }
-        //                 }
+                        if !no_call && cur == Token::LParen {
+                            // possibleAsync always false here, because we would have handled it
+                            // above. (won't be any undefined arguments)
+                            let args = p.parse_args(false)?;
 
-        //                 let type_args = p.parse_ts_type_args()?;
-        //                 p.assert_and_bump(Token::Gt);
-        //                 let cur = p.input().cur();
+                            let expr = if callee.is_opt_chain() {
+                                let base = p.ast.opt_chain_base_opt_call(
+                                    p.span(start),
+                                    callee,
+                                    args,
+                                    Some(type_args),
+                                    None,
+                                );
+                                p.ast.expr_opt_chain_expr(p.span(start), false, base)
+                            } else {
+                                let callee = Callee::Expr(callee);
+                                p.ast.expr_call_expr(
+                                    p.span(start),
+                                    callee,
+                                    args,
+                                    Some(type_args),
+                                    None,
+                                )
+                            };
 
-        //                 if !no_call && cur == Token::LParen {
-        //                     // possibleAsync always false here, because we would have handled it
-        //                     // above. (won't be any undefined arguments)
-        //                     let args = p.parse_args(false)?;
+                            Ok(Some((expr, true)))
+                        } else if matches!(
+                            cur,
+                            Token::NoSubstitutionTemplateLiteral
+                                | Token::TemplateHead
+                                | Token::BackQuote
+                        ) {
+                            p.parse_tagged_tpl(callee, Some(type_args))
+                                .map(|expr| (Expr::TaggedTpl(expr), true))
+                                .map(Some)
+                        } else if matches!(cur, Token::Eq | Token::As | Token::Satisfies) {
+                            let expr =
+                                p.ast
+                                    .expr_ts_instantiation(p.span(start), callee, type_args);
+                            Ok(Some((expr, false)))
+                        } else if no_call {
+                            unexpected!(p, "`")
+                        } else {
+                            unexpected!(p, "( or `")
+                        }
+                    })
+                });
 
-        //                     let expr = if callee.is_opt_chain() {
-        //                         Expr::OptChain(OptChainExpr {
-        //                             span: p.span(start),
-        //                             base: Box::new(OptChainBase::Call(OptCall {
-        //                                 span: p.span(start),
-        //                                 callee: callee.take(),
-        //                                 type_args: Some(type_args),
-        //                                 args,
-        //                                 ..Default::default()
-        //                             })),
-        //                             optional: false,
-        //                         })
-        //                     } else {
-        //                         Expr::Call(CallExpr {
-        //                             span: p.span(start),
-        //                             callee: Callee::Expr(callee.take()),
-        //                             type_args: Some(type_args),
-        //                             args,
-        //                             ..Default::default()
-        //                         })
-        //                     };
+                if let Some(expr) = result {
+                    return Ok(expr);
+                }
+            }
+        }
 
-        //                     Ok(Some((Box::new(expr), true)))
-        //                 } else if matches!(
-        //                     cur,
-        //                     Token::NoSubstitutionTemplateLiteral
-        //                         | Token::TemplateHead
-        //                         | Token::BackQuote
-        //                 ) {
-        //                     p.parse_tagged_tpl(callee.take(), Some(type_args))
-        //                         .map(|expr| (expr.into(), true))
-        //                         .map(Some)
-        //                 } else if matches!(cur, Token::Eq | Token::As | Token::Satisfies) {
-        //                     let expr = Expr::TsInstantiation(TsInstantiation {
-        //                         span: p.span(start),
-        //                         expr: callee.take(),
-        //                         type_args,
-        //                     });
-        //                     Ok(Some((Box::new(expr), false)))
-        //                 } else if no_call {
-        //                     unexpected!(p, "`")
-        //                 } else {
-        //                     unexpected!(p, "( or `")
-        //                 }
-        //             })
-        //         });
-
-        //         if let Some(expr) = result {
-        //             return Ok(expr);
-        //         }
-        //     }
-        // }
-
-        // let ts_instantiation = None;
-        // let ts_instantiation = if self.syntax().typescript() && self.input().is(Token::Lt) {
-        //     self.try_parse_ts_type_args()
-        // } else {
-        //     None
-        // };
+        let ts_instantiation = if self.syntax().typescript() && self.input().is(Token::Lt) {
+            self.try_parse_ts_type_args()
+        } else {
+            None
+        };
 
         let question_dot_token = if self.input().is(Token::QuestionMark)
             && peek!(self).is_some_and(|peek| peek == Token::Dot)
@@ -1165,14 +1149,13 @@ impl<I: Tokens> Parser<I> {
                 prop,
             );
 
-            // let type_args = None;
-            // let type_args = if self.syntax().typescript() && self.input().is(Token::Lt) {
-            //     self.try_parse_ts_type_args()
-            // } else {
-            //     None
-            // };
+            let type_args = if self.syntax().typescript() && self.input().is(Token::Lt) {
+                self.try_parse_ts_type_args()
+            } else {
+                None
+            };
 
-            let is_opt_chain = unwrap_ts_non_null(callee).is_opt_chain();
+            let is_opt_chain = unwrap_ts_non_null(&self.ast, callee).is_opt_chain();
             let expr = self
                 .ast
                 .member_expr(span, callee, MemberProp::Computed(prop));
@@ -1183,43 +1166,42 @@ impl<I: Tokens> Parser<I> {
                 Expr::Member(expr)
             };
 
-            // let expr = if let Some(type_args) = type_args {
-            //     Expr::TsInstantiation(TsInstantiation {
-            //         expr: Box::new(expr),
-            //         type_args,
-            //         span: self.span(start),
-            //     })
-            // } else {
-            //     expr
-            // };
+            let expr = if let Some(type_args) = type_args {
+                self.ast
+                    .expr_ts_instantiation(self.span(start), expr, type_args)
+            } else {
+                expr
+            };
             return Ok((expr, true));
         }
 
-        // let type_args = None;
-        // let type_args = if self.syntax().typescript() && self.input().is(Token::Lt) && question_dot
-        // {
-        //     let ret = self.parse_ts_type_args()?;
-        //     self.assert_and_bump(Token::Gt);
-        //     Some(ret)
-        // } else {
-        //     None
-        // };
+        let type_args = if self.syntax().typescript() && self.input().is(Token::Lt) && question_dot
+        {
+            let ret = self.parse_ts_type_args()?;
+            self.assert_and_bump(Token::Gt);
+            Some(ret)
+        } else {
+            None
+        };
 
-        // if (self.input.is(Token::LParen) && (!no_call || question_dot)) || type_args.is_some() {
-        if self.input.is(Token::LParen) && (!no_call || question_dot) {
+        if (self.input.is(Token::LParen) && (!no_call || question_dot)) || type_args.is_some() {
             let args = self.parse_args(false)?;
 
             let span = self.span(start);
-            return if question_dot || unwrap_ts_non_null(callee).is_opt_chain() {
-                let base = self
-                    .ast
-                    .opt_chain_base_opt_call(self.span(start), callee, args);
+            return if question_dot || unwrap_ts_non_null(&self.ast, callee).is_opt_chain() {
+                let base = self.ast.opt_chain_base_opt_call(
+                    self.span(start),
+                    callee,
+                    args,
+                    type_args,
+                    None,
+                );
                 let expr = self.ast.opt_chain_expr(span, question_dot, base);
                 Ok((Expr::OptChain(expr), true))
             } else {
-                let expr = self
-                    .ast
-                    .call_expr(self.span(start), Callee::Expr(callee), args);
+                let expr =
+                    self.ast
+                        .call_expr(self.span(start), Callee::Expr(callee), args, None, None);
                 Ok((Expr::Call(expr), true))
             };
         }
@@ -1238,15 +1220,17 @@ impl<I: Tokens> Parser<I> {
             debug_assert_eq!(callee.span_lo(&self.ast), span.lo());
             debug_assert_eq!(prop.span_hi(&self.ast), span.hi());
 
-            // let type_args = None;
-            // let type_args = if self.syntax().typescript() && self.input().is(Token::Lt) {
-            //     self.try_parse_ts_type_args()
-            // } else {
-            //     None
-            // };
+            let type_args: Option<TsTypeParamInstantiation> =
+                if self.syntax().typescript() && self.input().is(Token::Lt) {
+                    self.try_parse_ts_type_args()
+                } else {
+                    None
+                };
 
             let expr = self.ast.member_expr(span, callee, prop);
-            let expr = if unwrap_ts_non_null(expr.obj(&self.ast)).is_opt_chain() || question_dot {
+            let expr = if unwrap_ts_non_null(&self.ast, expr.obj(&self.ast)).is_opt_chain()
+                || question_dot
+            {
                 self.ast.expr_opt_chain_expr(
                     self.span(start),
                     question_dot,
@@ -1256,30 +1240,22 @@ impl<I: Tokens> Parser<I> {
                 Expr::Member(expr)
             };
 
-            // let expr = if let Some(type_args) = type_args {
-            //     Expr::TsInstantiation(TsInstantiation {
-            //         expr: Box::new(expr),
-            //         type_args,
-            //         span: self.span(start),
-            //     })
-            // } else {
-            //     expr
-            // };
+            let expr = if let Some(type_args) = type_args {
+                self.ast
+                    .expr_ts_instantiation(self.span(start), expr, type_args)
+            } else {
+                expr
+            };
 
             return Ok((expr, true));
         }
 
-        let expr = callee;
-        // let expr = if let Some(type_args) = ts_instantiation {
-        //     TsInstantiation {
-        //         expr: callee,
-        //         type_args,
-        //         span: self.span(start),
-        //     }
-        //     .into()
-        // } else {
-        //     callee
-        // };
+        let expr = if let Some(type_args) = ts_instantiation {
+            self.ast
+                .expr_ts_instantiation(self.span(start), callee, type_args)
+        } else {
+            callee
+        };
 
         // MemberExpression[?Yield, ?Await] TemplateLiteral[?Yield, ?Await, +Tagged]
         let cur = self.input().cur();
@@ -1288,7 +1264,7 @@ impl<I: Tokens> Parser<I> {
             Token::TemplateHead | Token::NoSubstitutionTemplateLiteral | Token::BackQuote
         ) {
             let tpl = self.do_outside_of_context(Context::WillExpectColonForCond, |p| {
-                p.parse_tagged_tpl(expr)
+                p.parse_tagged_tpl(expr, None)
             })?;
             return Ok((Expr::TaggedTpl(tpl), true));
         }
@@ -1332,7 +1308,7 @@ impl<I: Tokens> Parser<I> {
                 let args = self.parse_args(false)?;
                 Ok(self
                     .ast
-                    .expr_call_expr(self.span(start), Callee::Super(lhs), args))
+                    .expr_call_expr(self.span(start), Callee::Super(lhs), args, None, None))
             }
             Token::Dot => {
                 self.bump();
@@ -1388,9 +1364,9 @@ impl<I: Tokens> Parser<I> {
 
         if self.input().is(Token::LParen) {
             let args = self.parse_args(true)?;
-            let expr = self
-                .ast
-                .expr_call_expr(self.span(start), Callee::Import(lhs), args);
+            let expr =
+                self.ast
+                    .expr_call_expr(self.span(start), Callee::Import(lhs), args, None, None);
             return Ok(expr);
         }
 
@@ -1492,32 +1468,33 @@ impl<I: Tokens> Parser<I> {
                 }
             }
 
-            // let type_args = None;
-            // let type_args = if self.input().syntax().typescript() && {
-            //     let cur = self.input().cur();
-            //     cur == Token::Lt || cur == Token::LShift
-            // } {
-            //     self.try_parse_ts(|p| {
-            //         let args = p.do_outside_of_context(
-            //             Context::ShouldNotLexLtOrGtAsType,
-            //             Self::parse_ts_type_args,
-            //         )?;
-            //         p.assert_and_bump(Token::Gt);
-            //         if !p.input().is(Token::LParen) {
-            //             let span = p.input().cur_span();
-            //             let cur = p.input_mut().dump_cur();
-            //             syntax_error!(p, span, SyntaxError::Expected('('.to_string(), cur))
-            //         }
-            //         Ok(Some(args))
-            //     })
-            // } else {
-            //     None
-            // };
+            let type_args = if self.input().syntax().typescript() && {
+                let cur = self.input().cur();
+                cur == Token::Lt || cur == Token::LShift
+            } {
+                self.try_parse_ts(|p| {
+                    let args = p.do_outside_of_context(
+                        Context::ShouldNotLexLtOrGtAsType,
+                        Self::parse_ts_type_args,
+                    )?;
+                    p.assert_and_bump(Token::Gt);
+                    if !p.input().is(Token::LParen) {
+                        let span = p.input().cur_span();
+                        let cur = p.input_mut().dump_cur();
+                        syntax_error!(p, span, SyntaxError::Expected('('.to_string(), cur))
+                    }
+                    Ok(Some(args))
+                })
+            } else {
+                None
+            };
 
             if !is_new_expr || self.input().is(Token::LParen) {
                 // Parsed with 'MemberExpression' production.
                 let args = self.parse_args(false)?;
-                let new_expr = self.ast.expr_new_expr(self.span(start), callee, Some(args));
+                let new_expr =
+                    self.ast
+                        .expr_new_expr(self.span(start), callee, Some(args), None, None);
 
                 // We should parse subscripts for MemberExpression.
                 // Because it's left recursive.
@@ -1526,7 +1503,9 @@ impl<I: Tokens> Parser<I> {
 
             // Parsed with 'NewExpression' production.
 
-            return Ok(self.ast.expr_new_expr(self.span(start), callee, None));
+            return Ok(self
+                .ast
+                .expr_new_expr(self.span(start), callee, None, type_args, None));
         }
 
         if self.input_mut().eat(Token::Super) {
@@ -2077,7 +2056,7 @@ impl<I: Tokens> Parser<I> {
 
                 let arrow = self
                     .ast
-                    .expr_arrow_expr(span, params, body, is_async, false);
+                    .expr_arrow_expr(span, params, body, is_async, false, None, None);
                 let expr = self.ast.expr_or_spread(span, None, arrow);
                 items.push(AssignTargetOrSpread::ExprOrSpread(expr));
             }
@@ -2121,68 +2100,64 @@ impl<I: Tokens> Parser<I> {
             .iter()
             .any(|item| matches!(item, AssignTargetOrSpread::Pat(..)));
 
-        // let will_expect_colon_for_cond = self.ctx().contains(Context::WillExpectColonForCond);
+        let will_expect_colon_for_cond = self.ctx().contains(Context::WillExpectColonForCond);
         // This is slow path. We handle arrow in conditional expression.
-        // if self.syntax().typescript()
-        //     && self.ctx().contains(Context::InCondExpr)
-        //     && self.input().is(Token::Colon)
-        // {
-        //     // TODO: Remove clone
-        //     let items_ref = &paren_items;
-        //     if let Some(expr) = self.try_parse_ts(|p| {
-        //         let return_type = p.parse_ts_type_or_type_predicate_ann(Token::Colon)?;
+        if self.syntax().typescript()
+            && self.ctx().contains(Context::InCondExpr)
+            && self.input().is(Token::Colon)
+        {
+            // TODO: Remove clone
+            let items_ref = &paren_items;
+            if let Some(expr) = self.try_parse_ts(|p| {
+                let return_type = p.parse_ts_type_or_type_predicate_ann(Token::Colon)?;
 
-        //         expect!(p, Token::Arrow);
+                expect!(p, Token::Arrow);
 
-        //         let params: Vec<Pat> =
-        //             p.parse_paren_items_as_params(items_ref.clone(), trailing_comma)?;
+                let params = items_ref.clone_in(&mut p.ast);
+                let params = p.parse_paren_items_as_params(params, trailing_comma)?;
 
-        //         let body: Box<BlockStmtOrExpr> = p.parse_fn_block_or_expr_body(
-        //             async_span.is_some(),
-        //             false,
-        //             true,
-        //             params.is_simple_parameter_list(),
-        //         )?;
+                let body = p.parse_fn_block_or_expr_body(
+                    async_span.is_some(),
+                    false,
+                    true,
+                    params.is_simple_parameter_list(&p.ast),
+                )?;
 
-        //         if will_expect_colon_for_cond && !p.input().is(Token::Colon) {
-        //             trace_cur!(p, parse_arrow_in_cond__fail);
-        //             unexpected!(p, "fail")
-        //         }
+                if will_expect_colon_for_cond && !p.input().is(Token::Colon) {
+                    trace_cur!(p, parse_arrow_in_cond__fail);
+                    unexpected!(p, "fail")
+                }
 
-        //         Ok(Some(
-        //             ArrowExpr {
-        //                 span: p.span(expr_start),
-        //                 is_async: async_span.is_some(),
-        //                 is_generator: false,
-        //                 params,
-        //                 body,
-        //                 return_type: Some(return_type),
-        //                 ..Default::default()
-        //             }
-        //             .into(),
-        //         ))
-        //     }) {
-        //         return Ok(expr);
-        //     }
-        // }
+                Ok(Some(p.ast.expr_arrow_expr(
+                    p.span(expr_start),
+                    params,
+                    body,
+                    async_span.is_some(),
+                    false,
+                    None,
+                    Some(return_type),
+                )))
+            }) {
+                return Ok(expr);
+            }
+        }
 
-        // let return_type = None;
-        // let return_type = if !self.ctx().contains(Context::WillExpectColonForCond)
-        //     && self.input().syntax().typescript()
-        //     && self.input().is(Token::Colon)
-        // {
-        //     self.try_parse_ts(|p| {
-        //         let return_type = p.parse_ts_type_or_type_predicate_ann(Token::Colon)?;
+        let return_type = if !self.ctx().contains(Context::WillExpectColonForCond)
+            && self.input().syntax().typescript()
+            && self.input().is(Token::Colon)
+        {
+            self.try_parse_ts(|p| {
+                let return_type = p.parse_ts_type_or_type_predicate_ann(Token::Colon)?;
 
-        //         if !p.input().is(Token::Arrow) {
-        //             unexpected!(p, "fail")
-        //         }
+                if !p.input().is(Token::Arrow) {
+                    unexpected!(p, "fail")
+                }
 
-        //         Ok(Some(return_type))
-        //     })
-        // } else {
-        //     None
-        // };
+                Ok(Some(return_type))
+            })
+        } else {
+            None
+        };
 
         // we parse arrow function at here, to handle it efficiently.
         // if has_pattern || return_type.is_some() || self.input().is(Token::Arrow) {
@@ -2215,6 +2190,8 @@ impl<I: Tokens> Parser<I> {
                 body,
                 async_span.is_some(),
                 false,
+                None,
+                return_type,
             );
             if arrow_expr.body(&self.ast).is_block_stmt() && self.input().cur().is_bin_op() {
                 // ) is required
@@ -2269,6 +2246,8 @@ impl<I: Tokens> Parser<I> {
                 self.span(async_span.lo()),
                 callee,
                 expr_or_spreads,
+                None,
+                None,
             ));
         }
 
@@ -2388,26 +2367,19 @@ impl<I: Tokens> Parser<I> {
                     }
 
                     let ident = p.parse_binding_ident(false)?;
-                    // if p.input().syntax().typescript()
-                    //     && self
-                    //         .ast
-                    //         .get_atom(ident.id(&self.ast).sym(&self.ast))
-                    //         .as_str()
-                    //         == "as"
-                    //     && !p.input().is(Token::Arrow)
-                    // {
-                    //     // async as type
-                    //     let type_ann = p.in_type(Self::parse_ts_type)?;
-                    //     return Ok(TsAsExpr {
-                    //         span: p.span(start),
-                    //         expr: Box::new(id.into()),
-                    //         type_ann,
-                    //     }
-                    //     .into());
-                    // }
+                    if p.input().syntax().typescript()
+                        && p.ast.get_utf8(ident.sym(&p.ast)) == "as"
+                        && !p.input().is(Token::Arrow)
+                    {
+                        // async as type
+                        let type_ann = p.in_type(Self::parse_ts_type)?;
+                        return Ok(p
+                            .ast
+                            .expr_ts_as_expr(p.span(start), Expr::Ident(id), type_ann));
+                    }
 
                     // async a => body
-                    let arg = Pat::Ident(p.ast.binding_ident(id.span(&p.ast), ident));
+                    let arg = Pat::Ident(p.ast.binding_ident(id.span(&p.ast), ident, None));
                     let params = p.scratch_start(|p, params| {
                         params.push(p, arg);
                         Ok(())
@@ -2422,9 +2394,15 @@ impl<I: Tokens> Parser<I> {
                     )?;
 
                     p.ast.free_node(id.node_id());
-                    return Ok(p
-                        .ast
-                        .expr_arrow_expr(p.span(start), params, body, true, false));
+                    return Ok(p.ast.expr_arrow_expr(
+                        p.span(start),
+                        params,
+                        body,
+                        true,
+                        false,
+                        None,
+                        None,
+                    ));
                 } else if p.input_mut().eat(Token::Arrow) {
                     if p.ctx().contains(Context::Strict) && id.is_reserved_in_strict_bind(&p.ast) {
                         p.emit_strict_mode_err(
@@ -2434,7 +2412,7 @@ impl<I: Tokens> Parser<I> {
                     }
 
                     let params = p.scratch_start(|p, params| {
-                        let pat = Pat::Ident(p.ast.binding_ident(id.span(&p.ast), id));
+                        let pat = Pat::Ident(p.ast.binding_ident(id.span(&p.ast), id, None));
                         params.push(p, pat);
                         Ok(())
                     })?;
@@ -2446,9 +2424,15 @@ impl<I: Tokens> Parser<I> {
                         params.is_simple_parameter_list(&p.ast),
                     )?;
 
-                    return Ok(p
-                        .ast
-                        .expr_arrow_expr(p.span(start), params, body, false, false));
+                    return Ok(p.ast.expr_arrow_expr(
+                        p.span(start),
+                        params,
+                        body,
+                        false,
+                        false,
+                        None,
+                        None,
+                    ));
                 }
             }
 
@@ -2598,10 +2582,10 @@ impl<I: Tokens> Parser<I> {
     }
 }
 
-fn unwrap_ts_non_null(expr: Expr) -> Expr {
-    // while let Expr::TsNonNull(ts_non_null) = expr {
-    //     expr = &ts_non_null.expr;
-    // }
+fn unwrap_ts_non_null(ast: &Ast, mut expr: Expr) -> Expr {
+    while let Expr::TsNonNull(ts_non_null) = expr {
+        expr = ts_non_null.expr(ast);
+    }
 
     expr
 }

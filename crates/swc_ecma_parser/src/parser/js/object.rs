@@ -55,7 +55,7 @@ impl<I: Tokens> Parser<I> {
 
             return Ok(self
                 .ast
-                .object_pat_prop_rest_pat(self.span(start), dot3_token, arg));
+                .object_pat_prop_rest_pat(self.span(start), dot3_token, arg, None));
         }
 
         let key = self.parse_prop_name()?;
@@ -92,7 +92,9 @@ impl<I: Tokens> Parser<I> {
         let key_ident = self
             .ast
             .ident(key.span(&self.ast), key.sym(&self.ast), false);
-        let key_ident = self.ast.binding_ident(key_ident.span(&self.ast), key_ident);
+        let key_ident = self
+            .ast
+            .binding_ident(key_ident.span(&self.ast), key_ident, None);
         self.ast.free_node(key.node_id());
         Ok(self
             .ast
@@ -134,7 +136,7 @@ impl<I: Tokens> Parser<I> {
         let optional = (self.input().syntax().dts() || self.ctx().contains(Context::InDeclare))
             && self.input_mut().eat(Token::QuestionMark);
 
-        Ok(self.ast.pat_object_pat(span, props, optional))
+        Ok(self.ast.pat_object_pat(span, props, optional, None))
     }
 
     pub(super) fn parse_object_pat(&mut self) -> PResult<Pat> {
@@ -348,9 +350,14 @@ impl<I: Tokens> Parser<I> {
                                 }
 
                                 let body = function.body(&p.ast);
+                                let return_type = function.return_type(&p.ast);
                                 p.ast.free_node(function.node_id());
-                                p.ast
-                                    .prop_or_spread_prop_getter_prop(p.span(start), key, body)
+                                p.ast.prop_or_spread_prop_getter_prop(
+                                    p.span(start),
+                                    key,
+                                    body,
+                                    return_type,
+                                )
                             });
                     }
 

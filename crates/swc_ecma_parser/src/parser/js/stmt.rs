@@ -102,36 +102,26 @@ impl<I: Tokens> Parser<I> {
 
         let name = self.parse_binding_pat_or_ident(is_let_or_const)?;
 
-        // let definite = if self.input().syntax().typescript() {
-        //     match name {
-        //         Pat::Ident(..) => self.input_mut().eat(Token::Bang),
-        //         _ => false,
-        //     }
-        // } else {
-        //     false
-        // };
+        let definite = if self.input().syntax().typescript() {
+            match name {
+                Pat::Ident(..) => self.input_mut().eat(Token::Bang),
+                _ => false,
+            }
+        } else {
+            false
+        };
 
         // Typescript extension
-        // if self.input().syntax().typescript() && self.input().is(Token::Colon) {
-        //     let type_annotation = self.try_parse_ts_type_ann()?;
-        //     match name {
-        //         Pat::Array(ArrayPat {
-        //             ref mut type_ann, ..
-        //         })
-        //         | Pat::Ident(BindingIdent {
-        //             ref mut type_ann, ..
-        //         })
-        //         | Pat::Object(ObjectPat {
-        //             ref mut type_ann, ..
-        //         })
-        //         | Pat::Rest(RestPat {
-        //             ref mut type_ann, ..
-        //         }) => {
-        //             *type_ann = type_annotation;
-        //         }
-        //         _ => unreachable!("invalid syntax: Pat: {:?}", name),
-        //     }
-        // }
+        if self.input().syntax().typescript() && self.input().is(Token::Colon) {
+            let type_annotation = self.try_parse_ts_type_ann()?;
+            match name {
+                Pat::Array(pat) => pat.set_type_ann(&mut self.ast, type_annotation),
+                Pat::Ident(pat) => pat.set_type_ann(&mut self.ast, type_annotation),
+                Pat::Object(pat) => pat.set_type_ann(&mut self.ast, type_annotation),
+                Pat::Rest(pat) => pat.set_type_ann(&mut self.ast, type_annotation),
+                _ => unreachable!("invalid syntax: Pat: {:?}", name),
+            }
+        }
 
         //FIXME: This is wrong. Should check in/of only on first looself.
         let cur = self.input().cur();
@@ -170,7 +160,9 @@ impl<I: Tokens> Parser<I> {
             None
         };
 
-        Ok(self.ast.var_declarator(self.span(start), name, init))
+        Ok(self
+            .ast
+            .var_declarator(self.span(start), name, init, definite))
     }
 
     pub(crate) fn parse_var_stmt(&mut self, for_loop: bool) -> PResult<VarDecl> {
@@ -434,10 +426,10 @@ impl<I: Tokens> Parser<I> {
 
         if is_using_decl {
             let name = self.parse_binding_ident(false)?;
-            let name = self.ast.binding_ident(self.span(start), name);
-            let decl = self
-                .ast
-                .var_declarator(self.span(start), Pat::Ident(name), Some(init));
+            let name = self.ast.binding_ident(self.span(start), name, None);
+            let decl =
+                self.ast
+                    .var_declarator(self.span(start), Pat::Ident(name), Some(init), false);
 
             let decls = self.scratch_start(|p, decls| {
                 decls.push(p, decl);

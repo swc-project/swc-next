@@ -401,21 +401,23 @@ impl<I: Tokens> Parser<I> {
                 let name = p.do_outside_of_context(Context::ShouldNotLexLtOrGtAsType, |p| {
                     p.parse_jsx_element_name()
                 })?;
-                // let type_args = if p.input().syntax().typescript() && p.input().is(Token::Lt) {
-                //     p.try_parse_ts(|p| {
-                //         let ret = p.parse_ts_type_args()?;
-                //         p.assert_and_bump(Token::Gt);
-                //         Ok(Some(ret))
-                //     })
-                // } else {
-                //     None
-                // };
+                let type_args = if p.input().syntax().typescript() && p.input().is(Token::Lt) {
+                    p.try_parse_ts(|p| {
+                        let ret = p.parse_ts_type_args()?;
+                        p.assert_and_bump(Token::Gt);
+                        Ok(Some(ret))
+                    })
+                } else {
+                    None
+                };
                 let attrs = p.parse_jsx_attrs()?;
                 if p.input().cur() == Token::Gt {
                     // <xxxxx>xxxxx</xxxxx>
                     p.input_mut().scan_jsx_token(true);
                     let span = Span::new_with_checked(start, p.input.get_cur().span.lo);
-                    let opening = p.ast.jsx_opening_element(span, name, attrs, false);
+                    let opening = p
+                        .ast
+                        .jsx_opening_element(span, name, attrs, false, type_args);
                     let children = p.parse_jsx_children();
                     let closing =
                         p.parse_jsx_closing_element(in_expr_context, opening.name(&p.ast))?;
@@ -451,7 +453,9 @@ impl<I: Tokens> Parser<I> {
                         Span::new_with_checked(start, p.cur_pos())
                     };
 
-                    let opening = p.ast.jsx_opening_element(span, name, attrs, true);
+                    let opening = p
+                        .ast
+                        .jsx_opening_element(span, name, attrs, true, type_args);
                     Ok(either::Either::Right(p.ast.jsx_element(
                         span,
                         opening,

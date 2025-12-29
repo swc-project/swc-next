@@ -132,7 +132,7 @@ impl<I: Tokens> Parser<I> {
                         return Ok(Pat::Expr(expr));
                     }
                     Expr::Ident(i) => {
-                        let i = self.ast.binding_ident(i.span(&self.ast), i);
+                        let i = self.ast.binding_ident(i.span(&self.ast), i, None);
                         return Ok(Pat::Ident(i));
                     }
                     _ => {
@@ -159,17 +159,23 @@ impl<I: Tokens> Parser<I> {
                 | Expr::Fn(..)
                 | Expr::Class(..)
                 | Expr::Paren(..)
-                // | Expr::TsAs(..) 
-                | Expr::Tpl(..)=> {
-                    if !expr.is_valid_simple_assignment_target(&self.ast, self.ctx().contains(Context::Strict))
-                    {
+                | Expr::Tpl(..)
+                | Expr::TsAs(..)
+                | Expr::TsNonNull(..)
+                | Expr::TsTypeAssertion(..)
+                | Expr::TsInstantiation(..)
+                | Expr::TsSatisfies(..) => {
+                    if !expr.is_valid_simple_assignment_target(
+                        &self.ast,
+                        self.ctx().contains(Context::Strict),
+                    ) {
                         self.emit_err(span, SyntaxError::NotSimpleAssign)
                     }
                     match expr {
                         Expr::Ident(i) => {
-                            let i = self.ast.binding_ident(i.span(&self.ast), i);
-                            return Ok(Pat::Ident(i))
-                        },
+                            let i = self.ast.binding_ident(i.span(&self.ast), i, None);
+                            return Ok(Pat::Ident(i));
+                        }
                         _ => {
                             return Ok(Pat::Expr(expr));
                         }
@@ -210,6 +216,19 @@ impl<I: Tokens> Parser<I> {
                                 Expr::OptChain(opt_chain_expr)
                             }
                             SimpleAssignTarget::Invalid(invalid) => Expr::Invalid(invalid),
+                            SimpleAssignTarget::TsAs(ts_as_expr) => Expr::TsAs(ts_as_expr),
+                            SimpleAssignTarget::TsSatisfies(ts_satisfies_expr) => {
+                                Expr::TsSatisfies(ts_satisfies_expr)
+                            }
+                            SimpleAssignTarget::TsNonNull(ts_non_null_expr) => {
+                                Expr::TsNonNull(ts_non_null_expr)
+                            }
+                            SimpleAssignTarget::TsTypeAssertion(ts_type_assertion) => {
+                                Expr::TsTypeAssertion(ts_type_assertion)
+                            }
+                            SimpleAssignTarget::TsInstantiation(ts_instantiation) => {
+                                Expr::TsInstantiation(ts_instantiation)
+                            }
                         };
                         self.reparse_expr_as_pat(pat_ty, left)?
                     }
@@ -238,7 +257,8 @@ impl<I: Tokens> Parser<I> {
                         let prop = match prop {
                             PropOrSpread::Prop(prop) => match prop {
                                 Prop::Shorthand(id) => {
-                                    let binding_ident = p.ast.binding_ident(id.span(&p.ast), id);
+                                    let binding_ident =
+                                        p.ast.binding_ident(id.span(&p.ast), id, None);
                                     p.ast.object_pat_prop_assign_pat_prop(
                                         id.span(&p.ast),
                                         binding_ident,
@@ -260,7 +280,7 @@ impl<I: Tokens> Parser<I> {
                                 }
                                 Prop::Assign(assign_prop) => {
                                     let id = assign_prop.key(&p.ast);
-                                    let key = p.ast.binding_ident(id.span(&p.ast), id);
+                                    let key = p.ast.binding_ident(id.span(&p.ast), id, None);
                                     let value = assign_prop.value(&p.ast);
                                     let ret = p.ast.object_pat_prop_assign_pat_prop(
                                         span,
@@ -287,7 +307,7 @@ impl<I: Tokens> Parser<I> {
                                 let element_pat_ty = pat_ty.element();
                                 let pat = if let PatType::BindingElement = element_pat_ty {
                                     if let Expr::Ident(i) = expr {
-                                        Pat::Ident(p.ast.binding_ident(i.span(&p.ast), i))
+                                        Pat::Ident(p.ast.binding_ident(i.span(&p.ast), i, None))
                                     } else {
                                         p.emit_err(span, SyntaxError::DotsWithoutIdentifier);
                                         p.ast.pat_invalid(span)
@@ -298,7 +318,8 @@ impl<I: Tokens> Parser<I> {
                                 if let Pat::Assign(_) = pat {
                                     p.emit_err(span, SyntaxError::TS1048)
                                 };
-                                let ret = p.ast.object_pat_prop_rest_pat(span, dot_3_token, pat);
+                                let ret =
+                                    p.ast.object_pat_prop_rest_pat(span, dot_3_token, pat, None);
                                 p.ast.free_node(spread.node_id());
                                 ret
                             }
@@ -313,16 +334,20 @@ impl<I: Tokens> Parser<I> {
                 })?;
 
                 self.ast.free_node(object.node_id());
-                Ok(self.ast.pat_object_pat(object_span, props, false))
+                Ok(self.ast.pat_object_pat(object_span, props, false, None))
             }
-            Expr::Ident(ident) => Ok(Pat::Ident(
-                self.ast.binding_ident(ident.span(&self.ast), ident),
-            )),
+            Expr::Ident(ident) => Ok(Pat::Ident(self.ast.binding_ident(
+                ident.span(&self.ast),
+                ident,
+                None,
+            ))),
             Expr::Array(array) => {
                 let mut exprs = array.elems(&self.ast);
                 if exprs.is_empty() {
                     self.ast.free_node(array.node_id());
-                    return Ok(self.ast.pat_array_pat(span, TypedSubRange::empty(), false));
+                    return Ok(self
+                        .ast
+                        .pat_array_pat(span, TypedSubRange::empty(), false, None));
                 }
                 // Trailing comma may exist. We should remove those commas.
                 let count_of_trailing_comma = exprs
@@ -387,7 +412,9 @@ impl<I: Tokens> Parser<I> {
 
                                     self.ast.free_node(spread.node_id());
                                     Some(self.reparse_expr_as_pat(pat_ty.element(), expr).map(
-                                        |pat| self.ast.pat_rest_pat(expr_span, spread_span, pat),
+                                        |pat| {
+                                            self.ast.pat_rest_pat(expr_span, spread_span, pat, None)
+                                        },
                                     )?)
                                 }
                                 None => {
@@ -404,7 +431,7 @@ impl<I: Tokens> Parser<I> {
 
                 self.ast.free_node(array.node_id());
                 let params = self.ast.add_typed_sub_range(params);
-                Ok(self.ast.pat_array_pat(span, params, false))
+                Ok(self.ast.pat_array_pat(span, params, false, None))
             }
 
             // Invalid patterns.
@@ -452,9 +479,11 @@ impl<I: Tokens> Parser<I> {
         let cur = self.input().cur();
         if cur.is_word() {
             let ident = self.parse_binding_ident(disallow_let)?;
-            Ok(Pat::Ident(
-                self.ast.binding_ident(ident.span(&self.ast), ident),
-            ))
+            Ok(Pat::Ident(self.ast.binding_ident(
+                ident.span(&self.ast),
+                ident,
+                None,
+            )))
         } else if cur == Token::LBracket {
             self.parse_array_binding_pat()
         } else if cur == Token::LBrace {
@@ -496,7 +525,7 @@ impl<I: Tokens> Parser<I> {
                 let pat = self.parse_binding_pat_or_ident(false)?;
                 rest_span = self.span(start);
 
-                let pat = self.ast.pat_rest_pat(rest_span, dot3_token, pat);
+                let pat = self.ast.pat_rest_pat(rest_span, dot3_token, pat, None);
                 elems.push(Some(pat));
             } else {
                 elems.push(Some(self.parse_binding_element()?));
@@ -515,7 +544,9 @@ impl<I: Tokens> Parser<I> {
             && self.input_mut().eat(Token::QuestionMark);
 
         let elems = self.ast.add_typed_sub_range(elems);
-        Ok(self.ast.pat_array_pat(self.span(start), elems, optional))
+        Ok(self
+            .ast
+            .pat_array_pat(self.span(start), elems, optional, None))
     }
 
     /// spec: 'FormalParameter'
@@ -691,16 +722,16 @@ impl<I: Tokens> Parser<I> {
                     let dot3_token = p.span(pat_start);
 
                     let pat = p.parse_binding_pat_or_ident(false)?;
-                    // let type_ann =
-                    //     if p.input().syntax().typescript() && p.input().is(Token::Colon) {
-                    //         let cur_pos = p.cur_pos();
-                    //         Some(p.parse_ts_type_ann(/* eat_colon */ true, cur_pos)?)
-                    //     } else {
-                    //         None
-                    //     };
+                    let type_ann = if p.input().syntax().typescript() && p.input().is(Token::Colon)
+                    {
+                        let cur_pos = p.cur_pos();
+                        Some(p.parse_ts_type_ann(/* eat_colon */ true, cur_pos)?)
+                    } else {
+                        None
+                    };
 
                     rest_span = p.span(pat_start);
-                    let pat = p.ast.pat_rest_pat(rest_span, dot3_token, pat);
+                    let pat = p.ast.pat_rest_pat(rest_span, dot3_token, pat, type_ann);
                     let param =
                         p.ast
                             .param_or_ts_param_prop_param(p.span(param_start), decorators, pat);
@@ -745,17 +776,17 @@ impl<I: Tokens> Parser<I> {
                         pat = p.ast.pat_assign_pat(p.span(pat_start), pat, right);
                     }
 
-                    // let type_ann =
-                    //     if p.input().syntax().typescript() && p.input().is(Token::Colon) {
-                    //         let cur_pos = p.cur_pos();
-                    //         let ty = p.parse_ts_type_ann(/* eat_colon */ true, cur_pos)?;
-                    //         Some(ty)
-                    //     } else {
-                    //         None
-                    //     };
+                    let type_ann = if p.input().syntax().typescript() && p.input().is(Token::Colon)
+                    {
+                        let cur_pos = p.cur_pos();
+                        let ty = p.parse_ts_type_ann(/* eat_colon */ true, cur_pos)?;
+                        Some(ty)
+                    } else {
+                        None
+                    };
 
                     rest_span = p.span(pat_start);
-                    let pat = p.ast.pat_rest_pat(rest_span, dot3_token, pat);
+                    let pat = p.ast.pat_rest_pat(rest_span, dot3_token, pat, type_ann);
 
                     if p.syntax().typescript() && p.input_mut().eat(Token::QuestionMark) {
                         p.emit_err(p.input().prev_span(), SyntaxError::TS1047);
@@ -841,7 +872,7 @@ impl<I: Tokens> Parser<I> {
                             let dot3_span = dot3_token.span(&p.ast);
                             p.ast.free_node(dot3_token.node_id());
                             p.reparse_expr_as_pat(pat_ty, expr)
-                                .map(|pat| p.ast.pat_rest_pat(expr_span, dot3_span, pat))?
+                                .map(|pat| p.ast.pat_rest_pat(expr_span, dot3_span, pat, None))?
                         }
                         None => p.reparse_expr_as_pat(pat_ty, expr_or_spread.expr(&p.ast))?,
                     };
