@@ -108,6 +108,9 @@ impl AstCompat<'_> {
             experimental::ModuleDecl::ExportAll(export_all) => {
                 legacy::ModuleDecl::ExportAll(self.compat_export_all(export_all))
             }
+            experimental::ModuleDecl::TsImportEquals(_ts_import_equals_decl) => todo!(),
+            experimental::ModuleDecl::TsExportAssignment(_ts_export_assignment) => todo!(),
+            experimental::ModuleDecl::TsNamespaceExport(_ts_namespace_export_decl) => todo!(),
         }
     }
 
@@ -583,6 +586,12 @@ impl AstCompat<'_> {
             experimental::Expr::Invalid(i) => legacy::Expr::Invalid(legacy::Invalid {
                 span: i.span(self.ast),
             }),
+            experimental::Expr::TsTypeAssertion(_ts_type_assertion) => todo!(),
+            experimental::Expr::TsConstAssertion(_ts_const_assertion) => todo!(),
+            experimental::Expr::TsNonNull(_ts_non_null_expr) => todo!(),
+            experimental::Expr::TsAs(_ts_as_expr) => todo!(),
+            experimental::Expr::TsInstantiation(_ts_instantiation) => todo!(),
+            experimental::Expr::TsSatisfies(_ts_satisfies_expr) => todo!(),
         })
     }
 
@@ -1004,6 +1013,7 @@ impl AstCompat<'_> {
                     definite: false,
                 })
             }
+            experimental::ClassMember::TsIndexSignature(_ts_index_signature) => todo!(),
         }
     }
 
@@ -1013,6 +1023,7 @@ impl AstCompat<'_> {
         p: experimental::ParamOrTsParamProp,
     ) -> legacy::ParamOrTsParamProp {
         match p {
+            experimental::ParamOrTsParamProp::TsParamProp(_ts_param_prop) => todo!(),
             experimental::ParamOrTsParamProp::Param(pp) => {
                 legacy::ParamOrTsParamProp::Param(self.compat_param(pp))
             }
@@ -1040,6 +1051,10 @@ impl AstCompat<'_> {
                 is_await: u.is_await(self.ast),
                 decls: self.compat_type_sub_range(u.decls(self.ast), Self::compat_var_declarator),
             })),
+            experimental::Decl::TsInterface(_ts_interface_decl) => todo!(),
+            experimental::Decl::TsTypeAlias(_ts_type_alias_decl) => todo!(),
+            experimental::Decl::TsEnum(_ts_enum_decl) => todo!(),
+            experimental::Decl::TsModule(_ts_module_decl) => todo!(),
         }
     }
 
@@ -1169,6 +1184,7 @@ impl AstCompat<'_> {
                 exp: self.compat_utf8_ref(r.exp(self.ast)),
                 flags: self.compat_utf8_ref(r.flags(self.ast)),
             }),
+            experimental::Lit::JSXText(_jsxtext) => todo!(),
         }
     }
 
@@ -1265,6 +1281,11 @@ impl AstCompat<'_> {
                         span: i.span(self.ast),
                     })
                 }
+                experimental::SimpleAssignTarget::TsAs(_ts_as_expr) => todo!(),
+                experimental::SimpleAssignTarget::TsSatisfies(_ts_satisfies_expr) => todo!(),
+                experimental::SimpleAssignTarget::TsNonNull(_ts_non_null_expr) => todo!(),
+                experimental::SimpleAssignTarget::TsTypeAssertion(_ts_type_assertion) => todo!(),
+                experimental::SimpleAssignTarget::TsInstantiation(_ts_instantiation) => todo!(),
             }),
             experimental::AssignTarget::Pat(p) => legacy::AssignTarget::Pat(match p {
                 experimental::AssignTargetPat::Array(a) => {
