@@ -2758,8 +2758,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<ModuleItem> {
         <V as Visit>::visit_module_items(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -2769,8 +2769,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<Stmt> {
         <V as Visit>::visit_stmts(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -2780,8 +2780,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<ImportSpecifier> {
         <V as Visit>::visit_import_specifiers(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -2813,8 +2813,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<ExportSpecifier> {
         <V as Visit>::visit_export_specifiers(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -2868,8 +2868,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<SwitchCase> {
         <V as Visit>::visit_switch_cases(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -2923,8 +2923,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<VarDeclarator> {
         <V as Visit>::visit_var_declarators(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -2945,8 +2945,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<Option<ExprOrSpread>> {
         <V as Visit>::visit_opt_vec_expr_or_spreads(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -2956,8 +2956,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<PropOrSpread> {
         <V as Visit>::visit_prop_or_spreads(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -2967,8 +2967,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<ExprOrSpread> {
         <V as Visit>::visit_expr_or_spreads(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -2989,8 +2989,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<Expr> {
         <V as Visit>::visit_exprs(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -3000,8 +3000,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<Pat> {
         <V as Visit>::visit_pats(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -3011,8 +3011,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<TplElement> {
         <V as Visit>::visit_tpl_elements(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -3033,8 +3033,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<Param> {
         <V as Visit>::visit_params(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -3044,8 +3044,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<Decorator> {
         <V as Visit>::visit_decorators(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -3055,8 +3055,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<ClassMember> {
         <V as Visit>::visit_class_members(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -3066,8 +3066,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<ParamOrTsParamProp> {
         <V as Visit>::visit_param_or_ts_param_props(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -3077,8 +3077,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<Option<Pat>> {
         <V as Visit>::visit_opt_vec_pats(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -3088,8 +3088,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<ObjectPatProp> {
         <V as Visit>::visit_object_pat_props(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -3099,8 +3099,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<JSXAttrOrSpread> {
         <V as Visit>::visit_jsx_attr_or_spreads(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -3121,8 +3121,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<JSXElementChild> {
         <V as Visit>::visit_jsx_element_childs(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -6764,9 +6764,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<ModuleItem> {
         <V as VisitMut>::visit_mut_module_items(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -6776,9 +6777,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<Stmt> {
         <V as VisitMut>::visit_mut_stmts(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -6788,9 +6790,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<ImportSpecifier> {
         <V as VisitMut>::visit_mut_import_specifiers(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -6822,9 +6825,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<ExportSpecifier> {
         <V as VisitMut>::visit_mut_export_specifiers(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -6878,9 +6882,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<SwitchCase> {
         <V as VisitMut>::visit_mut_switch_cases(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -6934,9 +6939,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<VarDeclarator> {
         <V as VisitMut>::visit_mut_var_declarators(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -6957,9 +6963,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<Option<ExprOrSpread
         <V as VisitMut>::visit_mut_opt_vec_expr_or_spreads(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -6969,9 +6976,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<PropOrSpread> {
         <V as VisitMut>::visit_mut_prop_or_spreads(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -6981,9 +6989,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<ExprOrSpread> {
         <V as VisitMut>::visit_mut_expr_or_spreads(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -7004,9 +7013,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<Expr> {
         <V as VisitMut>::visit_mut_exprs(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -7016,9 +7026,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<Pat> {
         <V as VisitMut>::visit_mut_pats(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -7028,9 +7039,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<TplElement> {
         <V as VisitMut>::visit_mut_tpl_elements(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -7051,9 +7063,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<Param> {
         <V as VisitMut>::visit_mut_params(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -7063,9 +7076,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<Decorator> {
         <V as VisitMut>::visit_mut_decorators(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -7075,9 +7089,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<ClassMember> {
         <V as VisitMut>::visit_mut_class_members(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -7087,9 +7102,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<ParamOrTsParamProp>
         <V as VisitMut>::visit_mut_param_or_ts_param_props(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -7099,9 +7115,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<Option<Pat>> {
         <V as VisitMut>::visit_mut_opt_vec_pats(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -7111,9 +7128,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<ObjectPatProp> {
         <V as VisitMut>::visit_mut_object_pat_props(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -7123,9 +7141,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<JSXAttrOrSpread> {
         <V as VisitMut>::visit_mut_jsx_attr_or_spreads(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -7146,9 +7165,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<JSXElementChild> {
         <V as VisitMut>::visit_mut_jsx_element_childs(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }

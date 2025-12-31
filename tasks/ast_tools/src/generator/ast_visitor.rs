@@ -289,7 +289,8 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 });
 
                 // VisitWith/VisitMutWith
-                let get_node = quote! ( let child = visitor.ast().get_node_in_sub_range(child); );
+                let get_node =
+                    quote! ( let child = visitor.ast().get_node_in_sub_range(child_idx); );
                 visit_with_impls.extend(quote! {
                     impl<V: ?Sized + Visit> VisitWith<V> for #ty_ident {
                         fn visit_with(self, visitor: &mut V) {
@@ -297,7 +298,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                         }
 
                         fn visit_children_with(self, visitor: &mut V) {
-                            for child in self.iter() {
+                            for child_idx in self.iter() {
                                 #get_node
                                 child.visit_with(visitor);
                             }
@@ -311,9 +312,10 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                         }
 
                         fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-                            for child in self.iter() {
+                            for child_idx in self.iter() {
                                 #get_node
-                                child.visit_mut_with(visitor);
+                                let new_child = child.visit_mut_with(visitor);
+                                self.replace_slot(visitor.ast(), child_idx, new_child);
                             }
                             self
                         }

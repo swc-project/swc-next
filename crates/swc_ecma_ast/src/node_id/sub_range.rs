@@ -170,6 +170,13 @@ impl<T> TypedSubRange<T> {
     }
 }
 
+impl<T: ExtraDataCompact> TypedSubRange<T> {
+    #[inline]
+    pub fn replace_slot(&self, ast: &mut Ast, at: NodeExtraDataId<T>, new: T) {
+        ast.extra_data[at.inner] = new.to_extra_data();
+    }
+}
+
 impl<T> Deref for TypedSubRange<T> {
     type Target = SubRange;
 
