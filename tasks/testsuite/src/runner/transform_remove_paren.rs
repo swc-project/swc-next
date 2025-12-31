@@ -1,6 +1,6 @@
 use colored::Colorize;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use swc_experimental_ecma_ast::NodeKind;
+use swc_experimental_ecma_ast::{Ast, Visit};
 use swc_experimental_ecma_transforms_base::remove_paren;
 
 use crate::{
@@ -37,13 +37,16 @@ impl RemoveParenRunner {
             };
 
             remove_paren::remove_paren(root, &mut ast, None);
-            for (_, node_id) in ast.nodes() {
-                if node_id.kind() == NodeKind::ParenExpr {
-                    return Some(TestResult::Failed {
-                        path: case.relative_path().to_owned(),
-                        error: "ParenExpr is detected".to_string(),
-                    });
-                }
+            let mut collector = ParenCollector {
+                ast: &ast,
+                count: 0,
+            };
+            collector.visit_program(root);
+            if collector.count > 0 {
+                return Some(TestResult::Failed {
+                    path: case.relative_path().to_owned(),
+                    error: format!("ParenExpr is detected {}", collector.count),
+                });
             }
 
             Some(TestResult::Passed {
@@ -51,5 +54,20 @@ impl RemoveParenRunner {
             })
         })
         .collect()
+    }
+}
+
+struct ParenCollector<'a> {
+    ast: &'a Ast,
+    count: usize,
+}
+
+impl<'a> Visit for ParenCollector<'a> {
+    fn ast(&self) -> &Ast {
+        self.ast
+    }
+
+    fn visit_paren_expr(&mut self, _node: swc_experimental_ecma_ast::ParenExpr) {
+        self.count += 1;
     }
 }
