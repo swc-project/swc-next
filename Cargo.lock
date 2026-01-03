@@ -1722,6 +1722,7 @@ dependencies = [
  "jwalk",
  "pico-args",
  "rayon",
+ "regex",
  "saphyr",
  "swc_core",
  "swc_experimental_ecma_ast",

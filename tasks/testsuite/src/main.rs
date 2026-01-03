@@ -10,6 +10,7 @@ use crate::{
         misc::MiscCase,
         test262,
         test262_parser::{self},
+        typescript::TypeScriptCase,
     },
     runner::{
         parser::ParserRunner, parser_no_memory_hole::NoMemoryHoleRunner, semantic::SemanticRunner,
@@ -74,15 +75,18 @@ fn test_normal(args: &AppArgs) {
     let mut results = Vec::new();
 
     let misc_cases = filter(args, MiscCase::read());
+    let ts_cases = filter(args, TypeScriptCase::read());
     let test262_parser_cases = filter(args, test262_parser::Test262ParserCase::read());
 
     if args.runners.is_empty() || args.runners.contains(PARSER_RUNNER) {
         results.extend(ParserRunner::run(args, &misc_cases));
+        results.extend(ParserRunner::run(args, &ts_cases));
         results.extend(ParserRunner::run(args, &test262_parser_cases));
     }
 
     if args.runners.is_empty() || args.runners.contains(NO_MEMORY_HOLE_RUNNER) {
         results.extend(NoMemoryHoleRunner::run(args, &misc_cases));
+        results.extend(NoMemoryHoleRunner::run(args, &ts_cases));
         results.extend(NoMemoryHoleRunner::run(args, &test262_parser_cases));
     }
 
