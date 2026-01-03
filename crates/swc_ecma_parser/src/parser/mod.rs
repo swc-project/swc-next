@@ -34,6 +34,7 @@ pub type PResult<T> = Result<T, crate::error::Error>;
 #[allow(unused)]
 pub struct ParserCheckpoint<I: Tokens> {
     lexer: I::Checkpoint,
+    ast: AstCheckpoint,
     scratch: usize,
     buffer_prev_span: Span,
     buffer_cur: TokenAndSpan,
@@ -75,6 +76,7 @@ impl<I: Tokens> Parser<I> {
     fn checkpoint_save(&self) -> ParserCheckpoint<I> {
         ParserCheckpoint {
             lexer: self.input.iter.checkpoint_save(),
+            ast: self.ast.checkpoint_save(),
             scratch: self.scratch.len(),
             buffer_cur: self.input.cur,
             buffer_next: self.input.next.clone(),
@@ -85,6 +87,7 @@ impl<I: Tokens> Parser<I> {
     #[allow(unused)]
     fn checkpoint_load(&mut self, checkpoint: ParserCheckpoint<I>) {
         self.input.iter.checkpoint_load(checkpoint.lexer);
+        self.ast.checkpoint_load(checkpoint.ast);
         self.scratch.truncate(checkpoint.scratch);
         self.input.cur = checkpoint.buffer_cur;
         self.input.next = checkpoint.buffer_next;

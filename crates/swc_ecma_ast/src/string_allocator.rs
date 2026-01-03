@@ -74,4 +74,13 @@ impl StringAllocator {
         let id = id.to_option()?;
         Some(self.get_wtf8(id))
     }
+
+    pub(crate) fn get_checkpoint_data(&self) -> (usize, usize) {
+        (self.allocated_utf8.len(), self.allocated_wtf8.len())
+    }
+
+    pub(crate) fn restore_checkpoint_data(&mut self, data: (usize, usize)) {
+        self.allocated_utf8.truncate(data.0);
+        self.allocated_wtf8.truncate(data.1);
+    }
 }

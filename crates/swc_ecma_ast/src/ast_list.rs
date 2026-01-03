@@ -98,6 +98,16 @@ impl NodeList {
                 .get_unchecked_mut(node_id.index())
         }
     }
+
+    pub(crate) fn get_checkpoint_data(&self) -> (usize, OptionalNodeId, u32) {
+        (self.inner.len(), self.free_head, self.num_elems)
+    }
+
+    pub(crate) fn restore_checkpoint_data(&mut self, data: (usize, OptionalNodeId, u32)) {
+        self.inner.truncate(data.0);
+        self.free_head = data.1;
+        self.num_elems = data.2;
+    }
 }
 
 impl Index<NodeId> for NodeList {
