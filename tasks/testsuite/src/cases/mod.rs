@@ -12,7 +12,6 @@ pub enum IsModule {
     Module,
     Script,
     Unknown,
-    Skip,
 }
 
 pub trait Case: Sync {
@@ -26,10 +25,9 @@ pub trait Case: Sync {
 
     fn is_module(&self) -> IsModule {
         match self.ext().as_str() {
-            "cjs" => IsModule::Script,
-            "mjs" => IsModule::Module,
-            "js" | "jsx" => IsModule::Unknown,
-            "ts" | "tsx" => IsModule::Skip,
+            "cjs" | "cts" => IsModule::Script,
+            "mjs" | "mts" => IsModule::Module,
+            "js" | "jsx" | "ts" | "tsx" => IsModule::Unknown,
             _ => unreachable!(),
         }
     }

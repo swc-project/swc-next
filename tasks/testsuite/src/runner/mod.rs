@@ -15,7 +15,6 @@ pub enum ParseResult {
     Succ((Program, Ast)),
     Fail(Vec<Error>),
     Panic,
-    Ignore,
 }
 
 pub fn parse<C: Case>(case: &C) -> ParseResult {
@@ -36,9 +35,6 @@ pub fn parse<C: Case>(case: &C) -> ParseResult {
                 .map(|ret| ret.map_root(Program::Module))
         })),
         IsModule::Unknown => catch_unwind(AssertUnwindSafe(|| parser.parse_program())),
-        IsModule::Skip => {
-            return ParseResult::Ignore;
-        }
     };
 
     match ret {

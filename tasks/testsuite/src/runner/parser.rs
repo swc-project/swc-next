@@ -47,9 +47,6 @@ impl ParserRunner {
                 (_, ParseResult::Panic) => TestResult::Panic {
                     path: case.relative_path().to_owned(),
                 },
-                (_, ParseResult::Ignore) => TestResult::Ignored {
-                    path: case.relative_path().to_owned(),
-                },
             }
         })
         .collect()
