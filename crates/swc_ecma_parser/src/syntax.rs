@@ -3,7 +3,6 @@ pub enum Syntax {
     /// Standard
     Es(EsSyntax),
     /// This variant requires the cargo feature `typescript` to be enabled.
-    #[cfg(feature = "typescript")]
     Typescript(TsSyntax),
 }
 
@@ -20,7 +19,6 @@ impl Syntax {
                 auto_accessors: true,
                 ..
             }) => true,
-            #[cfg(feature = "typescript")]
             Syntax::Typescript(_) => true,
             _ => false,
         }
@@ -34,7 +32,6 @@ impl Syntax {
     pub fn jsx(self) -> bool {
         match self {
             Syntax::Es(EsSyntax { jsx: true, .. }) => true,
-            #[cfg(feature = "typescript")]
             Syntax::Typescript(TsSyntax { tsx: true, .. }) => true,
             _ => false,
         }
@@ -49,7 +46,6 @@ impl Syntax {
             Syntax::Es(EsSyntax {
                 decorators: true, ..
             }) => true,
-            #[cfg(feature = "typescript")]
             Syntax::Typescript(TsSyntax {
                 decorators: true, ..
             }) => true,
@@ -63,20 +59,11 @@ impl Syntax {
                 decorators_before_export: true,
                 ..
             }) => true,
-            #[cfg(feature = "typescript")]
             Syntax::Typescript(..) => true,
             _ => false,
         }
     }
 
-    /// Should we parse typescript?
-    #[cfg(not(feature = "typescript"))]
-    pub const fn typescript(self) -> bool {
-        false
-    }
-
-    /// Should we parse typescript?
-    #[cfg(feature = "typescript")]
     pub const fn typescript(self) -> bool {
         matches!(self, Syntax::Typescript(..))
     }
@@ -93,7 +80,6 @@ impl Syntax {
 
     pub fn dts(self) -> bool {
         match self {
-            #[cfg(feature = "typescript")]
             Syntax::Typescript(t) => t.dts,
             _ => false,
         }
@@ -105,7 +91,6 @@ impl Syntax {
                 allow_super_outside_method,
                 ..
             }) => allow_super_outside_method,
-            #[cfg(feature = "typescript")]
             Syntax::Typescript(_) => true,
         }
     }
@@ -116,14 +101,12 @@ impl Syntax {
                 allow_return_outside_function,
                 ..
             }) => allow_return_outside_function,
-            #[cfg(feature = "typescript")]
             Syntax::Typescript(_) => false,
         }
     }
 
     pub fn early_errors(self) -> bool {
         match self {
-            #[cfg(feature = "typescript")]
             Syntax::Typescript(t) => !t.no_early_errors,
             Syntax::Es(..) => true,
         }
@@ -131,7 +114,6 @@ impl Syntax {
 
     pub fn disallow_ambiguous_jsx_like(self) -> bool {
         match self {
-            #[cfg(feature = "typescript")]
             Syntax::Typescript(t) => t.disallow_ambiguous_jsx_like,
             _ => false,
         }
@@ -143,7 +125,6 @@ impl Syntax {
                 explicit_resource_management: using_decl,
                 ..
             }) => *using_decl,
-            #[cfg(feature = "typescript")]
             Syntax::Typescript(_) => true,
         }
     }
@@ -151,7 +132,6 @@ impl Syntax {
     pub fn into_flags(self) -> SyntaxFlags {
         match self {
             Syntax::Es(es) => es.into_flags(),
-            #[cfg(feature = "typescript")]
             Syntax::Typescript(ts) => ts.into_flags(),
         }
     }
@@ -308,15 +288,6 @@ impl SyntaxFlags {
         self.contains(SyntaxFlags::DECORATORS_BEFORE_EXPORT)
     }
 
-    /// Should we parse typescript?
-    #[cfg(not(feature = "typescript"))]
-    #[inline(always)]
-    pub const fn typescript(&self) -> bool {
-        false
-    }
-
-    /// Should we parse typescript?
-    #[cfg(feature = "typescript")]
     #[inline(always)]
     pub const fn typescript(&self) -> bool {
         self.contains(SyntaxFlags::TS)

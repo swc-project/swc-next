@@ -96,10 +96,6 @@ impl<I: Tokens> Parser<I> {
     }
 
     ///`parseMaybeAssign` (overridden)
-    #[cfg_attr(
-        feature = "tracing-spans",
-        tracing::instrument(level = "debug", skip_all)
-    )]
     pub(crate) fn parse_assignment_expr(&mut self) -> PResult<Expr> {
         trace_cur!(self, parse_assignment_expr);
 
@@ -119,7 +115,6 @@ impl<I: Tokens> Parser<I> {
     /// operators like `+=`.
     ///
     /// `parseMaybeAssign`
-    #[cfg_attr(feature = "tracing-spans", tracing::instrument(skip_all))]
     fn parse_assignment_expr_base(&mut self) -> PResult<Expr> {
         trace_cur!(self, parse_assignment_expr_base);
         let start = self.input().cur_span();
@@ -373,10 +368,6 @@ impl<I: Tokens> Parser<I> {
     }
 
     /// Parse call, dot, and `[]`-subscript expressions.
-    #[cfg_attr(
-        feature = "tracing-spans",
-        tracing::instrument(level = "debug", skip_all)
-    )]
     pub(crate) fn parse_lhs_expr(&mut self) -> PResult<Expr> {
         trace_cur!(self, parse_lhs_expr);
 
@@ -473,10 +464,6 @@ impl<I: Tokens> Parser<I> {
         Ok(callee)
     }
 
-    #[cfg_attr(
-        feature = "tracing-spans",
-        tracing::instrument(level = "debug", skip_all)
-    )]
     fn parse_array_lit(&mut self) -> PResult<Expr> {
         trace_cur!(self, parse_array_lit);
 
@@ -858,7 +845,6 @@ impl<I: Tokens> Parser<I> {
     }
 
     /// Parse `Arguments[Yield, Await]`
-    #[cfg_attr(feature = "tracing-spans", tracing::instrument(skip_all))]
     pub(crate) fn parse_args(
         &mut self,
         is_dynamic_import: bool,
@@ -953,10 +939,6 @@ impl<I: Tokens> Parser<I> {
     }
 
     /// Spec: 'ConditionalExpression'
-    #[cfg_attr(
-        feature = "tracing-spans",
-        tracing::instrument(level = "debug", skip_all)
-    )]
     fn parse_cond_expr(&mut self) -> PResult<Expr> {
         trace_cur!(self, parse_cond_expr);
 
@@ -989,7 +971,6 @@ impl<I: Tokens> Parser<I> {
         }
     }
 
-    #[cfg_attr(feature = "tracing-spans", tracing::instrument(skip_all))]
     pub(crate) fn parse_subscripts(
         &mut self,
         obj: Callee,
@@ -1014,7 +995,6 @@ impl<I: Tokens> Parser<I> {
     }
 
     /// returned bool is true if this method should be called again.
-    #[cfg_attr(feature = "tracing-spans", tracing::instrument(skip_all))]
     fn parse_subscript(
         &mut self,
         start: BytePos,
@@ -1266,7 +1246,6 @@ impl<I: Tokens> Parser<I> {
     }
 
     /// Section 13.3 ImportCall
-    #[cfg_attr(feature = "tracing-spans", tracing::instrument(skip_all))]
     fn parse_subscript_super(
         &mut self,
         start: BytePos,
@@ -1351,7 +1330,6 @@ impl<I: Tokens> Parser<I> {
     }
 
     /// Section 13.3 ImportCall
-    #[cfg_attr(feature = "tracing-spans", tracing::instrument(skip_all))]
     fn parse_subscript_import_call(&mut self, start: BytePos, lhs: Import) -> PResult<Expr> {
         trace_cur!(self, parse_subscript_import);
 
@@ -1399,10 +1377,6 @@ impl<I: Tokens> Parser<I> {
     }
 
     /// `is_new_expr`: true iff we are parsing production 'NewExpression'.
-    #[cfg_attr(
-        feature = "tracing-spans",
-        tracing::instrument(level = "debug", skip_all)
-    )]
     fn parse_member_expr_or_new_expr(&mut self, is_new_expr: bool) -> PResult<Expr> {
         self.do_inside_of_context(Context::ShouldNotLexLtOrGtAsType, |p| {
             p.parse_member_expr_or_new_expr_inner(is_new_expr)
@@ -1528,7 +1502,6 @@ impl<I: Tokens> Parser<I> {
 
     /// Parse `NewExpression`.
     /// This includes `MemberExpression`.
-    #[cfg_attr(feature = "tracing-spans", tracing::instrument(skip_all))]
     pub(crate) fn parse_new_expr(&mut self) -> PResult<Expr> {
         trace_cur!(self, parse_new_expr);
         self.parse_member_expr_or_new_expr(true)
@@ -1804,10 +1777,6 @@ impl<I: Tokens> Parser<I> {
     }
 
     // Returns (args_or_pats, trailing_comma)
-    #[cfg_attr(
-        feature = "tracing-spans",
-        tracing::instrument(level = "debug", skip_all)
-    )]
     fn parse_args_or_pats(&mut self) -> PResult<(Vec<AssignTargetOrSpread>, Option<Span>)> {
         self.do_outside_of_context(
             Context::WillExpectColonForCond,
@@ -2065,10 +2034,6 @@ impl<I: Tokens> Parser<I> {
         Ok((items, trailing_comma))
     }
 
-    #[cfg_attr(
-        feature = "tracing-spans",
-        tracing::instrument(level = "debug", skip_all)
-    )]
     fn parse_paren_expr_or_arrow_fn(
         &mut self,
         can_be_arrow: bool,

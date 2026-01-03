@@ -547,10 +547,6 @@ impl<I: Tokens> Parser<I> {
             .ts_type_ref(self.span(start), type_name, type_params))
     }
 
-    #[cfg_attr(
-        feature = "tracing-spans",
-        tracing::instrument(level = "debug", skip_all)
-    )]
     pub(crate) fn parse_ts_type_ann(
         &mut self,
         eat_colon: bool,
@@ -595,10 +591,6 @@ impl<I: Tokens> Parser<I> {
 
     /// `tsEatThenParseType`
     fn eat_then_parse_ts_type(&mut self, token_to_eat: Token) -> PResult<Option<TsType>> {
-        if !cfg!(feature = "typescript") {
-            return Ok(Default::default());
-        }
-
         self.in_type(|p| {
             if !p.input_mut().eat(token_to_eat) {
                 return Ok(None);
@@ -778,10 +770,6 @@ impl<I: Tokens> Parser<I> {
         permit_in_out: bool,
         permit_const: bool,
     ) -> PResult<Option<TsTypeParamDecl>> {
-        if !cfg!(feature = "typescript") {
-            return Ok(None);
-        }
-
         if self.input().cur() == Token::Lt {
             return self
                 .parse_ts_type_params(permit_in_out, permit_const)
@@ -883,10 +871,6 @@ impl<I: Tokens> Parser<I> {
         }
     }
 
-    #[cfg_attr(
-        feature = "tracing-spans",
-        tracing::instrument(level = "debug", skip_all)
-    )]
     pub(super) fn try_parse_ts_type_args(&mut self) -> Option<TsTypeParamInstantiation> {
         trace_cur!(self, try_parse_ts_type_args);
         debug_assert!(self.input().syntax().typescript());
@@ -929,23 +913,11 @@ impl<I: Tokens> Parser<I> {
 
     /// `tsTryParseType`
     fn try_parse_ts_type(&mut self) -> PResult<Option<TsType>> {
-        if !cfg!(feature = "typescript") {
-            return Ok(None);
-        }
-
         self.eat_then_parse_ts_type(Token::Colon)
     }
 
     /// `tsTryParseTypeAnnotation`
-    #[cfg_attr(
-        feature = "tracing-spans",
-        tracing::instrument(level = "debug", skip_all)
-    )]
     pub(crate) fn try_parse_ts_type_ann(&mut self) -> PResult<Option<TsTypeAnn>> {
-        if !cfg!(feature = "typescript") {
-            return Ok(None);
-        }
-
         if self.input().is(Token::Colon) {
             let pos = self.cur_pos();
             return self.parse_ts_type_ann(/* eat_colon */ true, pos).map(Some);
@@ -1095,10 +1067,6 @@ impl<I: Tokens> Parser<I> {
     ///
     /// Used for parsing return types.
     fn try_parse_ts_type_or_type_predicate_ann(&mut self) -> PResult<Option<TsTypeAnn>> {
-        if !cfg!(feature = "typescript") {
-            return Ok(None);
-        }
-
         if self.input().is(Token::Colon) {
             self.parse_ts_type_or_type_predicate_ann(Token::Colon)
                 .map(Some)
@@ -1125,10 +1093,6 @@ impl<I: Tokens> Parser<I> {
     }
 
     fn parse_ts_tpl_type_elements(&mut self) -> PResult<(Vec<TsType>, Vec<TplElement>)> {
-        if !cfg!(feature = "typescript") {
-            return Ok(Default::default());
-        }
-
         trace_cur!(self, parse_tpl_elements);
 
         let mut types = Vec::new();
@@ -1310,10 +1274,6 @@ impl<I: Tokens> Parser<I> {
         readonly: bool,
         is_static: bool,
     ) -> PResult<Option<TsIndexSignature>> {
-        if !cfg!(feature = "typescript") {
-            return Ok(Default::default());
-        }
-
         if !(self.input().cur() == Token::LBracket
             && self.ts_look_ahead(Self::is_ts_unambiguously_index_signature))
         {
@@ -1428,10 +1388,6 @@ impl<I: Tokens> Parser<I> {
     ///
     /// Eats ')` at the end but does not eat `(` at start.
     fn parse_ts_binding_list_for_signature(&mut self) -> PResult<TypedSubRange<TsFnParam>> {
-        if !cfg!(feature = "typescript") {
-            return Ok(TypedSubRange::empty());
-        }
-
         debug_assert!(self.input().syntax().typescript());
 
         let params = self.parse_formal_params()?;
@@ -1525,10 +1481,6 @@ impl<I: Tokens> Parser<I> {
     }
 
     fn try_parse_ts_tuple_element_name(&mut self) -> Option<Pat> {
-        if !cfg!(feature = "typescript") {
-            return Default::default();
-        }
-
         self.try_parse_ts(|p| {
             let start = p.cur_pos();
 
@@ -2394,9 +2346,6 @@ impl<I: Tokens> Parser<I> {
 
     /// `tsParseNonArrayType`
     fn parse_ts_non_array_type(&mut self) -> PResult<TsType> {
-        if !cfg!(feature = "typescript") {
-            unreachable!()
-        }
         trace_cur!(self, parse_ts_non_array_type);
         debug_assert!(self.input().syntax().typescript());
 
@@ -2574,10 +2523,6 @@ impl<I: Tokens> Parser<I> {
         decorators: TypedSubRange<Decorator>,
         expr: Ident,
     ) -> PResult<Option<Decl>> {
-        if !cfg!(feature = "typescript") {
-            return Ok(Default::default());
-        }
-
         let start = expr.span_lo(&self.ast);
         let sym = self.ast.get_utf8(expr.sym(&self.ast));
 
@@ -2739,10 +2684,6 @@ impl<I: Tokens> Parser<I> {
         decorators: TypedSubRange<Decorator>,
         value: Utf8Ref,
     ) -> Option<Decl> {
-        if !cfg!(feature = "typescript") {
-            return None;
-        }
-
         self.try_parse_ts(|p| {
             let start = p.cur_pos();
             let opt = p.parse_ts_decl(start, decorators, value, true)?;
@@ -2761,10 +2702,6 @@ impl<I: Tokens> Parser<I> {
         value: Utf8Ref,
         next: bool,
     ) -> PResult<Option<Decl>> {
-        if !cfg!(feature = "typescript") {
-            return Ok(Default::default());
-        }
-
         let value = self.ast.get_utf8(value);
         match value {
             "abstract" => {
@@ -2856,10 +2793,6 @@ impl<I: Tokens> Parser<I> {
         &mut self,
         start: BytePos,
     ) -> PResult<Option<ArrowExpr>> {
-        if !cfg!(feature = "typescript") {
-            return Ok(Default::default());
-        }
-
         let cur = self.input().cur();
         let res = if cur == Token::Lt || cur == Token::JSXTagStart {
             self.try_parse_ts(|p| {
