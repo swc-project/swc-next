@@ -1126,7 +1126,7 @@ impl<I: Tokens> Parser<I> {
             _ => self.verify_expr(expr)?,
         };
 
-        if let Expr::Ident(ref ident) = expr {
+        if let Expr::Ident(ident) = expr {
             let ident_sym = self.ast.get_utf8(ident.sym(&self.ast));
             if ident_sym == "interface" && self.input().had_line_break_before_cur() {
                 self.emit_strict_mode_err(
@@ -1140,7 +1140,8 @@ impl<I: Tokens> Parser<I> {
             }
 
             if self.input().syntax().typescript() {
-                if let Some(decl) = self.parse_ts_expr_stmt(decorators, ident.clone())? {
+                if let Some(decl) = self.parse_ts_expr_stmt(decorators, ident)? {
+                    self.ast.free_node(expr.node_id());
                     return Ok(Stmt::Decl(decl));
                 }
             }

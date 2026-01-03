@@ -1392,23 +1392,24 @@ impl<I: Tokens> Parser<I> {
 
         let params = self.parse_formal_params()?;
         let list = self.scratch_start(|p, list| {
+            for param in params.iter() {
+                let param = p.ast.get_node_in_sub_range(param);
+                let item = match param.pat(&p.ast) {
+                    Pat::Ident(pat) => TsFnParam::Ident(pat),
+                    Pat::Array(pat) => TsFnParam::Array(pat),
+                    Pat::Object(pat) => TsFnParam::Object(pat),
+                    Pat::Rest(pat) => TsFnParam::Rest(pat),
+                    _ => unexpected!(
+                        p,
+                        "an identifier, [ for an array pattern, { for an object patter or ... for a \
+                         rest pattern"
+                    ),
+                };
 
-        for param in params.iter() {
-            let param = p.ast.get_node_in_sub_range(param);
-            let item = match param.pat(&p.ast) {
-                Pat::Ident(pat) => TsFnParam::Ident(pat),
-                Pat::Array(pat) => TsFnParam::Array(pat),
-                Pat::Object(pat) => TsFnParam::Object(pat),
-                Pat::Rest(pat) => TsFnParam::Rest(pat),
-                _ => unexpected!(
-                    p,
-                    "an identifier, [ for an array pattern, { for an object patter or ... for a \
-                     rest pattern"
-                ),
-            };
-            list.push(p, item);
-        }
-        Ok(())
+                p.ast.free_node(param.node_id());
+                list.push(p, item);
+            }
+            Ok(())
         })?;
 
         expect!(self, Token::RParen);
@@ -2433,7 +2434,7 @@ impl<I: Tokens> Parser<I> {
             }
 
             let lit = self.parse_lit()?;
-            let lit = match lit {
+            let ts_lit = match lit {
                 Lit::Num(number) => {
                     let span = number.span(&self.ast);
                     let value = number.value(&self.ast);
@@ -2476,7 +2477,8 @@ impl<I: Tokens> Parser<I> {
                 _ => unreachable!(),
             };
 
-            return Ok(self.ast.ts_type_ts_lit_type(self.span(start), lit));
+            self.ast.free_node(lit.node_id());
+            return Ok(self.ast.ts_type_ts_lit_type(self.span(start), ts_lit));
         } else if cur == Token::Import {
             return Ok(TsType::TsImportType(self.parse_ts_import_type()?));
         } else if cur == Token::This {

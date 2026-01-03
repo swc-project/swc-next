@@ -5,7 +5,7 @@ use std::{
 };
 
 use swc_experimental_ecma_ast::{Ast, NodeId, NodeKind};
-use swc_experimental_ecma_parser::{EsSyntax, Parser, StringSource, Syntax};
+use swc_experimental_ecma_parser::{Parser, StringSource, Syntax, TsSyntax};
 use swc_experimental_ecma_visit::{Visit, VisitWith};
 
 fn main() {
@@ -13,8 +13,8 @@ fn main() {
         .nth(1)
         .map(|p| read_to_string(p).unwrap())
         .unwrap_or(include_str!("../files/typescript.js").to_owned());
-    let syntax = Syntax::Es(EsSyntax {
-        jsx: true,
+    let syntax = Syntax::Typescript(TsSyntax {
+        tsx: true,
         ..Default::default()
     });
     let input = StringSource::new(&source);
