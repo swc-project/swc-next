@@ -181,42 +181,41 @@ impl<I: Tokens> Parser<I> {
         let var_span = self.span(start);
         let should_include_in = kind != VarDeclKind::Var || !for_loop;
 
-        // if self.syntax().typescript() && for_loop {
-        //     let cur = self.input().cur();
-        //     let res: PResult<bool> = if cur == Token::In || cur == Token::Of {
-        //         self.ts_look_ahead(|p| {
-        //             //
-        //             if !p.input_mut().eat(Token::Of) && !p.input_mut().eat(Token::In) {
-        //                 return Ok(false);
-        //             }
+        if self.syntax().typescript() && for_loop {
+            let cur = self.input().cur();
+            let res: PResult<bool> = if cur == Token::In || cur == Token::Of {
+                self.ts_look_ahead(|p| {
+                    //
+                    if !p.input_mut().eat(Token::Of) && !p.input_mut().eat(Token::In) {
+                        return Ok(false);
+                    }
 
-        //             p.parse_assignment_expr()?;
-        //             expect!(p, Token::RParen);
+                    p.parse_assignment_expr()?;
+                    expect!(p, Token::RParen);
 
-        //             Ok(true)
-        //         })
-        //     } else {
-        //         Ok(false)
-        //     };
+                    Ok(true)
+                })
+            } else {
+                Ok(false)
+            };
 
-        //     match res {
-        //         Ok(true) => {
-        //             let pos = var_span.hi();
-        //             let span = Span::new_with_checked(pos, pos);
-        //             self.emit_err(span, SyntaxError::TS1123);
+            match res {
+                Ok(true) => {
+                    let pos = var_span.hi();
+                    let span = Span::new_with_checked(pos, pos);
+                    self.emit_err(span, SyntaxError::TS1123);
 
-        //             return Ok(Box::new(VarDecl {
-        //                 span: self.span(start),
-        //                 kind,
-        //                 declare: false,
-        //                 decls: Vec::new(),
-        //                 ..Default::default()
-        //             }));
-        //         }
-        //         Err(..) => {}
-        //         _ => {}
-        //     }
-        // }
+                    return Ok(self.ast.var_decl(
+                        self.span(start),
+                        kind,
+                        false,
+                        TypedSubRange::empty(),
+                    ));
+                }
+                Err(..) => {}
+                _ => {}
+            }
+        }
 
         let decls = self.scratch_start(|p, decls| {
             loop {
@@ -355,31 +354,37 @@ impl<I: Tokens> Parser<I> {
                     }
                 } else {
                     let decls = decl.decls(&self.ast);
-                    let decl = self.ast.get_node_in_sub_range(decls.get(0));
+                    let declarator = self.ast.get_node_in_sub_range(decls.get(0));
                     if (self.ctx().contains(Context::Strict) || self.input().is(Token::Of))
-                        && decl.init(&self.ast).is_some()
+                        && declarator.init(&self.ast).is_some()
                     {
                         self.emit_err(
-                            decl.name(&self.ast).span(&self.ast),
+                            declarator.name(&self.ast).span(&self.ast),
                             SyntaxError::VarInitializerInForInHead,
                         );
                     }
 
-                    // if self.syntax().typescript() {
-                    //     let type_ann = match decl.decls[0].name {
-                    //         Pat::Ident(ref v) => Some(&v.type_ann),
-                    //         Pat::Array(ref v) => Some(&v.type_ann),
-                    //         Pat::Rest(ref v) => Some(&v.type_ann),
-                    //         Pat::Object(ref v) => Some(&v.type_ann),
-                    //         _ => None,
-                    //     };
+                    if self.syntax().typescript() {
+                        let first_decl = self
+                            .ast
+                            .get_node_in_sub_range(decl.decls(&self.ast).first().unwrap());
+                        let type_ann = match first_decl.name(&self.ast) {
+                            Pat::Ident(v) => Some(v.type_ann(&self.ast)),
+                            Pat::Array(v) => Some(v.type_ann(&self.ast)),
+                            Pat::Rest(v) => Some(v.type_ann(&self.ast)),
+                            Pat::Object(v) => Some(v.type_ann(&self.ast)),
+                            _ => None,
+                        };
 
-                    //     if let Some(type_ann) = type_ann {
-                    //         if type_ann.is_some() {
-                    //             self.emit_err(decl.decls[0].name.span(), SyntaxError::TS2483);
-                    //         }
-                    //     }
-                    // }
+                        if let Some(type_ann) = type_ann {
+                            if type_ann.is_some() {
+                                self.emit_err(
+                                    first_decl.name(&self.ast).span(&self.ast),
+                                    SyntaxError::TS2483,
+                                );
+                            }
+                        }
+                    }
                 }
 
                 return self.parse_for_each_head(ForHead::VarDecl(decl));
@@ -631,28 +636,35 @@ impl<I: Tokens> Parser<I> {
         if self.input_mut().eat(Token::LParen) {
             let pat = self.parse_binding_pat_or_ident(false)?;
 
-            // let type_ann_start = self.cur_pos();
-            // if self.syntax().typescript() && self.input_mut().eat(Token::Colon) {
-            //     let ty = self.do_inside_of_context(Context::InType, Self::parse_ts_type)?;
-            //     // self.emit_err(ty.span(), SyntaxError::TS1196);
+            let type_ann_start = self.cur_pos();
+            if self.syntax().typescript() && self.input_mut().eat(Token::Colon) {
+                let ty = self.do_inside_of_context(Context::InType, Self::parse_ts_type)?;
+                self.emit_err(ty.span(&self.ast), SyntaxError::TS1196);
 
-            //     match &mut pat {
-            //         Pat::Ident(BindingIdent { type_ann, .. })
-            //         | Pat::Array(ArrayPat { type_ann, .. })
-            //         | Pat::Rest(RestPat { type_ann, .. })
-            //         | Pat::Object(ObjectPat { type_ann, .. }) => {
-            //             *type_ann = Some(Box::new(TsTypeAnn {
-            //                 span: self.span(type_ann_start),
-            //                 type_ann: ty,
-            //             }));
-            //         }
-            //         Pat::Assign(..) => {}
-            //         Pat::Invalid(_) => {}
-            //         Pat::Expr(_) => {}
-            //         #[cfg(swc_ast_unknown)]
-            //         _ => unreachable!(),
-            //     }
-            // }
+                match pat {
+                    Pat::Ident(it) => {
+                        let type_ann = self.ast.ts_type_ann(self.span(type_ann_start), ty);
+                        it.set_type_ann(&mut self.ast, Some(type_ann));
+                    }
+                    Pat::Array(it) => {
+                        let type_ann = self.ast.ts_type_ann(self.span(type_ann_start), ty);
+                        it.set_type_ann(&mut self.ast, Some(type_ann));
+                    }
+                    Pat::Rest(it) => {
+                        let type_ann = self.ast.ts_type_ann(self.span(type_ann_start), ty);
+                        it.set_type_ann(&mut self.ast, Some(type_ann));
+                    }
+                    Pat::Object(it) => {
+                        let type_ann = self.ast.ts_type_ann(self.span(type_ann_start), ty);
+                        it.set_type_ann(&mut self.ast, Some(type_ann));
+                    }
+                    Pat::Assign(..) => {}
+                    Pat::Invalid(_) => {}
+                    Pat::Expr(_) => {}
+                    #[cfg(swc_ast_unknown)]
+                    _ => unreachable!(),
+                }
+            }
             expect!(self, Token::RParen);
             Ok(Some(pat))
         } else {
@@ -908,18 +920,17 @@ impl<I: Tokens> Parser<I> {
     ) -> PResult<Stmt> {
         trace_cur!(self, parse_stmt_internal);
 
-        // let is_typescript = self.input().syntax().typescript();
-        // if is_typescript
-        //     && self.input().is(Token::Const)
-        //     && peek!(self).is_some_and(|peek| peek == Token::Enum)
-        // {
-        //     self.assert_and_bump(Token::Const);
-        //     self.assert_and_bump(Token::Enum);
-        //     return self
-        //         .parse_ts_enum_decl(start, true)
-        //         .map(Decl::from)
-        //         .map(Stmt::from);
-        // }
+        let is_typescript = self.input().syntax().typescript();
+        if is_typescript
+            && self.input().is(Token::Const)
+            && peek!(self).is_some_and(|peek| peek == Token::Enum)
+        {
+            self.assert_and_bump(Token::Const);
+            self.assert_and_bump(Token::Enum);
+            return Ok(Stmt::Decl(Decl::TsEnum(
+                self.parse_ts_enum_decl(start, true)?,
+            )));
+        }
 
         let top_level = self.ctx().contains(Context::TopLevel);
 
@@ -1128,29 +1139,29 @@ impl<I: Tokens> Parser<I> {
                 return Ok(self.ast.stmt_expr_stmt(self.span(start), expr));
             }
 
-            // if self.input().syntax().typescript() {
-            //     if let Some(decl) = self.parse_ts_expr_stmt(decorators, ident.clone())? {
-            //         return Ok(decl.into());
-            //     }
-            // }
+            if self.input().syntax().typescript() {
+                if let Some(decl) = self.parse_ts_expr_stmt(decorators, ident.clone())? {
+                    return Ok(Stmt::Decl(decl));
+                }
+            }
         }
 
-        // if self.syntax().typescript() {
-        //     if let Expr::Ident(ref i) = expr {
-        //         match &*i.sym {
-        //             "public" | "static" | "abstract" => {
-        //                 if self.input_mut().eat(Token::Interface) {
-        //                     self.emit_err(i.span, SyntaxError::TS2427);
-        //                     return self
-        //                         .parse_ts_interface_decl(start)
-        //                         .map(Decl::from)
-        //                         .map(Stmt::from);
-        //                 }
-        //             }
-        //             _ => {}
-        //         }
-        //     }
-        // }
+        if self.syntax().typescript() {
+            if let Expr::Ident(ref i) = expr {
+                let sym = self.ast.get_utf8(i.sym(&self.ast));
+                match sym {
+                    "public" | "static" | "abstract" => {
+                        if self.input_mut().eat(Token::Interface) {
+                            self.emit_err(i.span(&self.ast), SyntaxError::TS2427);
+                            return Ok(Stmt::Decl(Decl::TsInterface(
+                                self.parse_ts_interface_decl(start)?,
+                            )));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
 
         if self.eat_general_semi() {
             Ok(self.ast.stmt_expr_stmt(self.span(start), expr))

@@ -103,14 +103,14 @@ impl<I: Tokens> Parser<I> {
     pub(crate) fn parse_assignment_expr(&mut self) -> PResult<Expr> {
         trace_cur!(self, parse_assignment_expr);
 
-        // if self.input().syntax().typescript() && self.input().is(Token::JSXTagStart) {
-        //     // Note: When the JSX plugin is on, type assertions (`<T> x`) aren't valid
-        //     // syntax.
-        //     let res = self.try_parse_ts(|p| p.parse_assignment_expr_base().map(Some));
-        //     if let Some(res) = res {
-        //         return Ok(res);
-        //     }
-        // }
+        if self.input().syntax().typescript() && self.input().is(Token::JSXTagStart) {
+            // Note: When the JSX plugin is on, type assertions (`<T> x`) aren't valid
+            // syntax.
+            let res = self.try_parse_ts(|p| p.parse_assignment_expr_base().map(Some));
+            if let Some(res) = res {
+                return Ok(res);
+            }
+        }
 
         self.parse_assignment_expr_base()
     }
@@ -122,37 +122,36 @@ impl<I: Tokens> Parser<I> {
     #[cfg_attr(feature = "tracing-spans", tracing::instrument(skip_all))]
     fn parse_assignment_expr_base(&mut self) -> PResult<Expr> {
         trace_cur!(self, parse_assignment_expr_base);
-        // let start = self.input().cur_span();
+        let start = self.input().cur_span();
 
-        // if self.input().syntax().typescript()
-        //     && (self.input().cur() == Token::Lt || self.input().cur() == Token::JSXTagStart)
-        //     && (peek!(self).is_some_and(|peek| peek.is_word() || peek == Token::JSXName))
-        // {
-        //     let res = self.do_outside_of_context(Context::WillExpectColonForCond, |p| {
-        //         p.try_parse_ts(|p| {
-        //             let type_parameters = p.parse_ts_type_params(false, true)?;
-        //             let mut arrow = p.parse_assignment_expr_base()?;
-        //             match *arrow {
-        //                 Expr::Arrow(ArrowExpr {
-        //                     ref mut span,
-        //                     ref mut type_params,
-        //                     ..
-        //                 }) => {
-        //                     *span = Span::new_with_checked(type_parameters.span.lo, span.hi);
-        //                     *type_params = Some(type_parameters);
-        //                 }
-        //                 _ => unexpected!(p, "("),
-        //             }
-        //             Ok(Some(arrow))
-        //         })
-        //     });
-        //     if let Some(res) = res {
-        //         if self.input().syntax().disallow_ambiguous_jsx_like() {
-        //             self.emit_err(start, SyntaxError::ReservedArrowTypeParam);
-        //         }
-        //         return Ok(res);
-        //     }
-        // }
+        if self.input().syntax().typescript()
+            && (self.input().cur() == Token::Lt || self.input().cur() == Token::JSXTagStart)
+            && (peek!(self).is_some_and(|peek| peek.is_word() || peek == Token::JSXName))
+        {
+            let res = self.do_outside_of_context(Context::WillExpectColonForCond, |p| {
+                p.try_parse_ts(|p| {
+                    let type_parameters = p.parse_ts_type_params(false, true)?;
+                    let arrow = p.parse_assignment_expr_base()?;
+                    match arrow {
+                        Expr::Arrow(arrow) => {
+                            let span = arrow.span(&p.ast);
+
+                            let span_lo = type_parameters.span_lo(&p.ast);
+                            arrow.set_span(&mut p.ast, Span::new_with_checked(span_lo, span.hi));
+                            arrow.set_type_params(&mut p.ast, Some(type_parameters));
+                        }
+                        _ => unexpected!(p, "("),
+                    }
+                    Ok(Some(arrow))
+                })
+            });
+            if let Some(res) = res {
+                if self.input().syntax().disallow_ambiguous_jsx_like() {
+                    self.emit_err(start, SyntaxError::ReservedArrowTypeParam);
+                }
+                return Ok(res);
+            }
+        }
 
         if self.ctx().contains(Context::InGenerator) && self.input().is(Token::Yield) {
             return self.parse_yield_expr();
@@ -197,20 +196,14 @@ impl<I: Tokens> Parser<I> {
         let cur = token_and_span.token;
 
         if cur == Token::Lt && self.input().syntax().typescript() && !self.input().syntax().jsx() {
-            // self.bump(); // consume `<`
-            // return if self.input_mut().eat(Token::Const) {
-            //     self.expect(Token::Gt)?;
-            //     let expr = self.parse_unary_expr()?;
-            //     Ok(TsConstAssertion {
-            //         span: self.span(start),
-            //         expr,
-            //     }
-            //     .into())
-            // } else {
-            //     self.parse_ts_type_assertion(start)
-            //         .map(Expr::from)
-            //         .map(Box::new)
-            // };
+            self.bump(); // consume `<`
+            return if self.input_mut().eat(Token::Const) {
+                self.expect(Token::Gt)?;
+                let expr = self.parse_unary_expr()?;
+                Ok(self.ast.expr_ts_const_assertion(self.span(start), expr))
+            } else {
+                Ok(Expr::TsTypeAssertion(self.parse_ts_type_assertion(start)?))
+            };
         } else if cur == Token::Lt
             && self.input().syntax().jsx()
             && self.input_mut().peek().is_some_and(|peek| {
@@ -1517,23 +1510,18 @@ impl<I: Tokens> Parser<I> {
         let obj = self.parse_primary_expr()?;
         return_if_arrow!(self, obj);
 
-        // let type_args = None;
-        // let type_args = if self.syntax().typescript() && self.input().is(Token::Lt) {
-        //     self.try_parse_ts_type_args()
-        // } else {
-        //     None
-        // };
-        // let obj = if let Some(type_args) = type_args {
-        //     trace_cur!(self, parse_member_expr_or_new_expr__with_type_args);
-        //     TsInstantiation {
-        //         expr: obj,
-        //         type_args,
-        //         span: self.span(start),
-        //     }
-        //     .into()
-        // } else {
-        //     obj
-        // };
+        let type_args = if self.syntax().typescript() && self.input().is(Token::Lt) {
+            self.try_parse_ts_type_args()
+        } else {
+            None
+        };
+        let obj = if let Some(type_args) = type_args {
+            trace_cur!(self, parse_member_expr_or_new_expr__with_type_args);
+            self.ast
+                .expr_ts_instantiation(self.span(start), obj, type_args)
+        } else {
+            obj
+        };
 
         self.parse_subscripts(Callee::Expr(obj), true, false)
     }
@@ -1622,45 +1610,32 @@ impl<I: Tokens> Parser<I> {
         #[allow(unused)]
         const PREC_OF_IN: u8 = 7;
 
-        // if self.input().syntax().typescript() && !self.input().had_line_break_before_cur() {
-        //     if PREC_OF_IN > min_prec && self.input().is(Token::As) {
-        //         let start = left.span_lo(&self.ast);
-        //         let expr = left;
-        //         let node = if peek!(self).is_some_and(|cur| cur == Token::Const) {
-        //             self.bump(); // as
-        //             self.bump(); // const
-        //             TsConstAssertion {
-        //                 span: self.span(start),
-        //                 expr,
-        //             }
-        //             .into()
-        //         } else {
-        //             let type_ann = self.next_then_parse_ts_type()?;
-        //             TsAsExpr {
-        //                 span: self.span(start),
-        //                 expr,
-        //                 type_ann,
-        //             }
-        //             .into()
-        //         };
+        if self.input().syntax().typescript() && !self.input().had_line_break_before_cur() {
+            if PREC_OF_IN > min_prec && self.input().is(Token::As) {
+                let start = left.span_lo(&self.ast);
+                let expr = left;
+                let node = if peek!(self).is_some_and(|cur| cur == Token::Const) {
+                    self.bump(); // as
+                    self.bump(); // const
+                    self.ast.expr_ts_const_assertion(self.span(start), expr)
+                } else {
+                    let type_ann = self.next_then_parse_ts_type()?;
+                    self.ast.expr_ts_as_expr(self.span(start), expr, type_ann)
+                };
 
-        //         return self.parse_bin_op_recursively_inner(node, min_prec);
-        //     } else if self.input().is(Token::Satisfies) {
-        //         let start = left.span_lo(&self.ast);
-        //         let expr = left;
-        //         let node = {
-        //             let type_ann = self.next_then_parse_ts_type()?;
-        //             TsSatisfiesExpr {
-        //                 span: self.span(start),
-        //                 expr,
-        //                 type_ann,
-        //             }
-        //             .into()
-        //         };
+                return self.parse_bin_op_recursively_inner(node, min_prec);
+            } else if self.input().is(Token::Satisfies) {
+                let start = left.span_lo(&self.ast);
+                let expr = left;
+                let node = {
+                    let type_ann = self.next_then_parse_ts_type()?;
+                    self.ast
+                        .expr_ts_satisfies_expr(self.span(start), expr, type_ann)
+                };
 
-        //         return self.parse_bin_op_recursively_inner(node, min_prec);
-        //     }
-        // }
+                return self.parse_bin_op_recursively_inner(node, min_prec);
+            }
+        }
 
         // Return left on eof
         let cur = self.input().cur();
@@ -1858,12 +1833,12 @@ impl<I: Tokens> Parser<I> {
 
             let start = self.cur_pos();
             self.state_mut().potential_arrow_start = Some(start);
-            // let modifier_start = start;
+            let modifier_start = start;
 
-            // let has_modifier = self.eat_any_ts_modifier()?;
-            // let pat_start = self.cur_pos();
+            let has_modifier = self.eat_any_ts_modifier()?;
+            let pat_start = self.cur_pos();
 
-            let arg = {
+            let mut arg = {
                 if self.input().syntax().typescript()
                     && (self.is_ident_ref()
                         || (self.input().is(Token::DotDotDot) && self.peek_is_ident_ref()))
@@ -1894,139 +1869,156 @@ impl<I: Tokens> Parser<I> {
                 }
             };
 
-            // let optional = if self.input().syntax().typescript() {
-            //     if self.input().is(Token::QuestionMark) {
-            //         if peek!(self).is_some_and(|peek| {
-            //             matches!(
-            //                 peek,
-            //                 Token::Comma | Token::Eq | Token::RParen | Token::Colon
-            //             )
-            //         }) {
-            //             self.assert_and_bump(Token::QuestionMark);
-            //             if arg.spread.is_some() {
-            //                 self.emit_err(self.input().prev_span(), SyntaxError::TS1047);
-            //             }
-            //             match *arg.expr {
-            //                 Expr::Ident(..) => {}
-            //                 _ => {
-            //                     syntax_error!(
-            //                         self,
-            //                         arg.span(&self.ast),
-            //                         SyntaxError::TsBindingPatCannotBeOptional
-            //                     )
-            //                 }
-            //             }
-            //             true
-            //         } else if let ExprOrSpread::Expr(test) = arg {
-            //             expect!(self, Token::QuestionMark);
+            let optional = if self.input().syntax().typescript() {
+                if self.input().is(Token::QuestionMark) {
+                    if peek!(self).is_some_and(|peek| {
+                        matches!(
+                            peek,
+                            Token::Comma | Token::Eq | Token::RParen | Token::Colon
+                        )
+                    }) {
+                        self.assert_and_bump(Token::QuestionMark);
+                        if arg.spread(&self.ast).is_some() {
+                            self.emit_err(self.input().prev_span(), SyntaxError::TS1047);
+                        }
+                        match arg.expr(&self.ast) {
+                            Expr::Ident(..) => {}
+                            _ => {
+                                syntax_error!(
+                                    self,
+                                    arg.span(&self.ast),
+                                    SyntaxError::TsBindingPatCannotBeOptional
+                                )
+                            }
+                        }
+                        true
+                    } else if arg.spread(&self.ast).is_none() {
+                        expect!(self, Token::QuestionMark);
+                        let test = arg.expr(&self.ast);
 
-            //             let cons = self.do_inside_of_context(
-            //                 Context::InCondExpr
-            //                     .union(Context::WillExpectColonForCond)
-            //                     .union(Context::IncludeInExpr),
-            //                 Self::parse_assignment_expr,
-            //             )?;
-            //             expect!(self, Token::Colon);
+                        let cons = self.do_inside_of_context(
+                            Context::InCondExpr
+                                .union(Context::WillExpectColonForCond)
+                                .union(Context::IncludeInExpr),
+                            Self::parse_assignment_expr,
+                        )?;
+                        expect!(self, Token::Colon);
 
-            //             let alt = self.do_inside_of_context(Context::InCondExpr, |p| {
-            //                 p.do_outside_of_context(
-            //                     Context::WillExpectColonForCond,
-            //                     Self::parse_assignment_expr,
-            //                 )
-            //             })?;
+                        let alt = self.do_inside_of_context(Context::InCondExpr, |p| {
+                            p.do_outside_of_context(
+                                Context::WillExpectColonForCond,
+                                Self::parse_assignment_expr,
+                            )
+                        })?;
 
-            //             arg = ExprOrSpread::Expr(self.ast.expr_cond_expr(
-            //                 Span::new_with_checked(start, alt.span_hi(&self.ast)),
-            //                 test,
-            //                 cons,
-            //                 alt,
-            //             ));
+                        let expr = self.ast.expr_cond_expr(
+                            Span::new_with_checked(start, alt.span_hi(&self.ast)),
+                            test,
+                            cons,
+                            alt,
+                        );
 
-            //             false
-            //         } else {
-            //             false
-            //         }
-            //     } else {
-            //         false
-            //     }
-            // } else {
-            //     false
-            // };
+                        arg = self.ast.expr_or_spread(expr.span(&self.ast), None, expr);
+                        false
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            } else {
+                false
+            };
 
-            // if optional || (self.input().syntax().typescript() && self.input().is(Token::Colon)) {
-            //     // TODO: `async(...args?: any[]) : any => {}`
-            //     //
-            //     // if self.input().syntax().typescript() && optional && arg.spread.is_some() {
-            //     //     self.emit_err(self.input().prev_span(), SyntaxError::TS1047)
-            //     // }
+            if optional || (self.input().syntax().typescript() && self.input().is(Token::Colon)) {
+                // TODO: `async(...args?: any[]) : any => {}`
+                // if self.input().syntax().typescript() && optional && arg.spread(&self.ast).is_some()
+                // {
+                //     self.emit_err(self.input().prev_span(), SyntaxError::TS1047)
+                // }
 
-            //     let mut pat = self.reparse_expr_as_pat(PatType::BindingPat, arg.expr)?;
-            //     if optional {
-            //         match pat {
-            //             Pat::Ident(ref mut i) => i.id(&self.ast).set_optional(&mut self.ast, true),
-            //             _ => unreachable!(),
-            //         }
-            //     }
-            //     if let Some(spread) = arg.as_spread_element() {
-            //         pat = self.ast.pat_rest_pat(self.span(pat_start), span, arg);
-            //     }
-            //     match pat {
-            //         Pat::Ident(BindingIdent {
-            //             id: Ident { ref mut span, .. },
-            //             ref mut type_ann,
-            //             ..
-            //         })
-            //         | Pat::Array(ArrayPat {
-            //             ref mut type_ann,
-            //             ref mut span,
-            //             ..
-            //         })
-            //         | Pat::Object(ObjectPat {
-            //             ref mut type_ann,
-            //             ref mut span,
-            //             ..
-            //         })
-            //         | Pat::Rest(RestPat {
-            //             ref mut type_ann,
-            //             ref mut span,
-            //             ..
-            //         }) => {
-            //             let new_type_ann = self.try_parse_ts_type_ann()?;
-            //             if new_type_ann.is_some() {
-            //                 *span = Span::new_with_checked(pat_start, self.input().prev_span().hi);
-            //             }
-            //             *type_ann = new_type_ann;
-            //         }
-            //         Pat::Expr(ref expr) => unreachable!("invalid pattern: Expr({:?})", expr),
-            //         Pat::Assign(..) | Pat::Invalid(..) => {
-            //             // We don't have to panic here.
-            //             // See: https://github.com/swc-project/swc/issues/1170
-            //             //
-            //             // Also, as an exact error is added to the errors while
-            //             // creating `Invalid`, we don't have to emit a new
-            //             // error.
-            //         }
-            //         #[cfg(swc_ast_unknown)]
-            //         _ => unreachable!(),
-            //     }
+                let mut pat = self.reparse_expr_as_pat(PatType::BindingPat, arg.expr(&self.ast))?;
+                if optional {
+                    match pat {
+                        Pat::Ident(i) => i.id(&self.ast).set_optional(&mut self.ast, true),
+                        _ => unreachable!(),
+                    }
+                }
+                if let Some(spread) = arg.spread(&self.ast) {
+                    pat = self.ast.pat_rest_pat(
+                        self.span(pat_start),
+                        spread.span(&self.ast),
+                        pat,
+                        None,
+                    );
+                }
+                match pat {
+                    Pat::Ident(it) => {
+                        let new_type_ann = self.try_parse_ts_type_ann()?;
+                        if new_type_ann.is_some() {
+                            let span =
+                                Span::new_with_checked(pat_start, self.input().prev_span().hi);
+                            it.set_span(&mut self.ast, span);
+                        }
+                        it.set_type_ann(&mut self.ast, new_type_ann);
+                    }
+                    Pat::Array(it) => {
+                        let new_type_ann = self.try_parse_ts_type_ann()?;
+                        if new_type_ann.is_some() {
+                            let span =
+                                Span::new_with_checked(pat_start, self.input().prev_span().hi);
+                            it.set_span(&mut self.ast, span);
+                        }
+                        it.set_type_ann(&mut self.ast, new_type_ann);
+                    }
+                    Pat::Object(it) => {
+                        let new_type_ann = self.try_parse_ts_type_ann()?;
+                        if new_type_ann.is_some() {
+                            let span =
+                                Span::new_with_checked(pat_start, self.input().prev_span().hi);
+                            it.set_span(&mut self.ast, span);
+                        }
+                        it.set_type_ann(&mut self.ast, new_type_ann);
+                    }
+                    Pat::Rest(it) => {
+                        let new_type_ann = self.try_parse_ts_type_ann()?;
+                        if new_type_ann.is_some() {
+                            let span =
+                                Span::new_with_checked(pat_start, self.input().prev_span().hi);
+                            it.set_span(&mut self.ast, span);
+                        }
+                        it.set_type_ann(&mut self.ast, new_type_ann);
+                    }
+                    Pat::Expr(ref expr) => unreachable!("invalid pattern: Expr({:?})", expr),
+                    Pat::Assign(..) | Pat::Invalid(..) => {
+                        // We don't have to panic here.
+                        // See: https://github.com/swc-project/swc/issues/1170
+                        //
+                        // Also, as an exact error is added to the errors while
+                        // creating `Invalid`, we don't have to emit a new
+                        // error.
+                    }
+                    #[cfg(swc_ast_unknown)]
+                    _ => unreachable!(),
+                }
 
-            //     if self.input_mut().eat(Token::Eq) {
-            //         let right = self.parse_assignment_expr()?;
-            //         pat = self.ast.pat_assign_pat(self.span(pat_start), pat, right);
-            //     }
+                if self.input_mut().eat(Token::Eq) {
+                    let right = self.parse_assignment_expr()?;
+                    pat = self.ast.pat_assign_pat(self.span(pat_start), pat, right);
+                }
 
-            //     if has_modifier {
-            //         self.emit_err(self.span(modifier_start), SyntaxError::TS2369);
-            //     }
+                if has_modifier {
+                    self.emit_err(self.span(modifier_start), SyntaxError::TS2369);
+                }
 
-            //     items.push(AssignTargetOrSpread::Pat(pat))
-            // } else {
-            //     if has_modifier {
-            //         self.emit_err(self.span(modifier_start), SyntaxError::TS2369);
-            //     }
+                items.push(AssignTargetOrSpread::Pat(pat))
+            } else {
+                if has_modifier {
+                    self.emit_err(self.span(modifier_start), SyntaxError::TS2369);
+                }
 
-            //     items.push(AssignTargetOrSpread::ExprOrSpread(arg));
-            // }
+                items.push(AssignTargetOrSpread::ExprOrSpread(arg));
+            }
             items.push(AssignTargetOrSpread::ExprOrSpread(arg));
 
             // https://github.com/swc-project/swc/issues/433
@@ -2518,19 +2510,19 @@ impl<I: Tokens> Parser<I> {
             return Some(self.parse_async_fn_expr());
         }
 
-        // if can_be_arrow
-        //     && self.input().syntax().typescript()
-        //     && peek!(self).is_some_and(|peek| peek == Token::Lt)
-        // {
-        //     // try parsing `async<T>() => {}`
-        //     if let Some(res) = self.try_parse_ts(|p| {
-        //         let start = p.cur_pos();
-        //         p.assert_and_bump(Token::Async);
-        //         p.try_parse_ts_generic_async_arrow_fn(start)
-        //     }) {
-        //         return Some(Ok(res.into()));
-        //     }
-        // }
+        if can_be_arrow
+            && self.input().syntax().typescript()
+            && peek!(self).is_some_and(|peek| peek == Token::Lt)
+        {
+            // try parsing `async<T>() => {}`
+            if let Some(res) = self.try_parse_ts(|p| {
+                let start = p.cur_pos();
+                p.assert_and_bump(Token::Async);
+                p.try_parse_ts_generic_async_arrow_fn(start)
+            }) {
+                return Some(Ok(Expr::Arrow(res)));
+            }
+        }
 
         if can_be_arrow
             && peek!(self).is_some_and(|peek| peek == Token::LParen)

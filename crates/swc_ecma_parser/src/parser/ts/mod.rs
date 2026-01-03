@@ -2913,7 +2913,7 @@ impl<I: Tokens> Parser<I> {
         })
     }
 
-    fn to_ident(&mut self, ident_name: (Span, MaybeSubUtf8)) -> Ident {
+    pub(crate) fn to_ident(&mut self, ident_name: (Span, MaybeSubUtf8)) -> Ident {
         let sym = self.to_utf8_ref(ident_name.1);
         self.ast.ident(ident_name.0, sym, false)
     }

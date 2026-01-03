@@ -335,81 +335,71 @@ impl<I: Tokens> Parser<I> {
             return Err(self.eof_error());
         }
 
-        // let after_export_start = self.cur_pos();
+        let after_export_start = self.cur_pos();
 
         // "export declare" is equivalent to just "export".
-        // let declare = self.input().syntax().typescript() && self.input_mut().eat(Token::Declare);
+        let declare = self.input().syntax().typescript() && self.input_mut().eat(Token::Declare);
 
-        // if declare {
-        //     // TODO: Remove
-        //     if let Some(decl) = self.try_parse_ts_declare(after_export_start, decorators.clone())? {
-        //         return Ok(ExportDecl {
-        //             span: self.span(start),
-        //             decl,
-        //         }
-        //         .into());
-        //     }
-        // }
+        if declare {
+            // TODO: Remove
+            if let Some(decl) = self.try_parse_ts_declare(after_export_start, decorators.clone())? {
+                return Ok(self.ast.module_decl_export_decl(self.span(start), decl));
+            }
+        }
 
-        // if self.input().syntax().typescript() {
-        //     let cur = self.input().cur();
-        //     if cur.is_word() {
-        //         let sym = cur.take_word(self.input()).unwrap();
-        //         // TODO: remove clone
-        //         if let Some(decl) = self.try_parse_ts_export_decl(decorators.clone(), sym) {
-        //             return Ok(ExportDecl {
-        //                 span: self.span(start),
-        //                 decl,
-        //             }
-        //             .into());
-        //         }
-        //     }
+        if self.input().syntax().typescript() {
+            let cur = self.input().cur();
+            if cur.is_word() {
+                let sym = cur.take_word(self.input());
+                let sym = self.to_utf8_ref(sym);
+                // TODO: remove clone
+                if let Some(decl) = self.try_parse_ts_export_decl(decorators.clone(), sym) {
+                    return Ok(self.ast.module_decl_export_decl(self.span(start), decl));
+                }
+            }
 
-        //     if self.input_mut().eat(Token::Import) {
-        //         let is_type_only =
-        //             self.input().is(Token::Type) && peek!(self).is_some_and(|p| p.is_word());
+            if self.input_mut().eat(Token::Import) {
+                let is_type_only =
+                    self.input().is(Token::Type) && peek!(self).is_some_and(|p| p.is_word());
 
-        //         if is_type_only {
-        //             self.assert_and_bump(Token::Type);
-        //         }
+                if is_type_only {
+                    self.assert_and_bump(Token::Type);
+                }
 
-        //         let id = self.parse_ident_name()?;
+                let id = self.parse_ident_name()?;
+                let id = self.to_ident(id);
 
-        //         // export import A = B
-        //         return self
-        //             .parse_ts_import_equals_decl(
-        //                 start,
-        //                 id.into(),
-        //                 /* is_export */ true,
-        //                 is_type_only,
-        //             )
-        //             .map(From::from);
-        //     }
+                // export import A = B
+                return Ok(ModuleDecl::TsImportEquals(
+                    self.parse_ts_import_equals_decl(
+                        start,
+                        id,
+                        /* is_export */ true,
+                        is_type_only,
+                    )?,
+                ));
+            }
 
-        //     if self.input_mut().eat(Token::Eq) {
-        //         // `export = x;`
-        //         let expr = self.parse_expr()?;
-        //         self.expect_general_semi()?;
-        //         return Ok(TsExportAssignment {
-        //             span: self.span(start),
-        //             expr,
-        //         }
-        //         .into());
-        //     }
+            if self.input_mut().eat(Token::Eq) {
+                // `export = x;`
+                let expr = self.parse_expr_inner()?;
+                self.expect_general_semi()?;
+                return Ok(self
+                    .ast
+                    .module_decl_ts_export_assignment(self.span(start), expr));
+            }
 
-        //     if self.input_mut().eat(Token::As) {
-        //         // `export as namespace A;`
-        //         // See `parseNamespaceExportDeclaration` in TypeScript's own parser
-        //         expect!(self, Token::Namespace);
-        //         let id = self.parse_ident(false, false)?;
-        //         self.expect_general_semi()?;
-        //         return Ok(TsNamespaceExportDecl {
-        //             span: self.span(start),
-        //             id,
-        //         }
-        //         .into());
-        //     }
-        // }
+            if self.input_mut().eat(Token::As) {
+                // `export as namespace A;`
+                // See `parseNamespaceExportDeclaration` in TypeScript's own parser
+                expect!(self, Token::Namespace);
+                let id = self.parse_ident(false, false)?;
+                self.expect_general_semi()?;
+                return Ok(self
+                    .ast
+                    .module_decl_ts_namespace_export_decl(self.span(start), id));
+            }
+        }
 
         let ns_export_specifier_start = self.cur_pos();
 
@@ -521,24 +511,17 @@ impl<I: Tokens> Parser<I> {
             self.parse_async_fn_decl(decorators)?
         } else if !type_only && self.input().is(Token::Function) {
             self.parse_fn_decl(decorators)?
-        // } else if !type_only
-        //     && self.input().syntax().typescript()
-        //     && self.input().is(Token::Const)
-        //     && peek!(self).is_some_and(|cur| cur == Token::Enum)
-        // {
-        //     let enum_start = self.cur_pos();
-        //     self.assert_and_bump(Token::Const);
-        //     self.assert_and_bump(Token::Enum);
-        //     return self
-        //         .parse_ts_enum_decl(enum_start, /* is_const */ true)
-        //         .map(Decl::from)
-        //         .map(|decl| {
-        //             ExportDecl {
-        //                 span: self.span(start),
-        //                 decl,
-        //             }
-        //             .into()
-        //         });
+        } else if !type_only
+            && self.input().syntax().typescript()
+            && self.input().is(Token::Const)
+            && peek!(self).is_some_and(|cur| cur == Token::Enum)
+        {
+            let enum_start = self.cur_pos();
+            self.assert_and_bump(Token::Const);
+            self.assert_and_bump(Token::Enum);
+
+            let decl = Decl::TsEnum(self.parse_ts_enum_decl(enum_start, /* is_const */ true)?);
+            return Ok(self.ast.module_decl_export_decl(self.span(start), decl));
         } else if !type_only
             && (self.input().is(Token::Var)
                 || self.input().is(Token::Const)
@@ -797,10 +780,24 @@ impl<I: Tokens> Parser<I> {
 
         let mut type_only = false;
         let mut phase = ImportPhase::Evaluation;
+
+        let local = self
+            .is_ident_ref()
+            .then(|| self.parse_imported_default_binding())
+            .transpose()?;
+
+        if self.input().syntax().typescript()
+            && self.input().is(Token::Eq)
+            && let Some(local) = local
+        {
+            return Ok(ModuleItem::ModuleDecl(ModuleDecl::TsImportEquals(
+                self.parse_ts_import_equals_decl(start, local, false, type_only)?,
+            )));
+        }
+
         let specifiers = self.scratch_start(|p, specifiers| {
             'import_maybe_ident: {
-                if p.is_ident_ref() {
-                    let mut local = p.parse_imported_default_binding()?;
+                if let Some(mut local) = local {
                     let local_sym = p.ast.get_utf8(local.sym(&p.ast));
                     let is_source = local_sym == "source";
                     let is_defer = local_sym == "defer";
@@ -829,13 +826,6 @@ impl<I: Tokens> Parser<I> {
                             }
                         }
                     }
-
-                    // if p.input().syntax().typescript() && p.input().is(Token::Eq) {
-                    //     return p
-                    //         .parse_ts_import_equals_decl(start, local, false, type_only)
-                    //         .map(ModuleDecl::from)
-                    //         .map(ModuleItem::from);
-                    // }
 
                     if is_source || is_defer {
                         let new_phase = if is_source {

@@ -558,44 +558,47 @@ impl<I: Tokens> Parser<I> {
         self.bump();
     }
 
-    pub fn check_assign_target(&mut self, expr: Expr, _deny_call: bool) {
+    pub fn check_assign_target(&mut self, expr: Expr, deny_call: bool) {
         if !expr.is_valid_simple_assignment_target(&self.ast, self.ctx().contains(Context::Strict))
         {
             self.emit_err(expr.span(&self.ast), SyntaxError::TS2406);
         }
 
         // We follow behavior of tsc
-        // if self.input().syntax().typescript() && self.syntax().early_errors() {
-        //     let is_eval_or_arguments = match expr {
-        //         Expr::Ident(i) => i.is_reserved_in_strict_bind(&self.ast),
-        //         _ => false,
-        //     };
+        if self.input().syntax().typescript() && self.syntax().early_errors() {
+            let is_eval_or_arguments = match expr {
+                Expr::Ident(i) => i.is_reserved_in_strict_bind(&self.ast),
+                _ => false,
+            };
 
-        //     if is_eval_or_arguments {
-        //         self.emit_strict_mode_err(expr.span(&self.ast), SyntaxError::TS1100);
-        //     }
+            if is_eval_or_arguments {
+                self.emit_strict_mode_err(expr.span(&self.ast), SyntaxError::TS1100);
+            }
 
-        //     fn should_deny(e: &Expr, deny_call: bool) -> bool {
-        //         match e {
-        //             Expr::Lit(..) => false,
-        //             Expr::Call(..) => deny_call,
-        //             Expr::Bin(..) => false,
-        //             Expr::Paren(ref p) => should_deny(&p.expr, deny_call),
+            fn should_deny(ast: &Ast, e: Expr, deny_call: bool) -> bool {
+                match e {
+                    Expr::Lit(..) => false,
+                    Expr::Call(..) => deny_call,
+                    Expr::Bin(..) => false,
+                    Expr::Paren(p) => should_deny(ast, p.expr(ast), deny_call),
 
-        //             _ => true,
-        //         }
-        //     }
+                    _ => true,
+                }
+            }
 
-        //     // It is an early Reference Error if LeftHandSideExpression is neither
-        //     // an ObjectLiteral nor an ArrayLiteral and
-        //     // IsValidSimpleAssignmentTarget of LeftHandSideExpression is false.
-        //     if !is_eval_or_arguments
-        //         && !expr.is_valid_simple_assignment_target(self.ctx().contains(Context::Strict))
-        //         && should_deny(expr, deny_call)
-        //     {
-        //         self.emit_err(expr.span(&self.ast), SyntaxError::TS2406);
-        //     }
-        // }
+            // It is an early Reference Error if LeftHandSideExpression is neither
+            // an ObjectLiteral nor an ArrayLiteral and
+            // IsValidSimpleAssignmentTarget of LeftHandSideExpression is false.
+            if !is_eval_or_arguments
+                && !expr.is_valid_simple_assignment_target(
+                    &self.ast,
+                    self.ctx().contains(Context::Strict),
+                )
+                && should_deny(&self.ast, expr, deny_call)
+            {
+                self.emit_err(expr.span(&self.ast), SyntaxError::TS2406);
+            }
+        }
     }
 
     #[inline]

@@ -555,84 +555,80 @@ impl<I: Tokens> Parser<I> {
     fn parse_formal_param_pat(&mut self) -> PResult<Pat> {
         let start = self.cur_pos();
 
-        // let has_modifier = self.eat_any_ts_modifier()?;
+        let has_modifier = self.eat_any_ts_modifier()?;
 
-        // let pat_start = self.cur_pos();
+        let pat_start = self.cur_pos();
         let pat = self.parse_binding_element()?;
-        let opt = false;
+        let mut opt = false;
 
-        // if self.input().syntax().typescript() {
-        //     if self.input_mut().eat(Token::QuestionMark) {
-        //         match pat {
-        //             Pat::Ident(BindingIdent {
-        //                 id:
-        //                     Ident {
-        //                         ref mut optional, ..
-        //                     },
-        //                 ..
-        //             })
-        //             | Pat::Array(ArrayPat {
-        //                 ref mut optional, ..
-        //             })
-        //             | Pat::Object(ObjectPat {
-        //                 ref mut optional, ..
-        //             }) => {
-        //                 *optional = true;
-        //                 opt = true;
-        //             }
-        //             _ if self.input().syntax().dts() || self.ctx().contains(Context::InDeclare) => {
-        //             }
-        //             _ => {
-        //                 syntax_error!(
-        //                     self,
-        //                     self.input().prev_span(),
-        //                     SyntaxError::TsBindingPatCannotBeOptional
-        //                 );
-        //             }
-        //         }
-        //     }
+        if self.input().syntax().typescript() {
+            if self.input_mut().eat(Token::QuestionMark) {
+                match pat {
+                    Pat::Ident(it) => {
+                        it.id(&self.ast).set_optional(&mut self.ast, true);
+                        opt = true;
+                    }
+                    Pat::Array(it) => {
+                        it.set_optional(&mut self.ast, true);
+                        opt = true;
+                    }
+                    Pat::Object(it) => {
+                        it.set_optional(&mut self.ast, true);
+                        opt = true;
+                    }
+                    _ if self.input().syntax().dts() || self.ctx().contains(Context::InDeclare) => {
+                    }
+                    _ => {
+                        syntax_error!(
+                            self,
+                            self.input().prev_span(),
+                            SyntaxError::TsBindingPatCannotBeOptional
+                        );
+                    }
+                }
+            }
 
-        //     match pat {
-        //         Pat::Array(ArrayPat {
-        //             ref mut type_ann,
-        //             ref mut span,
-        //             ..
-        //         })
-        //         | Pat::Object(ObjectPat {
-        //             ref mut type_ann,
-        //             ref mut span,
-        //             ..
-        //         })
-        //         | Pat::Rest(RestPat {
-        //             ref mut type_ann,
-        //             ref mut span,
-        //             ..
-        //         }) => {
-        //             let new_type_ann = self.try_parse_ts_type_ann()?;
-        //             if new_type_ann.is_some() {
-        //                 *span = Span::new_with_checked(pat_start, self.input().prev_span().hi);
-        //             }
-        //             *type_ann = new_type_ann;
-        //         }
-
-        //         Pat::Ident(BindingIdent {
-        //             ref mut type_ann, ..
-        //         }) => {
-        //             let new_type_ann = self.try_parse_ts_type_ann()?;
-        //             *type_ann = new_type_ann;
-        //         }
-
-        //         Pat::Assign(AssignPat { ref mut span, .. }) => {
-        //             if (self.try_parse_ts_type_ann()?).is_some() {
-        //                 *span = Span::new_with_checked(pat_start, self.input().prev_span().hi);
-        //                 self.emit_err(*span, SyntaxError::TSTypeAnnotationAfterAssign);
-        //             }
-        //         }
-        //         Pat::Invalid(..) => {}
-        //         // _ => unreachable!("invalid syntax: Pat: {:?}", pat),
-        //         _ => unreachable!("invalid syntax: Pat: {:?}", "pat"),
-        //     }
-        // }
+            match pat {
+                Pat::Array(it) => {
+                    let new_type_ann = self.try_parse_ts_type_ann()?;
+                    if new_type_ann.is_some() {
+                        let span = Span::new_with_checked(pat_start, self.input().prev_span().hi);
+                        it.set_span(&mut self.ast, span);
+                    }
+                    it.set_type_ann(&mut self.ast, new_type_ann);
+                }
+                Pat::Object(it) => {
+                    let new_type_ann = self.try_parse_ts_type_ann()?;
+                    if new_type_ann.is_some() {
+                        let span = Span::new_with_checked(pat_start, self.input().prev_span().hi);
+                        it.set_span(&mut self.ast, span);
+                    }
+                    it.set_type_ann(&mut self.ast, new_type_ann);
+                }
+                Pat::Rest(it) => {
+                    let new_type_ann = self.try_parse_ts_type_ann()?;
+                    if new_type_ann.is_some() {
+                        let span = Span::new_with_checked(pat_start, self.input().prev_span().hi);
+                        it.set_span(&mut self.ast, span);
+                    }
+                    it.set_type_ann(&mut self.ast, new_type_ann);
+                }
+                Pat::Ident(it) => {
+                    let new_type_ann = self.try_parse_ts_type_ann()?;
+                    it.set_type_ann(&mut self.ast, new_type_ann);
+                }
+                Pat::Assign(it) => {
+                    if (self.try_parse_ts_type_ann()?).is_some() {
+                        let span = Span::new_with_checked(pat_start, self.input().prev_span().hi);
+                        it.set_span(&mut self.ast, span);
+                        self.emit_err(span, SyntaxError::TSTypeAnnotationAfterAssign);
+                    }
+                }
+                Pat::Invalid(..) => {}
+                // _ => unreachable!("invalid syntax: Pat: {:?}", pat),
+                _ => unreachable!("invalid syntax: Pat: {:?}", "pat"),
+            }
+        }
 
         let pat = if self.input_mut().eat(Token::Eq) {
             // `=` cannot follow optional parameter.
@@ -650,10 +646,10 @@ impl<I: Tokens> Parser<I> {
             pat
         };
 
-        // if has_modifier {
-        //     self.emit_err(self.span(start), SyntaxError::TS2369);
-        //     return Ok(pat);
-        // }
+        if has_modifier {
+            self.emit_err(self.span(start), SyntaxError::TS2369);
+            return Ok(pat);
+        }
 
         Ok(pat)
     }
@@ -663,42 +659,40 @@ impl<I: Tokens> Parser<I> {
         param_start: BytePos,
         decorators: TypedSubRange<Decorator>,
     ) -> PResult<ParamOrTsParamProp> {
-        // let (accessibility, is_override, readonly) = if self.input().syntax().typescript() {
-        //     let accessibility = self.parse_access_modifier()?;
-        //     (
-        //         accessibility,
-        //         self.parse_ts_modifier(&["override"], false)?.is_some(),
-        //         self.parse_ts_modifier(&["readonly"], false)?.is_some(),
-        //     )
-        // } else {
-        //     (None, false, false)
-        // };
-        // if accessibility.is_none() && !is_override && !readonly {
-        //     let pat = self.parse_formal_param_pat()?;
-        //     Ok(ParamOrTsParamProp::Param(Param {
-        //         span: self.span(param_start),
-        //         decorators,
-        //         pat,
-        //     }))
-        // } else {
-        //     let param = match self.parse_formal_param_pat()? {
-        //         Pat::Ident(i) => TsParamPropParam::Ident(i),
-        //         Pat::Assign(a) => TsParamPropParam::Assign(a),
-        //         node => syntax_error!(self, node.span(), SyntaxError::TsInvalidParamPropPat),
-        //     };
-        //     Ok(ParamOrTsParamProp::TsParamProp(TsParamProp {
-        //         span: self.span(param_start),
-        //         accessibility,
-        //         is_override,
-        //         readonly,
-        //         decorators,
-        //         param,
-        //     }))
-        // }
-        let pat = self.parse_formal_param_pat()?;
-        Ok(self
-            .ast
-            .param_or_ts_param_prop_param(self.span(param_start), decorators, pat))
+        let (accessibility, is_override, readonly) = if self.input().syntax().typescript() {
+            let accessibility = self.parse_access_modifier()?;
+            (
+                accessibility,
+                self.parse_ts_modifier(&["override"], false)?.is_some(),
+                self.parse_ts_modifier(&["readonly"], false)?.is_some(),
+            )
+        } else {
+            (None, false, false)
+        };
+        if accessibility.is_none() && !is_override && !readonly {
+            let pat = self.parse_formal_param_pat()?;
+            Ok(self
+                .ast
+                .param_or_ts_param_prop_param(self.span(param_start), decorators, pat))
+        } else {
+            let param = match self.parse_formal_param_pat()? {
+                Pat::Ident(i) => TsParamPropParam::Ident(i),
+                Pat::Assign(a) => TsParamPropParam::Assign(a),
+                node => syntax_error!(
+                    self,
+                    node.span(&self.ast),
+                    SyntaxError::TsInvalidParamPropPat
+                ),
+            };
+            Ok(self.ast.param_or_ts_param_prop_ts_param_prop(
+                self.span(param_start),
+                decorators,
+                accessibility,
+                is_override,
+                readonly,
+                param,
+            ))
+        }
     }
 
     pub(crate) fn parse_constructor_params(

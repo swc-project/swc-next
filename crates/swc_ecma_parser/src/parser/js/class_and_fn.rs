@@ -43,27 +43,26 @@ impl<I: Tokens> Parser<I> {
     }
 
     fn parse_maybe_decorator_args(&mut self, expr: Expr) -> PResult<Expr> {
-        // let type_args = if self.input().syntax().typescript() && self.input().is(Token::Lt) {
-        //     let ret = self.parse_ts_type_args()?;
-        //     self.assert_and_bump(Token::Gt);
-        //     Some(ret)
-        // } else {
-        //     None
-        // };
+        let type_args = if self.input().syntax().typescript() && self.input().is(Token::Lt) {
+            let ret = self.parse_ts_type_args()?;
+            self.assert_and_bump(Token::Gt);
+            Some(ret)
+        } else {
+            None
+        };
 
-        // if type_args.is_none() && !self.input().is(Token::LParen) {
-        //     return Ok(expr);
-        // }
+        if type_args.is_none() && !self.input().is(Token::LParen) {
+            return Ok(expr);
+        }
 
-        // let args = self.parse_args(false)?;
-        // Ok(CallExpr {
-        //     span: self.span(expr.span_lo()),
-        //     callee: Callee::Expr(expr),
-        //     args,
-        //     ..Default::default()
-        // }
-        // .into())
-        Ok(expr)
+        let args = self.parse_args(false)?;
+        Ok(self.ast.expr_call_expr(
+            self.span(expr.span_lo(&self.ast)),
+            Callee::Expr(expr),
+            args,
+            None,
+            None,
+        ))
     }
 
     pub(crate) fn parse_decorators(
@@ -991,13 +990,14 @@ impl<I: Tokens> Parser<I> {
                         self.emit_err(self.span(start), SyntaxError::TS1098);
                         self.emit_err(self.span(start2), SyntaxError::TS1092);
                     } else {
-                        // let type_params = self.try_parse_ts_type_params(false, true)?;
+                        let type_params = self.try_parse_ts_type_params(false, true)?;
 
-                        // if let Some(type_params) = type_params {
-                        //     for param in type_params.params {
-                        //         self.emit_err(param.span(), SyntaxError::TS1092);
-                        //     }
-                        // }
+                        if let Some(type_params) = type_params {
+                            for param in type_params.params(&self.ast).iter() {
+                                let param = self.ast.get_node_in_sub_range(param);
+                                self.emit_err(param.span(&self.ast), SyntaxError::TS1092);
+                            }
+                        }
                     }
                 }
 
@@ -1005,12 +1005,15 @@ impl<I: Tokens> Parser<I> {
                 let params = self.parse_constructor_params()?;
                 expect!(self, Token::RParen);
 
-                // if self.syntax().typescript() && self.input().is(Token::Colon) {
-                //     let start = self.cur_pos();
-                //     let type_ann = self.parse_ts_type_ann(true, start)?;
+                if self.syntax().typescript() && self.input().is(Token::Colon) {
+                    let start = self.cur_pos();
+                    let type_ann = self.parse_ts_type_ann(true, start)?;
 
-                //     self.emit_err(type_ann.type_ann.span(), SyntaxError::TS1093);
-                // }
+                    self.emit_err(
+                        type_ann.type_ann(&self.ast).span(&self.ast),
+                        SyntaxError::TS1093,
+                    );
+                }
 
                 let body: Option<_> = self.parse_fn_block_body(
                     false,
@@ -1019,36 +1022,39 @@ impl<I: Tokens> Parser<I> {
                     params.is_simple_parameter_list(&self.ast),
                 )?;
 
-                // if body.is_none() {
-                //     for param in params.iter() {
-                //         if param.is_ts_param_prop() {
-                //             self.emit_err(param.span(&self.ast), SyntaxError::TS2369)
-                //         }
-                //     }
-                // }
+                if body.is_none() {
+                    for param in params.iter() {
+                        let param = self.ast.get_node_in_sub_range(param);
+                        if param.is_ts_param_prop() {
+                            self.emit_err(param.span(&self.ast), SyntaxError::TS2369)
+                        }
+                    }
+                }
 
-                // if self.syntax().typescript() && body.is_none() {
-                //     // Declare constructors cannot have assignment pattern in parameters
-                //     for param in &params {
-                //         // TODO: Search deeply for assignment pattern using a Visitor
+                if self.syntax().typescript() && body.is_none() {
+                    // Declare constructors cannot have assignment pattern in parameters
+                    for param in params.iter() {
+                        // TODO: Search deeply for assignment pattern using a Visitor
 
-                //         let span = match *param {
-                //             ParamOrTsParamProp::Param(ref param) => match param.pat {
-                //                 Pat::Assign(ref p) => Some(p.span()),
-                //                 _ => None,
-                //             },
-                //             ParamOrTsParamProp::TsParamProp(TsParamProp {
-                //                 param: TsParamPropParam::Assign(ref p),
-                //                 ..
-                //             }) => Some(p.span()),
-                //             _ => None,
-                //         };
+                        let param = self.ast.get_node_in_sub_range(param);
+                        let span = match param {
+                            ParamOrTsParamProp::Param(ref param) => match param.pat(&self.ast) {
+                                Pat::Assign(p) => Some(p.span(&self.ast)),
+                                _ => None,
+                            },
+                            ParamOrTsParamProp::TsParamProp(ts_param_prop) => {
+                                match ts_param_prop.param(&self.ast) {
+                                    TsParamPropParam::Assign(p) => Some(p.span(&self.ast)),
+                                    _ => None,
+                                }
+                            }
+                        };
 
-                //         if let Some(span) = span {
-                //             self.emit_err(span, SyntaxError::TS2371)
-                //         }
-                //     }
-                // }
+                        if let Some(span) = span {
+                            self.emit_err(span, SyntaxError::TS2371)
+                        }
+                    }
+                }
 
                 if let Some(static_token) = static_token {
                     self.emit_err(static_token, SyntaxError::TS1089(atom!("static")))
@@ -1134,15 +1140,15 @@ impl<I: Tokens> Parser<I> {
         {
             // handle async foo(){}
 
-            // if self.input().syntax().typescript()
-            //     && self.parse_ts_modifier(&["override"], false)?.is_some()
-            // {
-            //     is_override = true;
-            //     self.emit_err(
-            //         self.input().prev_span(),
-            //         SyntaxError::TS1029(atom!("override"), atom!("async")),
-            //     );
-            // }
+            if self.input().syntax().typescript()
+                && self.parse_ts_modifier(&["override"], false)?.is_some()
+            {
+                is_override = true;
+                self.emit_err(
+                    self.input().prev_span(),
+                    SyntaxError::TS1029(atom!("override"), atom!("async")),
+                );
+            }
             self.ast.free_node(key.node_id());
 
             let is_generator = self.input_mut().eat(Token::Asterisk);
