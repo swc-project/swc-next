@@ -1988,7 +1988,6 @@ impl<I: Tokens> Parser<I> {
 
                 items.push(AssignTargetOrSpread::ExprOrSpread(arg));
             }
-            items.push(AssignTargetOrSpread::ExprOrSpread(arg));
 
             // https://github.com/swc-project/swc/issues/433
             if self.input_mut().eat(Token::Arrow) && {
