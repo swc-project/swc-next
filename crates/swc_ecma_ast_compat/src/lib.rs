@@ -30,7 +30,8 @@ impl AstCompat<'_> {
     }
 
     pub fn compat_module(&mut self, module: experimental::Module) -> legacy::Module {
-        let inner = || legacy::Module {
+        #[allow(unused_mut)]
+        let mut inner = || legacy::Module {
             span: module.span(self.ast),
             shebang: self.compat_opt_utf8_ref(module.shebang(self.ast)),
             body: self.compat_type_sub_range(module.body(self.ast), Self::compat_module_item),
@@ -51,7 +52,8 @@ impl AstCompat<'_> {
     }
 
     pub fn compat_script(&mut self, script: experimental::Script) -> legacy::Script {
-        let inner = || legacy::Script {
+        #[allow(unused_mut)]
+        let mut inner = || legacy::Script {
             span: script.span(self.ast),
             body: self.compat_type_sub_range(script.body(self.ast), Self::compat_stmt),
             shebang: self.compat_opt_utf8_ref(script.shebang(self.ast)),
