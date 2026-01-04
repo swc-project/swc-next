@@ -9,6 +9,7 @@ repository.workspace  = true
 version               = "0.4.0"
 
 [dependencies]
+stacker  = { workspace = true }
 swc_core = { workspace = true }
 
 swc_experimental_ecma_ast      = { workspace = true }

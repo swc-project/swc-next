@@ -19,6 +19,7 @@ rayon            = "1.11.0"
 rustc-hash       = "2"
 seq-macro        = "0.3.6"
 smartstring      = "1.0.1"
+stacker          = "0.1.22"
 tracing          = "0.1.41"
 unicode-id-start = "1.3.1"
 

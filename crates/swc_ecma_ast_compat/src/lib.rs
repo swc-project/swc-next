@@ -30,19 +30,45 @@ impl AstCompat<'_> {
     }
 
     pub fn compat_module(&mut self, module: experimental::Module) -> legacy::Module {
-        legacy::Module {
+        let inner = || legacy::Module {
             span: module.span(self.ast),
             shebang: self.compat_opt_utf8_ref(module.shebang(self.ast)),
             body: self.compat_type_sub_range(module.body(self.ast), Self::compat_module_item),
+        };
+
+        #[cfg(all(debug_assertions, not(target_family = "wasm")))]
+        {
+            // Adjust stack to avoid stack overflow.
+            stacker::maybe_grow(
+                2 * 1024 * 1024, /* 2mb */
+                4 * 1024 * 1024, /* 4mb */
+                inner,
+            )
         }
+
+        #[cfg(any(not(debug_assertions), target_family = "wasm"))]
+        inner()
     }
 
     pub fn compat_script(&mut self, script: experimental::Script) -> legacy::Script {
-        legacy::Script {
+        let inner = || legacy::Script {
             span: script.span(self.ast),
             body: self.compat_type_sub_range(script.body(self.ast), Self::compat_stmt),
             shebang: self.compat_opt_utf8_ref(script.shebang(self.ast)),
+        };
+
+        #[cfg(all(debug_assertions, not(target_family = "wasm")))]
+        {
+            // Adjust stack to avoid stack overflow.
+            stacker::maybe_grow(
+                2 * 1024 * 1024, /* 2mb */
+                4 * 1024 * 1024, /* 4mb */
+                inner,
+            )
         }
+
+        #[cfg(any(not(debug_assertions), target_family = "wasm"))]
+        inner()
     }
 
     fn compat_module_item(&mut self, item: experimental::ModuleItem) -> legacy::ModuleItem {
@@ -154,7 +180,7 @@ impl AstCompat<'_> {
     ) -> legacy::ExportDefaultExpr {
         legacy::ExportDefaultExpr {
             span: export_default_expr.span(self.ast),
-            expr: Box::new(self.compat_expr(export_default_expr.expr(self.ast))),
+            expr: self.compat_expr(export_default_expr.expr(self.ast)),
         }
     }
 
@@ -184,14 +210,12 @@ impl AstCompat<'_> {
             }
             experimental::Stmt::With(with_stmt) => legacy::Stmt::With(legacy::WithStmt {
                 span: with_stmt.span(self.ast),
-                obj: Box::new(self.compat_expr(with_stmt.obj(self.ast))),
+                obj: self.compat_expr(with_stmt.obj(self.ast)),
                 body: Box::new(self.compat_stmt(with_stmt.body(self.ast))),
             }),
             experimental::Stmt::Return(return_stmt) => legacy::Stmt::Return(legacy::ReturnStmt {
                 span: return_stmt.span(self.ast),
-                arg: return_stmt
-                    .arg(self.ast)
-                    .map(|arg| Box::new(self.compat_expr(arg))),
+                arg: return_stmt.arg(self.ast).map(|arg| self.compat_expr(arg)),
             }),
             experimental::Stmt::Labeled(labeled_stmt) => {
                 legacy::Stmt::Labeled(legacy::LabeledStmt {
@@ -216,7 +240,7 @@ impl AstCompat<'_> {
             }
             experimental::Stmt::If(if_stmt) => legacy::Stmt::If(legacy::IfStmt {
                 span: if_stmt.span(self.ast),
-                test: Box::new(self.compat_expr(if_stmt.test(self.ast))),
+                test: self.compat_expr(if_stmt.test(self.ast)),
                 cons: Box::new(self.compat_stmt(if_stmt.cons(self.ast))),
                 alt: if_stmt
                     .alt(self.ast)
@@ -224,13 +248,13 @@ impl AstCompat<'_> {
             }),
             experimental::Stmt::Switch(switch_stmt) => legacy::Stmt::Switch(legacy::SwitchStmt {
                 span: switch_stmt.span(self.ast),
-                discriminant: Box::new(self.compat_expr(switch_stmt.discriminant(self.ast))),
+                discriminant: self.compat_expr(switch_stmt.discriminant(self.ast)),
                 cases: self
                     .compat_type_sub_range(switch_stmt.cases(self.ast), Self::compat_switch_case),
             }),
             experimental::Stmt::Throw(throw_stmt) => legacy::Stmt::Throw(legacy::ThrowStmt {
                 span: throw_stmt.span(self.ast),
-                arg: Box::new(self.compat_expr(throw_stmt.arg(self.ast))),
+                arg: self.compat_expr(throw_stmt.arg(self.ast)),
             }),
             experimental::Stmt::Try(try_stmt) => legacy::Stmt::Try(Box::new(legacy::TryStmt {
                 span: try_stmt.span(self.ast),
@@ -244,13 +268,13 @@ impl AstCompat<'_> {
             })),
             experimental::Stmt::While(while_stmt) => legacy::Stmt::While(legacy::WhileStmt {
                 span: while_stmt.span(self.ast),
-                test: Box::new(self.compat_expr(while_stmt.test(self.ast))),
+                test: self.compat_expr(while_stmt.test(self.ast)),
                 body: Box::new(self.compat_stmt(while_stmt.body(self.ast))),
             }),
             experimental::Stmt::DoWhile(do_while_stmt) => {
                 legacy::Stmt::DoWhile(legacy::DoWhileStmt {
                     span: do_while_stmt.span(self.ast),
-                    test: Box::new(self.compat_expr(do_while_stmt.test(self.ast))),
+                    test: self.compat_expr(do_while_stmt.test(self.ast)),
                     body: Box::new(self.compat_stmt(do_while_stmt.body(self.ast))),
                 })
             }
@@ -259,31 +283,27 @@ impl AstCompat<'_> {
                 init: for_stmt
                     .init(self.ast)
                     .map(|i| self.compat_var_decl_or_expr(i)),
-                test: for_stmt
-                    .test(self.ast)
-                    .map(|e| Box::new(self.compat_expr(e))),
-                update: for_stmt
-                    .update(self.ast)
-                    .map(|e| Box::new(self.compat_expr(e))),
+                test: for_stmt.test(self.ast).map(|e| self.compat_expr(e)),
+                update: for_stmt.update(self.ast).map(|e| self.compat_expr(e)),
                 body: Box::new(self.compat_stmt(for_stmt.body(self.ast))),
             }),
             experimental::Stmt::ForIn(for_in_stmt) => legacy::Stmt::ForIn(legacy::ForInStmt {
                 span: for_in_stmt.span(self.ast),
                 left: self.compat_for_head(for_in_stmt.left(self.ast)),
-                right: Box::new(self.compat_expr(for_in_stmt.right(self.ast))),
+                right: self.compat_expr(for_in_stmt.right(self.ast)),
                 body: Box::new(self.compat_stmt(for_in_stmt.body(self.ast))),
             }),
             experimental::Stmt::ForOf(for_of_stmt) => legacy::Stmt::ForOf(legacy::ForOfStmt {
                 span: for_of_stmt.span(self.ast),
                 is_await: for_of_stmt.is_await(self.ast),
                 left: self.compat_for_head(for_of_stmt.left(self.ast)),
-                right: Box::new(self.compat_expr(for_of_stmt.right(self.ast))),
+                right: self.compat_expr(for_of_stmt.right(self.ast)),
                 body: Box::new(self.compat_stmt(for_of_stmt.body(self.ast))),
             }),
             experimental::Stmt::Decl(decl) => legacy::Stmt::Decl(self.compat_decl(decl)),
             experimental::Stmt::Expr(expr_stmt) => legacy::Stmt::Expr(legacy::ExprStmt {
                 span: expr_stmt.span(self.ast),
-                expr: Box::new(self.compat_expr(expr_stmt.expr(self.ast))),
+                expr: self.compat_expr(expr_stmt.expr(self.ast)),
             }),
         }
     }
@@ -302,8 +322,8 @@ impl AstCompat<'_> {
         }
     }
 
-    fn compat_expr(&mut self, expr: experimental::Expr) -> legacy::Expr {
-        match expr {
+    fn compat_expr(&mut self, expr: experimental::Expr) -> Box<legacy::Expr> {
+        Box::new(match expr {
             experimental::Expr::This(t) => legacy::Expr::This(legacy::ThisExpr {
                 span: t.span(self.ast),
             }),
@@ -326,7 +346,7 @@ impl AstCompat<'_> {
                     experimental::UnaryOp::Void => legacy::UnaryOp::Void,
                     experimental::UnaryOp::Delete => legacy::UnaryOp::Delete,
                 },
-                arg: Box::new(self.compat_expr(u.arg(self.ast))),
+                arg: self.compat_expr(u.arg(self.ast)),
             }),
             experimental::Expr::Update(u) => legacy::Expr::Update(legacy::UpdateExpr {
                 span: u.span(self.ast),
@@ -335,7 +355,7 @@ impl AstCompat<'_> {
                     experimental::UpdateOp::MinusMinus => legacy::UpdateOp::MinusMinus,
                 },
                 prefix: u.prefix(self.ast),
-                arg: Box::new(self.compat_expr(u.arg(self.ast))),
+                arg: self.compat_expr(u.arg(self.ast)),
             }),
             experimental::Expr::Bin(b) => legacy::Expr::Bin(legacy::BinExpr {
                 span: b.span(self.ast),
@@ -368,8 +388,8 @@ impl AstCompat<'_> {
                         legacy::BinaryOp::NullishCoalescing
                     }
                 },
-                left: Box::new(self.compat_expr(b.left(self.ast))),
-                right: Box::new(self.compat_expr(b.right(self.ast))),
+                left: self.compat_expr(b.left(self.ast)),
+                right: self.compat_expr(b.right(self.ast)),
             }),
             experimental::Expr::Assign(a) => legacy::Expr::Assign(legacy::AssignExpr {
                 span: a.span(self.ast),
@@ -394,11 +414,11 @@ impl AstCompat<'_> {
                     experimental::AssignOp::NullishAssign => legacy::AssignOp::NullishAssign,
                 },
                 left: self.compat_assign_target(a.left(self.ast)),
-                right: Box::new(self.compat_expr(a.right(self.ast))),
+                right: self.compat_expr(a.right(self.ast)),
             }),
             experimental::Expr::Member(m) => legacy::Expr::Member(legacy::MemberExpr {
                 span: m.span(self.ast),
-                obj: Box::new(self.compat_expr(m.obj(self.ast))),
+                obj: self.compat_expr(m.obj(self.ast)),
                 prop: self.compat_member_prop(m.prop(self.ast)),
             }),
             experimental::Expr::SuperProp(s) => legacy::Expr::SuperProp(legacy::SuperPropExpr {
@@ -416,16 +436,16 @@ impl AstCompat<'_> {
                     experimental::SuperProp::Computed(c) => {
                         legacy::SuperProp::Computed(legacy::ComputedPropName {
                             span: c.span(self.ast),
-                            expr: Box::new(self.compat_expr(c.expr(self.ast))),
+                            expr: self.compat_expr(c.expr(self.ast)),
                         })
                     }
                 },
             }),
             experimental::Expr::Cond(c) => legacy::Expr::Cond(legacy::CondExpr {
                 span: c.span(self.ast),
-                test: Box::new(self.compat_expr(c.test(self.ast))),
-                cons: Box::new(self.compat_expr(c.cons(self.ast))),
-                alt: Box::new(self.compat_expr(c.alt(self.ast))),
+                test: self.compat_expr(c.test(self.ast)),
+                cons: self.compat_expr(c.cons(self.ast)),
+                alt: self.compat_expr(c.alt(self.ast)),
             }),
             experimental::Expr::Call(c) => legacy::Expr::Call(legacy::CallExpr {
                 span: c.span(self.ast),
@@ -444,9 +464,7 @@ impl AstCompat<'_> {
                             experimental::ImportPhase::Defer => legacy::ImportPhase::Defer,
                         },
                     }),
-                    experimental::Callee::Expr(e) => {
-                        legacy::Callee::Expr(Box::new(self.compat_expr(e)))
-                    }
+                    experimental::Callee::Expr(e) => legacy::Callee::Expr(self.compat_expr(e)),
                 },
                 args: self.compat_type_sub_range(c.args(self.ast), Self::compat_expr_or_spread),
                 type_args: None,
@@ -454,7 +472,7 @@ impl AstCompat<'_> {
             experimental::Expr::New(n) => legacy::Expr::New(legacy::NewExpr {
                 span: n.span(self.ast),
                 ctxt: Default::default(),
-                callee: Box::new(self.compat_expr(n.callee(self.ast))),
+                callee: self.compat_expr(n.callee(self.ast)),
                 args: n
                     .args(self.ast)
                     .map(|args| self.compat_type_sub_range(args, Self::compat_expr_or_spread)),
@@ -462,19 +480,19 @@ impl AstCompat<'_> {
             }),
             experimental::Expr::Seq(s) => legacy::Expr::Seq(legacy::SeqExpr {
                 span: s.span(self.ast),
-                exprs: self.compat_type_sub_range(s.exprs(self.ast), Self::compat_expr_box),
+                exprs: self.compat_type_sub_range(s.exprs(self.ast), Self::compat_expr),
             }),
             experimental::Expr::Ident(i) => legacy::Expr::Ident(self.compat_ident(i)),
             experimental::Expr::Lit(l) => legacy::Expr::Lit(self.compat_lit(l)),
             experimental::Expr::Tpl(t) => legacy::Expr::Tpl(legacy::Tpl {
                 span: t.span(self.ast),
-                exprs: self.compat_type_sub_range(t.exprs(self.ast), Self::compat_expr_box),
+                exprs: self.compat_type_sub_range(t.exprs(self.ast), Self::compat_expr),
                 quasis: self.compat_type_sub_range(t.quasis(self.ast), Self::compat_tpl_element),
             }),
             experimental::Expr::TaggedTpl(tt) => legacy::Expr::TaggedTpl(legacy::TaggedTpl {
                 span: tt.span(self.ast),
                 ctxt: Default::default(),
-                tag: Box::new(self.compat_expr(tt.tag(self.ast))),
+                tag: self.compat_expr(tt.tag(self.ast)),
                 tpl: Box::new(self.compat_tpl(tt.tpl(self.ast))),
                 type_params: None,
             }),
@@ -487,7 +505,7 @@ impl AstCompat<'_> {
                         legacy::BlockStmtOrExpr::BlockStmt(self.compat_block_stmt(b))
                     }
                     experimental::BlockStmtOrExpr::Expr(e) => {
-                        legacy::BlockStmtOrExpr::Expr(Box::new(self.compat_expr(e)))
+                        legacy::BlockStmtOrExpr::Expr(self.compat_expr(e))
                     }
                 }),
                 is_async: a.is_async(self.ast),
@@ -498,7 +516,7 @@ impl AstCompat<'_> {
             experimental::Expr::Class(c) => legacy::Expr::Class(self.compat_class_expr(c)),
             experimental::Expr::Yield(y) => legacy::Expr::Yield(legacy::YieldExpr {
                 span: y.span(self.ast),
-                arg: y.arg(self.ast).map(|e| Box::new(self.compat_expr(e))),
+                arg: y.arg(self.ast).map(|e| self.compat_expr(e)),
                 delegate: y.delegate(self.ast),
             }),
             experimental::Expr::MetaProp(m) => legacy::Expr::MetaProp(legacy::MetaPropExpr {
@@ -510,11 +528,11 @@ impl AstCompat<'_> {
             }),
             experimental::Expr::Await(a) => legacy::Expr::Await(legacy::AwaitExpr {
                 span: a.span(self.ast),
-                arg: Box::new(self.compat_expr(a.arg(self.ast))),
+                arg: self.compat_expr(a.arg(self.ast)),
             }),
             experimental::Expr::Paren(p) => legacy::Expr::Paren(legacy::ParenExpr {
                 span: p.span(self.ast),
-                expr: Box::new(self.compat_expr(p.expr(self.ast))),
+                expr: self.compat_expr(p.expr(self.ast)),
             }),
             experimental::Expr::PrivateName(p) => legacy::Expr::PrivateName(legacy::PrivateName {
                 span: p.span(self.ast),
@@ -527,7 +545,7 @@ impl AstCompat<'_> {
                     experimental::OptChainBase::Member(m) => {
                         legacy::OptChainBase::Member(legacy::MemberExpr {
                             span: m.span(self.ast),
-                            obj: Box::new(self.compat_expr(m.obj(self.ast))),
+                            obj: self.compat_expr(m.obj(self.ast)),
                             prop: self.compat_member_prop(m.prop(self.ast)),
                         })
                     }
@@ -535,7 +553,7 @@ impl AstCompat<'_> {
                         legacy::OptChainBase::Call(legacy::OptCall {
                             span: c.span(self.ast),
                             ctxt: Default::default(),
-                            callee: Box::new(self.compat_expr(c.callee(self.ast))),
+                            callee: self.compat_expr(c.callee(self.ast)),
                             args: self.compat_type_sub_range(
                                 c.args(self.ast),
                                 Self::compat_expr_or_spread,
@@ -563,11 +581,7 @@ impl AstCompat<'_> {
             experimental::Expr::Invalid(i) => legacy::Expr::Invalid(legacy::Invalid {
                 span: i.span(self.ast),
             }),
-        }
-    }
-
-    fn compat_expr_box(&mut self, e: experimental::Expr) -> Box<legacy::Expr> {
-        Box::new(self.compat_expr(e))
+        })
     }
 
     fn compat_ident(&mut self, ident: experimental::Ident) -> legacy::Ident {
@@ -582,7 +596,7 @@ impl AstCompat<'_> {
     fn compat_switch_case(&mut self, c: experimental::SwitchCase) -> legacy::SwitchCase {
         legacy::SwitchCase {
             span: c.span(self.ast),
-            test: c.test(self.ast).map(|e| Box::new(self.compat_expr(e))),
+            test: c.test(self.ast).map(|e| self.compat_expr(e)),
             cons: self.compat_type_sub_range(c.cons(self.ast), Self::compat_stmt),
         }
     }
@@ -601,7 +615,7 @@ impl AstCompat<'_> {
                 legacy::VarDeclOrExpr::VarDecl(Box::new(self.compat_var_decl(d)))
             }
             experimental::VarDeclOrExpr::Expr(e) => {
-                legacy::VarDeclOrExpr::Expr(Box::new(self.compat_expr(e)))
+                legacy::VarDeclOrExpr::Expr(self.compat_expr(e))
             }
         }
     }
@@ -728,7 +742,7 @@ impl AstCompat<'_> {
             experimental::PropOrSpread::SpreadElement(s) => {
                 legacy::PropOrSpread::Spread(legacy::SpreadElement {
                     dot3_token: s.dot_3_token(self.ast),
-                    expr: Box::new(self.compat_expr(s.expr(self.ast))),
+                    expr: self.compat_expr(s.expr(self.ast)),
                 })
             }
             experimental::PropOrSpread::Prop(prop) => {
@@ -742,12 +756,12 @@ impl AstCompat<'_> {
             experimental::Prop::Shorthand(i) => legacy::Prop::Shorthand(self.compat_ident(i)),
             experimental::Prop::KeyValue(kv) => legacy::Prop::KeyValue(legacy::KeyValueProp {
                 key: self.compat_prop_name(kv.key(self.ast)),
-                value: Box::new(self.compat_expr(kv.value(self.ast))),
+                value: self.compat_expr(kv.value(self.ast)),
             }),
             experimental::Prop::Assign(ap) => legacy::Prop::Assign(legacy::AssignProp {
                 span: ap.span(self.ast),
                 key: self.compat_ident(ap.key(self.ast)),
-                value: Box::new(self.compat_expr(ap.value(self.ast))),
+                value: self.compat_expr(ap.value(self.ast)),
             }),
             experimental::Prop::Getter(g) => legacy::Prop::Getter(legacy::GetterProp {
                 span: g.span(self.ast),
@@ -784,7 +798,7 @@ impl AstCompat<'_> {
             experimental::PropName::Computed(c) => {
                 legacy::PropName::Computed(legacy::ComputedPropName {
                     span: c.span(self.ast),
-                    expr: Box::new(self.compat_expr(c.expr(self.ast))),
+                    expr: self.compat_expr(c.expr(self.ast)),
                 })
             }
             experimental::PropName::BigInt(b) => legacy::PropName::BigInt(legacy::BigInt {
@@ -845,7 +859,7 @@ impl AstCompat<'_> {
     fn compat_decorator(&mut self, d: experimental::Decorator) -> legacy::Decorator {
         legacy::Decorator {
             span: d.span(self.ast),
-            expr: Box::new(self.compat_expr(d.expr(self.ast))),
+            expr: self.compat_expr(d.expr(self.ast)),
         }
     }
 
@@ -855,9 +869,7 @@ impl AstCompat<'_> {
             ctxt: Default::default(),
             decorators: self.compat_type_sub_range(c.decorators(self.ast), Self::compat_decorator),
             body: self.compat_type_sub_range(c.body(self.ast), Self::compat_class_member),
-            super_class: c
-                .super_class(self.ast)
-                .map(|e| Box::new(self.compat_expr(e))),
+            super_class: c.super_class(self.ast).map(|e| self.compat_expr(e)),
             is_abstract: c.is_abstract(self.ast),
             type_params: None,
             super_type_params: None,
@@ -922,7 +934,7 @@ impl AstCompat<'_> {
                 legacy::ClassMember::ClassProp(legacy::ClassProp {
                     span: cp.span(self.ast),
                     key: self.compat_prop_name(cp.key(self.ast)),
-                    value: cp.value(self.ast).map(|e| Box::new(self.compat_expr(e))),
+                    value: cp.value(self.ast).map(|e| self.compat_expr(e)),
                     type_ann: None,
                     is_static: cp.is_static(self.ast),
                     decorators: self
@@ -944,7 +956,7 @@ impl AstCompat<'_> {
                         span: pp.key(self.ast).span(self.ast),
                         name: self.compat_utf8_ref(pp.key(self.ast).name(self.ast)),
                     },
-                    value: pp.value(self.ast).map(|e| Box::new(self.compat_expr(e))),
+                    value: pp.value(self.ast).map(|e| self.compat_expr(e)),
                     type_ann: None,
                     is_static: pp.is_static(self.ast),
                     decorators: self
@@ -979,7 +991,7 @@ impl AstCompat<'_> {
                             legacy::Key::Public(self.compat_prop_name(n))
                         }
                     },
-                    value: a.value(self.ast).map(|e| Box::new(self.compat_expr(e))),
+                    value: a.value(self.ast).map(|e| self.compat_expr(e)),
                     type_ann: None,
                     is_static: a.is_static(self.ast),
                     decorators: self
@@ -1033,7 +1045,7 @@ impl AstCompat<'_> {
         legacy::VarDeclarator {
             span: d.span(self.ast),
             name: self.compat_pat(d.name(self.ast)),
-            init: d.init(self.ast).map(|e| Box::new(self.compat_expr(e))),
+            init: d.init(self.ast).map(|e| self.compat_expr(e)),
             definite: false,
         }
     }
@@ -1067,12 +1079,12 @@ impl AstCompat<'_> {
             experimental::Pat::Assign(a) => legacy::Pat::Assign(legacy::AssignPat {
                 span: a.span(self.ast),
                 left: Box::new(self.compat_pat(a.left(self.ast))),
-                right: Box::new(self.compat_expr(a.right(self.ast))),
+                right: self.compat_expr(a.right(self.ast)),
             }),
             experimental::Pat::Invalid(i) => legacy::Pat::Invalid(legacy::Invalid {
                 span: i.span(self.ast),
             }),
-            experimental::Pat::Expr(e) => legacy::Pat::Expr(Box::new(self.compat_expr(e))),
+            experimental::Pat::Expr(e) => legacy::Pat::Expr(self.compat_expr(e)),
         }
     }
 
@@ -1091,7 +1103,7 @@ impl AstCompat<'_> {
                         id: self.compat_ident(ap.key(self.ast).id(self.ast)),
                         type_ann: None,
                     },
-                    value: ap.value(self.ast).map(|e| Box::new(self.compat_expr(e))),
+                    value: ap.value(self.ast).map(|e| self.compat_expr(e)),
                 })
             }
             experimental::ObjectPatProp::Rest(r) => legacy::ObjectPatProp::Rest(legacy::RestPat {
@@ -1105,7 +1117,7 @@ impl AstCompat<'_> {
     fn compat_expr_or_spread(&mut self, e: experimental::ExprOrSpread) -> legacy::ExprOrSpread {
         legacy::ExprOrSpread {
             spread: e.spread(self.ast).map(|s| s.span(self.ast)),
-            expr: Box::new(self.compat_expr(e.expr(self.ast))),
+            expr: self.compat_expr(e.expr(self.ast)),
         }
     }
 
@@ -1124,7 +1136,7 @@ impl AstCompat<'_> {
             experimental::MemberProp::Computed(c) => {
                 legacy::MemberProp::Computed(legacy::ComputedPropName {
                     span: c.span(self.ast),
-                    expr: Box::new(self.compat_expr(c.expr(self.ast))),
+                    expr: self.compat_expr(c.expr(self.ast)),
                 })
             }
         }
@@ -1170,7 +1182,7 @@ impl AstCompat<'_> {
     fn compat_tpl(&mut self, t: experimental::Tpl) -> legacy::Tpl {
         legacy::Tpl {
             span: t.span(self.ast),
-            exprs: self.compat_type_sub_range(t.exprs(self.ast), Self::compat_expr_box),
+            exprs: self.compat_type_sub_range(t.exprs(self.ast), Self::compat_expr),
             quasis: self.compat_type_sub_range(t.quasis(self.ast), Self::compat_tpl_element),
         }
     }
@@ -1187,7 +1199,7 @@ impl AstCompat<'_> {
                 experimental::SimpleAssignTarget::Member(m) => {
                     legacy::SimpleAssignTarget::Member(legacy::MemberExpr {
                         span: m.span(self.ast),
-                        obj: Box::new(self.compat_expr(m.obj(self.ast))),
+                        obj: self.compat_expr(m.obj(self.ast)),
                         prop: self.compat_member_prop(m.prop(self.ast)),
                     })
                 }
@@ -1207,7 +1219,7 @@ impl AstCompat<'_> {
                             experimental::SuperProp::Computed(c) => {
                                 legacy::SuperProp::Computed(legacy::ComputedPropName {
                                     span: c.span(self.ast),
-                                    expr: Box::new(self.compat_expr(c.expr(self.ast))),
+                                    expr: self.compat_expr(c.expr(self.ast)),
                                 })
                             }
                         },
@@ -1216,7 +1228,7 @@ impl AstCompat<'_> {
                 experimental::SimpleAssignTarget::Paren(p) => {
                     legacy::SimpleAssignTarget::Paren(legacy::ParenExpr {
                         span: p.span(self.ast),
-                        expr: Box::new(self.compat_expr(p.expr(self.ast))),
+                        expr: self.compat_expr(p.expr(self.ast)),
                     })
                 }
                 experimental::SimpleAssignTarget::OptChain(o) => {
@@ -1227,7 +1239,7 @@ impl AstCompat<'_> {
                             experimental::OptChainBase::Member(m) => {
                                 legacy::OptChainBase::Member(legacy::MemberExpr {
                                     span: m.span(self.ast),
-                                    obj: Box::new(self.compat_expr(m.obj(self.ast))),
+                                    obj: self.compat_expr(m.obj(self.ast)),
                                     prop: self.compat_member_prop(m.prop(self.ast)),
                                 })
                             }
@@ -1235,7 +1247,7 @@ impl AstCompat<'_> {
                                 legacy::OptChainBase::Call(legacy::OptCall {
                                     span: c.span(self.ast),
                                     ctxt: Default::default(),
-                                    callee: Box::new(self.compat_expr(c.callee(self.ast))),
+                                    callee: self.compat_expr(c.callee(self.ast)),
                                     args: self.compat_type_sub_range(
                                         c.args(self.ast),
                                         Self::compat_expr_or_spread,
@@ -1331,9 +1343,7 @@ impl AstCompat<'_> {
             experimental::JSXExpr::JSXEmptyExpr(ee) => {
                 legacy::JSXExpr::JSXEmptyExpr(self.compat_jsx_empty_expr(ee))
             }
-            experimental::JSXExpr::Expr(ex) => {
-                legacy::JSXExpr::Expr(Box::new(self.compat_expr(ex)))
-            }
+            experimental::JSXExpr::Expr(ex) => legacy::JSXExpr::Expr(self.compat_expr(ex)),
         }
     }
 
@@ -1351,7 +1361,7 @@ impl AstCompat<'_> {
     fn compat_spread_element(&mut self, s: experimental::SpreadElement) -> legacy::SpreadElement {
         legacy::SpreadElement {
             dot3_token: s.dot_3_token(self.ast),
-            expr: Box::new(self.compat_expr(s.expr(self.ast))),
+            expr: self.compat_expr(s.expr(self.ast)),
         }
     }
 
@@ -1462,7 +1472,7 @@ impl AstCompat<'_> {
     ) -> legacy::JSXSpreadChild {
         legacy::JSXSpreadChild {
             span: s.span(self.ast),
-            expr: Box::new(self.compat_expr(s.expr(self.ast))),
+            expr: self.compat_expr(s.expr(self.ast)),
         }
     }
 
