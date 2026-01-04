@@ -555,19 +555,18 @@ impl Ast {
     /// Save the current state of the AST.
     pub fn checkpoint_save(&self) -> AstCheckpoint {
         AstCheckpoint {
-            nodes: self.nodes.get_checkpoint_data(),
+            nodes: self.nodes.checkpoint_save(),
             extra_data_len: self.extra_data.len(),
             bigint_len: self.bigint.len(),
-            strings: self.string_allocator.get_checkpoint_data(),
+            strings: self.string_allocator.checkpoint_save(),
         }
     }
 
     /// Restore the state of the AST from the checkpoint.
     pub fn checkpoint_load(&mut self, checkpoint: AstCheckpoint) {
-        self.nodes.restore_checkpoint_data(checkpoint.nodes);
+        self.nodes.checkpoint_load(checkpoint.nodes);
         self.extra_data.truncate(checkpoint.extra_data_len);
         self.bigint.truncate(checkpoint.bigint_len);
-        self.string_allocator
-            .restore_checkpoint_data(checkpoint.strings);
+        self.string_allocator.checkpoint_load(checkpoint.strings);
     }
 }

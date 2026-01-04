@@ -75,11 +75,11 @@ impl StringAllocator {
         Some(self.get_wtf8(id))
     }
 
-    pub(crate) fn get_checkpoint_data(&self) -> (usize, usize) {
+    pub(crate) fn checkpoint_save(&self) -> (usize, usize) {
         (self.allocated_utf8.len(), self.allocated_wtf8.len())
     }
 
-    pub(crate) fn restore_checkpoint_data(&mut self, data: (usize, usize)) {
+    pub(crate) fn checkpoint_load(&mut self, data: (usize, usize)) {
         self.allocated_utf8.truncate(data.0);
         self.allocated_wtf8.truncate(data.1);
     }
