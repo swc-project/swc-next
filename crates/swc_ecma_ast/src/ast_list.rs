@@ -5,6 +5,7 @@ use oxc_index::IndexVec;
 use crate::{AstNode, NodeId, NodeKind};
 
 /// A generational arena of AST nodes.
+#[derive(Default)]
 pub(crate) struct NodeList {
     inner: IndexVec<NodeId, AstNode>,
 
@@ -12,16 +13,6 @@ pub(crate) struct NodeList {
 
     /// The number of elements in the arena, except the freed nodes.
     num_elems: u32,
-}
-
-impl Default for NodeList {
-    fn default() -> Self {
-        Self {
-            inner: Default::default(),
-            free_list: Default::default(),
-            num_elems: Default::default(),
-        }
-    }
 }
 
 impl NodeList {
