@@ -117,7 +117,6 @@ pub union NodeData {
     empty: (),
     extra_data_start: ExtraDataId,
     inline_data: u32,
-    next_free: OptionalNodeId,
 }
 
 /// The extra data is used to represent the field of AST node.

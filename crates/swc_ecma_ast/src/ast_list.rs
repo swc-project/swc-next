@@ -2,15 +2,13 @@ use std::ops::{Index, IndexMut};
 
 use oxc_index::IndexVec;
 
-use crate::{AstNode, NodeId, NodeKind, OptionalNodeId};
+use crate::{AstNode, NodeId, NodeKind};
 
 /// A generational arena of AST nodes.
 pub(crate) struct NodeList {
     inner: IndexVec<NodeId, AstNode>,
 
-    /// The first avaliable slot of the free list.
-    /// It's an unused node or a node that has been freed.
-    free_head: OptionalNodeId,
+    free_list: Vec<NodeId>,
 
     /// The number of elements in the arena, except the freed nodes.
     num_elems: u32,
@@ -20,7 +18,7 @@ impl Default for NodeList {
     fn default() -> Self {
         Self {
             inner: Default::default(),
-            free_head: OptionalNodeId::none(),
+            free_list: Default::default(),
             num_elems: Default::default(),
         }
     }
@@ -30,7 +28,7 @@ impl NodeList {
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             inner: IndexVec::with_capacity(capacity),
-            free_head: OptionalNodeId::none(),
+            free_list: Default::default(),
             num_elems: Default::default(),
         }
     }
@@ -43,10 +41,9 @@ impl NodeList {
         self.num_elems += 1;
 
         // We first check if there is a reusable slot in the free list.
-        match self.free_head.to_option() {
+        match self.free_list.pop() {
             Some(node_id) => {
                 debug_assert!(self.inner[node_id].kind == NodeKind::__FREED);
-                self.free_head = unsafe { self.inner[node_id].data.next_free };
                 self.inner[node_id] = node;
                 node_id
             }
@@ -62,8 +59,7 @@ impl NodeList {
         // Mark the node as freed and save the next free node to the node's data.
         self.num_elems -= 1;
         self.inner[node_id].kind = NodeKind::__FREED;
-        self.inner[node_id].data.next_free = self.free_head;
-        self.free_head = OptionalNodeId::from(node_id);
+        self.free_list.push(node_id);
     }
 
     #[inline]
