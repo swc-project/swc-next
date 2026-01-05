@@ -8,11 +8,7 @@ use crate::{AstNode, NodeId, NodeKind};
 #[derive(Default)]
 pub(crate) struct NodeList {
     inner: IndexVec<NodeId, AstNode>,
-
     free_list: Vec<NodeId>,
-
-    /// The number of elements in the arena, except the freed nodes.
-    num_elems: u32,
 }
 
 impl NodeList {
@@ -20,7 +16,6 @@ impl NodeList {
         Self {
             inner: IndexVec::with_capacity(capacity),
             free_list: Default::default(),
-            num_elems: Default::default(),
         }
     }
 
@@ -29,8 +24,6 @@ impl NodeList {
     ///
     /// This function will reuse a freed node slot if available.
     pub fn add_node(&mut self, node: AstNode) -> NodeId {
-        self.num_elems += 1;
-
         // We first check if there is a reusable slot in the free list.
         match self.free_list.pop() {
             Some(node_id) => {
@@ -48,7 +41,6 @@ impl NodeList {
         debug_assert!(self.inner[node_id].kind != NodeKind::__FREED);
 
         // Mark the node as freed and save the next free node to the node's data.
-        self.num_elems -= 1;
         self.inner[node_id].kind = NodeKind::__FREED;
         self.free_list.push(node_id);
     }
@@ -67,7 +59,7 @@ impl NodeList {
     #[inline]
     /// The number of elements in the arena, except the freed nodes.
     pub fn len(&self) -> u32 {
-        self.num_elems
+        self.inner.len() as u32 - self.free_list.len() as u32
     }
 
     #[inline]
@@ -98,16 +90,6 @@ impl NodeList {
                 .get_unchecked_mut(node_id.index())
         }
     }
-
-    pub(crate) fn checkpoint_save(&self) -> (usize, OptionalNodeId, u32) {
-        (self.inner.len(), self.free_head, self.num_elems)
-    }
-
-    pub(crate) fn checkpoint_load(&mut self, data: (usize, OptionalNodeId, u32)) {
-        self.inner.truncate(data.0);
-        self.free_head = data.1;
-        self.num_elems = data.2;
-    }
 }
 
 impl Index<NodeId> for NodeList {
@@ -121,5 +103,24 @@ impl Index<NodeId> for NodeList {
 impl IndexMut<NodeId> for NodeList {
     fn index_mut(&mut self, k: NodeId) -> &mut AstNode {
         &mut self.inner[k]
+    }
+}
+
+pub(crate) struct NodeListCheckpoint {
+    inner_len: usize,
+    free_list: Vec<NodeId>,
+}
+
+impl NodeList {
+    pub(crate) fn checkpoint_save(&self) -> NodeListCheckpoint {
+        NodeListCheckpoint {
+            inner_len: self.inner.len(),
+            free_list: self.free_list.clone(),
+        }
+    }
+
+    pub(crate) fn checkpoint_load(&mut self, checkpoint: NodeListCheckpoint) {
+        self.inner.truncate(checkpoint.inner_len);
+        self.free_list = checkpoint.free_list;
     }
 }

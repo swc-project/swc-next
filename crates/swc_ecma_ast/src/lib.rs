@@ -32,7 +32,11 @@ pub use node_id::{
     OptionalWtf8Ref, SubRange, TypedSubRange, Utf8Ref, Wtf8Ref,
 };
 
-use crate::{ast_list::NodeList, node_id::OptionalSubRange, string_allocator::StringAllocator};
+use crate::{
+    ast_list::{NodeList, NodeListCheckpoint},
+    node_id::OptionalSubRange,
+    string_allocator::StringAllocator,
+};
 
 /// AST context that stores everything about the flattening AST.
 pub struct Ast {
@@ -545,7 +549,7 @@ impl Ast {
 
 /// Checkpoint of AST to save and restore the state of the AST.
 pub struct AstCheckpoint {
-    nodes: (usize, OptionalNodeId, u32),
+    nodes: NodeListCheckpoint,
     extra_data_len: usize,
     bigint_len: usize,
     strings: (usize, usize),
