@@ -3,3 +3,4 @@
 callgrind*
 input.*
 profile.json
+*.log
