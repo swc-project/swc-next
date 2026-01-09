@@ -129,7 +129,8 @@ impl<I: Tokens> Parser<I> {
                 self.ast.free_node(i.node_id());
                 name
             }
-            JSXAttrName::JSXNamespacedName(i) => JSXElementName::JSXNamespacedName(i),
+            // https://github.com/microsoft/typescript-go/blob/f726edff55e6a256b3097bd14858aba81acc1f89/internal/parser/parser.go#L4827
+            JSXAttrName::JSXNamespacedName(i) => return Ok(JSXElementName::JSXNamespacedName(i)),
             #[cfg(swc_ast_unknown)]
             _ => unreachable!(),
         };
