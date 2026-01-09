@@ -1189,14 +1189,8 @@ impl<'a> Lexer<'a> {
     fn read_jsx_entity(&mut self) -> LexResult<(char, String)> {
         debug_assert!(self.syntax().jsx());
 
-        fn from_code(s: &str, radix: u32) -> LexResult<char> {
-            // TODO(kdy1): unwrap -> Err
-            let c = char::from_u32(
-                u32::from_str_radix(s, radix).expect("failed to parse string as number"),
-            )
-            .expect("failed to parse number as char");
-
-            Ok(c)
+        fn from_code(s: &str, radix: u32) -> Option<char> {
+            u32::from_str_radix(s, radix).ok().and_then(char::from_u32)
         }
 
         fn is_hex(s: &str) -> bool {
@@ -1224,14 +1218,14 @@ impl<'a> Lexer<'a> {
             if c == b';' {
                 if let Some(stripped) = s.strip_prefix('#') {
                     if stripped.starts_with('x') {
-                        if is_hex(&s[2..]) {
-                            let value = from_code(&s[2..], 16)?;
-
+                        if is_hex(&s[2..])
+                            && let Some(value) = from_code(&s[2..], 16)
+                        {
                             return Ok((value, format!("&{s};")));
                         }
-                    } else if is_dec(stripped) {
-                        let value = from_code(stripped, 10)?;
-
+                    } else if is_dec(stripped)
+                        && let Some(value) = from_code(stripped, 10)
+                    {
                         return Ok((value, format!("&{s};")));
                     }
                 } else if let Some(entity) = xhtml(&s) {
