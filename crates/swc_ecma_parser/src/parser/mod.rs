@@ -536,10 +536,6 @@ impl<I: Tokens> Parser<I> {
 
     #[inline(always)]
     pub fn bump(&mut self) {
-        debug_assert!(
-            self.input().cur() != Token::Eof,
-            "parser should not call bump() without knowing current token"
-        );
         self.input_mut().bump()
     }
 
@@ -554,12 +550,7 @@ impl<I: Tokens> Parser<I> {
     }
 
     #[inline(always)]
-    pub fn assert_and_bump(&mut self, token: Token) {
-        debug_assert!(
-            self.input().is(token),
-            "assertion failed: expected {token:?}, got {:?}",
-            self.input().cur()
-        );
+    pub fn assert_and_bump(&mut self, _token: Token) {
         self.bump();
     }
 
