@@ -527,7 +527,6 @@ impl Lexer<'_> {
                     self.emit_error(self.cur_pos(), SyntaxError::InvalidUnicodeEscape);
                     continue;
                 }
-                self.bump(1); // bump 'u'
                 let Ok(value) = self.read_unicode_escape() else {
                     self.emit_error(self.cur_pos(), SyntaxError::InvalidUnicodeEscape);
                     break;
