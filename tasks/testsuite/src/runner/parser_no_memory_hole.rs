@@ -15,13 +15,7 @@ pub struct NoMemoryHoleRunner;
 
 impl NoMemoryHoleRunner {
     pub fn run<C: Case>(args: &AppArgs, cases: &[C]) -> Vec<TestResult> {
-        #[cfg(not(miri))]
-        let iter = cases.par_iter();
-
-        #[cfg(miri)]
-        let iter = cases.iter();
-
-        iter.filter_map(|case| {
+        let run_case = |case: &C| {
             if args.debug {
                 println!("[{}] {:?}", "Debug".green(), case.relative_path());
             }
@@ -63,8 +57,17 @@ impl NoMemoryHoleRunner {
             Some(TestResult::Passed {
                 path: case.path().to_owned(),
             })
-        })
-        .collect()
+        };
+
+        #[cfg(not(miri))]
+        if args.debug {
+            cases.iter().filter_map(run_case).collect()
+        } else {
+            cases.par_iter().filter_map(run_case).collect()
+        }
+
+        #[cfg(miri)]
+        cases.iter().filter_map(run_case).collect()
     }
 }
 

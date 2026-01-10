@@ -12,13 +12,7 @@ pub struct ParserRunner;
 
 impl ParserRunner {
     pub fn run<C: Case>(args: &AppArgs, cases: &[C]) -> Vec<TestResult> {
-        #[cfg(not(miri))]
-        let iter = cases.par_iter();
-
-        #[cfg(miri)]
-        let iter = cases.iter();
-
-        iter.map(|case| {
+        let run_case = |case: &C| {
             if args.debug {
                 println!("[{}] {:?}", "Debug".green(), case.relative_path());
             }
@@ -48,7 +42,16 @@ impl ParserRunner {
                     path: case.relative_path().to_owned(),
                 },
             }
-        })
-        .collect()
+        };
+
+        #[cfg(not(miri))]
+        if args.debug {
+            cases.iter().map(run_case).collect()
+        } else {
+            cases.par_iter().map(run_case).collect()
+        }
+
+        #[cfg(miri)]
+        cases.iter().map(run_case).collect()
     }
 }
