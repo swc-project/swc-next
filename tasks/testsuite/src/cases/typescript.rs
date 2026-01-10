@@ -72,7 +72,8 @@ impl TypeScriptCase {
             if !matches!(
                 ext,
                 "ts" | "tsx" | "js" | "jsx" | "mts" | "cts" | "mjs" | "cjs"
-            ) {
+            ) || path_str.ends_with(".d.ts")
+            {
                 continue;
             }
 
