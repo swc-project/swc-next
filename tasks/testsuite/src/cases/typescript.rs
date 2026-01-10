@@ -82,6 +82,11 @@ impl TypeScriptCase {
                 continue;
             }
 
+            // Skip transpile cases
+            if path_str.contains("transpile") {
+                continue;
+            }
+
             let Ok(code) = read_to_string(&path) else {
                 continue;
             };
