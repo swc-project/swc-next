@@ -1724,6 +1724,7 @@ dependencies = [
  "rayon",
  "regex",
  "saphyr",
+ "serde_json",
  "swc_core",
  "swc_experimental_ecma_ast",
  "swc_experimental_ecma_parser",
