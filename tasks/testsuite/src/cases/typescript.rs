@@ -258,24 +258,6 @@ impl Case for TypeScriptCase {
     }
 
     fn is_module(&self) -> IsModule {
-        // Check @module option
-        if let Some(module_val) = self.global_options.get("module") {
-            let module_lower = module_val.to_lowercase();
-            // ES modules
-            if module_lower.contains("es")
-                || module_lower.contains("esnext")
-                || module_lower.contains("nodenext")
-                || module_lower.contains("node16")
-            {
-                return IsModule::Module;
-            }
-            // CommonJS
-            if module_lower.contains("commonjs") || module_lower.contains("cjs") {
-                return IsModule::Script;
-            }
-        }
-
-        // Fall back to extension-based detection
         match self.ext().as_str() {
             "mts" | "mjs" => IsModule::Module,
             "cts" | "cjs" => IsModule::Script,
