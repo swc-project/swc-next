@@ -1068,30 +1068,36 @@ impl<I: Tokens> Parser<I> {
             if let Some(v) = v {
                 return Ok(Stmt::Decl(Decl::Using(v)));
             }
-        // } else if cur == Token::Interface
-        //     && is_typescript
-        //     && peek!(self).is_some_and(|peek| peek.is_word())
-        //     && !self.input_mut().has_linebreak_between_cur_and_peeked()
-        // {
-        //     let start = self.input().cur_pos();
-        //     self.bump();
-        //     return Ok(self.parse_ts_interface_decl(start)?.into());
-        // } else if cur == Token::Type
-        //     && is_typescript
-        //     && peek!(self).is_some_and(|peek| peek.is_word())
-        //     && !self.input_mut().has_linebreak_between_cur_and_peeked()
-        // {
-        //     let start = self.input().cur_pos();
-        //     self.bump();
-        //     return Ok(self.parse_ts_type_alias_decl(start)?.into());
-        // } else if cur == Token::Enum
-        //     && is_typescript
-        //     && peek!(self).is_some_and(|peek| peek.is_word())
-        //     && !self.input_mut().has_linebreak_between_cur_and_peeked()
-        // {
-        //     let start = self.input().cur_pos();
-        //     self.bump();
-        //     return Ok(self.parse_ts_enum_decl(start, false)?.into());
+        } else if cur == Token::Interface
+            && is_typescript
+            && peek!(self).is_some_and(|peek| peek.is_word())
+            && !self.input_mut().has_linebreak_between_cur_and_peeked()
+        {
+            let start = self.input().cur_pos();
+            self.bump();
+            return Ok(Stmt::Decl(Decl::TsInterface(
+                self.parse_ts_interface_decl(start)?,
+            )));
+        } else if cur == Token::Type
+            && is_typescript
+            && peek!(self).is_some_and(|peek| peek.is_word())
+            && !self.input_mut().has_linebreak_between_cur_and_peeked()
+        {
+            let start = self.input().cur_pos();
+            self.bump();
+            return Ok(Stmt::Decl(Decl::TsTypeAlias(
+                self.parse_ts_type_alias_decl(start)?,
+            )));
+        } else if cur == Token::Enum
+            && is_typescript
+            && peek!(self).is_some_and(|peek| peek.is_word())
+            && !self.input_mut().has_linebreak_between_cur_and_peeked()
+        {
+            let start = self.input().cur_pos();
+            self.bump();
+            return Ok(Stmt::Decl(Decl::TsEnum(
+                self.parse_ts_enum_decl(start, false)?,
+            )));
         } else if cur == Token::LBrace {
             return self
                 .do_inside_of_context(Context::AllowUsingDecl, |p| p.parse_block(false))
