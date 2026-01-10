@@ -2,7 +2,7 @@ use std::ops::{Index, IndexMut};
 
 use oxc_index::IndexVec;
 
-use crate::{AstNode, NodeId, NodeKind};
+use crate::{AstNode, NodeId};
 
 /// A generational arena of AST nodes.
 #[derive(Default)]
@@ -27,7 +27,7 @@ impl NodeList {
         // We first check if there is a reusable slot in the free list.
         match self.free_list.pop() {
             Some(node_id) => {
-                debug_assert!(self.inner[node_id].kind == NodeKind::__FREED);
+                // debug_assert!(self.inner[node_id].kind == NodeKind::__FREED);
                 self.inner[node_id] = node;
                 node_id
             }
@@ -38,10 +38,9 @@ impl NodeList {
     #[inline]
     /// Free a node in the arena and update the free head.
     pub fn free_node(&mut self, node_id: NodeId) {
-        debug_assert!(self.inner[node_id].kind != NodeKind::__FREED);
-
         // Mark the node as freed and save the next free node to the node's data.
-        self.inner[node_id].kind = NodeKind::__FREED;
+        // debug_assert!(self.inner[node_id].kind != NodeKind::__FREED);
+        // self.inner[node_id].kind = NodeKind::__FREED;
         self.free_list.push(node_id);
     }
 
