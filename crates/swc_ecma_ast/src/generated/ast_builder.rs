@@ -1,4 +1,9 @@
-#![allow(unused, clippy::useless_conversion, clippy::identity_op)]
+#![allow(
+    unused,
+    clippy::useless_conversion,
+    clippy::identity_op,
+    clippy::too_many_arguments
+)]
 use crate::{Ast, AstNode, ExtraData, NodeData, NodeKind, ast::*, node_id::*};
 use swc_core::common::Span;
 impl Ast {

@@ -21,23 +21,17 @@ pub struct Schema {
 
 impl Schema {
     pub fn types_without_primitive(&self) -> impl Iterator<Item = &AstType> {
-        self.types.iter().filter_map(|ty| match ty {
+        self.types.iter().filter(|ty| match ty {
             AstType::Option(ast) => {
                 let inner_ty = &self.types[ast.inner_type_id];
-                match inner_ty {
-                    AstType::Primitive(_) => None,
-                    _ => Some(ty),
-                }
+                !matches!(inner_ty, AstType::Primitive(_))
             }
             AstType::Vec(ast) => {
                 let inner_ty = &self.types[ast.inner_type_id];
-                match inner_ty {
-                    AstType::Primitive(_) => None,
-                    _ => Some(ty),
-                }
+                !matches!(inner_ty, AstType::Primitive(_))
             }
-            AstType::Primitive(_) => None,
-            _ => Some(ty),
+            AstType::Primitive(_) => false,
+            _ => true,
         })
     }
 }

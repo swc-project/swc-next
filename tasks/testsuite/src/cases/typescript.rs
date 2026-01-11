@@ -1,4 +1,4 @@
-///! https://github.com/microsoft/typescript-go/blob/main/internal/testrunner/test_case_parser.go
+//! https://github.com/microsoft/typescript-go/blob/main/internal/testrunner/test_case_parser.go
 use std::{
     collections::HashMap,
     fs::read_to_string,
@@ -96,26 +96,23 @@ impl TypeScriptCase {
             // Try to read tsconfig.json from the same directory
             if let Some(parent_dir) = path.parent() {
                 let tsconfig_path = parent_dir.join("tsconfig.json");
-                if tsconfig_path.exists() {
-                    if let Ok(tsconfig_content) = read_to_string(&tsconfig_path) {
-                        if let Ok(tsconfig) = serde_json::from_str::<Value>(&tsconfig_content) {
-                            // Extract compilerOptions and merge into global_options
-                            if let Some(compiler_options) = tsconfig.get("compilerOptions") {
-                                if let Some(options_obj) = compiler_options.as_object() {
-                                    for (key, value) in options_obj {
-                                        let key_lower = key.to_lowercase();
-                                        let value_str = match value {
-                                            Value::Bool(b) => b.to_string(),
-                                            Value::String(s) => s.clone(),
-                                            Value::Number(n) => n.to_string(),
-                                            _ => continue,
-                                        };
-                                        // Only add if not already present (file metadata takes precedence)
-                                        parsed.global_options.entry(key_lower).or_insert(value_str);
-                                    }
-                                }
-                            }
-                        }
+                if tsconfig_path.exists()
+                    && let Ok(tsconfig_content) = read_to_string(&tsconfig_path)
+                    && let Ok(tsconfig) = serde_json::from_str::<Value>(&tsconfig_content)
+                    // Extract compilerOptions and merge into global_options
+                    && let Some(compiler_options) = tsconfig.get("compilerOptions")
+                    && let Some(options_obj) = compiler_options.as_object()
+                {
+                    for (key, value) in options_obj {
+                        let key_lower = key.to_lowercase();
+                        let value_str = match value {
+                            Value::Bool(b) => b.to_string(),
+                            Value::String(s) => s.clone(),
+                            Value::Number(n) => n.to_string(),
+                            _ => continue,
+                        };
+                        // Only add if not already present (file metadata takes precedence)
+                        parsed.global_options.entry(key_lower).or_insert(value_str);
                     }
                 }
             }

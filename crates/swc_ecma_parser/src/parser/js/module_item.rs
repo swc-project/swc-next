@@ -342,6 +342,7 @@ impl<I: Tokens> Parser<I> {
 
         if declare {
             // TODO: Remove
+            #[allow(clippy::clone_on_copy)]
             if let Some(decl) = self.try_parse_ts_declare(after_export_start, decorators.clone())? {
                 return Ok(self.ast.module_decl_export_decl(self.span(start), decl));
             }
@@ -353,6 +354,7 @@ impl<I: Tokens> Parser<I> {
                 let sym = cur.take_word(self.input());
                 let sym = self.to_utf8_ref(sym);
                 // TODO: remove clone
+                #[allow(clippy::clone_on_copy)]
                 if let Some(decl) = self.try_parse_ts_export_decl(decorators.clone(), sym) {
                     return Ok(self.ast.module_decl_export_decl(self.span(start), decl));
                 }

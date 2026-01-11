@@ -4566,8 +4566,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<TsExprWithTypeArgs> {
         <V as Visit>::visit_ts_expr_with_type_argss(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -4654,8 +4654,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<TsTypeParam> {
         <V as Visit>::visit_ts_type_params(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -4676,8 +4676,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<TsType> {
         <V as Visit>::visit_ts_types(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -4687,8 +4687,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<TsFnParam> {
         <V as Visit>::visit_ts_fn_params(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -4720,8 +4720,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<TsTypeElement> {
         <V as Visit>::visit_ts_type_elements(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -4731,8 +4731,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<TsTupleElement> {
         <V as Visit>::visit_ts_tuple_elements(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -4742,8 +4742,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TypedSubRange<TsEnumMember> {
         <V as Visit>::visit_ts_enum_members(visitor, self)
     }
     fn visit_children_with(self, visitor: &mut V) {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
         }
     }
@@ -10799,9 +10799,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<TsExprWithTypeArgs>
         <V as VisitMut>::visit_mut_ts_expr_with_type_argss(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -10898,9 +10899,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<TsTypeParam> {
         <V as VisitMut>::visit_mut_ts_type_params(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -10921,9 +10923,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<TsType> {
         <V as VisitMut>::visit_mut_ts_types(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -10933,9 +10936,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<TsFnParam> {
         <V as VisitMut>::visit_mut_ts_fn_params(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -10967,9 +10971,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<TsTypeElement> {
         <V as VisitMut>::visit_mut_ts_type_elements(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -10979,9 +10984,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<TsTupleElement> {
         <V as VisitMut>::visit_mut_ts_tuple_elements(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }
@@ -10991,9 +10997,10 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TypedSubRange<TsEnumMember> {
         <V as VisitMut>::visit_mut_ts_enum_members(visitor, self)
     }
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
-        for child in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child);
-            child.visit_mut_with(visitor);
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            let new_child = child.visit_mut_with(visitor);
+            self.replace_slot(visitor.ast(), child_idx, new_child);
         }
         self
     }

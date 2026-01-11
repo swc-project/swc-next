@@ -2653,6 +2653,7 @@ impl<I: Tokens> Parser<I> {
 
             let cur = p.input().cur();
             if matches!(cur, Token::Const | Token::Var | Token::Let) {
+                #[allow(clippy::manual_inspect)]
                 return Ok(Some(Decl::Var(p.parse_var_stmt(false).map(|decl| {
                     decl.set_declare(&mut p.ast, true);
 

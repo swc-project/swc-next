@@ -376,13 +376,13 @@ impl<I: Tokens> Parser<I> {
                             _ => None,
                         };
 
-                        if let Some(type_ann) = type_ann {
-                            if type_ann.is_some() {
-                                self.emit_err(
-                                    first_decl.name(&self.ast).span(&self.ast),
-                                    SyntaxError::TS2483,
-                                );
-                            }
+                        if let Some(type_ann) = type_ann
+                            && type_ann.is_some()
+                        {
+                            self.emit_err(
+                                first_decl.name(&self.ast).span(&self.ast),
+                                SyntaxError::TS2483,
+                            );
                         }
                     }
                 }
@@ -1145,27 +1145,27 @@ impl<I: Tokens> Parser<I> {
                 return Ok(self.ast.stmt_expr_stmt(self.span(start), expr));
             }
 
-            if self.input().syntax().typescript() {
-                if let Some(decl) = self.parse_ts_expr_stmt(decorators, ident)? {
-                    return Ok(Stmt::Decl(decl));
-                }
+            if self.input().syntax().typescript()
+                && let Some(decl) = self.parse_ts_expr_stmt(decorators, ident)?
+            {
+                return Ok(Stmt::Decl(decl));
             }
         }
 
-        if self.syntax().typescript() {
-            if let Expr::Ident(ref i) = expr {
-                let sym = self.ast.get_utf8(i.sym(&self.ast));
-                match sym {
-                    "public" | "static" | "abstract" => {
-                        if self.input_mut().eat(Token::Interface) {
-                            self.emit_err(i.span(&self.ast), SyntaxError::TS2427);
-                            return Ok(Stmt::Decl(Decl::TsInterface(
-                                self.parse_ts_interface_decl(start)?,
-                            )));
-                        }
+        if self.syntax().typescript()
+            && let Expr::Ident(ref i) = expr
+        {
+            let sym = self.ast.get_utf8(i.sym(&self.ast));
+            match sym {
+                "public" | "static" | "abstract" => {
+                    if self.input_mut().eat(Token::Interface) {
+                        self.emit_err(i.span(&self.ast), SyntaxError::TS2427);
+                        return Ok(Stmt::Decl(Decl::TsInterface(
+                            self.parse_ts_interface_decl(start)?,
+                        )));
                     }
-                    _ => {}
                 }
+                _ => {}
             }
         }
 
