@@ -1,8 +1,8 @@
 Test Summary: 
-Passed: 23379/24426 (95.71%)
-Failed: 1045/24426 (4.28%)
-Panicked: 0/24426 (0.00%)
-Ignored: 2/24426 (0.01%)
+Passed: 23379/24425 (95.72%)
+Failed: 1044/24425 (4.27%)
+Panicked: 0/24425 (0.00%)
+Ignored: 2/24425 (0.01%)
 Failed: /Users/chenzhiyong/Projects/swc-experimental/tasks/testsuite/fixtures/typescript/tests/cases/compiler/APISample_Watch.ts - Memory hole is detected
 Failed: /Users/chenzhiyong/Projects/swc-experimental/tasks/testsuite/fixtures/typescript/tests/cases/compiler/APISample_jsdoc.ts - Memory hole is detected
 Failed: /Users/chenzhiyong/Projects/swc-experimental/tasks/testsuite/fixtures/typescript/tests/cases/compiler/ClassDeclaration25.ts - Memory hole is detected
@@ -1047,4 +1047,3 @@ Failed: /Users/chenzhiyong/Projects/swc-experimental/tasks/testsuite/fixtures/ty
 Failed: /Users/chenzhiyong/Projects/swc-experimental/tasks/testsuite/fixtures/typescript/tests/cases/fourslash/completionsRecommended_local.ts - Memory hole is detected
 Failed: /Users/chenzhiyong/Projects/swc-experimental/tasks/testsuite/fixtures/typescript/tests/cases/fourslash/jsFileJsdocTypedefTagTypeExpressionCompletion3.ts - Memory hole is detected
 Failed: /Users/chenzhiyong/Projects/swc-experimental/tasks/testsuite/fixtures/typescript/tests/cases/fourslash/server/completionEntryDetailAcrossFiles01.ts - Memory hole is detected
-Failed: /Users/chenzhiyong/Projects/swc-experimental/tasks/testsuite/fixtures/typescript/tests/cases/projects/decoratorMetadata/emitDecoratorMetadataCommonJSIsolatedModule/main.js - Memory hole is detected

@@ -1,8 +1,8 @@
 Test Summary: 
-Passed: 24424/26717 (91.42%)
-Failed: 2291/26717 (8.58%)
-Panicked: 0/26717 (0.00%)
-Ignored: 2/26717 (0.01%)
+Passed: 24423/26716 (91.42%)
+Failed: 2291/26716 (8.58%)
+Panicked: 0/26716 (0.00%)
+Ignored: 2/26716 (0.01%)
 Failed: fixtures/typescript/tests/cases/compiler/APILibCheck.ts - [Error { error: (13..14, ExpectedSemiForExprStmt { expr: 7..13 }) }]
 Failed: fixtures/typescript/tests/cases/compiler/APILibCheck.ts - [Error { error: (13..14, ExpectedSemiForExprStmt { expr: 7..13 }) }]
 Failed: fixtures/typescript/tests/cases/compiler/APILibCheck.ts - [Error { error: (13..14, ExpectedSemiForExprStmt { expr: 7..13 }) }]
