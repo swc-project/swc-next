@@ -1147,7 +1147,6 @@ impl<I: Tokens> Parser<I> {
 
             if self.input().syntax().typescript() {
                 if let Some(decl) = self.parse_ts_expr_stmt(decorators, ident)? {
-                    self.ast.free_node(expr.node_id());
                     return Ok(Stmt::Decl(decl));
                 }
             }

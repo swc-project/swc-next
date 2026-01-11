@@ -2532,6 +2532,7 @@ impl<I: Tokens> Parser<I> {
             "declare" => {
                 let decl = self.try_parse_ts_declare(start, decorators)?;
                 if let Some(decl) = decl {
+                    self.ast.free_node(expr.node_id());
                     Ok(Some(make_decl_declare(&mut self.ast, decl)))
                 } else {
                     Ok(None)
@@ -2560,7 +2561,14 @@ impl<I: Tokens> Parser<I> {
             }
             _ => {
                 let sym = expr.sym(&self.ast);
-                self.parse_ts_decl(start, decorators, sym, /* next */ false)
+                if let Some(decl) =
+                    self.parse_ts_decl(start, decorators, sym, /* next */ false)?
+                {
+                    self.ast.free_node(expr.node_id());
+                    Ok(Some(decl))
+                } else {
+                    Ok(None)
+                }
             }
         }
     }
