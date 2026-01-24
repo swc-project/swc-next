@@ -1,6 +1,5 @@
 mod assert_layout;
 mod ast;
-mod ast_list;
 mod common;
 mod derive;
 mod node_id;
@@ -32,12 +31,12 @@ pub use node_id::{
     OptionalWtf8Ref, SubRange, TypedSubRange, Utf8Ref, Wtf8Ref,
 };
 
-use crate::{ast_list::NodeList, node_id::OptionalSubRange, string_allocator::StringAllocator};
+use crate::{node_id::OptionalSubRange, string_allocator::StringAllocator};
 
 /// AST context that stores everything about the flattening AST.
 pub struct Ast {
     /// Flattening AST nodes.
-    nodes: NodeList,
+    nodes: IndexVec<NodeId, AstNode>,
 
     /// Flattening AST fields.
     extra_data: IndexVec<ExtraDataId, ExtraData>,
@@ -404,7 +403,7 @@ impl Ast {
     pub fn new(source_len: usize) -> Self {
         let empirical_capacity = (source_len as f64 * 0.15) as usize;
         Self {
-            nodes: NodeList::with_capacity(empirical_capacity),
+            nodes: IndexVec::with_capacity(empirical_capacity),
             extra_data: IndexVec::with_capacity(empirical_capacity * 2),
             bigint: IndexVec::new(),
             string_allocator: StringAllocator::new(source_len),
@@ -413,7 +412,7 @@ impl Ast {
 
     #[inline]
     fn add_node(&mut self, node: AstNode) -> NodeId {
-        self.nodes.add_node(node)
+        self.nodes.push(node)
     }
 
     #[inline]
@@ -491,39 +490,5 @@ impl Ast {
     #[inline]
     pub fn into_string_allocator(self) -> StringAllocator {
         self.string_allocator
-    }
-}
-
-impl Ast {
-    #[inline]
-    pub fn free_node(&mut self, node_id: NodeId) {
-        self.nodes.free_node(node_id);
-    }
-
-    #[inline]
-    pub fn replace_node<T: NodeIdTrait>(&mut self, dest: T, source: T) {
-        if source.node_id() != dest.node_id() {
-            self.nodes.replace_node(dest.node_id(), source.node_id());
-        }
-    }
-
-    #[inline]
-    pub fn get_node(&self, node_id: NodeId) -> &AstNode {
-        &self.nodes[node_id]
-    }
-
-    #[inline]
-    pub fn nodes(&self) -> impl Iterator<Item = (NodeId, &AstNode)> {
-        self.nodes.iter()
-    }
-
-    #[inline]
-    pub fn nodes_len(&self) -> u32 {
-        self.nodes.len()
-    }
-
-    #[inline]
-    pub fn nodes_capacity(&self) -> usize {
-        self.nodes.capacity()
     }
 }
