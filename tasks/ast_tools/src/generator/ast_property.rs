@@ -47,7 +47,7 @@ fn generate_property_for_struct(ast: &AstStruct, schema: &Schema) -> TokenStream
     field_getters.extend(quote! {
         #[inline]
         pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-            unsafe { ast.nodes.get_unchecked(self.0).span }
+            unsafe { ast.get_node_unchecked(self.0).span }
         }
         #[inline]
         pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
@@ -62,7 +62,7 @@ fn generate_property_for_struct(ast: &AstStruct, schema: &Schema) -> TokenStream
     field_setters.extend(quote! {
         #[inline]
         pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-            unsafe { ast.nodes.get_unchecked_mut(self.0).span = span; }
+            unsafe { ast.get_node_unchecked_mut(self.0).span = span; }
         }
     });
 
@@ -136,7 +136,7 @@ fn generate_inline_property_accessors(
             field_getters.extend(quote! {
                 #[inline]
                 pub fn #getter_name(&self, ast: &crate::Ast) -> #ret_ty {
-                    let node = unsafe { ast.nodes.get_unchecked(self.0) };
+                    let node = unsafe { ast.get_node_unchecked(self.0) };
                     let raw = unsafe { node.data.inline_data };
                     #cast_expr
                 }
@@ -148,7 +148,7 @@ fn generate_inline_property_accessors(
             field_setters.extend(quote! {
                 #[inline]
                 pub fn #setter_name(&self, ast: &mut crate::Ast, #field_name: #ret_ty) {
-                    let node = unsafe { ast.nodes.get_unchecked_mut(self.0) };
+                    let node = unsafe { ast.get_node_unchecked_mut(self.0) };
                     node.data.inline_data = #to_u32_expr;
                 }
             });
@@ -159,7 +159,7 @@ fn generate_inline_property_accessors(
             field_getters.extend(quote! {
                 #[inline]
                 pub fn #getter_name(&self, ast: &crate::Ast) -> #ret_ty {
-                    let node = unsafe { ast.nodes.get_unchecked(self.0) };
+                    let node = unsafe { ast.get_node_unchecked(self.0) };
                     #read_expr
                 }
             });
@@ -176,7 +176,7 @@ fn generate_inline_property_accessors(
             field_setters.extend(quote! {
                 #[inline]
                 pub fn #setter_name(&self, ast: &mut crate::Ast, #field_name: #ret_ty) {
-                    let node = unsafe { ast.nodes.get_unchecked_mut(self.0) };
+                    let node = unsafe { ast.get_node_unchecked_mut(self.0) };
                     #write_expr
                 }
             });
@@ -429,7 +429,7 @@ fn generate_extra_data_property_accessors(
         field_getters.extend(quote! {
             #[inline]
             pub fn #getter_name(&self, ast: &crate::Ast) -> #field_ty {
-                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.get_unchecked(self.0).data.extra_data_start.index().wrapping_add(#offset)) };
+                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.get_node_unchecked(self.0).data.extra_data_start.index().wrapping_add(#offset)) };
 
                 debug_assert!(offset < ast.extra_data.len());
                 unsafe {
@@ -445,7 +445,7 @@ fn generate_extra_data_property_accessors(
         field_setters.extend(quote! {
             #[inline]
             pub fn #setter_name(&self, ast: &mut crate::Ast, #field_name: #field_ty) {
-                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.get_unchecked(self.0).data.extra_data_start.index().wrapping_add(#offset)) };
+                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.get_node_unchecked(self.0).data.extra_data_start.index().wrapping_add(#offset)) };
 
                 debug_assert!(offset < ast.extra_data.len());
                 unsafe {
@@ -480,7 +480,7 @@ fn generate_extra_data_property_accessors_partial(
         field_getters.extend(quote! {
             #[inline]
             pub fn #getter_name(&self, ast: &crate::Ast) -> #field_ty {
-                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.get_unchecked(self.0).data.extra_data_start.index().wrapping_add(#offset)) };
+                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.get_node_unchecked(self.0).data.extra_data_start.index().wrapping_add(#offset)) };
 
                 debug_assert!(offset < ast.extra_data.len());
                 unsafe {
@@ -496,7 +496,7 @@ fn generate_extra_data_property_accessors_partial(
         field_setters.extend(quote! {
             #[inline]
             pub fn #setter_name(&self, ast: &mut crate::Ast, #field_name: #field_ty) {
-                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.get_unchecked(self.0).data.extra_data_start.index().wrapping_add(#offset)) };
+                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.get_node_unchecked(self.0).data.extra_data_start.index().wrapping_add(#offset)) };
 
                 debug_assert!(offset < ast.extra_data.len());
                 unsafe {
