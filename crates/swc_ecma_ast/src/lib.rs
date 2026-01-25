@@ -487,6 +487,16 @@ impl Ast {
     pub fn into_string_allocator(self) -> StringAllocator {
         self.string_allocator
     }
+
+    #[inline]
+    pub fn empty_utf8_ref(&self) -> Utf8Ref {
+        self.string_allocator.empty_utf8_ref()
+    }
+
+    #[inline]
+    pub fn empty_wtf8_ref(&self) -> Wtf8Ref {
+        self.string_allocator.empty_wtf8_ref()
+    }
 }
 
 impl Ast {

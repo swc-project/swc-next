@@ -1251,7 +1251,7 @@ impl<I: Tokens> Parser<I> {
             let atom = self.input_mut().expect_shebang_token_and_bump();
             self.to_utf8_ref(atom).into()
         } else {
-            OptionalUtf8Ref::new_none()
+            OptionalUtf8Ref::none()
         })
     }
 }
