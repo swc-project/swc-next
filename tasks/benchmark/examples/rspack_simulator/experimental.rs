@@ -1,6 +1,10 @@
 use rustc_hash::FxHashSet;
 use swc_core::common::{BytePos, comments::SingleThreadedComments};
-use swc_experimental_ecma_ast::{Ast, NodeKind, Program, Span};
+use swc_experimental_ecma_ast::{
+    Ast, BreakStmt, ClassMember, ContinueStmt, DebuggerStmt, ExportAll, ExportDefaultExpr,
+    ExprStmt, ImportDecl, NamedExport, Program, ReturnStmt, Span, ThrowStmt, UpdateExpr, VarDecl,
+    Visit, VisitWith, YieldExpr,
+};
 use swc_experimental_ecma_ast_compat::AstCompat;
 use swc_experimental_ecma_parser::{
     Lexer, Parser, StringSource, Syntax,
@@ -14,7 +18,7 @@ pub fn run(src: &'static str, compat: bool) {
     let (program, mut ast, tokens) = run_parse(src, &comments);
     run_remove_paren(program, &mut ast, &comments);
     let semantic = run_resolver(program, &ast);
-    let _semi = run_collect_semiconlons(&ast, &tokens);
+    let _semi = run_collect_semiconlons(&ast, program, &tokens);
     if compat {
         let _program = run_compat(program, &ast, &semantic);
     }
@@ -54,17 +58,23 @@ fn run_compat(root: Program, ast: &Ast, semantic: &Semantic) -> swc_core::ecma::
 }
 
 #[inline(never)]
-fn run_collect_semiconlons(ast: &Ast, tokens: &[TokenAndSpan]) -> FxHashSet<BytePos> {
+fn run_collect_semiconlons(
+    ast: &Ast,
+    root: Program,
+    tokens: &[TokenAndSpan],
+) -> FxHashSet<BytePos> {
     let mut semicolons_set = FxHashSet::default();
     let mut semicolons = InsertedSemicolons {
+        ast,
         semicolons: &mut semicolons_set,
         tokens,
     };
-    todo!()
-    // semicolons_set
+    semicolons.visit_program(root);
+    semicolons_set
 }
 
 struct InsertedSemicolons<'a> {
+    ast: &'a Ast,
     semicolons: &'a mut FxHashSet<BytePos>,
     tokens: &'a [TokenAndSpan],
 }
@@ -125,5 +135,87 @@ impl InsertedSemicolons<'_> {
                 self.semicolons.insert(prev.span.hi);
             }
         }
+    }
+}
+
+impl<'ast> Visit for InsertedSemicolons<'ast> {
+    fn ast(&self) -> &Ast {
+        self.ast
+    }
+
+    fn visit_expr_stmt(&mut self, n: ExprStmt) {
+        self.post_semi(&n.span(self.ast));
+        n.visit_children_with(self)
+    }
+
+    fn visit_var_decl(&mut self, n: VarDecl) {
+        self.post_semi(&n.span(self.ast));
+        n.visit_children_with(self)
+    }
+
+    fn visit_update_expr(&mut self, n: UpdateExpr) {
+        self.semi(&n.span(self.ast));
+        n.visit_children_with(self)
+    }
+
+    fn visit_continue_stmt(&mut self, n: ContinueStmt) {
+        self.post_semi(&n.span(self.ast));
+        n.visit_children_with(self)
+    }
+
+    fn visit_break_stmt(&mut self, n: BreakStmt) {
+        self.post_semi(&n.span(self.ast));
+        n.visit_children_with(self)
+    }
+
+    fn visit_return_stmt(&mut self, n: ReturnStmt) {
+        self.post_semi(&n.span(self.ast));
+        n.visit_children_with(self)
+    }
+
+    fn visit_throw_stmt(&mut self, n: ThrowStmt) {
+        self.post_semi(&n.span(self.ast));
+        n.visit_children_with(self)
+    }
+
+    fn visit_yield_expr(&mut self, n: YieldExpr) {
+        self.post_semi(&n.span(self.ast));
+        if let Some(arg) = &n.arg(self.ast) {
+            arg.visit_children_with(self)
+        }
+    }
+
+    fn visit_import_decl(&mut self, n: ImportDecl) {
+        self.post_semi(&n.span(self.ast));
+        n.visit_children_with(self)
+    }
+
+    fn visit_named_export(&mut self, n: NamedExport) {
+        self.post_semi(&n.span(self.ast));
+        n.visit_children_with(self)
+    }
+
+    fn visit_export_default_expr(&mut self, n: ExportDefaultExpr) {
+        self.post_semi(&n.span(self.ast));
+        n.visit_children_with(self)
+    }
+
+    fn visit_export_all(&mut self, n: ExportAll) {
+        self.post_semi(&n.span(self.ast));
+        n.visit_children_with(self)
+    }
+
+    fn visit_debugger_stmt(&mut self, n: DebuggerStmt) {
+        self.post_semi(&n.span(self.ast));
+        n.visit_children_with(self);
+    }
+
+    fn visit_class_member(&mut self, n: ClassMember) {
+        match n {
+            ClassMember::ClassProp(prop) => self.post_semi(&prop.span(self.ast)),
+            ClassMember::PrivateProp(prop) => self.post_semi(&prop.span(self.ast)),
+            _ => {}
+        };
+        n.visit_children_with(self);
     }
 }
