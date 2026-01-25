@@ -124,22 +124,14 @@ const LOG: bool = false && cfg!(debug_assertions);
 ///
 /// both of them have the same name, so the `(Atom, SyntaxContext)` pair will
 /// be also identical.
-pub fn resolver<'ast, N: Copy + VisitWith<AstCounter<'ast>> + VisitWith<Resolver<'ast>>>(
-    root: N,
-    ast: &'ast Ast,
-) -> Semantic {
+pub fn resolver<'ast, N: Copy + VisitWith<Resolver<'ast>>>(root: N, ast: &'ast Ast) -> Semantic {
     let node_count = ast.node_count();
-    let mut counter = AstCounter {
-        ast,
-        scope_count: 0,
-    };
-    root.visit_with(&mut counter);
 
     let mut parent_ids = IndexVec::with_capacity(node_count);
     parent_ids.resize(node_count, NodeId::from_raw(0));
 
     let top_level_scope = Scope::new(ScopeKind::Fn, None);
-    let mut scopes = IndexVec::with_capacity(counter.scope_count);
+    let mut scopes = IndexVec::new();
 
     // Empty scope for unresolved placeholder
     let unresolved_scope_id = scopes.push(Scope::new(ScopeKind::Fn, None));
@@ -2242,34 +2234,6 @@ impl<'resolver, 'ast> Visit for Hoister<'resolver, 'ast> {
 
         for other_stmt in others {
             other_stmt.visit_with(self);
-        }
-    }
-}
-
-/// Count the specified nodes to preallocate maps
-pub struct AstCounter<'ast> {
-    ast: &'ast Ast,
-    scope_count: usize,
-}
-
-impl<'ast> Visit for AstCounter<'ast> {
-    fn ast(&self) -> &Ast {
-        self.ast
-    }
-
-    #[inline]
-    fn enter_node(&mut self, node_id: NodeId) {
-        match unsafe { self.ast.get_node_unchecked(node_id).kind() } {
-            NodeKind::BlockStmt => {
-                self.scope_count += 1;
-            }
-            NodeKind::Class
-            | NodeKind::ForInStmt
-            | NodeKind::ForOfStmt
-            | NodeKind::ForStmt
-            | NodeKind::ObjectLit
-            | NodeKind::SwitchStmt => self.scope_count += 1,
-            _ => {}
         }
     }
 }
