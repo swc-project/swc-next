@@ -124,36 +124,24 @@ const LOG: bool = false && cfg!(debug_assertions);
 ///
 /// both of them have the same name, so the `(Atom, SyntaxContext)` pair will
 /// be also identical.
-pub fn resolver<'ast, N: VisitWith<Resolver<'ast>>>(root: N, ast: &'ast Ast) -> Semantic {
-    // Count ast nodes
-    let node_cap = 0;
-    let mut parent_ids = IndexVec::with_capacity(node_cap);
-    parent_ids.resize(node_cap, NodeId::from_raw(0));
+pub fn resolver<'ast, N: Copy + VisitWith<AstCounter<'ast>> + VisitWith<Resolver<'ast>>>(
+    root: N,
+    ast: &'ast Ast,
+) -> Semantic {
+    let node_count = ast.node_count();
+    let mut counter = AstCounter {
+        ast,
+        block_count: 0,
+        scope_count: 0,
+        symbol_count: 0,
+    };
+    root.visit_with(&mut counter);
 
-    // Count the specified nodes to preallocate maps
-    let mut symbol_count = 0;
-    let mut block_count = 0;
-    let mut scope_count = 0;
-    // for (_, node) in ast.nodes() {
-    //     match node.kind() {
-    //         NodeKind::Ident => symbol_count += 1,
-    //         NodeKind::Function => block_count += 1,
-    //         NodeKind::BlockStmt => {
-    //             block_count += 1;
-    //             scope_count += 1;
-    //         }
-    //         NodeKind::Class
-    //         | NodeKind::ForInStmt
-    //         | NodeKind::ForOfStmt
-    //         | NodeKind::ForStmt
-    //         | NodeKind::ObjectLit
-    //         | NodeKind::SwitchStmt => scope_count += 1,
-    //         _ => {}
-    //     }
-    // }
+    let mut parent_ids = IndexVec::with_capacity(node_count);
+    parent_ids.resize(node_count, NodeId::from_raw(0));
 
     let top_level_scope = Scope::new(ScopeKind::Fn, None);
-    let mut scopes = IndexVec::with_capacity(scope_count);
+    let mut scopes = IndexVec::with_capacity(counter.scope_count);
 
     // Empty scope for unresolved placeholder
     let unresolved_scope_id = scopes.push(Scope::new(ScopeKind::Fn, None));
@@ -163,8 +151,11 @@ pub fn resolver<'ast, N: VisitWith<Resolver<'ast>>>(root: N, ast: &'ast Ast) -> 
         ast,
         current_node_id: NodeId::from_raw(0),
         parent_ids,
-        symbol_scopes: FxHashMap::with_capacity_and_hasher(symbol_count, Default::default()),
-        block_scopes: FxHashMap::with_capacity_and_hasher(block_count, Default::default()),
+        symbol_scopes: FxHashMap::with_capacity_and_hasher(
+            counter.symbol_count,
+            Default::default(),
+        ),
+        block_scopes: FxHashMap::with_capacity_and_hasher(counter.block_count, Default::default()),
         scopes,
 
         top_level_scope_id,
@@ -2257,6 +2248,39 @@ impl<'resolver, 'ast> Visit for Hoister<'resolver, 'ast> {
 
         for other_stmt in others {
             other_stmt.visit_with(self);
+        }
+    }
+}
+
+/// Count the specified nodes to preallocate maps
+pub struct AstCounter<'ast> {
+    ast: &'ast Ast,
+    symbol_count: usize,
+    block_count: usize,
+    scope_count: usize,
+}
+
+impl<'ast> Visit for AstCounter<'ast> {
+    fn ast(&self) -> &Ast {
+        self.ast
+    }
+
+    #[inline]
+    fn enter_node(&mut self, node_id: NodeId) {
+        match unsafe { self.ast.get_node_unchecked(node_id).kind() } {
+            NodeKind::Ident => self.symbol_count += 1,
+            NodeKind::Function => self.block_count += 1,
+            NodeKind::BlockStmt => {
+                self.block_count += 1;
+                self.scope_count += 1;
+            }
+            NodeKind::Class
+            | NodeKind::ForInStmt
+            | NodeKind::ForOfStmt
+            | NodeKind::ForStmt
+            | NodeKind::ObjectLit
+            | NodeKind::SwitchStmt => self.scope_count += 1,
+            _ => {}
         }
     }
 }

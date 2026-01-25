@@ -498,7 +498,7 @@ impl Ast {
     ///
     /// # Safety:
     /// 1. The node_id must be valid.
-    pub(crate) unsafe fn get_node_unchecked(&self, node_id: NodeId) -> &AstNode {
+    pub unsafe fn get_node_unchecked(&self, node_id: NodeId) -> &AstNode {
         debug_assert!(node_id.index() < self.nodes.len());
         unsafe { self.nodes.as_raw_slice().get_unchecked(node_id.index()) }
     }
@@ -513,5 +513,9 @@ impl Ast {
                 .as_raw_slice_mut()
                 .get_unchecked_mut(node_id.index())
         }
+    }
+
+    pub fn node_count(&self) -> usize {
+        self.nodes.len()
     }
 }
