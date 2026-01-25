@@ -82,4 +82,9 @@ impl StringAllocator {
     pub fn empty_utf8_ref(&self) -> Utf8Ref {
         self.empty_utf8
     }
+
+    #[inline]
+    pub fn utf8_count(&self) -> usize {
+        self.allocated_utf8.len()
+    }
 }

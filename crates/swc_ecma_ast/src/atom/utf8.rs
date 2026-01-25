@@ -11,6 +11,9 @@ pub struct Utf8Ref(u32);
 
 impl Symbol for Utf8Ref {
     fn try_from_usize(index: usize) -> Option<Self> {
+        if index == u32::MAX as usize {
+            return None;
+        }
         Some(Self(index as u32))
     }
 
@@ -130,6 +133,6 @@ impl Utf8HashSet {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = Utf8Ref> {
-        self.0.as_slice().iter().map(|i| Utf8Ref(*i as u32))
+        self.0.ones().map(|i| Utf8Ref(i as u32))
     }
 }

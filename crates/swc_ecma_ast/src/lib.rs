@@ -520,4 +520,8 @@ impl Ast {
     pub fn node_count(&self) -> usize {
         self.nodes.len()
     }
+
+    pub fn utf8_count(&self) -> usize {
+        self.string_allocator.utf8_count()
+    }
 }
