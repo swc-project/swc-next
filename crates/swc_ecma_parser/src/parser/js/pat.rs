@@ -248,23 +248,18 @@ impl<I: Tokens> Parser<I> {
                                         pat_ty.element(),
                                         kv_prop.value(&p.ast),
                                     )?;
-                                    let ret = p.ast.object_pat_prop_key_value_pat_prop(
+                                    p.ast.object_pat_prop_key_value_pat_prop(
                                         span,
                                         kv_prop.key(&p.ast),
                                         pat,
-                                    );
-                                    ret
+                                    )
                                 }
                                 Prop::Assign(assign_prop) => {
                                     let id = assign_prop.key(&p.ast);
                                     let key = p.ast.binding_ident(id.span(&p.ast), id);
                                     let value = assign_prop.value(&p.ast);
-                                    let ret = p.ast.object_pat_prop_assign_pat_prop(
-                                        span,
-                                        key,
-                                        Some(value),
-                                    );
-                                    ret
+                                    p.ast
+                                        .object_pat_prop_assign_pat_prop(span, key, Some(value))
                                 }
                                 _ => syntax_error!(p, prop.span(&p.ast), SyntaxError::InvalidPat),
                             },
@@ -294,8 +289,7 @@ impl<I: Tokens> Parser<I> {
                                 if let Pat::Assign(_) = pat {
                                     p.emit_err(span, SyntaxError::TS1048)
                                 };
-                                let ret = p.ast.object_pat_prop_rest_pat(span, dot_3_token, pat);
-                                ret
+                                p.ast.object_pat_prop_rest_pat(span, dot_3_token, pat)
                             }
                             #[cfg(swc_ast_unknown)]
                             _ => unreachable!(),
@@ -815,7 +809,7 @@ impl<I: Tokens> Parser<I> {
             let last = match expr {
                 // Rest
                 AssignTargetOrSpread::ExprOrSpread(expr_or_spread) => {
-                    let ret = match expr_or_spread.spread(&p.ast) {
+                    match expr_or_spread.spread(&p.ast) {
                         Some(dot3_token) => {
                             let expr = expr_or_spread.expr(&p.ast);
                             if let Expr::Assign(_) = expr {
@@ -831,8 +825,7 @@ impl<I: Tokens> Parser<I> {
                                 .map(|pat| p.ast.pat_rest_pat(expr_span, dot3_span, pat))?
                         }
                         None => p.reparse_expr_as_pat(pat_ty, expr_or_spread.expr(&p.ast))?,
-                    };
-                    ret
+                    }
                 }
                 AssignTargetOrSpread::Pat(pat) => {
                     if let Some(trailing_comma) = trailing_comma

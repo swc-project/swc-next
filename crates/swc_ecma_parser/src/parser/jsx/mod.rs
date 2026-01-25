@@ -123,10 +123,8 @@ impl<I: Tokens> Parser<I> {
         let start = self.input().cur_pos();
         let mut node = match self.parse_jsx_tag_name()? {
             JSXAttrName::Ident(i) => {
-                let name =
-                    self.ast
-                        .jsx_element_name_ident(i.span(&self.ast), i.sym(&self.ast), false);
-                name
+                self.ast
+                    .jsx_element_name_ident(i.span(&self.ast), i.sym(&self.ast), false)
             }
             JSXAttrName::JSXNamespacedName(i) => JSXElementName::JSXNamespacedName(i),
             #[cfg(swc_ast_unknown)]

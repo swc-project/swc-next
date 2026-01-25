@@ -496,7 +496,7 @@ impl Ast {
 impl Ast {
     /// Get a reference to a node in the arena without boundary check.
     ///
-    /// # Safety:
+    /// # Safety
     /// 1. The node_id must be valid.
     pub unsafe fn get_node_unchecked(&self, node_id: NodeId) -> &AstNode {
         debug_assert!(node_id.index() < self.nodes.len());
@@ -505,7 +505,7 @@ impl Ast {
 
     /// Get a mutable reference to a node in the arena without boundary check.
     ///
-    /// # Safety:
+    /// # Safety
     /// 1. The node_id must be valid.
     pub(crate) unsafe fn get_node_unchecked_mut(&mut self, node_id: NodeId) -> &mut AstNode {
         unsafe {

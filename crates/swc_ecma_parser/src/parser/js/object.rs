@@ -407,8 +407,7 @@ impl<I: Tokens> Parser<I> {
                                 let param = match params.iter().next() {
                                     Some(param) => {
                                         let param = p.ast.get_node_in_sub_range(param);
-                                        let pat = param.pat(&p.ast);
-                                        pat
+                                        param.pat(&p.ast)
                                     }
                                     None => {
                                         p.emit_err(key_span, SyntaxError::SetterParam);
