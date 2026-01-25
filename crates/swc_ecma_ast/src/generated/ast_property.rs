@@ -5,7 +5,7 @@
     clippy::erasing_op,
     clippy::let_and_return
 )]
-use crate::{ast::*, node_id::*};
+use crate::*;
 impl Program {
     #[inline]
     pub fn span(&self, ast: &crate::Ast) -> crate::Span {

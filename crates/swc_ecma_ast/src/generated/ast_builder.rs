@@ -1,5 +1,5 @@
 #![allow(unused, clippy::useless_conversion, clippy::identity_op)]
-use crate::{Ast, AstNode, ExtraData, NodeData, NodeKind, ast::*, node_id::*};
+use crate::*;
 use swc_core::common::Span;
 impl Ast {
     #[inline]

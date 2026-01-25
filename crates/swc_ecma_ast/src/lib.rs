@@ -1,9 +1,9 @@
 mod assert_layout;
 mod ast;
+mod atom;
 mod common;
 mod derive;
 mod node_id;
-mod string_allocator;
 mod visit;
 
 mod generated {
@@ -23,15 +23,16 @@ use num_bigint::BigInt as BigIntValue;
 use oxc_index::IndexVec;
 
 pub use ast::*;
+pub use atom::*;
 pub use common::*;
 pub use derive::*;
 pub use generated::ast_visitor::*;
 pub use node_id::{
-    BigIntId, ExtraDataCompact, ExtraDataId, NodeId, NodeIdTrait, OptionalNodeId, OptionalUtf8Ref,
-    OptionalWtf8Ref, SubRange, TypedSubRange, Utf8Ref, Wtf8Ref,
+    BigIntId, ExtraDataCompact, ExtraDataId, NodeId, NodeIdTrait, OptionalNodeId, SubRange,
+    TypedSubRange,
 };
 
-use crate::{node_id::OptionalSubRange, string_allocator::StringAllocator};
+use crate::{atom::string_allocator::StringAllocator, node_id::OptionalSubRange};
 
 /// AST context that stores everything about the flattening AST.
 pub struct Ast {

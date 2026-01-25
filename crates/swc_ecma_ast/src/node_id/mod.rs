@@ -1,14 +1,10 @@
 mod extra_data;
 mod node;
 mod sub_range;
-mod utf8;
-mod wtf8;
 
 pub use extra_data::*;
 pub use node::*;
 pub use sub_range::*;
-pub use utf8::*;
-pub use wtf8::*;
 
 #[macro_export]
 macro_rules! define_optional_index_type {

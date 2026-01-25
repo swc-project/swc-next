@@ -37,8 +37,7 @@ pub fn ast_builder(schema: &Schema) -> RawOutput {
     let output = quote! {
             #![allow(unused, clippy::useless_conversion, clippy::identity_op)]
             use swc_core::common::Span;
-
-            use crate::{Ast, AstNode, ExtraData, NodeData, NodeKind, ast::*, node_id::*};
+            use crate::*;
 
             impl Ast {
                 #build_functions
