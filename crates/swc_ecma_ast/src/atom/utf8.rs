@@ -9,12 +9,6 @@ use crate::define_optional_index_type;
 #[derive(Debug, Hash, PartialEq, Eq, Copy, Clone, PartialOrd, Ord)]
 pub struct Utf8Ref(u32);
 
-impl Utf8Ref {
-    pub(super) const fn new(index: u32) -> Self {
-        Self(index)
-    }
-}
-
 impl Symbol for Utf8Ref {
     fn try_from_usize(index: usize) -> Option<Self> {
         if index == u32::MAX as usize {

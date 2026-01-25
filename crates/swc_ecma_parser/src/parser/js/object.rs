@@ -76,7 +76,10 @@ impl<I: Tokens> Parser<I> {
         let value = if self.input_mut().eat(Token::Eq) {
             self.allow_in_expr(Self::parse_assignment_expr).map(Some)?
         } else {
-            if self.ctx().is_reserved_word(key.sym(&self.ast)) {
+            if self
+                .ctx()
+                .is_reserved_word(self.ast.get_utf8(key.sym(&self.ast)))
+            {
                 self.emit_err(
                     key.span(&self.ast),
                     SyntaxError::ReservedWordInObjShorthandOrPat,
@@ -281,7 +284,7 @@ impl<I: Tokens> Parser<I> {
         // It means we should check for invalid expressions like { for, }
         let cur = self.input().cur();
         if matches!(cur, Token::Eq | Token::Comma | Token::RBrace) {
-            if self.ctx().is_reserved_word(ident_sym) {
+            if self.ctx().is_reserved_word(self.ast.get_utf8(ident_sym)) {
                 self.emit_err(ident_span, SyntaxError::ReservedWordInObjShorthandOrPat);
             }
 
@@ -299,9 +302,10 @@ impl<I: Tokens> Parser<I> {
         // set a(v){}
         // async a(){}
 
-        let is_get = ident_sym == UTF8_GET;
-        let is_set = ident_sym == UTF8_SET;
-        let is_async = ident_sym == UTF8_ASYNC;
+        let ident = self.ast.get_utf8(ident_sym);
+        let is_get = ident == "get";
+        let is_set = ident == "set";
+        let is_async = ident == "async";
         if is_get || is_set || is_async {
             trace_cur!(self, parse_object_prop__after_accessor);
 

@@ -444,7 +444,7 @@ impl<I: Tokens> Parser<I> {
             // This is parsed using production MemberExpression,
             // which is left-recursive.
             let (callee, is_import) = match callee {
-                _ if callee.is_ident_ref_to(&self.ast, UTF8_IMPORT) => (
+                _ if callee.is_ident_ref_to(&self.ast, "import") => (
                     self.ast
                         .callee_import(callee.span(&self.ast), Default::default()),
                     true,
@@ -516,7 +516,7 @@ impl<I: Tokens> Parser<I> {
     fn at_possible_async(&mut self, expr: Expr) -> bool {
         // TODO(kdy1): !this.state.containsEsc &&
         self.state().potential_arrow_start == Some(expr.span_lo(&self.ast))
-            && expr.is_ident_ref_to(&self.ast, UTF8_ASYNC)
+            && expr.is_ident_ref_to(&self.ast, "async")
     }
 
     fn parse_yield_expr(&mut self) -> PResult<Expr> {
@@ -2512,7 +2512,7 @@ impl<I: Tokens> Parser<I> {
                     token_span.hi,
                 )))
             } else {
-                UTF8_EMPTY
+                self.ast.empty_utf8_ref()
             };
 
             self.bump();

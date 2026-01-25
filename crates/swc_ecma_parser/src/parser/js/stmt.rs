@@ -409,14 +409,14 @@ impl<I: Tokens> Parser<I> {
 
         if self.input().syntax().explicit_resource_management() {
             // using foo
-            let mut maybe_using_decl = init.is_ident_ref_to(&self.ast, UTF8_USING);
+            let mut maybe_using_decl = init.is_ident_ref_to(&self.ast, "using");
             let mut maybe_await_using_decl = false;
 
             // await using foo
             if !maybe_using_decl
                 && init
                     .as_await()
-                    .filter(|e| e.arg(&self.ast).is_ident_ref_to(&self.ast, UTF8_USING))
+                    .filter(|e| e.arg(&self.ast).is_ident_ref_to(&self.ast, "using"))
                     .is_some()
             {
                 maybe_using_decl = true;
@@ -698,14 +698,15 @@ impl<I: Tokens> Parser<I> {
             p.do_outside_of_context(Context::AllowUsingDecl, |p| {
                 let start = l.span_lo(&p.ast);
                 let sym = l.sym(&p.ast);
+                let atom = p.ast.get_utf8(sym);
 
                 let mut errors = Vec::new();
                 for lb in &p.state().labels {
-                    let lb = *lb;
-                    if sym == lb {
+                    let lb = p.ast.get_utf8(*lb);
+                    if atom == lb {
                         errors.push(Error::new(
                             l.span(&p.ast),
-                            SyntaxError::DuplicateLabel(Atom::new(p.ast.get_utf8(sym))),
+                            SyntaxError::DuplicateLabel(Atom::new(atom)),
                         ));
                     }
                 }
@@ -733,7 +734,11 @@ impl<I: Tokens> Parser<I> {
                 }
 
                 {
-                    let pos = p.state().labels.iter().position(|v| *v == sym);
+                    let pos = p
+                        .state()
+                        .labels
+                        .iter()
+                        .position(|v| p.ast.get_utf8(*v) == p.ast.get_utf8(sym));
                     if let Some(pos) = pos {
                         p.state_mut().labels.remove(pos);
                     }
@@ -964,11 +969,10 @@ impl<I: Tokens> Parser<I> {
             let span = self.span(start);
             if is_break {
                 if label.is_some()
-                    && !self
-                        .state()
-                        .labels
-                        .iter()
-                        .any(|l| *l == label.as_ref().unwrap().sym(&self.ast))
+                    && !self.state().labels.iter().any(|l| {
+                        self.ast.get_utf8(*l)
+                            == self.ast.get_utf8(label.as_ref().unwrap().sym(&self.ast))
+                    })
                 {
                     self.emit_err(span, SyntaxError::TS1116);
                 } else if !self.ctx().contains(Context::IsBreakAllowed) {
@@ -977,11 +981,10 @@ impl<I: Tokens> Parser<I> {
             } else if !self.ctx().contains(Context::IsContinueAllowed) {
                 self.emit_err(span, SyntaxError::TS1115);
             } else if label.is_some()
-                && !self
-                    .state()
-                    .labels
-                    .iter()
-                    .any(|l| *l == label.as_ref().unwrap().sym(&self.ast))
+                && !self.state().labels.iter().any(|l| {
+                    self.ast.get_utf8(*l)
+                        == self.ast.get_utf8(label.as_ref().unwrap().sym(&self.ast))
+                })
             {
                 self.emit_err(span, SyntaxError::TS1107);
             }
@@ -1121,11 +1124,11 @@ impl<I: Tokens> Parser<I> {
         };
 
         if let Expr::Ident(ref ident) = expr {
-            let ident_sym = ident.sym(&self.ast);
-            if ident_sym == UTF8_INTERFACE && self.input().had_line_break_before_cur() {
+            let ident_sym = self.ast.get_utf8(ident.sym(&self.ast));
+            if ident_sym == "interface" && self.input().had_line_break_before_cur() {
                 self.emit_strict_mode_err(
                     ident.span(&self.ast),
-                    SyntaxError::InvalidIdentInStrict(Atom::new(self.ast.get_utf8(ident_sym))),
+                    SyntaxError::InvalidIdentInStrict(Atom::new(ident_sym)),
                 );
 
                 self.eat_general_semi();
