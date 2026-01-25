@@ -133,7 +133,6 @@ pub fn resolver<'ast, N: Copy + VisitWith<AstCounter<'ast>> + VisitWith<Resolver
         ast,
         block_count: 0,
         scope_count: 0,
-        symbol_count: 0,
     };
     root.visit_with(&mut counter);
 
@@ -147,14 +146,14 @@ pub fn resolver<'ast, N: Copy + VisitWith<AstCounter<'ast>> + VisitWith<Resolver
     let unresolved_scope_id = scopes.push(Scope::new(ScopeKind::Fn, None));
     let top_level_scope_id = scopes.push(top_level_scope);
 
+    let mut symbol_scopes = IndexVec::with_capacity(node_count);
+    symbol_scopes.resize(node_count, unresolved_scope_id);
+
     let mut resolver = Resolver {
         ast,
         current_node_id: NodeId::from_raw(0),
         parent_ids,
-        symbol_scopes: FxHashMap::with_capacity_and_hasher(
-            counter.symbol_count,
-            Default::default(),
-        ),
+        symbol_scopes,
         block_scopes: FxHashMap::with_capacity_and_hasher(counter.block_count, Default::default()),
         scopes,
 
@@ -184,7 +183,7 @@ pub struct Semantic {
     top_level_scope_id: ScopeId,
     unresolved_scope_id: ScopeId,
     parent_ids: IndexVec<NodeId, NodeId>,
-    symbol_scopes: FxHashMap<NodeId, ScopeId>,
+    symbol_scopes: IndexVec<NodeId, ScopeId>,
     block_scopes: FxHashMap<NodeId, ScopeId>,
 }
 
@@ -196,10 +195,7 @@ impl Semantic {
 
     #[inline]
     pub fn node_scope(&self, ident: Ident) -> ScopeId {
-        let Some(scope_id) = self.symbol_scopes.get(&ident.node_id()).cloned() else {
-            return self.unresolved_scope_id;
-        };
-
+        let scope_id = self.symbol_scopes[ident.node_id()];
         scope_id
     }
 
@@ -259,7 +255,7 @@ pub struct Resolver<'ast> {
     ast: &'ast Ast,
     current_node_id: NodeId,
     parent_ids: IndexVec<NodeId, NodeId>,
-    symbol_scopes: FxHashMap<NodeId, ScopeId>,
+    symbol_scopes: IndexVec<NodeId, ScopeId>,
     block_scopes: FxHashMap<NodeId, ScopeId>,
 
     top_level_scope_id: ScopeId,
@@ -385,7 +381,7 @@ impl<'ast> Resolver<'ast> {
     fn modify(&mut self, id: Ident, kind: DeclKind) {
         let node_id = id.node_id();
 
-        if self.symbol_scopes.contains_key(&node_id) {
+        if self.symbol_scopes[node_id] != self.unresolved_scope_id {
             return;
         }
 
@@ -400,7 +396,7 @@ impl<'ast> Resolver<'ast> {
         }
 
         let scope_id = self.current;
-        self.symbol_scopes.insert(node_id, scope_id);
+        self.symbol_scopes[node_id] = scope_id;
     }
 
     fn mark_block(&mut self, node_id: NodeId) {
@@ -1115,7 +1111,7 @@ impl<'ast> Visit for Resolver<'ast> {
     fn visit_ident(&mut self, i: Ident) {
         self.enter_node(i.node_id());
 
-        if self.symbol_scopes.contains_key(&i.node_id()) {
+        if self.symbol_scopes[i.node_id()] != self.unresolved_scope_id {
             self.leave_node(i.node_id());
             return;
         }
@@ -1131,7 +1127,7 @@ impl<'ast> Visit for Resolver<'ast> {
                     // if cfg!(debug_assertions) && LOG {
                     //     debug!("\t -> {:?}", ctxt);
                     // }
-                    self.symbol_scopes.insert(i.node_id(), scope_id);
+                    self.symbol_scopes[i.node_id()] = scope_id;
                 } else {
                     // if cfg!(debug_assertions) && LOG {
                     //     debug!("\t -> Unresolved");
@@ -1141,8 +1137,7 @@ impl<'ast> Visit for Resolver<'ast> {
                     //     debug!("\t -> {:?}", ctxt);
                     // }
 
-                    self.symbol_scopes
-                        .insert(i.node_id(), self.unresolved_scope_id);
+                    self.symbol_scopes[i.node_id()] = self.unresolved_scope_id;
                     // Support hoisting
                     self.modify(i, self.decl_kind)
                 }
@@ -2255,7 +2250,6 @@ impl<'resolver, 'ast> Visit for Hoister<'resolver, 'ast> {
 /// Count the specified nodes to preallocate maps
 pub struct AstCounter<'ast> {
     ast: &'ast Ast,
-    symbol_count: usize,
     block_count: usize,
     scope_count: usize,
 }
@@ -2268,7 +2262,6 @@ impl<'ast> Visit for AstCounter<'ast> {
     #[inline]
     fn enter_node(&mut self, node_id: NodeId) {
         match unsafe { self.ast.get_node_unchecked(node_id).kind() } {
-            NodeKind::Ident => self.symbol_count += 1,
             NodeKind::Function => self.block_count += 1,
             NodeKind::BlockStmt => {
                 self.block_count += 1;
