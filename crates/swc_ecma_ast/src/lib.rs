@@ -32,7 +32,7 @@ pub use node_id::{
     TypedSubRange,
 };
 
-use crate::{atom::string_allocator::StringAllocator, node_id::OptionalSubRange};
+use crate::node_id::OptionalSubRange;
 
 /// AST context that stores everything about the flattening AST.
 pub struct Ast {
@@ -487,11 +487,6 @@ impl Ast {
     #[inline]
     pub fn into_string_allocator(self) -> StringAllocator {
         self.string_allocator
-    }
-
-    #[inline]
-    pub fn empty_utf8_ref(&self) -> Utf8Ref {
-        self.string_allocator.empty_utf8_ref()
     }
 }
 

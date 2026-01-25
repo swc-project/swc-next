@@ -2,7 +2,7 @@ use std::mem;
 
 use swc_experimental_ast_macros::ast;
 
-use crate::{Ast, ExtraData, ast::*, node_id::ExtraDataCompact};
+use crate::{Ast, ExtraData, Utf8Ref, ast::*, node_id::ExtraDataCompact};
 
 #[ast]
 pub enum Expr {
@@ -314,12 +314,9 @@ pub struct OptCall {
 pub struct Invalid {}
 
 impl Expr {
-    pub fn is_ident_ref_to<S>(&self, ast: &Ast, ident: &S) -> bool
-    where
-        S: ?Sized + AsRef<str>,
-    {
+    pub fn is_ident_ref_to(&self, ast: &Ast, utf8: Utf8Ref) -> bool {
         match self {
-            Expr::Ident(i) => ast.get_utf8(i.sym(ast)) == ident.as_ref(),
+            Expr::Ident(i) => i.sym(ast) == utf8,
             _ => false,
         }
     }

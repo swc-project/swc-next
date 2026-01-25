@@ -60,14 +60,14 @@ impl<I: Tokens> Parser<I> {
                 // `export { type as as }`
                 // `export { type as as as }`
                 if self.syntax().typescript()
-                    && self.ast.get_utf8(orig_ident.sym(&self.ast)) == "type"
+                    && orig_ident.sym(&self.ast) == UTF8_TYPE
                     && self.input().cur().is_word()
                 {
                     let possibly_orig = self.parse_ident_name().map(|(span, sym)| {
                         let sym = self.to_utf8_ref(sym);
                         self.ast.ident(span, sym, false)
                     })?;
-                    if self.ast.get_utf8(possibly_orig.sym(&self.ast)) == "as" {
+                    if possibly_orig.sym(&self.ast) == UTF8_AS {
                         // `export { type as }`
                         if !self.input().cur().is_word() {
                             if type_only {
@@ -86,7 +86,7 @@ impl<I: Tokens> Parser<I> {
                             let sym = self.to_utf8_ref(sym);
                             self.ast.ident(span, sym, false)
                         })?;
-                        if self.ast.get_utf8(maybe_as.sym(&self.ast)) == "as" {
+                        if maybe_as.sym(&self.ast) == UTF8_AS {
                             if self.input().cur().is_word() {
                                 // `export { type as as as }`
                                 // `export { type as as foo }`
@@ -177,7 +177,7 @@ impl<I: Tokens> Parser<I> {
                 // `import { type as as } from 'mod'`
                 // `import { type as as as } from 'mod'`
                 if self.syntax().typescript()
-                    && self.ast.get_utf8(orig_name.sym(&self.ast)) == "type"
+                    && orig_name.sym(&self.ast) == UTF8_TYPE
                     && self.input().cur().is_word()
                 {
                     let possibly_orig_name = self.parse_ident_name().map(|(span, sym)| {
@@ -185,9 +185,8 @@ impl<I: Tokens> Parser<I> {
                         self.ast.ident(span, sym, false)
                     })?;
 
-                    let possibly_orig_name_str =
-                        self.ast.get_utf8(possibly_orig_name.sym(&self.ast));
-                    if possibly_orig_name_str == "as" {
+                    let possibly_orig_name_str = possibly_orig_name.sym(&self.ast);
+                    if possibly_orig_name_str == UTF8_AS {
                         // `import { type as } from 'mod'`
                         if !self.input().cur().is_word() {
                             if self.ctx().is_reserved_word(possibly_orig_name_str) {
@@ -211,7 +210,7 @@ impl<I: Tokens> Parser<I> {
                         }
 
                         let maybe_as: Ident = self.parse_binding_ident(false)?;
-                        if self.ast.get_utf8(maybe_as.sym(&self.ast)) == "as" {
+                        if maybe_as.sym(&self.ast) == UTF8_AS {
                             if self.input().cur().is_word() {
                                 // `import { type as as as } from 'mod'`
                                 // `import { type as as foo } from 'mod'`
@@ -271,10 +270,7 @@ impl<I: Tokens> Parser<I> {
                 //
                 // 'ImportedBinding'
                 // 'IdentifierName' as 'ImportedBinding'
-                if self
-                    .ctx()
-                    .is_reserved_word(self.ast.get_utf8(orig_name.sym(&self.ast)))
-                {
+                if self.ctx().is_reserved_word(orig_name.sym(&self.ast)) {
                     syntax_error!(
                         self,
                         orig_name.span(&self.ast),

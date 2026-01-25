@@ -190,7 +190,7 @@ impl<I: Tokens> Parser<I> {
     fn parse_class_prop_name(&mut self) -> PResult<Key> {
         if self.input().is(Token::Hash) {
             let name = self.parse_private_name()?;
-            if self.ast.get_utf8(name.name(&self.ast)) == "constructor" {
+            if name.name(&self.ast) == UTF8_CONSTRUCTOR {
                 self.emit_err(name.span(&self.ast), SyntaxError::PrivateConstructor);
             }
             Ok(Key::Private(name))
@@ -1053,8 +1053,8 @@ impl<I: Tokens> Parser<I> {
         let getter_or_setter_ident = match key {
             // `get\n*` is an uninitialized property named 'get' followed by a generator.
             Key::Public(PropName::Ident(ref i)) => {
-                let sym = self.ast.get_utf8(i.sym(&self.ast));
-                if (sym == "get" || sym == "set")
+                let sym = i.sym(&self.ast);
+                if (sym == UTF8_GET || sym == UTF8_SET)
                     && !self.is_class_property(/* asi */ false)
                     && !is_next_line_generator
                 {
@@ -1083,7 +1083,7 @@ impl<I: Tokens> Parser<I> {
         }
 
         if match key {
-            Key::Public(PropName::Ident(ref i)) => self.ast.get_utf8(i.sym(&self.ast)) == "async",
+            Key::Public(PropName::Ident(ref i)) => i.sym(&self.ast) == UTF8_ASYNC,
             _ => false,
         } && !self.input_mut().had_line_break_before_cur()
         {
@@ -1144,8 +1144,8 @@ impl<I: Tokens> Parser<I> {
                 self.emit_err(key_span, SyntaxError::ConstructorAccessor);
             }
 
-            return match self.ast.get_utf8(sym) {
-                "get" => self.make_method(
+            return match sym {
+                UTF8_GET => self.make_method(
                     |p| {
                         let params = p.parse_formal_params()?;
 
@@ -1172,7 +1172,7 @@ impl<I: Tokens> Parser<I> {
                         kind: MethodKind::Getter,
                     },
                 ),
-                "set" => self.make_method(
+                UTF8_SET => self.make_method(
                     |p| {
                         let params = p.parse_formal_params()?;
 
@@ -1717,7 +1717,7 @@ fn has_use_strict(ast: &Ast, block: BlockStmt) -> Option<Span> {
 
 fn is_constructor(ast: &Ast, key: Key) -> bool {
     if let Key::Public(PropName::Ident(ident_name)) = key {
-        ast.get_utf8(ident_name.sym(ast)).eq("constructor")
+        ident_name.sym(ast) == UTF8_CONSTRUCTOR
     } else if let Key::Public(PropName::Str(s)) = key {
         ast.get_wtf8(s.value(ast)).eq(Wtf8::from_str("constructor"))
     } else {
