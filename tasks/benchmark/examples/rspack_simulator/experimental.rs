@@ -60,28 +60,8 @@ fn run_collect_semiconlons(ast: &Ast, tokens: &[TokenAndSpan]) -> FxHashSet<Byte
         semicolons: &mut semicolons_set,
         tokens,
     };
-    for (_, node) in ast.nodes() {
-        match node.kind() {
-            NodeKind::ExprStmt
-            | NodeKind::VarDecl
-            | NodeKind::ContinueStmt
-            | NodeKind::BreakStmt
-            | NodeKind::ReturnStmt
-            | NodeKind::ThrowStmt
-            | NodeKind::YieldExpr
-            | NodeKind::ImportDecl
-            | NodeKind::NamedExport
-            | NodeKind::ExportDefaultExpr
-            | NodeKind::ExportAll
-            | NodeKind::DebuggerStmt
-            | NodeKind::ClassProp
-            | NodeKind::PrivateProp => semicolons.post_semi(&node.span()),
-            NodeKind::UpdateExpr => semicolons.semi(&node.span()),
-            _ => {}
-        }
-    }
-
-    semicolons_set
+    todo!()
+    // semicolons_set
 }
 
 struct InsertedSemicolons<'a> {

@@ -12,8 +12,7 @@ use crate::{
         test262_parser::{self},
     },
     runner::{
-        parser::ParserRunner, parser_no_memory_hole::NoMemoryHoleRunner, semantic::SemanticRunner,
-        transform_remove_paren::RemoveParenRunner,
+        parser::ParserRunner, semantic::SemanticRunner, transform_remove_paren::RemoveParenRunner,
     },
     suite::TestResult,
     util::crate_root,
@@ -34,7 +33,6 @@ pub struct AppArgs {
 
 const PARSER_RUNNER: &str = "parser";
 const SEMANTIC_RUNNER: &str = "semantic";
-const NO_MEMORY_HOLE_RUNNER: &str = "no_memory_hole";
 const REMOVE_PAREN_RUNNER: &str = "remove_paren";
 
 pub fn main() {
@@ -79,11 +77,6 @@ fn test_normal(args: &AppArgs) {
     if args.runners.is_empty() || args.runners.contains(PARSER_RUNNER) {
         results.extend(ParserRunner::run(args, &misc_cases));
         results.extend(ParserRunner::run(args, &test262_parser_cases));
-    }
-
-    if args.runners.is_empty() || args.runners.contains(NO_MEMORY_HOLE_RUNNER) {
-        results.extend(NoMemoryHoleRunner::run(args, &misc_cases));
-        results.extend(NoMemoryHoleRunner::run(args, &test262_parser_cases));
     }
 
     if args.runners.is_empty() || args.runners.contains(SEMANTIC_RUNNER) {
@@ -211,15 +204,6 @@ fn test_test262_snapshots(args: &AppArgs) {
         let results = SemanticRunner::run(args, &cases);
         fs::write(
             snapshot_dir.join("semantic_test262.snap"),
-            to_snapshot(&results),
-        )
-        .unwrap();
-    }
-
-    if args.runners.is_empty() || args.runners.contains(NO_MEMORY_HOLE_RUNNER) {
-        let results = NoMemoryHoleRunner::run(args, &cases);
-        fs::write(
-            snapshot_dir.join("no_memory_hole_test262.snap"),
             to_snapshot(&results),
         )
         .unwrap();

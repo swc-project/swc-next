@@ -3,7 +3,6 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use criterion::{Bencher, Criterion, criterion_group, criterion_main};
 use swc_core::common::BytePos;
-use swc_experimental_ecma_ast::NodeKind;
 
 fn bench_legacy(b: &mut Bencher, src: &'static str) {
     use swc_core::ecma::parser::{Parser, StringInput, Syntax, lexer::Lexer};
@@ -76,30 +75,6 @@ fn bench_new(b: &mut Bencher, src: &'static str) {
     });
 }
 
-fn bench_post_order(b: &mut Bencher, src: &'static str) {
-    use swc_experimental_ecma_parser::{Lexer, Parser, StringSource};
-
-    let input = StringSource::new(src);
-    let lexer = Lexer::new(
-        swc_experimental_ecma_parser::Syntax::Es(Default::default()),
-        Default::default(),
-        input,
-        None,
-    );
-    let parser = Parser::new_from(lexer);
-    let ret = parser.parse_module().unwrap();
-
-    b.iter(|| {
-        let mut counter: usize = 0;
-        for (_, node) in ret.ast.nodes() {
-            if node.kind() == NodeKind::Ident {
-                counter += 1;
-            }
-        }
-        std::hint::black_box(counter);
-    });
-}
-
 fn bench_files(c: &mut Criterion) {
     let bench_cases = &[
         ("colors", include_str!("../files/colors.js")),
@@ -120,9 +95,6 @@ fn bench_files(c: &mut Criterion) {
     for (name, source) in bench_cases {
         c.bench_function(&format!("{name}/visit/legacy"), |b| bench_legacy(b, source));
         c.bench_function(&format!("{name}/visit/new"), |b| bench_new(b, source));
-        c.bench_function(&format!("{name}/visit/postorder"), |b| {
-            bench_post_order(b, source)
-        });
     }
 }
 

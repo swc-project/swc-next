@@ -1,5 +1,4 @@
 use swc_core::common::BytePos;
-use swc_experimental_ecma_ast::NodeKind;
 
 fn test_legacy(src: &str) -> usize {
     use swc_core::ecma::parser::{Parser, StringInput, Syntax, lexer::Lexer};
@@ -68,34 +67,10 @@ fn test_new(src: &str) -> usize {
     counter.count
 }
 
-fn test_post_order(src: &str) -> usize {
-    use swc_experimental_ecma_parser::{Lexer, Parser, StringSource};
-
-    let input = StringSource::new(src);
-    let lexer = Lexer::new(
-        swc_experimental_ecma_parser::Syntax::Es(Default::default()),
-        Default::default(),
-        input,
-        None,
-    );
-    let parser = Parser::new_from(lexer);
-    let ret = parser.parse_module().unwrap();
-
-    let mut counter = 0;
-    for (_, node) in ret.ast.nodes() {
-        if node.kind() == NodeKind::Ident {
-            counter += 1;
-        }
-    }
-    counter
-}
-
 fn main() {
     let source = include_str!("../files/typescript.js");
     let legacy = test_legacy(source);
     let new = test_new(source);
-    let post_order = test_post_order(source);
 
     assert_eq!(legacy, new);
-    assert_eq!(legacy, post_order);
 }
