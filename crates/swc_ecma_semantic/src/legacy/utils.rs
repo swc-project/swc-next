@@ -1,15 +1,16 @@
-use swc_experimental_ecma_ast::{Ast, Expr, Ident, PropName, Utf8HashSet};
+use rustc_hash::FxHashSet;
+use swc_experimental_ecma_ast::{Ast, Expr, Ident, PropName, Utf8Ref};
 use swc_experimental_ecma_visit::{Visit, VisitWith};
 
 pub struct DestructuringFinder<'ast> {
     ast: &'ast Ast,
-    found: &'ast mut Utf8HashSet,
+    found: &'ast mut FxHashSet<Utf8Ref>,
 }
 
 pub fn find_pat_ids<'ast, N: VisitWith<DestructuringFinder<'ast>>>(
     ast: &'ast Ast,
     node: N,
-    found: &'ast mut Utf8HashSet,
+    found: &'ast mut FxHashSet<Utf8Ref>,
 ) {
     let mut v = DestructuringFinder { ast, found };
     node.visit_with(&mut v);

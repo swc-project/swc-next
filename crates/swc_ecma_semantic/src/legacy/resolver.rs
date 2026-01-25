@@ -1,6 +1,7 @@
-use std::num::NonZeroU32;
+use std::{collections::HashSet, num::NonZeroU32};
 
 use oxc_index::IndexVec;
+use rustc_hash::{FxHashMap, FxHashSet};
 use swc_experimental_ecma_ast::*;
 use swc_experimental_ecma_visit::{Visit, VisitMut, VisitMutWith, VisitWith};
 // use swc_ecma_utils::{find_pat_ids, stack_size::maybe_grow_default};
@@ -206,10 +207,10 @@ struct Scope {
     kind: ScopeKind,
 
     /// All declarations in the scope
-    declared_symbols: Utf8Map<DeclKind>,
+    declared_symbols: FxHashMap<Utf8Ref, DeclKind>,
 
     /// All types declared in the scope
-    declared_types: Utf8HashSet,
+    declared_types: FxHashSet<Utf8Ref>,
 }
 
 impl Scope {
@@ -252,7 +253,7 @@ impl<'ast> Resolver<'ast> {
         let mut scope = Some(start_scope);
         while let Some(cur_scope) = scope {
             let cur_scope = &self.scopes[cur_scope];
-            if let Some(kind) = cur_scope.declared_symbols.get(symbol) {
+            if let Some(kind) = cur_scope.declared_symbols.get(&symbol) {
                 return Some(*kind);
             }
             scope = cur_scope.parent;
@@ -330,7 +331,7 @@ impl<'ast> Resolver<'ast> {
         let mut scope = Some(self.current);
         while let Some(cur) = scope {
             let cur_scope = &self.scopes[cur];
-            if cur_scope.declared_symbols.get(sym).is_some() {
+            if cur_scope.declared_symbols.get(&sym).is_some() {
                 let sym = self.ast.get_utf8(sym);
                 return match sym {
                     // https://tc39.es/ecma262/multipage/global-object.html#sec-value-properties-of-the-global-object-infinity
@@ -555,7 +556,7 @@ impl<'ast> Visit for Resolver<'ast> {
             let old = child.ident_type;
             child.ident_type = IdentType::Binding;
             {
-                let mut params = Utf8HashSet::new();
+                let mut params = FxHashSet::default();
                 e.params(self.ast)
                     .iter()
                     .filter(|p| !self.ast.get_node_in_sub_range(*p).is_rest())
@@ -566,7 +567,7 @@ impl<'ast> Visit for Resolver<'ast> {
                 for id in params.iter() {
                     child.scopes[child.current]
                         .declared_symbols
-                        .insert(id, DeclKind::Param);
+                        .insert(*id, DeclKind::Param);
                 }
             }
             e.params(self.ast).visit_with(child);
@@ -795,7 +796,7 @@ impl<'ast> Visit for Resolver<'ast> {
             let old = child.ident_type;
             child.ident_type = IdentType::Binding;
             {
-                let mut params = Utf8HashSet::new();
+                let mut params = FxHashSet::default();
                 c.params(self.ast)
                     .iter()
                     .filter(|p| {
@@ -812,7 +813,7 @@ impl<'ast> Visit for Resolver<'ast> {
                 for id in params.iter() {
                     child.scopes[child.current]
                         .declared_symbols
-                        .insert(id, DeclKind::Param);
+                        .insert(*id, DeclKind::Param);
                 }
             }
             c.params(self.ast).visit_with(child);
@@ -1007,7 +1008,7 @@ impl<'ast> Visit for Resolver<'ast> {
         // f.decorators.visit_with(self);
 
         {
-            let mut params = Utf8HashSet::new();
+            let mut params = FxHashSet::default();
             f.params(self.ast)
                 .iter()
                 .filter(|p| !self.ast.get_node_in_sub_range(*p).pat(self.ast).is_rest())
@@ -1018,7 +1019,7 @@ impl<'ast> Visit for Resolver<'ast> {
             for id in params.iter() {
                 self.scopes[self.current]
                     .declared_symbols
-                    .insert(id, DeclKind::Param);
+                    .insert(*id, DeclKind::Param);
             }
         }
         self.ident_type = IdentType::Binding;
@@ -1773,8 +1774,8 @@ struct Hoister<'resolver, 'ast> {
 
     in_catch_body: bool,
 
-    excluded_from_catch: Utf8HashSet,
-    catch_param_decls: Utf8HashSet,
+    excluded_from_catch: FxHashSet<Utf8Ref>,
+    catch_param_decls: FxHashSet<Utf8Ref>,
 }
 
 impl<'resolver, 'ast> Hoister<'resolver, 'ast> {
@@ -1784,7 +1785,7 @@ impl<'resolver, 'ast> Hoister<'resolver, 'ast> {
         if self.in_catch_body {
             // If we have a binding, it's different variable.
             if self.resolver.mark_for_ref_inner(sym, true).is_some()
-                && self.catch_param_decls.contains(sym)
+                && self.catch_param_decls.contains(&sym)
             {
                 return;
             }
@@ -1792,7 +1793,7 @@ impl<'resolver, 'ast> Hoister<'resolver, 'ast> {
             self.excluded_from_catch.insert(sym);
         } else {
             // Behavior is different
-            if self.catch_param_decls.contains(sym) && !self.excluded_from_catch.contains(sym) {
+            if self.catch_param_decls.contains(&sym) && !self.excluded_from_catch.contains(&sym) {
                 return;
             }
         }
@@ -2004,7 +2005,7 @@ impl<'resolver, 'ast> Visit for Hoister<'resolver, 'ast> {
 
         if self
             .catch_param_decls
-            .contains(node.ident(self.ast()).sym(self.ast()))
+            .contains(&node.ident(self.ast()).sym(self.ast()))
         {
             return;
         }
