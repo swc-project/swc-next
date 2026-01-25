@@ -1,7 +1,7 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use criterion::{BatchSize, Bencher, Criterion, criterion_group, criterion_main};
+use criterion::{Bencher, Criterion, criterion_group, criterion_main};
 use swc_core::common::BytePos;
 
 fn bench_legacy(b: &mut Bencher, src: &'static str) {
@@ -89,26 +89,21 @@ fn bench_legacy_mut(b: &mut Bencher, src: &'static str) {
         }
     }
 
-    b.iter_batched(
-        || {
-            let input = StringInput::new(src, BytePos(0), BytePos(src.len() as u32));
-            let lexer = Lexer::new(
-                Syntax::Es(Default::default()),
-                Default::default(),
-                input,
-                None,
-            );
-            let mut parser = Parser::new_from(lexer);
-            let module = parser.parse_module().unwrap();
-            module
-        },
-        |mut module| {
-            let mut counter = Counter { count: 0 };
-            module.visit_mut_with(&mut counter);
-            std::hint::black_box(counter.count);
-        },
-        BatchSize::PerIteration,
+    let input = StringInput::new(src, BytePos(0), BytePos(src.len() as u32));
+    let lexer = Lexer::new(
+        Syntax::Es(Default::default()),
+        Default::default(),
+        input,
+        None,
     );
+    let mut parser = Parser::new_from(lexer);
+    let mut module = parser.parse_module().unwrap();
+
+    b.iter(|| {
+        let mut counter = Counter { count: 0 };
+        module.visit_mut_with(&mut counter);
+        std::hint::black_box(counter.count);
+    });
 }
 
 fn bench_new_mut(b: &mut Bencher, src: &'static str) {
@@ -135,29 +130,24 @@ fn bench_new_mut(b: &mut Bencher, src: &'static str) {
         }
     }
 
-    b.iter_batched(
-        || {
-            let input = StringSource::new(src);
-            let lexer = Lexer::new(
-                swc_experimental_ecma_parser::Syntax::Es(Default::default()),
-                Default::default(),
-                input,
-                None,
-            );
-            let parser = Parser::new_from(lexer);
-            let ret = parser.parse_module().unwrap();
-            ret
-        },
-        |mut ret| {
-            let mut counter = Counter {
-                ast: &mut ret.ast,
-                count: 0,
-            };
-            ret.root.visit_mut_with(&mut counter);
-            std::hint::black_box(counter.count);
-        },
-        BatchSize::PerIteration,
+    let input = StringSource::new(src);
+    let lexer = Lexer::new(
+        swc_experimental_ecma_parser::Syntax::Es(Default::default()),
+        Default::default(),
+        input,
+        None,
     );
+    let parser = Parser::new_from(lexer);
+    let mut ret = parser.parse_module().unwrap();
+
+    b.iter(|| {
+        let mut counter = Counter {
+            ast: &mut ret.ast,
+            count: 0,
+        };
+        ret.root.visit_mut_with(&mut counter);
+        std::hint::black_box(counter.count);
+    });
 }
 
 fn bench_files(c: &mut Criterion) {
