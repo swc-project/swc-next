@@ -11,6 +11,7 @@ version               = "0.4.1"
 [dependencies]
 num-bigint       = { workspace = true }
 oxc_index        = { workspace = true }
+string-interner  = { workspace = true }
 swc_core         = { workspace = true }
 unicode-id-start = { workspace = true }
 
