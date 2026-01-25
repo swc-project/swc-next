@@ -69,8 +69,8 @@ impl StringAllocator {
 
     #[inline]
     pub fn get_utf8(&self, id: Utf8Ref) -> &str {
-        let hi = self.utf8_ends[id];
-        let lo = self.utf8_ends[id - 1];
+        let hi = unsafe { *self.utf8_ends.as_raw_slice().get_unchecked(id.index()) };
+        let lo = unsafe { *self.utf8_ends.as_raw_slice().get_unchecked(id.index() - 1) };
         &self.allocated_utf8[lo as usize..hi as usize]
     }
 
@@ -82,8 +82,8 @@ impl StringAllocator {
 
     #[inline]
     pub fn get_wtf8(&self, id: Wtf8Ref) -> &Wtf8 {
-        let hi = self.wtf8_ends[id];
-        let lo = self.wtf8_ends[id - 1];
+        let hi = unsafe { *self.wtf8_ends.as_raw_slice().get_unchecked(id.index()) };
+        let lo = unsafe { *self.wtf8_ends.as_raw_slice().get_unchecked(id.index() - 1) };
         self.allocated_wtf8.slice(lo as usize, hi as usize)
     }
 
