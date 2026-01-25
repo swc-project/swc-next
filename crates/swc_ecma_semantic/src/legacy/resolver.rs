@@ -127,9 +127,6 @@ const LOG: bool = false && cfg!(debug_assertions);
 pub fn resolver<'ast, N: Copy + VisitWith<Resolver<'ast>>>(root: N, ast: &'ast Ast) -> Semantic {
     let node_count = ast.node_count();
 
-    let mut parent_ids = IndexVec::with_capacity(node_count);
-    parent_ids.resize(node_count, NodeId::from_raw(0));
-
     let top_level_scope = Scope::new(ScopeKind::Fn, None);
     let mut scopes = IndexVec::new();
 
@@ -147,8 +144,6 @@ pub fn resolver<'ast, N: Copy + VisitWith<Resolver<'ast>>>(root: N, ast: &'ast A
 
     let mut resolver = Resolver {
         ast,
-        current_node_id: NodeId::from_raw(0),
-        parent_ids,
         symbol_scopes,
         block_scopes,
         scopes,
@@ -169,7 +164,6 @@ pub fn resolver<'ast, N: Copy + VisitWith<Resolver<'ast>>>(root: N, ast: &'ast A
     Semantic {
         top_level_scope_id,
         unresolved_scope_id,
-        parent_ids: resolver.parent_ids,
         symbol_scopes: resolver.symbol_scopes,
         block_scopes: resolver.block_scopes,
     }
@@ -178,17 +172,11 @@ pub fn resolver<'ast, N: Copy + VisitWith<Resolver<'ast>>>(root: N, ast: &'ast A
 pub struct Semantic {
     top_level_scope_id: ScopeId,
     unresolved_scope_id: ScopeId,
-    parent_ids: IndexVec<NodeId, NodeId>,
     symbol_scopes: IndexVec<NodeId, ScopeId>,
     block_scopes: IndexVec<NodeId, ScopeId>,
 }
 
 impl Semantic {
-    #[inline]
-    pub fn parent_node(&self, node: NodeId) -> NodeId {
-        self.parent_ids[node]
-    }
-
     #[inline]
     pub fn node_scope(&self, ident: Ident) -> ScopeId {
         self.symbol_scopes[ident.node_id()]
@@ -244,8 +232,6 @@ impl Scope<'_> {
 pub struct Resolver<'ast> {
     // Changed
     ast: &'ast Ast,
-    current_node_id: NodeId,
-    parent_ids: IndexVec<NodeId, NodeId>,
     symbol_scopes: IndexVec<NodeId, ScopeId>,
     block_scopes: IndexVec<NodeId, ScopeId>,
 
@@ -558,15 +544,6 @@ impl<'ast> Visit for Resolver<'ast> {
 
     fn ast(&self) -> &Ast {
         self.ast
-    }
-
-    fn enter_node(&mut self, node_id: NodeId) {
-        self.parent_ids[node_id] = self.current_node_id;
-        self.current_node_id = node_id;
-    }
-
-    fn leave_node(&mut self, node_id: NodeId) {
-        self.current_node_id = self.parent_ids[node_id];
     }
 
     fn visit_arrow_expr(&mut self, e: ArrowExpr) {
