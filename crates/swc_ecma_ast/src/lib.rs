@@ -103,8 +103,7 @@ impl AstNode {
     }
 }
 
-/// Node data is the start index of [Ast::extra_data], if the node is not freed, which indicates the first field of the AST node.
-/// Otherwise it's the next free node id, forming a free list of AST.
+/// Node data is the start index of [Ast::extra_data].
 ///
 /// We use union here to eliminate the tag cost of enum.
 ///
@@ -392,9 +391,6 @@ pub enum NodeKind {
     TsSatisfiesExpr,
     TsConstAssertion,
     TsInstantiation,
-
-    /// This is a special node kind to mark a node as freed.
-    __FREED,
 }
 
 impl Ast {

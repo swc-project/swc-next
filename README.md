@@ -15,7 +15,6 @@ Local benchmark results with M3Pro:
 
 - Parser: **1.2x-1.5x** faster.
 - Pre-order visit: No apparent difference.
-- Post-order visit: Compared to legacy pre-order visitor, **20x** faster.
 
 ## Roadmap
 

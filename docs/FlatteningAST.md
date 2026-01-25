@@ -39,13 +39,12 @@ pub struct AstNode {
 
 Since difference kinds of AST nodes are heterogeneous, which means they have difference kinds and lengths of fields, we cannot store their fields in a single typed data struct like `Vec<T>`.
 
-`NodeData` is basically the start index of extra data, or it can be the next free node id, forming a free list of AST (See [PostOrderVisit.md](PostOrderVisit.md)).
+`NodeData` is basically the start index of extra data.
 
 ```rs
 pub union NodeData {
     empty: (),
     extra_data_start: ExtraDataId,
-    next_free: OptionalNodeId,
 }
 ```
 
