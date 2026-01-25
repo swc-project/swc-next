@@ -2298,7 +2298,6 @@ impl<I: Tokens> Parser<I> {
                 }
                 None => expr_or_spread.expr(&self.ast),
             };
-            self.ast.free_node(expr_or_spread.node_id());
 
             if self.syntax().no_paren() {
                 return Ok(expr);
@@ -2320,7 +2319,6 @@ impl<I: Tokens> Parser<I> {
                         }
                         None => exprs.push(p, expr_or_spread.expr(&p.ast)),
                     }
-                    p.ast.free_node(expr_or_spread.node_id());
                 }
                 Ok(())
             })?;
@@ -2421,7 +2419,6 @@ impl<I: Tokens> Parser<I> {
                         params.is_simple_parameter_list(&p.ast),
                     )?;
 
-                    p.ast.free_node(id.node_id());
                     return Ok(p
                         .ast
                         .expr_arrow_expr(p.span(start), params, body, true, false));

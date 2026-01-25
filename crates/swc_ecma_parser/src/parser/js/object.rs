@@ -93,7 +93,6 @@ impl<I: Tokens> Parser<I> {
             .ast
             .ident(key.span(&self.ast), key.sym(&self.ast), false);
         let key_ident = self.ast.binding_ident(key_ident.span(&self.ast), key_ident);
-        self.ast.free_node(key.node_id());
         Ok(self
             .ast
             .object_pat_prop_assign_pat_prop(self.span(start), key_ident, value))
@@ -276,7 +275,6 @@ impl<I: Tokens> Parser<I> {
         };
         let ident_span = ident.span(&self.ast);
         let ident_sym = ident.sym(&self.ast);
-        self.ast.free_node(ident.node_id());
 
         if self.input_mut().eat(Token::QuestionMark) {
             self.emit_err(self.input().prev_span(), SyntaxError::TS1162);
@@ -348,7 +346,6 @@ impl<I: Tokens> Parser<I> {
                                 }
 
                                 let body = function.body(&p.ast);
-                                p.ast.free_node(function.node_id());
                                 p.ast
                                     .prop_or_spread_prop_getter_prop(p.span(start), key, body)
                             });
@@ -411,7 +408,6 @@ impl<I: Tokens> Parser<I> {
                                     Some(param) => {
                                         let param = p.ast.get_node_in_sub_range(param);
                                         let pat = param.pat(&p.ast);
-                                        p.ast.free_node(param.node_id());
                                         pat
                                     }
                                     None => {
@@ -421,7 +417,6 @@ impl<I: Tokens> Parser<I> {
                                 };
 
                                 let body = function.body(&p.ast);
-                                p.ast.free_node(function.node_id());
                                 p.ast.prop_or_spread_prop_setter_prop(
                                     p.span(start),
                                     key,

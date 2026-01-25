@@ -126,7 +126,6 @@ impl<I: Tokens> Parser<I> {
                 let name =
                     self.ast
                         .jsx_element_name_ident(i.span(&self.ast), i.sym(&self.ast), false);
-                self.ast.free_node(i.node_id());
                 name
             }
             JSXAttrName::JSXNamespacedName(i) => JSXElementName::JSXNamespacedName(i),

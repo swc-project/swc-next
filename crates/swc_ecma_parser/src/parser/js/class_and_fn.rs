@@ -1098,7 +1098,6 @@ impl<I: Tokens> Parser<I> {
             //         SyntaxError::TS1029(atom!("override"), atom!("async")),
             //     );
             // }
-            self.ast.free_node(key.node_id());
 
             let is_generator = self.input_mut().eat(Token::Asterisk);
             let key = self.parse_class_prop_name()?;
@@ -1133,7 +1132,6 @@ impl<I: Tokens> Parser<I> {
         if let Some(ident) = getter_or_setter_ident {
             let key_span = key.span(&self.ast);
             let sym = ident.sym(&self.ast);
-            self.ast.free_node(ident.node_id());
 
             // handle get foo(){} / set foo(v){}
             let key = self.parse_class_prop_name()?;

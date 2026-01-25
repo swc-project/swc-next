@@ -3,9 +3,7 @@ use std::{hash::BuildHasherDefault, ops::RangeFull};
 use indexmap::IndexMap;
 use rustc_hash::FxHasher;
 use swc_core::common::comments::Comments;
-use swc_experimental_ecma_ast::{
-    Ast, Expr, NodeIdTrait, SimpleAssignTarget, Span, VisitMut, VisitMutWith,
-};
+use swc_experimental_ecma_ast::{Ast, Expr, SimpleAssignTarget, Span, VisitMut, VisitMutWith};
 
 pub fn remove_paren<'ast, N: VisitMutWith<ParenRemover<'ast>>>(
     root: N,
@@ -47,8 +45,6 @@ impl VisitMut for ParenRemover<'_> {
             let inner_expr = expr.expr(self.ast);
             let expr_span = inner_expr.span(self.ast);
             self.span_map.insert(expr_span, paren_span);
-
-            self.ast.free_node(node.node_id());
             return inner_expr;
         }
         node
@@ -62,8 +58,6 @@ impl VisitMut for ParenRemover<'_> {
             let expr_span = inner_expr.span(self.ast);
             let target = SimpleAssignTarget::try_from_expr(self.ast, inner_expr).unwrap();
             self.span_map.insert(expr_span, paren_expr);
-
-            self.ast.free_node(node.node_id());
             return target;
         }
         node

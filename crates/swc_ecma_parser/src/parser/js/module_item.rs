@@ -806,8 +806,6 @@ impl<I: Tokens> Parser<I> {
                     let is_defer = local_sym == "defer";
 
                     if p.input().syntax().typescript() && local_sym == "type" {
-                        p.ast.free_node(local.node_id());
-
                         let cur = p.input().cur();
                         if cur == Token::LBrace || cur == Token::Asterisk {
                             type_only = true;
@@ -847,15 +845,12 @@ impl<I: Tokens> Parser<I> {
                         let cur = p.input().cur();
                         if cur == Token::LBrace || cur == Token::Asterisk {
                             phase = new_phase;
-                            p.ast.free_node(local.node_id());
                             break 'import_maybe_ident;
                         }
 
                         if p.is_ident_ref() && !p.input().is(Token::From)
                             || peek!(p).is_some_and(|cur| cur == Token::From)
                         {
-                            p.ast.free_node(local.node_id());
-
                             // For defer phase, we expect only namespace imports, so break here
                             // and let the subsequent code handle validation
                             if new_phase == ImportPhase::Defer {
