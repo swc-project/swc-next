@@ -131,7 +131,6 @@ pub fn resolver<'ast, N: Copy + VisitWith<AstCounter<'ast>> + VisitWith<Resolver
     let node_count = ast.node_count();
     let mut counter = AstCounter {
         ast,
-        block_count: 0,
         scope_count: 0,
     };
     root.visit_with(&mut counter);
@@ -146,15 +145,20 @@ pub fn resolver<'ast, N: Copy + VisitWith<AstCounter<'ast>> + VisitWith<Resolver
     let unresolved_scope_id = scopes.push(Scope::new(ScopeKind::Fn, None));
     let top_level_scope_id = scopes.push(top_level_scope);
 
+    // Init symbol scopes
     let mut symbol_scopes = IndexVec::with_capacity(node_count);
     symbol_scopes.resize(node_count, unresolved_scope_id);
+
+    // Init block_scopes
+    let mut block_scopes = IndexVec::with_capacity(node_count);
+    block_scopes.resize(node_count, unresolved_scope_id);
 
     let mut resolver = Resolver {
         ast,
         current_node_id: NodeId::from_raw(0),
         parent_ids,
         symbol_scopes,
-        block_scopes: FxHashMap::with_capacity_and_hasher(counter.block_count, Default::default()),
+        block_scopes,
         scopes,
 
         top_level_scope_id,
@@ -184,7 +188,7 @@ pub struct Semantic {
     unresolved_scope_id: ScopeId,
     parent_ids: IndexVec<NodeId, NodeId>,
     symbol_scopes: IndexVec<NodeId, ScopeId>,
-    block_scopes: FxHashMap<NodeId, ScopeId>,
+    block_scopes: IndexVec<NodeId, ScopeId>,
 }
 
 impl Semantic {
@@ -195,17 +199,12 @@ impl Semantic {
 
     #[inline]
     pub fn node_scope(&self, ident: Ident) -> ScopeId {
-        let scope_id = self.symbol_scopes[ident.node_id()];
-        scope_id
+        self.symbol_scopes[ident.node_id()]
     }
 
     #[inline]
     pub fn body_scope(&self, block: BlockStmt) -> ScopeId {
-        let Some(scope_id) = self.block_scopes.get(&block.node_id()).cloned() else {
-            return self.unresolved_scope_id;
-        };
-
-        scope_id
+        self.symbol_scopes[block.node_id()]
     }
 
     #[inline]
@@ -256,7 +255,7 @@ pub struct Resolver<'ast> {
     current_node_id: NodeId,
     parent_ids: IndexVec<NodeId, NodeId>,
     symbol_scopes: IndexVec<NodeId, ScopeId>,
-    block_scopes: FxHashMap<NodeId, ScopeId>,
+    block_scopes: IndexVec<NodeId, ScopeId>,
 
     top_level_scope_id: ScopeId,
     unresolved_scope_id: ScopeId,
@@ -400,12 +399,12 @@ impl<'ast> Resolver<'ast> {
     }
 
     fn mark_block(&mut self, node_id: NodeId) {
-        if self.block_scopes.contains_key(&node_id) {
+        if self.block_scopes[node_id] != self.unresolved_scope_id {
             return;
         }
 
         let scope_id = self.current;
-        self.block_scopes.insert(node_id, scope_id);
+        self.block_scopes[node_id] = scope_id;
     }
 
     // fn try_resolving_as_type(&mut self, i: &mut Ident) {
@@ -2250,7 +2249,6 @@ impl<'resolver, 'ast> Visit for Hoister<'resolver, 'ast> {
 /// Count the specified nodes to preallocate maps
 pub struct AstCounter<'ast> {
     ast: &'ast Ast,
-    block_count: usize,
     scope_count: usize,
 }
 
@@ -2262,9 +2260,7 @@ impl<'ast> Visit for AstCounter<'ast> {
     #[inline]
     fn enter_node(&mut self, node_id: NodeId) {
         match unsafe { self.ast.get_node_unchecked(node_id).kind() } {
-            NodeKind::Function => self.block_count += 1,
             NodeKind::BlockStmt => {
-                self.block_count += 1;
                 self.scope_count += 1;
             }
             NodeKind::Class
