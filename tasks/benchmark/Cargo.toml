@@ -31,10 +31,6 @@ name    = "semantic"
 
 [[bench]]
 harness = false
-name    = "semantic_compare"
-
-[[bench]]
-harness = false
 name    = "ast_compat"
 
 [[bench]]
