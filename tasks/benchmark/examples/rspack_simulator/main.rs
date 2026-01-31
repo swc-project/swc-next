@@ -1,4 +1,4 @@
-use std::{env, thread::sleep, time::Duration};
+use std::env;
 
 pub mod experimental;
 pub mod legacy;
@@ -34,5 +34,6 @@ pub fn main() {
         experimental::run(source, true);
     }
 
-    sleep(Duration::from_secs(2));
+    #[cfg(feature = "tracy")]
+    std::thread::sleep(std::time::Duration::from_secs(2));
 }
