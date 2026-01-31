@@ -15,8 +15,8 @@ impl StringAllocator {
     /// Create a new string allocator with the given source length.
     /// The source length is used to pre-allocate memory for the string allocator.
     /// We assume that half length of the source code is the sum of utf8 identifier lengths.
-    pub fn new(source_len: usize) -> Self {
-        let mut allocated_utf8 = StringInterner::with_capacity(source_len / 2);
+    pub fn new() -> Self {
+        let mut allocated_utf8 = StringInterner::new();
         let empty_utf8 = allocated_utf8.get_or_intern("");
         Self {
             allocated_utf8,

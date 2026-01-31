@@ -403,7 +403,7 @@ impl Ast {
             nodes: IndexVec::with_capacity(empirical_capacity),
             extra_data: IndexVec::with_capacity(empirical_capacity * 2),
             bigint: IndexVec::new(),
-            string_allocator: StringAllocator::new(source_len),
+            string_allocator: StringAllocator::new(),
         }
     }
 
