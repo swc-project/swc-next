@@ -4,6 +4,12 @@ name    = "benchmark"
 publish = false
 version = "0.1.0"
 
+[features]
+tracy = ["dep:tracy-client"]
+
+[dependencies]
+tracy-client = { workspace = true, optional = true }
+
 [dev-dependencies]
 swc_experimental_ecma_ast             = { workspace = true }
 swc_experimental_ecma_ast_compat      = { workspace = true }
