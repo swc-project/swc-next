@@ -15,7 +15,7 @@ mod generated {
     pub(crate) mod ast_visitor;
 }
 
-use std::marker::PhantomData;
+use std::{marker::PhantomData, rc::Rc};
 use swc_core::atoms::wtf8::Wtf8;
 use swc_core::common::BytePos;
 
@@ -32,7 +32,7 @@ pub use node_id::{
     TypedSubRange,
 };
 
-use crate::{atom::string_allocator::StringAllocator, node_id::OptionalSubRange};
+use crate::node_id::OptionalSubRange;
 
 /// AST context that stores everything about the flattening AST.
 pub struct Ast {
@@ -47,9 +47,7 @@ pub struct Ast {
     bigint: IndexVec<BigIntId, BigIntValue>,
 
     /// The AST doesn't directly store strings (UTF-8 and WTF-8).
-    /// Instead, it stores the start and the end index of the string in the string allocator.
-    /// See: [StringAllocator]
-    string_allocator: StringAllocator,
+    string_allocator: Rc<StringAllocator>,
 }
 
 /// A 24-bit unsigned integer stored as 3 bytes.
@@ -402,7 +400,7 @@ impl Ast {
             nodes: IndexVec::with_capacity(empirical_capacity),
             extra_data: IndexVec::with_capacity(empirical_capacity * 2),
             bigint: IndexVec::new(),
-            string_allocator: StringAllocator::new(),
+            string_allocator: Rc::new(StringAllocator::new()),
         }
     }
 
@@ -413,7 +411,7 @@ impl Ast {
             nodes: IndexVec::with_capacity(empirical_capacity),
             extra_data: IndexVec::with_capacity(empirical_capacity * 2),
             bigint: IndexVec::new(),
-            string_allocator,
+            string_allocator: Rc::new(string_allocator),
         }
     }
 
@@ -495,11 +493,6 @@ impl Ast {
     }
 
     #[inline]
-    pub fn into_string_allocator(self) -> StringAllocator {
-        self.string_allocator
-    }
-
-    #[inline]
     pub fn empty_utf8_ref(&self) -> Utf8Ref {
         self.string_allocator.empty_utf8_ref()
     }
@@ -529,9 +522,5 @@ impl Ast {
 
     pub fn node_count(&self) -> usize {
         self.nodes.len()
-    }
-
-    pub fn utf8_count(&self) -> usize {
-        self.string_allocator.utf8_count()
     }
 }

@@ -1,20 +1,73 @@
-use string_interner::{StringInterner, backend::StringBackend};
+use std::cell::UnsafeCell;
+
+use string_interner::{StringInterner, backend::BucketBackend};
 use swc_core::atoms::wtf8::{Wtf8, Wtf8Buf};
 
 use crate::{OptionalUtf8Ref, OptionalWtf8Ref, Utf8Ref, Wtf8Ref};
 
+/// # Safety
+/// [StringAllocatorInner] uses [string_interner::backend::BucketBackend], which has stable string references
+pub struct StringAllocator(UnsafeCell<StringAllocatorInner>);
+
+impl StringAllocator {
+    pub fn new() -> Self {
+        Self(UnsafeCell::new(StringAllocatorInner::new()))
+    }
+}
+
+impl StringAllocator {
+    /// # Safety
+    /// [StringAllocatorInner] uses [string_interner::backend::BucketBackend], which has stable string references
+    fn inner(&self) -> &mut StringAllocatorInner {
+        unsafe { &mut *self.0.get() }
+    }
+
+    pub fn add_utf8(&self, s: &str) -> Utf8Ref {
+        self.inner().add_utf8(s)
+    }
+
+    pub fn add_optional_utf8(&self, s: Option<&str>) -> OptionalUtf8Ref {
+        self.inner().add_optional_utf8(s)
+    }
+
+    pub fn add_wtf8(&self, s: &Wtf8) -> Wtf8Ref {
+        self.inner().add_wtf8(s)
+    }
+
+    pub fn add_optional_wtf8(&self, s: Option<&Wtf8>) -> OptionalWtf8Ref {
+        self.inner().add_optional_wtf8(s)
+    }
+
+    pub fn get_utf8(&self, id: Utf8Ref) -> &str {
+        self.inner().get_utf8(id)
+    }
+
+    pub fn get_optional_utf8(&self, id: OptionalUtf8Ref) -> Option<&str> {
+        self.inner().get_optional_utf8(id)
+    }
+
+    pub fn get_wtf8(&self, id: Wtf8Ref) -> &Wtf8 {
+        self.inner().get_wtf8(id)
+    }
+
+    pub fn get_optional_wtf8(&self, id: OptionalWtf8Ref) -> Option<&Wtf8> {
+        self.inner().get_optional_wtf8(id)
+    }
+
+    pub fn empty_utf8_ref(&self) -> Utf8Ref {
+        self.inner().empty_utf8_ref()
+    }
+}
+
 /// A string allocator that can be used to allocate strings for the AST.
 /// All the strings are stored in a single buffer to avoid memory fragmentation.
-pub struct StringAllocator {
-    allocated_utf8: StringInterner<StringBackend<Utf8Ref>>,
+struct StringAllocatorInner {
+    allocated_utf8: StringInterner<BucketBackend<Utf8Ref>>,
     allocated_wtf8: Wtf8Buf,
     empty_utf8: Utf8Ref,
 }
 
-impl StringAllocator {
-    /// Create a new string allocator with the given source length.
-    /// The source length is used to pre-allocate memory for the string allocator.
-    /// We assume that half length of the source code is the sum of utf8 identifier lengths.
+impl StringAllocatorInner {
     pub fn new() -> Self {
         let mut allocated_utf8 = StringInterner::new();
         let empty_utf8 = allocated_utf8.get_or_intern("");
@@ -81,10 +134,5 @@ impl StringAllocator {
     #[inline]
     pub fn empty_utf8_ref(&self) -> Utf8Ref {
         self.empty_utf8
-    }
-
-    #[inline]
-    pub fn utf8_count(&self) -> usize {
-        self.allocated_utf8.len()
     }
 }
