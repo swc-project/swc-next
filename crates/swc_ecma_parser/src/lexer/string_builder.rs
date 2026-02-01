@@ -83,7 +83,7 @@ impl Utf8Builder {
     pub(crate) fn finish(self, sb: &mut StringBuilder) -> MaybeSubUtf8 {
         MaybeSubUtf8::Alloc(
             sb.string_allocator
-                .add_utf8(sb.utf8_buf.drain(self.start as usize..).as_str()),
+                .add_utf8(sb.utf8_buf.drain(self.start..).as_str()),
         )
     }
 
@@ -117,7 +117,7 @@ impl Wtf8Builder {
     pub(crate) fn finish(self, sb: &mut StringBuilder) -> MaybeSubWtf8 {
         let id = sb
             .string_allocator
-            .add_wtf8(sb.wtf8_buf.slice(self.start as usize, sb.wtf8_buf.len()));
+            .add_wtf8(sb.wtf8_buf.slice(self.start, sb.wtf8_buf.len()));
         sb.wtf8_buf.truncate(self.start);
         MaybeSubWtf8::Alloc(id)
     }

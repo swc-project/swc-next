@@ -9,8 +9,8 @@ use crate::{OptionalUtf8Ref, OptionalWtf8Ref, Utf8Ref, Wtf8Ref};
 /// [StringAllocatorInner] uses [string_interner::backend::BucketBackend], which has stable string references
 pub struct StringAllocator(UnsafeCell<StringAllocatorInner>);
 
-impl StringAllocator {
-    pub fn new() -> Self {
+impl Default for StringAllocator {
+    fn default() -> Self {
         Self(UnsafeCell::new(StringAllocatorInner::new()))
     }
 }
@@ -18,6 +18,7 @@ impl StringAllocator {
 impl StringAllocator {
     /// # Safety
     /// [StringAllocatorInner] uses [string_interner::backend::BucketBackend], which has stable string references
+    #[allow(clippy::mut_from_ref)]
     fn inner(&self) -> &mut StringAllocatorInner {
         unsafe { &mut *self.0.get() }
     }
@@ -120,8 +121,7 @@ impl StringAllocatorInner {
 
     #[inline]
     pub fn get_wtf8(&self, id: Wtf8Ref) -> &Wtf8 {
-        &self
-            .allocated_wtf8
+        self.allocated_wtf8
             .slice(id.lo() as usize, id.hi() as usize)
     }
 

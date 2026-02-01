@@ -201,7 +201,7 @@ impl<'a> Lexer<'a> {
             target,
             input,
             comments,
-            Rc::new(StringAllocator::new()),
+            Rc::new(StringAllocator::default()),
         )
     }
 

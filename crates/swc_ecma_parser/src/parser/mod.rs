@@ -161,7 +161,7 @@ impl<I: Tokens> Parser<I> {
         input.set_ctx(ctx);
 
         let mut p = Parser {
-            ast: Ast::new_with_string_allocator(
+            ast: Ast::new(
                 (input.end_pos().0 - input.start_pos().0) as usize,
                 input.string_allocator(),
             ),

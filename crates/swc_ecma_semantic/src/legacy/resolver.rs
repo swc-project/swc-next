@@ -331,7 +331,7 @@ impl<'ast> Resolver<'ast> {
         let mut scope = Some(self.current);
         while let Some(cur) = scope {
             let cur_scope = &self.scopes[cur];
-            if cur_scope.declared_symbols.get(&sym).is_some() {
+            if cur_scope.declared_symbols.contains_key(&sym) {
                 let sym = self.ast.get_utf8(sym);
                 return match sym {
                     // https://tc39.es/ecma262/multipage/global-object.html#sec-value-properties-of-the-global-object-infinity
