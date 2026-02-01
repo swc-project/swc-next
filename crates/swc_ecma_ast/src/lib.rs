@@ -405,13 +405,16 @@ impl Ast {
     }
 
     /// Create a new AST with the given source length and the string allocator.
-    pub fn new_with_string_allocator(source_len: usize, string_allocator: StringAllocator) -> Self {
+    pub fn new_with_string_allocator(
+        source_len: usize,
+        string_allocator: Rc<StringAllocator>,
+    ) -> Self {
         let empirical_capacity = (source_len as f64 * 0.15) as usize;
         Self {
             nodes: IndexVec::with_capacity(empirical_capacity),
             extra_data: IndexVec::with_capacity(empirical_capacity * 2),
             bigint: IndexVec::new(),
-            string_allocator: Rc::new(string_allocator),
+            string_allocator,
         }
     }
 

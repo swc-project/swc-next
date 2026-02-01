@@ -2,8 +2,8 @@ use either::Either;
 use swc_core::common::{BytePos, Span};
 use swc_experimental_ecma_ast::*;
 
+use crate::lexer::MaybeSubUtf8;
 use crate::parser::util::ExprExt;
-use crate::string_alloc::MaybeSubUtf8;
 use crate::{
     Context, PResult,
     error::{Error, SyntaxError},
@@ -1406,7 +1406,7 @@ impl<I: Tokens> Parser<I> {
             self.mark_found_module_item();
 
             let (_, sym) = self.parse_ident_name()?;
-            match self.input.iter.get_maybe_sub_utf8(sym) {
+            match self.read_maybe_utf8(sym) {
                 "meta" => {
                     let span = self.span(start);
                     if !self.ctx().contains(Context::CanBeModule) {
@@ -2468,7 +2468,7 @@ impl<I: Tokens> Parser<I> {
         } else if cur == Token::Ident {
             let word = self.input_mut().expect_word_token_and_bump();
             if self.ctx().contains(Context::InClassField)
-                && self.input.iter.get_maybe_sub_utf8(word) == "arguments"
+                && self.read_maybe_utf8(word) == "arguments"
             {
                 self.emit_err(self.input().prev_span(), SyntaxError::ArgumentsInClassField)
             };

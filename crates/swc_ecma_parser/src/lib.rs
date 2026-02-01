@@ -152,7 +152,6 @@ mod context;
 pub mod error;
 pub mod lexer;
 mod parser;
-mod string_alloc;
 mod syntax;
 
 pub use context::Context;

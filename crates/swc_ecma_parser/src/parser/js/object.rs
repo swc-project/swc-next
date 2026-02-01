@@ -1,8 +1,8 @@
 use swc_core::common::{DUMMY_SP, Span};
 use swc_experimental_ecma_ast::*;
 
+use crate::lexer::MaybeSubUtf8;
 use crate::parser::js::is_not_this;
-use crate::string_alloc::MaybeSubUtf8;
 use crate::{Context, PResult, Parser, error::SyntaxError, input::Tokens, lexer::Token};
 
 impl<I: Tokens> Parser<I> {

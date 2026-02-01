@@ -1,5 +1,6 @@
 //! ECMAScript lexer.
 
+use std::rc::Rc;
 use std::{borrow::Cow, char};
 
 use either::Either::{self, Left, Right};
@@ -12,11 +13,12 @@ use swc_core::common::{
     comments::{Comment, CommentKind, Comments},
 };
 use swc_experimental_ecma_ast::{
-    EsVersion, is_valid_ascii_continue, is_valid_ascii_start, is_valid_non_ascii_continue,
-    is_valid_non_ascii_start,
+    EsVersion, StringAllocator, is_valid_ascii_continue, is_valid_ascii_start,
+    is_valid_non_ascii_continue, is_valid_non_ascii_start,
 };
 
 use self::table::{BYTE_HANDLERS, ByteHandler};
+use crate::lexer::string_builder::{StringBuilder, Wtf8Builder};
 use crate::{
     Context, Syntax, byte_search,
     error::{Error, SyntaxError},
@@ -31,7 +33,6 @@ use crate::{
         state::State,
     },
     safe_byte_match_table,
-    string_alloc::{MaybeSubUtf8, MaybeSubWtf8, StringAllocator, Wtf8Builder},
     syntax::SyntaxFlags,
 };
 
@@ -44,11 +45,13 @@ mod number;
 pub(crate) mod search;
 pub(crate) mod source;
 mod state;
+mod string_builder;
 mod table;
 pub(crate) mod token;
 mod whitespace;
 
 pub(crate) use state::TokenFlags;
+pub(crate) use string_builder::{MaybeSubUtf8, MaybeSubWtf8};
 pub(crate) use token::{NextTokenAndSpan, Token, TokenAndSpan, TokenValue};
 
 // ===== Byte match tables for comment scanning =====
@@ -136,7 +139,7 @@ pub struct Lexer<'a> {
     errors: Vec<Error>,
     module_errors: Vec<Error>,
 
-    string_allocator: StringAllocator,
+    sb: StringBuilder,
 }
 
 impl<'a> Lexer<'a> {
@@ -193,6 +196,22 @@ impl<'a> Lexer<'a> {
         input: StringSource<'a>,
         comments: Option<&'a dyn Comments>,
     ) -> Self {
+        Self::new_with_string_allocator(
+            syntax,
+            target,
+            input,
+            comments,
+            Rc::new(StringAllocator::new()),
+        )
+    }
+
+    pub fn new_with_string_allocator(
+        syntax: Syntax,
+        target: EsVersion,
+        input: StringSource<'a>,
+        comments: Option<&'a dyn Comments>,
+        string_allocator: Rc<StringAllocator>,
+    ) -> Self {
         let start_pos = input.cur_pos();
 
         Lexer {
@@ -207,8 +226,7 @@ impl<'a> Lexer<'a> {
             errors: Default::default(),
             module_errors: Default::default(),
             token_flags: TokenFlags::empty(),
-
-            string_allocator: StringAllocator::new(),
+            sb: StringBuilder::new(string_allocator),
         }
     }
 
@@ -389,7 +407,7 @@ impl Lexer<'_> {
         started_with_backtick: bool,
     ) -> LexResult<Token> {
         debug_assert!(self.peek() == Some(if started_with_backtick { b'`' } else { b'}' }));
-        let mut cooked = Ok(self.string_allocator.alloc_wtf8());
+        let mut cooked = Ok(self.sb.alloc_wtf8());
         self.bump(1); // `}` or `\``
         let mut cooked_slice_start = self.cur_pos();
         macro_rules! consume_cooked {
@@ -401,7 +419,7 @@ impl Lexer<'_> {
                         // from `self.input`
                         self.input.slice(cooked_slice_start, last_pos)
                     };
-                    cooked.push_str(&mut self.string_allocator, s);
+                    cooked.push_str(&mut self.sb, s);
                 }
             }};
         }
@@ -409,7 +427,7 @@ impl Lexer<'_> {
         while let Some(c) = self.peek() {
             if c == b'`' {
                 consume_cooked!();
-                let cooked = cooked.map(|cooked| cooked.finish(&mut self.string_allocator));
+                let cooked = cooked.map(|cooked| cooked.finish(&mut self.sb));
                 self.bump(1);
                 return Ok(if started_with_backtick {
                     self.set_token_value(Some(TokenValue::Template(cooked)));
@@ -420,7 +438,7 @@ impl Lexer<'_> {
                 });
             } else if c == b'$' && self.input.peek_2() == Some(b'{') {
                 consume_cooked!();
-                let cooked = cooked.map(|cooked| cooked.finish(&mut self.string_allocator));
+                let cooked = cooked.map(|cooked| cooked.finish(&mut self.sb));
 
                 // Safety: `self.input.peek_2() == Some(b'{')`
                 self.bump(2);
@@ -437,7 +455,7 @@ impl Lexer<'_> {
                 match self.read_escaped_char(true) {
                     Ok(Some(escaped)) => {
                         if let Ok(ref mut cooked) = cooked {
-                            cooked.push(&mut self.string_allocator, escaped);
+                            cooked.push(&mut self.sb, escaped);
                         }
                     }
                     Ok(None) => {}
@@ -473,7 +491,7 @@ impl Lexer<'_> {
                 self.bump(c_char.len_utf8());
 
                 if let Ok(ref mut cooked) = cooked {
-                    cooked.push_char(&mut self.string_allocator, c);
+                    cooked.push_char(&mut self.sb, c);
                 }
                 cooked_slice_start = self.cur_pos();
             } else if c <= 0x7f {
@@ -1270,7 +1288,7 @@ impl<'a> Lexer<'a> {
         debug_assert!(self.syntax().jsx());
         let start = self.input().cur_pos();
         self.bump(1); // `quote`
-        let mut out = self.string_allocator.alloc_wtf8();
+        let mut out = self.sb.alloc_wtf8();
         let mut chunk_start = self.input().cur_pos();
         loop {
             let ch = match self.input().peek() {
@@ -1287,8 +1305,8 @@ impl<'a> Lexer<'a> {
                     self.input_slice_to_cur(chunk_start)
                 };
 
-                out.push_str(&mut self.string_allocator, value);
-                out.push_char(&mut self.string_allocator, '\\');
+                out.push_str(&mut self.sb, value);
+                out.push_char(&mut self.sb, '\\');
 
                 self.bump(1);
 
@@ -1307,11 +1325,11 @@ impl<'a> Lexer<'a> {
                     self.input_slice_to_cur(chunk_start)
                 };
 
-                out.push_str(&mut self.string_allocator, value);
+                out.push_str(&mut self.sb, value);
 
                 let jsx_entity = self.read_jsx_entity()?;
 
-                out.push_char(&mut self.string_allocator, jsx_entity.0);
+                out.push_char(&mut self.sb, jsx_entity.0);
 
                 chunk_start = self.input().cur_pos();
             } else if ch.is_line_terminator() {
@@ -1320,14 +1338,14 @@ impl<'a> Lexer<'a> {
                     self.input_slice_to_cur(chunk_start)
                 };
 
-                out.push_str(&mut self.string_allocator, value);
+                out.push_str(&mut self.sb, value);
 
                 match self.read_jsx_new_line(false)? {
                     Either::Left(s) => {
-                        out.push_str(&mut self.string_allocator, s);
+                        out.push_str(&mut self.sb, s);
                     }
                     Either::Right(c) => {
-                        out.push_char(&mut self.string_allocator, c);
+                        out.push_char(&mut self.sb, c);
                     }
                 }
 
@@ -1336,7 +1354,7 @@ impl<'a> Lexer<'a> {
                 self.bump(1);
             }
         }
-        let value = if out.is_empty(&self.string_allocator) {
+        let value = if out.is_empty(&self.sb) {
             // Fast path: We don't need to allocate
             MaybeSubWtf8::new_from_source(chunk_start, self.cur_pos())
         } else {
@@ -1344,8 +1362,8 @@ impl<'a> Lexer<'a> {
                 // Safety: We already checked for the range
                 self.input_slice_to_cur(chunk_start)
             };
-            out.push_str(&mut self.string_allocator, s);
-            out.finish(&mut self.string_allocator)
+            out.push_str(&mut self.sb, s);
+            out.finish(&mut self.sb)
         };
 
         // it might be at the end of the file when
@@ -1517,10 +1535,7 @@ impl<'a> Lexer<'a> {
             self.bump(c.len_utf8());
         }
 
-        Ok(Some(MaybeSubUtf8::new_from_source(
-            start_pos,
-            self.cur_pos(),
-        )))
+        Ok(Some(MaybeSubUtf8::Inline((start_pos, self.cur_pos()))))
     }
 
     /// Read an escaped character for string literal.
@@ -1708,11 +1723,11 @@ impl<'a> Lexer<'a> {
         let flags = {
             match self.peek() {
                 Some(c) if c.is_ident_start() => self.read_word_as_str_with().map(|(s, _)| s),
-                _ => Ok(MaybeSubUtf8::new_empty()),
+                _ => Ok(self.empty_utf8_ref()),
             }
         }?;
 
-        let flags = self.get_maybe_sub_utf8(flags);
+        let flags = self.get_utf8(flags);
         if !flags.is_empty() {
             let mut flags_count =
                 flags
@@ -1759,7 +1774,7 @@ impl<'a> Lexer<'a> {
                 table: NOT_ASCII_ID_CONTINUE_TABLE,
                 handle_eof: {
                     // Reached EOF, entire remainder is identifier
-                    return Ok((MaybeSubUtf8::new_from_source(slice_start, self.cur_pos()), false));
+                    return Ok((MaybeSubUtf8::Inline((slice_start, self.cur_pos())), false))
                 },
             };
 
@@ -1772,7 +1787,7 @@ impl<'a> Lexer<'a> {
                 return self.read_word_as_str_with_slow_path(slice_start);
             } else {
                 // Hit end of identifier (non-continue ASCII char)
-                let s = MaybeSubUtf8::new_from_source(slice_start, self.cur_pos());
+                let s = MaybeSubUtf8::Inline((slice_start, self.cur_pos()));
                 return Ok((s, false));
             }
         }
@@ -1790,7 +1805,7 @@ impl<'a> Lexer<'a> {
         let mut first = true;
         let mut has_escape = false;
 
-        let mut buf = self.string_allocator.alloc_utf8();
+        let mut buf = self.sb.alloc_utf8();
         loop {
             if let Some(c) = self.input().peek_ascii() {
                 if is_valid_ascii_continue(c) {
@@ -1820,7 +1835,7 @@ impl<'a> Lexer<'a> {
                             // `self.input`
                             self.input_slice(slice_start, start)
                         };
-                        buf.push_str(&mut self.string_allocator, s);
+                        buf.push_str(&mut self.sb, s);
                         unsafe {
                             // Safety: We got end from `self.input`
                             self.input_mut().reset_to(end);
@@ -1839,17 +1854,14 @@ impl<'a> Lexer<'a> {
                             if !valid {
                                 self.emit_error(start, SyntaxError::InvalidIdentChar);
                             }
-                            buf.push(&mut self.string_allocator, ch);
+                            buf.push(&mut self.sb, ch);
                         }
                         UnicodeEscape::SurrogatePair(ch) => {
-                            buf.push(&mut self.string_allocator, ch);
+                            buf.push(&mut self.sb, ch);
                             self.emit_error(start, SyntaxError::InvalidIdentChar);
                         }
                         UnicodeEscape::LoneSurrogate(code_point) => {
-                            buf.push_str(
-                                &mut self.string_allocator,
-                                format!("\\u{code_point:04X}").as_str(),
-                            );
+                            buf.push_str(&mut self.sb, format!("\\u{code_point:04X}").as_str());
                             self.emit_error(start, SyntaxError::InvalidIdentChar);
                         }
                     };
@@ -1877,7 +1889,7 @@ impl<'a> Lexer<'a> {
         let end = self.cur_pos();
         let value = if !has_escape {
             // Fast path: raw slice is enough if there's no escape.
-            MaybeSubUtf8::new_from_source(slice_start, end)
+            MaybeSubUtf8::Inline((slice_start, end))
         } else {
             let s = unsafe {
                 // Safety: slice_start and end are valid position because we got them from
@@ -1885,8 +1897,8 @@ impl<'a> Lexer<'a> {
                 self.input_slice(slice_start, end)
             };
 
-            buf.push_str(&mut self.string_allocator, s);
-            buf.finish(&mut self.string_allocator)
+            buf.push_str(&mut self.sb, s);
+            buf.finish(&mut self.sb)
         };
 
         Ok((value, has_escape))
@@ -2129,7 +2141,7 @@ impl<'a> Lexer<'a> {
                 table: table,
                 handle_eof: {
                     let value_end = self.cur_pos();
-                    let s = MaybeSubWtf8::new_from_source(slice_start, value_end);
+                    let s = MaybeSubWtf8::Inline((slice_start, value_end));
 
                     self.emit_error(start, SyntaxError::UnterminatedStrLit);
 
@@ -2150,10 +2162,10 @@ impl<'a> Lexer<'a> {
                             // got them from `self.input`
                             self.input_slice(slice_start, value_end)
                         };
-                        buf.push_str(&mut self.string_allocator, s);
-                        buf.finish(&mut self.string_allocator)
+                        buf.push_str(&mut self.sb, s);
+                        buf.finish(&mut self.sb)
                     } else {
-                        MaybeSubWtf8::new_from_source(slice_start, value_end)
+                        MaybeSubWtf8::Inline((slice_start, value_end))
                     };
 
                     self.bump(1);
@@ -2169,19 +2181,15 @@ impl<'a> Lexer<'a> {
                     };
 
                     if buf.is_none() {
-                        let mut builder = self.string_allocator.alloc_wtf8();
-                        builder.push_str(&mut self.string_allocator, s);
+                        let mut builder = self.sb.alloc_wtf8();
+                        builder.push_str(&mut self.sb, s);
                         buf = Some(builder);
                     } else {
-                        buf.as_mut()
-                            .unwrap()
-                            .push_str(&mut self.string_allocator, s);
+                        buf.as_mut().unwrap().push_str(&mut self.sb, s);
                     }
 
                     if let Some(escaped) = self.read_escaped_char(false)? {
-                        buf.as_mut()
-                            .unwrap()
-                            .push(&mut self.string_allocator, escaped);
+                        buf.as_mut().unwrap().push(&mut self.sb, escaped);
                     }
 
                     slice_start = self.cur_pos();
@@ -2189,7 +2197,7 @@ impl<'a> Lexer<'a> {
                 }
                 b'\n' | b'\r' => {
                     let end = self.cur_pos();
-                    let s = MaybeSubWtf8::new_from_source(slice_start, end);
+                    let s = MaybeSubWtf8::Inline((slice_start, end));
 
                     self.emit_error(start, SyntaxError::UnterminatedStrLit);
 
@@ -2205,7 +2213,7 @@ impl<'a> Lexer<'a> {
 
         let start = self.cur_pos();
         let (s, has_escape) = self.read_keyword_as_str_with()?;
-        if let Some(word) = convert(self.get_maybe_sub_utf8(s)) {
+        if let Some(word) = convert(self.get_utf8(s)) {
             // Note: ctx is store in lexer because of this error.
             // 'await' and 'yield' may have semantic of reserved word, which means lexer
             // should know context or parser should handle this error. Our approach to this
@@ -2214,7 +2222,7 @@ impl<'a> Lexer<'a> {
                 self.error(
                     start,
                     SyntaxError::EscapeInReservedWord {
-                        word: Atom::new(self.get_maybe_sub_utf8(s)),
+                        word: Atom::new(self.get_utf8(s)),
                     },
                 )
             } else {
@@ -2242,7 +2250,7 @@ impl<'a> Lexer<'a> {
             table: NOT_ASCII_ID_CONTINUE_TABLE,
             handle_eof: {
                 // Reached EOF, entire remainder is identifier
-                let s = MaybeSubUtf8::new_from_source(slice_start, self.cur_pos());
+                let s = MaybeSubUtf8::Inline((slice_start, self.cur_pos()));
                 return Ok((s, false));
             },
         };
@@ -2254,7 +2262,7 @@ impl<'a> Lexer<'a> {
             self.read_word_as_str_with_slow_path(slice_start)
         } else {
             // Hit end of identifier (non-continue ASCII char)
-            let s = MaybeSubUtf8::new_from_source(slice_start, self.cur_pos());
+            let s = MaybeSubUtf8::Inline((slice_start, self.cur_pos()));
             Ok((s, false))
         }
     }

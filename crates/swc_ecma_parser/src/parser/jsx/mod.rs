@@ -5,7 +5,7 @@ use swc_core::common::{BytePos, Span};
 use swc_experimental_ecma_ast::*;
 
 use super::{Parser, input::Tokens};
-use crate::string_alloc::MaybeSubUtf8;
+use crate::lexer::MaybeSubUtf8;
 use crate::{
     Context, PResult,
     error::SyntaxError,

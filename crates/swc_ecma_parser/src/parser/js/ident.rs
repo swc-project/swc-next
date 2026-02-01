@@ -4,8 +4,10 @@ use swc_core::common::BytePos;
 use swc_experimental_ecma_ast::*;
 
 use crate::{
-    Context, PResult, Parser, error::SyntaxError, input::Tokens, lexer::Token,
-    string_alloc::MaybeSubUtf8,
+    Context, PResult, Parser,
+    error::SyntaxError,
+    input::Tokens,
+    lexer::{MaybeSubUtf8, Token},
 };
 
 impl<I: Tokens> Parser<I> {
@@ -95,9 +97,9 @@ impl<I: Tokens> Parser<I> {
         } else if cur == Token::Ident {
             let span = self.input().cur_span();
             let word = self.input_mut().expect_word_token_and_bump();
+            let word = self.to_utf8_ref(word);
 
-            let word_str = self.input.iter.get_maybe_sub_utf8(word);
-            let word = self.ast.add_utf8(word_str);
+            let word_str = self.ast.get_utf8(word);
             if "arguments" == word_str || "eval" == word_str {
                 self.emit_strict_mode_err(span, SyntaxError::EvalAndArgumentsInStrict);
             }
@@ -156,9 +158,8 @@ impl<I: Tokens> Parser<I> {
         // "package", "private", "protected", "public", "static", or "yield".
         if t == Token::Enum {
             let word = self.input_mut().expect_word_token_and_bump();
-
-            let word_str = self.input.iter.get_maybe_sub_utf8(word);
-            let word = self.ast.add_utf8(word_str);
+            let word = self.to_utf8_ref(word);
+            let word_str = self.ast.get_utf8(word);
             self.emit_err(span, SyntaxError::InvalidIdentInStrict(Atom::new(word_str)));
 
             return Ok(self.ast.ident(span, word, false));
@@ -173,9 +174,8 @@ impl<I: Tokens> Parser<I> {
             || t == Token::Public
         {
             let word = self.input_mut().expect_word_token_and_bump();
-
-            let word_str = self.input.iter.get_maybe_sub_utf8(word);
-            let word = self.ast.add_utf8(word_str);
+            let word = self.to_utf8_ref(word);
+            let word_str = self.ast.get_utf8(word);
             self.emit_strict_mode_err(span, SyntaxError::InvalidIdentInStrict(Atom::new(word_str)));
 
             return Ok(self.ast.ident(span, word, false));
@@ -206,8 +206,8 @@ impl<I: Tokens> Parser<I> {
             word = MaybeSubUtf8::new_from_span(span)
         } else if t == Token::Ident {
             let word = self.input_mut().expect_word_token_and_bump();
-            let word_str = self.input.iter.get_maybe_sub_utf8(word);
-            let word = self.ast.add_utf8(word_str);
+            let word = self.to_utf8_ref(word);
+            let word_str = self.ast.get_utf8(word);
             if self.ctx().contains(Context::InClassField) && word_str == "arguments" {
                 self.emit_err(span, SyntaxError::ArgumentsInClassField)
             }

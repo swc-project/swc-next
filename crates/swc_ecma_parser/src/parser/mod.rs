@@ -1,20 +1,22 @@
 #![allow(clippy::let_unit_value)]
 #![deny(non_snake_case)]
 
-use swc_core::common::{BytePos, Span, comments::Comments};
+use swc_core::{
+    atoms::wtf8::Wtf8,
+    common::{BytePos, Span, comments::Comments},
+};
 use swc_experimental_ecma_ast::*;
 
 use crate::{
     Context, ParseRet, Syntax,
     error::SyntaxError,
     input::Buffer,
-    lexer::{Token, TokenAndSpan, source::StringSource},
+    lexer::{MaybeSubUtf8, MaybeSubWtf8, Token, TokenAndSpan, source::StringSource},
     parser::{
         input::Tokens,
         state::{State, WithState},
         util::{ExprExt, ScratchIndex},
     },
-    string_alloc::{MaybeSubUtf8, MaybeSubWtf8},
     syntax::SyntaxFlags,
 };
 
@@ -110,13 +112,33 @@ impl<I: Tokens> Parser<I> {
     }
 
     #[inline]
+    fn read_maybe_utf8(&self, maybe: MaybeSubUtf8) -> &str {
+        match maybe {
+            MaybeSubUtf8::Inline((s, e)) => {
+                self.input.iter.read_string(Span::new_with_checked(s, e))
+            }
+            MaybeSubUtf8::Alloc(utf8_ref) => self.ast.get_utf8(utf8_ref),
+        }
+    }
+
+    #[inline]
     fn to_utf8_ref(&mut self, maybe: MaybeSubUtf8) -> Utf8Ref {
-        self.ast.add_utf8(self.input.iter.get_maybe_sub_utf8(maybe))
+        match maybe {
+            MaybeSubUtf8::Inline((s, e)) => self
+                .ast
+                .add_utf8(self.input.iter.read_string(Span::new_with_checked(s, e))),
+            MaybeSubUtf8::Alloc(utf8_ref) => utf8_ref,
+        }
     }
 
     #[inline]
     fn to_wtf8_ref(&mut self, maybe: MaybeSubWtf8) -> Wtf8Ref {
-        self.ast.add_wtf8(self.input.iter.get_maybe_sub_wtf8(maybe))
+        match maybe {
+            MaybeSubWtf8::Inline((s, e)) => self.ast.add_wtf8(Wtf8::from_str(
+                self.input.iter.read_string(Span::new_with_checked(s, e)),
+            )),
+            MaybeSubWtf8::Alloc(wtf8_ref) => wtf8_ref,
+        }
     }
 }
 
@@ -139,7 +161,10 @@ impl<I: Tokens> Parser<I> {
         input.set_ctx(ctx);
 
         let mut p = Parser {
-            ast: Ast::new((input.end_pos().0 - input.start_pos().0) as usize),
+            ast: Ast::new_with_string_allocator(
+                (input.end_pos().0 - input.start_pos().0) as usize,
+                input.string_allocator(),
+            ),
             scratch: Vec::new(),
             state: Default::default(),
             input: crate::parser::input::Buffer::new(input),

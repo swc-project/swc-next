@@ -1,11 +1,12 @@
-use std::mem;
+use std::{mem, rc::Rc};
+
+use swc_experimental_ecma_ast::{Span, StringAllocator};
 
 use crate::{
     Context,
     error::Error,
     input::Tokens,
     lexer::{Token, TokenFlags, token::TokenAndSpan},
-    string_alloc::{MaybeSubUtf8, MaybeSubWtf8},
     syntax::SyntaxFlags,
 };
 
@@ -215,11 +216,11 @@ impl<I: Tokens> Tokens for Capturing<I> {
         ts
     }
 
-    fn get_maybe_sub_utf8(&self, atom_ref: MaybeSubUtf8) -> &str {
-        self.inner.get_maybe_sub_utf8(atom_ref)
+    fn string_allocator(&self) -> Rc<StringAllocator> {
+        self.inner.string_allocator()
     }
 
-    fn get_maybe_sub_wtf8(&self, atom_ref: MaybeSubWtf8) -> &swc_core::atoms::wtf8::Wtf8 {
-        self.inner.get_maybe_sub_wtf8(atom_ref)
+    fn read_string(&self, span: Span) -> &str {
+        self.inner.read_string(span)
     }
 }

@@ -8,7 +8,7 @@ use crate::{
     Context, Lexer,
     error::Error,
     input::{Buffer, Tokens},
-    string_alloc::{MaybeSubUtf8, MaybeSubWtf8},
+    lexer::{MaybeSubUtf8, MaybeSubWtf8},
 };
 
 #[derive(Debug, Clone)]
@@ -369,7 +369,7 @@ impl<'a> Token {
     #[inline]
     pub fn take_word<I: Tokens>(self, buffer: &Buffer<I>) -> MaybeSubUtf8 {
         let span = buffer.cur.span;
-        MaybeSubUtf8::new_from_source(span.lo, span.hi)
+        MaybeSubUtf8::Inline((span.lo, span.hi))
     }
 
     #[inline(always)]

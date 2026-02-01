@@ -1,12 +1,13 @@
-use swc_core::atoms::wtf8::Wtf8;
-use swc_core::common::{BytePos, Span};
-use swc_experimental_ecma_ast::EsVersion;
+use std::rc::Rc;
 
+use swc_core::common::{BytePos, Span};
+use swc_experimental_ecma_ast::{EsVersion, StringAllocator};
+
+use crate::lexer::{MaybeSubUtf8, MaybeSubWtf8};
 use crate::{
     Context,
     error::Error,
     lexer::{LexResult, NextTokenAndSpan, Token, TokenAndSpan, TokenFlags, TokenValue},
-    string_alloc::{MaybeSubUtf8, MaybeSubWtf8},
     syntax::SyntaxFlags,
 };
 
@@ -24,8 +25,8 @@ pub trait Tokens: Clone {
     fn checkpoint_save(&self) -> Self::Checkpoint;
     fn checkpoint_load(&mut self, checkpoint: Self::Checkpoint);
 
-    fn get_maybe_sub_utf8(&self, atom_ref: MaybeSubUtf8) -> &str;
-    fn get_maybe_sub_wtf8(&self, atom_ref: MaybeSubWtf8) -> &Wtf8;
+    fn string_allocator(&self) -> Rc<StringAllocator>;
+    fn read_string(&self, span: Span) -> &str;
 
     fn start_pos(&self) -> BytePos {
         BytePos(0)

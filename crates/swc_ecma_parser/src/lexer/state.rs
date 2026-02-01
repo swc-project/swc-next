@@ -1,7 +1,7 @@
-use std::mem::take;
+use std::{mem::take, rc::Rc};
 
-use swc_core::atoms::wtf8::{CodePoint, Wtf8};
-use swc_experimental_ecma_ast::{EsVersion, Span};
+use swc_core::atoms::wtf8::CodePoint;
+use swc_experimental_ecma_ast::{EsVersion, Span, StringAllocator};
 // use swc_core::atoms::wtf8::CodePoint;
 use swc_core::common::BytePos;
 
@@ -10,12 +10,11 @@ use crate::{
     error::{Error, SyntaxError},
     input::Tokens,
     lexer::{
-        LexResult,
+        LexResult, MaybeSubUtf8,
         char_ext::CharExt,
         comments_buffer::{BufferedCommentKind, CommentsBufferCheckpoint},
         token::{Token, TokenAndSpan, TokenValue},
     },
-    string_alloc::{MaybeSubUtf8, MaybeSubWtf8},
     syntax::SyntaxFlags,
 };
 
@@ -72,28 +71,12 @@ impl crate::input::Tokens for Lexer<'_> {
         }
     }
 
-    #[inline]
-    fn get_maybe_sub_utf8(&self, maybe: MaybeSubUtf8) -> &str {
-        match maybe {
-            MaybeSubUtf8::Empty => "",
-            MaybeSubUtf8::Inline((start, end)) => unsafe { self.input.slice(start, end) },
-            MaybeSubUtf8::Alloc((start, end)) => {
-                self.string_allocator.get_allocated_utf8(start, end)
-            }
-        }
+    fn string_allocator(&self) -> Rc<StringAllocator> {
+        self._string_allocator()
     }
 
-    #[inline]
-    fn get_maybe_sub_wtf8(&self, maybe: MaybeSubWtf8) -> &Wtf8 {
-        match maybe {
-            MaybeSubWtf8::Empty => Wtf8::from_str(""),
-            MaybeSubWtf8::Inline((start, end)) => {
-                Wtf8::from_str(unsafe { self.input.slice(start, end) })
-            }
-            MaybeSubWtf8::Alloc((start, end)) => {
-                self.string_allocator.get_allocated_wtf8(start, end)
-            }
-        }
+    fn read_string(&self, span: Span) -> &str {
+        unsafe { self.input.slice(span.lo, span.hi) }
     }
 
     #[inline]
@@ -289,23 +272,23 @@ impl crate::input::Tokens for Lexer<'_> {
             }
         }
         let v = if !v.is_empty() {
-            let mut builder = self.string_allocator.alloc_utf8();
+            let mut builder = self.sb.alloc_utf8();
             if token.is_known_ident() || token.is_keyword() {
-                builder.push_str(&mut self.string_allocator, &token.to_string());
-                builder.push_str(&mut self.string_allocator, &v);
+                builder.push_str(&mut self.sb, &token.to_string());
+                builder.push_str(&mut self.sb, &v);
             } else if let Some(TokenValue::Word(value)) = self.state.token_value.take() {
-                let value = self.get_maybe_sub_utf8(value).to_string();
-                builder.push_str(&mut self.string_allocator, &value);
-                builder.push_str(&mut self.string_allocator, &v);
+                let value = self.get_utf8(value).to_string();
+                builder.push_str(&mut self.sb, &value);
+                builder.push_str(&mut self.sb, &v);
             } else {
-                builder.push_str(&mut self.string_allocator, &token.to_string());
-                builder.push_str(&mut self.string_allocator, &v);
+                builder.push_str(&mut self.sb, &token.to_string());
+                builder.push_str(&mut self.sb, &v);
             };
-            builder.finish(&mut self.string_allocator)
+            builder.finish(&mut self.sb)
         } else if token.is_known_ident() || token.is_keyword() {
-            let mut builder = self.string_allocator.alloc_utf8();
-            builder.push_str(&mut self.string_allocator, &token.to_string());
-            builder.finish(&mut self.string_allocator)
+            let mut builder = self.sb.alloc_utf8();
+            builder.push_str(&mut self.sb, &token.to_string());
+            builder.finish(&mut self.sb)
         } else if let Some(TokenValue::Word(value)) = self.state.token_value.take() {
             value
         } else {
@@ -437,7 +420,7 @@ impl Lexer<'_> {
         let start = self.input.cur_pos();
         let mut first_non_whitespace = 0;
         let mut chunk_start = start;
-        let mut value = self.string_allocator.alloc_utf8();
+        let mut value = self.sb.alloc_utf8();
 
         while let Some(ch) = self.input_mut().peek() {
             if ch == b'{' {
@@ -479,10 +462,10 @@ impl Lexer<'_> {
                     // Safety: We already checked for the range
                     self.input_slice_to_cur(chunk_start)
                 };
-                value.push_str(&mut self.string_allocator, s);
+                value.push_str(&mut self.sb, s);
 
                 if let Ok(jsx_entity) = self.read_jsx_entity() {
-                    value.push(&mut self.string_allocator, jsx_entity.0);
+                    value.push(&mut self.sb, jsx_entity.0);
                     chunk_start = self.input.cur_pos();
                 }
             } else {
@@ -490,15 +473,15 @@ impl Lexer<'_> {
             }
         }
 
-        let value = if value.is_empty(&self.string_allocator) {
-            MaybeSubUtf8::new_from_source(start, self.cur_pos())
+        let value = if value.is_empty(&self.sb) {
+            MaybeSubUtf8::Inline((start, self.cur_pos()))
         } else {
             let s = unsafe {
                 // Safety: We already checked for the range
                 self.input_slice_to_cur(chunk_start)
             };
-            value.push_str(&mut self.string_allocator, s);
-            value.finish(&mut self.string_allocator)
+            value.push_str(&mut self.sb, s);
+            value.finish(&mut self.sb)
         };
 
         self.state.set_token_value(TokenValue::JsxText(value));
