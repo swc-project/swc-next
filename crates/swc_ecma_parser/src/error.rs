@@ -197,6 +197,7 @@ pub enum SyntaxError {
     TaggedTplInOptChain,
 
     TrailingCommaInsideImport,
+    ImportRequiresOneOrTwoArgs,
 
     ExportDefaultWithOutFrom,
     ExportExpectFrom(Atom),
@@ -494,6 +495,10 @@ impl SyntaxError {
 
             SyntaxError::TrailingCommaInsideImport => {
                 "Trailing comma is disallowed inside import(...) arguments".into()
+            }
+
+            SyntaxError::ImportRequiresOneOrTwoArgs => {
+                "`import()` requires exactly one or two arguments".into()
             }
 
             SyntaxError::ExportDefaultWithOutFrom => {
