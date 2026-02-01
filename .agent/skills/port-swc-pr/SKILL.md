@@ -88,7 +88,7 @@ Once the tests pass and the code is verified:
 2.  **Create PR**:
     Create the PR using the upstream title and referencing the upstream PR ID in the body.
     ```bash
-    gh pr create --title "<UPSTREAM_TITLE>" --body "Port of swc-project/swc#<PR_ID>"
+    gh pr create --title "<UPSTREAM_TITLE>" --body "Port of <PR_ID>"
     ```
 
 ## Tips
