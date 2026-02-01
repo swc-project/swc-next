@@ -10,6 +10,7 @@ version               = "0.4.1"
 
 [features]
 unstable = []
+typescript = []
 
 [dependencies]
 bitflags    = { workspace = true }

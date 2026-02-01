@@ -28,8 +28,7 @@ pub trait Case: Sync {
         match self.ext().as_str() {
             "cjs" => IsModule::Script,
             "mjs" => IsModule::Module,
-            "js" | "jsx" => IsModule::Unknown,
-            "ts" | "tsx" => IsModule::Skip,
+            "js" | "jsx" | "ts" | "tsx" => IsModule::Unknown,
             _ => unreachable!(),
         }
     }

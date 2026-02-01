@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use swc_experimental_ecma_parser::{EsSyntax, Syntax};
+use swc_experimental_ecma_parser::{EsSyntax, Syntax, TsSyntax};
 
 use crate::cases::{Case, fixtures};
 
@@ -91,7 +91,13 @@ impl Case for MiscCase {
                 }
                 Syntax::Es(es)
             }
-            "ts" | "cts" | "mts" | "tsx" => Syntax::Es(EsSyntax::default()),
+            "ts" | "cts" | "mts" | "tsx" => {
+                let mut ts = TsSyntax::default();
+                if ext == "tsx" {
+                    ts.tsx = true;
+                }
+                Syntax::Typescript(ts)
+            }
             _ => unreachable!(),
         }
     }

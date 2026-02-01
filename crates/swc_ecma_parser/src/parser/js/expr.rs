@@ -124,35 +124,43 @@ impl<I: Tokens> Parser<I> {
         trace_cur!(self, parse_assignment_expr_base);
         // let start = self.input().cur_span();
 
-        // if self.input().syntax().typescript()
-        //     && (self.input().cur() == Token::Lt || self.input().cur() == Token::JSXTagStart)
-        //     && (peek!(self).is_some_and(|peek| peek.is_word() || peek == Token::JSXName))
-        // {
-        //     let res = self.do_outside_of_context(Context::WillExpectColonForCond, |p| {
-        //         p.try_parse_ts(|p| {
-        //             let type_parameters = p.parse_ts_type_params(false, true)?;
-        //             let mut arrow = p.parse_assignment_expr_base()?;
-        //             match *arrow {
-        //                 Expr::Arrow(ArrowExpr {
-        //                     ref mut span,
-        //                     ref mut type_params,
-        //                     ..
-        //                 }) => {
-        //                     *span = Span::new_with_checked(type_parameters.span.lo, span.hi);
-        //                     *type_params = Some(type_parameters);
-        //                 }
-        //                 _ => unexpected!(p, "("),
-        //             }
-        //             Ok(Some(arrow))
-        //         })
-        //     });
-        //     if let Some(res) = res {
-        //         if self.input().syntax().disallow_ambiguous_jsx_like() {
-        //             self.emit_err(start, SyntaxError::ReservedArrowTypeParam);
-        //         }
-        //         return Ok(res);
-        //     }
-        // }
+        if self.input().syntax().typescript()
+            && (self.input().cur() == Token::Lt || self.input().cur() == Token::JSXTagStart)
+            && (peek!(self).is_some_and(|peek| peek.is_word() || peek == Token::JSXName))
+        {
+            let start = self.input().cur_pos();
+            let checkpoint = self.checkpoint_save();
+            match self.scan_ts_type_params() {
+                Ok(Some(info)) => {
+                    let is_ambiguous = self.input().syntax().jsx()
+                        && info.params_len == 1
+                        && !info.first_param_constraint
+                        && !info.has_trailing_comma;
+
+                    if is_ambiguous {
+                        // Reject: Restore and fall through (to JSX failure)
+                        self.checkpoint_load(checkpoint);
+                        if self.input().syntax().disallow_ambiguous_jsx_like() {
+                            self.emit_err(
+                                Span::new(start, start),
+                                SyntaxError::ReservedArrowTypeParam,
+                            );
+                        }
+                    } else {
+                        // Accept: Parse Arrow Base
+                        let arrow = self.parse_assignment_expr_base()?;
+                        if !matches!(arrow, Expr::Arrow(_)) {
+                            unexpected!(self, "(");
+                        }
+                        return Ok(arrow);
+                    }
+                }
+                Ok(None) | Err(_) => {
+                    // Not a generic arrow start. Restore.
+                    self.checkpoint_load(checkpoint);
+                }
+            }
+        }
 
         if self.ctx().contains(Context::InGenerator) && self.input().is(Token::Yield) {
             return self.parse_yield_expr();
@@ -2603,6 +2611,117 @@ impl<I: Tokens> Parser<I> {
                     .is_some_and(|peek| matches!(peek, Token::LParen | Token::Lt | Token::Dot))
             }
     }
+
+    fn scan_ts_type_params(&mut self) -> PResult<Option<TsTypeParamsInfo>> {
+        if !matches!(self.input().cur(), Token::Lt | Token::JSXTagStart) {
+            return Ok(None);
+        }
+        self.bump(); // <
+
+        let mut params_len = 0;
+        let mut first_param_constraint = false;
+        let mut has_trailing_comma = false;
+
+        loop {
+            if matches!(self.input().cur(), Token::Gt) {
+                self.bump();
+                break;
+            }
+
+            // Skip modifiers
+            while matches!(self.input().cur(), Token::Const | Token::In) {
+                self.bump();
+            }
+
+            // Ident
+            if !self.input().cur().is_ident_ref(self.ctx()) {
+                return Ok(None);
+            }
+            self.bump();
+
+            // Extends
+            if self.input_mut().eat(Token::Extends) {
+                if params_len == 0 {
+                    first_param_constraint = true;
+                }
+                self.skip_ts_type()?;
+            }
+
+            // Default
+            if self.input_mut().eat(Token::Eq) {
+                self.skip_ts_type()?;
+            }
+
+            params_len += 1;
+
+            if self.input_mut().eat(Token::Comma) {
+                has_trailing_comma = true;
+            } else {
+                has_trailing_comma = false;
+            }
+        }
+
+        Ok(Some(TsTypeParamsInfo {
+            params_len,
+            first_param_constraint,
+            has_trailing_comma,
+        }))
+    }
+
+    fn skip_ts_type(&mut self) -> PResult<()> {
+        let mut balance = 0;
+        loop {
+            let cur = self.input().cur();
+            if matches!(
+                cur,
+                Token::Lt | Token::JSXTagStart | Token::LBrace | Token::LBracket | Token::LParen
+            ) {
+                balance += 1;
+            } else if matches!(
+                cur,
+                Token::Gt | Token::RBrace | Token::RBracket | Token::RParen
+            ) {
+                if balance == 0 {
+                    // Terminator of type in param list: >, but > terminates list.
+                    // If we see >, and balance 0, we STOP and do NOT consume it.
+                    if matches!(cur, Token::Gt) {
+                        return Ok(());
+                    }
+                    // Also , and = terminate type at top level.
+                }
+                if balance > 0 {
+                    balance -= 1;
+                } else {
+                    // Unbalanced >
+                    // Likely end of generic list (e.g. A<B>).
+                    // Or closing paren.
+                    // If we are here with balance 0 and see >, we handled it above.
+                    // If we see bracket/brace/paren with valance 0: it's unexpected for a type but consumes it?
+                    // No, `>` is special. `)` might end type in `(x: type)`.
+                    if matches!(cur, Token::RBrace | Token::RBracket | Token::RParen) {
+                        // Should stop?
+                        // Types usually don't contain unbalanced closing tokens.
+                        // Assume we hit end of context.
+                        return Ok(());
+                    }
+                }
+            } else if matches!(cur, Token::Comma | Token::Eq | Token::Arrow) {
+                if balance == 0 {
+                    return Ok(());
+                }
+            } else if cur == Token::Eof {
+                return Ok(());
+            }
+
+            self.bump();
+        }
+    }
+}
+
+struct TsTypeParamsInfo {
+    params_len: usize,
+    first_param_constraint: bool,
+    has_trailing_comma: bool,
 }
 
 fn unwrap_ts_non_null(expr: Expr) -> Expr {
