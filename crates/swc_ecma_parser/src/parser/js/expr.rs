@@ -882,7 +882,6 @@ impl<I: Tokens> Parser<I> {
             expect!(p, Token::LParen);
 
             let mut first = true;
-            let mut count = 0;
             p.scratch_start(|p, expr_or_spreads| {
                 while !p.input().is(Token::RParen) {
                     if first {
@@ -905,15 +904,9 @@ impl<I: Tokens> Parser<I> {
 
                     let expr_or_spread = p.allow_in_expr(|p| p.parse_expr_or_spread())?;
                     expr_or_spreads.push(p, expr_or_spread);
-                    count += 1;
                 }
 
                 expect!(p, Token::RParen);
-
-                if is_dynamic_import && (count == 0 || count > 2) {
-                    syntax_error!(p, p.span(start), SyntaxError::ImportRequiresOneOrTwoArgs);
-                }
-
                 Ok(())
             })
         })
@@ -1395,6 +1388,16 @@ impl<I: Tokens> Parser<I> {
 
         if self.input().is(Token::LParen) {
             let args = self.parse_args(true)?;
+
+            // Dynamic import requires exactly one or two arguments
+            if args.is_empty() || args.len() > 2 {
+                syntax_error!(
+                    self,
+                    self.span(start),
+                    SyntaxError::ImportRequiresOneOrTwoArgs
+                );
+            }
+
             let expr = self
                 .ast
                 .expr_call_expr(self.span(start), Callee::Import(lhs), args);
