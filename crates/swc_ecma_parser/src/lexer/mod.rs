@@ -1157,7 +1157,21 @@ impl<'a> Lexer<'a> {
             self.input_slice_to_cur(lazy_integer.start)
         };
         if self.eat(b'n') {
-            let bigint_value = num_bigint::BigInt::parse_bytes(s.as_bytes(), RADIX as _).unwrap();
+            if s.starts_with('_') {
+                return Err(Error::new(
+                    Span::new(lazy_integer.start, lazy_integer.end),
+                    SyntaxError::NumericSeparatorIsAllowedOnlyBetweenTwoDigits,
+                ));
+            }
+
+            let Some(bigint_value) = num_bigint::BigInt::parse_bytes(s.as_bytes(), RADIX as _)
+            else {
+                // just a fallback in case there is anything we did not catch
+                return Err(Error::new(
+                    Span::new(lazy_integer.start, lazy_integer.end),
+                    SyntaxError::ExpectedDigit { radix: RADIX },
+                ));
+            };
             return Ok(Either::Right(Box::new(bigint_value)));
         }
         let s = remove_underscore(s, has_underscore);
