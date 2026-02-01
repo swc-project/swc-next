@@ -12,7 +12,6 @@ repository  = "https://github.com/CPunisher/swc-experimental"
 [workspace.dependencies]
 bitflags         = "2"
 either           = "1.10.0"
-fixedbitset      = "0.5.7"
 indexmap         = "2.12.0"
 num-bigint       = "0.4.6"
 oxc_index        = "4.1.0"
