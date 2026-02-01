@@ -26,6 +26,8 @@ gh pr diff <PR_ID> -R swc-project/swc
 1.  **Test Cases**: Look for changes in `crates/swc_ecma_parser/tests`. Upstream uses snapshot tests.
 2.  **Source Code**: Look for changes in `crates/swc_ecma_parser/src`.
 
+Create a git branch named like `02-01-feat/port-1234`, where `feat` should be respected to the type of change in the source PR.
+
 ### 2. Port Test Cases (First Step)
 
 **Rule**: Always match the test failure _before_ fixing the code.
