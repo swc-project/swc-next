@@ -1,6 +1,7 @@
 use std::{
     fs::read_to_string,
     path::{Path, PathBuf},
+    time::Duration,
 };
 
 use jwalk::WalkDir;
@@ -52,7 +53,9 @@ impl Test262Case {
             WalkDir::new(fixtures().join("test262").join("test")).parallelism(if cfg!(miri) {
                 jwalk::Parallelism::Serial
             } else {
-                jwalk::Parallelism::RayonDefaultPool
+                jwalk::Parallelism::RayonDefaultPool {
+                    busy_timeout: Duration::from_secs(1),
+                }
             })
         {
             let file = file.unwrap();
