@@ -4,13 +4,13 @@ use swc_experimental_ecma_visit::{Visit, VisitWith};
 
 pub struct DestructuringFinder<'ast> {
     ast: &'ast Ast,
-    found: &'ast mut FxHashSet<Utf8Ref>,
+    found: &'ast mut Vec<Utf8Ref>,
 }
 
 pub fn find_pat_ids<'ast, N: VisitWith<DestructuringFinder<'ast>>>(
     ast: &'ast Ast,
     node: N,
-    found: &'ast mut FxHashSet<Utf8Ref>,
+    found: &'ast mut Vec<Utf8Ref>,
 ) {
     let mut v = DestructuringFinder { ast, found };
     node.visit_with(&mut v);
@@ -25,7 +25,7 @@ impl<'ast> Visit for DestructuringFinder<'ast> {
     fn visit_expr(&mut self, _: Expr) {}
 
     fn visit_ident(&mut self, i: Ident) {
-        self.found.insert(i.sym(self.ast));
+        self.found.push(i.sym(self.ast));
     }
 
     // fn visit_jsx_member_expr(&mut self, n: &JSXMemberExpr) {

@@ -556,7 +556,7 @@ impl<'ast> Visit for Resolver<'ast> {
             let old = child.ident_type;
             child.ident_type = IdentType::Binding;
             {
-                let mut params = FxHashSet::default();
+                let mut params = Vec::default();
                 e.params(self.ast)
                     .iter()
                     .filter(|p| !self.ast.get_node_in_sub_range(*p).is_rest())
@@ -796,7 +796,7 @@ impl<'ast> Visit for Resolver<'ast> {
             let old = child.ident_type;
             child.ident_type = IdentType::Binding;
             {
-                let mut params = FxHashSet::default();
+                let mut params = Vec::default();
                 c.params(self.ast)
                     .iter()
                     .filter(|p| {
@@ -1008,7 +1008,7 @@ impl<'ast> Visit for Resolver<'ast> {
         // f.decorators.visit_with(self);
 
         {
-            let mut params = FxHashSet::default();
+            let mut params = Vec::default();
             f.params(self.ast)
                 .iter()
                 .filter(|p| !self.ast.get_node_in_sub_range(*p).pat(self.ast).is_rest())
@@ -1865,7 +1865,7 @@ impl<'resolver, 'ast> Visit for Hoister<'resolver, 'ast> {
 
         let old_in_catch_body = self.in_catch_body;
 
-        let mut params = FxHashSet::default();
+        let mut params = Vec::default();
         find_pat_ids(self.resolver.ast, c.param(self.resolver.ast), &mut params);
 
         let orig = self.catch_param_decls.clone();
