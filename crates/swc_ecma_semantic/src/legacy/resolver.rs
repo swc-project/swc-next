@@ -136,11 +136,11 @@ pub fn resolver<'ast, N: Copy + VisitWith<Resolver<'ast>>>(root: N, ast: &'ast A
 
     // Init symbol scopes
     let mut symbol_scopes = IndexVec::with_capacity(node_count);
-    symbol_scopes.resize(node_count, unresolved_scope_id);
+    symbol_scopes.resize(node_count, None);
 
     // Init block_scopes
     let mut block_scopes = IndexVec::with_capacity(node_count);
-    block_scopes.resize(node_count, unresolved_scope_id);
+    block_scopes.resize(node_count, None);
 
     let mut resolver = Resolver {
         ast,
@@ -172,19 +172,19 @@ pub fn resolver<'ast, N: Copy + VisitWith<Resolver<'ast>>>(root: N, ast: &'ast A
 pub struct Semantic {
     top_level_scope_id: ScopeId,
     unresolved_scope_id: ScopeId,
-    symbol_scopes: IndexVec<NodeId, ScopeId>,
-    block_scopes: IndexVec<NodeId, ScopeId>,
+    symbol_scopes: IndexVec<NodeId, Option<ScopeId>>,
+    block_scopes: IndexVec<NodeId, Option<ScopeId>>,
 }
 
 impl Semantic {
     #[inline]
     pub fn node_scope(&self, ident: Ident) -> ScopeId {
-        self.symbol_scopes[ident.node_id()]
+        self.symbol_scopes[ident.node_id()].unwrap_or(self.unresolved_scope_id)
     }
 
     #[inline]
     pub fn body_scope(&self, block: BlockStmt) -> ScopeId {
-        self.symbol_scopes[block.node_id()]
+        self.symbol_scopes[block.node_id()].unwrap_or(self.unresolved_scope_id)
     }
 
     #[inline]
@@ -232,8 +232,8 @@ impl Scope {
 pub struct Resolver<'ast> {
     // Changed
     ast: &'ast Ast,
-    symbol_scopes: IndexVec<NodeId, ScopeId>,
-    block_scopes: IndexVec<NodeId, ScopeId>,
+    symbol_scopes: IndexVec<NodeId, Option<ScopeId>>,
+    block_scopes: IndexVec<NodeId, Option<ScopeId>>,
 
     top_level_scope_id: ScopeId,
     unresolved_scope_id: ScopeId,
@@ -359,7 +359,7 @@ impl<'ast> Resolver<'ast> {
     fn modify(&mut self, id: Ident, kind: DeclKind) {
         let node_id = id.node_id();
 
-        if self.symbol_scopes[node_id] != self.unresolved_scope_id {
+        if self.symbol_scopes[node_id].is_some() {
             return;
         }
 
@@ -374,16 +374,16 @@ impl<'ast> Resolver<'ast> {
         }
 
         let scope_id = self.current;
-        self.symbol_scopes[node_id] = scope_id;
+        self.symbol_scopes[node_id] = Some(scope_id);
     }
 
     fn mark_block(&mut self, node_id: NodeId) {
-        if self.block_scopes[node_id] != self.unresolved_scope_id {
+        if self.block_scopes[node_id].is_some() {
             return;
         }
 
         let scope_id = self.current;
-        self.block_scopes[node_id] = scope_id;
+        self.block_scopes[node_id] = Some(scope_id);
     }
 
     // fn try_resolving_as_type(&mut self, i: &mut Ident) {
@@ -1086,7 +1086,7 @@ impl<'ast> Visit for Resolver<'ast> {
     fn visit_ident(&mut self, i: Ident) {
         self.enter_node(i.node_id());
 
-        if self.symbol_scopes[i.node_id()] != self.unresolved_scope_id {
+        if self.symbol_scopes[i.node_id()].is_some() {
             self.leave_node(i.node_id());
             return;
         }
@@ -1102,7 +1102,7 @@ impl<'ast> Visit for Resolver<'ast> {
                     // if cfg!(debug_assertions) && LOG {
                     //     debug!("\t -> {:?}", ctxt);
                     // }
-                    self.symbol_scopes[i.node_id()] = scope_id;
+                    self.symbol_scopes[i.node_id()] = Some(scope_id);
                 } else {
                     // if cfg!(debug_assertions) && LOG {
                     //     debug!("\t -> Unresolved");
@@ -1112,7 +1112,7 @@ impl<'ast> Visit for Resolver<'ast> {
                     //     debug!("\t -> {:?}", ctxt);
                     // }
 
-                    self.symbol_scopes[i.node_id()] = self.unresolved_scope_id;
+                    self.symbol_scopes[i.node_id()] = Some(self.unresolved_scope_id);
                     // Support hoisting
                     self.modify(i, self.decl_kind)
                 }
