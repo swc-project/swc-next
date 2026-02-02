@@ -1865,13 +1865,11 @@ impl<'resolver, 'ast> Visit for Hoister<'resolver, 'ast> {
 
         let old_in_catch_body = self.in_catch_body;
 
-        find_pat_ids(
-            self.resolver.ast,
-            c.param(self.resolver.ast),
-            &mut self.catch_param_decls,
-        );
+        let mut params = FxHashSet::default();
+        find_pat_ids(self.resolver.ast, c.param(self.resolver.ast), &mut params);
 
         let orig = self.catch_param_decls.clone();
+        self.catch_param_decls.extend(params);
 
         self.in_catch_body = true;
         c.body(self.resolver.ast).visit_with(self);
