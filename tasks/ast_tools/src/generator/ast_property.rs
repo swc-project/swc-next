@@ -540,7 +540,7 @@ fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
         let struct_name = format_ident!("{}", schema.types[variant.type_id.unwrap()].name());
         as_variant.extend(quote! {
             #[inline]
-            pub fn #as_fn_name(&self) -> Option<&#struct_name> {
+            pub fn #as_fn_name(self) -> Option<#struct_name> {
                 match self {
                     Self::#variant_name(it) => Some(it),
                     _ => None,

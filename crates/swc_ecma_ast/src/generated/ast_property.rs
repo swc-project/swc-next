@@ -38,14 +38,14 @@ impl Program {
         matches!(self, Self::Script(_))
     }
     #[inline]
-    pub fn as_module(&self) -> Option<&Module> {
+    pub fn as_module(self) -> Option<Module> {
         match self {
             Self::Module(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_script(&self) -> Option<&Script> {
+    pub fn as_script(self) -> Option<Script> {
         match self {
             Self::Script(it) => Some(it),
             _ => None,
@@ -272,14 +272,14 @@ impl ModuleItem {
         matches!(self, Self::Stmt(_))
     }
     #[inline]
-    pub fn as_module_decl(&self) -> Option<&ModuleDecl> {
+    pub fn as_module_decl(self) -> Option<ModuleDecl> {
         match self {
             Self::ModuleDecl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_stmt(&self) -> Option<&Stmt> {
+    pub fn as_stmt(self) -> Option<Stmt> {
         match self {
             Self::Stmt(it) => Some(it),
             _ => None,
@@ -342,42 +342,42 @@ impl ModuleDecl {
         matches!(self, Self::ExportAll(_))
     }
     #[inline]
-    pub fn as_import(&self) -> Option<&ImportDecl> {
+    pub fn as_import(self) -> Option<ImportDecl> {
         match self {
             Self::Import(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_export_decl(&self) -> Option<&ExportDecl> {
+    pub fn as_export_decl(self) -> Option<ExportDecl> {
         match self {
             Self::ExportDecl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_export_named(&self) -> Option<&NamedExport> {
+    pub fn as_export_named(self) -> Option<NamedExport> {
         match self {
             Self::ExportNamed(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_export_default_decl(&self) -> Option<&ExportDefaultDecl> {
+    pub fn as_export_default_decl(self) -> Option<ExportDefaultDecl> {
         match self {
             Self::ExportDefaultDecl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_export_default_expr(&self) -> Option<&ExportDefaultExpr> {
+    pub fn as_export_default_expr(self) -> Option<ExportDefaultExpr> {
         match self {
             Self::ExportDefaultExpr(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_export_all(&self) -> Option<&ExportAll> {
+    pub fn as_export_all(self) -> Option<ExportAll> {
         match self {
             Self::ExportAll(it) => Some(it),
             _ => None,
@@ -627,21 +627,21 @@ impl ImportSpecifier {
         matches!(self, Self::Namespace(_))
     }
     #[inline]
-    pub fn as_named(&self) -> Option<&ImportNamedSpecifier> {
+    pub fn as_named(self) -> Option<ImportNamedSpecifier> {
         match self {
             Self::Named(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_default(&self) -> Option<&ImportDefaultSpecifier> {
+    pub fn as_default(self) -> Option<ImportDefaultSpecifier> {
         match self {
             Self::Default(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_namespace(&self) -> Option<&ImportStarAsSpecifier> {
+    pub fn as_namespace(self) -> Option<ImportStarAsSpecifier> {
         match self {
             Self::Namespace(it) => Some(it),
             _ => None,
@@ -1080,21 +1080,21 @@ impl ExportSpecifier {
         matches!(self, Self::Named(_))
     }
     #[inline]
-    pub fn as_namespace(&self) -> Option<&ExportNamespaceSpecifier> {
+    pub fn as_namespace(self) -> Option<ExportNamespaceSpecifier> {
         match self {
             Self::Namespace(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_default(&self) -> Option<&ExportDefaultSpecifier> {
+    pub fn as_default(self) -> Option<ExportDefaultSpecifier> {
         match self {
             Self::Default(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_named(&self) -> Option<&ExportNamedSpecifier> {
+    pub fn as_named(self) -> Option<ExportNamedSpecifier> {
         match self {
             Self::Named(it) => Some(it),
             _ => None,
@@ -1190,14 +1190,14 @@ impl ModuleExportName {
         matches!(self, Self::Str(_))
     }
     #[inline]
-    pub fn as_ident(&self) -> Option<&Ident> {
+    pub fn as_ident(self) -> Option<Ident> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_str(&self) -> Option<&Str> {
+    pub fn as_str(self) -> Option<Str> {
         match self {
             Self::Str(it) => Some(it),
             _ => None,
@@ -1431,14 +1431,14 @@ impl DefaultDecl {
         matches!(self, Self::Fn(_))
     }
     #[inline]
-    pub fn as_class(&self) -> Option<&ClassExpr> {
+    pub fn as_class(self) -> Option<ClassExpr> {
         match self {
             Self::Class(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_fn(&self) -> Option<&FnExpr> {
+    pub fn as_fn(self) -> Option<FnExpr> {
         match self {
             Self::Fn(it) => Some(it),
             _ => None,
@@ -1800,133 +1800,133 @@ impl Stmt {
         matches!(self, Self::Expr(_))
     }
     #[inline]
-    pub fn as_block(&self) -> Option<&BlockStmt> {
+    pub fn as_block(self) -> Option<BlockStmt> {
         match self {
             Self::Block(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_empty(&self) -> Option<&EmptyStmt> {
+    pub fn as_empty(self) -> Option<EmptyStmt> {
         match self {
             Self::Empty(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_debugger(&self) -> Option<&DebuggerStmt> {
+    pub fn as_debugger(self) -> Option<DebuggerStmt> {
         match self {
             Self::Debugger(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_with(&self) -> Option<&WithStmt> {
+    pub fn as_with(self) -> Option<WithStmt> {
         match self {
             Self::With(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_return(&self) -> Option<&ReturnStmt> {
+    pub fn as_return(self) -> Option<ReturnStmt> {
         match self {
             Self::Return(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_labeled(&self) -> Option<&LabeledStmt> {
+    pub fn as_labeled(self) -> Option<LabeledStmt> {
         match self {
             Self::Labeled(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_break(&self) -> Option<&BreakStmt> {
+    pub fn as_break(self) -> Option<BreakStmt> {
         match self {
             Self::Break(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_continue(&self) -> Option<&ContinueStmt> {
+    pub fn as_continue(self) -> Option<ContinueStmt> {
         match self {
             Self::Continue(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_if(&self) -> Option<&IfStmt> {
+    pub fn as_if(self) -> Option<IfStmt> {
         match self {
             Self::If(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_switch(&self) -> Option<&SwitchStmt> {
+    pub fn as_switch(self) -> Option<SwitchStmt> {
         match self {
             Self::Switch(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_throw(&self) -> Option<&ThrowStmt> {
+    pub fn as_throw(self) -> Option<ThrowStmt> {
         match self {
             Self::Throw(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_try(&self) -> Option<&TryStmt> {
+    pub fn as_try(self) -> Option<TryStmt> {
         match self {
             Self::Try(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_while(&self) -> Option<&WhileStmt> {
+    pub fn as_while(self) -> Option<WhileStmt> {
         match self {
             Self::While(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_do_while(&self) -> Option<&DoWhileStmt> {
+    pub fn as_do_while(self) -> Option<DoWhileStmt> {
         match self {
             Self::DoWhile(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_for(&self) -> Option<&ForStmt> {
+    pub fn as_for(self) -> Option<ForStmt> {
         match self {
             Self::For(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_for_in(&self) -> Option<&ForInStmt> {
+    pub fn as_for_in(self) -> Option<ForInStmt> {
         match self {
             Self::ForIn(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_for_of(&self) -> Option<&ForOfStmt> {
+    pub fn as_for_of(self) -> Option<ForOfStmt> {
         match self {
             Self::ForOf(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_decl(&self) -> Option<&Decl> {
+    pub fn as_decl(self) -> Option<Decl> {
         match self {
             Self::Decl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_expr(&self) -> Option<&ExprStmt> {
+    pub fn as_expr(self) -> Option<ExprStmt> {
         match self {
             Self::Expr(it) => Some(it),
             _ => None,
@@ -3609,21 +3609,21 @@ impl ForHead {
         matches!(self, Self::Pat(_))
     }
     #[inline]
-    pub fn as_var_decl(&self) -> Option<&VarDecl> {
+    pub fn as_var_decl(self) -> Option<VarDecl> {
         match self {
             Self::VarDecl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_using_decl(&self) -> Option<&UsingDecl> {
+    pub fn as_using_decl(self) -> Option<UsingDecl> {
         match self {
             Self::UsingDecl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_pat(&self) -> Option<&Pat> {
+    pub fn as_pat(self) -> Option<Pat> {
         match self {
             Self::Pat(it) => Some(it),
             _ => None,
@@ -3662,14 +3662,14 @@ impl VarDeclOrExpr {
         matches!(self, Self::Expr(_))
     }
     #[inline]
-    pub fn as_var_decl(&self) -> Option<&VarDecl> {
+    pub fn as_var_decl(self) -> Option<VarDecl> {
         match self {
             Self::VarDecl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_expr(&self) -> Option<&Expr> {
+    pub fn as_expr(self) -> Option<Expr> {
         match self {
             Self::Expr(it) => Some(it),
             _ => None,
@@ -3720,28 +3720,28 @@ impl Decl {
         matches!(self, Self::Using(_))
     }
     #[inline]
-    pub fn as_class(&self) -> Option<&ClassDecl> {
+    pub fn as_class(self) -> Option<ClassDecl> {
         match self {
             Self::Class(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_fn(&self) -> Option<&FnDecl> {
+    pub fn as_fn(self) -> Option<FnDecl> {
         match self {
             Self::Fn(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_var(&self) -> Option<&VarDecl> {
+    pub fn as_var(self) -> Option<VarDecl> {
         match self {
             Self::Var(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_using(&self) -> Option<&UsingDecl> {
+    pub fn as_using(self) -> Option<UsingDecl> {
         match self {
             Self::Using(it) => Some(it),
             _ => None,
@@ -4493,224 +4493,224 @@ impl Expr {
         matches!(self, Self::Invalid(_))
     }
     #[inline]
-    pub fn as_this(&self) -> Option<&ThisExpr> {
+    pub fn as_this(self) -> Option<ThisExpr> {
         match self {
             Self::This(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_array(&self) -> Option<&ArrayLit> {
+    pub fn as_array(self) -> Option<ArrayLit> {
         match self {
             Self::Array(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_object(&self) -> Option<&ObjectLit> {
+    pub fn as_object(self) -> Option<ObjectLit> {
         match self {
             Self::Object(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_fn(&self) -> Option<&FnExpr> {
+    pub fn as_fn(self) -> Option<FnExpr> {
         match self {
             Self::Fn(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_unary(&self) -> Option<&UnaryExpr> {
+    pub fn as_unary(self) -> Option<UnaryExpr> {
         match self {
             Self::Unary(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_update(&self) -> Option<&UpdateExpr> {
+    pub fn as_update(self) -> Option<UpdateExpr> {
         match self {
             Self::Update(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_bin(&self) -> Option<&BinExpr> {
+    pub fn as_bin(self) -> Option<BinExpr> {
         match self {
             Self::Bin(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_assign(&self) -> Option<&AssignExpr> {
+    pub fn as_assign(self) -> Option<AssignExpr> {
         match self {
             Self::Assign(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_member(&self) -> Option<&MemberExpr> {
+    pub fn as_member(self) -> Option<MemberExpr> {
         match self {
             Self::Member(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_super_prop(&self) -> Option<&SuperPropExpr> {
+    pub fn as_super_prop(self) -> Option<SuperPropExpr> {
         match self {
             Self::SuperProp(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_cond(&self) -> Option<&CondExpr> {
+    pub fn as_cond(self) -> Option<CondExpr> {
         match self {
             Self::Cond(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_call(&self) -> Option<&CallExpr> {
+    pub fn as_call(self) -> Option<CallExpr> {
         match self {
             Self::Call(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_new(&self) -> Option<&NewExpr> {
+    pub fn as_new(self) -> Option<NewExpr> {
         match self {
             Self::New(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_seq(&self) -> Option<&SeqExpr> {
+    pub fn as_seq(self) -> Option<SeqExpr> {
         match self {
             Self::Seq(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_ident(&self) -> Option<&Ident> {
+    pub fn as_ident(self) -> Option<Ident> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_lit(&self) -> Option<&Lit> {
+    pub fn as_lit(self) -> Option<Lit> {
         match self {
             Self::Lit(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_tpl(&self) -> Option<&Tpl> {
+    pub fn as_tpl(self) -> Option<Tpl> {
         match self {
             Self::Tpl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_tagged_tpl(&self) -> Option<&TaggedTpl> {
+    pub fn as_tagged_tpl(self) -> Option<TaggedTpl> {
         match self {
             Self::TaggedTpl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_arrow(&self) -> Option<&ArrowExpr> {
+    pub fn as_arrow(self) -> Option<ArrowExpr> {
         match self {
             Self::Arrow(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_class(&self) -> Option<&ClassExpr> {
+    pub fn as_class(self) -> Option<ClassExpr> {
         match self {
             Self::Class(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_yield(&self) -> Option<&YieldExpr> {
+    pub fn as_yield(self) -> Option<YieldExpr> {
         match self {
             Self::Yield(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_meta_prop(&self) -> Option<&MetaPropExpr> {
+    pub fn as_meta_prop(self) -> Option<MetaPropExpr> {
         match self {
             Self::MetaProp(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_await(&self) -> Option<&AwaitExpr> {
+    pub fn as_await(self) -> Option<AwaitExpr> {
         match self {
             Self::Await(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_paren(&self) -> Option<&ParenExpr> {
+    pub fn as_paren(self) -> Option<ParenExpr> {
         match self {
             Self::Paren(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_member(&self) -> Option<&JSXMemberExpr> {
+    pub fn as_jsx_member(self) -> Option<JSXMemberExpr> {
         match self {
             Self::JSXMember(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_namespaced_name(&self) -> Option<&JSXNamespacedName> {
+    pub fn as_jsx_namespaced_name(self) -> Option<JSXNamespacedName> {
         match self {
             Self::JSXNamespacedName(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_empty(&self) -> Option<&JSXEmptyExpr> {
+    pub fn as_jsx_empty(self) -> Option<JSXEmptyExpr> {
         match self {
             Self::JSXEmpty(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_element(&self) -> Option<&JSXElement> {
+    pub fn as_jsx_element(self) -> Option<JSXElement> {
         match self {
             Self::JSXElement(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_fragment(&self) -> Option<&JSXFragment> {
+    pub fn as_jsx_fragment(self) -> Option<JSXFragment> {
         match self {
             Self::JSXFragment(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_private_name(&self) -> Option<&PrivateName> {
+    pub fn as_private_name(self) -> Option<PrivateName> {
         match self {
             Self::PrivateName(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_opt_chain(&self) -> Option<&OptChainExpr> {
+    pub fn as_opt_chain(self) -> Option<OptChainExpr> {
         match self {
             Self::OptChain(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_invalid(&self) -> Option<&Invalid> {
+    pub fn as_invalid(self) -> Option<Invalid> {
         match self {
             Self::Invalid(it) => Some(it),
             _ => None,
@@ -4883,14 +4883,14 @@ impl PropOrSpread {
         matches!(self, Self::Prop(_))
     }
     #[inline]
-    pub fn as_spread_element(&self) -> Option<&SpreadElement> {
+    pub fn as_spread_element(self) -> Option<SpreadElement> {
         match self {
             Self::SpreadElement(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_prop(&self) -> Option<&Prop> {
+    pub fn as_prop(self) -> Option<Prop> {
         match self {
             Self::Prop(it) => Some(it),
             _ => None,
@@ -5678,21 +5678,21 @@ impl MemberProp {
         matches!(self, Self::Computed(_))
     }
     #[inline]
-    pub fn as_ident(&self) -> Option<&IdentName> {
+    pub fn as_ident(self) -> Option<IdentName> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_private_name(&self) -> Option<&PrivateName> {
+    pub fn as_private_name(self) -> Option<PrivateName> {
         match self {
             Self::PrivateName(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_computed(&self) -> Option<&ComputedPropName> {
+    pub fn as_computed(self) -> Option<ComputedPropName> {
         match self {
             Self::Computed(it) => Some(it),
             _ => None,
@@ -5825,14 +5825,14 @@ impl SuperProp {
         matches!(self, Self::Computed(_))
     }
     #[inline]
-    pub fn as_ident(&self) -> Option<&IdentName> {
+    pub fn as_ident(self) -> Option<IdentName> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_computed(&self) -> Option<&ComputedPropName> {
+    pub fn as_computed(self) -> Option<ComputedPropName> {
         match self {
             Self::Computed(it) => Some(it),
             _ => None,
@@ -6931,21 +6931,21 @@ impl Callee {
         matches!(self, Self::Expr(_))
     }
     #[inline]
-    pub fn as_super(&self) -> Option<&Super> {
+    pub fn as_super(self) -> Option<Super> {
         match self {
             Self::Super(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_import(&self) -> Option<&Import> {
+    pub fn as_import(self) -> Option<Import> {
         match self {
             Self::Import(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_expr(&self) -> Option<&Expr> {
+    pub fn as_expr(self) -> Option<Expr> {
         match self {
             Self::Expr(it) => Some(it),
             _ => None,
@@ -7149,14 +7149,14 @@ impl BlockStmtOrExpr {
         matches!(self, Self::Expr(_))
     }
     #[inline]
-    pub fn as_block_stmt(&self) -> Option<&BlockStmt> {
+    pub fn as_block_stmt(self) -> Option<BlockStmt> {
         match self {
             Self::BlockStmt(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_expr(&self) -> Option<&Expr> {
+    pub fn as_expr(self) -> Option<Expr> {
         match self {
             Self::Expr(it) => Some(it),
             _ => None,
@@ -7195,14 +7195,14 @@ impl AssignTarget {
         matches!(self, Self::Pat(_))
     }
     #[inline]
-    pub fn as_simple(&self) -> Option<&SimpleAssignTarget> {
+    pub fn as_simple(self) -> Option<SimpleAssignTarget> {
         match self {
             Self::Simple(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_pat(&self) -> Option<&AssignTargetPat> {
+    pub fn as_pat(self) -> Option<AssignTargetPat> {
         match self {
             Self::Pat(it) => Some(it),
             _ => None,
@@ -7247,21 +7247,21 @@ impl AssignTargetPat {
         matches!(self, Self::Invalid(_))
     }
     #[inline]
-    pub fn as_array(&self) -> Option<&ArrayPat> {
+    pub fn as_array(self) -> Option<ArrayPat> {
         match self {
             Self::Array(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_object(&self) -> Option<&ObjectPat> {
+    pub fn as_object(self) -> Option<ObjectPat> {
         match self {
             Self::Object(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_invalid(&self) -> Option<&Invalid> {
+    pub fn as_invalid(self) -> Option<Invalid> {
         match self {
             Self::Invalid(it) => Some(it),
             _ => None,
@@ -7324,42 +7324,42 @@ impl SimpleAssignTarget {
         matches!(self, Self::Invalid(_))
     }
     #[inline]
-    pub fn as_ident(&self) -> Option<&BindingIdent> {
+    pub fn as_ident(self) -> Option<BindingIdent> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_member(&self) -> Option<&MemberExpr> {
+    pub fn as_member(self) -> Option<MemberExpr> {
         match self {
             Self::Member(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_super_prop(&self) -> Option<&SuperPropExpr> {
+    pub fn as_super_prop(self) -> Option<SuperPropExpr> {
         match self {
             Self::SuperProp(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_paren(&self) -> Option<&ParenExpr> {
+    pub fn as_paren(self) -> Option<ParenExpr> {
         match self {
             Self::Paren(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_opt_chain(&self) -> Option<&OptChainExpr> {
+    pub fn as_opt_chain(self) -> Option<OptChainExpr> {
         match self {
             Self::OptChain(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_invalid(&self) -> Option<&Invalid> {
+    pub fn as_invalid(self) -> Option<Invalid> {
         match self {
             Self::Invalid(it) => Some(it),
             _ => None,
@@ -7468,14 +7468,14 @@ impl OptChainBase {
         matches!(self, Self::Call(_))
     }
     #[inline]
-    pub fn as_member(&self) -> Option<&MemberExpr> {
+    pub fn as_member(self) -> Option<MemberExpr> {
         match self {
             Self::Member(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_call(&self) -> Option<&OptCall> {
+    pub fn as_call(self) -> Option<OptCall> {
         match self {
             Self::Call(it) => Some(it),
             _ => None,
@@ -7921,7 +7921,7 @@ impl ParamOrTsParamProp {
         matches!(self, Self::Param(_))
     }
     #[inline]
-    pub fn as_param(&self) -> Option<&Param> {
+    pub fn as_param(self) -> Option<Param> {
         match self {
             Self::Param(it) => Some(it),
             _ => None,
@@ -8164,56 +8164,56 @@ impl ClassMember {
         matches!(self, Self::AutoAccessor(_))
     }
     #[inline]
-    pub fn as_constructor(&self) -> Option<&Constructor> {
+    pub fn as_constructor(self) -> Option<Constructor> {
         match self {
             Self::Constructor(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_method(&self) -> Option<&ClassMethod> {
+    pub fn as_method(self) -> Option<ClassMethod> {
         match self {
             Self::Method(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_private_method(&self) -> Option<&PrivateMethod> {
+    pub fn as_private_method(self) -> Option<PrivateMethod> {
         match self {
             Self::PrivateMethod(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_class_prop(&self) -> Option<&ClassProp> {
+    pub fn as_class_prop(self) -> Option<ClassProp> {
         match self {
             Self::ClassProp(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_private_prop(&self) -> Option<&PrivateProp> {
+    pub fn as_private_prop(self) -> Option<PrivateProp> {
         match self {
             Self::PrivateProp(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_empty(&self) -> Option<&EmptyStmt> {
+    pub fn as_empty(self) -> Option<EmptyStmt> {
         match self {
             Self::Empty(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_static_block(&self) -> Option<&StaticBlock> {
+    pub fn as_static_block(self) -> Option<StaticBlock> {
         match self {
             Self::StaticBlock(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_auto_accessor(&self) -> Option<&AutoAccessor> {
+    pub fn as_auto_accessor(self) -> Option<AutoAccessor> {
         match self {
             Self::AutoAccessor(it) => Some(it),
             _ => None,
@@ -9047,14 +9047,14 @@ impl Key {
         matches!(self, Self::Public(_))
     }
     #[inline]
-    pub fn as_private(&self) -> Option<&PrivateName> {
+    pub fn as_private(self) -> Option<PrivateName> {
         match self {
             Self::Private(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_public(&self) -> Option<&PropName> {
+    pub fn as_public(self) -> Option<PropName> {
         match self {
             Self::Public(it) => Some(it),
             _ => None,
@@ -9285,42 +9285,42 @@ impl Prop {
         matches!(self, Self::Method(_))
     }
     #[inline]
-    pub fn as_shorthand(&self) -> Option<&Ident> {
+    pub fn as_shorthand(self) -> Option<Ident> {
         match self {
             Self::Shorthand(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_key_value(&self) -> Option<&KeyValueProp> {
+    pub fn as_key_value(self) -> Option<KeyValueProp> {
         match self {
             Self::KeyValue(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_assign(&self) -> Option<&AssignProp> {
+    pub fn as_assign(self) -> Option<AssignProp> {
         match self {
             Self::Assign(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_getter(&self) -> Option<&GetterProp> {
+    pub fn as_getter(self) -> Option<GetterProp> {
         match self {
             Self::Getter(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_setter(&self) -> Option<&SetterProp> {
+    pub fn as_setter(self) -> Option<SetterProp> {
         match self {
             Self::Setter(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_method(&self) -> Option<&MethodProp> {
+    pub fn as_method(self) -> Option<MethodProp> {
         match self {
             Self::Method(it) => Some(it),
             _ => None,
@@ -9921,35 +9921,35 @@ impl PropName {
         matches!(self, Self::BigInt(_))
     }
     #[inline]
-    pub fn as_ident(&self) -> Option<&IdentName> {
+    pub fn as_ident(self) -> Option<IdentName> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_str(&self) -> Option<&Str> {
+    pub fn as_str(self) -> Option<Str> {
         match self {
             Self::Str(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_num(&self) -> Option<&Number> {
+    pub fn as_num(self) -> Option<Number> {
         match self {
             Self::Num(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_computed(&self) -> Option<&ComputedPropName> {
+    pub fn as_computed(self) -> Option<ComputedPropName> {
         match self {
             Self::Computed(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_big_int(&self) -> Option<&BigInt> {
+    pub fn as_big_int(self) -> Option<BigInt> {
         match self {
             Self::BigInt(it) => Some(it),
             _ => None,
@@ -10075,49 +10075,49 @@ impl Pat {
         matches!(self, Self::Expr(_))
     }
     #[inline]
-    pub fn as_ident(&self) -> Option<&BindingIdent> {
+    pub fn as_ident(self) -> Option<BindingIdent> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_array(&self) -> Option<&ArrayPat> {
+    pub fn as_array(self) -> Option<ArrayPat> {
         match self {
             Self::Array(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_rest(&self) -> Option<&RestPat> {
+    pub fn as_rest(self) -> Option<RestPat> {
         match self {
             Self::Rest(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_object(&self) -> Option<&ObjectPat> {
+    pub fn as_object(self) -> Option<ObjectPat> {
         match self {
             Self::Object(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_assign(&self) -> Option<&AssignPat> {
+    pub fn as_assign(self) -> Option<AssignPat> {
         match self {
             Self::Assign(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_invalid(&self) -> Option<&Invalid> {
+    pub fn as_invalid(self) -> Option<Invalid> {
         match self {
             Self::Invalid(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_expr(&self) -> Option<&Expr> {
+    pub fn as_expr(self) -> Option<Expr> {
         match self {
             Self::Expr(it) => Some(it),
             _ => None,
@@ -10538,21 +10538,21 @@ impl ObjectPatProp {
         matches!(self, Self::Rest(_))
     }
     #[inline]
-    pub fn as_key_value(&self) -> Option<&KeyValuePatProp> {
+    pub fn as_key_value(self) -> Option<KeyValuePatProp> {
         match self {
             Self::KeyValue(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_assign(&self) -> Option<&AssignPatProp> {
+    pub fn as_assign(self) -> Option<AssignPatProp> {
         match self {
             Self::Assign(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_rest(&self) -> Option<&RestPat> {
+    pub fn as_rest(self) -> Option<RestPat> {
         match self {
             Self::Rest(it) => Some(it),
             _ => None,
@@ -11018,42 +11018,42 @@ impl Lit {
         matches!(self, Self::Regex(_))
     }
     #[inline]
-    pub fn as_str(&self) -> Option<&Str> {
+    pub fn as_str(self) -> Option<Str> {
         match self {
             Self::Str(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_bool(&self) -> Option<&Bool> {
+    pub fn as_bool(self) -> Option<Bool> {
         match self {
             Self::Bool(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_null(&self) -> Option<&Null> {
+    pub fn as_null(self) -> Option<Null> {
         match self {
             Self::Null(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_num(&self) -> Option<&Number> {
+    pub fn as_num(self) -> Option<Number> {
         match self {
             Self::Num(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_big_int(&self) -> Option<&BigInt> {
+    pub fn as_big_int(self) -> Option<BigInt> {
         match self {
             Self::BigInt(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_regex(&self) -> Option<&Regex> {
+    pub fn as_regex(self) -> Option<Regex> {
         match self {
             Self::Regex(it) => Some(it),
             _ => None,
@@ -11519,14 +11519,14 @@ impl JSXObject {
         matches!(self, Self::Ident(_))
     }
     #[inline]
-    pub fn as_jsx_member_expr(&self) -> Option<&JSXMemberExpr> {
+    pub fn as_jsx_member_expr(self) -> Option<JSXMemberExpr> {
         match self {
             Self::JSXMemberExpr(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_ident(&self) -> Option<&Ident> {
+    pub fn as_ident(self) -> Option<Ident> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
@@ -11830,14 +11830,14 @@ impl JSXExpr {
         matches!(self, Self::Expr(_))
     }
     #[inline]
-    pub fn as_jsx_empty_expr(&self) -> Option<&JSXEmptyExpr> {
+    pub fn as_jsx_empty_expr(self) -> Option<JSXEmptyExpr> {
         match self {
             Self::JSXEmptyExpr(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_expr(&self) -> Option<&Expr> {
+    pub fn as_expr(self) -> Option<Expr> {
         match self {
             Self::Expr(it) => Some(it),
             _ => None,
@@ -11939,21 +11939,21 @@ impl JSXElementName {
         matches!(self, Self::JSXNamespacedName(_))
     }
     #[inline]
-    pub fn as_ident(&self) -> Option<&Ident> {
+    pub fn as_ident(self) -> Option<Ident> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_member_expr(&self) -> Option<&JSXMemberExpr> {
+    pub fn as_jsx_member_expr(self) -> Option<JSXMemberExpr> {
         match self {
             Self::JSXMemberExpr(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_namespaced_name(&self) -> Option<&JSXNamespacedName> {
+    pub fn as_jsx_namespaced_name(self) -> Option<JSXNamespacedName> {
         match self {
             Self::JSXNamespacedName(it) => Some(it),
             _ => None,
@@ -12123,14 +12123,14 @@ impl JSXAttrOrSpread {
         matches!(self, Self::SpreadElement(_))
     }
     #[inline]
-    pub fn as_jsx_attr(&self) -> Option<&JSXAttr> {
+    pub fn as_jsx_attr(self) -> Option<JSXAttr> {
         match self {
             Self::JSXAttr(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_spread_element(&self) -> Option<&SpreadElement> {
+    pub fn as_spread_element(self) -> Option<SpreadElement> {
         match self {
             Self::SpreadElement(it) => Some(it),
             _ => None,
@@ -12320,14 +12320,14 @@ impl JSXAttrName {
         matches!(self, Self::JSXNamespacedName(_))
     }
     #[inline]
-    pub fn as_ident(&self) -> Option<&IdentName> {
+    pub fn as_ident(self) -> Option<IdentName> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_namespaced_name(&self) -> Option<&JSXNamespacedName> {
+    pub fn as_jsx_namespaced_name(self) -> Option<JSXNamespacedName> {
         match self {
             Self::JSXNamespacedName(it) => Some(it),
             _ => None,
@@ -12378,28 +12378,28 @@ impl JSXAttrValue {
         matches!(self, Self::JSXFragment(_))
     }
     #[inline]
-    pub fn as_str(&self) -> Option<&Str> {
+    pub fn as_str(self) -> Option<Str> {
         match self {
             Self::Str(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_expr_container(&self) -> Option<&JSXExprContainer> {
+    pub fn as_jsx_expr_container(self) -> Option<JSXExprContainer> {
         match self {
             Self::JSXExprContainer(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_element(&self) -> Option<&JSXElement> {
+    pub fn as_jsx_element(self) -> Option<JSXElement> {
         match self {
             Self::JSXElement(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_fragment(&self) -> Option<&JSXFragment> {
+    pub fn as_jsx_fragment(self) -> Option<JSXFragment> {
         match self {
             Self::JSXFragment(it) => Some(it),
             _ => None,
@@ -12681,35 +12681,35 @@ impl JSXElementChild {
         matches!(self, Self::JSXFragment(_))
     }
     #[inline]
-    pub fn as_jsx_text(&self) -> Option<&JSXText> {
+    pub fn as_jsx_text(self) -> Option<JSXText> {
         match self {
             Self::JSXText(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_expr_container(&self) -> Option<&JSXExprContainer> {
+    pub fn as_jsx_expr_container(self) -> Option<JSXExprContainer> {
         match self {
             Self::JSXExprContainer(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_spread_child(&self) -> Option<&JSXSpreadChild> {
+    pub fn as_jsx_spread_child(self) -> Option<JSXSpreadChild> {
         match self {
             Self::JSXSpreadChild(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_element(&self) -> Option<&JSXElement> {
+    pub fn as_jsx_element(self) -> Option<JSXElement> {
         match self {
             Self::JSXElement(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_fragment(&self) -> Option<&JSXFragment> {
+    pub fn as_jsx_fragment(self) -> Option<JSXFragment> {
         match self {
             Self::JSXFragment(it) => Some(it),
             _ => None,
