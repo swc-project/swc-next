@@ -1,6 +1,6 @@
 use std::ptr::NonNull;
 
-use oxc_index::{IndexVec};
+use oxc_index::IndexVec;
 use swc_core::atoms::wtf8::{Wtf8, Wtf8Buf};
 
 use crate::define_optional_index_type;
@@ -32,7 +32,7 @@ impl Wtf8Allocator {
 
     #[inline]
     pub fn resolve(&self, s: Wtf8Ref) -> Option<&Wtf8> {
-        self.spans.get(s).map(|s| 
+        self.spans.get(s).map(|s|
         // SAFETY: This is safe since we only ever operate on interned `Wtf8`
         //         that are never moved around in memory to avoid danling
         //         references.
