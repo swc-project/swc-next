@@ -14,19 +14,24 @@ pub(super) struct Wtf8Allocator {
 
 impl Wtf8Allocator {
     pub fn add(&mut self, s: &Wtf8) -> Wtf8Ref {
+        const GAP: char = '\u{FFFD}';
+
         let cap = self.head.capacity();
-        if cap < self.head.len() + s.len() {
+        if cap < self.head.len() + s.len() + GAP.len_utf8() {
             let new_cap = (usize::max(cap, s.len()) + 1).next_power_of_two();
             let new_head = Wtf8Buf::with_capacity(new_cap);
             let old_head = core::mem::replace(&mut self.head, new_head);
             self.full.push(old_head);
         }
+        // Append a separator to avoid two codepoints being merged
+        self.head.push_char(GAP);
+
         let len = self.head.len();
         self.head.push_wtf8(s);
         self.spans.push(NonNull::from(
             // SAFETY: We convert from bytes to wtf8 from which we know through the
             //         input string that they must represent valid wtf8.
-            unsafe { Wtf8::from_bytes_unchecked(&self.head.as_bytes()[len..len + s.len()]) },
+            unsafe { Wtf8::from_bytes_unchecked(&self.head.as_bytes()[len..]) },
         ))
     }
 
