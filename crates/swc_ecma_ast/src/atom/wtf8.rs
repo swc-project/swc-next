@@ -1,60 +1,59 @@
-/// A reference to a wtf8 string in the string allocator.
-#[derive(Debug, Clone, Copy)]
-pub struct Wtf8Ref {
-    /// The start pos of the wtf8 string in the string allocator.
-    lo: u32,
-    /// The end pos of the wtf8 string in the string allocator.
-    hi: u32,
+use std::ptr::NonNull;
+
+use oxc_index::{IndexVec};
+use swc_core::atoms::wtf8::{Wtf8, Wtf8Buf};
+
+use crate::define_optional_index_type;
+
+#[derive(Default)]
+pub(super) struct Wtf8Allocator {
+    spans: IndexVec<Wtf8Ref, NonNull<Wtf8>>,
+    head: Wtf8Buf,
+    full: Vec<Wtf8Buf>,
 }
 
-impl Wtf8Ref {
-    pub(crate) const fn new_ref(lo: u32, hi: u32) -> Self {
-        Self { lo, hi }
-    }
-
-    pub const fn lo(&self) -> u32 {
-        self.lo
-    }
-
-    pub const fn hi(&self) -> u32 {
-        self.hi
-    }
-}
-
-/// An optimized version of `Option<Wtf8Ref>`
-///
-/// We regard it as `None` if `OptionalWtf8Ref::hi` is `u32::MAX`.
-#[derive(Debug, Clone, Copy, Hash)]
-pub struct OptionalWtf8Ref {
-    lo: u32,
-    hi: u32,
-}
-impl OptionalWtf8Ref {
-    pub(crate) const fn new_ref(lo: u32, hi: u32) -> Self {
-        Self { lo, hi }
-    }
-
-    pub const fn new_none() -> Self {
-        Self {
-            lo: 0,
-            hi: u32::MAX,
+impl Wtf8Allocator {
+    pub fn add(&mut self, s: &Wtf8) -> Wtf8Ref {
+        let cap = self.head.capacity();
+        if cap < self.head.len() + s.len() {
+            let new_cap = (usize::max(cap, s.len()) + 1).next_power_of_two();
+            let new_head = Wtf8Buf::with_capacity(new_cap);
+            let old_head = core::mem::replace(&mut self.head, new_head);
+            self.full.push(old_head);
         }
+        let len = self.head.len();
+        self.head.push_wtf8(s);
+        self.spans.push(NonNull::from(
+            // SAFETY: We convert from bytes to wtf8 from which we know through the
+            //         input string that they must represent valid wtf8.
+            unsafe { Wtf8::from_bytes_unchecked(&self.head.as_bytes()[len..len + s.len()]) },
+        ))
     }
 
-    pub const fn to_option(self) -> Option<Wtf8Ref> {
-        if self.hi == u32::MAX {
-            return None;
-        }
-
-        Some(Wtf8Ref {
-            lo: self.lo,
-            hi: self.hi,
-        })
+    #[inline]
+    pub fn resolve(&self, s: Wtf8Ref) -> Option<&Wtf8> {
+        self.spans.get(s).map(|s| 
+        // SAFETY: This is safe since we only ever operate on interned `Wtf8`
+        //         that are never moved around in memory to avoid danling
+        //         references.
+            unsafe { s.as_ref() })
     }
 }
 
-impl From<Wtf8Ref> for OptionalWtf8Ref {
-    fn from(value: Wtf8Ref) -> Self {
-        Self::new_ref(value.lo, value.hi)
+/// The reference to a wtf8 string in the string allocator.
+#[derive(Debug, Hash, PartialEq, Eq, Copy, Clone, PartialOrd, Ord)]
+pub struct Wtf8Ref(u32);
+
+impl oxc_index::Idx for Wtf8Ref {
+    const MAX: usize = (u32::MAX - 1) as usize;
+
+    unsafe fn from_usize_unchecked(idx: usize) -> Self {
+        Self(idx as u32)
+    }
+
+    fn index(self) -> usize {
+        self.0 as usize
     }
 }
+
+define_optional_index_type!(OptionalWtf8Ref, Wtf8Ref);

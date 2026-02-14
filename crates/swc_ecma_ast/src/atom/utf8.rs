@@ -1,7 +1,10 @@
-use string_interner::Symbol;
+use string_interner::{StringInterner, Symbol, backend::BucketBackend};
 
 use crate::define_optional_index_type;
 
+pub(super) type Utf8Allocator = StringInterner<BucketBackend<Utf8Ref>>;
+
+/// The reference to a utf8 string in the string allocator.
 #[derive(Debug, Hash, PartialEq, Eq, Copy, Clone, PartialOrd, Ord)]
 pub struct Utf8Ref(u32);
 

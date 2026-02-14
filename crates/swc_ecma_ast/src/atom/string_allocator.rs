@@ -1,9 +1,10 @@
 use std::cell::UnsafeCell;
 
-use string_interner::{StringInterner, backend::BucketBackend};
-use swc_core::atoms::wtf8::{Wtf8, Wtf8Buf};
+use swc_core::atoms::wtf8::Wtf8;
 
-use crate::{OptionalUtf8Ref, OptionalWtf8Ref, Utf8Ref, Wtf8Ref};
+use crate::{
+    OptionalUtf8Ref, OptionalWtf8Ref, Utf8Ref, Wtf8Ref, utf8::Utf8Allocator, wtf8::Wtf8Allocator,
+};
 
 /// # Safety
 /// [StringAllocatorInner] uses [string_interner::backend::BucketBackend], which has stable string references
@@ -63,18 +64,18 @@ impl StringAllocator {
 /// A string allocator that can be used to allocate strings for the AST.
 /// All the strings are stored in a single buffer to avoid memory fragmentation.
 struct StringAllocatorInner {
-    allocated_utf8: StringInterner<BucketBackend<Utf8Ref>>,
-    allocated_wtf8: Wtf8Buf,
+    allocated_utf8: Utf8Allocator,
+    allocated_wtf8: Wtf8Allocator,
     empty_utf8: Utf8Ref,
 }
 
 impl StringAllocatorInner {
     pub fn new() -> Self {
-        let mut allocated_utf8 = StringInterner::new();
+        let mut allocated_utf8 = Utf8Allocator::new();
         let empty_utf8 = allocated_utf8.get_or_intern("");
         Self {
             allocated_utf8,
-            allocated_wtf8: Wtf8Buf::new(),
+            allocated_wtf8: Wtf8Allocator::default(),
             empty_utf8,
         }
     }
@@ -94,17 +95,14 @@ impl StringAllocatorInner {
 
     #[inline]
     pub fn add_wtf8(&mut self, s: &Wtf8) -> Wtf8Ref {
-        let lo = self.allocated_wtf8.len() as u32;
-        self.allocated_wtf8.push_wtf8(s);
-        let hi = self.allocated_wtf8.len() as u32;
-        Wtf8Ref::new_ref(lo, hi)
+        self.allocated_wtf8.add(s)
     }
 
     #[inline]
     pub fn add_optional_wtf8(&mut self, s: Option<&Wtf8>) -> OptionalWtf8Ref {
         match s {
             Some(s) => self.add_wtf8(s).into(),
-            None => OptionalWtf8Ref::new_none(),
+            None => OptionalWtf8Ref::none(),
         }
     }
 
@@ -121,8 +119,7 @@ impl StringAllocatorInner {
 
     #[inline]
     pub fn get_wtf8(&self, id: Wtf8Ref) -> &Wtf8 {
-        self.allocated_wtf8
-            .slice(id.lo() as usize, id.hi() as usize)
+        self.allocated_wtf8.resolve(id).unwrap()
     }
 
     #[inline]

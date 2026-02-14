@@ -626,7 +626,7 @@ impl<I: Tokens> Parser<I> {
             Ok(cooked) => self.to_wtf8_ref(cooked).into(),
             Err(err) => {
                 if is_tagged_tpl {
-                    OptionalWtf8Ref::new_none()
+                    OptionalWtf8Ref::none()
                 } else {
                     return Err(err);
                 }
@@ -656,7 +656,7 @@ impl<I: Tokens> Parser<I> {
             Ok(cooked) => self.to_wtf8_ref(cooked).into(),
             Err(err) => {
                 if is_tagged_tpl {
-                    OptionalWtf8Ref::new_none()
+                    OptionalWtf8Ref::none()
                 } else {
                     return Err(err);
                 }
@@ -695,7 +695,7 @@ impl<I: Tokens> Parser<I> {
                     Ok(cooked) => (raw, self.to_wtf8_ref(cooked).into(), false, span),
                     Err(err) => {
                         if is_tagged_tpl {
-                            (raw, OptionalWtf8Ref::new_none(), false, span)
+                            (raw, OptionalWtf8Ref::none(), false, span)
                         } else {
                             return Err(err);
                         }
@@ -712,7 +712,7 @@ impl<I: Tokens> Parser<I> {
                     Ok(cooked) => (raw, self.to_wtf8_ref(cooked).into(), true, span),
                     Err(err) => {
                         if is_tagged_tpl {
-                            (raw, OptionalWtf8Ref::new_none(), true, span)
+                            (raw, OptionalWtf8Ref::none(), true, span)
                         } else {
                             return Err(err);
                         }
