@@ -44,28 +44,6 @@ fn generate_property_for_struct(ast: &AstStruct, schema: &Schema) -> TokenStream
     let mut field_getters = TokenStream::new();
     let mut field_setters = TokenStream::new();
 
-    field_getters.extend(quote! {
-        #[inline]
-        pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-            unsafe { ast.get_node_unchecked(self.0).span }
-        }
-        #[inline]
-        pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-            self.span(ast).lo
-        }
-        #[inline]
-        pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-            self.span(ast).hi
-        }
-    });
-
-    field_setters.extend(quote! {
-        #[inline]
-        pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-            unsafe { ast.get_node_unchecked_mut(self.0).span = span; }
-        }
-    });
-
     // Check if this struct uses inline storage
     if let Some(layout) = calculate_inline_layout(ast, schema) {
         match layout.mode {
@@ -512,22 +490,11 @@ fn generate_extra_data_property_accessors_partial(
 fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
     let name = format_ident!("{}", ast.name);
 
-    let mut field_getters = TokenStream::new();
-    let mut field_setters = TokenStream::new();
     let mut is_variant = TokenStream::new();
     let mut as_variant = TokenStream::new();
 
-    let mut get_span_arms = TokenStream::new();
-    let mut set_span_arms = TokenStream::new();
     for variant in ast.variants.iter() {
         let variant_name = format_ident!("{}", variant.name);
-        get_span_arms.extend(quote! {
-            Self::#variant_name(it) => it.span(ast),
-        });
-        set_span_arms.extend(quote! {
-            Self::#variant_name(it) => it.set_span(ast, span),
-        });
-
         let is_fn_name = format_ident!("is_{}", variant.name.to_case(Case::Snake));
         is_variant.extend(quote! {
             #[inline]
@@ -549,36 +516,8 @@ fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
         });
     }
 
-    field_getters.extend(quote! {
-        #[inline]
-        pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-            match self {
-                #get_span_arms
-            }
-        }
-        #[inline]
-        pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-            self.span(ast).lo
-        }
-        #[inline]
-        pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-            self.span(ast).hi
-        }
-    });
-
-    field_setters.extend(quote! {
-        #[inline]
-        pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-            match self {
-                #set_span_arms
-            }
-        }
-    });
-
     quote! {
         impl #name {
-            #field_getters
-            #field_setters
             #is_variant
             #as_variant
         }

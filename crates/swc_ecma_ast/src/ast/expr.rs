@@ -2,7 +2,7 @@ use std::mem;
 
 use swc_experimental_ast_macros::ast;
 
-use crate::{Ast, ExtraData, ast::*, node_id::ExtraDataCompact};
+use crate::{Ast, ExtraData, Spanned, ast::*, node_id::ExtraDataCompact};
 
 #[ast]
 pub enum Expr {

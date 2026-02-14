@@ -3,7 +3,9 @@ use std::{hash::BuildHasherDefault, ops::RangeFull};
 use indexmap::IndexMap;
 use rustc_hash::FxHasher;
 use swc_core::common::comments::Comments;
-use swc_experimental_ecma_ast::{Ast, Expr, SimpleAssignTarget, Span, VisitMut, VisitMutWith};
+use swc_experimental_ecma_ast::{
+    Ast, Expr, SimpleAssignTarget, Span, Spanned, VisitMut, VisitMutWith,
+};
 
 pub fn remove_paren<'ast, N: VisitMutWith<ParenRemover<'ast>>>(
     root: N,

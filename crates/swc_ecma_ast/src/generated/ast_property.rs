@@ -8,28 +8,6 @@
 use crate::*;
 impl Program {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Module(it) => it.span(ast),
-            Self::Script(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Module(it) => it.set_span(ast, span),
-            Self::Script(it) => it.set_span(ast, span),
-        }
-    }
-    #[inline]
     pub fn is_module(&self) -> bool {
         matches!(self, Self::Module(_))
     }
@@ -53,18 +31,6 @@ impl Program {
     }
 }
 impl Module {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn body(&self, ast: &crate::Ast) -> TypedSubRange<ModuleItem> {
         let offset = unsafe {
@@ -101,12 +67,6 @@ impl Module {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -148,18 +108,6 @@ impl Module {
 }
 impl Script {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn body(&self, ast: &crate::Ast) -> TypedSubRange<Stmt> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -195,12 +143,6 @@ impl Script {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -242,28 +184,6 @@ impl Script {
 }
 impl ModuleItem {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::ModuleDecl(it) => it.span(ast),
-            Self::Stmt(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::ModuleDecl(it) => it.set_span(ast, span),
-            Self::Stmt(it) => it.set_span(ast, span),
-        }
-    }
-    #[inline]
     pub fn is_module_decl(&self) -> bool {
         matches!(self, Self::ModuleDecl(_))
     }
@@ -287,36 +207,6 @@ impl ModuleItem {
     }
 }
 impl ModuleDecl {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Import(it) => it.span(ast),
-            Self::ExportDecl(it) => it.span(ast),
-            Self::ExportNamed(it) => it.span(ast),
-            Self::ExportDefaultDecl(it) => it.span(ast),
-            Self::ExportDefaultExpr(it) => it.span(ast),
-            Self::ExportAll(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Import(it) => it.set_span(ast, span),
-            Self::ExportDecl(it) => it.set_span(ast, span),
-            Self::ExportNamed(it) => it.set_span(ast, span),
-            Self::ExportDefaultDecl(it) => it.set_span(ast, span),
-            Self::ExportDefaultExpr(it) => it.set_span(ast, span),
-            Self::ExportAll(it) => it.set_span(ast, span),
-        }
-    }
     #[inline]
     pub fn is_import(&self) -> bool {
         matches!(self, Self::Import(_))
@@ -385,18 +275,6 @@ impl ModuleDecl {
     }
 }
 impl ImportDecl {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn specifiers(&self, ast: &crate::Ast) -> TypedSubRange<ImportSpecifier> {
         let offset = unsafe {
@@ -493,12 +371,6 @@ impl ImportDecl {
         }
     }
     #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-    #[inline]
     pub fn set_specifiers(&self, ast: &mut crate::Ast, specifiers: TypedSubRange<ImportSpecifier>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -591,30 +463,6 @@ impl ImportDecl {
 }
 impl ImportSpecifier {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Named(it) => it.span(ast),
-            Self::Default(it) => it.span(ast),
-            Self::Namespace(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Named(it) => it.set_span(ast, span),
-            Self::Default(it) => it.set_span(ast, span),
-            Self::Namespace(it) => it.set_span(ast, span),
-        }
-    }
-    #[inline]
     pub fn is_named(&self) -> bool {
         matches!(self, Self::Named(_))
     }
@@ -649,18 +497,6 @@ impl ImportSpecifier {
     }
 }
 impl ImportNamedSpecifier {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn is_type_only(&self, ast: &crate::Ast) -> bool {
         let node = unsafe { ast.get_node_unchecked(self.0) };
@@ -703,12 +539,6 @@ impl ImportNamedSpecifier {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -757,28 +587,10 @@ impl ImportNamedSpecifier {
 }
 impl ImportDefaultSpecifier {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn local(&self, ast: &crate::Ast) -> Ident {
         let node = unsafe { ast.get_node_unchecked(self.0) };
         let raw = unsafe { node.data.inline_data };
         unsafe { Ident::from_node_id_unchecked(crate::NodeId::from_raw_unchecked(raw), ast) }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
     }
     #[inline]
     pub fn set_local(&self, ast: &mut crate::Ast, local: Ident) {
@@ -788,28 +600,10 @@ impl ImportDefaultSpecifier {
 }
 impl ImportStarAsSpecifier {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn local(&self, ast: &crate::Ast) -> Ident {
         let node = unsafe { ast.get_node_unchecked(self.0) };
         let raw = unsafe { node.data.inline_data };
         unsafe { Ident::from_node_id_unchecked(crate::NodeId::from_raw_unchecked(raw), ast) }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
     }
     #[inline]
     pub fn set_local(&self, ast: &mut crate::Ast, local: Ident) {
@@ -818,18 +612,6 @@ impl ImportStarAsSpecifier {
     }
 }
 impl ExportDecl {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn decl(&self, ast: &crate::Ast) -> Decl {
         let offset = unsafe {
@@ -847,12 +629,6 @@ impl ExportDecl {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -875,18 +651,6 @@ impl ExportDecl {
     }
 }
 impl NamedExport {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn specifiers(&self, ast: &crate::Ast) -> TypedSubRange<ExportSpecifier> {
         let offset = unsafe {
@@ -964,12 +728,6 @@ impl NamedExport {
         }
     }
     #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-    #[inline]
     pub fn set_specifiers(&self, ast: &mut crate::Ast, specifiers: TypedSubRange<ExportSpecifier>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -1044,30 +802,6 @@ impl NamedExport {
 }
 impl ExportSpecifier {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Namespace(it) => it.span(ast),
-            Self::Default(it) => it.span(ast),
-            Self::Named(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Namespace(it) => it.set_span(ast, span),
-            Self::Default(it) => it.set_span(ast, span),
-            Self::Named(it) => it.set_span(ast, span),
-        }
-    }
-    #[inline]
     pub fn is_namespace(&self) -> bool {
         matches!(self, Self::Namespace(_))
     }
@@ -1103,18 +837,6 @@ impl ExportSpecifier {
 }
 impl ExportNamespaceSpecifier {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn name(&self, ast: &crate::Ast) -> ModuleExportName {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -1131,12 +853,6 @@ impl ExportNamespaceSpecifier {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -1159,28 +875,6 @@ impl ExportNamespaceSpecifier {
     }
 }
 impl ModuleExportName {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Ident(it) => it.span(ast),
-            Self::Str(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Ident(it) => it.set_span(ast, span),
-            Self::Str(it) => it.set_span(ast, span),
-        }
-    }
     #[inline]
     pub fn is_ident(&self) -> bool {
         matches!(self, Self::Ident(_))
@@ -1206,28 +900,10 @@ impl ModuleExportName {
 }
 impl ExportDefaultSpecifier {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn exported(&self, ast: &crate::Ast) -> Ident {
         let node = unsafe { ast.get_node_unchecked(self.0) };
         let raw = unsafe { node.data.inline_data };
         unsafe { Ident::from_node_id_unchecked(crate::NodeId::from_raw_unchecked(raw), ast) }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
     }
     #[inline]
     pub fn set_exported(&self, ast: &mut crate::Ast, exported: Ident) {
@@ -1236,18 +912,6 @@ impl ExportDefaultSpecifier {
     }
 }
 impl ExportNamedSpecifier {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn is_type_only(&self, ast: &crate::Ast) -> bool {
         let node = unsafe { ast.get_node_unchecked(self.0) };
@@ -1290,12 +954,6 @@ impl ExportNamedSpecifier {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -1344,18 +1002,6 @@ impl ExportNamedSpecifier {
 }
 impl ExportDefaultDecl {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn decl(&self, ast: &crate::Ast) -> DefaultDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -1372,12 +1018,6 @@ impl ExportDefaultDecl {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -1400,28 +1040,6 @@ impl ExportDefaultDecl {
     }
 }
 impl DefaultDecl {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Class(it) => it.span(ast),
-            Self::Fn(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Class(it) => it.set_span(ast, span),
-            Self::Fn(it) => it.set_span(ast, span),
-        }
-    }
     #[inline]
     pub fn is_class(&self) -> bool {
         matches!(self, Self::Class(_))
@@ -1447,18 +1065,6 @@ impl DefaultDecl {
 }
 impl ExportDefaultExpr {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn expr(&self, ast: &crate::Ast) -> Expr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -1475,12 +1081,6 @@ impl ExportDefaultExpr {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -1503,18 +1103,6 @@ impl ExportDefaultExpr {
     }
 }
 impl ExportAll {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn type_only(&self, ast: &crate::Ast) -> bool {
         let node = unsafe { ast.get_node_unchecked(self.0) };
@@ -1557,12 +1145,6 @@ impl ExportAll {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -1611,18 +1193,6 @@ impl ExportAll {
 }
 impl BlockStmt {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn stmts(&self, ast: &crate::Ast) -> TypedSubRange<Stmt> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -1639,12 +1209,6 @@ impl BlockStmt {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -1667,62 +1231,6 @@ impl BlockStmt {
     }
 }
 impl Stmt {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Block(it) => it.span(ast),
-            Self::Empty(it) => it.span(ast),
-            Self::Debugger(it) => it.span(ast),
-            Self::With(it) => it.span(ast),
-            Self::Return(it) => it.span(ast),
-            Self::Labeled(it) => it.span(ast),
-            Self::Break(it) => it.span(ast),
-            Self::Continue(it) => it.span(ast),
-            Self::If(it) => it.span(ast),
-            Self::Switch(it) => it.span(ast),
-            Self::Throw(it) => it.span(ast),
-            Self::Try(it) => it.span(ast),
-            Self::While(it) => it.span(ast),
-            Self::DoWhile(it) => it.span(ast),
-            Self::For(it) => it.span(ast),
-            Self::ForIn(it) => it.span(ast),
-            Self::ForOf(it) => it.span(ast),
-            Self::Decl(it) => it.span(ast),
-            Self::Expr(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Block(it) => it.set_span(ast, span),
-            Self::Empty(it) => it.set_span(ast, span),
-            Self::Debugger(it) => it.set_span(ast, span),
-            Self::With(it) => it.set_span(ast, span),
-            Self::Return(it) => it.set_span(ast, span),
-            Self::Labeled(it) => it.set_span(ast, span),
-            Self::Break(it) => it.set_span(ast, span),
-            Self::Continue(it) => it.set_span(ast, span),
-            Self::If(it) => it.set_span(ast, span),
-            Self::Switch(it) => it.set_span(ast, span),
-            Self::Throw(it) => it.set_span(ast, span),
-            Self::Try(it) => it.set_span(ast, span),
-            Self::While(it) => it.set_span(ast, span),
-            Self::DoWhile(it) => it.set_span(ast, span),
-            Self::For(it) => it.set_span(ast, span),
-            Self::ForIn(it) => it.set_span(ast, span),
-            Self::ForOf(it) => it.set_span(ast, span),
-            Self::Decl(it) => it.set_span(ast, span),
-            Self::Expr(it) => it.set_span(ast, span),
-        }
-    }
     #[inline]
     pub fn is_block(&self) -> bool {
         matches!(self, Self::Block(_))
@@ -1935,18 +1443,6 @@ impl Stmt {
 }
 impl ExprStmt {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn expr(&self, ast: &crate::Ast) -> Expr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -1963,12 +1459,6 @@ impl ExprStmt {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -1990,59 +1480,9 @@ impl ExprStmt {
         };
     }
 }
-impl EmptyStmt {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-}
-impl DebuggerStmt {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-}
+impl EmptyStmt {}
+impl DebuggerStmt {}
 impl WithStmt {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn obj(&self, ast: &crate::Ast) -> Expr {
         let offset = unsafe {
@@ -2079,12 +1519,6 @@ impl WithStmt {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -2126,18 +1560,6 @@ impl WithStmt {
 }
 impl ReturnStmt {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn arg(&self, ast: &crate::Ast) -> Option<Expr> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -2154,12 +1576,6 @@ impl ReturnStmt {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -2182,18 +1598,6 @@ impl ReturnStmt {
     }
 }
 impl LabeledStmt {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn label(&self, ast: &crate::Ast) -> Ident {
         let offset = unsafe {
@@ -2230,12 +1634,6 @@ impl LabeledStmt {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -2277,29 +1675,11 @@ impl LabeledStmt {
 }
 impl BreakStmt {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn label(&self, ast: &crate::Ast) -> Option<Ident> {
         let node = unsafe { ast.get_node_unchecked(self.0) };
         let raw = unsafe { node.data.inline_data };
         let opt = crate::OptionalNodeId::from_raw(raw);
         opt.map(|id| unsafe { Ident::from_node_id_unchecked(id, ast) })
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
     }
     #[inline]
     pub fn set_label(&self, ast: &mut crate::Ast, label: Option<Ident>) {
@@ -2309,29 +1689,11 @@ impl BreakStmt {
 }
 impl ContinueStmt {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn label(&self, ast: &crate::Ast) -> Option<Ident> {
         let node = unsafe { ast.get_node_unchecked(self.0) };
         let raw = unsafe { node.data.inline_data };
         let opt = crate::OptionalNodeId::from_raw(raw);
         opt.map(|id| unsafe { Ident::from_node_id_unchecked(id, ast) })
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
     }
     #[inline]
     pub fn set_label(&self, ast: &mut crate::Ast, label: Option<Ident>) {
@@ -2340,18 +1702,6 @@ impl ContinueStmt {
     }
 }
 impl IfStmt {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn test(&self, ast: &crate::Ast) -> Expr {
         let offset = unsafe {
@@ -2407,12 +1757,6 @@ impl IfStmt {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -2472,18 +1816,6 @@ impl IfStmt {
 }
 impl SwitchStmt {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn discriminant(&self, ast: &crate::Ast) -> Expr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -2519,12 +1851,6 @@ impl SwitchStmt {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -2566,18 +1892,6 @@ impl SwitchStmt {
 }
 impl ThrowStmt {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn arg(&self, ast: &crate::Ast) -> Expr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -2594,12 +1908,6 @@ impl ThrowStmt {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -2622,18 +1930,6 @@ impl ThrowStmt {
     }
 }
 impl TryStmt {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn block(&self, ast: &crate::Ast) -> BlockStmt {
         let offset = unsafe {
@@ -2689,12 +1985,6 @@ impl TryStmt {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -2754,18 +2044,6 @@ impl TryStmt {
 }
 impl WhileStmt {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn test(&self, ast: &crate::Ast) -> Expr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -2801,12 +2079,6 @@ impl WhileStmt {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -2848,18 +2120,6 @@ impl WhileStmt {
 }
 impl DoWhileStmt {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn test(&self, ast: &crate::Ast) -> Expr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -2895,12 +2155,6 @@ impl DoWhileStmt {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -2941,18 +2195,6 @@ impl DoWhileStmt {
     }
 }
 impl ForStmt {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn init(&self, ast: &crate::Ast) -> Option<VarDeclOrExpr> {
         let offset = unsafe {
@@ -3030,12 +2272,6 @@ impl ForStmt {
         }
     }
     #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-    #[inline]
     pub fn set_init(&self, ast: &mut crate::Ast, init: Option<VarDeclOrExpr>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -3110,18 +2346,6 @@ impl ForStmt {
 }
 impl ForInStmt {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn left(&self, ast: &crate::Ast) -> ForHead {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -3176,12 +2400,6 @@ impl ForInStmt {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -3240,18 +2458,6 @@ impl ForInStmt {
     }
 }
 impl ForOfStmt {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn is_await(&self, ast: &crate::Ast) -> bool {
         let node = unsafe { ast.get_node_unchecked(self.0) };
@@ -3313,12 +2519,6 @@ impl ForOfStmt {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -3385,18 +2585,6 @@ impl ForOfStmt {
 }
 impl SwitchCase {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn test(&self, ast: &crate::Ast) -> Option<Expr> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -3432,12 +2620,6 @@ impl SwitchCase {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -3479,18 +2661,6 @@ impl SwitchCase {
 }
 impl CatchClause {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn param(&self, ast: &crate::Ast) -> Option<Pat> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -3526,12 +2696,6 @@ impl CatchClause {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -3573,30 +2737,6 @@ impl CatchClause {
 }
 impl ForHead {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::VarDecl(it) => it.span(ast),
-            Self::UsingDecl(it) => it.span(ast),
-            Self::Pat(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::VarDecl(it) => it.set_span(ast, span),
-            Self::UsingDecl(it) => it.set_span(ast, span),
-            Self::Pat(it) => it.set_span(ast, span),
-        }
-    }
-    #[inline]
     pub fn is_var_decl(&self) -> bool {
         matches!(self, Self::VarDecl(_))
     }
@@ -3632,28 +2772,6 @@ impl ForHead {
 }
 impl VarDeclOrExpr {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::VarDecl(it) => it.span(ast),
-            Self::Expr(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::VarDecl(it) => it.set_span(ast, span),
-            Self::Expr(it) => it.set_span(ast, span),
-        }
-    }
-    #[inline]
     pub fn is_var_decl(&self) -> bool {
         matches!(self, Self::VarDecl(_))
     }
@@ -3677,32 +2795,6 @@ impl VarDeclOrExpr {
     }
 }
 impl Decl {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Class(it) => it.span(ast),
-            Self::Fn(it) => it.span(ast),
-            Self::Var(it) => it.span(ast),
-            Self::Using(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Class(it) => it.set_span(ast, span),
-            Self::Fn(it) => it.set_span(ast, span),
-            Self::Var(it) => it.set_span(ast, span),
-            Self::Using(it) => it.set_span(ast, span),
-        }
-    }
     #[inline]
     pub fn is_class(&self) -> bool {
         matches!(self, Self::Class(_))
@@ -3750,18 +2842,6 @@ impl Decl {
 }
 impl FnDecl {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn declare(&self, ast: &crate::Ast) -> bool {
         let node = unsafe { ast.get_node_unchecked(self.0) };
         let raw = u32::from(node.inline_data) & 255u32;
@@ -3803,12 +2883,6 @@ impl FnDecl {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -3857,18 +2931,6 @@ impl FnDecl {
 }
 impl ClassDecl {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn declare(&self, ast: &crate::Ast) -> bool {
         let node = unsafe { ast.get_node_unchecked(self.0) };
         let raw = u32::from(node.inline_data) & 255u32;
@@ -3910,12 +2972,6 @@ impl ClassDecl {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -3963,18 +3019,6 @@ impl ClassDecl {
     }
 }
 impl VarDecl {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn kind(&self, ast: &crate::Ast) -> VarDeclKind {
         let offset = unsafe {
@@ -4030,12 +3074,6 @@ impl VarDecl {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -4095,18 +3133,6 @@ impl VarDecl {
 }
 impl VarDeclarator {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn name(&self, ast: &crate::Ast) -> Pat {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -4142,12 +3168,6 @@ impl VarDeclarator {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -4189,18 +3209,6 @@ impl VarDeclarator {
 }
 impl UsingDecl {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn is_await(&self, ast: &crate::Ast) -> bool {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -4236,12 +3244,6 @@ impl UsingDecl {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -4282,88 +3284,6 @@ impl UsingDecl {
     }
 }
 impl Expr {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::This(it) => it.span(ast),
-            Self::Array(it) => it.span(ast),
-            Self::Object(it) => it.span(ast),
-            Self::Fn(it) => it.span(ast),
-            Self::Unary(it) => it.span(ast),
-            Self::Update(it) => it.span(ast),
-            Self::Bin(it) => it.span(ast),
-            Self::Assign(it) => it.span(ast),
-            Self::Member(it) => it.span(ast),
-            Self::SuperProp(it) => it.span(ast),
-            Self::Cond(it) => it.span(ast),
-            Self::Call(it) => it.span(ast),
-            Self::New(it) => it.span(ast),
-            Self::Seq(it) => it.span(ast),
-            Self::Ident(it) => it.span(ast),
-            Self::Lit(it) => it.span(ast),
-            Self::Tpl(it) => it.span(ast),
-            Self::TaggedTpl(it) => it.span(ast),
-            Self::Arrow(it) => it.span(ast),
-            Self::Class(it) => it.span(ast),
-            Self::Yield(it) => it.span(ast),
-            Self::MetaProp(it) => it.span(ast),
-            Self::Await(it) => it.span(ast),
-            Self::Paren(it) => it.span(ast),
-            Self::JSXMember(it) => it.span(ast),
-            Self::JSXNamespacedName(it) => it.span(ast),
-            Self::JSXEmpty(it) => it.span(ast),
-            Self::JSXElement(it) => it.span(ast),
-            Self::JSXFragment(it) => it.span(ast),
-            Self::PrivateName(it) => it.span(ast),
-            Self::OptChain(it) => it.span(ast),
-            Self::Invalid(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::This(it) => it.set_span(ast, span),
-            Self::Array(it) => it.set_span(ast, span),
-            Self::Object(it) => it.set_span(ast, span),
-            Self::Fn(it) => it.set_span(ast, span),
-            Self::Unary(it) => it.set_span(ast, span),
-            Self::Update(it) => it.set_span(ast, span),
-            Self::Bin(it) => it.set_span(ast, span),
-            Self::Assign(it) => it.set_span(ast, span),
-            Self::Member(it) => it.set_span(ast, span),
-            Self::SuperProp(it) => it.set_span(ast, span),
-            Self::Cond(it) => it.set_span(ast, span),
-            Self::Call(it) => it.set_span(ast, span),
-            Self::New(it) => it.set_span(ast, span),
-            Self::Seq(it) => it.set_span(ast, span),
-            Self::Ident(it) => it.set_span(ast, span),
-            Self::Lit(it) => it.set_span(ast, span),
-            Self::Tpl(it) => it.set_span(ast, span),
-            Self::TaggedTpl(it) => it.set_span(ast, span),
-            Self::Arrow(it) => it.set_span(ast, span),
-            Self::Class(it) => it.set_span(ast, span),
-            Self::Yield(it) => it.set_span(ast, span),
-            Self::MetaProp(it) => it.set_span(ast, span),
-            Self::Await(it) => it.set_span(ast, span),
-            Self::Paren(it) => it.set_span(ast, span),
-            Self::JSXMember(it) => it.set_span(ast, span),
-            Self::JSXNamespacedName(it) => it.set_span(ast, span),
-            Self::JSXEmpty(it) => it.set_span(ast, span),
-            Self::JSXElement(it) => it.set_span(ast, span),
-            Self::JSXFragment(it) => it.set_span(ast, span),
-            Self::PrivateName(it) => it.set_span(ast, span),
-            Self::OptChain(it) => it.set_span(ast, span),
-            Self::Invalid(it) => it.set_span(ast, span),
-        }
-    }
     #[inline]
     pub fn is_this(&self) -> bool {
         matches!(self, Self::This(_))
@@ -4717,39 +3637,8 @@ impl Expr {
         }
     }
 }
-impl ThisExpr {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-}
+impl ThisExpr {}
 impl ArrayLit {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn elems(&self, ast: &crate::Ast) -> TypedSubRange<Option<ExprOrSpread>> {
         let offset = unsafe {
@@ -4767,12 +3656,6 @@ impl ArrayLit {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -4796,18 +3679,6 @@ impl ArrayLit {
 }
 impl ObjectLit {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn props(&self, ast: &crate::Ast) -> TypedSubRange<PropOrSpread> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -4824,12 +3695,6 @@ impl ObjectLit {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -4852,28 +3717,6 @@ impl ObjectLit {
     }
 }
 impl PropOrSpread {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::SpreadElement(it) => it.span(ast),
-            Self::Prop(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::SpreadElement(it) => it.set_span(ast, span),
-            Self::Prop(it) => it.set_span(ast, span),
-        }
-    }
     #[inline]
     pub fn is_spread_element(&self) -> bool {
         matches!(self, Self::SpreadElement(_))
@@ -4898,18 +3741,6 @@ impl PropOrSpread {
     }
 }
 impl SpreadElement {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn dot_3_token(&self, ast: &crate::Ast) -> Span {
         let offset = unsafe {
@@ -4946,12 +3777,6 @@ impl SpreadElement {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -4993,18 +3818,6 @@ impl SpreadElement {
 }
 impl UnaryExpr {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn op(&self, ast: &crate::Ast) -> UnaryOp {
         let node = unsafe { ast.get_node_unchecked(self.0) };
         let raw = u32::from(node.inline_data) & 255u32;
@@ -5027,12 +3840,6 @@ impl UnaryExpr {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -5063,18 +3870,6 @@ impl UnaryExpr {
 }
 impl UpdateExpr {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn op(&self, ast: &crate::Ast) -> UpdateOp {
         let node = unsafe { ast.get_node_unchecked(self.0) };
         let raw = u32::from(node.inline_data) & 255u32;
@@ -5103,12 +3898,6 @@ impl UpdateExpr {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -5145,18 +3934,6 @@ impl UpdateExpr {
     }
 }
 impl BinExpr {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn op(&self, ast: &crate::Ast) -> BinaryOp {
         let node = unsafe { ast.get_node_unchecked(self.0) };
@@ -5199,12 +3976,6 @@ impl BinExpr {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -5253,18 +4024,6 @@ impl BinExpr {
 }
 impl FnExpr {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn ident(&self, ast: &crate::Ast) -> Option<Ident> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -5300,12 +4059,6 @@ impl FnExpr {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -5347,18 +4100,6 @@ impl FnExpr {
 }
 impl ClassExpr {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn ident(&self, ast: &crate::Ast) -> Option<Ident> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -5394,12 +4135,6 @@ impl ClassExpr {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -5440,18 +4175,6 @@ impl ClassExpr {
     }
 }
 impl AssignExpr {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn op(&self, ast: &crate::Ast) -> AssignOp {
         let node = unsafe { ast.get_node_unchecked(self.0) };
@@ -5494,12 +4217,6 @@ impl AssignExpr {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -5548,18 +4265,6 @@ impl AssignExpr {
 }
 impl MemberExpr {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn obj(&self, ast: &crate::Ast) -> Expr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -5595,12 +4300,6 @@ impl MemberExpr {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -5642,30 +4341,6 @@ impl MemberExpr {
 }
 impl MemberProp {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Ident(it) => it.span(ast),
-            Self::PrivateName(it) => it.span(ast),
-            Self::Computed(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Ident(it) => it.set_span(ast, span),
-            Self::PrivateName(it) => it.set_span(ast, span),
-            Self::Computed(it) => it.set_span(ast, span),
-        }
-    }
-    #[inline]
     pub fn is_ident(&self) -> bool {
         matches!(self, Self::Ident(_))
     }
@@ -5700,18 +4375,6 @@ impl MemberProp {
     }
 }
 impl SuperPropExpr {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn obj(&self, ast: &crate::Ast) -> Super {
         let offset = unsafe {
@@ -5748,12 +4411,6 @@ impl SuperPropExpr {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -5795,28 +4452,6 @@ impl SuperPropExpr {
 }
 impl SuperProp {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Ident(it) => it.span(ast),
-            Self::Computed(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Ident(it) => it.set_span(ast, span),
-            Self::Computed(it) => it.set_span(ast, span),
-        }
-    }
-    #[inline]
     pub fn is_ident(&self) -> bool {
         matches!(self, Self::Ident(_))
     }
@@ -5840,18 +4475,6 @@ impl SuperProp {
     }
 }
 impl CondExpr {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn test(&self, ast: &crate::Ast) -> Expr {
         let offset = unsafe {
@@ -5907,12 +4530,6 @@ impl CondExpr {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -5972,18 +4589,6 @@ impl CondExpr {
 }
 impl CallExpr {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn callee(&self, ast: &crate::Ast) -> Callee {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -6019,12 +4624,6 @@ impl CallExpr {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -6066,18 +4665,6 @@ impl CallExpr {
 }
 impl NewExpr {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn callee(&self, ast: &crate::Ast) -> Expr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -6113,12 +4700,6 @@ impl NewExpr {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -6160,18 +4741,6 @@ impl NewExpr {
 }
 impl SeqExpr {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn exprs(&self, ast: &crate::Ast) -> TypedSubRange<Expr> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -6188,12 +4757,6 @@ impl SeqExpr {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -6216,18 +4779,6 @@ impl SeqExpr {
     }
 }
 impl ArrowExpr {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn params(&self, ast: &crate::Ast) -> TypedSubRange<Pat> {
         let offset = unsafe {
@@ -6305,12 +4856,6 @@ impl ArrowExpr {
         }
     }
     #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-    #[inline]
     pub fn set_params(&self, ast: &mut crate::Ast, params: TypedSubRange<Pat>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -6385,18 +4930,6 @@ impl ArrowExpr {
 }
 impl YieldExpr {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn delegate(&self, ast: &crate::Ast) -> bool {
         let node = unsafe { ast.get_node_unchecked(self.0) };
         let raw = u32::from(node.inline_data) & 255u32;
@@ -6419,12 +4952,6 @@ impl YieldExpr {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -6455,28 +4982,10 @@ impl YieldExpr {
 }
 impl MetaPropExpr {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn kind(&self, ast: &crate::Ast) -> MetaPropKind {
         let node = unsafe { ast.get_node_unchecked(self.0) };
         let raw = unsafe { node.data.inline_data };
         unsafe { std::mem::transmute::<u8, MetaPropKind>(raw as u8) }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
     }
     #[inline]
     pub fn set_kind(&self, ast: &mut crate::Ast, kind: MetaPropKind) {
@@ -6485,18 +4994,6 @@ impl MetaPropExpr {
     }
 }
 impl AwaitExpr {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn arg(&self, ast: &crate::Ast) -> Expr {
         let offset = unsafe {
@@ -6514,12 +5011,6 @@ impl AwaitExpr {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -6542,18 +5033,6 @@ impl AwaitExpr {
     }
 }
 impl Tpl {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn exprs(&self, ast: &crate::Ast) -> TypedSubRange<Expr> {
         let offset = unsafe {
@@ -6590,12 +5069,6 @@ impl Tpl {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -6637,18 +5110,6 @@ impl Tpl {
 }
 impl TaggedTpl {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn tag(&self, ast: &crate::Ast) -> Expr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -6684,12 +5145,6 @@ impl TaggedTpl {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -6730,18 +5185,6 @@ impl TaggedTpl {
     }
 }
 impl TplElement {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn tail(&self, ast: &crate::Ast) -> bool {
         let node = unsafe { ast.get_node_unchecked(self.0) };
@@ -6784,12 +5227,6 @@ impl TplElement {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -6838,18 +5275,6 @@ impl TplElement {
 }
 impl ParenExpr {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn expr(&self, ast: &crate::Ast) -> Expr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -6866,12 +5291,6 @@ impl ParenExpr {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -6894,30 +5313,6 @@ impl ParenExpr {
     }
 }
 impl Callee {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Super(it) => it.span(ast),
-            Self::Import(it) => it.span(ast),
-            Self::Expr(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Super(it) => it.set_span(ast, span),
-            Self::Import(it) => it.set_span(ast, span),
-            Self::Expr(it) => it.set_span(ast, span),
-        }
-    }
     #[inline]
     pub fn is_super(&self) -> bool {
         matches!(self, Self::Super(_))
@@ -6952,50 +5347,13 @@ impl Callee {
         }
     }
 }
-impl Super {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-}
+impl Super {}
 impl Import {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn phase(&self, ast: &crate::Ast) -> ImportPhase {
         let node = unsafe { ast.get_node_unchecked(self.0) };
         let raw = unsafe { node.data.inline_data };
         unsafe { std::mem::transmute::<u8, ImportPhase>(raw as u8) }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
     }
     #[inline]
     pub fn set_phase(&self, ast: &mut crate::Ast, phase: ImportPhase) {
@@ -7004,18 +5362,6 @@ impl Import {
     }
 }
 impl ExprOrSpread {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn spread(&self, ast: &crate::Ast) -> Option<SpreadDot3Token> {
         let offset = unsafe {
@@ -7055,12 +5401,6 @@ impl ExprOrSpread {
         }
     }
     #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-    #[inline]
     pub fn set_spread(&self, ast: &mut crate::Ast, spread: Option<SpreadDot3Token>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -7097,49 +5437,8 @@ impl ExprOrSpread {
         };
     }
 }
-impl SpreadDot3Token {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-}
+impl SpreadDot3Token {}
 impl BlockStmtOrExpr {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::BlockStmt(it) => it.span(ast),
-            Self::Expr(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::BlockStmt(it) => it.set_span(ast, span),
-            Self::Expr(it) => it.set_span(ast, span),
-        }
-    }
     #[inline]
     pub fn is_block_stmt(&self) -> bool {
         matches!(self, Self::BlockStmt(_))
@@ -7165,28 +5464,6 @@ impl BlockStmtOrExpr {
 }
 impl AssignTarget {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Simple(it) => it.span(ast),
-            Self::Pat(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Simple(it) => it.set_span(ast, span),
-            Self::Pat(it) => it.set_span(ast, span),
-        }
-    }
-    #[inline]
     pub fn is_simple(&self) -> bool {
         matches!(self, Self::Simple(_))
     }
@@ -7210,30 +5487,6 @@ impl AssignTarget {
     }
 }
 impl AssignTargetPat {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Array(it) => it.span(ast),
-            Self::Object(it) => it.span(ast),
-            Self::Invalid(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Array(it) => it.set_span(ast, span),
-            Self::Object(it) => it.set_span(ast, span),
-            Self::Invalid(it) => it.set_span(ast, span),
-        }
-    }
     #[inline]
     pub fn is_array(&self) -> bool {
         matches!(self, Self::Array(_))
@@ -7269,36 +5522,6 @@ impl AssignTargetPat {
     }
 }
 impl SimpleAssignTarget {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Ident(it) => it.span(ast),
-            Self::Member(it) => it.span(ast),
-            Self::SuperProp(it) => it.span(ast),
-            Self::Paren(it) => it.span(ast),
-            Self::OptChain(it) => it.span(ast),
-            Self::Invalid(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Ident(it) => it.set_span(ast, span),
-            Self::Member(it) => it.set_span(ast, span),
-            Self::SuperProp(it) => it.set_span(ast, span),
-            Self::Paren(it) => it.set_span(ast, span),
-            Self::OptChain(it) => it.set_span(ast, span),
-            Self::Invalid(it) => it.set_span(ast, span),
-        }
-    }
     #[inline]
     pub fn is_ident(&self) -> bool {
         matches!(self, Self::Ident(_))
@@ -7368,18 +5591,6 @@ impl SimpleAssignTarget {
 }
 impl OptChainExpr {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn optional(&self, ast: &crate::Ast) -> bool {
         let node = unsafe { ast.get_node_unchecked(self.0) };
         let raw = u32::from(node.inline_data) & 255u32;
@@ -7402,12 +5613,6 @@ impl OptChainExpr {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -7438,28 +5643,6 @@ impl OptChainExpr {
 }
 impl OptChainBase {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Member(it) => it.span(ast),
-            Self::Call(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Member(it) => it.set_span(ast, span),
-            Self::Call(it) => it.set_span(ast, span),
-        }
-    }
-    #[inline]
     pub fn is_member(&self) -> bool {
         matches!(self, Self::Member(_))
     }
@@ -7483,18 +5666,6 @@ impl OptChainBase {
     }
 }
 impl OptCall {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn callee(&self, ast: &crate::Ast) -> Expr {
         let offset = unsafe {
@@ -7534,12 +5705,6 @@ impl OptCall {
         }
     }
     #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-    #[inline]
     pub fn set_callee(&self, ast: &mut crate::Ast, callee: Expr) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -7576,39 +5741,8 @@ impl OptCall {
         };
     }
 }
-impl Invalid {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-}
+impl Invalid {}
 impl Function {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn params(&self, ast: &crate::Ast) -> TypedSubRange<Param> {
         let offset = unsafe {
@@ -7705,12 +5839,6 @@ impl Function {
         }
     }
     #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-    #[inline]
     pub fn set_params(&self, ast: &mut crate::Ast, params: TypedSubRange<Param>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -7803,18 +5931,6 @@ impl Function {
 }
 impl Param {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn decorators(&self, ast: &crate::Ast) -> TypedSubRange<Decorator> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -7850,12 +5966,6 @@ impl Param {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -7897,26 +6007,6 @@ impl Param {
 }
 impl ParamOrTsParamProp {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Param(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Param(it) => it.set_span(ast, span),
-        }
-    }
-    #[inline]
     pub fn is_param(&self) -> bool {
         matches!(self, Self::Param(_))
     }
@@ -7929,18 +6019,6 @@ impl ParamOrTsParamProp {
     }
 }
 impl Class {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn decorators(&self, ast: &crate::Ast) -> TypedSubRange<Decorator> {
         let offset = unsafe {
@@ -8018,12 +6096,6 @@ impl Class {
         }
     }
     #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-    #[inline]
     pub fn set_decorators(&self, ast: &mut crate::Ast, decorators: TypedSubRange<Decorator>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -8097,40 +6169,6 @@ impl Class {
     }
 }
 impl ClassMember {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Constructor(it) => it.span(ast),
-            Self::Method(it) => it.span(ast),
-            Self::PrivateMethod(it) => it.span(ast),
-            Self::ClassProp(it) => it.span(ast),
-            Self::PrivateProp(it) => it.span(ast),
-            Self::Empty(it) => it.span(ast),
-            Self::StaticBlock(it) => it.span(ast),
-            Self::AutoAccessor(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Constructor(it) => it.set_span(ast, span),
-            Self::Method(it) => it.set_span(ast, span),
-            Self::PrivateMethod(it) => it.set_span(ast, span),
-            Self::ClassProp(it) => it.set_span(ast, span),
-            Self::PrivateProp(it) => it.set_span(ast, span),
-            Self::Empty(it) => it.set_span(ast, span),
-            Self::StaticBlock(it) => it.set_span(ast, span),
-            Self::AutoAccessor(it) => it.set_span(ast, span),
-        }
-    }
     #[inline]
     pub fn is_constructor(&self) -> bool {
         matches!(self, Self::Constructor(_))
@@ -8222,18 +6260,6 @@ impl ClassMember {
 }
 impl ClassProp {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn key(&self, ast: &crate::Ast) -> PropName {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -8307,12 +6333,6 @@ impl ClassProp {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -8390,18 +6410,6 @@ impl ClassProp {
 }
 impl PrivateProp {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn key(&self, ast: &crate::Ast) -> PrivateName {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -8475,12 +6483,6 @@ impl PrivateProp {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -8558,18 +6560,6 @@ impl PrivateProp {
 }
 impl ClassMethod {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn kind(&self, ast: &crate::Ast) -> MethodKind {
         let node = unsafe { ast.get_node_unchecked(self.0) };
         let raw = u32::from(node.inline_data) & 255u32;
@@ -8617,12 +6607,6 @@ impl ClassMethod {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -8678,18 +6662,6 @@ impl ClassMethod {
 }
 impl PrivateMethod {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn kind(&self, ast: &crate::Ast) -> MethodKind {
         let node = unsafe { ast.get_node_unchecked(self.0) };
         let raw = u32::from(node.inline_data) & 255u32;
@@ -8737,12 +6709,6 @@ impl PrivateMethod {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -8798,18 +6764,6 @@ impl PrivateMethod {
 }
 impl Constructor {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn key(&self, ast: &crate::Ast) -> PropName {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -8864,12 +6818,6 @@ impl Constructor {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -8929,18 +6877,6 @@ impl Constructor {
 }
 impl Decorator {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn expr(&self, ast: &crate::Ast) -> Expr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -8957,12 +6893,6 @@ impl Decorator {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -8986,28 +6916,10 @@ impl Decorator {
 }
 impl StaticBlock {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn body(&self, ast: &crate::Ast) -> BlockStmt {
         let node = unsafe { ast.get_node_unchecked(self.0) };
         let raw = unsafe { node.data.inline_data };
         unsafe { BlockStmt::from_node_id_unchecked(crate::NodeId::from_raw_unchecked(raw), ast) }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
     }
     #[inline]
     pub fn set_body(&self, ast: &mut crate::Ast, body: BlockStmt) {
@@ -9016,28 +6928,6 @@ impl StaticBlock {
     }
 }
 impl Key {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Private(it) => it.span(ast),
-            Self::Public(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Private(it) => it.set_span(ast, span),
-            Self::Public(it) => it.set_span(ast, span),
-        }
-    }
     #[inline]
     pub fn is_private(&self) -> bool {
         matches!(self, Self::Private(_))
@@ -9062,18 +6952,6 @@ impl Key {
     }
 }
 impl AutoAccessor {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn key(&self, ast: &crate::Ast) -> Key {
         let offset = unsafe {
@@ -9151,12 +7029,6 @@ impl AutoAccessor {
         }
     }
     #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-    #[inline]
     pub fn set_key(&self, ast: &mut crate::Ast, key: Key) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -9231,36 +7103,6 @@ impl AutoAccessor {
 }
 impl Prop {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Shorthand(it) => it.span(ast),
-            Self::KeyValue(it) => it.span(ast),
-            Self::Assign(it) => it.span(ast),
-            Self::Getter(it) => it.span(ast),
-            Self::Setter(it) => it.span(ast),
-            Self::Method(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Shorthand(it) => it.set_span(ast, span),
-            Self::KeyValue(it) => it.set_span(ast, span),
-            Self::Assign(it) => it.set_span(ast, span),
-            Self::Getter(it) => it.set_span(ast, span),
-            Self::Setter(it) => it.set_span(ast, span),
-            Self::Method(it) => it.set_span(ast, span),
-        }
-    }
-    #[inline]
     pub fn is_shorthand(&self) -> bool {
         matches!(self, Self::Shorthand(_))
     }
@@ -9329,18 +7171,6 @@ impl Prop {
 }
 impl KeyValueProp {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn key(&self, ast: &crate::Ast) -> PropName {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -9376,12 +7206,6 @@ impl KeyValueProp {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -9423,18 +7247,6 @@ impl KeyValueProp {
 }
 impl AssignProp {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn key(&self, ast: &crate::Ast) -> Ident {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -9470,12 +7282,6 @@ impl AssignProp {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -9517,18 +7323,6 @@ impl AssignProp {
 }
 impl GetterProp {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn key(&self, ast: &crate::Ast) -> PropName {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -9564,12 +7358,6 @@ impl GetterProp {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -9610,18 +7398,6 @@ impl GetterProp {
     }
 }
 impl SetterProp {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn key(&self, ast: &crate::Ast) -> PropName {
         let offset = unsafe {
@@ -9699,12 +7475,6 @@ impl SetterProp {
         }
     }
     #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-    #[inline]
     pub fn set_key(&self, ast: &mut crate::Ast, key: PropName) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -9779,18 +7549,6 @@ impl SetterProp {
 }
 impl MethodProp {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn key(&self, ast: &crate::Ast) -> PropName {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -9826,12 +7584,6 @@ impl MethodProp {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -9872,34 +7624,6 @@ impl MethodProp {
     }
 }
 impl PropName {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Ident(it) => it.span(ast),
-            Self::Str(it) => it.span(ast),
-            Self::Num(it) => it.span(ast),
-            Self::Computed(it) => it.span(ast),
-            Self::BigInt(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Ident(it) => it.set_span(ast, span),
-            Self::Str(it) => it.set_span(ast, span),
-            Self::Num(it) => it.set_span(ast, span),
-            Self::Computed(it) => it.set_span(ast, span),
-            Self::BigInt(it) => it.set_span(ast, span),
-        }
-    }
     #[inline]
     pub fn is_ident(&self) -> bool {
         matches!(self, Self::Ident(_))
@@ -9958,18 +7682,6 @@ impl PropName {
 }
 impl ComputedPropName {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn expr(&self, ast: &crate::Ast) -> Expr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -9986,12 +7698,6 @@ impl ComputedPropName {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -10014,38 +7720,6 @@ impl ComputedPropName {
     }
 }
 impl Pat {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Ident(it) => it.span(ast),
-            Self::Array(it) => it.span(ast),
-            Self::Rest(it) => it.span(ast),
-            Self::Object(it) => it.span(ast),
-            Self::Assign(it) => it.span(ast),
-            Self::Invalid(it) => it.span(ast),
-            Self::Expr(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Ident(it) => it.set_span(ast, span),
-            Self::Array(it) => it.set_span(ast, span),
-            Self::Rest(it) => it.set_span(ast, span),
-            Self::Object(it) => it.set_span(ast, span),
-            Self::Assign(it) => it.set_span(ast, span),
-            Self::Invalid(it) => it.set_span(ast, span),
-            Self::Expr(it) => it.set_span(ast, span),
-        }
-    }
     #[inline]
     pub fn is_ident(&self) -> bool {
         matches!(self, Self::Ident(_))
@@ -10126,18 +7800,6 @@ impl Pat {
 }
 impl ArrayPat {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn elems(&self, ast: &crate::Ast) -> TypedSubRange<Option<Pat>> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -10173,12 +7835,6 @@ impl ArrayPat {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -10220,18 +7876,6 @@ impl ArrayPat {
 }
 impl ObjectPat {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn props(&self, ast: &crate::Ast) -> TypedSubRange<ObjectPatProp> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -10267,12 +7911,6 @@ impl ObjectPat {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -10314,18 +7952,6 @@ impl ObjectPat {
 }
 impl AssignPat {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn left(&self, ast: &crate::Ast) -> Pat {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -10361,12 +7987,6 @@ impl AssignPat {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -10408,18 +8028,6 @@ impl AssignPat {
 }
 impl RestPat {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn dot_3_token(&self, ast: &crate::Ast) -> Span {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -10455,12 +8063,6 @@ impl RestPat {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -10502,30 +8104,6 @@ impl RestPat {
 }
 impl ObjectPatProp {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::KeyValue(it) => it.span(ast),
-            Self::Assign(it) => it.span(ast),
-            Self::Rest(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::KeyValue(it) => it.set_span(ast, span),
-            Self::Assign(it) => it.set_span(ast, span),
-            Self::Rest(it) => it.set_span(ast, span),
-        }
-    }
-    #[inline]
     pub fn is_key_value(&self) -> bool {
         matches!(self, Self::KeyValue(_))
     }
@@ -10560,18 +8138,6 @@ impl ObjectPatProp {
     }
 }
 impl KeyValuePatProp {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn key(&self, ast: &crate::Ast) -> PropName {
         let offset = unsafe {
@@ -10608,12 +8174,6 @@ impl KeyValuePatProp {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -10655,18 +8215,6 @@ impl KeyValuePatProp {
 }
 impl AssignPatProp {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn key(&self, ast: &crate::Ast) -> BindingIdent {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -10702,12 +8250,6 @@ impl AssignPatProp {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -10749,18 +8291,6 @@ impl AssignPatProp {
 }
 impl Ident {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn optional(&self, ast: &crate::Ast) -> bool {
         let node = unsafe { ast.get_node_unchecked(self.0) };
         let raw = u32::from(node.inline_data) & 255u32;
@@ -10783,12 +8313,6 @@ impl Ident {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -10819,18 +8343,6 @@ impl Ident {
 }
 impl IdentName {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn sym(&self, ast: &crate::Ast) -> Utf8Ref {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -10847,12 +8359,6 @@ impl IdentName {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -10876,18 +8382,6 @@ impl IdentName {
 }
 impl PrivateName {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn name(&self, ast: &crate::Ast) -> Utf8Ref {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -10904,12 +8398,6 @@ impl PrivateName {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -10933,28 +8421,10 @@ impl PrivateName {
 }
 impl BindingIdent {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn id(&self, ast: &crate::Ast) -> Ident {
         let node = unsafe { ast.get_node_unchecked(self.0) };
         let raw = unsafe { node.data.inline_data };
         unsafe { Ident::from_node_id_unchecked(crate::NodeId::from_raw_unchecked(raw), ast) }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
     }
     #[inline]
     pub fn set_id(&self, ast: &mut crate::Ast, id: Ident) {
@@ -10963,36 +8433,6 @@ impl BindingIdent {
     }
 }
 impl Lit {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Str(it) => it.span(ast),
-            Self::Bool(it) => it.span(ast),
-            Self::Null(it) => it.span(ast),
-            Self::Num(it) => it.span(ast),
-            Self::BigInt(it) => it.span(ast),
-            Self::Regex(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Str(it) => it.set_span(ast, span),
-            Self::Bool(it) => it.set_span(ast, span),
-            Self::Null(it) => it.set_span(ast, span),
-            Self::Num(it) => it.set_span(ast, span),
-            Self::BigInt(it) => it.set_span(ast, span),
-            Self::Regex(it) => it.set_span(ast, span),
-        }
-    }
     #[inline]
     pub fn is_str(&self) -> bool {
         matches!(self, Self::Str(_))
@@ -11062,18 +8502,6 @@ impl Lit {
 }
 impl Str {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn value(&self, ast: &crate::Ast) -> Wtf8Ref {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -11109,12 +8537,6 @@ impl Str {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -11156,28 +8578,10 @@ impl Str {
 }
 impl Bool {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn value(&self, ast: &crate::Ast) -> bool {
         let node = unsafe { ast.get_node_unchecked(self.0) };
         let raw = unsafe { node.data.inline_data };
         raw != 0
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
     }
     #[inline]
     pub fn set_value(&self, ast: &mut crate::Ast, value: bool) {
@@ -11185,39 +8589,8 @@ impl Bool {
         node.data.inline_data = value as u32;
     }
 }
-impl Null {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-}
+impl Null {}
 impl Number {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn value(&self, ast: &crate::Ast) -> f64 {
         let offset = unsafe {
@@ -11254,12 +8627,6 @@ impl Number {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -11301,18 +8668,6 @@ impl Number {
 }
 impl BigInt {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn value(&self, ast: &crate::Ast) -> BigIntId {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -11348,12 +8703,6 @@ impl BigInt {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -11395,18 +8744,6 @@ impl BigInt {
 }
 impl Regex {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn exp(&self, ast: &crate::Ast) -> Utf8Ref {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -11442,12 +8779,6 @@ impl Regex {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -11489,28 +8820,6 @@ impl Regex {
 }
 impl JSXObject {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::JSXMemberExpr(it) => it.span(ast),
-            Self::Ident(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::JSXMemberExpr(it) => it.set_span(ast, span),
-            Self::Ident(it) => it.set_span(ast, span),
-        }
-    }
-    #[inline]
     pub fn is_jsx_member_expr(&self) -> bool {
         matches!(self, Self::JSXMemberExpr(_))
     }
@@ -11534,18 +8843,6 @@ impl JSXObject {
     }
 }
 impl JSXMemberExpr {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn obj(&self, ast: &crate::Ast) -> JSXObject {
         let offset = unsafe {
@@ -11582,12 +8879,6 @@ impl JSXMemberExpr {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -11629,18 +8920,6 @@ impl JSXMemberExpr {
 }
 impl JSXNamespacedName {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn ns(&self, ast: &crate::Ast) -> IdentName {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -11676,12 +8955,6 @@ impl JSXNamespacedName {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -11721,39 +8994,8 @@ impl JSXNamespacedName {
         };
     }
 }
-impl JSXEmptyExpr {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-}
+impl JSXEmptyExpr {}
 impl JSXExprContainer {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn expr(&self, ast: &crate::Ast) -> JSXExpr {
         let offset = unsafe {
@@ -11771,12 +9013,6 @@ impl JSXExprContainer {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -11799,28 +9035,6 @@ impl JSXExprContainer {
     }
 }
 impl JSXExpr {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::JSXEmptyExpr(it) => it.span(ast),
-            Self::Expr(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::JSXEmptyExpr(it) => it.set_span(ast, span),
-            Self::Expr(it) => it.set_span(ast, span),
-        }
-    }
     #[inline]
     pub fn is_jsx_empty_expr(&self) -> bool {
         matches!(self, Self::JSXEmptyExpr(_))
@@ -11846,18 +9060,6 @@ impl JSXExpr {
 }
 impl JSXSpreadChild {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn expr(&self, ast: &crate::Ast) -> Expr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -11874,12 +9076,6 @@ impl JSXSpreadChild {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -11902,30 +9098,6 @@ impl JSXSpreadChild {
     }
 }
 impl JSXElementName {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Ident(it) => it.span(ast),
-            Self::JSXMemberExpr(it) => it.span(ast),
-            Self::JSXNamespacedName(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Ident(it) => it.set_span(ast, span),
-            Self::JSXMemberExpr(it) => it.set_span(ast, span),
-            Self::JSXNamespacedName(it) => it.set_span(ast, span),
-        }
-    }
     #[inline]
     pub fn is_ident(&self) -> bool {
         matches!(self, Self::Ident(_))
@@ -11961,18 +9133,6 @@ impl JSXElementName {
     }
 }
 impl JSXOpeningElement {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn name(&self, ast: &crate::Ast) -> JSXElementName {
         let offset = unsafe {
@@ -12028,12 +9188,6 @@ impl JSXOpeningElement {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -12093,28 +9247,6 @@ impl JSXOpeningElement {
 }
 impl JSXAttrOrSpread {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::JSXAttr(it) => it.span(ast),
-            Self::SpreadElement(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::JSXAttr(it) => it.set_span(ast, span),
-            Self::SpreadElement(it) => it.set_span(ast, span),
-        }
-    }
-    #[inline]
     pub fn is_jsx_attr(&self) -> bool {
         matches!(self, Self::JSXAttr(_))
     }
@@ -12139,18 +9271,6 @@ impl JSXAttrOrSpread {
 }
 impl JSXClosingElement {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn name(&self, ast: &crate::Ast) -> JSXElementName {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -12167,12 +9287,6 @@ impl JSXClosingElement {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -12195,18 +9309,6 @@ impl JSXClosingElement {
     }
 }
 impl JSXAttr {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn name(&self, ast: &crate::Ast) -> JSXAttrName {
         let offset = unsafe {
@@ -12243,12 +9345,6 @@ impl JSXAttr {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -12290,28 +9386,6 @@ impl JSXAttr {
 }
 impl JSXAttrName {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Ident(it) => it.span(ast),
-            Self::JSXNamespacedName(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Ident(it) => it.set_span(ast, span),
-            Self::JSXNamespacedName(it) => it.set_span(ast, span),
-        }
-    }
-    #[inline]
     pub fn is_ident(&self) -> bool {
         matches!(self, Self::Ident(_))
     }
@@ -12335,32 +9409,6 @@ impl JSXAttrName {
     }
 }
 impl JSXAttrValue {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::Str(it) => it.span(ast),
-            Self::JSXExprContainer(it) => it.span(ast),
-            Self::JSXElement(it) => it.span(ast),
-            Self::JSXFragment(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::Str(it) => it.set_span(ast, span),
-            Self::JSXExprContainer(it) => it.set_span(ast, span),
-            Self::JSXElement(it) => it.set_span(ast, span),
-            Self::JSXFragment(it) => it.set_span(ast, span),
-        }
-    }
     #[inline]
     pub fn is_str(&self) -> bool {
         matches!(self, Self::Str(_))
@@ -12408,18 +9456,6 @@ impl JSXAttrValue {
 }
 impl JSXText {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
     pub fn value(&self, ast: &crate::Ast) -> Utf8Ref {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -12455,12 +9491,6 @@ impl JSXText {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -12501,18 +9531,6 @@ impl JSXText {
     }
 }
 impl JSXElement {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn opening(&self, ast: &crate::Ast) -> JSXOpeningElement {
         let offset = unsafe {
@@ -12568,12 +9586,6 @@ impl JSXElement {
                 *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
                 ast,
             )
-        }
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
         }
     }
     #[inline]
@@ -12633,34 +9645,6 @@ impl JSXElement {
 }
 impl JSXElementChild {
     #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        match self {
-            Self::JSXText(it) => it.span(ast),
-            Self::JSXExprContainer(it) => it.span(ast),
-            Self::JSXSpreadChild(it) => it.span(ast),
-            Self::JSXElement(it) => it.span(ast),
-            Self::JSXFragment(it) => it.span(ast),
-        }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        match self {
-            Self::JSXText(it) => it.set_span(ast, span),
-            Self::JSXExprContainer(it) => it.set_span(ast, span),
-            Self::JSXSpreadChild(it) => it.set_span(ast, span),
-            Self::JSXElement(it) => it.set_span(ast, span),
-            Self::JSXFragment(it) => it.set_span(ast, span),
-        }
-    }
-    #[inline]
     pub fn is_jsx_text(&self) -> bool {
         matches!(self, Self::JSXText(_))
     }
@@ -12717,18 +9701,6 @@ impl JSXElementChild {
     }
 }
 impl JSXFragment {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
     #[inline]
     pub fn opening(&self, ast: &crate::Ast) -> JSXOpeningFragment {
         let offset = unsafe {
@@ -12787,12 +9759,6 @@ impl JSXFragment {
         }
     }
     #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-    #[inline]
     pub fn set_opening(&self, ast: &mut crate::Ast, opening: JSXOpeningFragment) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
@@ -12847,43 +9813,5 @@ impl JSXFragment {
         };
     }
 }
-impl JSXOpeningFragment {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-}
-impl JSXClosingFragment {
-    #[inline]
-    pub fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.0).span }
-    }
-    #[inline]
-    pub fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
-    }
-    #[inline]
-    pub fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
-    }
-    #[inline]
-    pub fn set_span(&self, ast: &mut crate::Ast, span: crate::Span) {
-        unsafe {
-            ast.get_node_unchecked_mut(self.0).span = span;
-        }
-    }
-}
+impl JSXOpeningFragment {}
+impl JSXClosingFragment {}
