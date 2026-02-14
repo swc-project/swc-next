@@ -16,7 +16,8 @@ mod generated {
 }
 
 use std::{marker::PhantomData, rc::Rc};
-use swc_core::atoms::wtf8::Wtf8;
+use swc_core::atoms::Wtf8Atom;
+use swc_core::atoms::{Atom, wtf8::Wtf8};
 use swc_core::common::BytePos;
 
 use num_bigint::BigInt as BigIntValue;
@@ -457,6 +458,11 @@ impl Ast {
     }
 
     #[inline]
+    pub fn get_atom(&self, id: Utf8Ref) -> Atom {
+        self.string_allocator.get_atom(id)
+    }
+
+    #[inline]
     pub fn get_optional_utf8(&self, id: OptionalUtf8Ref) -> Option<&str> {
         self.string_allocator.get_optional_utf8(id)
     }
@@ -464,6 +470,11 @@ impl Ast {
     #[inline]
     pub fn get_wtf8(&self, id: Wtf8Ref) -> &Wtf8 {
         self.string_allocator.get_wtf8(id)
+    }
+
+    #[inline]
+    pub fn get_wtf8_atom(&self, id: Wtf8Ref) -> Wtf8Atom {
+        self.string_allocator.get_wtf8_atom(id)
     }
 
     #[inline]

@@ -1,6 +1,6 @@
 use std::cell::UnsafeCell;
 
-use swc_core::atoms::wtf8::Wtf8;
+use swc_core::atoms::{Atom, Wtf8Atom, wtf8::Wtf8};
 
 use crate::{
     OptionalUtf8Ref, OptionalWtf8Ref, Utf8Ref, Wtf8Ref, utf8::Utf8Allocator, wtf8::Wtf8Allocator,
@@ -44,12 +44,20 @@ impl StringAllocator {
         self.inner().get_utf8(id)
     }
 
+    pub fn get_atom(&self, id: Utf8Ref) -> Atom {
+        self.inner().get_atom(id)
+    }
+
     pub fn get_optional_utf8(&self, id: OptionalUtf8Ref) -> Option<&str> {
         self.inner().get_optional_utf8(id)
     }
 
     pub fn get_wtf8(&self, id: Wtf8Ref) -> &Wtf8 {
         self.inner().get_wtf8(id)
+    }
+
+    pub fn get_wtf8_atom(&self, id: Wtf8Ref) -> Wtf8Atom {
+        self.inner().get_wtf8_atom(id)
     }
 
     pub fn get_optional_wtf8(&self, id: OptionalWtf8Ref) -> Option<&Wtf8> {
@@ -112,6 +120,11 @@ impl StringAllocatorInner {
     }
 
     #[inline]
+    pub fn get_atom(&self, id: Utf8Ref) -> Atom {
+        Atom::from(self.get_utf8(id))
+    }
+
+    #[inline]
     pub fn get_optional_utf8(&self, id: OptionalUtf8Ref) -> Option<&str> {
         let id = id.to_option()?;
         Some(self.get_utf8(id))
@@ -120,6 +133,11 @@ impl StringAllocatorInner {
     #[inline]
     pub fn get_wtf8(&self, id: Wtf8Ref) -> &Wtf8 {
         self.allocated_wtf8.resolve(id).unwrap()
+    }
+
+    #[inline]
+    pub fn get_wtf8_atom(&self, id: Wtf8Ref) -> Wtf8Atom {
+        Wtf8Atom::from(self.get_wtf8(id))
     }
 
     #[inline]
