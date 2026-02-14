@@ -2,7 +2,7 @@ use swc_core::atoms::{Atom, Wtf8Atom};
 use swc_core::ecma::ast::{self as legacy};
 use swc_experimental_ecma_ast::{
     self as experimental, Ast, BigIntId, ExtraDataCompact, OptionalUtf8Ref, OptionalWtf8Ref,
-    TypedSubRange, Utf8Ref, Wtf8Ref,
+    Spanned, TypedSubRange, Utf8Ref, Wtf8Ref,
 };
 use swc_experimental_ecma_semantic::resolver::Semantic;
 
