@@ -6,7 +6,7 @@ use swc_experimental_ecma_ast::*;
 use swc_experimental_ecma_visit::{Visit, VisitMut, VisitMutWith, VisitWith};
 // use swc_ecma_utils::{find_pat_ids, stack_size::maybe_grow_default};
 
-use crate::{legacy::utils::find_pat_ids, scope::ScopeId};
+use crate::legacy::{scope::ScopeId, utils::find_pat_ids};
 
 use super::scope::{DeclKind, IdentType, ScopeKind};
 
