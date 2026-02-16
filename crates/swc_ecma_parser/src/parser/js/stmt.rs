@@ -362,7 +362,7 @@ impl<I: Tokens> Parser<I> {
                     }
                 } else {
                     let decls = decl.decls(&self.ast);
-                    let decl = self.ast.get_node_in_sub_range(decls.get(0));
+                    let decl = self.ast.get_node_in_sub_range(decls.get(0).unwrap());
                     if (self.ctx().contains(Context::Strict) || self.input().is(Token::Of))
                         && decl.init(&self.ast).is_some()
                     {

@@ -1188,8 +1188,10 @@ impl<I: Tokens> Parser<I> {
                         }
 
                         if !params.is_empty()
-                            && let Pat::Rest(rest) =
-                                p.ast.get_node_in_sub_range(params.get(0)).pat(&p.ast)
+                            && let Pat::Rest(rest) = p
+                                .ast
+                                .get_node_in_sub_range(params.get(0).unwrap())
+                                .pat(&p.ast)
                         {
                             p.emit_err(rest.span(&p.ast), SyntaxError::RestPatInSetter);
                         }

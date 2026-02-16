@@ -108,13 +108,15 @@ impl<T> TypedSubRange<T> {
         }
     }
 
-    pub fn get(&self, index: usize) -> NodeExtraDataId<T> {
-        assert!(index < self.len());
-        let id = self.start + index;
-        NodeExtraDataId {
-            inner: id,
-            _phantom: PhantomData,
+    pub fn get(&self, index: usize) -> Option<NodeExtraDataId<T>> {
+        if index < self.len() {
+            let id = self.start + index;
+            return Some(NodeExtraDataId {
+                inner: id,
+                _phantom: PhantomData,
+            });
         }
+        None
     }
 
     pub fn first(&self) -> Option<NodeExtraDataId<T>> {
