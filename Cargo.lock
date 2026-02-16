@@ -1725,7 +1725,6 @@ dependencies = [
 name = "swc_experimental_ecma_semantic"
 version = "0.5.0"
 dependencies = [
- "bitflags",
  "oxc_index",
  "rustc-hash",
  "swc_core",
