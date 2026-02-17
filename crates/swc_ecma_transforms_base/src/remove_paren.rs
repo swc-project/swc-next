@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use rustc_hash::FxHasher;
 use swc_core::common::comments::Comments;
 use swc_experimental_ecma_ast::{
-    Ast, Expr, SimpleAssignTarget, Span, Spanned, VisitMut, VisitMutWith,
+    Ast, Expr, GetSpan, SimpleAssignTarget, Span, VisitMut, VisitMutWith,
 };
 
 pub fn remove_paren<'ast, N: VisitMutWith<ParenRemover<'ast>>>(

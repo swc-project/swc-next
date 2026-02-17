@@ -2,7 +2,7 @@ use rustc_hash::FxHashSet;
 use swc_core::common::{BytePos, comments::SingleThreadedComments};
 use swc_experimental_ecma_ast::{
     Ast, BreakStmt, ClassMember, ContinueStmt, DebuggerStmt, ExportAll, ExportDefaultExpr,
-    ExprStmt, ImportDecl, NamedExport, Program, ReturnStmt, Span, Spanned, ThrowStmt, UpdateExpr,
+    ExprStmt, ImportDecl, NamedExport, Program, ReturnStmt, Span, GetSpan, ThrowStmt, UpdateExpr,
     VarDecl, Visit, VisitWith, YieldExpr,
 };
 use swc_experimental_ecma_ast_compat::AstCompat;
