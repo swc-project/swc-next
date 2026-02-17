@@ -1,5 +1,5 @@
 #![allow(unused, clippy::manual_map)]
-use crate::{Ast, CloneIn, NodeKind, GetSpan};
+use crate::{Ast, CloneIn, GetSpan, NodeKind};
 use crate::{ast::*, node_id::*};
 impl CloneIn for Program {
     type Cloned = Program;
