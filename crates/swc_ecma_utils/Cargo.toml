@@ -1,0 +1,13 @@
+[package]
+description.workspace = true
+edition               = "2024"
+homepage.workspace    = true
+keywords.workspace    = true
+license.workspace     = true
+name                  = "swc_experimental_ecma_utils"
+repository.workspace  = true
+version               = "0.1.0"
+
+[dependencies]
+swc_experimental_ecma_ast      = { workspace = true }
+swc_experimental_ecma_semantic = { workspace = true }
