@@ -1,11 +1,10 @@
 use swc_experimental_ecma_ast::*;
-use swc_experimental_ecma_semantic::{ScopeId, resolver::Semantic};
+use swc_experimental_ecma_semantic::resolver::Semantic;
 
 #[derive(Clone, Copy)]
 pub struct ExprCtx<'a> {
     pub ast: &'a Ast,
     pub semantic: &'a Semantic,
-    pub unresolved_scope_id: ScopeId,
 
     /// True for argument of `typeof`.
     pub is_unresolved_ref_safe: bool,
@@ -56,7 +55,7 @@ impl ExprExt for Expr {
                     return false;
                 }
 
-                if ctx.semantic.node_scope(i) == ctx.unresolved_scope_id {
+                if ctx.semantic.node_scope(i) == ctx.semantic.unresolved_scope_id() {
                     !matches!(
                         ctx.ast.get_utf8(i.sym(ctx.ast)),
                         "Infinity"
@@ -371,7 +370,7 @@ impl ExprExt for Expr {
     fn is_global_ref_to(self, ctx: ExprCtx<'_>, id: &str) -> bool {
         match self {
             Expr::Ident(i) => {
-                ctx.semantic.node_scope(i) == ctx.unresolved_scope_id
+                ctx.semantic.node_scope(i) == ctx.semantic.unresolved_scope_id()
                     && ctx.ast.get_utf8(i.sym(ctx.ast)) == id
             }
             _ => false,
