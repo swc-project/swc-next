@@ -34,8 +34,11 @@ impl ExprCtx<'_> {
 }
 
 pub trait ExprExt {
+    #[allow(clippy::wrong_self_convention)]
     fn is_pure_callee(self, ctx: ExprCtx<'_>) -> bool;
+    #[allow(clippy::wrong_self_convention)]
     fn may_have_side_effects(self, ctx: ExprCtx<'_>) -> bool;
+    #[allow(clippy::wrong_self_convention)]
     fn is_global_ref_to(self, ctx: ExprCtx<'_>, id: &str) -> bool;
 }
 
@@ -91,8 +94,7 @@ impl ExprExt for Expr {
             Expr::Array(arr) => arr
                 .elems(ctx.ast)
                 .iter()
-                .map(|id| ctx.ast.get_node_in_sub_range(id))
-                .filter_map(|e| e)
+                .filter_map(|id| ctx.ast.get_node_in_sub_range(id))
                 .any(|e| e.spread(ctx.ast).is_some() || e.expr(ctx.ast).may_have_side_effects(ctx)),
             Expr::Unary(u) => match u.op(ctx.ast) {
                 UnaryOp::Delete => true,
@@ -451,10 +453,10 @@ impl StmtExt for Stmt {
 }
 
 pub fn class_has_side_effect(expr_ctx: ExprCtx, c: Class) -> bool {
-    if let Some(e) = c.super_class(expr_ctx.ast) {
-        if e.may_have_side_effects(expr_ctx) {
-            return true;
-        }
+    if let Some(e) = c.super_class(expr_ctx.ast)
+        && e.may_have_side_effects(expr_ctx)
+    {
+        return true;
     }
 
     for m in c
@@ -464,31 +466,31 @@ pub fn class_has_side_effect(expr_ctx: ExprCtx, c: Class) -> bool {
     {
         match m {
             ClassMember::Method(p) => {
-                if let PropName::Computed(key) = p.key(expr_ctx.ast) {
-                    if key.expr(expr_ctx.ast).may_have_side_effects(expr_ctx) {
-                        return true;
-                    }
+                if let PropName::Computed(key) = p.key(expr_ctx.ast)
+                    && key.expr(expr_ctx.ast).may_have_side_effects(expr_ctx)
+                {
+                    return true;
                 }
             }
 
             ClassMember::ClassProp(p) => {
-                if let PropName::Computed(key) = p.key(expr_ctx.ast) {
-                    if key.expr(expr_ctx.ast).may_have_side_effects(expr_ctx) {
-                        return true;
-                    }
+                if let PropName::Computed(key) = p.key(expr_ctx.ast)
+                    && key.expr(expr_ctx.ast).may_have_side_effects(expr_ctx)
+                {
+                    return true;
                 }
 
-                if let Some(v) = p.value(expr_ctx.ast) {
-                    if v.may_have_side_effects(expr_ctx) {
-                        return true;
-                    }
+                if let Some(v) = p.value(expr_ctx.ast)
+                    && v.may_have_side_effects(expr_ctx)
+                {
+                    return true;
                 }
             }
             ClassMember::PrivateProp(p) => {
-                if let Some(v) = p.value(expr_ctx.ast) {
-                    if v.may_have_side_effects(expr_ctx) {
-                        return true;
-                    }
+                if let Some(v) = p.value(expr_ctx.ast)
+                    && v.may_have_side_effects(expr_ctx)
+                {
+                    return true;
                 }
             }
             ClassMember::StaticBlock(s) => {
@@ -517,12 +519,11 @@ fn is_pure_new_callee(expr: Expr, ctx: ExprCtx<'_>) -> bool {
         // An empty function expression is also pure for `new`
         Expr::Fn(func) => {
             let func = func.function(ctx.ast);
-            return func
-                .params(ctx.ast)
+            func.params(ctx.ast)
                 .iter()
                 .all(|p| ctx.ast.get_node_in_sub_range(p).pat(ctx.ast).is_ident())
                 && func.body(ctx.ast).is_some()
-                && func.body(ctx.ast).unwrap().stmts(ctx.ast).is_empty();
+                && func.body(ctx.ast).unwrap().stmts(ctx.ast).is_empty()
         }
 
         // A class expression is pure for `new` if:
@@ -557,12 +558,11 @@ fn is_pure_new_callee(expr: Expr, ctx: ExprCtx<'_>) -> bool {
             // Check constructor - must be empty or not present
             for member in class.body(ctx.ast).iter() {
                 let member = ctx.ast.get_node_in_sub_range(member);
-                if let ClassMember::Constructor(ctor) = member {
-                    if let Some(body) = ctor.body(ctx.ast) {
-                        if !body.stmts(ctx.ast).is_empty() {
-                            return false;
-                        }
-                    }
+                if let ClassMember::Constructor(ctor) = member
+                    && let Some(body) = ctor.body(ctx.ast)
+                    && !body.stmts(ctx.ast).is_empty()
+                {
+                    return false;
                 }
             }
 
