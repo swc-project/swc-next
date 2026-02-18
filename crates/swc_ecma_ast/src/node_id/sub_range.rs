@@ -177,6 +177,11 @@ impl<T: ExtraDataCompact> TypedSubRange<T> {
     pub fn replace_slot(&self, ast: &mut Ast, at: NodeExtraDataId<T>, new: T) {
         ast.extra_data[at.inner] = new.to_extra_data();
     }
+
+    #[inline]
+    pub fn get_node(&self, ast: &Ast, index: usize) -> Option<T> {
+        self.get(index).map(|id| ast.get_node_in_sub_range(id))
+    }
 }
 
 impl<T> Deref for TypedSubRange<T> {
