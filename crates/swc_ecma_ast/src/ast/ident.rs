@@ -1,7 +1,7 @@
 use swc_core::atoms::Atom;
 use swc_experimental_ast_macros::ast;
 
-use crate::Ast;
+use crate::{Ast, GetSpan};
 
 #[ast]
 pub struct Ident {
@@ -23,6 +23,12 @@ pub struct PrivateName {
 pub struct BindingIdent {
     id: Ident,
     // pub type_ann: Option<Box<TsTypeAnn>>,
+}
+
+impl Ident {
+    pub fn into_binding(self, ast: &mut Ast) -> BindingIdent {
+        ast.binding_ident(self.span(ast), self)
+    }
 }
 
 pub trait EsReserved {
