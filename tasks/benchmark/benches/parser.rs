@@ -1,8 +1,11 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
+use std::rc::Rc;
+
 use criterion::{Bencher, Criterion, criterion_group, criterion_main};
 use swc_core::common::BytePos;
+use swc_experimental_ecma_ast::Ast;
 use swc_experimental_ecma_parser::StringSource;
 
 fn bench_legacy(b: &mut Bencher, src: &'static str) {
@@ -21,16 +24,16 @@ fn bench_legacy(b: &mut Bencher, src: &'static str) {
 }
 
 fn bench_new(b: &mut Bencher, src: &'static str) {
-    use swc_experimental_ecma_parser::{Lexer, Parser};
+    use swc_experimental_ecma_parser::Parser;
     b.iter(|| {
         let input = StringSource::new(src);
-        let lexer = Lexer::new(
+        let mut ast = Ast::new(input.len(), Rc::default());
+        let mut parser = Parser::new(
+            &mut ast,
             swc_experimental_ecma_parser::Syntax::Es(Default::default()),
-            Default::default(),
             input,
             None,
         );
-        let parser = Parser::new_from(lexer);
         parser.parse_module().unwrap();
     });
 }

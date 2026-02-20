@@ -1,6 +1,8 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
+use std::rc::Rc;
+
 use criterion::{Bencher, Criterion, criterion_group, criterion_main};
 use swc_core::common::BytePos;
 
@@ -37,18 +39,18 @@ fn bench_legacy(b: &mut Bencher, src: &'static str) {
 
 fn bench_new(b: &mut Bencher, src: &'static str) {
     use swc_experimental_ecma_ast::Ast;
-    use swc_experimental_ecma_parser::{Lexer, Parser, StringSource};
+    use swc_experimental_ecma_parser::{Parser, StringSource};
     use swc_experimental_ecma_visit::VisitWith;
 
     let input = StringSource::new(src);
-    let lexer = Lexer::new(
+    let mut ast = Ast::new(input.len(), Rc::default());
+    let mut parser = Parser::new(
+        &mut ast,
         swc_experimental_ecma_parser::Syntax::Es(Default::default()),
-        Default::default(),
         input,
         None,
     );
-    let parser = Parser::new_from(lexer);
-    let ret = parser.parse_module().unwrap();
+    let module = parser.parse_module().unwrap();
 
     struct Counter<'a> {
         ast: &'a Ast,
@@ -67,10 +69,10 @@ fn bench_new(b: &mut Bencher, src: &'static str) {
 
     b.iter(|| {
         let mut counter = Counter {
-            ast: &ret.ast,
+            ast: &ast,
             count: 0,
         };
-        ret.root.visit_with(&mut counter);
+        module.visit_with(&mut counter);
         std::hint::black_box(counter.count);
     });
 }
@@ -108,7 +110,7 @@ fn bench_legacy_mut(b: &mut Bencher, src: &'static str) {
 
 fn bench_new_mut(b: &mut Bencher, src: &'static str) {
     use swc_experimental_ecma_ast::Ast;
-    use swc_experimental_ecma_parser::{Lexer, Parser, StringSource};
+    use swc_experimental_ecma_parser::{Parser, StringSource};
     use swc_experimental_ecma_visit::VisitMutWith;
 
     struct Counter<'a> {
@@ -131,21 +133,21 @@ fn bench_new_mut(b: &mut Bencher, src: &'static str) {
     }
 
     let input = StringSource::new(src);
-    let lexer = Lexer::new(
+    let mut ast = Ast::new(input.len(), Rc::default());
+    let mut parser = Parser::new(
+        &mut ast,
         swc_experimental_ecma_parser::Syntax::Es(Default::default()),
-        Default::default(),
         input,
         None,
     );
-    let parser = Parser::new_from(lexer);
-    let mut ret = parser.parse_module().unwrap();
+    let module = parser.parse_module().unwrap();
 
     b.iter(|| {
         let mut counter = Counter {
-            ast: &mut ret.ast,
+            ast: &mut ast,
             count: 0,
         };
-        ret.root.visit_mut_with(&mut counter);
+        module.visit_mut_with(&mut counter);
         std::hint::black_box(counter.count);
     });
 }

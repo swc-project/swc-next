@@ -1,9 +1,12 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
+use std::rc::Rc;
+
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use swc_core::common::comments::SingleThreadedComments;
-use swc_experimental_ecma_parser::{Lexer, Parser, StringSource};
+use swc_experimental_ecma_ast::Ast;
+use swc_experimental_ecma_parser::{Parser, StringSource};
 use swc_experimental_ecma_transforms_base::remove_paren::remove_paren;
 
 fn bench_transform(c: &mut Criterion) {
@@ -15,18 +18,18 @@ fn bench_transform(c: &mut Criterion) {
                 || {
                     let comments = SingleThreadedComments::default();
                     let input = StringSource::new(source);
-                    let lexer = Lexer::new(
+                    let mut ast = Ast::new(input.len(), Rc::default());
+                    let mut parser = Parser::new(
+                        &mut ast,
                         swc_experimental_ecma_parser::Syntax::Es(Default::default()),
-                        Default::default(),
                         input,
                         Some(&comments),
                     );
-                    let parser = Parser::new_from(lexer);
                     let module = parser.parse_module().unwrap();
-                    (module.root, module.ast, comments)
+                    (module, ast, comments)
                 },
-                |(root, mut ast, comments)| {
-                    remove_paren(root, &mut ast, Some(&comments));
+                |(module, mut ast, comments)| {
+                    remove_paren(module, &mut ast, Some(&comments));
                 },
                 BatchSize::SmallInput,
             );
