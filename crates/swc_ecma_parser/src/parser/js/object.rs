@@ -5,7 +5,7 @@ use crate::lexer::MaybeSubUtf8;
 use crate::parser::js::is_not_this;
 use crate::{Context, PResult, Parser, error::SyntaxError, input::Tokens, lexer::Token};
 
-impl<I: Tokens> Parser<I> {
+impl<'a, I: Tokens> Parser<'a, I> {
     pub(crate) fn parse_object<Object, ObjectProp: ExtraDataCompact>(
         &mut self,
         parse_prop: impl Fn(&mut Self) -> PResult<ObjectProp>,

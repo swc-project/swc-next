@@ -9,7 +9,6 @@ use crate::{
     lexer::Token,
     parser::{
         js::is_not_this,
-        state::State,
         util::{IsInvalidClassName, IsSimpleParameterList},
     },
 };
@@ -28,7 +27,7 @@ struct MakeMethodArgs {
     is_generator: bool,
 }
 
-impl<I: Tokens> Parser<I> {
+impl<'a, I: Tokens> Parser<'a, I> {
     /// If `required` is `true`, this never returns `None`.
     fn parse_maybe_opt_binding_ident(
         &mut self,
@@ -584,8 +583,10 @@ impl<I: Tokens> Parser<I> {
         let f_with_generator_context = |p: &mut Self| {
             let f_with_inside_non_arrow_fn_scope = |p: &mut Self| {
                 let f_with_new_state = |p: &mut Self| {
-                    let mut p = p.with_state(State::default());
-                    f(&mut p, is_simple_parameter_list)
+                    let orig_state = std::mem::take(&mut p.state);
+                    let ret = f(p, is_simple_parameter_list);
+                    p.state = orig_state;
+                    ret
                 };
 
                 if is_arrow_function && !p.ctx().contains(Context::InsideNonArrowFunctionScope) {

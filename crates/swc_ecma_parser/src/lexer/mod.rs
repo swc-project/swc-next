@@ -195,21 +195,6 @@ impl<'a> Lexer<'a> {
         target: EsVersion,
         input: StringSource<'a>,
         comments: Option<&'a dyn Comments>,
-    ) -> Self {
-        Self::new_with_string_allocator(
-            syntax,
-            target,
-            input,
-            comments,
-            Rc::new(StringAllocator::default()),
-        )
-    }
-
-    pub fn new_with_string_allocator(
-        syntax: Syntax,
-        target: EsVersion,
-        input: StringSource<'a>,
-        comments: Option<&'a dyn Comments>,
         string_allocator: Rc<StringAllocator>,
     ) -> Self {
         let start_pos = input.cur_pos();

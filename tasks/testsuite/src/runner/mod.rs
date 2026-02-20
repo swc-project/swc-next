@@ -2,11 +2,14 @@ pub mod parser;
 pub mod semantic;
 pub mod transform_remove_paren;
 
-use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::{
+    panic::{AssertUnwindSafe, catch_unwind},
+    rc::Rc,
+};
 
 use swc_core::common::comments::SingleThreadedComments;
 use swc_experimental_ecma_ast::{Ast, Program};
-use swc_experimental_ecma_parser::{Lexer, Parser, StringSource, error::Error};
+use swc_experimental_ecma_parser::{Parser, StringSource, error::Error};
 
 use crate::cases::{Case, IsModule};
 
@@ -18,21 +21,16 @@ pub enum ParseResult {
 }
 
 pub fn parse<C: Case>(case: &C) -> ParseResult {
-    let syntax = case.syntax();
     let input = StringSource::new(case.code());
     let comments = SingleThreadedComments::default();
-    let lexer = Lexer::new(syntax, Default::default(), input, Some(&comments));
-    let parser = Parser::new_from(lexer);
+    let mut ast = Ast::new(input.len(), Rc::default());
+    let mut parser = Parser::new(&mut ast, case.syntax(), input, Some(&comments));
     let ret = match case.is_module() {
         IsModule::Script => catch_unwind(AssertUnwindSafe(|| {
-            parser
-                .parse_script()
-                .map(|ret| ret.map_root(Program::Script))
+            parser.parse_script().map(Program::Script)
         })),
         IsModule::Module => catch_unwind(AssertUnwindSafe(|| {
-            parser
-                .parse_module()
-                .map(|ret| ret.map_root(Program::Module))
+            parser.parse_module().map(Program::Module)
         })),
         IsModule::Unknown => catch_unwind(AssertUnwindSafe(|| parser.parse_program())),
         IsModule::Skip => {
@@ -42,11 +40,12 @@ pub fn parse<C: Case>(case: &C) -> ParseResult {
 
     match ret {
         Ok(ret) => match ret {
-            Ok(ret) => {
-                if !ret.errors.is_empty() {
-                    return ParseResult::Fail(ret.errors);
+            Ok(root) => {
+                let errors = parser.take_errors();
+                if !errors.is_empty() {
+                    return ParseResult::Fail(errors);
                 }
-                ParseResult::Succ((ret.root, ret.ast))
+                ParseResult::Succ((root, ast))
             }
             Err(e) => ParseResult::Fail(vec![e]),
         },

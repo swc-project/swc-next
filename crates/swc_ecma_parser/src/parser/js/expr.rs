@@ -40,7 +40,7 @@ impl CloneIn for AssignTargetOrSpread {
     }
 }
 
-impl<I: Tokens> Parser<I> {
+impl<'a, I: Tokens> Parser<'a, I> {
     pub(crate) fn parse_expr_inner(&mut self) -> PResult<Expr> {
         trace_cur!(self, parse_expr);
         debug_tracing!(self, "parse_expr");

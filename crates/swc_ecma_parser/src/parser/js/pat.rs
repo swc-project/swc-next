@@ -28,7 +28,7 @@ impl PatType {
     }
 }
 
-impl<I: Tokens> Parser<I> {
+impl<'a, I: Tokens> Parser<'a, I> {
     pub fn parse_pat(&mut self) -> PResult<Pat> {
         self.parse_binding_pat_or_ident(false)
     }

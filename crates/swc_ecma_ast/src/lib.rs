@@ -496,6 +496,11 @@ impl Ast {
     pub fn empty_utf8_ref(&self) -> Utf8Ref {
         self.string_allocator.empty_utf8_ref()
     }
+
+    #[inline]
+    pub fn string_allocator(&self) -> Rc<StringAllocator> {
+        self.string_allocator.clone()
+    }
 }
 
 impl Ast {

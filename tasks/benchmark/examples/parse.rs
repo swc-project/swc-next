@@ -1,5 +1,6 @@
-use std::{env, fs::read_to_string};
+use std::{env, fs::read_to_string, rc::Rc};
 
+use swc_experimental_ecma_ast::Ast;
 use swc_experimental_ecma_parser::{EsSyntax, Parser, StringSource, Syntax};
 
 fn main() {
@@ -10,6 +11,7 @@ fn main() {
     let syntax = Syntax::Es(EsSyntax::default());
     let input = StringSource::new(&source);
 
-    let parser = Parser::new(syntax, input, None);
+    let mut ast = Ast::new(input.len(), Rc::default());
+    let mut parser = Parser::new(&mut ast, syntax, input, None);
     let _root = parser.parse_program().unwrap();
 }

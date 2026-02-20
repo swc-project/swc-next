@@ -1,9 +1,11 @@
+use std::rc::Rc;
+
 use rustc_hash::FxHashSet;
 use swc_core::common::{BytePos, comments::SingleThreadedComments};
 use swc_experimental_ecma_ast::{
     Ast, BreakStmt, ClassMember, ContinueStmt, DebuggerStmt, ExportAll, ExportDefaultExpr,
-    ExprStmt, GetSpan, ImportDecl, NamedExport, Program, ReturnStmt, Span, ThrowStmt, UpdateExpr,
-    VarDecl, Visit, VisitWith, YieldExpr,
+    ExprStmt, GetSpan, ImportDecl, NamedExport, Program, ReturnStmt, Span, StringAllocator,
+    ThrowStmt, UpdateExpr, VarDecl, Visit, VisitWith, YieldExpr,
 };
 use swc_experimental_ecma_ast_compat::AstCompat;
 use swc_experimental_ecma_parser::{
@@ -26,20 +28,23 @@ pub fn run(src: &'static str, compat: bool) {
 
 #[inline(never)]
 fn run_parse(src: &str, comments: &SingleThreadedComments) -> (Program, Ast, Vec<TokenAndSpan>) {
+    let string_allocator = Rc::new(StringAllocator::default());
+    let mut ast = Ast::new(src.len(), string_allocator.clone());
     let parser_lexer = Lexer::new(
         Syntax::Es(Default::default()),
         Default::default(),
         StringSource::new(src),
         Some(comments),
+        string_allocator,
     );
 
     // Empirically, 1/8 of the source length is a good capacity.
     let lexer = Capturing::with_capacity(parser_lexer, src.len() / 8);
-    let parser = Parser::new_from(lexer);
+    let mut parser = Parser::new_from(&mut ast, lexer);
 
-    let mut ret = parser.parse_program().unwrap();
-    let tokens = Capturing::take(&mut ret.input);
-    (ret.root, ret.ast, tokens)
+    let program = parser.parse_program().unwrap();
+    let tokens = Capturing::take(&mut parser.input_mut().iter);
+    (program, ast, tokens)
 }
 
 #[inline(never)]

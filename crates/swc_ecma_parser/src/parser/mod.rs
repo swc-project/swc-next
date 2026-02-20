@@ -8,13 +8,13 @@ use swc_core::{
 use swc_experimental_ecma_ast::*;
 
 use crate::{
-    Context, ParseRet, Syntax,
+    Context, Lexer, Syntax,
     error::SyntaxError,
     input::Buffer,
     lexer::{MaybeSubUtf8, MaybeSubWtf8, Token, TokenAndSpan, source::StringSource},
     parser::{
         input::Tokens,
-        state::{State, WithState},
+        state::State,
         util::{ExprExt, ScratchIndex},
     },
     syntax::SyntaxFlags,
@@ -43,8 +43,8 @@ pub struct ParserCheckpoint<I: Tokens> {
 }
 
 /// EcmaScript parser.
-pub struct Parser<I: self::input::Tokens> {
-    ast: Ast,
+pub struct Parser<'a, I: self::input::Tokens> {
+    ast: &'a mut Ast,
     /// Don't mutable this directly. Use Parser::scratch_xxx instead for safety.
     scratch: Vec<ExtraData>,
     state: State,
@@ -52,7 +52,7 @@ pub struct Parser<I: self::input::Tokens> {
     found_module_item: bool,
 }
 
-impl<I: Tokens> Parser<I> {
+impl<'a, I: Tokens> Parser<'a, I> {
     #[inline(always)]
     pub fn input(&self) -> &Buffer<I> {
         &self.input
@@ -142,29 +142,33 @@ impl<I: Tokens> Parser<I> {
     }
 }
 
-impl<'a> Parser<crate::lexer::Lexer<'a>> {
+impl<'a> Parser<'a, Lexer<'a>> {
     pub fn new(
+        ast: &'a mut Ast,
         syntax: Syntax,
         input: StringSource<'a>,
         comments: Option<&'a dyn Comments>,
     ) -> Self {
-        let lexer = crate::lexer::Lexer::new(syntax, Default::default(), input, comments);
-        Self::new_from(lexer)
+        let lexer = Lexer::new(
+            syntax,
+            Default::default(),
+            input,
+            comments,
+            ast.string_allocator(),
+        );
+        Self::new_from(ast, lexer)
     }
 }
 
-impl<I: Tokens> Parser<I> {
-    pub fn new_from(mut input: I) -> Self {
+impl<'a, I: Tokens> Parser<'a, I> {
+    pub fn new_from(ast: &'a mut Ast, mut input: I) -> Self {
         let in_declare = input.syntax().dts();
         let mut ctx = input.ctx() | Context::TopLevel;
         ctx.set(Context::InDeclare, in_declare);
         input.set_ctx(ctx);
 
-        let mut p = Parser {
-            ast: Ast::new(
-                (input.end_pos().0 - input.start_pos().0) as usize,
-                input.string_allocator(),
-            ),
+        let mut p = Self {
+            ast,
             scratch: Vec::new(),
             state: Default::default(),
             input: crate::parser::input::Buffer::new(input),
@@ -190,7 +194,7 @@ impl<I: Tokens> Parser<I> {
         self.input.iter.take_script_module_errors()
     }
 
-    pub fn parse_script(mut self) -> PResult<ParseRet<Script, I>> {
+    pub fn parse_script(&mut self) -> PResult<Script> {
         trace_cur!(self, parse_script);
 
         let ctx = (self.ctx() & !Context::Module) | Context::TopLevel;
@@ -203,17 +207,10 @@ impl<I: Tokens> Parser<I> {
 
         debug_assert!(self.input().cur() == Token::Eof);
         self.input_mut().bump();
-
-        let errors = self.take_errors();
-        Ok(ParseRet {
-            ast: self.ast,
-            root: ret,
-            input: self.input.iter,
-            errors,
-        })
+        Ok(ret)
     }
 
-    pub fn parse_commonjs(mut self) -> PResult<ParseRet<Script, I>> {
+    pub fn parse_commonjs(&mut self) -> PResult<Script> {
         trace_cur!(self, parse_commonjs);
 
         // CommonJS module is acctually in a function scope
@@ -231,16 +228,10 @@ impl<I: Tokens> Parser<I> {
         debug_assert!(self.input().cur() == Token::Eof);
         self.input_mut().bump();
 
-        let errors = self.take_errors();
-        Ok(ParseRet {
-            ast: self.ast,
-            root: ret,
-            input: self.input.iter,
-            errors,
-        })
+        Ok(ret)
     }
 
-    pub fn parse_typescript_module(mut self) -> PResult<ParseRet<Module, I>> {
+    pub fn parse_typescript_module(&mut self) -> PResult<Module> {
         trace_cur!(self, parse_typescript_module);
 
         debug_assert!(self.syntax().typescript());
@@ -259,13 +250,7 @@ impl<I: Tokens> Parser<I> {
         debug_assert!(self.input().cur() == Token::Eof);
         self.input_mut().bump();
 
-        let errors = self.take_errors();
-        Ok(ParseRet {
-            ast: self.ast,
-            root: ret,
-            input: self.input.iter,
-            errors,
-        })
+        Ok(ret)
     }
 
     /// Returns [Module] if it's a module and returns [Script] if it's not a
@@ -273,7 +258,7 @@ impl<I: Tokens> Parser<I> {
     ///
     /// Note: This is not perfect yet. It means, some strict mode violations may
     /// not be reported even if the method returns [Module].
-    pub fn parse_program(mut self) -> PResult<ParseRet<Program, I>> {
+    pub fn parse_program(&mut self) -> PResult<Program> {
         let start = self.cur_pos();
         let shebang = self.parse_shebang()?;
 
@@ -319,16 +304,10 @@ impl<I: Tokens> Parser<I> {
         debug_assert!(self.input().cur() == Token::Eof);
         self.input_mut().bump();
 
-        let errors = self.take_errors();
-        Ok(ParseRet {
-            ast: self.ast,
-            root: ret,
-            input: self.input.iter,
-            errors,
-        })
+        Ok(ret)
     }
 
-    pub fn parse_module(mut self) -> PResult<ParseRet<Module, I>> {
+    pub fn parse_module(&mut self) -> PResult<Module> {
         let ctx = self.ctx()
             | Context::Module
             | Context::CanBeModule
@@ -346,41 +325,20 @@ impl<I: Tokens> Parser<I> {
         debug_assert!(self.input().cur() == Token::Eof);
         self.input_mut().bump();
 
-        let errors = self.take_errors();
-        Ok(ParseRet {
-            ast: self.ast,
-            root: ret,
-            input: self.input.iter,
-            errors,
-        })
+        Ok(ret)
     }
 
-    pub fn parse_expr(mut self) -> PResult<ParseRet<Expr, I>> {
+    pub fn parse_expr(&mut self) -> PResult<Expr> {
         // This allow to parse `import.meta`
         let ctx = self.ctx();
         self.set_ctx(ctx.union(Context::CanBeModule));
 
         let expr = self.parse_expr_inner()?;
-        let errors = self.take_errors();
-        Ok(ParseRet {
-            ast: self.ast,
-            root: expr,
-            input: self.input.iter,
-            errors,
-        })
+        Ok(expr)
     }
 }
 
-impl<I: Tokens> Parser<I> {
-    #[inline(always)]
-    pub fn with_state<'w>(&'w mut self, state: State) -> WithState<'w, I> {
-        let orig_state = std::mem::replace(self.state_mut(), state);
-        WithState {
-            orig_state,
-            inner: self,
-        }
-    }
-
+impl<'a, I: Tokens> Parser<'a, I> {
     #[inline(always)]
     pub fn ctx(&self) -> Context {
         self.input().get_ctx()

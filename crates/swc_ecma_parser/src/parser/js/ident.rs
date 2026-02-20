@@ -10,7 +10,7 @@ use crate::{
     lexer::{MaybeSubUtf8, Token},
 };
 
-impl<I: Tokens> Parser<I> {
+impl<'a, I: Tokens> Parser<'a, I> {
     // https://tc39.es/ecma262/#prod-ModuleExportName
     pub(crate) fn parse_module_export_name(&mut self) -> PResult<ModuleExportName> {
         let cur = self.input().cur();

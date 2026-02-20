@@ -31,7 +31,7 @@ enum TempForHead {
     },
 }
 
-impl<I: Tokens> Parser<I> {
+impl<'a, I: Tokens> Parser<'a, I> {
     fn parse_normal_for_head(&mut self, init: Option<VarDeclOrExpr>) -> PResult<TempForHead> {
         let test = if self.input_mut().eat(Token::Semi) {
             None

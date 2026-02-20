@@ -12,7 +12,7 @@ use crate::{
     lexer::{Token, TokenFlags},
 };
 
-impl<I: Tokens> Parser<I> {
+impl<'a, I: Tokens> Parser<'a, I> {
     /// Parses JSX expression enclosed into curly brackets.
     fn parse_jsx_expr_container(&mut self) -> PResult<JSXExprContainer> {
         debug_assert!(self.input().syntax().jsx());
