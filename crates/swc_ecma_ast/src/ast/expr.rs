@@ -122,6 +122,12 @@ pub enum MemberProp {
     Computed(ComputedPropName),
 }
 
+impl MemberProp {
+    pub fn is_ident_with(&self, ast: &Ast, sym: &str) -> bool {
+        matches!(self, MemberProp::Ident(i) if ast.get_utf8(i.sym(ast)) == sym)
+    }
+}
+
 #[ast]
 pub struct SuperPropExpr {
     obj: Super,
