@@ -60,18 +60,18 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 // `export { type as as }`
                 // `export { type as as as }`
                 if self.syntax().typescript()
-                    && self.ast.get_utf8(orig_ident.sym(&self.ast)) == "type"
+                    && self.ast.get_utf8(orig_ident.sym(self.ast)) == "type"
                     && self.input().cur().is_word()
                 {
                     let possibly_orig = self.parse_ident_name().map(|(span, sym)| {
                         let sym = self.to_utf8_ref(sym);
                         self.ast.ident(span, sym, false)
                     })?;
-                    if self.ast.get_utf8(possibly_orig.sym(&self.ast)) == "as" {
+                    if self.ast.get_utf8(possibly_orig.sym(self.ast)) == "as" {
                         // `export { type as }`
                         if !self.input().cur().is_word() {
                             if type_only {
-                                self.emit_err(orig_ident.span(&self.ast), SyntaxError::TS2207);
+                                self.emit_err(orig_ident.span(self.ast), SyntaxError::TS2207);
                             }
 
                             return Ok(self.ast.export_named_specifier(
@@ -86,7 +86,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                             let sym = self.to_utf8_ref(sym);
                             self.ast.ident(span, sym, false)
                         })?;
-                        if self.ast.get_utf8(maybe_as.sym(&self.ast)) == "as" {
+                        if self.ast.get_utf8(maybe_as.sym(self.ast)) == "as" {
                             if self.input().cur().is_word() {
                                 // `export { type as as as }`
                                 // `export { type as as foo }`
@@ -96,12 +96,12 @@ impl<'a, I: Tokens> Parser<'a, I> {
                                 })?;
 
                                 if type_only {
-                                    self.emit_err(orig_ident.span(&self.ast), SyntaxError::TS2207);
+                                    self.emit_err(orig_ident.span(self.ast), SyntaxError::TS2207);
                                 }
 
-                                debug_assert!(start <= orig_ident.span_hi(&self.ast));
+                                debug_assert!(start <= orig_ident.span_hi(self.ast));
                                 return Ok(self.ast.export_named_specifier(
-                                    Span::new_with_checked(start, orig_ident.span_hi(&self.ast)),
+                                    Span::new_with_checked(start, orig_ident.span_hi(self.ast)),
                                     ModuleExportName::Ident(possibly_orig),
                                     Some(ModuleExportName::Ident(exported)),
                                     true,
@@ -109,7 +109,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                             } else {
                                 // `export { type as as }`
                                 return Ok(self.ast.export_named_specifier(
-                                    Span::new_with_checked(start, orig_ident.span_hi(&self.ast)),
+                                    Span::new_with_checked(start, orig_ident.span_hi(self.ast)),
                                     ModuleExportName::Ident(orig_ident),
                                     Some(ModuleExportName::Ident(maybe_as)),
                                     false,
@@ -118,7 +118,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                         } else {
                             // `export { type as xxx }`
                             return Ok(self.ast.export_named_specifier(
-                                Span::new_with_checked(start, orig_ident.span_hi(&self.ast)),
+                                Span::new_with_checked(start, orig_ident.span_hi(self.ast)),
                                 ModuleExportName::Ident(orig_ident),
                                 Some(ModuleExportName::Ident(maybe_as)),
                                 false,
@@ -128,7 +128,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                         // `export { type xx }`
                         // `export { type xx as yy }`
                         if type_only {
-                            self.emit_err(orig_ident.span(&self.ast), SyntaxError::TS2207);
+                            self.emit_err(orig_ident.span(self.ast), SyntaxError::TS2207);
                         }
 
                         is_type_only = true;
@@ -177,7 +177,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 // `import { type as as } from 'mod'`
                 // `import { type as as as } from 'mod'`
                 if self.syntax().typescript()
-                    && self.ast.get_utf8(orig_name.sym(&self.ast)) == "type"
+                    && self.ast.get_utf8(orig_name.sym(self.ast)) == "type"
                     && self.input().cur().is_word()
                 {
                     let possibly_orig_name = self.parse_ident_name().map(|(span, sym)| {
@@ -186,20 +186,20 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     })?;
 
                     let possibly_orig_name_str =
-                        self.ast.get_utf8(possibly_orig_name.sym(&self.ast));
+                        self.ast.get_utf8(possibly_orig_name.sym(self.ast));
                     if possibly_orig_name_str == "as" {
                         // `import { type as } from 'mod'`
                         if !self.input().cur().is_word() {
                             if self.ctx().is_reserved_word(possibly_orig_name_str) {
                                 syntax_error!(
                                     self,
-                                    possibly_orig_name.span(&self.ast),
+                                    possibly_orig_name.span(self.ast),
                                     SyntaxError::ReservedWordInImport
                                 )
                             }
 
                             if type_only {
-                                self.emit_err(orig_name.span(&self.ast), SyntaxError::TS2206);
+                                self.emit_err(orig_name.span(self.ast), SyntaxError::TS2206);
                             }
 
                             return Ok(self.ast.import_specifier_import_named_specifier(
@@ -211,18 +211,18 @@ impl<'a, I: Tokens> Parser<'a, I> {
                         }
 
                         let maybe_as: Ident = self.parse_binding_ident(false)?;
-                        if self.ast.get_utf8(maybe_as.sym(&self.ast)) == "as" {
+                        if self.ast.get_utf8(maybe_as.sym(self.ast)) == "as" {
                             if self.input().cur().is_word() {
                                 // `import { type as as as } from 'mod'`
                                 // `import { type as as foo } from 'mod'`
                                 let local: Ident = self.parse_binding_ident(false)?;
 
                                 if type_only {
-                                    self.emit_err(orig_name.span(&self.ast), SyntaxError::TS2206);
+                                    self.emit_err(orig_name.span(self.ast), SyntaxError::TS2206);
                                 }
 
                                 return Ok(self.ast.import_specifier_import_named_specifier(
-                                    Span::new_with_checked(start, orig_name.span_hi(&self.ast)),
+                                    Span::new_with_checked(start, orig_name.span_hi(self.ast)),
                                     local,
                                     Some(ModuleExportName::Ident(possibly_orig_name)),
                                     true,
@@ -230,7 +230,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                             } else {
                                 // `import { type as as } from 'mod'`
                                 return Ok(self.ast.import_specifier_import_named_specifier(
-                                    Span::new_with_checked(start, maybe_as.span_hi(&self.ast)),
+                                    Span::new_with_checked(start, maybe_as.span_hi(self.ast)),
                                     maybe_as,
                                     Some(ModuleExportName::Ident(orig_name)),
                                     false,
@@ -239,7 +239,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                         } else {
                             // `import { type as xxx } from 'mod'`
                             return Ok(self.ast.import_specifier_import_named_specifier(
-                                Span::new_with_checked(start, orig_name.span_hi(&self.ast)),
+                                Span::new_with_checked(start, orig_name.span_hi(self.ast)),
                                 maybe_as,
                                 Some(ModuleExportName::Ident(orig_name)),
                                 false,
@@ -249,7 +249,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                         // `import { type xx } from 'mod'`
                         // `import { type xx as yy } from 'mod'`
                         if type_only {
-                            self.emit_err(orig_name.span(&self.ast), SyntaxError::TS2206);
+                            self.emit_err(orig_name.span(self.ast), SyntaxError::TS2206);
                         }
 
                         orig_name = possibly_orig_name;
@@ -260,7 +260,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 if self.input_mut().eat(Token::As) {
                     let local: Ident = self.parse_binding_ident(false)?;
                     return Ok(self.ast.import_specifier_import_named_specifier(
-                        Span::new_with_checked(start, local.span_hi(&self.ast)),
+                        Span::new_with_checked(start, local.span_hi(self.ast)),
                         local,
                         Some(ModuleExportName::Ident(orig_name)),
                         is_type_only,
@@ -273,11 +273,11 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 // 'IdentifierName' as 'ImportedBinding'
                 if self
                     .ctx()
-                    .is_reserved_word(self.ast.get_utf8(orig_name.sym(&self.ast)))
+                    .is_reserved_word(self.ast.get_utf8(orig_name.sym(self.ast)))
                 {
                     syntax_error!(
                         self,
-                        orig_name.span(&self.ast),
+                        orig_name.span(self.ast),
                         SyntaxError::ReservedWordInImport
                     )
                 }
@@ -294,7 +294,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 if self.input_mut().eat(Token::As) {
                     let local: Ident = self.parse_binding_ident(false)?;
                     Ok(self.ast.import_specifier_import_named_specifier(
-                        Span::new_with_checked(start, local.span_hi(&self.ast)),
+                        Span::new_with_checked(start, local.span_hi(self.ast)),
                         local,
                         Some(ModuleExportName::Str(orig_str)),
                         false,
@@ -302,10 +302,10 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 } else {
                     syntax_error!(
                         self,
-                        orig_str.span(&self.ast),
+                        orig_str.span(self.ast),
                         SyntaxError::ImportBindingIsString(
                             self.ast
-                                .get_wtf8(orig_str.value(&self.ast))
+                                .get_wtf8(orig_str.value(self.ast))
                                 .to_string_lossy()
                                 .into()
                         )
@@ -596,7 +596,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
                     let specifier = p
                         .ast
-                        .export_specifier_export_default_specifier(default.span(&p.ast), default);
+                        .export_specifier_export_default_specifier(default.span(p.ast), default);
                     specifiers.push(p, specifier);
                 }
 
@@ -674,41 +674,41 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     match s {
                         ExportSpecifier::Default(default) => {
                             self.emit_err(
-                                default.exported(&self.ast).span(&self.ast),
+                                default.exported(self.ast).span(self.ast),
                                 SyntaxError::ExportExpectFrom(Atom::new(
                                     self.ast
-                                        .get_utf8(default.exported(&self.ast).sym(&self.ast)),
+                                        .get_utf8(default.exported(self.ast).sym(self.ast)),
                                 )),
                             );
                         }
                         ExportSpecifier::Namespace(namespace) => {
-                            let export_name = match namespace.name(&self.ast) {
+                            let export_name = match namespace.name(self.ast) {
                                 ModuleExportName::Ident(i) => {
-                                    Cow::Borrowed(self.ast.get_utf8(i.sym(&self.ast)))
+                                    Cow::Borrowed(self.ast.get_utf8(i.sym(self.ast)))
                                 }
                                 ModuleExportName::Str(s) => {
-                                    self.ast.get_wtf8(s.value(&self.ast)).to_string_lossy()
+                                    self.ast.get_wtf8(s.value(self.ast)).to_string_lossy()
                                 }
                                 #[cfg(swc_ast_unknown)]
                                 _ => unreachable!(),
                             };
                             self.emit_err(
-                                namespace.span(&self.ast),
+                                namespace.span(self.ast),
                                 SyntaxError::ExportExpectFrom(Atom::new(export_name)),
                             );
                         }
-                        ExportSpecifier::Named(named) => match named.orig(&self.ast) {
-                            ModuleExportName::Ident(id) if id.is_reserved(&self.ast) => {
+                        ExportSpecifier::Named(named) => match named.orig(self.ast) {
+                            ModuleExportName::Ident(id) if id.is_reserved(self.ast) => {
                                 self.emit_err(
-                                    id.span(&self.ast),
+                                    id.span(self.ast),
                                     SyntaxError::ExportExpectFrom(Atom::new(
-                                        self.ast.get_utf8(id.sym(&self.ast)),
+                                        self.ast.get_utf8(id.sym(self.ast)),
                                     )),
                                 );
                             }
                             ModuleExportName::Str(s) => {
                                 self.emit_err(
-                                    s.span(&self.ast),
+                                    s.span(self.ast),
                                     SyntaxError::ExportBindingIsString,
                                 );
                             }
@@ -801,7 +801,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             'import_maybe_ident: {
                 if p.is_ident_ref() {
                     let mut local = p.parse_imported_default_binding()?;
-                    let local_sym = p.ast.get_utf8(local.sym(&p.ast));
+                    let local_sym = p.ast.get_utf8(local.sym(p.ast));
                     let is_source = local_sym == "source";
                     let is_defer = local_sym == "defer";
 
@@ -869,7 +869,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
                     let specifier = p
                         .ast
-                        .import_specifier_import_default_specifier(local.span(&p.ast), local);
+                        .import_specifier_import_default_specifier(local.span(p.ast), local);
                     specifiers.push(p, specifier);
                 }
             }

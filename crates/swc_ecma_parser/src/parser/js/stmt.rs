@@ -59,7 +59,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         } else {
             if let ForHead::UsingDecl(d) = &left {
                 self.emit_err(
-                    d.span(&self.ast),
+                    d.span(self.ast),
                     SyntaxError::UsingDeclNotAllowedForForInLoop,
                 )
             }
@@ -322,14 +322,14 @@ impl<'a, I: Tokens> Parser<'a, I> {
         })?;
         for decl in decls.iter() {
             let decl = self.ast.get_node_in_sub_range(decl);
-            match decl.name(&self.ast) {
+            match decl.name(self.ast) {
                 Pat::Ident(..) => {}
                 _ => {
                     self.emit_err(self.span(start), SyntaxError::InvalidNameInUsingDecl);
                 }
             }
 
-            if decl.init(&self.ast).is_none() {
+            if decl.init(self.ast).is_none() {
                 self.emit_err(self.span(start), SyntaxError::InitRequiredForUsingDecl);
             }
         }
@@ -352,22 +352,22 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
             let cur = self.input().cur();
             if cur == Token::Of || cur == Token::In {
-                if decl.decls(&self.ast).len() != 1 {
-                    for d in decl.decls(&self.ast).iter().skip(1) {
+                if decl.decls(self.ast).len() != 1 {
+                    for d in decl.decls(self.ast).iter().skip(1) {
                         let d = self.ast.get_node_in_sub_range(d);
                         self.emit_err(
-                            d.name(&self.ast).span(&self.ast),
+                            d.name(self.ast).span(self.ast),
                             SyntaxError::TooManyVarInForInHead,
                         );
                     }
                 } else {
-                    let decls = decl.decls(&self.ast);
+                    let decls = decl.decls(self.ast);
                     let decl = self.ast.get_node_in_sub_range(decls.get(0).unwrap());
                     if (self.ctx().contains(Context::Strict) || self.input().is(Token::Of))
-                        && decl.init(&self.ast).is_some()
+                        && decl.init(self.ast).is_some()
                     {
                         self.emit_err(
-                            decl.name(&self.ast).span(&self.ast),
+                            decl.name(self.ast).span(self.ast),
                             SyntaxError::VarInitializerInForInHead,
                         );
                     }
@@ -408,14 +408,14 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
         if self.input().syntax().explicit_resource_management() {
             // using foo
-            let mut maybe_using_decl = init.is_ident_ref_to(&self.ast, "using");
+            let mut maybe_using_decl = init.is_ident_ref_to(self.ast, "using");
             let mut maybe_await_using_decl = false;
 
             // await using foo
             if !maybe_using_decl
                 && init
                     .as_await()
-                    .filter(|e| e.arg(&self.ast).is_ident_ref_to(&self.ast, "using"))
+                    .filter(|e| e.arg(self.ast).is_ident_ref_to(self.ast, "using"))
                     .is_some()
             {
                 maybe_using_decl = true;
@@ -470,7 +470,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 match pat {
                     Pat::Ident(..) => {}
                     Pat::Expr(..) => {}
-                    ref v => self.emit_err(v.span(&self.ast), SyntaxError::TS2491),
+                    ref v => self.emit_err(v.span(self.ast), SyntaxError::TS2491),
                 }
             }
 
@@ -695,8 +695,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
     fn parse_labelled_stmt(&mut self, l: Ident) -> PResult<Stmt> {
         self.do_inside_of_context(Context::IsBreakAllowed, |p| {
             p.do_outside_of_context(Context::AllowUsingDecl, |p| {
-                let start = l.span_lo(&p.ast);
-                let sym = l.sym(&p.ast);
+                let start = l.span_lo(p.ast);
+                let sym = l.sym(p.ast);
                 let atom = p.ast.get_utf8(sym);
 
                 let mut errors = Vec::new();
@@ -704,7 +704,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     let lb = p.ast.get_utf8(*lb);
                     if atom == lb {
                         errors.push(Error::new(
-                            l.span(&p.ast),
+                            l.span(p.ast),
                             SyntaxError::DuplicateLabel(Atom::new(atom)),
                         ));
                     }
@@ -714,12 +714,12 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 let body = if p.input().is(Token::Function) {
                     let f = p.parse_fn_decl(TypedSubRange::empty())?;
                     if let Decl::Fn(fn_decl) = &f {
-                        let function = fn_decl.function(&p.ast);
+                        let function = fn_decl.function(p.ast);
                         if p.ctx().contains(Context::Strict) {
-                            p.emit_err(function.span(&p.ast), SyntaxError::LabelledFunctionInStrict)
+                            p.emit_err(function.span(p.ast), SyntaxError::LabelledFunctionInStrict)
                         }
-                        if function.is_generator(&p.ast) || function.is_async(&p.ast) {
-                            p.emit_err(function.span(&p.ast), SyntaxError::LabelledGeneratorOrAsync)
+                        if function.is_generator(p.ast) || function.is_async(p.ast) {
+                            p.emit_err(function.span(p.ast), SyntaxError::LabelledGeneratorOrAsync)
                         }
                     }
 
@@ -970,7 +970,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 if label.is_some()
                     && !self.state().labels.iter().any(|l| {
                         self.ast.get_utf8(*l)
-                            == self.ast.get_utf8(label.as_ref().unwrap().sym(&self.ast))
+                            == self.ast.get_utf8(label.as_ref().unwrap().sym(self.ast))
                     })
                 {
                     self.emit_err(span, SyntaxError::TS1116);
@@ -982,7 +982,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             } else if label.is_some()
                 && !self.state().labels.iter().any(|l| {
                     self.ast.get_utf8(*l)
-                        == self.ast.get_utf8(label.as_ref().unwrap().sym(&self.ast))
+                        == self.ast.get_utf8(label.as_ref().unwrap().sym(self.ast))
                 })
             {
                 self.emit_err(span, SyntaxError::TS1107);
@@ -1123,10 +1123,10 @@ impl<'a, I: Tokens> Parser<'a, I> {
         };
 
         if let Expr::Ident(ref ident) = expr {
-            let ident_sym = self.ast.get_utf8(ident.sym(&self.ast));
+            let ident_sym = self.ast.get_utf8(ident.sym(self.ast));
             if ident_sym == "interface" && self.input().had_line_break_before_cur() {
                 self.emit_strict_mode_err(
-                    ident.span(&self.ast),
+                    ident.span(self.ast),
                     SyntaxError::InvalidIdentInStrict(Atom::new(ident_sym)),
                 );
 
@@ -1172,7 +1172,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             syntax_error!(
                 self,
                 SyntaxError::ExpectedSemiForExprStmt {
-                    expr: expr.span(&self.ast)
+                    expr: expr.span(self.ast)
                 }
             );
         }

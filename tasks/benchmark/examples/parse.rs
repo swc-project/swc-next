@@ -11,7 +11,7 @@ fn main() {
     let syntax = Syntax::Es(EsSyntax::default());
     let input = StringSource::new(&source);
 
-    let mut ast = Ast::new(input.len(), Rc::default());
+    let mut ast = Ast::new(input.source_len(), Rc::default());
     let mut parser = Parser::new(&mut ast, syntax, input, None);
     let _root = parser.parse_program().unwrap();
 }

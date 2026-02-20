@@ -40,37 +40,37 @@ impl<'a, I: Tokens> Parser<'a, I> {
         debug_assert!(self.ctx().contains(Context::Strict));
         match pat {
             Pat::Ident(i) => {
-                if i.is_reserved_in_strict_bind(&self.ast) {
+                if i.is_reserved_in_strict_bind(self.ast) {
                     self.emit_strict_mode_err(
-                        i.span(&self.ast),
+                        i.span(self.ast),
                         SyntaxError::EvalAndArgumentsInStrict,
                     )
                 }
             }
             Pat::Array(arr) => {
-                for pat in arr.elems(&self.ast).iter() {
+                for pat in arr.elems(self.ast).iter() {
                     let pat = self.ast.get_node_in_sub_range(pat);
                     if let Some(pat) = pat {
                         self.pat_is_valid_argument_in_strict(pat);
                     }
                 }
             }
-            Pat::Rest(r) => self.pat_is_valid_argument_in_strict(r.arg(&self.ast)),
+            Pat::Rest(r) => self.pat_is_valid_argument_in_strict(r.arg(self.ast)),
             Pat::Object(obj) => {
-                for prop in obj.props(&self.ast).iter() {
+                for prop in obj.props(self.ast).iter() {
                     let prop = self.ast.get_node_in_sub_range(prop);
                     match prop {
                         ObjectPatProp::KeyValue(key_value) => {
-                            self.pat_is_valid_argument_in_strict(key_value.value(&self.ast))
+                            self.pat_is_valid_argument_in_strict(key_value.value(self.ast))
                         }
                         ObjectPatProp::Rest(rest) => {
-                            self.pat_is_valid_argument_in_strict(rest.arg(&self.ast))
+                            self.pat_is_valid_argument_in_strict(rest.arg(self.ast))
                         }
                         ObjectPatProp::Assign(assign) => {
-                            let key = assign.key(&self.ast);
-                            if key.is_reserved_in_strict_bind(&self.ast) {
+                            let key = assign.key(self.ast);
+                            if key.is_reserved_in_strict_bind(self.ast) {
                                 self.emit_strict_mode_err(
-                                    key.span(&self.ast),
+                                    key.span(self.ast),
                                     SyntaxError::EvalAndArgumentsInStrict,
                                 )
                             }
@@ -80,7 +80,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     }
                 }
             }
-            Pat::Assign(a) => self.pat_is_valid_argument_in_strict(a.left(&self.ast)),
+            Pat::Assign(a) => self.pat_is_valid_argument_in_strict(a.left(self.ast)),
             Pat::Invalid(_) | Pat::Expr(_) => (),
             #[cfg(swc_ast_unknown)]
             _ => unreachable!(),
@@ -112,7 +112,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
     fn reparse_expr_as_pat_inner(&mut self, pat_ty: PatType, expr: Expr) -> PResult<Pat> {
         // In dts, we do not reparse.
         debug_assert!(!self.input().syntax().dts());
-        let span = expr.span(&self.ast);
+        let span = expr.span(self.ast);
         if pat_ty == PatType::AssignPat {
             match expr {
                 Expr::Object(..) | Expr::Array(..) => {
@@ -132,7 +132,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                         return Ok(Pat::Expr(expr));
                     }
                     Expr::Ident(i) => {
-                        let i = self.ast.binding_ident(i.span(&self.ast), i);
+                        let i = self.ast.binding_ident(i.span(self.ast), i);
                         return Ok(Pat::Ident(i));
                     }
                     _ => {
@@ -161,13 +161,13 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 | Expr::Paren(..)
                 // | Expr::TsAs(..) 
                 | Expr::Tpl(..)=> {
-                    if !expr.is_valid_simple_assignment_target(&self.ast, self.ctx().contains(Context::Strict))
+                    if !expr.is_valid_simple_assignment_target(self.ast, self.ctx().contains(Context::Strict))
                     {
                         self.emit_err(span, SyntaxError::NotSimpleAssign)
                     }
                     match expr {
                         Expr::Ident(i) => {
-                            let i = self.ast.binding_ident(i.span(&self.ast), i);
+                            let i = self.ast.binding_ident(i.span(self.ast), i);
                             return Ok(Pat::Ident(i))
                         },
                         _ => {
@@ -187,17 +187,17 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 Ok(self.ast.pat_invalid(span))
             }
             Expr::Assign(assign_expr) => {
-                let span = assign_expr.span(&self.ast);
-                if assign_expr.op(&self.ast) != AssignOp::Assign {
+                let span = assign_expr.span(self.ast);
+                if assign_expr.op(self.ast) != AssignOp::Assign {
                     self.emit_err(span, SyntaxError::InvalidPat);
                     return Ok(self.ast.pat_invalid(span));
                 }
 
-                let left = match assign_expr.left(&self.ast) {
+                let left = match assign_expr.left(self.ast) {
                     AssignTarget::Simple(left) => {
                         let left = match left {
                             SimpleAssignTarget::Ident(binding_ident) => {
-                                let sym = binding_ident.id(&self.ast);
+                                let sym = binding_ident.id(self.ast);
                                 Expr::Ident(sym)
                             }
                             SimpleAssignTarget::Member(member_expr) => Expr::Member(member_expr),
@@ -220,25 +220,25 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     #[cfg(swc_ast_unknown)]
                     _ => unreachable!(),
                 };
-                let right = assign_expr.right(&self.ast);
+                let right = assign_expr.right(self.ast);
                 Ok(self.ast.pat_assign_pat(span, left, right))
             }
             Expr::Object(object) => {
                 // {}
-                let object_span = object.span(&self.ast);
-                let props = object.props(&self.ast);
+                let object_span = object.span(self.ast);
+                let props = object.props(self.ast);
                 let len = props.len();
 
                 let props = self.scratch_start(|p, obj_props| {
                     for (idx, prop) in props.iter().enumerate() {
                         let prop = p.ast.get_node_in_sub_range(prop);
-                        let span = prop.span(&p.ast);
+                        let span = prop.span(p.ast);
                         let prop = match prop {
                             PropOrSpread::Prop(prop) => match prop {
                                 Prop::Shorthand(id) => {
-                                    let binding_ident = p.ast.binding_ident(id.span(&p.ast), id);
+                                    let binding_ident = p.ast.binding_ident(id.span(p.ast), id);
                                     p.ast.object_pat_prop_assign_pat_prop(
-                                        id.span(&p.ast),
+                                        id.span(p.ast),
                                         binding_ident,
                                         None,
                                     )
@@ -246,27 +246,27 @@ impl<'a, I: Tokens> Parser<'a, I> {
                                 Prop::KeyValue(kv_prop) => {
                                     let pat = p.reparse_expr_as_pat(
                                         pat_ty.element(),
-                                        kv_prop.value(&p.ast),
+                                        kv_prop.value(p.ast),
                                     )?;
                                     p.ast.object_pat_prop_key_value_pat_prop(
                                         span,
-                                        kv_prop.key(&p.ast),
+                                        kv_prop.key(p.ast),
                                         pat,
                                     )
                                 }
                                 Prop::Assign(assign_prop) => {
-                                    let id = assign_prop.key(&p.ast);
-                                    let key = p.ast.binding_ident(id.span(&p.ast), id);
-                                    let value = assign_prop.value(&p.ast);
+                                    let id = assign_prop.key(p.ast);
+                                    let key = p.ast.binding_ident(id.span(p.ast), id);
+                                    let value = assign_prop.value(p.ast);
                                     p.ast
                                         .object_pat_prop_assign_pat_prop(span, key, Some(value))
                                 }
-                                _ => syntax_error!(p, prop.span(&p.ast), SyntaxError::InvalidPat),
+                                _ => syntax_error!(p, prop.span(p.ast), SyntaxError::InvalidPat),
                             },
 
                             PropOrSpread::SpreadElement(spread) => {
-                                let dot_3_token = spread.dot_3_token(&p.ast);
-                                let expr = spread.expr(&p.ast);
+                                let dot_3_token = spread.dot_3_token(p.ast);
+                                let expr = spread.expr(p.ast);
                                 if idx != len - 1 {
                                     p.emit_err(span, SyntaxError::NonLastRestParam)
                                 } else if let Some(trailing_comma) =
@@ -278,7 +278,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                                 let element_pat_ty = pat_ty.element();
                                 let pat = if let PatType::BindingElement = element_pat_ty {
                                     if let Expr::Ident(i) = expr {
-                                        Pat::Ident(p.ast.binding_ident(i.span(&p.ast), i))
+                                        Pat::Ident(p.ast.binding_ident(i.span(p.ast), i))
                                     } else {
                                         p.emit_err(span, SyntaxError::DotsWithoutIdentifier);
                                         p.ast.pat_invalid(span)
@@ -304,10 +304,10 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 Ok(self.ast.pat_object_pat(object_span, props, false))
             }
             Expr::Ident(ident) => Ok(Pat::Ident(
-                self.ast.binding_ident(ident.span(&self.ast), ident),
+                self.ast.binding_ident(ident.span(self.ast), ident),
             )),
             Expr::Array(array) => {
-                let mut exprs = array.elems(&self.ast);
+                let mut exprs = array.elems(self.ast);
                 if exprs.is_empty() {
                     return Ok(self.ast.pat_array_pat(span, TypedSubRange::empty(), false));
                 }
@@ -331,13 +331,13 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 for expr in exprs.iter() {
                     let expr = self.ast.get_node_in_sub_range(expr);
                     match expr {
-                        Some(expr_or_spread) => match expr_or_spread.spread(&self.ast) {
+                        Some(expr_or_spread) => match expr_or_spread.spread(self.ast) {
                             Some(_) => self.emit_err(
-                                expr_or_spread.expr(&self.ast).span(&self.ast),
+                                expr_or_spread.expr(self.ast).span(self.ast),
                                 SyntaxError::NonLastRestParam,
                             ),
                             None => {
-                                let expr = expr_or_spread.expr(&self.ast);
+                                let expr = expr_or_spread.expr(self.ast);
                                 params.push(Some(self.reparse_expr_as_pat(pat_ty.element(), expr)?))
                             }
                         },
@@ -351,13 +351,13 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     let last = match expr {
                         // Rest
                         Some(expr_or_spread) => {
-                            let spread = expr_or_spread.spread(&self.ast);
-                            let expr = expr_or_spread.expr(&self.ast);
+                            let spread = expr_or_spread.spread(self.ast);
+                            let expr = expr_or_spread.expr(self.ast);
                             match spread {
                                 Some(spread) => {
                                     // TODO: is BindingPat correct?
                                     if let Expr::Assign(_) = expr {
-                                        self.emit_err(expr.span(&self.ast), SyntaxError::TS1048);
+                                        self.emit_err(expr.span(self.ast), SyntaxError::TS1048);
                                     };
                                     if let Some(trailing_comma) =
                                         self.state().trailing_commas.get(&span.lo)
@@ -367,8 +367,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
                                             SyntaxError::CommaAfterRestElement,
                                         );
                                     }
-                                    let expr_span = expr.span(&self.ast);
-                                    let spread_span = spread.span(&self.ast);
+                                    let expr_span = expr.span(self.ast);
+                                    let spread_span = spread.span(self.ast);
 
                                     Some(self.reparse_expr_as_pat(pat_ty.element(), expr).map(
                                         |pat| self.ast.pat_rest_pat(expr_span, spread_span, pat),
@@ -436,7 +436,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         if cur.is_word() {
             let ident = self.parse_binding_ident(disallow_let)?;
             Ok(Pat::Ident(
-                self.ast.binding_ident(ident.span(&self.ast), ident),
+                self.ast.binding_ident(ident.span(self.ast), ident),
             ))
         } else if cur == Token::LBracket {
             self.parse_array_binding_pat()
@@ -589,7 +589,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         let pat = if self.input_mut().eat(Token::Eq) {
             // `=` cannot follow optional parameter.
             if opt {
-                self.emit_err(pat.span(&self.ast), SyntaxError::TS1015);
+                self.emit_err(pat.span(self.ast), SyntaxError::TS1015);
             }
 
             let right = self.parse_assignment_expr()?;
@@ -724,7 +724,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
                     if p.input_mut().eat(Token::Eq) {
                         let right = p.parse_assignment_expr()?;
-                        p.emit_err(pat.span(&p.ast), SyntaxError::TS1048);
+                        p.emit_err(pat.span(p.ast), SyntaxError::TS1048);
                         pat = p.ast.pat_assign_pat(p.span(pat_start), pat, right);
                     }
 
@@ -787,17 +787,17 @@ impl<'a, I: Tokens> Parser<'a, I> {
             for expr in exprs.drain(..len - 1) {
                 match expr {
                     AssignTargetOrSpread::ExprOrSpread(expr_or_spread) => {
-                        match expr_or_spread.spread(&p.ast) {
-                            Some(_) => p.emit_err(expr.span(&p.ast), SyntaxError::TS1014),
+                        match expr_or_spread.spread(p.ast) {
+                            Some(_) => p.emit_err(expr.span(p.ast), SyntaxError::TS1014),
                             None => {
                                 let param =
-                                    p.reparse_expr_as_pat(pat_ty, expr_or_spread.expr(&p.ast))?;
+                                    p.reparse_expr_as_pat(pat_ty, expr_or_spread.expr(p.ast))?;
                                 params.push(p, param);
                             }
                         }
                     }
                     AssignTargetOrSpread::Pat(Pat::Rest(..)) => {
-                        p.emit_err(expr.span(&p.ast), SyntaxError::TS1014)
+                        p.emit_err(expr.span(p.ast), SyntaxError::TS1014)
                     }
                     AssignTargetOrSpread::Pat(pat) => params.push(p, pat),
                 }
@@ -805,13 +805,13 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
             debug_assert_eq!(exprs.len(), 1);
             let expr = exprs.pop().unwrap();
-            let outer_expr_span = expr.span(&p.ast);
+            let outer_expr_span = expr.span(p.ast);
             let last = match expr {
                 // Rest
                 AssignTargetOrSpread::ExprOrSpread(expr_or_spread) => {
-                    match expr_or_spread.spread(&p.ast) {
+                    match expr_or_spread.spread(p.ast) {
                         Some(dot3_token) => {
-                            let expr = expr_or_spread.expr(&p.ast);
+                            let expr = expr_or_spread.expr(p.ast);
                             if let Expr::Assign(_) = expr {
                                 p.emit_err(outer_expr_span, SyntaxError::TS1048)
                             };
@@ -819,12 +819,12 @@ impl<'a, I: Tokens> Parser<'a, I> {
                                 p.emit_err(trailing_comma, SyntaxError::CommaAfterRestElement);
                             }
 
-                            let expr_span = expr.span(&p.ast);
-                            let dot3_span = dot3_token.span(&p.ast);
+                            let expr_span = expr.span(p.ast);
+                            let dot3_span = dot3_token.span(p.ast);
                             p.reparse_expr_as_pat(pat_ty, expr)
                                 .map(|pat| p.ast.pat_rest_pat(expr_span, dot3_span, pat))?
                         }
-                        None => p.reparse_expr_as_pat(pat_ty, expr_or_spread.expr(&p.ast))?,
+                        None => p.reparse_expr_as_pat(pat_ty, expr_or_spread.expr(p.ast))?,
                     }
                 }
                 AssignTargetOrSpread::Pat(pat) => {

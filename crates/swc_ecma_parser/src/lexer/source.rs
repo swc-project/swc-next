@@ -141,7 +141,7 @@ impl<'a> StringSource<'a> {
     }
 
     #[inline]
-    pub fn len(&self) -> usize {
+    pub fn source_len(&self) -> usize {
         self.source.len()
     }
 }

@@ -18,7 +18,7 @@ fn bench_transform(c: &mut Criterion) {
                 || {
                     let comments = SingleThreadedComments::default();
                     let input = StringSource::new(source);
-                    let mut ast = Ast::new(input.len(), Rc::default());
+                    let mut ast = Ast::new(input.source_len(), Rc::default());
                     let mut parser = Parser::new(
                         &mut ast,
                         swc_experimental_ecma_parser::Syntax::Es(Default::default()),

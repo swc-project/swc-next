@@ -189,8 +189,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
     fn parse_class_prop_name(&mut self) -> PResult<Key> {
         if self.input().is(Token::Hash) {
             let name = self.parse_private_name()?;
-            if self.ast.get_utf8(name.name(&self.ast)) == "constructor" {
-                self.emit_err(name.span(&self.ast), SyntaxError::PrivateConstructor);
+            if self.ast.get_utf8(name.name(self.ast)) == "constructor" {
+                self.emit_err(name.span(self.ast), SyntaxError::PrivateConstructor);
             }
             Ok(Key::Private(name))
         } else {
@@ -262,7 +262,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 is_async,
                 is_generator,
                 false,
-                params.is_simple_parameter_list(&p.ast),
+                params.is_simple_parameter_list(p.ast),
             )?;
 
             if p.syntax().typescript() && body.is_none() {
@@ -271,8 +271,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     // TODO: Search deeply for assignment pattern using a Visitor
 
                     let param = p.ast.get_node_in_sub_range(param);
-                    let span = match param.pat(&p.ast) {
-                        Pat::Assign(pat) => Some(pat.span(&p.ast)),
+                    let span = match param.pat(p.ast) {
+                        Pat::Assign(pat) => Some(pat.span(p.ast)),
                         _ => None,
                     };
 
@@ -406,7 +406,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     is_async,
                     is_generator,
                 )?;
-                if is_fn_expr && f.body(&p.ast).is_none() {
+                if is_fn_expr && f.body(p.ast).is_none() {
                     unexpected!(p, "{");
                 }
                 Ok((ident, f))
@@ -433,7 +433,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         )?;
 
         let span = self.span(start_of_output_type.unwrap_or(start));
-        match T::finish_fn(&mut self.ast, span, ident, f) {
+        match T::finish_fn(self.ast, span, ident, f) {
             Ok(v) => Ok(v),
             Err(kind) => syntax_error!(self, kind),
         }
@@ -501,7 +501,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 if self.input().syntax().typescript()
                     && self.input().target() == EsVersion::Es3 =>
             {
-                self.emit_err(key.span(&self.ast), SyntaxError::TS1056);
+                self.emit_err(key.span(self.ast), SyntaxError::TS1056);
             }
             _ => {}
         }
@@ -519,7 +519,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             }
             Key::Public(key) => {
                 let span = self.span(start);
-                if is_abstract && function.body(&self.ast).is_some() {
+                if is_abstract && function.body(self.ast).is_some() {
                     self.emit_err(span, SyntaxError::TS1245)
                 }
 
@@ -548,7 +548,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 if p.input().is(Token::LBrace) {
                     p.parse_block(false).map(|block_stmt| {
                         if !is_simple_parameter_list
-                            && let Some(span) = has_use_strict(&p.ast, block_stmt)
+                            && let Some(span) = has_use_strict(p.ast, block_stmt)
                         {
                             p.emit_err(span, SyntaxError::IllegalLanguageModeDirective);
                         }
@@ -642,7 +642,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 }
                 p.allow_in_expr(|p| p.parse_block(true)).map(|block_stmt| {
                     if !is_simple_parameter_list
-                        && let Some(span) = has_use_strict(&p.ast, block_stmt)
+                        && let Some(span) = has_use_strict(p.ast, block_stmt)
                     {
                         p.emit_err(span, SyntaxError::IllegalLanguageModeDirective);
                     }
@@ -666,23 +666,23 @@ impl<'a, I: Tokens> Parser<'a, I> {
         is_abstract: bool,
         _is_override: bool,
     ) -> PResult<ClassMember> {
-        if is_constructor(&self.ast, key) {
+        if is_constructor(self.ast, key) {
             syntax_error!(
                 self,
-                key.span(&self.ast),
+                key.span(self.ast),
                 SyntaxError::PropertyNamedConstructor
             );
         }
         if key.is_private() {
             if declare {
                 self.emit_err(
-                    key.span(&self.ast),
+                    key.span(self.ast),
                     SyntaxError::PrivateNameModifier(atom!("declare")),
                 )
             }
             if is_abstract {
                 self.emit_err(
-                    key.span(&self.ast),
+                    key.span(self.ast),
                     SyntaxError::PrivateNameModifier(atom!("abstract")),
                 )
             }
@@ -889,7 +889,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             if readonly.is_some() {
                 self.emit_err(self.span(start), SyntaxError::ReadOnlyMethod);
             }
-            if is_constructor(&self.ast, key) {
+            if is_constructor(self.ast, key) {
                 self.emit_err(self.span(start), SyntaxError::GeneratorConstructor);
             }
 
@@ -935,7 +935,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             if readonly.is_some() {
                 syntax_error!(self, self.span(start), SyntaxError::ReadOnlyMethod);
             }
-            let is_constructor = is_constructor(&self.ast, key);
+            let is_constructor = is_constructor(self.ast, key);
 
             if is_constructor {
                 if self.syntax().typescript() && is_override {
@@ -977,13 +977,13 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     false,
                     false,
                     false,
-                    params.is_simple_parameter_list(&self.ast),
+                    params.is_simple_parameter_list(self.ast),
                 )?;
 
                 // if body.is_none() {
                 //     for param in params.iter() {
                 //         if param.is_ts_param_prop() {
-                //             self.emit_err(param.span(&self.ast), SyntaxError::TS2369)
+                //             self.emit_err(param.span(self.ast), SyntaxError::TS2369)
                 //         }
                 //     }
                 // }
@@ -1054,7 +1054,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         let getter_or_setter_ident = match key {
             // `get\n*` is an uninitialized property named 'get' followed by a generator.
             Key::Public(PropName::Ident(ref i)) => {
-                let sym = self.ast.get_utf8(i.sym(&self.ast));
+                let sym = self.ast.get_utf8(i.sym(self.ast));
                 if (sym == "get" || sym == "set")
                     && !self.is_class_property(/* asi */ false)
                     && !is_next_line_generator
@@ -1084,7 +1084,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         }
 
         if match key {
-            Key::Public(PropName::Ident(ref i)) => self.ast.get_utf8(i.sym(&self.ast)) == "async",
+            Key::Public(PropName::Ident(ref i)) => self.ast.get_utf8(i.sym(self.ast)) == "async",
             _ => false,
         } && !self.input_mut().had_line_break_before_cur()
         {
@@ -1102,8 +1102,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
             let is_generator = self.input_mut().eat(Token::Asterisk);
             let key = self.parse_class_prop_name()?;
-            if is_constructor(&self.ast, key) {
-                syntax_error!(self, key.span(&self.ast), SyntaxError::AsyncConstructor)
+            if is_constructor(self.ast, key) {
+                syntax_error!(self, key.span(self.ast), SyntaxError::AsyncConstructor)
             }
             if readonly.is_some() {
                 syntax_error!(self, self.span(start), SyntaxError::ReadOnlyMethod);
@@ -1131,8 +1131,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
         }
 
         if let Some(ident) = getter_or_setter_ident {
-            let key_span = key.span(&self.ast);
-            let sym = ident.sym(&self.ast);
+            let key_span = key.span(self.ast);
+            let sym = ident.sym(self.ast);
 
             // handle get foo(){} / set foo(v){}
             let key = self.parse_class_prop_name()?;
@@ -1141,7 +1141,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 self.emit_err(key_span, SyntaxError::GetterSetterCannotBeReadonly);
             }
 
-            if is_constructor(&self.ast, key) {
+            if is_constructor(self.ast, key) {
                 self.emit_err(key_span, SyntaxError::ConstructorAccessor);
             }
 
@@ -1152,7 +1152,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
                         if params
                             .iter()
-                            .any(|param| is_not_this(&p.ast, p.ast.get_node_in_sub_range(param)))
+                            .any(|param| is_not_this(p.ast, p.ast.get_node_in_sub_range(param)))
                         {
                             p.emit_err(key_span, SyntaxError::GetterParam);
                         }
@@ -1179,9 +1179,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
                         if params
                             .iter()
-                            .filter(|param| {
-                                is_not_this(&p.ast, p.ast.get_node_in_sub_range(*param))
-                            })
+                            .filter(|param| is_not_this(p.ast, p.ast.get_node_in_sub_range(*param)))
                             .count()
                             != 1
                         {
@@ -1192,9 +1190,9 @@ impl<'a, I: Tokens> Parser<'a, I> {
                             && let Pat::Rest(rest) = p
                                 .ast
                                 .get_node_in_sub_range(params.get(0).unwrap())
-                                .pat(&p.ast)
+                                .pat(p.ast)
                         {
-                            p.emit_err(rest.span(&p.ast), SyntaxError::RestPatInSetter);
+                            p.emit_err(rest.span(p.ast), SyntaxError::RestPatInSetter);
                         }
 
                         Ok(params)
@@ -1438,8 +1436,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 if !p.ctx().contains(Context::InDeclare)
                     && let ClassMember::Constructor(constructor) = elem
                 {
-                    if constructor.body(&p.ast).is_some() && has_constructor_with_body {
-                        p.emit_err(constructor.span(&p.ast), SyntaxError::DuplicateConstructor);
+                    if constructor.body(p.ast).is_some() && has_constructor_with_body {
+                        p.emit_err(constructor.span(p.ast), SyntaxError::DuplicateConstructor);
                     }
                     has_constructor_with_body = true;
                 }
@@ -1464,9 +1462,9 @@ impl<'a, I: Tokens> Parser<'a, I> {
         })?;
 
         if is_abstract {
-            class.set_is_abstract(&mut self.ast, true);
+            class.set_is_abstract(self.ast, true);
         } else {
-            // for member in class.body(&self.ast).iter(&self.ast) {
+            // for member in class.body(self.ast).iter(self.ast) {
             //     match member {
             //         ClassMember::ClassProp(ClassProp {
             //             is_abstract: true,
@@ -1484,7 +1482,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         }
 
         let span = self.span(start);
-        match T::finish_class(&mut self.ast, span, ident, class) {
+        match T::finish_class(self.ast, span, ident, class) {
             Ok(v) => Ok(v),
             Err(kind) => syntax_error!(self, kind),
         }
@@ -1503,7 +1501,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
             let ident = p.parse_maybe_opt_binding_ident(is_ident_required, true)?;
             if p.input().syntax().typescript()
-                && let Some(span) = ident.invalid_class_name(&p.ast)
+                && let Some(span) = ident.invalid_class_name(p.ast)
             {
                 p.emit_err(span, SyntaxError::TS2414);
             }

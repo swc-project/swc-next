@@ -46,7 +46,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         start: BytePos,
         node: JSXExprContainer,
     ) -> PResult<JSXAttrValue> {
-        match node.expr(&self.ast) {
+        match node.expr(self.ast) {
             JSXExpr::JSXEmptyExpr(..) => {
                 syntax_error!(self, self.span(start), SyntaxError::EmptyJSXAttr)
             }
@@ -108,7 +108,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             let name = self.ast.ident_name(span, sym);
 
             self.ast.jsx_attr_name_jsx_namespaced_name(
-                Span::new_with_checked(start, name.span(&self.ast).hi),
+                Span::new_with_checked(start, name.span(self.ast).hi),
                 ns,
                 name,
             )
@@ -124,7 +124,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         let mut node = match self.parse_jsx_tag_name()? {
             JSXAttrName::Ident(i) => {
                 self.ast
-                    .jsx_element_name_ident(i.span(&self.ast), i.sym(&self.ast), false)
+                    .jsx_element_name_ident(i.span(self.ast), i.sym(self.ast), false)
             }
             JSXAttrName::JSXNamespacedName(i) => JSXElementName::JSXNamespacedName(i),
             #[cfg(swc_ast_unknown)]
@@ -171,14 +171,13 @@ impl<'a, I: Tokens> Parser<'a, I> {
             self.input_mut().scan_jsx_token(true);
         }
 
-        if get_qualified_jsx_name(&self.ast, open_name)
-            != get_qualified_jsx_name(&self.ast, tagname)
+        if get_qualified_jsx_name(self.ast, open_name) != get_qualified_jsx_name(self.ast, tagname)
         {
             syntax_error!(
                 self,
-                tagname.span(&self.ast),
+                tagname.span(self.ast),
                 SyntaxError::JSXExpectedClosingTag {
-                    tag: Atom::new(get_qualified_jsx_name(&self.ast, open_name)),
+                    tag: Atom::new(get_qualified_jsx_name(self.ast, open_name)),
                 }
             )
         }
@@ -334,7 +333,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             self.expect(Token::RBrace)?;
 
             Ok(self.ast.jsx_attr_or_spread_spread_element(
-                Span::new_with_checked(dot3_start, expr.span_hi(&self.ast)),
+                Span::new_with_checked(dot3_start, expr.span_hi(self.ast)),
                 dot3_token,
                 expr,
             ))
@@ -415,7 +414,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     let opening = p.ast.jsx_opening_element(span, name, attrs, false);
                     let children = p.parse_jsx_children();
                     let closing =
-                        p.parse_jsx_closing_element(in_expr_context, opening.name(&p.ast))?;
+                        p.parse_jsx_closing_element(in_expr_context, opening.name(p.ast))?;
                     let span = if in_expr_context {
                         Span::new_with_checked(start, p.last_pos())
                     } else {

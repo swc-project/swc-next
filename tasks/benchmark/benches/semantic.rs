@@ -14,7 +14,7 @@ fn bench_semantic(c: &mut Criterion) {
     for (name, source) in bench_cases {
         group.bench_function(format!("{name}/semantic/legacy"), |b| {
             let input = StringSource::new(source);
-            let mut ast = Ast::new(input.len(), Rc::default());
+            let mut ast = Ast::new(input.source_len(), Rc::default());
             let mut parser = Parser::new(
                 &mut ast,
                 swc_experimental_ecma_parser::Syntax::Es(Default::default()),

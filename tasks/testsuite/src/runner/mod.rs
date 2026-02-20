@@ -23,7 +23,7 @@ pub enum ParseResult {
 pub fn parse<C: Case>(case: &C) -> ParseResult {
     let input = StringSource::new(case.code());
     let comments = SingleThreadedComments::default();
-    let mut ast = Ast::new(input.len(), Rc::default());
+    let mut ast = Ast::new(input.source_len(), Rc::default());
     let mut parser = Parser::new(&mut ast, case.syntax(), input, Some(&comments));
     let ret = match case.is_module() {
         IsModule::Script => catch_unwind(AssertUnwindSafe(|| {
