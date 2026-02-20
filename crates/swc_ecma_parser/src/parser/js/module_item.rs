@@ -676,8 +676,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                             self.emit_err(
                                 default.exported(self.ast).span(self.ast),
                                 SyntaxError::ExportExpectFrom(Atom::new(
-                                    self.ast
-                                        .get_utf8(default.exported(self.ast).sym(self.ast)),
+                                    self.ast.get_utf8(default.exported(self.ast).sym(self.ast)),
                                 )),
                             );
                         }
@@ -707,10 +706,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                                 );
                             }
                             ModuleExportName::Str(s) => {
-                                self.emit_err(
-                                    s.span(self.ast),
-                                    SyntaxError::ExportBindingIsString,
-                                );
+                                self.emit_err(s.span(self.ast), SyntaxError::ExportBindingIsString);
                             }
                             _ => {}
                         },

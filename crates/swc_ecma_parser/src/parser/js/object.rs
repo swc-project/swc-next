@@ -89,9 +89,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             None
         };
 
-        let key_ident = self
-            .ast
-            .ident(key.span(self.ast), key.sym(self.ast), false);
+        let key_ident = self.ast.ident(key.span(self.ast), key.sym(self.ast), false);
         let key_ident = self.ast.binding_ident(key_ident.span(self.ast), key_ident);
         Ok(self
             .ast
@@ -260,11 +258,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     })
                 })
                 .map(|function| {
-                    self.ast.prop_or_spread_prop_method_prop(
-                        function.span(self.ast),
-                        key,
-                        function,
-                    )
+                    self.ast
+                        .prop_or_spread_prop_method_prop(function.span(self.ast), key, function)
                 });
         }
 
@@ -439,10 +434,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
                                 is_generator,
                             )
                             .map(|function| {
-                                let span = Span::new_with_checked(
-                                    key.span_lo(p.ast),
-                                    key.span_hi(p.ast),
-                                );
+                                let span =
+                                    Span::new_with_checked(key.span_lo(p.ast), key.span_hi(p.ast));
                                 p.ast.prop_or_spread_prop_method_prop(span, key, function)
                             });
                     }
