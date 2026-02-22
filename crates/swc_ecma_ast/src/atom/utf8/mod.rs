@@ -4,6 +4,6 @@ mod compat;
 pub use compat::*;
 
 #[cfg(not(feature = "compat_atom"))]
-mod intern;
+mod arena;
 #[cfg(not(feature = "compat_atom"))]
-pub use intern::{OptionalUtf8Ref, Utf8Allocator, Utf8Ref};
+pub use arena::{OptionalUtf8Ref, Utf8Allocator, Utf8Ref};

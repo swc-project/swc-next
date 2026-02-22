@@ -79,8 +79,8 @@ struct StringAllocatorInner {
 
 impl StringAllocatorInner {
     pub fn new() -> Self {
-        let mut allocated_utf8 = Utf8Allocator::new();
-        let empty_utf8 = allocated_utf8.get_or_intern("");
+        let mut allocated_utf8 = Utf8Allocator::default();
+        let empty_utf8 = allocated_utf8.add("");
         Self {
             allocated_utf8,
             allocated_wtf8: Wtf8Allocator::default(),
@@ -90,7 +90,7 @@ impl StringAllocatorInner {
 
     #[inline]
     pub fn add_utf8(&mut self, s: &str) -> Utf8Ref {
-        self.allocated_utf8.get_or_intern(s)
+        self.allocated_utf8.add(s)
     }
 
     #[inline]
@@ -121,7 +121,7 @@ impl StringAllocatorInner {
 
     #[inline]
     pub fn get_atom(&self, id: Utf8Ref) -> Atom {
-        Atom::from(self.get_utf8(id))
+        self.allocated_utf8.resolve_atom(id).unwrap()
     }
 
     #[inline]
@@ -137,7 +137,7 @@ impl StringAllocatorInner {
 
     #[inline]
     pub fn get_wtf8_atom(&self, id: Wtf8Ref) -> Wtf8Atom {
-        Wtf8Atom::from(self.get_wtf8(id))
+        self.allocated_wtf8.resolve_atom(id).unwrap()
     }
 
     #[inline]

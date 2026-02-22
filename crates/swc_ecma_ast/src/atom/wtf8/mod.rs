@@ -4,6 +4,6 @@ mod compat;
 pub use compat::*;
 
 #[cfg(not(feature = "compat_atom"))]
-mod intern;
+mod arena;
 #[cfg(not(feature = "compat_atom"))]
-pub use intern::{OptionalWtf8Ref, Wtf8Allocator, Wtf8Ref};
+pub use arena::{OptionalWtf8Ref, Wtf8Allocator, Wtf8Ref};

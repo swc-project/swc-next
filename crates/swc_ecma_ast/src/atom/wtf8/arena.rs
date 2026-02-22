@@ -1,9 +1,10 @@
 use std::ptr::NonNull;
 
 use oxc_index::IndexVec;
-use swc_core::atoms::wtf8::{Wtf8, Wtf8Buf};
-
-use crate::define_optional_index_type;
+use swc_core::atoms::{
+    Wtf8Atom,
+    wtf8::{Wtf8, Wtf8Buf},
+};
 
 #[derive(Default)]
 pub struct Wtf8Allocator {
@@ -61,6 +62,11 @@ impl Wtf8Allocator {
         //         references.
             unsafe { s.as_ref() })
     }
+
+    #[inline]
+    pub fn resolve_atom(&self, s: Wtf8Ref) -> Option<Wtf8Atom> {
+        self.resolve(s).map(|s| Wtf8Atom::from(s))
+    }
 }
 
 /// The reference to a wtf8 string in the string allocator.
@@ -79,7 +85,27 @@ impl oxc_index::Idx for Wtf8Ref {
     }
 }
 
-define_optional_index_type!(OptionalWtf8Ref, Wtf8Ref);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct OptionalWtf8Ref(u32);
+
+impl From<Wtf8Ref> for OptionalWtf8Ref {
+    fn from(value: Wtf8Ref) -> Self {
+        Self(value.0)
+    }
+}
+
+impl OptionalWtf8Ref {
+    pub fn none() -> Self {
+        Self(u32::MAX)
+    }
+
+    pub fn to_option(self) -> Option<Wtf8Ref> {
+        if self.0 == u32::MAX {
+            return None;
+        }
+        Some(Wtf8Ref(self.0))
+    }
+}
 
 #[cfg(test)]
 mod tests {
