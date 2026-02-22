@@ -20,12 +20,12 @@ impl Wtf8Allocator {
         // 2. We use 4 as capacity reserve for the gap because `Wtf8Buf::push_char`
         //    might conservatively require up to 4 bytes of capacity, which triggers hidden reallocations
         //    if we only check for 3 bytes (GAP.len_utf8()).
-        let gap_len = if self.head.len() == 0 {
+        let gap_len = if self.head.is_empty() {
             0
         } else {
             GAP.len_utf8()
         };
-        let gap_reserve = if self.head.len() == 0 { 0 } else { 4 };
+        let gap_reserve = if self.head.is_empty() { 0 } else { 4 };
         let cap = self.head.capacity();
 
         // We MUST prevent `self.head` from internally reallocating, otherwise pointers
@@ -34,12 +34,12 @@ impl Wtf8Allocator {
             let new_cap = (usize::max(cap, s.len() + gap_len) + 1).next_power_of_two();
             let new_head = Wtf8Buf::with_capacity(new_cap);
             let old_head = core::mem::replace(&mut self.head, new_head);
-            if old_head.len() > 0 {
+            if !old_head.is_empty() {
                 self.full.push(old_head);
             }
         }
 
-        if self.head.len() > 0 {
+        if !self.head.is_empty() {
             // Append a separator to avoid two codepoints being merged
             self.head.push_char(GAP);
         }
