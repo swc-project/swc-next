@@ -6,7 +6,7 @@ use swc_core::atoms::wtf8::{Wtf8, Wtf8Buf};
 use crate::define_optional_index_type;
 
 #[derive(Default)]
-pub(super) struct Wtf8Allocator {
+pub struct Wtf8Allocator {
     spans: IndexVec<Wtf8Ref, NonNull<Wtf8>>,
     head: Wtf8Buf,
     full: Vec<Wtf8Buf>,

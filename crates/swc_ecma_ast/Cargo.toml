@@ -8,6 +8,9 @@ name                  = "swc_experimental_ecma_ast"
 repository.workspace  = true
 version               = "0.5.0"
 
+[features]
+compat_atom = []
+
 [dependencies]
 num-bigint       = { workspace = true }
 oxc_index        = { workspace = true }
