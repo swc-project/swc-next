@@ -1,7 +1,7 @@
 #[cfg(feature = "compat_atom")]
 mod compat;
 #[cfg(feature = "compat_atom")]
-pub use compat::*;
+pub use compat::{OptionalUtf8Ref, Utf8Allocator, Utf8Ref};
 
 #[cfg(not(feature = "compat_atom"))]
 mod arena;
