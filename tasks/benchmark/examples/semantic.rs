@@ -38,8 +38,9 @@ impl Visit for ScopeDisplayVisitor<'_> {
 
     fn visit_ident(&mut self, node: swc_experimental_ecma_ast::Ident) {
         println!(
-            "{} -> {:?}",
+            "{} ({:?}) -> {:?}",
             self.ast.get_utf8(node.sym(self.ast)),
+            node.sym(self.ast),
             self.semantic.node_scope(node),
         );
     }

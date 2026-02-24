@@ -1,13 +1,13 @@
 use std::hash::{BuildHasher, Hash, Hasher};
 
-use hashbrown::{DefaultHashBuilder, HashMap};
+use hashbrown::{DefaultHashBuilder, HashTable};
 use oxc_index::IndexVec;
 use swc_core::atoms::Atom;
 
 #[derive(Default)]
 pub struct Utf8Allocator {
     storage: IndexVec<Utf8Ref, Atom>,
-    dedup: HashMap<Utf8Ref, ()>,
+    dedup: HashTable<Utf8Ref>,
     hasher: DefaultHashBuilder,
 }
 
@@ -24,24 +24,20 @@ where
 impl Utf8Allocator {
     pub fn add(&mut self, s: &str) -> Utf8Ref {
         let hash = make_hash(&self.hasher, s);
-        let entry = self.dedup.raw_entry_mut().from_hash(hash, |symbol| {
+
+        if let Some(symbol) = self.dedup.find(hash, |symbol| {
             // SAFETY: This is safe because we only operate on symbols that
             //         we receive from our backend making them valid.
-            s == unsafe { self.storage.get(*symbol).unwrap_unchecked() }
+            s == unsafe { self.storage.get(*symbol).unwrap_unchecked() }.as_str()
+        }) {
+            return *symbol;
+        }
+
+        let symbol = self.storage.push(Atom::new(s));
+        self.dedup.insert_unique(hash, symbol, |sym| {
+            let string = unsafe { self.storage.get(*sym).unwrap_unchecked() };
+            make_hash(&self.hasher, string.as_str())
         });
-        use hashbrown::hash_map::RawEntryMut;
-        let (&mut symbol, &mut ()) = match entry {
-            RawEntryMut::Occupied(occupied) => occupied.into_key_value(),
-            RawEntryMut::Vacant(vacant) => {
-                let symbol = self.storage.push(Atom::new(s));
-                vacant.insert_with_hasher(hash, symbol, (), |symbol| {
-                    // SAFETY: This is safe because we only operate on symbols that
-                    //         we receive from our backend making them valid.
-                    let string = unsafe { self.storage.get(*symbol).unwrap_unchecked() };
-                    make_hash(&self.hasher, string)
-                })
-            }
-        };
         symbol
     }
 

@@ -127,12 +127,10 @@ const LOG: bool = false && cfg!(debug_assertions);
 pub fn resolver<'ast, N: Copy + VisitWith<Resolver<'ast>>>(root: N, ast: &'ast Ast) -> Semantic {
     let node_count = ast.node_count();
 
-    let top_level_scope = Scope::new(ScopeKind::Fn, None);
-    let mut scopes = IndexVec::new();
-
     // Empty scope for unresolved placeholder
+    let mut scopes = IndexVec::new();
     let unresolved_scope_id = scopes.push(Scope::new(ScopeKind::Fn, None));
-    let top_level_scope_id = scopes.push(top_level_scope);
+    let top_level_scope_id = scopes.push(Scope::new(ScopeKind::Fn, None));
 
     // Init symbol scopes
     let mut symbol_scopes = IndexVec::with_capacity(node_count);
