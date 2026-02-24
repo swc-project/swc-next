@@ -12,6 +12,7 @@ version               = "0.5.0"
 compat_atom = []
 
 [dependencies]
+hashbrown        = { workspace = true }
 num-bigint       = { workspace = true }
 oxc_index        = { workspace = true }
 string-interner  = { workspace = true }

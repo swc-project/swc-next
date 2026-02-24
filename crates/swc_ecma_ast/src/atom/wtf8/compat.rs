@@ -1,22 +1,58 @@
+use std::hash::{BuildHasher, Hash, Hasher};
+
+use hashbrown::{DefaultHashBuilder, HashMap};
 use oxc_index::IndexVec;
 use swc_core::atoms::{Wtf8Atom, wtf8::Wtf8};
 
 #[derive(Default)]
-pub struct Wtf8Allocator(IndexVec<Wtf8Ref, Wtf8Atom>);
+pub struct Wtf8Allocator {
+    storage: IndexVec<Wtf8Ref, Wtf8Atom>,
+    dedup: HashMap<Wtf8Ref, ()>,
+    hasher: DefaultHashBuilder,
+}
+
+/// Creates the `u64` hash value for the given value using the given hash builder.
+fn make_hash<T>(builder: &impl BuildHasher, value: &T) -> u64
+where
+    T: ?Sized + Hash,
+{
+    let state = &mut builder.build_hasher();
+    value.hash(state);
+    state.finish()
+}
 
 impl Wtf8Allocator {
     pub fn add(&mut self, s: &Wtf8) -> Wtf8Ref {
         let atom = Wtf8Atom::new(s);
-        let idx = self.0.push(atom);
-        idx
+        let hash = make_hash(&self.hasher, &atom);
+
+        let entry = self.dedup.raw_entry_mut().from_hash(hash, |symbol| {
+            // SAFETY: This is safe because we only operate on symbols that
+            //         we receive from our backend making them valid.
+            &atom == unsafe { self.storage.get(*symbol).unwrap_unchecked() }
+        });
+        use hashbrown::hash_map::RawEntryMut;
+        let (&mut symbol, &mut ()) = match entry {
+            RawEntryMut::Occupied(occupied) => occupied.into_key_value(),
+            RawEntryMut::Vacant(vacant) => {
+                let symbol = self.storage.push(atom);
+                vacant.insert_with_hasher(hash, symbol, (), |symbol| {
+                    // SAFETY: This is safe because we only operate on symbols that
+                    //         we receive from our backend making them valid.
+                    let string = unsafe { self.storage.get(*symbol).unwrap_unchecked() };
+                    make_hash(&self.hasher, string)
+                })
+            }
+        };
+        symbol
     }
 
     pub fn resolve(&self, id: Wtf8Ref) -> Option<&Wtf8> {
-        self.0.get(id).map(|atom| atom.as_wtf8())
+        self.storage.get(id).map(|atom| atom.as_wtf8())
     }
 
     pub fn resolve_atom(&self, id: Wtf8Ref) -> Option<Wtf8Atom> {
-        self.0.get(id).cloned()
+        self.storage.get(id).cloned()
     }
 }
 
