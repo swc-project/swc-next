@@ -458,7 +458,7 @@ impl Ast {
     }
 
     #[inline]
-    pub fn get_atom(&self, id: Utf8Ref) -> &Atom {
+    pub fn get_atom(&self, id: Utf8Ref) -> Atom {
         self.string_allocator.get_atom(id)
     }
 
@@ -473,7 +473,7 @@ impl Ast {
     }
 
     #[inline]
-    pub fn get_wtf8_atom(&self, id: Wtf8Ref) -> &Wtf8Atom {
+    pub fn get_wtf8_atom(&self, id: Wtf8Ref) -> Wtf8Atom {
         self.string_allocator.get_wtf8_atom(id)
     }
 

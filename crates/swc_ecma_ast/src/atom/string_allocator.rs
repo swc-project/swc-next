@@ -44,7 +44,7 @@ impl StringAllocator {
         self.inner().get_utf8(id)
     }
 
-    pub fn get_atom(&self, id: Utf8Ref) -> &Atom {
+    pub fn get_atom(&self, id: Utf8Ref) -> Atom {
         self.inner().get_atom(id)
     }
 
@@ -56,7 +56,7 @@ impl StringAllocator {
         self.inner().get_wtf8(id)
     }
 
-    pub fn get_wtf8_atom(&self, id: Wtf8Ref) -> &Wtf8Atom {
+    pub fn get_wtf8_atom(&self, id: Wtf8Ref) -> Wtf8Atom {
         self.inner().get_wtf8_atom(id)
     }
 
@@ -120,7 +120,7 @@ impl StringAllocatorInner {
     }
 
     #[inline]
-    pub fn get_atom(&self, id: Utf8Ref) -> &Atom {
+    pub fn get_atom(&self, id: Utf8Ref) -> Atom {
         self.allocated_utf8.resolve_atom(id).unwrap()
     }
 
@@ -136,7 +136,7 @@ impl StringAllocatorInner {
     }
 
     #[inline]
-    pub fn get_wtf8_atom(&self, id: Wtf8Ref) -> &Wtf8Atom {
+    pub fn get_wtf8_atom(&self, id: Wtf8Ref) -> Wtf8Atom {
         self.allocated_wtf8.resolve_atom(id).unwrap()
     }
 
