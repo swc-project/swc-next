@@ -1547,7 +1547,7 @@ impl AstCompat<'_> {
     // ===============================================================================
 
     fn compat_utf8_ref(&mut self, utf8_ref: Utf8Ref) -> Atom {
-        Atom::new(self.ast.get_utf8(utf8_ref))
+        self.ast.get_atom(utf8_ref).clone()
     }
 
     fn compat_opt_utf8_ref(&mut self, utf8_ref: OptionalUtf8Ref) -> Option<Atom> {
@@ -1557,7 +1557,7 @@ impl AstCompat<'_> {
     }
 
     fn compat_wtf8_ref(&mut self, wtf8_ref: Wtf8Ref) -> Wtf8Atom {
-        Wtf8Atom::new(self.ast.get_wtf8(wtf8_ref))
+        self.ast.get_wtf8_atom(wtf8_ref).clone()
     }
 
     fn compat_opt_wtf8_ref(&mut self, wtf8_ref: OptionalWtf8Ref) -> Option<Wtf8Atom> {
