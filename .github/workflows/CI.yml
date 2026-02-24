@@ -82,3 +82,8 @@ jobs:
         run: |
           cargo run -p testsuite -- --test262
           git diff --quiet -- . || (git diff --name-status -- . && exit 1)
+      - name: Run tests
+        shell: bash
+        run: cargo test --all
+        env:
+          INSTA_WORKSPACE_ROOT: ${{ github.workspace }}
