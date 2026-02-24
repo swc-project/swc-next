@@ -23,19 +23,17 @@ where
 
 impl Utf8Allocator {
     pub fn add(&mut self, s: &str) -> Utf8Ref {
-        let atom = Atom::new(s);
-        let hash = make_hash(&self.hasher, &atom);
-
+        let hash = make_hash(&self.hasher, s);
         let entry = self.dedup.raw_entry_mut().from_hash(hash, |symbol| {
             // SAFETY: This is safe because we only operate on symbols that
             //         we receive from our backend making them valid.
-            &atom == unsafe { self.storage.get(*symbol).unwrap_unchecked() }
+            s == unsafe { self.storage.get(*symbol).unwrap_unchecked() }
         });
         use hashbrown::hash_map::RawEntryMut;
         let (&mut symbol, &mut ()) = match entry {
             RawEntryMut::Occupied(occupied) => occupied.into_key_value(),
             RawEntryMut::Vacant(vacant) => {
-                let symbol = self.storage.push(atom);
+                let symbol = self.storage.push(Atom::new(s));
                 vacant.insert_with_hasher(hash, symbol, (), |symbol| {
                     // SAFETY: This is safe because we only operate on symbols that
                     //         we receive from our backend making them valid.
