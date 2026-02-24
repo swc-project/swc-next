@@ -51,8 +51,8 @@ impl Utf8Allocator {
         self.storage.get(id).map(|atom| atom.as_str())
     }
 
-    pub fn resolve_atom(&self, id: Utf8Ref) -> Option<Atom> {
-        self.storage.get(id).cloned()
+    pub fn resolve_atom(&self, id: Utf8Ref) -> Option<&Atom> {
+        self.storage.get(id)
     }
 }
 

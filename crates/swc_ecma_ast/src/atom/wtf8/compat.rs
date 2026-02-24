@@ -51,8 +51,8 @@ impl Wtf8Allocator {
         self.storage.get(id).map(|atom| atom.as_wtf8())
     }
 
-    pub fn resolve_atom(&self, id: Wtf8Ref) -> Option<Wtf8Atom> {
-        self.storage.get(id).cloned()
+    pub fn resolve_atom(&self, id: Wtf8Ref) -> Option<&Wtf8Atom> {
+        self.storage.get(id)
     }
 }
 
