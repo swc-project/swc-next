@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_semantic/tests/main.rs
+input_file: crates/swc_ecma_semantic/tests/fixtures/rspack/custom-url.js
+---
+Top level: ScopeId(2)
+Unresolved: ScopeId(1)
+customJs (Utf8Ref(2)) -> ScopeId(2)
+fs (Utf8Ref(4)) -> ScopeId(2)
+__non_webpack_require__ (Utf8Ref(5)) -> ScopeId(1)
+path (Utf8Ref(7)) -> ScopeId(2)
+__non_webpack_require__ (Utf8Ref(5)) -> ScopeId(1)
+it (Utf8Ref(9)) -> ScopeId(1)
+expect (Utf8Ref(11)) -> ScopeId(1)
+customJs (Utf8Ref(2)) -> ScopeId(2)
+css (Utf8Ref(13)) -> ScopeId(3)
+fs (Utf8Ref(4)) -> ScopeId(2)
+path (Utf8Ref(7)) -> ScopeId(2)
+__dirname (Utf8Ref(16)) -> ScopeId(1)
+importUrl (Utf8Ref(19)) -> ScopeId(3)
+css (Utf8Ref(13)) -> ScopeId(3)
+aUrl (Utf8Ref(23)) -> ScopeId(3)
+css (Utf8Ref(13)) -> ScopeId(3)
+expect (Utf8Ref(11)) -> ScopeId(1)
+importUrl (Utf8Ref(19)) -> ScopeId(3)
+expect (Utf8Ref(11)) -> ScopeId(1)
+aUrl (Utf8Ref(23)) -> ScopeId(3)

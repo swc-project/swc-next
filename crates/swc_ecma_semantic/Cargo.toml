@@ -15,3 +15,7 @@ swc_core   = { workspace = true, features = ["__common"] }
 
 swc_experimental_ecma_ast   = { workspace = true }
 swc_experimental_ecma_visit = { workspace = true }
+
+[dev-dependencies]
+insta                        = { workspace = true, features = ["glob"] }
+swc_experimental_ecma_parser = { workspace = true }
