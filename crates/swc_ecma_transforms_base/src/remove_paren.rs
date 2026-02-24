@@ -11,19 +11,19 @@ pub fn remove_paren<'ast, N: VisitMutWith<ParenRemover<'ast>>>(
     root: N,
     ast: &'ast mut Ast,
     comments: Option<&dyn Comments>,
-) {
+) -> N {
     let mut visitor = ParenRemover {
         ast,
         span_map: Default::default(),
     };
-    root.visit_mut_with(&mut visitor);
-
+    let root = root.visit_mut_with(&mut visitor);
     if let Some(c) = comments {
         for (to, from) in visitor.span_map.drain(RangeFull).rev() {
             c.move_leading(from.lo, to.lo);
             c.move_trailing(from.hi, to.hi);
         }
     }
+    root
 }
 
 pub struct ParenRemover<'a> {
