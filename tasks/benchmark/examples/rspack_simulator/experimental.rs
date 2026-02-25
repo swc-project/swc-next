@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use rustc_hash::FxHashSet;
 use swc_core::common::{BytePos, comments::SingleThreadedComments};
 use swc_experimental_ecma_ast::{
@@ -28,7 +26,7 @@ pub fn run(src: &'static str, compat: bool) {
 
 #[inline(never)]
 fn run_parse(src: &str, comments: &SingleThreadedComments) -> (Program, Ast, Vec<TokenAndSpan>) {
-    let string_allocator = Rc::new(StringAllocator::default());
+    let string_allocator = StringAllocator::default();
     let mut ast = Ast::new(src.len(), string_allocator.clone());
     let parser_lexer = Lexer::new(
         Syntax::Es(Default::default()),

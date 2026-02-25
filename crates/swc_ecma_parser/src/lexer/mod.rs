@@ -1,6 +1,5 @@
 //! ECMAScript lexer.
 
-use std::rc::Rc;
 use std::{borrow::Cow, char};
 
 use either::Either::{self, Left, Right};
@@ -195,7 +194,7 @@ impl<'a> Lexer<'a> {
         target: EsVersion,
         input: StringSource<'a>,
         comments: Option<&'a dyn Comments>,
-        string_allocator: Rc<StringAllocator>,
+        string_allocator: StringAllocator,
     ) -> Self {
         let start_pos = input.cur_pos();
 

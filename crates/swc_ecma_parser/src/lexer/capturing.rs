@@ -1,4 +1,4 @@
-use std::{mem, rc::Rc};
+use std::mem;
 
 use swc_experimental_ecma_ast::{Span, StringAllocator};
 
@@ -216,7 +216,7 @@ impl<I: Tokens> Tokens for Capturing<I> {
         ts
     }
 
-    fn string_allocator(&self) -> Rc<StringAllocator> {
+    fn string_allocator(&self) -> StringAllocator {
         self.inner.string_allocator()
     }
 

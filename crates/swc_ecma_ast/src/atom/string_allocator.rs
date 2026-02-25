@@ -1,4 +1,4 @@
-use std::cell::UnsafeCell;
+use std::{cell::UnsafeCell, rc::Rc};
 
 use swc_core::atoms::{Atom, Wtf8Atom, wtf8::Wtf8};
 
@@ -8,11 +8,12 @@ use crate::{
 
 /// # Safety
 /// [StringAllocatorInner] uses [string_interner::backend::BucketBackend], which has stable string references
-pub struct StringAllocator(UnsafeCell<StringAllocatorInner>);
+#[derive(Clone)]
+pub struct StringAllocator(Rc<UnsafeCell<StringAllocatorInner>>);
 
 impl Default for StringAllocator {
     fn default() -> Self {
-        Self(UnsafeCell::new(StringAllocatorInner::new()))
+        Self(Rc::new(UnsafeCell::new(StringAllocatorInner::new())))
     }
 }
 

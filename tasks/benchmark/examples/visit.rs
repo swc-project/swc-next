@@ -1,6 +1,5 @@
-use std::rc::Rc;
-
 use swc_core::common::BytePos;
+use swc_experimental_ecma_ast::StringAllocator;
 
 fn test_legacy(src: &str) -> usize {
     use swc_core::ecma::parser::{Parser, StringInput, Syntax, lexer::Lexer};
@@ -37,7 +36,7 @@ fn test_new(src: &str) -> usize {
     use swc_experimental_ecma_visit::VisitWith;
 
     let input = StringSource::new(src);
-    let mut ast = Ast::new(input.source_len(), Rc::default());
+    let mut ast = Ast::new(input.source_len(), StringAllocator::default());
     let mut parser = Parser::new(
         &mut ast,
         swc_experimental_ecma_parser::Syntax::Es(Default::default()),
@@ -75,7 +74,7 @@ fn test_new_mut(src: &str) -> usize {
     use swc_experimental_ecma_visit::VisitMutWith;
 
     let input = StringSource::new(src);
-    let mut ast = Ast::new(input.source_len(), Rc::default());
+    let mut ast = Ast::new(input.source_len(), StringAllocator::default());
     let mut parser = Parser::new(
         &mut ast,
         swc_experimental_ecma_parser::Syntax::Es(Default::default()),

@@ -15,7 +15,7 @@ mod generated {
     pub(crate) mod ast_visitor;
 }
 
-use std::{marker::PhantomData, rc::Rc};
+use std::marker::PhantomData;
 use swc_core::atoms::Wtf8Atom;
 use swc_core::atoms::{Atom, wtf8::Wtf8};
 use swc_core::common::BytePos;
@@ -48,7 +48,7 @@ pub struct Ast {
     bigint: IndexVec<BigIntId, BigIntValue>,
 
     /// The AST doesn't directly store strings (UTF-8 and WTF-8).
-    string_allocator: Rc<StringAllocator>,
+    string_allocator: StringAllocator,
 }
 
 /// A 24-bit unsigned integer stored as 3 bytes.
@@ -395,7 +395,7 @@ pub enum NodeKind {
 
 impl Ast {
     /// Create a new AST with the given source length and the string allocator.
-    pub fn new(source_len: usize, string_allocator: Rc<StringAllocator>) -> Self {
+    pub fn new(source_len: usize, string_allocator: StringAllocator) -> Self {
         let empirical_capacity = (source_len as f64 * 0.15) as usize;
         Self {
             nodes: IndexVec::with_capacity(empirical_capacity),
@@ -498,7 +498,7 @@ impl Ast {
     }
 
     #[inline]
-    pub fn string_allocator(&self) -> Rc<StringAllocator> {
+    pub fn string_allocator(&self) -> StringAllocator {
         self.string_allocator.clone()
     }
 }

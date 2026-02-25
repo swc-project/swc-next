@@ -1,4 +1,4 @@
-use std::{mem::take, rc::Rc};
+use std::mem::take;
 
 use swc_core::atoms::wtf8::CodePoint;
 use swc_experimental_ecma_ast::{EsVersion, Span, StringAllocator};
@@ -71,7 +71,7 @@ impl crate::input::Tokens for Lexer<'_> {
         }
     }
 
-    fn string_allocator(&self) -> Rc<StringAllocator> {
+    fn string_allocator(&self) -> StringAllocator {
         self._string_allocator()
     }
 

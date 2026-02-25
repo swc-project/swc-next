@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use swc_core::{
     atoms::wtf8::{CodePoint, Wtf8Buf},
     common::BytePos,
@@ -36,13 +34,13 @@ impl MaybeSubWtf8 {
 
 #[derive(Clone)]
 pub(crate) struct StringBuilder {
-    string_allocator: Rc<StringAllocator>,
+    string_allocator: StringAllocator,
     utf8_buf: String,
     wtf8_buf: Wtf8Buf,
 }
 
 impl StringBuilder {
-    pub(crate) fn new(string_allocator: Rc<StringAllocator>) -> Self {
+    pub(crate) fn new(string_allocator: StringAllocator) -> Self {
         Self {
             string_allocator,
             wtf8_buf: Wtf8Buf::default(),
@@ -129,7 +127,7 @@ impl Wtf8Builder {
 }
 
 impl<'a> Lexer<'a> {
-    pub(crate) fn _string_allocator(&self) -> Rc<StringAllocator> {
+    pub(crate) fn _string_allocator(&self) -> StringAllocator {
         self.sb.string_allocator.clone()
     }
 

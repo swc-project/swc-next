@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use swc_core::common::{BytePos, Span};
 use swc_experimental_ecma_ast::{EsVersion, StringAllocator};
 
@@ -25,7 +23,7 @@ pub trait Tokens: Clone {
     fn checkpoint_save(&self) -> Self::Checkpoint;
     fn checkpoint_load(&mut self, checkpoint: Self::Checkpoint);
 
-    fn string_allocator(&self) -> Rc<StringAllocator>;
+    fn string_allocator(&self) -> StringAllocator;
     fn read_string(&self, span: Span) -> &str;
 
     fn start_pos(&self) -> BytePos {
