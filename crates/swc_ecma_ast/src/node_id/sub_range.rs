@@ -249,11 +249,14 @@ pub struct NodeExtraDataId<T> {
 impl Ast {
     pub fn get_node_in_sub_range<T: ExtraDataCompact>(&self, id: NodeExtraDataId<T>) -> T {
         // Safety: `NodeExtraDataId<T>` should always be valid
-        unsafe { T::from_extra_data(self.extra_data[id.inner], self) }
-    }
-
-    pub fn get_raw_node_in_sub_range<T>(&self, id: NodeExtraDataId<T>) -> &AstNode {
-        let node_id = unsafe { self.extra_data[id.inner].node };
-        &self.nodes[node_id]
+        unsafe {
+            T::from_extra_data(
+                *self
+                    .extra_data
+                    .as_raw_slice()
+                    .get_unchecked(id.inner.index()),
+                self,
+            )
+        }
     }
 }
