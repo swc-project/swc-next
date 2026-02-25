@@ -1,6 +1,6 @@
-use std::{fmt::Write, fs, rc::Rc};
+use std::{fmt::Write, fs};
 
-use swc_experimental_ecma_ast::{Ast, Visit};
+use swc_experimental_ecma_ast::{Ast, StringAllocator, Visit};
 use swc_experimental_ecma_parser::{EsSyntax, Parser, StringSource, Syntax};
 use swc_experimental_ecma_semantic::resolver::{Semantic, resolver};
 
@@ -34,7 +34,7 @@ fn main() {
         let syntax = Syntax::Es(EsSyntax::default());
         let input = StringSource::new(&source_text);
 
-        let mut ast = Ast::new(input.source_len(), Rc::default());
+        let mut ast = Ast::new(input.source_len(), StringAllocator::default());
         let mut parser = Parser::new(&mut ast, syntax, input, None);
         let root = parser.parse_program().unwrap();
         let semantic = resolver(root, &ast);
