@@ -16,8 +16,21 @@ impl Default for StringAllocator {
         Self(Rc::new(UnsafeCell::new(StringAllocatorInner::new())))
     }
 }
+#[cfg(feature = "shared_string_allocator")]
+thread_local! {
+    /// A thread-local instance of `StringAllocator` created for sharing
+    /// string references across operations within the same thread.
+    static SHARED_STRING_ALLOCATOR: StringAllocator = StringAllocator::default();
+}
 
 impl StringAllocator {
+    /// Returns a clone of the thread-local string allocator instance.
+    /// This provides a fast way to get a pre-initialized string allocator.
+    #[cfg(feature = "shared_string_allocator")]
+    pub fn shared() -> Self {
+        SHARED_STRING_ALLOCATOR.with(|alloc| alloc.clone())
+    }
+
     /// # Safety
     /// [StringAllocatorInner] uses [string_interner::backend::BucketBackend], which has stable string references
     #[allow(clippy::mut_from_ref)]
