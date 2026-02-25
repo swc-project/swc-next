@@ -1,7 +1,7 @@
 use std::{marker::PhantomData, ops::Deref};
 
 use crate::{
-    Ast, AstNode,
+    Ast,
     node_id::{ExtraDataCompact, ExtraDataId},
 };
 
