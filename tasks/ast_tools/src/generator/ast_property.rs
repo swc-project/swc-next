@@ -7,8 +7,7 @@ use crate::{
     output::{RawOutput, RustOutput, output_path},
     schema::{AstEnum, AstStruct, AstType, Schema},
     util::{
-        INLINE_DATA_U32_SIZE, InlineLayout, InlineStorageMode, calculate_inline_layout,
-        generate_field_to_u32, generate_u32_to_field, safe_ident,
+        INLINE_DATA_U32_SIZE, InlineLayout, InlineStorageMode, calculate_inline_layout, safe_ident,
     },
 };
 
@@ -87,9 +86,9 @@ fn generate_property_for_struct(ast: &AstStruct, schema: &Schema) -> TokenStream
 }
 
 /// Generate getters/setters for inline storage
-/// Layout (8 bytes total):
+/// Layout (12 bytes total):
 /// - Bytes 0-3: NodeData.inline_data (u32)
-/// - Bytes 4-7: AstNode.inline_data (u32)
+/// - Bytes 4-11: AstNode.inline_data (u64)
 fn generate_inline_property_accessors(
     ast: &AstStruct,
     schema: &Schema,
@@ -110,22 +109,22 @@ fn generate_inline_property_accessors(
 
         if is_direct_u32 {
             // Generate optimized getter (direct u32 read)
-            let cast_expr = generate_u32_to_field(field_ty, schema);
+            let extract_u64_expr = crate::util::generate_u64_to_field(field_ty, schema);
             field_getters.extend(quote! {
                 #[inline]
                 pub fn #getter_name(&self, ast: &crate::Ast) -> #ret_ty {
-                    let raw = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
-                    #cast_expr
+                    let raw = unsafe { ast.nodes.data_unchecked(self.0).inline_data } as u64;
+                    #extract_u64_expr
                 }
             });
 
             // Generate optimized setter (direct u32 write)
-            let to_u32_expr = generate_field_to_u32(field_ty, &field_name, schema);
+            let to_u64_expr = crate::util::generate_field_to_u64(field_ty, &field_name, schema);
             let setter_name = format_ident!("set_{}", field_name);
             field_setters.extend(quote! {
                 #[inline]
                 pub fn #setter_name(&self, ast: &mut crate::Ast, #field_name: #ret_ty) {
-                    unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = #to_u32_expr };
+                    unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (#to_u64_expr) as u32 };
                 }
             });
         } else {
@@ -166,10 +165,10 @@ fn generate_inline_read(
     byte_size: usize,
     mode: &InlineStorageMode,
 ) -> TokenStream {
-    // Extract raw u32 value using bit operations
+    // Extract raw u64 value using bit operations
     let extract_expr = generate_extract_bits(byte_offset, byte_size, mode);
     // Then, cast to the appropriate type
-    let cast_expr = generate_u32_to_field(field_ty, schema);
+    let cast_expr = crate::util::generate_u64_to_field(field_ty, schema);
 
     quote! {
         #extract_expr
@@ -177,7 +176,7 @@ fn generate_inline_read(
     }
 }
 
-/// Generate code to extract a field value as u32 using bit operations
+/// Generate code to extract a field value as u64 using bit operations
 fn generate_extract_bits(
     byte_offset: usize,
     byte_size: usize,
@@ -188,10 +187,10 @@ fn generate_extract_bits(
     let field_end = byte_offset + byte_size;
 
     // Create mask for the field
-    let mask: u32 = if bit_size >= 32 {
-        u32::MAX
+    let mask: u64 = if bit_size >= 64 {
+        u64::MAX
     } else {
-        (1u32 << bit_size) - 1
+        (1u64 << bit_size) - 1
     };
 
     match mode {
@@ -199,11 +198,11 @@ fn generate_extract_bits(
             // All data is in node.data.inline_data (u32)
             if byte_offset == 0 {
                 quote! {
-                    let raw = (unsafe { ast.nodes.data_unchecked(self.0).inline_data }) & #mask;
+                    let raw = ((unsafe { ast.nodes.data_unchecked(self.0).inline_data }) as u64) & #mask;
                 }
             } else {
                 quote! {
-                    let raw = ((unsafe { ast.nodes.data_unchecked(self.0).inline_data }) >> #bit_offset) & #mask;
+                    let raw = (((unsafe { ast.nodes.data_unchecked(self.0).inline_data }) as u64) >> #bit_offset) & #mask;
                 }
             }
         }
@@ -213,51 +212,51 @@ fn generate_extract_bits(
                 // Field entirely in inline_data u32
                 if byte_offset == 0 {
                     quote! {
-                        let raw = (unsafe { ast.nodes.data_unchecked(self.0).inline_data }) & #mask;
+                        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).inline_data }) as u64) & #mask;
                     }
                 } else {
                     quote! {
-                        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).inline_data }) >> #bit_offset) & #mask;
+                        let raw = (((unsafe { ast.nodes.data_unchecked(self.0).inline_data }) as u64) >> #bit_offset) & #mask;
                     }
                 }
             } else if byte_offset >= INLINE_DATA_U32_SIZE {
-                // Field entirely in extra u32
-                let extra_u32_bit_offset = (byte_offset - INLINE_DATA_U32_SIZE) * 8;
-                if extra_u32_bit_offset == 0 {
+                // Field entirely in extra u64
+                let extra_u64_bit_offset = (byte_offset - INLINE_DATA_U32_SIZE) * 8;
+                if extra_u64_bit_offset == 0 {
                     quote! {
                         let raw = (*unsafe { ast.nodes.inline_data_unchecked(self.0) }) & #mask;
                     }
                 } else {
                     quote! {
-                        let raw = ((*unsafe { ast.nodes.inline_data_unchecked(self.0) }) >> #extra_u32_bit_offset) & #mask;
+                        let raw = ((*unsafe { ast.nodes.inline_data_unchecked(self.0) }) >> #extra_u64_bit_offset) & #mask;
                     }
                 }
             } else {
-                // Field spans across primary u32 and extra u32 boundary
+                // Field spans across primary u32 and extra u64 boundary
                 let bits_in_u32 = (INLINE_DATA_U32_SIZE - byte_offset) * 8;
-                let mask_u32: u32 = (1u32 << bits_in_u32) - 1;
+                let mask_u32: u64 = (1u64 << bits_in_u32) - 1;
                 quote! {
-                    let low_bits = ((unsafe { ast.nodes.data_unchecked(self.0).inline_data }) >> #bit_offset) & #mask_u32;
+                    let low_bits = (((unsafe { ast.nodes.data_unchecked(self.0).inline_data }) as u64) >> #bit_offset) & #mask_u32;
                     let high_bits = (*unsafe { ast.nodes.inline_data_unchecked(self.0) }) << #bits_in_u32;
                     let raw = (low_bits | high_bits) & #mask;
                 }
             }
         }
         InlineStorageMode::Partial => {
-            // Only fields in extra u32 (bytes 4-7) are supported in layout.fields
-            // Logic is same as "Field entirely in extra u32" case of Full mode
+            // Only fields in extra u64 (bytes 4-11) are supported in layout.fields
+            // Logic is same as "Field entirely in extra u64" case of Full mode
             debug_assert!(
                 byte_offset >= INLINE_DATA_U32_SIZE,
-                "Partial mode only supports fields in extra u32 region"
+                "Partial mode only supports fields in extra u64 region"
             );
-            let extra_u32_bit_offset = (byte_offset - INLINE_DATA_U32_SIZE) * 8;
-            if extra_u32_bit_offset == 0 {
+            let extra_u64_bit_offset = (byte_offset - INLINE_DATA_U32_SIZE) * 8;
+            if extra_u64_bit_offset == 0 {
                 quote! {
                     let raw = (*unsafe { ast.nodes.inline_data_unchecked(self.0) }) & #mask;
                 }
             } else {
                 quote! {
-                    let raw = ((*unsafe { ast.nodes.inline_data_unchecked(self.0) }) >> #extra_u32_bit_offset) & #mask;
+                    let raw = ((*unsafe { ast.nodes.inline_data_unchecked(self.0) }) >> #extra_u64_bit_offset) & #mask;
                 }
             }
         }
@@ -273,13 +272,13 @@ fn generate_inline_write(
     mode: &InlineStorageMode,
     schema: &Schema,
 ) -> TokenStream {
-    // First, convert the value to u32
-    let to_u32 = generate_field_to_u32(field_ty, field_name, schema);
+    // First, convert the value to u64
+    let to_u64 = crate::util::generate_field_to_u64(field_ty, field_name, schema);
     // Then, insert using bit operations
     let insert_expr = generate_insert_bits(byte_offset, byte_size, mode);
 
     quote! {
-        let field_val: u32 = #to_u32;
+        let field_val: u64 = #to_u64;
         #insert_expr
     }
 }
@@ -295,99 +294,97 @@ fn generate_insert_bits(
     let field_end = byte_offset + byte_size;
 
     // Create mask for the field
-    let mask: u32 = if bit_size >= 32 {
-        u32::MAX
+    let mask: u64 = if bit_size >= 64 {
+        u64::MAX
     } else {
-        (1u32 << bit_size) - 1
+        (1u64 << bit_size) - 1
     };
 
     match mode {
         InlineStorageMode::FourBytes => {
             // All data in node.data.inline_data (u32)
-            let clear_mask = !(mask << bit_offset);
+            let clear_mask = !(mask << bit_offset) as u32;
             if byte_offset == 0 {
                 quote! {
                     let old = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
-                    unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old & #clear_mask) | (field_val & #mask) };
+                    unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old & #clear_mask) | ((field_val & #mask) as u32) };
                 }
             } else {
                 quote! {
                     let old = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
-                    unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old & #clear_mask) | ((field_val & #mask) << #bit_offset) };
+                    unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old & #clear_mask) | (((field_val & #mask) << #bit_offset) as u32) };
                 }
             }
         }
         InlineStorageMode::Full => {
             if field_end <= INLINE_DATA_U32_SIZE {
                 // Field entirely in u32
-                let clear_mask = !(mask << bit_offset);
+                let clear_mask = !(mask << bit_offset) as u32;
                 if byte_offset == 0 {
                     quote! {
                         let old = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
-                        unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old & #clear_mask) | (field_val & #mask) };
+                        unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old & #clear_mask) | ((field_val & #mask) as u32) };
                     }
                 } else {
                     quote! {
                         let old = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
-                        unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old & #clear_mask) | ((field_val & #mask) << #bit_offset) };
+                        unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old & #clear_mask) | (((field_val & #mask) << #bit_offset) as u32) };
                     }
                 }
             } else if byte_offset >= INLINE_DATA_U32_SIZE {
-                // Field entirely in extra u32
-                let extra_u32_bit_offset = (byte_offset - INLINE_DATA_U32_SIZE) * 8;
-                let extra_u32_clear_mask = !(mask << extra_u32_bit_offset); // clear mask for 32-bit limit is implicit in the bit manipulation
-                if extra_u32_bit_offset == 0 {
+                // Field entirely in extra u64
+                let extra_u64_bit_offset = (byte_offset - INLINE_DATA_U32_SIZE) * 8;
+                let extra_u64_clear_mask = !(mask << extra_u64_bit_offset); // clear mask for 64-bit limit is implicit in the bit manipulation
+                if extra_u64_bit_offset == 0 {
                     quote! {
                         let old = *unsafe { ast.nodes.inline_data_unchecked(self.0) };
-                        unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = (old & #extra_u32_clear_mask) | (field_val & #mask) };
+                        unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = (old & #extra_u64_clear_mask) | (field_val & #mask) };
                     }
                 } else {
                     quote! {
                         let old = *unsafe { ast.nodes.inline_data_unchecked(self.0) };
-                        unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = (old & #extra_u32_clear_mask) | ((field_val & #mask) << #extra_u32_bit_offset) };
+                        unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = (old & #extra_u64_clear_mask) | ((field_val & #mask) << #extra_u64_bit_offset) };
                     }
                 }
             } else {
-                // Field spans across primary u32 and extra u32 boundary
+                // Field spans across primary u32 and extra u64 boundary
                 let bits_in_u32 = (INLINE_DATA_U32_SIZE - byte_offset) * 8;
-                let bits_in_extra_u32 = bit_size - bits_in_u32;
-                let mask_u32: u32 = (1u32 << bits_in_u32) - 1;
-                let mask_extra_u32: u32 = if bits_in_extra_u32 >= 32 {
-                    u32::MAX
+                let bits_in_extra_u64 = bit_size - bits_in_u32;
+                let mask_u32: u64 = (1u64 << bits_in_u32) - 1;
+                let mask_extra_u64: u64 = if bits_in_extra_u64 >= 64 {
+                    u64::MAX
                 } else {
-                    (1u32 << bits_in_extra_u32) - 1
+                    (1u64 << bits_in_extra_u64) - 1
                 };
-                let clear_mask_u32 = !(mask_u32 << bit_offset);
-                let clear_mask_extra_u32 = !mask_extra_u32;
-                quote! {
+                let clear_mask_u32 = !(mask_u32 << bit_offset) as u32;
+                let clear_mask_extra_u64 = !mask_extra_u64;
                 quote! {
                     // Update u32 part
                     let old_u32 = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
-                    unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old_u32 & #clear_mask_u32) | ((field_val & #mask_u32) << #bit_offset) };
-                    // Update extra u32 part
-                    let old_extra_u32 = *unsafe { ast.nodes.inline_data_unchecked(self.0) };
-                    unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = (old_extra_u32 & #clear_mask_extra_u32) | ((field_val >> #bits_in_u32) & #mask_extra_u32) };
-                }
+                    unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old_u32 & #clear_mask_u32) | (((field_val & #mask_u32) << #bit_offset) as u32) };
+                    // Update extra u64 part
+                    let old_extra_u64 = *unsafe { ast.nodes.inline_data_unchecked(self.0) };
+                    unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = (old_extra_u64 & #clear_mask_extra_u64) | ((field_val >> #bits_in_u32) & #mask_extra_u64) };
                 }
             }
         }
         InlineStorageMode::Partial => {
-            // Only fields in extra u32
+            // Only fields in extra u64
             debug_assert!(
                 byte_offset >= INLINE_DATA_U32_SIZE,
-                "Partial mode only supports fields in extra u32 region"
+                "Partial mode only supports fields in extra u64 region"
             );
-            let extra_u32_bit_offset = (byte_offset - INLINE_DATA_U32_SIZE) * 8;
-            let extra_u32_clear_mask = !(mask << extra_u32_bit_offset);
-            if extra_u32_bit_offset == 0 {
+            let extra_u64_bit_offset = (byte_offset - INLINE_DATA_U32_SIZE) * 8;
+            let extra_u64_clear_mask = !(mask << extra_u64_bit_offset);
+            if extra_u64_bit_offset == 0 {
                 quote! {
                     let old = *unsafe { ast.nodes.inline_data_unchecked(self.0) };
-                    unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = (old & #extra_u32_clear_mask) | (field_val & #mask) };
+                    unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = (old & #extra_u64_clear_mask) | (field_val & #mask) };
                 }
             } else {
                 quote! {
                     let old = *unsafe { ast.nodes.inline_data_unchecked(self.0) };
-                    unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = (old & #extra_u32_clear_mask) | ((field_val & #mask) << #extra_u32_bit_offset) };
+                    unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = (old & #extra_u64_clear_mask) | ((field_val & #mask) << #extra_u64_bit_offset) };
                 }
             }
         }

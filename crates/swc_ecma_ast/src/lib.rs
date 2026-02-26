@@ -57,7 +57,7 @@ multi_index_vec! {
     struct Nodes<NodeId> {
         span => span_mut => span_unchecked => span_mut_unchecked: Span,
         kind => kind_mut => kind_unchecked => kind_mut_unchecked: NodeKind,
-        inline_data => inline_data_mut => inline_data_unchecked => inline_data_mut_unchecked: u32,
+        inline_data => inline_data_mut => inline_data_unchecked => inline_data_mut_unchecked: u64,
         data => data_mut => data_unchecked => data_mut_unchecked: NodeData,
     }
 }
@@ -371,7 +371,7 @@ impl Ast {
         &mut self,
         span: Span,
         kind: NodeKind,
-        inline_data: u32,
+        inline_data: u64,
         data: NodeData,
     ) -> NodeId {
         self.nodes.push(span, kind, inline_data, data)
