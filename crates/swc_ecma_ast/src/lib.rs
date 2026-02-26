@@ -57,7 +57,34 @@ multi_index_vec! {
     struct Nodes<NodeId> {
         span => span_mut => span_unchecked => span_mut_unchecked: Span,
         kind => kind_mut => kind_unchecked => kind_mut_unchecked: NodeKind,
+        inline_data => inline_data_mut => inline_data_unchecked => inline_data_mut_unchecked: U24,
         data => data_mut => data_unchecked => data_mut_unchecked: NodeData,
+    }
+}
+
+/// A 24-bit unsigned integer stored as 3 bytes.
+/// Used for inline storage in AstNode.
+#[repr(transparent)]
+#[derive(Clone, Copy, Default)]
+pub struct U24([u8; 3]);
+
+impl From<u32> for U24 {
+    /// Create a U24 from the lower 24 bits of a u32.
+    #[inline]
+    fn from(val: u32) -> Self {
+        Self([
+            (val & 0xFF) as u8,
+            ((val >> 8) & 0xFF) as u8,
+            ((val >> 16) & 0xFF) as u8,
+        ])
+    }
+}
+
+impl From<U24> for u32 {
+    /// Zero-extend U24 to u32.
+    #[inline]
+    fn from(val: U24) -> u32 {
+        (val.0[0] as u32) | ((val.0[1] as u32) << 8) | ((val.0[2] as u32) << 16)
     }
 }
 
@@ -366,8 +393,14 @@ impl Ast {
     }
 
     #[inline]
-    pub(crate) fn add_node(&mut self, span: Span, kind: NodeKind, data: NodeData) -> NodeId {
-        self.nodes.push(span, kind, data)
+    pub(crate) fn add_node(
+        &mut self,
+        span: Span,
+        kind: NodeKind,
+        inline_data: U24,
+        data: NodeData,
+    ) -> NodeId {
+        self.nodes.push(span, kind, inline_data, data)
     }
 
     #[inline]
