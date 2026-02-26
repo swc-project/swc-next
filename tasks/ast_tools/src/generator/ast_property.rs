@@ -114,8 +114,7 @@ fn generate_inline_property_accessors(
             field_getters.extend(quote! {
                 #[inline]
                 pub fn #getter_name(&self, ast: &crate::Ast) -> #ret_ty {
-                    let node = unsafe { ast.get_node_unchecked(self.0) };
-                    let raw = unsafe { node.data.inline_data };
+                    let raw = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
                     #cast_expr
                 }
             });
@@ -126,8 +125,7 @@ fn generate_inline_property_accessors(
             field_setters.extend(quote! {
                 #[inline]
                 pub fn #setter_name(&self, ast: &mut crate::Ast, #field_name: #ret_ty) {
-                    let node = unsafe { ast.get_node_unchecked_mut(self.0) };
-                    node.data.inline_data = #to_u32_expr;
+                    unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = #to_u32_expr };
                 }
             });
         } else {
@@ -137,7 +135,6 @@ fn generate_inline_property_accessors(
             field_getters.extend(quote! {
                 #[inline]
                 pub fn #getter_name(&self, ast: &crate::Ast) -> #ret_ty {
-                    let node = unsafe { ast.get_node_unchecked(self.0) };
                     #read_expr
                 }
             });
@@ -154,7 +151,6 @@ fn generate_inline_property_accessors(
             field_setters.extend(quote! {
                 #[inline]
                 pub fn #setter_name(&self, ast: &mut crate::Ast, #field_name: #ret_ty) {
-                    let node = unsafe { ast.get_node_unchecked_mut(self.0) };
                     #write_expr
                 }
             });
@@ -203,11 +199,11 @@ fn generate_extract_bits(
             // All data is in node.data.inline_data (u32)
             if byte_offset == 0 {
                 quote! {
-                    let raw = (unsafe { node.data.inline_data }) & #mask;
+                    let raw = (unsafe { ast.nodes.data_unchecked(self.0).inline_data }) & #mask;
                 }
             } else {
                 quote! {
-                    let raw = ((unsafe { node.data.inline_data }) >> #bit_offset) & #mask;
+                    let raw = ((unsafe { ast.nodes.data_unchecked(self.0).inline_data }) >> #bit_offset) & #mask;
                 }
             }
         }
@@ -217,11 +213,11 @@ fn generate_extract_bits(
                 // Field entirely in inline_data u32
                 if byte_offset == 0 {
                     quote! {
-                        let raw = (unsafe { node.data.inline_data }) & #mask;
+                        let raw = (unsafe { ast.nodes.data_unchecked(self.0).inline_data }) & #mask;
                     }
                 } else {
                     quote! {
-                        let raw = ((unsafe { node.data.inline_data }) >> #bit_offset) & #mask;
+                        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).inline_data }) >> #bit_offset) & #mask;
                     }
                 }
             } else if byte_offset >= INLINE_DATA_U32_SIZE {
@@ -229,11 +225,11 @@ fn generate_extract_bits(
                 let u24_bit_offset = (byte_offset - INLINE_DATA_U32_SIZE) * 8;
                 if u24_bit_offset == 0 {
                     quote! {
-                        let raw = u32::from(node.inline_data) & #mask;
+                        let raw = u32::from(*unsafe { ast.nodes.inline_data_unchecked(self.0) }) & #mask;
                     }
                 } else {
                     quote! {
-                        let raw = (u32::from(node.inline_data) >> #u24_bit_offset) & #mask;
+                        let raw = (u32::from(*unsafe { ast.nodes.inline_data_unchecked(self.0) }) >> #u24_bit_offset) & #mask;
                     }
                 }
             } else {
@@ -241,8 +237,8 @@ fn generate_extract_bits(
                 let bits_in_u32 = (INLINE_DATA_U32_SIZE - byte_offset) * 8;
                 let mask_u32: u32 = (1u32 << bits_in_u32) - 1;
                 quote! {
-                    let low_bits = ((unsafe { node.data.inline_data }) >> #bit_offset) & #mask_u32;
-                    let high_bits = u32::from(node.inline_data) << #bits_in_u32;
+                    let low_bits = ((unsafe { ast.nodes.data_unchecked(self.0).inline_data }) >> #bit_offset) & #mask_u32;
+                    let high_bits = u32::from(*unsafe { ast.nodes.inline_data_unchecked(self.0) }) << #bits_in_u32;
                     let raw = (low_bits | high_bits) & #mask;
                 }
             }
@@ -257,11 +253,11 @@ fn generate_extract_bits(
             let u24_bit_offset = (byte_offset - INLINE_DATA_U32_SIZE) * 8;
             if u24_bit_offset == 0 {
                 quote! {
-                    let raw = u32::from(node.inline_data) & #mask;
+                    let raw = u32::from(*unsafe { ast.nodes.inline_data_unchecked(self.0) }) & #mask;
                 }
             } else {
                 quote! {
-                    let raw = (u32::from(node.inline_data) >> #u24_bit_offset) & #mask;
+                    let raw = (u32::from(*unsafe { ast.nodes.inline_data_unchecked(self.0) }) >> #u24_bit_offset) & #mask;
                 }
             }
         }
@@ -311,13 +307,13 @@ fn generate_insert_bits(
             let clear_mask = !(mask << bit_offset);
             if byte_offset == 0 {
                 quote! {
-                    let old = unsafe { node.data.inline_data };
-                    node.data.inline_data = (old & #clear_mask) | (field_val & #mask);
+                    let old = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
+                    unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old & #clear_mask) | (field_val & #mask) };
                 }
             } else {
                 quote! {
-                    let old = unsafe { node.data.inline_data };
-                    node.data.inline_data = (old & #clear_mask) | ((field_val & #mask) << #bit_offset);
+                    let old = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
+                    unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old & #clear_mask) | ((field_val & #mask) << #bit_offset) };
                 }
             }
         }
@@ -327,13 +323,13 @@ fn generate_insert_bits(
                 let clear_mask = !(mask << bit_offset);
                 if byte_offset == 0 {
                     quote! {
-                        let old = unsafe { node.data.inline_data };
-                        node.data.inline_data = (old & #clear_mask) | (field_val & #mask);
+                        let old = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
+                        unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old & #clear_mask) | (field_val & #mask) };
                     }
                 } else {
                     quote! {
-                        let old = unsafe { node.data.inline_data };
-                        node.data.inline_data = (old & #clear_mask) | ((field_val & #mask) << #bit_offset);
+                        let old = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
+                        unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old & #clear_mask) | ((field_val & #mask) << #bit_offset) };
                     }
                 }
             } else if byte_offset >= INLINE_DATA_U32_SIZE {
@@ -342,13 +338,13 @@ fn generate_insert_bits(
                 let u24_clear_mask = !(mask << u24_bit_offset) & 0xFFFFFF; // U24 max is 24 bits
                 if u24_bit_offset == 0 {
                     quote! {
-                        let old = u32::from(node.inline_data);
-                        node.inline_data = ((old & #u24_clear_mask) | (field_val & #mask)).into();
+                        let old = u32::from(*unsafe { ast.nodes.inline_data_unchecked(self.0) });
+                        unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = ((old & #u24_clear_mask) | (field_val & #mask)).into() };
                     }
                 } else {
                     quote! {
-                        let old = u32::from(node.inline_data);
-                        node.inline_data = ((old & #u24_clear_mask) | ((field_val & #mask) << #u24_bit_offset)).into();
+                        let old = u32::from(*unsafe { ast.nodes.inline_data_unchecked(self.0) });
+                        unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = ((old & #u24_clear_mask) | ((field_val & #mask) << #u24_bit_offset)).into() };
                     }
                 }
             } else {
@@ -360,12 +356,14 @@ fn generate_insert_bits(
                 let clear_mask_u32 = !(mask_u32 << bit_offset);
                 let clear_mask_u24 = !mask_u24 & 0xFFFFFF;
                 quote! {
+                quote! {
                     // Update u32 part
-                    let old_u32 = unsafe { node.data.inline_data };
-                    node.data.inline_data = (old_u32 & #clear_mask_u32) | ((field_val & #mask_u32) << #bit_offset);
+                    let old_u32 = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
+                    unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old_u32 & #clear_mask_u32) | ((field_val & #mask_u32) << #bit_offset) };
                     // Update U24 part
-                    let old_u24 = u32::from(node.inline_data);
-                    node.inline_data = ((old_u24 & #clear_mask_u24) | ((field_val >> #bits_in_u32) & #mask_u24)).into();
+                    let old_u24 = u32::from(*unsafe { ast.nodes.inline_data_unchecked(self.0) });
+                    unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = ((old_u24 & #clear_mask_u24) | ((field_val >> #bits_in_u32) & #mask_u24)).into() };
+                }
                 }
             }
         }
@@ -379,13 +377,13 @@ fn generate_insert_bits(
             let u24_clear_mask = !(mask << u24_bit_offset) & 0xFFFFFF;
             if u24_bit_offset == 0 {
                 quote! {
-                    let old = u32::from(node.inline_data);
-                    node.inline_data = ((old & #u24_clear_mask) | (field_val & #mask)).into();
+                    let old = u32::from(*unsafe { ast.nodes.inline_data_unchecked(self.0) });
+                    unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = ((old & #u24_clear_mask) | (field_val & #mask)).into() };
                 }
             } else {
                 quote! {
-                    let old = u32::from(node.inline_data);
-                    node.inline_data = ((old & #u24_clear_mask) | ((field_val & #mask) << #u24_bit_offset)).into();
+                    let old = u32::from(*unsafe { ast.nodes.inline_data_unchecked(self.0) });
+                    unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = ((old & #u24_clear_mask) | ((field_val & #mask) << #u24_bit_offset)).into() };
                 }
             }
         }
@@ -407,7 +405,7 @@ fn generate_extra_data_property_accessors(
         field_getters.extend(quote! {
             #[inline]
             pub fn #getter_name(&self, ast: &crate::Ast) -> #field_ty {
-                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.get_node_unchecked(self.0).data.extra_data_start.index().wrapping_add(#offset)) };
+                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.data_unchecked(self.0).extra_data_start.index().wrapping_add(#offset)) };
 
                 debug_assert!(offset < ast.extra_data.len());
                 unsafe {
@@ -423,7 +421,7 @@ fn generate_extra_data_property_accessors(
         field_setters.extend(quote! {
             #[inline]
             pub fn #setter_name(&self, ast: &mut crate::Ast, #field_name: #field_ty) {
-                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.get_node_unchecked(self.0).data.extra_data_start.index().wrapping_add(#offset)) };
+                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.data_unchecked(self.0).extra_data_start.index().wrapping_add(#offset)) };
 
                 debug_assert!(offset < ast.extra_data.len());
                 unsafe {
@@ -458,7 +456,7 @@ fn generate_extra_data_property_accessors_partial(
         field_getters.extend(quote! {
             #[inline]
             pub fn #getter_name(&self, ast: &crate::Ast) -> #field_ty {
-                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.get_node_unchecked(self.0).data.extra_data_start.index().wrapping_add(#offset)) };
+                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.data_unchecked(self.0).extra_data_start.index().wrapping_add(#offset)) };
 
                 debug_assert!(offset < ast.extra_data.len());
                 unsafe {
@@ -474,7 +472,7 @@ fn generate_extra_data_property_accessors_partial(
         field_setters.extend(quote! {
             #[inline]
             pub fn #setter_name(&self, ast: &mut crate::Ast, #field_name: #field_ty) {
-                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.get_node_unchecked(self.0).data.extra_data_start.index().wrapping_add(#offset)) };
+                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.data_unchecked(self.0).extra_data_start.index().wrapping_add(#offset)) };
 
                 debug_assert!(offset < ast.extra_data.len());
                 unsafe {

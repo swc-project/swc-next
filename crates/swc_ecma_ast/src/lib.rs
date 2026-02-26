@@ -3,6 +3,7 @@ mod ast;
 mod atom;
 mod common;
 mod derive;
+mod multi_index_vec;
 mod node_id;
 mod visit;
 
@@ -33,12 +34,13 @@ pub use node_id::{
     TypedSubRange,
 };
 
+use crate::multi_index_vec::multi_index_vec;
 use crate::node_id::OptionalSubRange;
 
 /// AST context that stores everything about the flattening AST.
 pub struct Ast {
     /// Flattening AST nodes.
-    nodes: IndexVec<NodeId, AstNode>,
+    pub(crate) nodes: Nodes,
 
     /// Flattening AST fields.
     extra_data: IndexVec<ExtraDataId, ExtraData>,
@@ -49,6 +51,15 @@ pub struct Ast {
 
     /// The AST doesn't directly store strings (UTF-8 and WTF-8).
     string_allocator: StringAllocator,
+}
+
+multi_index_vec! {
+    struct Nodes<NodeId> {
+        span => span_mut => span_unchecked => span_mut_unchecked: Span,
+        kind => kind_mut => kind_unchecked => kind_mut_unchecked: NodeKind,
+        inline_data => inline_data_mut => inline_data_unchecked => inline_data_mut_unchecked: U24,
+        data => data_mut => data_unchecked => data_mut_unchecked: NodeData,
+    }
 }
 
 /// A 24-bit unsigned integer stored as 3 bytes.
@@ -74,32 +85,6 @@ impl From<U24> for u32 {
     #[inline]
     fn from(val: U24) -> u32 {
         (val.0[0] as u32) | ((val.0[1] as u32) << 8) | ((val.0[2] as u32) << 16)
-    }
-}
-
-/// Untyped AST node
-#[derive(Clone)]
-pub struct AstNode {
-    span: Span,
-    kind: NodeKind,
-    inline_data: U24,
-    data: NodeData,
-}
-
-impl AstNode {
-    #[inline]
-    pub fn span(&self) -> Span {
-        self.span
-    }
-
-    #[inline]
-    pub fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-
-    #[inline]
-    pub fn kind(&self) -> NodeKind {
-        self.kind
     }
 }
 
@@ -397,8 +382,10 @@ impl Ast {
     /// Create a new AST with the given source length and the string allocator.
     pub fn new(source_len: usize, string_allocator: StringAllocator) -> Self {
         let empirical_capacity = (source_len as f64 * 0.15) as usize;
+        let mut nodes = Nodes::new();
+        nodes.reserve(empirical_capacity);
         Self {
-            nodes: IndexVec::with_capacity(empirical_capacity),
+            nodes,
             extra_data: IndexVec::with_capacity(empirical_capacity * 2),
             bigint: IndexVec::new(),
             string_allocator,
@@ -406,8 +393,14 @@ impl Ast {
     }
 
     #[inline]
-    fn add_node(&mut self, node: AstNode) -> NodeId {
-        self.nodes.push(node)
+    pub(crate) fn add_node(
+        &mut self,
+        span: Span,
+        kind: NodeKind,
+        inline_data: U24,
+        data: NodeData,
+    ) -> NodeId {
+        self.nodes.push(span, kind, inline_data, data)
     }
 
     #[inline]
@@ -501,30 +494,8 @@ impl Ast {
     pub fn string_allocator(&self) -> StringAllocator {
         self.string_allocator.clone()
     }
-}
 
-impl Ast {
-    /// Get a reference to a node in the arena without boundary check.
-    ///
-    /// # Safety
-    /// 1. The node_id must be valid.
-    pub unsafe fn get_node_unchecked(&self, node_id: NodeId) -> &AstNode {
-        debug_assert!(node_id.index() < self.nodes.len());
-        unsafe { self.nodes.as_raw_slice().get_unchecked(node_id.index()) }
-    }
-
-    /// Get a mutable reference to a node in the arena without boundary check.
-    ///
-    /// # Safety
-    /// 1. The node_id must be valid.
-    pub(crate) unsafe fn get_node_unchecked_mut(&mut self, node_id: NodeId) -> &mut AstNode {
-        unsafe {
-            self.nodes
-                .as_raw_slice_mut()
-                .get_unchecked_mut(node_id.index())
-        }
-    }
-
+    #[inline]
     pub fn node_count(&self) -> usize {
         self.nodes.len()
     }

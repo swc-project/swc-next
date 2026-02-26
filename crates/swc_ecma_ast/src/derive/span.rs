@@ -23,7 +23,7 @@ pub trait SetSpan {
 impl<T: NodeIdTrait> GetSpan for T {
     #[inline]
     fn span(&self, ast: &crate::Ast) -> crate::Span {
-        unsafe { ast.get_node_unchecked(self.node_id()).span }
+        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
     }
 }
 
@@ -31,7 +31,7 @@ impl<T: NodeIdTrait> SetSpan for T {
     #[inline]
     fn set_span(&mut self, ast: &mut crate::Ast, span: crate::Span) {
         unsafe {
-            ast.get_node_unchecked_mut(self.node_id()).span = span;
+            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
         }
     }
 }

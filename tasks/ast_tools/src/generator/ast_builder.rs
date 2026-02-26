@@ -81,12 +81,12 @@ fn generate_build_function_inline(
         return quote! {
             #[inline]
             pub fn #fn_name(&mut self, span: Span) -> #ret_ty {
-                #ret_ty(self.add_node(AstNode {
+                #ret_ty(self.add_node(
                     span,
-                    kind: NodeKind::#ret_ty,
-                    inline_data: 0u32.into(),
-                    data: NodeData { empty: () },
-                }))
+                    NodeKind::#ret_ty,
+                    0u32.into(),
+                    NodeData { empty: () },
+                ))
             }
         };
     }
@@ -110,16 +110,14 @@ fn generate_build_function_inline(
         return quote! {
             #[inline]
             pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
-                #ret_ty(
-                    self.add_node(AstNode {
-                        span,
-                        kind: NodeKind::#ret_ty,
-                        inline_data: 0u32.into(),
-                        data: NodeData {
-                            inline_data: #u32_value,
-                        },
-                    })
-                )
+                #ret_ty(self.add_node(
+                    span,
+                    NodeKind::#ret_ty,
+                    0u32.into(),
+                    NodeData {
+                        inline_data: #u32_value,
+                    },
+                ))
             }
         };
     }
@@ -176,14 +174,14 @@ fn generate_build_function_inline(
                 #[inline]
                 pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
                     #ret_ty(
-                        self.add_node(AstNode {
+                        self.add_node(
                             span,
-                            kind: NodeKind::#ret_ty,
-                            inline_data: 0u32.into(),
-                            data: NodeData {
+                            NodeKind::#ret_ty,
+                            0u32.into(),
+                            NodeData {
                                 inline_data: 0u32 #pack_u32,
                             },
-                        })
+                        )
                     )
                 }
             }
@@ -193,14 +191,14 @@ fn generate_build_function_inline(
                 #[inline]
                 pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
                     #ret_ty(
-                        self.add_node(AstNode {
+                        self.add_node(
                             span,
-                            kind: NodeKind::#ret_ty,
-                            inline_data: (0u32 #pack_u24).into(),
-                            data: NodeData {
+                            NodeKind::#ret_ty,
+                            (0u32 #pack_u24).into(),
+                            NodeData {
                                 inline_data: 0u32 #pack_u32,
                             },
-                        })
+                        )
                     )
                 }
             }
@@ -243,14 +241,14 @@ fn generate_build_function_inline(
                     #add_extra_data
 
                     #ret_ty(
-                        self.add_node(AstNode {
+                        self.add_node(
                             span,
-                            kind: NodeKind::#ret_ty,
-                            inline_data: (0u32 #pack_u24).into(),
-                            data: NodeData {
+                            NodeKind::#ret_ty,
+                            (0u32 #pack_u24).into(),
+                            NodeData {
                                 extra_data_start: #start_id,
                             },
-                        })
+                        )
                     )
                 }
             }
@@ -286,14 +284,14 @@ fn generate_build_function_extra_data(
             #add_extra_data
 
             #ret_ty(
-                self.add_node(AstNode {
+                self.add_node(
                     span,
-                    kind: NodeKind::#ret_ty,
-                    inline_data: 0u32.into(),
-                    data: NodeData {
+                    NodeKind::#ret_ty,
+                    0u32.into(),
+                    NodeData {
                         #node_data
                     },
-                })
+                )
             )
         }
     };

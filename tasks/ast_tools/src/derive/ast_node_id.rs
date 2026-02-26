@@ -46,7 +46,7 @@ fn generate_node_id_for_struct(ast: &AstStruct, _schema: &Schema) -> TokenStream
 
             #[inline]
             fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
-                assert!(ast.nodes[node_id].kind == NodeKind::#name);
+                assert!(*ast.nodes.kind(node_id) == NodeKind::#name);
                 Self(node_id)
             }
 
@@ -92,7 +92,7 @@ fn generate_node_id_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
 
             #[inline]
             fn from_node_id(id: NodeId, ast: &Ast) -> Self {
-                match &ast.nodes[id].kind {
+                match ast.nodes.kind(id) {
                     #from_node_id_arms
                     _ => unreachable!(),
                 }
