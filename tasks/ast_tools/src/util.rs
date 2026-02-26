@@ -10,17 +10,17 @@ use crate::schema::{self, AstEnum, AstStruct, AstType, Schema};
 
 /// Maximum bytes for inline storage
 pub const INLINE_DATA_U32_SIZE: usize = std::mem::size_of::<u32>(); // NodeData.inline_data (u32)
-pub const INLINE_DATA_EXTRA_U64_SIZE: usize = std::mem::size_of::<u64>(); // AstNode.inline_data (u64)
-pub const INLINE_TOTAL_SIZE: usize = INLINE_DATA_U32_SIZE + INLINE_DATA_EXTRA_U64_SIZE; // 12 bytes
+pub const INLINE_DATA_EXTRA_U32_SIZE: usize = std::mem::size_of::<u32>(); // AstNode.inline_data (u32)
+pub const INLINE_TOTAL_SIZE: usize = INLINE_DATA_U32_SIZE + INLINE_DATA_EXTRA_U32_SIZE; // 8 bytes
 
 /// Inline storage mode for a struct
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InlineStorageMode {
     /// Total size ≤4 bytes: all fields stored in NodeData.inline_data (u32)
     FourBytes,
-    /// Total size >4 and ≤12 bytes: use NodeData.inline_data + AstNode.inline_data
+    /// Total size >4 and ≤8 bytes: use NodeData.inline_data + AstNode.inline_data
     Full,
-    /// Total size >12 bytes: some fields in AstNode.inline_data (u64), others in ExtraData
+    /// Total size >8 bytes: some fields in AstNode.inline_data (u32), others in ExtraData
     Partial,
 }
 
@@ -68,9 +68,9 @@ pub fn field_byte_size(ty: &AstType, schema: &Schema) -> Option<usize> {
 pub struct InlineLayout {
     /// Storage mode: FourBytes or Full
     pub mode: InlineStorageMode,
-    /// Fields with their byte offsets within the 12-byte inline space
+    /// Fields with their byte offsets within the 8-byte inline space
     /// Offset 0-3: NodeData.inline_data (u32)
-    /// Offset 4-11: AstNode.inline_data (u64)
+    /// Offset 4-7: AstNode.inline_data (u32)
     pub fields: Vec<(usize, usize, usize)>, // (field_index, byte_offset, byte_size)
 }
 
@@ -78,7 +78,7 @@ pub struct InlineLayout {
 /// Returns None if the struct cannot be inlined
 ///
 /// This function uses an optimized bin-packing strategy to minimize fields
-/// spanning across the primary u32 (bytes 0-3) and extra u64 (bytes 4-11) boundary.
+/// spanning across the primary u32 (bytes 0-3) and extra u32 (bytes 4-7) boundary.
 pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<InlineLayout> {
     // Collect all fields with their sizes
     let mut field_info: Vec<(usize, usize)> = Vec::new(); // (field_index, size)
@@ -92,32 +92,32 @@ pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<Inlin
     }
 
     if total_size > INLINE_TOTAL_SIZE {
-        // Try partial inlining: pack small fields into extra u64 (bytes 4-11)
+        // Try partial inlining: pack small fields into extra u32 (bytes 4-7)
         // Fields that don't fit will go to ExtraData
 
-        // Re-use sorted fields logic but only target extra u64
+        // Re-use sorted fields logic but only target extra u32
         let mut sorted_fields = field_info.clone();
         sorted_fields.sort_by(|a, b| b.1.cmp(&a.1));
 
-        let mut extra_u64_fields: Vec<(usize, usize)> = Vec::new();
-        let mut extra_u64_used = 0usize;
+        let mut extra_u32_fields: Vec<(usize, usize)> = Vec::new();
+        let mut extra_u32_used = 0usize;
 
         for (field_index, size) in sorted_fields {
-            if extra_u64_used + size <= INLINE_DATA_EXTRA_U64_SIZE {
-                extra_u64_fields.push((field_index, size));
-                extra_u64_used += size;
+            if extra_u32_used + size <= INLINE_DATA_EXTRA_U32_SIZE {
+                extra_u32_fields.push((field_index, size));
+                extra_u32_used += size;
             }
         }
 
-        if extra_u64_fields.is_empty() {
-            return None; // No fields fit in extra u64, fall back to full ExtraData
+        if extra_u32_fields.is_empty() {
+            return None; // No fields fit in extra u32, fall back to full ExtraData
         }
 
         // Layout for Partial mode
         let mut fields: Vec<(usize, usize, usize)> = Vec::new(); // (field_index, offset, size)
         let mut current_offset = INLINE_DATA_U32_SIZE; // Start at offset 4
 
-        for (field_index, size) in &extra_u64_fields {
+        for (field_index, size) in &extra_u32_fields {
             fields.push((*field_index, current_offset, *size));
             current_offset += size;
         }
@@ -135,22 +135,22 @@ pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<Inlin
     let mut sorted_fields = field_info.clone();
     sorted_fields.sort_by(|a, b| b.1.cmp(&a.1));
 
-    // Try to pack fields optimally into primary u32 region (4 bytes) and extra u64 region (8 bytes)
+    // Try to pack fields optimally into primary u32 region (4 bytes) and extra u32 region (4 bytes)
     let mut u32_fields: Vec<(usize, usize)> = Vec::new(); // (field_index, size)
-    let mut extra_u64_fields: Vec<(usize, usize)> = Vec::new(); // (field_index, size)
+    let mut extra_u32_fields: Vec<(usize, usize)> = Vec::new(); // (field_index, size)
     let mut u32_used = 0usize;
-    let mut extra_u64_used = 0usize;
+    let mut extra_u32_used = 0usize;
 
-    // Greedy bin-packing: try to fill primary u32 region first, then extra u64 region
+    // Greedy bin-packing: try to fill primary u32 region first, then extra u32 region
     for (field_index, size) in sorted_fields {
         if u32_used + size <= INLINE_DATA_U32_SIZE {
             // Fits in primary u32 region
             u32_fields.push((field_index, size));
             u32_used += size;
-        } else if extra_u64_used + size <= INLINE_DATA_EXTRA_U64_SIZE {
-            // Fits in extra u64 region
-            extra_u64_fields.push((field_index, size));
-            extra_u64_used += size;
+        } else if extra_u32_used + size <= INLINE_DATA_EXTRA_U32_SIZE {
+            // Fits in extra u32 region
+            extra_u32_fields.push((field_index, size));
+            extra_u32_used += size;
         } else {
             // Try to fit in primary u32 region if there's space
             if u32_used + size <= INLINE_DATA_U32_SIZE {
@@ -163,7 +163,7 @@ pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<Inlin
         }
     }
 
-    // Assign offsets: primary u32 fields get offsets 0-3, extra u64 fields get offsets 4-11
+    // Assign offsets: primary u32 fields get offsets 0-3, extra u32 fields get offsets 4-7
     let mut fields: Vec<(usize, usize, usize)> = Vec::new(); // (field_index, offset, size)
 
     let mut current_offset = 0usize;
@@ -172,9 +172,9 @@ pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<Inlin
         current_offset += size;
     }
 
-    // Start extra u64 region at offset 4
+    // Start extra u32 region at offset 4
     current_offset = INLINE_DATA_U32_SIZE;
-    for (field_index, size) in &extra_u64_fields {
+    for (field_index, size) in &extra_u32_fields {
         fields.push((*field_index, current_offset, *size));
         current_offset += size;
     }
@@ -261,36 +261,36 @@ pub fn map_field_type_to_extra_field(ast: &AstType, schema: &Schema) -> String {
     }
 }
 
-/// Generate expression to convert a field value to u64 (for inline storage)
-pub fn generate_field_to_u64(
+/// Generate expression to convert a field value to u32 (for inline storage)
+pub fn generate_field_to_u32(
     field_ty: &AstType,
     field_name: &syn::Ident,
     schema: &Schema,
 ) -> TokenStream {
     match field_ty {
         AstType::Struct(_) | AstType::Enum(_) => {
-            quote!(#field_name.node_id().index() as u64)
+            quote!(#field_name.node_id().index() as u32)
         }
         AstType::Option(_) => {
-            quote!(crate::OptionalNodeId::from(#field_name.map(|n| n.node_id())).into_raw() as u64)
+            quote!(crate::OptionalNodeId::from(#field_name.map(|n| n.node_id())).into_raw())
         }
         AstType::Primitive(prim) => match prim.name {
-            "u32" => quote!(#field_name as u64),
-            "i32" => quote!(#field_name as u64),
-            "BigIntId" => quote!(#field_name.index() as u64),
-            "u16" | "i16" => quote!(#field_name as u64),
-            "bool" => quote!(#field_name as u64),
-            "u8" | "i8" => quote!(#field_name as u64),
+            "u32" => quote!(#field_name),
+            "i32" => quote!(#field_name as u32),
+            "BigIntId" => quote!(#field_name.index() as u32),
+            "u16" | "i16" => quote!(#field_name as u32),
+            "bool" => quote!(#field_name as u32),
+            "u8" | "i8" => quote!(#field_name as u32),
             "Utf8Ref" | "Wtf8Ref" | "OptionalUtf8Ref" | "OptionalWtf8Ref" => {
-                quote!(#field_name.into_raw() as u64)
+                quote!(#field_name.into_raw())
             }
             // Enums with #[repr(uN)] - just cast to u32
             name => {
                 if let Some(&size) = schema.repr_sizes.get(name) {
-                    assert!(size <= 8, "Cannot cast #[repr(u{})] enum to u64", size * 8);
-                    quote!(#field_name as u64)
+                    assert!(size <= 4, "Cannot cast #[repr(u{})] enum to u32", size * 8);
+                    quote!(#field_name as u32)
                 } else {
-                    unreachable!("Unexpected primitive in u64 conversion: {}", prim.name)
+                    unreachable!("Unexpected primitive in u32 conversion: {}", prim.name)
                 }
             }
         },
@@ -298,20 +298,20 @@ pub fn generate_field_to_u64(
     }
 }
 
-/// Generate expression to convert u64 to a field type (for inline storage)
-pub fn generate_u64_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream {
+/// Generate expression to convert u32 to a field type (for inline storage)
+pub fn generate_u32_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream {
     match field_ty {
         AstType::Struct(_) | AstType::Enum(_) => {
             let field_inner_ty = field_ty.repr_ident(schema);
             quote! {
-                unsafe { #field_inner_ty::from_node_id_unchecked(crate::NodeId::from_raw_unchecked(raw as u32), ast) }
+                unsafe { #field_inner_ty::from_node_id_unchecked(crate::NodeId::from_raw_unchecked(raw), ast) }
             }
         }
         AstType::Option(ast_option) => {
             let inner_ty = &schema.types[ast_option.inner_type_id];
             let field_inner_ident = inner_ty.repr_ident(schema);
             quote! {
-                let opt = crate::OptionalNodeId::from_raw(raw as u32);
+                let opt = crate::OptionalNodeId::from_raw(raw);
                 opt.map(|id| unsafe { #field_inner_ident::from_node_id_unchecked(id, ast) })
             }
         }
@@ -321,27 +321,26 @@ pub fn generate_u64_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream
             "i8" => quote! { raw as i8 },
             "u16" => quote! { raw as u16 },
             "i16" => quote! { raw as i16 },
-            "u32" => quote! { raw as u32 },
+            "u32" => quote! { raw },
             "i32" => quote! { raw as i32 },
-            "BigIntId" => quote! { crate::BigIntId::from_raw_unchecked(raw as u32) },
-            "Utf8Ref" => quote! { crate::Utf8Ref::from_raw(raw as u32) },
-            "Wtf8Ref" => quote! { crate::Wtf8Ref::from_raw(raw as u32) },
-            "OptionalUtf8Ref" => quote! { crate::OptionalUtf8Ref::from_raw(raw as u32) },
-            "OptionalWtf8Ref" => quote! { crate::OptionalWtf8Ref::from_raw(raw as u32) },
+            "BigIntId" => quote! { crate::BigIntId::from_raw_unchecked(raw) },
+            "Utf8Ref" => quote! { crate::Utf8Ref::from_raw(raw) },
+            "Wtf8Ref" => quote! { crate::Wtf8Ref::from_raw(raw) },
+            "OptionalUtf8Ref" => quote! { crate::OptionalUtf8Ref::from_raw(raw) },
+            "OptionalWtf8Ref" => quote! { crate::OptionalWtf8Ref::from_raw(raw) },
             // Enums with #[repr(uN)]
             name => {
                 let prim_ty = format_ident!("{}", name);
                 if let Some(&size) = schema.repr_sizes.get(name) {
                     // SAFETY: The raw value was originally obtained from a valid enum discriminant
-                    // during storage via `as u64` cast. Transmuting back is safe because:
+                    // during storage via `as u32` cast. Transmuting back is safe because:
                     // 1. The enum has #[repr(uN)] ensuring stable discriminant values
                     // 2. The value was validated when the enum was originally constructed
                     // 3. Inline storage is only used for AST nodes built through typed APIs
                     match size {
                         1 => quote! { unsafe { std::mem::transmute::<u8, #prim_ty>(raw as u8) } },
                         2 => quote! { unsafe { std::mem::transmute::<u16, #prim_ty>(raw as u16) } },
-                        4 => quote! { unsafe { std::mem::transmute::<u32, #prim_ty>(raw as u32) } },
-                        8 => quote! { unsafe { std::mem::transmute::<u64, #prim_ty>(raw) } },
+                        4 => quote! { unsafe { std::mem::transmute::<u32, #prim_ty>(raw) } },
                         _ => unreachable!("Unsupported repr size: {}", size),
                     }
                 } else {
