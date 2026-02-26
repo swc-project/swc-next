@@ -10,18 +10,12 @@ use crate::schema::{self, AstEnum, AstStruct, AstType, Schema};
 
 /// Maximum bytes for inline storage
 pub const INLINE_DATA_U32_SIZE: usize = std::mem::size_of::<u32>(); // NodeData.inline_data (u32)
-pub const INLINE_DATA_U24_SIZE: usize = std::mem::size_of::<[u8; 3]>(); // AstNode.inline_data (U24)
-pub const INLINE_TOTAL_SIZE: usize = INLINE_DATA_U32_SIZE + INLINE_DATA_U24_SIZE; // 7 bytes
+pub const INLINE_TOTAL_SIZE: usize = INLINE_DATA_U32_SIZE; // 4 bytes
 
-/// Inline storage mode for a struct
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InlineStorageMode {
     /// Total size ≤4 bytes: all fields stored in NodeData.inline_data (u32)
     FourBytes,
-    /// Total size >4 and ≤7 bytes: use NodeData.inline_data + AstNode.inline_data
-    Full,
-    /// Total size >7 bytes: some fields in AstNode.inline_data (U24), others in ExtraData
-    Partial,
 }
 
 /// Get the byte size for a field type, or None if not inlinable
@@ -66,19 +60,15 @@ pub fn field_byte_size(ty: &AstType, schema: &Schema) -> Option<usize> {
 /// Layout information for inline storage
 #[derive(Debug, Clone)]
 pub struct InlineLayout {
-    /// Storage mode: FourBytes or Full
+    /// Storage mode: FourBytes
     pub mode: InlineStorageMode,
-    /// Fields with their byte offsets within the 7-byte inline space
+    /// Fields with their byte offsets within the 4-byte inline space
     /// Offset 0-3: NodeData.inline_data (u32)
-    /// Offset 4-6: AstNode.inline_data ([u8; 3])
     pub fields: Vec<(usize, usize, usize)>, // (field_index, byte_offset, byte_size)
 }
 
 /// Calculate the inline layout for a struct
 /// Returns None if the struct cannot be inlined
-///
-/// This function uses an optimized bin-packing strategy to minimize fields
-/// spanning across the u32 (bytes 0-3) and u24 (bytes 4-6) boundary.
 pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<InlineLayout> {
     // Collect all fields with their sizes
     let mut field_info: Vec<(usize, usize)> = Vec::new(); // (field_index, size)
@@ -92,102 +82,36 @@ pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<Inlin
     }
 
     if total_size > INLINE_TOTAL_SIZE {
-        // Try partial inlining: pack small fields into u24 (bytes 4-6)
-        // Fields that don't fit will go to ExtraData
-
-        // Re-use sorted fields logic but only target u24
-        let mut sorted_fields = field_info.clone();
-        sorted_fields.sort_by(|a, b| b.1.cmp(&a.1));
-
-        let mut u24_fields: Vec<(usize, usize)> = Vec::new();
-        let mut u24_used = 0usize;
-
-        for (field_index, size) in sorted_fields {
-            if u24_used + size <= INLINE_DATA_U24_SIZE {
-                u24_fields.push((field_index, size));
-                u24_used += size;
-            }
-        }
-
-        if u24_fields.is_empty() {
-            return None; // No fields fit in u24, fall back to full ExtraData
-        }
-
-        // Layout for Partial mode
-        let mut fields: Vec<(usize, usize, usize)> = Vec::new(); // (field_index, offset, size)
-        let mut current_offset = INLINE_DATA_U32_SIZE; // Start at offset 4
-
-        for (field_index, size) in &u24_fields {
-            fields.push((*field_index, current_offset, *size));
-            current_offset += size;
-        }
-
-        // Sort fields back by index
-        fields.sort_by_key(|(field_index, _, _)| *field_index);
-
-        return Some(InlineLayout {
-            mode: InlineStorageMode::Partial,
-            fields,
-        });
+        return None;
     }
 
-    // Sort fields by size (descending) for better packing, but keep original indices
+    // Sort fields by size (descending) for better packing
     let mut sorted_fields = field_info.clone();
     sorted_fields.sort_by(|a, b| b.1.cmp(&a.1));
 
-    // Try to pack fields optimally into u32 region (4 bytes) and u24 region (3 bytes)
-    let mut u32_fields: Vec<(usize, usize)> = Vec::new(); // (field_index, size)
-    let mut u24_fields: Vec<(usize, usize)> = Vec::new(); // (field_index, size)
+    let mut u32_fields: Vec<(usize, usize)> = Vec::new();
     let mut u32_used = 0usize;
-    let mut u24_used = 0usize;
 
-    // Greedy bin-packing: try to fill u32 region first, then u24 region
     for (field_index, size) in sorted_fields {
         if u32_used + size <= INLINE_DATA_U32_SIZE {
-            // Fits in u32 region
             u32_fields.push((field_index, size));
             u32_used += size;
-        } else if u24_used + size <= INLINE_DATA_U24_SIZE {
-            // Fits in u24 region
-            u24_fields.push((field_index, size));
-            u24_used += size;
         } else {
-            // Try to fit in u32 region if there's space
-            if u32_used + size <= INLINE_DATA_U32_SIZE {
-                u32_fields.push((field_index, size));
-                u32_used += size;
-            } else {
-                // This shouldn't happen if total_size <= INLINE_TOTAL_SIZE
-                return None;
-            }
+            return None;
         }
     }
 
-    // Assign offsets: u32 fields get offsets 0-3, u24 fields get offsets 4-6
-    let mut fields: Vec<(usize, usize, usize)> = Vec::new(); // (field_index, offset, size)
-
+    let mut fields: Vec<(usize, usize, usize)> = Vec::new();
     let mut current_offset = 0usize;
     for (field_index, size) in &u32_fields {
         fields.push((*field_index, current_offset, *size));
         current_offset += size;
     }
 
-    // Start u24 region at offset 4
-    current_offset = INLINE_DATA_U32_SIZE;
-    for (field_index, size) in &u24_fields {
-        fields.push((*field_index, current_offset, *size));
-        current_offset += size;
-    }
-
-    // Sort fields back by original field index for consistent ordering
+    // Sort fields back by original field index
     fields.sort_by_key(|(field_index, _, _)| *field_index);
 
-    let mode = if total_size <= INLINE_DATA_U32_SIZE {
-        InlineStorageMode::FourBytes
-    } else {
-        InlineStorageMode::Full
-    };
-
+    let mode = InlineStorageMode::FourBytes;
     Some(InlineLayout { mode, fields })
 }
 
