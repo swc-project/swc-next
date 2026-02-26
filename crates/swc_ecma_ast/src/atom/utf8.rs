@@ -66,6 +66,18 @@ impl oxc_index::Idx for Utf8Ref {
     }
 }
 
+impl Utf8Ref {
+    #[inline]
+    pub(crate) fn from_raw(raw: u32) -> Self {
+        Self(raw)
+    }
+
+    #[inline]
+    pub(crate) fn into_raw(self) -> u32 {
+        self.0
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct OptionalUtf8Ref(u32);
 
@@ -85,5 +97,15 @@ impl OptionalUtf8Ref {
             return None;
         }
         Some(Utf8Ref(self.0))
+    }
+
+    #[inline]
+    pub(crate) fn from_raw(raw: u32) -> Self {
+        Self(raw)
+    }
+
+    #[inline]
+    pub(crate) fn into_raw(self) -> u32 {
+        self.0
     }
 }

@@ -55,7 +55,7 @@ pub fn field_byte_size(ty: &AstType, schema: &Schema) -> Option<usize> {
                 "u16" | "i16" => Some(2),
                 "u32" | "i32" => Some(4),
                 "BigIntId" => Some(4),
-                "Utf8Ref" | "Wtf8Ref" | "OptionalUtf8Ref" | "OptionalWtf8Ref" => Some(8),
+                "Utf8Ref" | "Wtf8Ref" | "OptionalUtf8Ref" | "OptionalWtf8Ref" => Some(4),
                 // For other types, check if they have #[repr(uN)] in schema
                 name => schema.repr_sizes.get(name).copied(),
             }
@@ -281,6 +281,9 @@ pub fn generate_field_to_u32(
             "u16" | "i16" => quote!(#field_name as u32),
             "bool" => quote!(#field_name as u32),
             "u8" | "i8" => quote!(#field_name as u32),
+            "Utf8Ref" | "Wtf8Ref" | "OptionalUtf8Ref" | "OptionalWtf8Ref" => {
+                quote!(#field_name.into_raw())
+            }
             // Enums with #[repr(uN)] - just cast to u32
             name => {
                 if let Some(&size) = schema.repr_sizes.get(name) {
@@ -321,6 +324,10 @@ pub fn generate_u32_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream
             "u32" => quote! { raw },
             "i32" => quote! { raw as i32 },
             "BigIntId" => quote! { crate::BigIntId::from_raw_unchecked(raw) },
+            "Utf8Ref" => quote! { crate::Utf8Ref::from_raw(raw) },
+            "Wtf8Ref" => quote! { crate::Wtf8Ref::from_raw(raw) },
+            "OptionalUtf8Ref" => quote! { crate::OptionalUtf8Ref::from_raw(raw) },
+            "OptionalWtf8Ref" => quote! { crate::OptionalWtf8Ref::from_raw(raw) },
             // Enums with #[repr(uN)]
             name => {
                 let prim_ty = format_ident!("{}", name);

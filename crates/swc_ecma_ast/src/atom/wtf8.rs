@@ -66,6 +66,18 @@ impl oxc_index::Idx for Wtf8Ref {
     }
 }
 
+impl Wtf8Ref {
+    #[inline]
+    pub(crate) fn from_raw(raw: u32) -> Self {
+        Self(raw)
+    }
+
+    #[inline]
+    pub(crate) fn into_raw(self) -> u32 {
+        self.0
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct OptionalWtf8Ref(u32);
 
@@ -85,5 +97,15 @@ impl OptionalWtf8Ref {
             return None;
         }
         Some(Wtf8Ref(self.0))
+    }
+
+    #[inline]
+    pub(crate) fn from_raw(raw: u32) -> Self {
+        Self(raw)
+    }
+
+    #[inline]
+    pub(crate) fn into_raw(self) -> u32 {
+        self.0
     }
 }

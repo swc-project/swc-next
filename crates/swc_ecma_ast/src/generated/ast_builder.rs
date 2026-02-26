@@ -2485,12 +2485,12 @@ impl Ast {
         cooked: OptionalWtf8Ref,
         raw: Utf8Ref,
     ) -> TplElement {
-        let _f0 = self.add_extra(cooked.to_extra_data());
+        let _f0 = self.add_extra(tail.to_extra_data());
         let _f1 = self.add_extra(raw.to_extra_data());
         TplElement(self.add_node(
             span,
             NodeKind::TplElement,
-            0u32 | tail as u32,
+            0u32 | cooked.into_raw(),
             NodeData {
                 extra_data_start: _f0,
             },
@@ -4248,37 +4248,34 @@ impl Ast {
     }
     #[inline]
     pub fn ident(&mut self, span: Span, sym: Utf8Ref, optional: bool) -> Ident {
-        let _f0 = self.add_extra(sym.to_extra_data());
         Ident(self.add_node(
             span,
             NodeKind::Ident,
             0u32 | optional as u32,
             NodeData {
-                extra_data_start: _f0,
+                inline_data: 0u32 | sym.into_raw(),
             },
         ))
     }
     #[inline]
     pub fn ident_name(&mut self, span: Span, sym: Utf8Ref) -> IdentName {
-        let _f0 = self.add_extra(sym.to_extra_data());
         IdentName(self.add_node(
             span,
             NodeKind::IdentName,
             0u32,
             NodeData {
-                extra_data_start: _f0,
+                inline_data: sym.into_raw(),
             },
         ))
     }
     #[inline]
     pub fn private_name(&mut self, span: Span, name: Utf8Ref) -> PrivateName {
-        let _f0 = self.add_extra(name.to_extra_data());
         PrivateName(self.add_node(
             span,
             NodeKind::PrivateName,
             0u32,
             NodeData {
-                extra_data_start: _f0,
+                inline_data: name.into_raw(),
             },
         ))
     }
@@ -4319,14 +4316,12 @@ impl Ast {
     }
     #[inline]
     pub fn str(&mut self, span: Span, value: Wtf8Ref, raw: OptionalUtf8Ref) -> Str {
-        let _f0 = self.add_extra(value.to_extra_data());
-        let _f1 = self.add_extra(raw.to_extra_data());
         Str(self.add_node(
             span,
             NodeKind::Str,
-            0u32,
+            0u32 | raw.into_raw(),
             NodeData {
-                extra_data_start: _f0,
+                inline_data: 0u32 | value.into_raw(),
             },
         ))
     }
@@ -4360,26 +4355,23 @@ impl Ast {
     }
     #[inline]
     pub fn big_int(&mut self, span: Span, value: BigIntId, raw: OptionalUtf8Ref) -> BigInt {
-        let _f0 = self.add_extra(raw.to_extra_data());
         BigInt(self.add_node(
             span,
             NodeKind::BigInt,
-            0u32 | value.index() as u32,
+            0u32 | raw.into_raw(),
             NodeData {
-                extra_data_start: _f0,
+                inline_data: 0u32 | value.index() as u32,
             },
         ))
     }
     #[inline]
     pub fn regex(&mut self, span: Span, exp: Utf8Ref, flags: Utf8Ref) -> Regex {
-        let _f0 = self.add_extra(exp.to_extra_data());
-        let _f1 = self.add_extra(flags.to_extra_data());
         Regex(self.add_node(
             span,
             NodeKind::Regex,
-            0u32,
+            0u32 | flags.into_raw(),
             NodeData {
-                extra_data_start: _f0,
+                inline_data: 0u32 | exp.into_raw(),
             },
         ))
     }
@@ -4890,14 +4882,12 @@ impl Ast {
     }
     #[inline]
     pub fn jsx_text(&mut self, span: Span, value: Utf8Ref, raw: Utf8Ref) -> JSXText {
-        let _f0 = self.add_extra(value.to_extra_data());
-        let _f1 = self.add_extra(raw.to_extra_data());
         JSXText(self.add_node(
             span,
             NodeKind::JSXText,
-            0u32,
+            0u32 | raw.into_raw(),
             NodeData {
-                extra_data_start: _f0,
+                inline_data: 0u32 | value.into_raw(),
             },
         ))
     }
