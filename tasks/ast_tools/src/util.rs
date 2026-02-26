@@ -10,17 +10,17 @@ use crate::schema::{self, AstEnum, AstStruct, AstType, Schema};
 
 /// Maximum bytes for inline storage
 pub const INLINE_DATA_U32_SIZE: usize = std::mem::size_of::<u32>(); // NodeData.inline_data (u32)
-pub const INLINE_DATA_U24_SIZE: usize = std::mem::size_of::<[u8; 3]>(); // AstNode.inline_data (U24)
-pub const INLINE_TOTAL_SIZE: usize = INLINE_DATA_U32_SIZE + INLINE_DATA_U24_SIZE; // 7 bytes
+pub const INLINE_DATA_EXTRA_U32_SIZE: usize = std::mem::size_of::<u32>(); // AstNode.inline_data (u32)
+pub const INLINE_TOTAL_SIZE: usize = INLINE_DATA_U32_SIZE + INLINE_DATA_EXTRA_U32_SIZE; // 8 bytes
 
 /// Inline storage mode for a struct
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InlineStorageMode {
     /// Total size ≤4 bytes: all fields stored in NodeData.inline_data (u32)
     FourBytes,
-    /// Total size >4 and ≤7 bytes: use NodeData.inline_data + AstNode.inline_data
+    /// Total size >4 and ≤8 bytes: use NodeData.inline_data + AstNode.inline_data
     Full,
-    /// Total size >7 bytes: some fields in AstNode.inline_data (U24), others in ExtraData
+    /// Total size >8 bytes: some fields in AstNode.inline_data (u32), others in ExtraData
     Partial,
 }
 
@@ -68,9 +68,9 @@ pub fn field_byte_size(ty: &AstType, schema: &Schema) -> Option<usize> {
 pub struct InlineLayout {
     /// Storage mode: FourBytes or Full
     pub mode: InlineStorageMode,
-    /// Fields with their byte offsets within the 7-byte inline space
+    /// Fields with their byte offsets within the 8-byte inline space
     /// Offset 0-3: NodeData.inline_data (u32)
-    /// Offset 4-6: AstNode.inline_data ([u8; 3])
+    /// Offset 4-7: AstNode.inline_data (u32)
     pub fields: Vec<(usize, usize, usize)>, // (field_index, byte_offset, byte_size)
 }
 
@@ -78,7 +78,7 @@ pub struct InlineLayout {
 /// Returns None if the struct cannot be inlined
 ///
 /// This function uses an optimized bin-packing strategy to minimize fields
-/// spanning across the u32 (bytes 0-3) and u24 (bytes 4-6) boundary.
+/// spanning across the primary u32 (bytes 0-3) and extra u32 (bytes 4-7) boundary.
 pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<InlineLayout> {
     // Collect all fields with their sizes
     let mut field_info: Vec<(usize, usize)> = Vec::new(); // (field_index, size)
@@ -92,32 +92,32 @@ pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<Inlin
     }
 
     if total_size > INLINE_TOTAL_SIZE {
-        // Try partial inlining: pack small fields into u24 (bytes 4-6)
+        // Try partial inlining: pack small fields into extra u32 (bytes 4-7)
         // Fields that don't fit will go to ExtraData
 
-        // Re-use sorted fields logic but only target u24
+        // Re-use sorted fields logic but only target extra u32
         let mut sorted_fields = field_info.clone();
         sorted_fields.sort_by(|a, b| b.1.cmp(&a.1));
 
-        let mut u24_fields: Vec<(usize, usize)> = Vec::new();
-        let mut u24_used = 0usize;
+        let mut extra_u32_fields: Vec<(usize, usize)> = Vec::new();
+        let mut extra_u32_used = 0usize;
 
         for (field_index, size) in sorted_fields {
-            if u24_used + size <= INLINE_DATA_U24_SIZE {
-                u24_fields.push((field_index, size));
-                u24_used += size;
+            if extra_u32_used + size <= INLINE_DATA_EXTRA_U32_SIZE {
+                extra_u32_fields.push((field_index, size));
+                extra_u32_used += size;
             }
         }
 
-        if u24_fields.is_empty() {
-            return None; // No fields fit in u24, fall back to full ExtraData
+        if extra_u32_fields.is_empty() {
+            return None; // No fields fit in extra u32, fall back to full ExtraData
         }
 
         // Layout for Partial mode
         let mut fields: Vec<(usize, usize, usize)> = Vec::new(); // (field_index, offset, size)
         let mut current_offset = INLINE_DATA_U32_SIZE; // Start at offset 4
 
-        for (field_index, size) in &u24_fields {
+        for (field_index, size) in &extra_u32_fields {
             fields.push((*field_index, current_offset, *size));
             current_offset += size;
         }
@@ -135,24 +135,24 @@ pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<Inlin
     let mut sorted_fields = field_info.clone();
     sorted_fields.sort_by(|a, b| b.1.cmp(&a.1));
 
-    // Try to pack fields optimally into u32 region (4 bytes) and u24 region (3 bytes)
+    // Try to pack fields optimally into primary u32 region (4 bytes) and extra u32 region (4 bytes)
     let mut u32_fields: Vec<(usize, usize)> = Vec::new(); // (field_index, size)
-    let mut u24_fields: Vec<(usize, usize)> = Vec::new(); // (field_index, size)
+    let mut extra_u32_fields: Vec<(usize, usize)> = Vec::new(); // (field_index, size)
     let mut u32_used = 0usize;
-    let mut u24_used = 0usize;
+    let mut extra_u32_used = 0usize;
 
-    // Greedy bin-packing: try to fill u32 region first, then u24 region
+    // Greedy bin-packing: try to fill primary u32 region first, then extra u32 region
     for (field_index, size) in sorted_fields {
         if u32_used + size <= INLINE_DATA_U32_SIZE {
-            // Fits in u32 region
+            // Fits in primary u32 region
             u32_fields.push((field_index, size));
             u32_used += size;
-        } else if u24_used + size <= INLINE_DATA_U24_SIZE {
-            // Fits in u24 region
-            u24_fields.push((field_index, size));
-            u24_used += size;
+        } else if extra_u32_used + size <= INLINE_DATA_EXTRA_U32_SIZE {
+            // Fits in extra u32 region
+            extra_u32_fields.push((field_index, size));
+            extra_u32_used += size;
         } else {
-            // Try to fit in u32 region if there's space
+            // Try to fit in primary u32 region if there's space
             if u32_used + size <= INLINE_DATA_U32_SIZE {
                 u32_fields.push((field_index, size));
                 u32_used += size;
@@ -163,7 +163,7 @@ pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<Inlin
         }
     }
 
-    // Assign offsets: u32 fields get offsets 0-3, u24 fields get offsets 4-6
+    // Assign offsets: primary u32 fields get offsets 0-3, extra u32 fields get offsets 4-7
     let mut fields: Vec<(usize, usize, usize)> = Vec::new(); // (field_index, offset, size)
 
     let mut current_offset = 0usize;
@@ -172,9 +172,9 @@ pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<Inlin
         current_offset += size;
     }
 
-    // Start u24 region at offset 4
+    // Start extra u32 region at offset 4
     current_offset = INLINE_DATA_U32_SIZE;
-    for (field_index, size) in &u24_fields {
+    for (field_index, size) in &extra_u32_fields {
         fields.push((*field_index, current_offset, *size));
         current_offset += size;
     }

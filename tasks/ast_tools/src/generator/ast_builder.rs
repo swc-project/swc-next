@@ -65,9 +65,9 @@ fn generate_build_function_for_struct(ast: &AstStruct, schema: &Schema) -> Token
 }
 
 /// Generate build function using inline storage (for small nodes)
-/// Layout (7 bytes total):
+/// Layout (8 bytes total):
 /// - Bytes 0-3: NodeData.inline_data (u32)
-/// - Bytes 4-6: AstNode.inline_data ([u8; 3])
+/// - Bytes 4-7: AstNode.inline_data (u32)
 fn generate_build_function_inline(
     ast: &AstStruct,
     schema: &Schema,
@@ -84,7 +84,7 @@ fn generate_build_function_inline(
                 #ret_ty(self.add_node(
                     span,
                     NodeKind::#ret_ty,
-                    0u32.into(),
+                    0u32,
                     NodeData { empty: () },
                 ))
             }
@@ -113,7 +113,7 @@ fn generate_build_function_inline(
                 #ret_ty(self.add_node(
                     span,
                     NodeKind::#ret_ty,
-                    0u32.into(),
+                    0u32,
                     NodeData {
                         inline_data: #u32_value,
                     },
@@ -124,9 +124,9 @@ fn generate_build_function_inline(
 
     // General case: pack fields using bit operations
     // inline_u32: bytes 0-3 (node.data.inline_data)
-    // inline_u24: bytes 4-6 (node.inline_data as U24)
+    // inline_extra_u32: bytes 4-7 (node.inline_data as u32)
     let mut pack_u32 = TokenStream::new();
-    let mut pack_u24 = TokenStream::new();
+    let mut pack_extra_u32 = TokenStream::new();
 
     for &(field_idx, byte_offset, byte_size) in &layout.fields {
         let field = &ast.fields[field_idx];
@@ -146,16 +146,16 @@ fn generate_build_function_inline(
                 pack_u32.extend(quote! { | ((#field_u32) << #bit_offset) });
             }
         } else if byte_offset >= INLINE_DATA_U32_SIZE {
-            // Field entirely in bytes 4-6 (inline_u24)
-            let u24_bit_offset = (byte_offset - INLINE_DATA_U32_SIZE) * 8;
-            if u24_bit_offset == 0 {
-                pack_u24.extend(quote! { | #field_u32 });
+            // Field entirely in bytes 4-7 (inline_extra_u32)
+            let extra_u32_bit_offset = (byte_offset - INLINE_DATA_U32_SIZE) * 8;
+            if extra_u32_bit_offset == 0 {
+                pack_extra_u32.extend(quote! { | #field_u32 });
             } else {
-                pack_u24.extend(quote! { | ((#field_u32) << #u24_bit_offset) });
+                pack_extra_u32.extend(quote! { | ((#field_u32) << #extra_u32_bit_offset) });
             }
         } else {
-            // Field spans the boundary (bytes in both u32 and u24)
-            // Split: lower bits go to u32, upper bits go to u24
+            // Field spans the boundary (bytes in both u32 and extra u32)
+            // Split: lower bits go to u32, upper bits go to extra u32
             let bits_in_u32 = (INLINE_DATA_U32_SIZE - byte_offset) * 8;
             let mask_u32 = (1u32 << bits_in_u32) - 1;
 
@@ -164,7 +164,7 @@ fn generate_build_function_inline(
             } else {
                 pack_u32.extend(quote! { | (((#field_u32) & #mask_u32) << #bit_offset) });
             }
-            pack_u24.extend(quote! { | ((#field_u32) >> #bits_in_u32) });
+            pack_extra_u32.extend(quote! { | ((#field_u32) >> #bits_in_u32) });
         }
     }
 
@@ -177,7 +177,7 @@ fn generate_build_function_inline(
                         self.add_node(
                             span,
                             NodeKind::#ret_ty,
-                            0u32.into(),
+                            0u32,
                             NodeData {
                                 inline_data: 0u32 #pack_u32,
                             },
@@ -194,7 +194,7 @@ fn generate_build_function_inline(
                         self.add_node(
                             span,
                             NodeKind::#ret_ty,
-                            (0u32 #pack_u24).into(),
+                            0u32 #pack_extra_u32,
                             NodeData {
                                 inline_data: 0u32 #pack_u32,
                             },
@@ -205,7 +205,7 @@ fn generate_build_function_inline(
         }
         InlineStorageMode::Partial => {
             // Partial mode:
-            // 1. Pack u24 fields (bytes 4-6) into inline_data
+            // 1. Pack extra u32 fields (bytes 4-7) into inline_data
             // 2. Generate ExtraData entries for non-inlined fields
             // 3. Store the first extra data index in data.extra_data_start
 
@@ -244,7 +244,7 @@ fn generate_build_function_inline(
                         self.add_node(
                             span,
                             NodeKind::#ret_ty,
-                            (0u32 #pack_u24).into(),
+                            0u32 #pack_extra_u32,
                             NodeData {
                                 extra_data_start: #start_id,
                             },
@@ -287,7 +287,7 @@ fn generate_build_function_extra_data(
                 self.add_node(
                     span,
                     NodeKind::#ret_ty,
-                    0u32.into(),
+                    0u32,
                     NodeData {
                         #node_data
                     },
