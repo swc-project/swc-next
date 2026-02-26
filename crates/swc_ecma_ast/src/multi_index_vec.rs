@@ -1,3 +1,5 @@
+/// Based on https://github.com/oxc-project/oxc/blob/main/crates/oxc_semantic/src/multi_index_vec.rs
+///
 /// A macro that generates a struct-of-arrays (SoA) container backed by a single allocation.
 ///
 /// Instead of N separate `IndexVec`s each with their own `ptr + len + capacity`,
@@ -96,7 +98,6 @@ macro_rules! multi_index_vec {
                 $(
                     let align = ::core::mem::align_of::<$fty>();
                     _offset = (_offset + align - 1) & !(align - 1);
-                    #[expect(clippy::cast_ptr_alignment)]
                     {
                         // SAFETY: `_offset` is within the allocation, and properly aligned
                         // for `$fty` because `compute_layout` aligns each field's offset,
