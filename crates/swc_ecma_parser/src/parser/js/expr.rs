@@ -2392,13 +2392,10 @@ impl<'a, I: Tokens> Parser<'a, I> {
                         return Ok(Expr::Ident(id));
                     }
 
+                    // let ident_token = p.input().cur();
                     let ident = p.parse_binding_ident(false)?;
                     // if p.input().syntax().typescript()
-                    //     && self
-                    //         .ast
-                    //         .get_atom(ident.id(self.ast).sym(self.ast))
-                    //         .as_str()
-                    //         == "as"
+                    //     && ident_token == Token::As
                     //     && !p.input().is(Token::Arrow)
                     // {
                     //     // async as type

@@ -198,6 +198,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         // let has_modifiers = self.eat_any_ts_modifier()?;
         let modifiers_span = self.input().prev_span();
 
+        let key_token = self.input().cur();
         let key = self.parse_prop_name()?;
 
         let cur = self.input().cur();
@@ -297,10 +298,9 @@ impl<'a, I: Tokens> Parser<'a, I> {
         // set a(v){}
         // async a(){}
 
-        let ident = self.ast.get_utf8(ident_sym);
-        let is_get = ident == "get";
-        let is_set = ident == "set";
-        let is_async = ident == "async";
+        let is_get = key_token == Token::Get;
+        let is_set = key_token == Token::Set;
+        let is_async = key_token == Token::Async;
         if is_get || is_set || is_async {
             trace_cur!(self, parse_object_prop__after_accessor);
 

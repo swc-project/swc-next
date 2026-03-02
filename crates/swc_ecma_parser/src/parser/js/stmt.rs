@@ -1110,6 +1110,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         // simply start parsing an expression, and afterwards, if the
         // next token is a colon and the expression was a simple
         // Identifier node, we switch to interpreting it as a label.
+        let expr_token = self.input().cur();
         let expr = self.allow_in_expr(|p| p.parse_expr_inner())?;
 
         let expr = match expr {
@@ -1123,11 +1124,10 @@ impl<'a, I: Tokens> Parser<'a, I> {
         };
 
         if let Expr::Ident(ref ident) = expr {
-            let ident_sym = self.ast.get_utf8(ident.sym(self.ast));
-            if ident_sym == "interface" && self.input().had_line_break_before_cur() {
+            if expr_token == Token::Interface && self.input().had_line_break_before_cur() {
                 self.emit_strict_mode_err(
                     ident.span(self.ast),
-                    SyntaxError::InvalidIdentInStrict(Atom::new(ident_sym)),
+                    SyntaxError::InvalidIdentInStrict(Atom::new("interface")),
                 );
 
                 self.eat_general_semi();

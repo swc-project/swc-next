@@ -131,7 +131,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
     // pub(crate) fn parse_access_modifier(&mut self) -> PResult<Option<Accessibility>> {
     //     Ok(self
-    //         .parse_ts_modifier(&["public", "protected", "private", "in", "out"], false)?
+    //         .parse_ts_modifier(&[Token::Public, Token::Protected, Token::Private, Token::In, Token::Out], false)?
     //         .and_then(|s| match s {
     //             "public" => Some(Accessibility::Public),
     //             "protected" => Some(Accessibility::Protected),
@@ -773,7 +773,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         let modifier_span = None;
         let declare = declare_token.is_some();
         // while let Some(modifier) = if self.input().syntax().typescript() {
-        //     self.parse_ts_modifier(&["abstract", "readonly", "override", "static"], true)?
+        //     self.parse_ts_modifier(&[Token::Abstract, Token::Readonly, Token::Override, Token::Static], true)?
         // } else {
         //     None
         // } {
@@ -1091,7 +1091,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             // handle async foo(){}
 
             // if self.input().syntax().typescript()
-            //     && self.parse_ts_modifier(&["override"], false)?.is_some()
+            //     && self.parse_ts_modifier(&[Token::Override], false)?.is_some()
             // {
             //     is_override = true;
             //     self.emit_err(
