@@ -912,8 +912,9 @@ impl<'a, I: Tokens> Parser<'a, I> {
         }
 
         trace_cur!(self, parse_class_member_with_is_static__normal_class_member);
+        let key_token = self.input.cur();
         let key = if let Some(readonly) = readonly
-            && matches!(self.input().cur(), Token::Bang | Token::Colon)
+            && matches!(key_token, Token::Bang | Token::Colon)
         {
             let sym = self.ast.add_utf8("readonly");
             self.ast.key_prop_name_ident_name(readonly, sym)
@@ -1051,23 +1052,15 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
         let is_next_line_generator =
             self.input_mut().had_line_break_before_cur() && self.input().is(Token::Asterisk);
-        let getter_or_setter_ident = match key {
+        let getter_or_setter_ident = match key_token {
             // `get\n*` is an uninitialized property named 'get' followed by a generator.
-            Key::Public(PropName::Ident(ref i)) => {
-                let sym = self.ast.get_utf8(i.sym(self.ast));
-                if (sym == "get" || sym == "set")
-                    && !self.is_class_property(/* asi */ false)
-                    && !is_next_line_generator
-                {
-                    Some(i)
-                } else {
-                    None
-                }
+            Token::Get | Token::Set => {
+                !self.is_class_property(/* asi */ false) && !is_next_line_generator
             }
-            _ => None,
+            _ => false,
         };
 
-        if getter_or_setter_ident.is_none() && self.is_class_property(/* asi */ true) {
+        if !getter_or_setter_ident && self.is_class_property(/* asi */ true) {
             return self.make_property(
                 start,
                 decorators,
@@ -1083,11 +1076,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             );
         }
 
-        if match key {
-            Key::Public(PropName::Ident(ref i)) => self.ast.get_utf8(i.sym(self.ast)) == "async",
-            _ => false,
-        } && !self.input_mut().had_line_break_before_cur()
-        {
+        if key_token == Token::Async && !self.input_mut().had_line_break_before_cur() {
             // handle async foo(){}
 
             // if self.input().syntax().typescript()
@@ -1130,9 +1119,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
             );
         }
 
-        if let Some(ident) = getter_or_setter_ident {
+        if getter_or_setter_ident {
             let key_span = key.span(self.ast);
-            let sym = ident.sym(self.ast);
 
             // handle get foo(){} / set foo(v){}
             let key = self.parse_class_prop_name()?;
@@ -1145,8 +1133,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 self.emit_err(key_span, SyntaxError::ConstructorAccessor);
             }
 
-            return match self.ast.get_utf8(sym) {
-                "get" => self.make_method(
+            return match key_token {
+                Token::Get => self.make_method(
                     |p| {
                         let params = p.parse_formal_params()?;
 
@@ -1173,7 +1161,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                         kind: MethodKind::Getter,
                     },
                 ),
-                "set" => self.make_method(
+                Token::Set => self.make_method(
                     |p| {
                         let params = p.parse_formal_params()?;
 
