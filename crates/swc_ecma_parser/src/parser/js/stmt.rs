@@ -1124,6 +1124,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         };
 
         if let Expr::Ident(ref ident) = expr {
+            #[allow(clippy::collapsible_if)]
             if expr_token == Token::Interface && self.input().had_line_break_before_cur() {
                 self.emit_strict_mode_err(
                     ident.span(self.ast),
