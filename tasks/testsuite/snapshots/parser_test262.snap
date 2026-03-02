@@ -1,6 +1,6 @@
 Test Summary: 
-Passed: 48849/51034 (95.72%)
-Failed: 2182/51034 (4.28%)
+Passed: 48845/51034 (95.71%)
+Failed: 2186/51034 (4.28%)
 Panicked: 0/51034 (0.00%)
 Ignored: 3/51034 (0.01%)
 Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-in-lhs.js - [Error { error: (822..825, TS2406) }]
@@ -1218,6 +1218,10 @@ Failed: fixtures/test262/test/language/expressions/object/method-definition/earl
 Failed: fixtures/test262/test/language/expressions/object/method-definition/early-errors-object-method-duplicate-parameters.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/object/method-definition/early-errors-object-method-eval-in-formal-parameters.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/object/method-definition/early-errors-object-method-formals-contains-super-call.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/object/method-definition/escaped-get-e.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/object/method-definition/escaped-get-t.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/object/method-definition/escaped-set-e.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/object/method-definition/escaped-set-t.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/object/method-definition/gen-meth-dflt-params-duplicates.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/object/method-definition/gen-yield-identifier-spread-strict.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/object/method-definition/gen-yield-identifier-strict.js - Expected failure, but parsed successfully
