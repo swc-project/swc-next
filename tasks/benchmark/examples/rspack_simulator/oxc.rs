@@ -205,14 +205,14 @@ struct JavascriptParser<'a> {
 
 impl<'a> Visit<'a> for JavascriptParser<'a> {
     fn visit_identifier_reference(&mut self, it: &oxc::ast::ast::IdentifierReference<'a>) {
-        self.idents.push(it.name.clone());
+        self.idents.push(it.name);
     }
 
     fn visit_binding_identifier(&mut self, it: &oxc::ast::ast::BindingIdentifier<'a>) {
-        self.idents.push(it.name.clone());
+        self.idents.push(it.name);
     }
 
     fn visit_label_identifier(&mut self, it: &LabelIdentifier<'a>) {
-        self.idents.push(it.name.clone());
+        self.idents.push(it.name);
     }
 }
