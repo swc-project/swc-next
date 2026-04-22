@@ -1,4 +1,3 @@
-use bumpalo::Bump;
 use rustc_hash::FxHashSet;
 use swc_core::{
     atoms::Atom,
@@ -82,9 +81,8 @@ fn run_compat_and_scan(root: Program, ast: &Ast, semantic: &Semantic, compat: Co
             run_scan_dependencies_legacy(&program);
         }
         CompatMode::Unsafe => {
-            let arena = Bump::new();
-            let program = UnsafeArenaAstCompat::new(ast, semantic, &arena).compat_program(root);
-            run_scan_dependencies_legacy(&program);
+            let program = UnsafeArenaAstCompat::new(ast, semantic).compat_program(root);
+            program.with_ref(run_scan_dependencies_legacy);
         }
     }
 }
