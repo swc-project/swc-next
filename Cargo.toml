@@ -11,6 +11,7 @@ repository  = "https://github.com/CPunisher/swc-experimental"
 
 [workspace.dependencies]
 bitflags         = "2"
+bumpalo          = "3.20.2"
 either           = "1.10.0"
 hashbrown        = "0.16.1"
 indexmap         = "2.13.0"

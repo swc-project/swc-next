@@ -9,6 +9,7 @@ repository.workspace  = true
 version               = "0.6.4"
 
 [dependencies]
+bumpalo  = { workspace = true }
 stacker  = { workspace = true }
 swc_core = { workspace = true }
 
