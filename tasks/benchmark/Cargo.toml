@@ -11,6 +11,7 @@ tracy = ["dep:tracy-client"]
 tracy-client = { workspace = true, optional = true }
 
 [dev-dependencies]
+bumpalo                               = { workspace = true }
 oxc                                   = { workspace = true }
 oxc_allocator                         = { workspace = true }
 swc_experimental_ecma_ast             = { workspace = true }

@@ -1,3 +1,4 @@
+use bumpalo::Bump;
 use rustc_hash::FxHashSet;
 use swc_core::{
     atoms::Atom,
@@ -8,7 +9,7 @@ use swc_experimental_ecma_ast::{
     ExprStmt, GetSpan, ImportDecl, NamedExport, Program, ReturnStmt, Span, StringAllocator,
     ThrowStmt, UpdateExpr, VarDecl, Visit, VisitWith, YieldExpr,
 };
-use swc_experimental_ecma_ast_compat::AstCompat;
+use swc_experimental_ecma_ast_compat::{AstCompat, UnsafeArenaAstCompat};
 use swc_experimental_ecma_parser::{
     Lexer, Parser, StringSource, Syntax,
     unstable::{Capturing, Token, TokenAndSpan},
@@ -16,17 +17,21 @@ use swc_experimental_ecma_parser::{
 use swc_experimental_ecma_semantic::resolver::{Semantic, resolver};
 use swc_experimental_ecma_transforms_base::remove_paren::remove_paren;
 
-pub fn run(src: &'static str, compat: bool) {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompatMode {
+    Safe,
+    Unsafe,
+}
+
+pub fn run(src: &'static str, compat: Option<CompatMode>) {
     let comments = SingleThreadedComments::default();
     let (program, mut ast, tokens) = run_parse(src, &comments);
     run_remove_paren(program, &mut ast, &comments);
     let semantic = run_resolver(program, &ast);
     let _semi = run_collect_semiconlons(&ast, program, &tokens);
-    if compat {
-        let program = run_compat(program, &ast, &semantic);
-        run_scan_dependencies_legacy(&program);
-    } else {
-        run_scan_dependencies(program, &ast);
+    match compat {
+        Some(compat) => run_compat_and_scan(program, &ast, &semantic, compat),
+        None => run_scan_dependencies(program, &ast),
     }
 }
 
@@ -70,8 +75,18 @@ fn run_scan_dependencies(root: Program, ast: &Ast) {
 }
 
 #[inline(never)]
-fn run_compat(root: Program, ast: &Ast, semantic: &Semantic) -> swc_core::ecma::ast::Program {
-    AstCompat::new(ast, semantic).compat_program(root)
+fn run_compat_and_scan(root: Program, ast: &Ast, semantic: &Semantic, compat: CompatMode) {
+    match compat {
+        CompatMode::Safe => {
+            let program = AstCompat::new(ast, semantic).compat_program(root);
+            run_scan_dependencies_legacy(&program);
+        }
+        CompatMode::Unsafe => {
+            let arena = Bump::new();
+            let program = UnsafeArenaAstCompat::new(ast, semantic, &arena).compat_program(root);
+            run_scan_dependencies_legacy(&program);
+        }
+    }
 }
 
 #[inline(never)]

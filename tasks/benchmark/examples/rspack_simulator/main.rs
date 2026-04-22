@@ -28,11 +28,19 @@ pub fn main() {
     }
 
     if target == "exp" {
-        experimental::run(source, false);
+        experimental::run(source, None);
     }
 
     if target == "exp_compat" {
-        experimental::run(source, true);
+        experimental::run(source, Some(experimental::CompatMode::Safe));
+    }
+
+    if target == "exp_compat_safe" {
+        experimental::run(source, Some(experimental::CompatMode::Safe));
+    }
+
+    if target == "exp_compat_unsafe" {
+        experimental::run(source, Some(experimental::CompatMode::Unsafe));
     }
 
     if target == "oxc" {
