@@ -366,7 +366,7 @@ impl<'a> Token {
         buffer.expect_error_token_value()
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn take_word<I: Tokens>(self, buffer: &Buffer<I>) -> MaybeSubUtf8 {
         let span = buffer.cur.span;
         MaybeSubUtf8::Inline((span.lo, span.hi))
@@ -484,6 +484,17 @@ impl Token {
         let t = self as u8;
         (t >= Token::EqEq as u8 && t <= Token::NullishCoalescing as u8)
             || (t >= Token::Plus as u8 && t <= Token::Ampersand as u8)
+    }
+
+    #[inline(always)]
+    pub const fn needs_unary_expr_prefix_parse(self) -> bool {
+        let t = self as u8;
+        (t >= Token::Bang as u8 && t <= Token::Minus as u8)
+            || (t >= Token::PlusPlus as u8 && t <= Token::MinusMinus as u8)
+            || matches!(
+                self,
+                Token::Lt | Token::Await | Token::Delete | Token::TypeOf | Token::Void
+            )
     }
 
     pub const fn as_bin_op(self) -> Option<swc_experimental_ecma_ast::BinaryOp> {

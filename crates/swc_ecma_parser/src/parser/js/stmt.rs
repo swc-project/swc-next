@@ -69,9 +69,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
     }
 
     fn parse_return_stmt(&mut self) -> PResult<Stmt> {
-        let start = self.cur_pos();
-
         self.assert_and_bump(Token::Return);
+        let start = self.input().prev_span().lo;
 
         let arg = if self.is_general_semi() {
             None
@@ -1201,28 +1200,31 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
         let stmts = self.scratch_start(|p, stmts| {
             let parse_stmts = |p: &mut Self, stmts: &mut ScratchIndex<Type>| -> PResult<()> {
-                let is_stmt_start = |p: &mut Self| {
-                    let cur = p.input().cur();
-                    match end {
-                        Some(end) => {
-                            if cur == Token::Eof {
-                                let eof_text = p.input_mut().dump_cur();
-                                p.emit_err(
-                                    p.input().cur_span(),
-                                    SyntaxError::Expected(format!("{end:?}"), eof_text),
-                                );
-                                false
-                            } else {
-                                cur != end
-                            }
+                if let Some(end) = end {
+                    loop {
+                        let cur = p.input().cur();
+                        if cur == Token::Eof {
+                            let eof_text = p.input_mut().dump_cur();
+                            p.emit_err(
+                                p.input().cur_span(),
+                                SyntaxError::Expected(format!("{end:?}"), eof_text),
+                            );
+                            break;
                         }
-                        None => cur != Token::Eof,
+                        if cur == end {
+                            break;
+                        }
+
+                        let stmt = p.parse_stmt_like(true, &handle_import_export)?;
+                        stmts.push(p, stmt);
                     }
-                };
-                while is_stmt_start(p) {
-                    let stmt = p.parse_stmt_like(true, &handle_import_export)?;
-                    stmts.push(p, stmt);
+                } else {
+                    while p.input().cur() != Token::Eof {
+                        let stmt = p.parse_stmt_like(true, &handle_import_export)?;
+                        stmts.push(p, stmt);
+                    }
                 }
+
                 Ok(())
             };
 
