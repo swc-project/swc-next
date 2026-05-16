@@ -1,6 +1,6 @@
 Test Summary: 
-Passed: 48845/51034 (95.71%)
-Failed: 2186/51034 (4.28%)
+Passed: 48879/51034 (95.78%)
+Failed: 2152/51034 (4.22%)
 Panicked: 0/51034 (0.00%)
 Ignored: 3/51034 (0.01%)
 Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-in-lhs.js - [Error { error: (822..825, TS2406) }]
@@ -486,23 +486,7 @@ Failed: fixtures/test262/test/language/block-scope/syntax/redeclaration/var-rede
 Failed: fixtures/test262/test/language/block-scope/syntax/redeclaration/var-redeclaration-attempt-after-let.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/directive-prologue/14.1-5gs.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/arrow-function/dflt-params-duplicates.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-const-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-continue-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-debugger-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-delete-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-do-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-else-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-enum-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-export-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-extends-escaped-ext.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-extends-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-finally-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-for-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-function-escaped.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-implements-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-import-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-in-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-instanceof-escaped.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-interface-escaped.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-let-escaped.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-package-escaped.js - Expected failure, but parsed successfully
@@ -567,23 +551,7 @@ Failed: fixtures/test262/test/language/expressions/assignment/dstr/obj-prop-elem
 Failed: fixtures/test262/test/language/expressions/assignment/dstr/obj-prop-elem-target-yield-ident-invalid.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/assignment/dstr/obj-prop-nested-array-yield-ident-invalid.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/assignment/dstr/obj-prop-nested-obj-yield-ident-invalid.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-const-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-continue-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-debugger-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-delete-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-do-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-else-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-enum-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-export-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-extends-escaped-ext.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-extends-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-finally-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-for-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-function-escaped.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-implements-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-import-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-in-escaped.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-instanceof-escaped.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-interface-escaped.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-let-escaped.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/assignment/dstr/syntax-error-ident-ref-package-escaped.js - Expected failure, but parsed successfully
@@ -948,7 +916,6 @@ Failed: fixtures/test262/test/language/expressions/class/ident-name-method-def-w
 Failed: fixtures/test262/test/language/expressions/class/ident-name-method-def-with-escaped.js - [Error { error: (917..926, Unexpected { got: "<lexing error>", expected: "identifier, string literal, numeric literal or [ for the computed key" }) }]
 Failed: fixtures/test262/test/language/expressions/class/method-static/dflt-params-duplicates.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/class/method/dflt-params-duplicates.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/expressions/coalesce/cannot-chain-tail-with-logical-or.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/compound-assignment/11.13.2-6-1gs.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/compound-assignment/add-arguments-strict.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/compound-assignment/add-eval-strict.js - Expected failure, but parsed successfully
@@ -1917,7 +1884,6 @@ Failed: fixtures/test262/test/language/statements/class/private-non-static-gette
 Failed: fixtures/test262/test/language/statements/class/private-non-static-setter-static-getter-early-error.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/statements/class/private-static-getter-non-static-setter-early-error.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/statements/class/private-static-setter-non-static-getter-early-error.js - Expected failure, but parsed successfully
-Failed: fixtures/test262/test/language/statements/class/static-init-invalid-arguments.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/statements/class/static-init-invalid-await.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/statements/class/static-init-invalid-lex-dup.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/statements/class/static-init-invalid-lex-var.js - Expected failure, but parsed successfully
