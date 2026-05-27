@@ -192,6 +192,7 @@ impl crate::input::Tokens for Lexer<'_> {
         self.finish_next_token(self.span(start), token)
     }
 
+    #[inline(always)]
     fn next_token(&mut self) -> TokenAndSpan {
         // `read_next_token` always overwrites this out-parameter before
         // returning, including the regexp path.
@@ -366,6 +367,7 @@ impl crate::input::Tokens for Lexer<'_> {
 }
 
 impl Lexer<'_> {
+    #[inline(always)]
     fn read_next_token(&mut self, start: &mut u32) -> Result<Token, Error> {
         if let Some(next_regexp) = self.state.next_regexp {
             *start = next_regexp;

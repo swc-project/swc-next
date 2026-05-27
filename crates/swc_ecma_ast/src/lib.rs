@@ -357,7 +357,7 @@ pub enum NodeKind {
 impl Ast {
     /// Create a new AST with the given source length and the string allocator.
     pub fn new(source_len: usize, string_allocator: StringAllocator) -> Self {
-        let empirical_capacity = (source_len as f64 * 0.15) as usize;
+        let empirical_capacity = source_len / 5;
         let mut nodes = Nodes::new();
         nodes.reserve(empirical_capacity);
         Self {
