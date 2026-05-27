@@ -197,6 +197,7 @@ macro_rules! multi_index_vec {
             }
 
             /// Push a new element to all field arrays. Returns the index of the new element.
+            #[inline(always)]
             $vis fn push(&mut self, $( $fname: $fty ),*) -> $idx {
                 if self.len == self.cap {
                     self.grow_to(self.len as usize + 1);
