@@ -7,7 +7,6 @@ use crate::{
     lexer::Token,
     parser::{Parser, js::expr::AssignTargetOrSpread, util::ExprExt},
 };
-use swc_core::common::BytePos;
 use swc_experimental_ecma_ast::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -270,7 +269,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                                 if idx != len - 1 {
                                     p.emit_err(span, SyntaxError::NonLastRestParam)
                                 } else if let Some(trailing_comma) =
-                                    p.state().trailing_commas.get(&object_span.lo)
+                                    p.state().trailing_commas.get(&object_span.start)
                                 {
                                     p.emit_err(*trailing_comma, SyntaxError::CommaAfterRestElement);
                                 };
@@ -360,7 +359,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                                         self.emit_err(expr.span(self.ast), SyntaxError::TS1048);
                                     };
                                     if let Some(trailing_comma) =
-                                        self.state().trailing_commas.get(&span.lo)
+                                        self.state().trailing_commas.get(&span.start)
                                     {
                                         self.emit_err(
                                             *trailing_comma,
@@ -562,7 +561,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         //         }) => {
         //             let new_type_ann = self.try_parse_ts_type_ann()?;
         //             if new_type_ann.is_some() {
-        //                 *span = Span::new_with_checked(pat_start, self.input().prev_span().hi);
+        //                 *span = Span::new_with_checked(pat_start, self.input().prev_span().end);
         //             }
         //             *type_ann = new_type_ann;
         //         }
@@ -576,7 +575,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
         //         Pat::Assign(AssignPat { ref mut span, .. }) => {
         //             if (self.try_parse_ts_type_ann()?).is_some() {
-        //                 *span = Span::new_with_checked(pat_start, self.input().prev_span().hi);
+        //                 *span = Span::new_with_checked(pat_start, self.input().prev_span().end);
         //                 self.emit_err(*span, SyntaxError::TSTypeAnnotationAfterAssign);
         //             }
         //         }
@@ -612,7 +611,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
     fn parse_constructor_param(
         &mut self,
-        param_start: BytePos,
+        param_start: u32,
         decorators: TypedSubRange<Decorator>,
     ) -> PResult<ParamOrTsParamProp> {
         // let (accessibility, is_override, readonly) = if self.input().syntax().typescript() {

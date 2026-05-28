@@ -1,7 +1,6 @@
 use std::fmt::Display;
 
-use swc_core::common::{BytePos, Span};
-use swc_experimental_ecma_ast::AssignOp;
+use swc_experimental_ecma_ast::{AssignOp, Span};
 
 use super::LexResult;
 use crate::{
@@ -21,7 +20,7 @@ pub enum TokenValue {
     // jsx text
     JsxText(MaybeSubUtf8),
     // regexp
-    Regex(BytePos),
+    Regex(u32),
     Num(f64),
     BigInt(Box<num_bigint::BigInt>),
     Error(crate::error::Error),
@@ -338,7 +337,7 @@ impl<'a> Token {
     }
 
     #[inline(always)]
-    pub fn regexp(exp_end: BytePos, lexer: &mut crate::Lexer<'a>) -> Self {
+    pub fn regexp(exp_end: u32, lexer: &mut crate::Lexer<'a>) -> Self {
         lexer.set_token_value(Some(TokenValue::Regex(exp_end)));
         Token::Regex
     }
@@ -369,7 +368,7 @@ impl<'a> Token {
     #[inline(always)]
     pub fn take_word<I: Tokens>(self, buffer: &Buffer<I>) -> MaybeSubUtf8 {
         let span = buffer.cur.span;
-        MaybeSubUtf8::Inline((span.lo, span.hi))
+        MaybeSubUtf8::Inline((span.start, span.end))
     }
 
     #[inline(always)]

@@ -1,6 +1,5 @@
 #![allow(unused, clippy::useless_conversion, clippy::single_match)]
 use crate::*;
-use swc_core::common::Span;
 pub trait Visit {
     fn ast(&self) -> &Ast;
     #[inline]

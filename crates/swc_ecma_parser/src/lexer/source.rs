@@ -1,18 +1,16 @@
-use swc_core::common::BytePos;
-
 /// Optimized [swc_core::common::input::StringInput]
 #[derive(Clone)]
 pub struct StringSource<'a> {
     source: &'a [u8],
     /// One-based index that should always be on a UTF-8 character boundary, and never after end of source
-    cur: BytePos,
+    cur: u32,
 }
 
 impl<'a> StringSource<'a> {
     pub fn new(source: &'a str) -> Self {
         Self {
             source: source.as_bytes(),
-            cur: 0usize.byte_pos(),
+            cur: 0usize.source_pos(),
         }
     }
 }
@@ -23,7 +21,7 @@ impl<'a> StringSource<'a> {
     /// # Safety
     /// 1. `start` is before or equal to `end`.
     /// 2. `start` and `end` must be on UTF-8 character boundary, or come from [Self::cur_pos].
-    pub(crate) unsafe fn slice(&self, start: BytePos, end: BytePos) -> &'a str {
+    pub(crate) unsafe fn slice(&self, start: u32, end: u32) -> &'a str {
         debug_assert!(start <= end);
         debug_assert!(
             end.index() <= self.source.len(),
@@ -45,7 +43,7 @@ impl<'a> StringSource<'a> {
     /// # Safety
     /// 1. `start` is before or equal to `cur`.
     /// 2. `start` must be on UTF-8 character boundary, or come from [Self::cur_pos].
-    pub(crate) unsafe fn slice_to_cur(&self, start: BytePos) -> &'a str {
+    pub(crate) unsafe fn slice_to_cur(&self, start: u32) -> &'a str {
         unsafe { self.slice(start, self.cur) }
     }
 
@@ -62,13 +60,13 @@ impl<'a> StringSource<'a> {
     }
 
     #[inline]
-    pub(crate) fn cur_pos(&self) -> BytePos {
+    pub(crate) fn cur_pos(&self) -> u32 {
         self.cur
     }
 
     #[inline]
-    pub(crate) fn end_pos(&self) -> BytePos {
-        self.source.len().byte_pos()
+    pub(crate) fn end_pos(&self) -> u32 {
+        self.source.len().source_pos()
     }
 
     #[inline]
@@ -125,14 +123,14 @@ impl<'a> StringSource<'a> {
     pub(crate) unsafe fn bump_bytes(&mut self, n: usize) {
         unsafe {
             // Safety: We only proceed, not go back.
-            self.reset_to(self.cur + BytePos(n as u32));
+            self.reset_to(self.cur + n as u32);
         }
     }
 
     #[inline]
     /// # Safety
     /// 1. `to` must be less than `self.source.len()` on UTF-8 charater boundary.
-    pub(crate) unsafe fn reset_to(&mut self, to: BytePos) {
+    pub(crate) unsafe fn reset_to(&mut self, to: u32) {
         debug_assert!(to.index() <= self.source.len());
         debug_assert!(
             to.index() == self.source.len() || !is_utf8_cont_byte(self.source[to.index()]),
@@ -153,23 +151,23 @@ const fn is_utf8_cont_byte(byte: u8) -> bool {
     byte >= 0x80 && byte < 0xC0
 }
 
-trait BytePosExt {
+trait PosExt {
     fn index(self) -> usize;
 }
 
-impl BytePosExt for BytePos {
+impl PosExt for u32 {
     #[inline]
     fn index(self) -> usize {
-        (self.0 as usize).saturating_sub(1)
+        (self as usize).saturating_sub(1)
     }
 }
 
 trait IndexExt {
-    fn byte_pos(self) -> BytePos;
+    fn source_pos(self) -> u32;
 }
 
 impl IndexExt for usize {
-    fn byte_pos(self) -> BytePos {
-        BytePos(self as u32 + 1)
+    fn source_pos(self) -> u32 {
+        self as u32 + 1
     }
 }

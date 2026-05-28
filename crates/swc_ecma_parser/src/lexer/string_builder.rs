@@ -1,33 +1,30 @@
-use swc_core::{
-    atoms::wtf8::{CodePoint, Wtf8Buf},
-    common::BytePos,
-};
+use swc_core::atoms::wtf8::{CodePoint, Wtf8Buf};
 use swc_experimental_ecma_ast::{Span, StringAllocator, Utf8Ref, Wtf8Ref};
 
 use crate::Lexer;
 
 #[derive(Debug, Clone, Copy)]
 pub enum MaybeSubUtf8 {
-    Inline((BytePos, BytePos)),
+    Inline((u32, u32)),
     Alloc(Utf8Ref),
 }
 
 impl MaybeSubUtf8 {
     #[inline]
     pub(crate) fn new_from_span(span: Span) -> Self {
-        Self::Inline((span.lo, span.hi))
+        Self::Inline((span.start, span.end))
     }
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum MaybeSubWtf8 {
-    Inline((BytePos, BytePos)),
+    Inline((u32, u32)),
     Alloc(Wtf8Ref),
 }
 
 impl MaybeSubWtf8 {
     #[inline]
-    pub(crate) fn new_from_source(start: BytePos, end: BytePos) -> Self {
+    pub(crate) fn new_from_source(start: u32, end: u32) -> Self {
         Self::Inline((start, end))
     }
 }

@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 
 use swc_core::atoms::Atom;
-use swc_core::common::Span;
 use swc_experimental_ecma_ast::*;
 
 use crate::{Context, PResult, Parser, error::SyntaxError, input::Tokens, lexer::Token};
@@ -104,7 +103,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
                                 debug_assert!(start <= orig_ident.span_hi(self.ast));
                                 return Ok(self.ast.export_named_specifier(
-                                    Span::new_with_checked(start, orig_ident.span_hi(self.ast)),
+                                    Span::new(start, orig_ident.span_hi(self.ast)),
                                     ModuleExportName::Ident(possibly_orig),
                                     Some(ModuleExportName::Ident(exported)),
                                     true,
@@ -112,7 +111,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                             } else {
                                 // `export { type as as }`
                                 return Ok(self.ast.export_named_specifier(
-                                    Span::new_with_checked(start, orig_ident.span_hi(self.ast)),
+                                    Span::new(start, orig_ident.span_hi(self.ast)),
                                     ModuleExportName::Ident(orig_ident),
                                     Some(ModuleExportName::Ident(maybe_as)),
                                     false,
@@ -121,7 +120,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                         } else {
                             // `export { type as xxx }`
                             return Ok(self.ast.export_named_specifier(
-                                Span::new_with_checked(start, orig_ident.span_hi(self.ast)),
+                                Span::new(start, orig_ident.span_hi(self.ast)),
                                 ModuleExportName::Ident(orig_ident),
                                 Some(ModuleExportName::Ident(maybe_as)),
                                 false,
@@ -228,7 +227,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                                 }
 
                                 return Ok(self.ast.import_specifier_import_named_specifier(
-                                    Span::new_with_checked(start, orig_name.span_hi(self.ast)),
+                                    Span::new(start, orig_name.span_hi(self.ast)),
                                     local,
                                     Some(ModuleExportName::Ident(possibly_orig_name)),
                                     true,
@@ -236,7 +235,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                             } else {
                                 // `import { type as as } from 'mod'`
                                 return Ok(self.ast.import_specifier_import_named_specifier(
-                                    Span::new_with_checked(start, maybe_as.span_hi(self.ast)),
+                                    Span::new(start, maybe_as.span_hi(self.ast)),
                                     maybe_as,
                                     Some(ModuleExportName::Ident(orig_name)),
                                     false,
@@ -245,7 +244,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                         } else {
                             // `import { type as xxx } from 'mod'`
                             return Ok(self.ast.import_specifier_import_named_specifier(
-                                Span::new_with_checked(start, orig_name.span_hi(self.ast)),
+                                Span::new(start, orig_name.span_hi(self.ast)),
                                 maybe_as,
                                 Some(ModuleExportName::Ident(orig_name)),
                                 false,
@@ -266,7 +265,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 if self.input_mut().eat(Token::As) {
                     let local: Ident = self.parse_binding_ident(false)?;
                     return Ok(self.ast.import_specifier_import_named_specifier(
-                        Span::new_with_checked(start, local.span_hi(self.ast)),
+                        Span::new(start, local.span_hi(self.ast)),
                         local,
                         Some(ModuleExportName::Ident(orig_name)),
                         is_type_only,
@@ -300,7 +299,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 if self.input_mut().eat(Token::As) {
                     let local: Ident = self.parse_binding_ident(false)?;
                     Ok(self.ast.import_specifier_import_named_specifier(
-                        Span::new_with_checked(start, local.span_hi(self.ast)),
+                        Span::new(start, local.span_hi(self.ast)),
                         local,
                         Some(ModuleExportName::Str(orig_str)),
                         false,

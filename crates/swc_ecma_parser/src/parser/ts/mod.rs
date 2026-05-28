@@ -2,7 +2,6 @@ use std::{fmt::Write, mem};
 
 use either::Either;
 use swc_core::atoms::{Atom, Wtf8Atom, atom};
-use swc_core::common::{BytePos, Span};
 use swc_ecma_ast::*;
 
 use crate::{
@@ -99,7 +98,7 @@ impl<I: Tokens> Parser<I> {
         mut parse_element: F,
     ) -> PResult<Vec<T>>
     where
-        F: FnMut(&mut Self) -> PResult<(BytePos, T)>,
+        F: FnMut(&mut Self) -> PResult<(u32, T)>,
     {
         debug_assert!(self.input().syntax().typescript());
         let mut buf = Vec::new();
@@ -422,7 +421,7 @@ impl<I: Tokens> Parser<I> {
             let cur = self.input().cur();
             if cur != Token::Hash && !cur.is_word() {
                 self.emit_err(
-                    Span::new_with_checked(dot_start, dot_start),
+                    Span::new(dot_start, dot_start),
                     SyntaxError::TS1003,
                 );
                 return Ok(entity);
@@ -477,7 +476,7 @@ impl<I: Tokens> Parser<I> {
         // context. But be sure not to parse a regex in the jsx expression
         // `<C<number> />`, so set exprAllowed = false
         self.expect_without_advance(Token::Gt)?;
-        let span = Span::new_with_checked(start, self.input().cur_span().hi);
+        let span = Span::new(start, self.input().cur_span().end);
 
         // Report grammar error for empty type argument list like `I<>`.
         if params.is_empty() {
@@ -529,7 +528,7 @@ impl<I: Tokens> Parser<I> {
     pub(crate) fn parse_ts_type_ann(
         &mut self,
         eat_colon: bool,
-        start: BytePos,
+        start: u32,
     ) -> PResult<Box<TsTypeAnn>> {
         trace_cur!(self, parse_ts_type_ann);
 
@@ -554,7 +553,7 @@ impl<I: Tokens> Parser<I> {
     /// `tsParseThisTypePredicate`
     fn parse_ts_this_type_predicate(
         &mut self,
-        start: BytePos,
+        start: u32,
         has_asserts_keyword: bool,
         lhs: TsThisType,
     ) -> PResult<TsTypePredicate> {
@@ -1022,7 +1021,7 @@ impl<I: Tokens> Parser<I> {
             let start = self.cur_pos();
             self.bump();
             self.input_mut().store(Token::Comma);
-            self.emit_err(Span::new_with_checked(start, start), SyntaxError::TS1005);
+            self.emit_err(Span::new(start, start), SyntaxError::TS1005);
             None
         };
 
@@ -1036,7 +1035,7 @@ impl<I: Tokens> Parser<I> {
     /// `tsParseEnumDeclaration`
     pub(crate) fn parse_ts_enum_decl(
         &mut self,
-        start: BytePos,
+        start: u32,
         is_const: bool,
     ) -> PResult<Box<TsEnumDecl>> {
         debug_assert!(self.input().syntax().typescript());
@@ -1275,7 +1274,7 @@ impl<I: Tokens> Parser<I> {
     /// `tsTryParseIndexSignature`
     pub(crate) fn try_parse_ts_index_signature(
         &mut self,
-        index_signature_start: BytePos,
+        index_signature_start: u32,
         readonly: bool,
         is_static: bool,
     ) -> PResult<Option<TsIndexSignature>> {
@@ -1366,7 +1365,7 @@ impl<I: Tokens> Parser<I> {
     /// `tsParseImportEqualsDeclaration`
     pub(crate) fn parse_ts_import_equals_decl(
         &mut self,
-        start: BytePos,
+        start: u32,
         id: Ident,
         is_export: bool,
         is_type_only: bool,
@@ -1503,7 +1502,7 @@ impl<I: Tokens> Parser<I> {
             let mut ident = p.parse_ident_name().map(Ident::from)?;
             if p.input_mut().eat(Token::QuestionMark) {
                 ident.optional = true;
-                ident.span = ident.span.with_hi(p.input().prev_span().hi);
+                ident.span.end = p.input().prev_span().end;
             }
             expect!(p, Token::Colon);
 
@@ -1675,7 +1674,7 @@ impl<I: Tokens> Parser<I> {
     /// `tsParseTypeAliasDeclaration`
     pub(crate) fn parse_ts_type_alias_decl(
         &mut self,
-        start: BytePos,
+        start: u32,
     ) -> PResult<Box<TsTypeAliasDecl>> {
         debug_assert!(self.input().syntax().typescript());
 
@@ -1982,7 +1981,7 @@ impl<I: Tokens> Parser<I> {
     /// `tsParsePropertyOrMethodSignature`
     fn parse_ts_property_or_method_signature(
         &mut self,
-        start: BytePos,
+        start: u32,
         readonly: bool,
     ) -> PResult<Either<TsPropertySignature, TsMethodSignature>> {
         debug_assert!(self.input().syntax().typescript());
@@ -2150,7 +2149,7 @@ impl<I: Tokens> Parser<I> {
     /// `tsParseInterfaceDeclaration`
     pub(crate) fn parse_ts_interface_decl(
         &mut self,
-        start: BytePos,
+        start: u32,
     ) -> PResult<Box<TsInterfaceDecl>> {
         debug_assert!(self.input().syntax().typescript());
 
@@ -2199,7 +2198,7 @@ impl<I: Tokens> Parser<I> {
     }
 
     /// `tsParseTypeAssertion`
-    pub(crate) fn parse_ts_type_assertion(&mut self, start: BytePos) -> PResult<TsTypeAssertion> {
+    pub(crate) fn parse_ts_type_assertion(&mut self, start: u32) -> PResult<TsTypeAssertion> {
         debug_assert!(self.input().syntax().typescript());
 
         if self.input().syntax().disallow_ambiguous_jsx_like() {
@@ -2356,7 +2355,7 @@ impl<I: Tokens> Parser<I> {
     /// `tsParseModuleOrNamespaceDeclaration`
     fn parse_ts_module_or_ns_decl(
         &mut self,
-        start: BytePos,
+        start: u32,
         namespace: bool,
     ) -> PResult<Box<TsModuleDecl>> {
         debug_assert!(self.input().syntax().typescript());
@@ -2393,7 +2392,7 @@ impl<I: Tokens> Parser<I> {
     /// `tsParseAmbientExternalModuleDeclaration`
     fn parse_ts_ambient_external_module_decl(
         &mut self,
-        start: BytePos,
+        start: u32,
     ) -> PResult<Box<TsModuleDecl>> {
         debug_assert!(self.input().syntax().typescript());
 
@@ -2659,7 +2658,7 @@ impl<I: Tokens> Parser<I> {
     /// `tsTryParseDeclare`
     pub(crate) fn try_parse_ts_declare(
         &mut self,
-        start: BytePos,
+        start: u32,
         decorators: Vec<Decorator>,
     ) -> PResult<Option<Decl>> {
         if !self.syntax().typescript() {
@@ -2797,7 +2796,7 @@ impl<I: Tokens> Parser<I> {
     /// `tsParseDeclaration`
     fn parse_ts_decl(
         &mut self,
-        start: BytePos,
+        start: u32,
         decorators: Vec<Decorator>,
         value: Atom,
         next: bool,
@@ -2900,7 +2899,7 @@ impl<I: Tokens> Parser<I> {
     /// `tsTryParseGenericAsyncArrowFunction`
     pub(crate) fn try_parse_ts_generic_async_arrow_fn(
         &mut self,
-        start: BytePos,
+        start: u32,
     ) -> PResult<Option<ArrowExpr>> {
         if !cfg!(feature = "typescript") {
             return Ok(Default::default());

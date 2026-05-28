@@ -59,7 +59,7 @@ impl<I: Tokens> Capturing<I> {
 
         // remove tokens that could change due to backtracing
         while let Some(last) = v.last() {
-            if last.span.lo >= ts.span.lo {
+            if last.span.start >= ts.span.start {
                 v.pop();
             } else {
                 break;
@@ -105,7 +105,7 @@ impl<I: Tokens> Tokens for Capturing<I> {
         self.inner.target()
     }
 
-    fn set_next_regexp(&mut self, start: Option<swc_core::common::BytePos>) {
+    fn set_next_regexp(&mut self, start: Option<u32>) {
         self.inner.set_next_regexp(start);
     }
 
@@ -117,7 +117,7 @@ impl<I: Tokens> Tokens for Capturing<I> {
         self.inner.add_module_mode_error(error);
     }
 
-    fn end_pos(&self) -> swc_core::common::BytePos {
+    fn end_pos(&self) -> u32 {
         self.inner.end_pos()
     }
 
@@ -173,26 +173,19 @@ impl<I: Tokens> Tokens for Capturing<I> {
         self.inner.scan_jsx_open_el_terminal_token()
     }
 
-    fn rescan_jsx_open_el_terminal_token(
-        &mut self,
-        reset: swc_core::common::BytePos,
-    ) -> TokenAndSpan {
+    fn rescan_jsx_open_el_terminal_token(&mut self, reset: u32) -> TokenAndSpan {
         let ts = self.inner.rescan_jsx_open_el_terminal_token(reset);
         self.capture(ts);
         ts
     }
 
-    fn rescan_jsx_token(
-        &mut self,
-        allow_multiline_jsx_text: bool,
-        reset: swc_core::common::BytePos,
-    ) -> TokenAndSpan {
+    fn rescan_jsx_token(&mut self, allow_multiline_jsx_text: bool, reset: u32) -> TokenAndSpan {
         let ts = self.inner.rescan_jsx_token(allow_multiline_jsx_text, reset);
         self.capture(ts);
         ts
     }
 
-    fn scan_jsx_identifier(&mut self, start: swc_core::common::BytePos) -> TokenAndSpan {
+    fn scan_jsx_identifier(&mut self, start: u32) -> TokenAndSpan {
         let ts = self.inner.scan_jsx_identifier(start);
         self.capture(ts);
         ts
@@ -204,11 +197,7 @@ impl<I: Tokens> Tokens for Capturing<I> {
         ts
     }
 
-    fn rescan_template_token(
-        &mut self,
-        start: swc_core::common::BytePos,
-        start_with_back_tick: bool,
-    ) -> TokenAndSpan {
+    fn rescan_template_token(&mut self, start: u32, start_with_back_tick: bool) -> TokenAndSpan {
         let ts = self
             .inner
             .rescan_template_token(start, start_with_back_tick);

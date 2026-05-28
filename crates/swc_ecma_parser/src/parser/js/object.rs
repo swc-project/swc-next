@@ -1,4 +1,3 @@
-use swc_core::common::{DUMMY_SP, Span};
 use swc_experimental_ecma_ast::*;
 
 use crate::lexer::MaybeSubUtf8;
@@ -63,7 +62,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             let value = self.parse_binding_element()?;
 
             return Ok(self.ast.object_pat_prop_key_value_pat_prop(
-                Span::new_with_checked(key.span_lo(self.ast), key.span_hi(self.ast)),
+                Span::new(key.span_lo(self.ast), key.span_hi(self.ast)),
                 key,
                 value,
             ));
@@ -147,7 +146,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         if let Some(trailing_comma) = trailing_comma {
             self.state_mut()
                 .trailing_commas
-                .insert(span.lo, trailing_comma);
+                .insert(span.start, trailing_comma);
         }
 
         Ok(self.ast.expr_object_lit(span, props))
@@ -223,7 +222,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             self.emit_err(self.input().cur_span(), SyntaxError::TS1005);
             let value = self.ast.invalid(self.span(start));
             return Ok(self.ast.prop_or_spread_prop_key_value_prop(
-                Span::new_with_checked(key.span_lo(self.ast), self.last_pos()),
+                Span::new(key.span_lo(self.ast), self.last_pos()),
                 key,
                 Expr::Invalid(value),
             ));
@@ -235,7 +234,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         // { a: expr, }
         if self.input_mut().eat(Token::Colon) {
             let value = self.allow_in_expr(Self::parse_assignment_expr)?;
-            let span = Span::new_with_checked(key.span_lo(self.ast), value.span_hi(self.ast));
+            let span = Span::new(key.span_lo(self.ast), value.span_hi(self.ast));
             return Ok(self
                 .ast
                 .prop_or_spread_prop_key_value_prop(span, key, value));
@@ -434,8 +433,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                                 is_generator,
                             )
                             .map(|function| {
-                                let span =
-                                    Span::new_with_checked(key.span_lo(p.ast), key.span_hi(p.ast));
+                                let span = Span::new(key.span_lo(p.ast), key.span_hi(p.ast));
                                 p.ast.prop_or_spread_prop_method_prop(span, key, function)
                             });
                     }

@@ -1,6 +1,5 @@
 use either::Either;
 use swc_core::atoms::Atom;
-use swc_core::common::BytePos;
 use swc_experimental_ecma_ast::*;
 
 use crate::{
@@ -30,7 +29,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
     /// This allows idents like `catch`.
     pub(crate) fn parse_ident_name(&mut self) -> PResult<(Span, MaybeSubUtf8)> {
         let token_and_span = self.input().get_cur();
-        let start = token_and_span.span.lo;
+        let start = token_and_span.span.start;
         let cur = token_and_span.token;
         let w = if cur.is_word() {
             self.input_mut().expect_word_token_and_bump()
@@ -56,8 +55,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
     pub(crate) fn parse_private_name(&mut self) -> PResult<PrivateName> {
         let start = self.cur_pos();
         self.assert_and_bump(Token::Hash);
-        let hash_end = self.input().prev_span().hi;
-        if self.input().cur_pos() - hash_end != BytePos(0) {
+        let hash_end = self.input().prev_span().end;
+        if self.input().cur_pos() - hash_end != 0 {
             syntax_error!(
                 self,
                 self.span(start),
@@ -126,7 +125,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         let token_and_span = self.input().get_cur();
         let cur = token_and_span.token;
         if cur == Token::This && self.input().syntax().typescript() {
-            let start = token_and_span.span.lo;
+            let start = token_and_span.span.start;
             let sym = self.ast.add_utf8("this");
             let ident = self.ast.ident(self.span(start), sym, false);
             Ok(Some(ident))
@@ -148,7 +147,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             syntax_error!(self, SyntaxError::ExpectedIdent)
         }
         let span = token_and_span.span;
-        let start = span.lo;
+        let start = span.start;
         let t = token_and_span.token;
 
         // Spec:

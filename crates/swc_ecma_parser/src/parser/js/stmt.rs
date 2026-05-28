@@ -1,5 +1,4 @@
 use swc_core::atoms::Atom;
-use swc_core::common::BytePos;
 use swc_experimental_ecma_ast::*;
 
 use crate::{
@@ -70,7 +69,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
     fn parse_return_stmt(&mut self) -> PResult<Stmt> {
         self.assert_and_bump(Token::Return);
-        let start = self.input().prev_span().lo;
+        let start = self.input().prev_span().start;
 
         let arg = if self.is_general_semi() {
             None
@@ -208,7 +207,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         //     match res {
         //         Ok(true) => {
         //             let pos = var_span.hi();
-        //             let span = Span::new_with_checked(pos, pos);
+        //             let span = Span::new(pos, pos);
         //             self.emit_err(span, SyntaxError::TS1123);
 
         //             return Ok(Box::new(VarDecl {
@@ -233,7 +232,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 if p.input().is(Token::Semi) {
                     let prev_span = p.input().prev_span();
                     let span = if prev_span == var_span {
-                        Span::new_with_checked(prev_span.hi, prev_span.hi)
+                        Span::new(prev_span.end, prev_span.end)
                     } else {
                         prev_span
                     };
@@ -275,7 +274,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         Ok(self.ast.var_decl(self.span(start), kind, false, decls))
     }
 
-    fn parse_using_decl(&mut self, start: BytePos, is_await: bool) -> PResult<Option<UsingDecl>> {
+    fn parse_using_decl(&mut self, start: u32, is_await: bool) -> PResult<Option<UsingDecl>> {
         // using
         // reader = init()
 
@@ -791,10 +790,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         let finalizer = self.parse_finally_block()?;
 
         if handler.is_none() && finalizer.is_none() {
-            self.emit_err(
-                Span::new_with_checked(catch_start, catch_start),
-                SyntaxError::TS1005,
-            );
+            self.emit_err(Span::new(catch_start, catch_start), SyntaxError::TS1005);
         }
 
         let span = self.span(start);
@@ -849,7 +845,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     })?;
 
                     let case = p.ast.switch_case(
-                        Span::new_with_checked(case_start, p.input().prev_span().hi),
+                        Span::new(case_start, p.input().prev_span().end),
                         test,
                         cons,
                     );
@@ -908,7 +904,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
     /// `parseStatementContent`
     fn parse_stmt_internal(
         &mut self,
-        start: BytePos,
+        start: u32,
         include_decl: bool,
         decorators: TypedSubRange<Decorator>,
     ) -> PResult<Stmt> {

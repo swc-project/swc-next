@@ -1,9 +1,9 @@
-use swc_core::common::{BytePos, comments::Comment};
+use swc_core::common::comments::Comment;
 
 #[derive(Debug, Clone)]
 pub struct BufferedComment {
     pub kind: BufferedCommentKind,
-    pub pos: BytePos,
+    pub pos: u32,
     pub comment: Comment,
 }
 
@@ -60,7 +60,7 @@ impl CommentsBuffer {
     }
 
     #[inline(always)]
-    pub fn pending_to_comment(&mut self, kind: BufferedCommentKind, pos: BytePos) {
+    pub fn pending_to_comment(&mut self, kind: BufferedCommentKind, pos: u32) {
         // Most tokens have no pending comments; avoid creating an empty drain on
         // this lexer hot path.
         match self.pending_leading.len() {

@@ -329,7 +329,6 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
     let output = quote! {
             #![allow(unused, clippy::useless_conversion, clippy::single_match)]
             use crate::*;
-            use swc_core::common::Span;
 
             pub trait Visit {
                 #visit_functions

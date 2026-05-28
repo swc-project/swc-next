@@ -1,5 +1,4 @@
-use swc_core::common::{BytePos, Span};
-use swc_experimental_ecma_ast::{EsVersion, StringAllocator};
+use swc_experimental_ecma_ast::{EsVersion, Span, StringAllocator};
 
 use crate::lexer::{MaybeSubUtf8, MaybeSubWtf8};
 use crate::{
@@ -26,11 +25,11 @@ pub trait Tokens: Clone {
     fn string_allocator(&self) -> StringAllocator;
     fn read_string(&self, span: Span) -> &str;
 
-    fn start_pos(&self) -> BytePos {
-        BytePos(0)
+    fn start_pos(&self) -> u32 {
+        0
     }
 
-    fn set_next_regexp(&mut self, start: Option<BytePos>);
+    fn set_next_regexp(&mut self, start: Option<u32>);
 
     /// Implementors should use Rc<RefCell<Vec<Error>>>.
     ///
@@ -47,7 +46,7 @@ pub trait Tokens: Clone {
     /// buffer on set_ctx if the parser mode become module mode.
     fn add_module_mode_error(&mut self, error: Error);
 
-    fn end_pos(&self) -> BytePos;
+    fn end_pos(&self) -> u32;
 
     fn take_errors(&mut self) -> Vec<Error>;
 
@@ -74,12 +73,11 @@ pub trait Tokens: Clone {
     fn next_token(&mut self) -> TokenAndSpan;
     fn scan_jsx_token(&mut self, allow_multiline_jsx_text: bool) -> TokenAndSpan;
     fn scan_jsx_open_el_terminal_token(&mut self) -> TokenAndSpan;
-    fn rescan_jsx_open_el_terminal_token(&mut self, reset: BytePos) -> TokenAndSpan;
-    fn rescan_jsx_token(&mut self, allow_multiline_jsx_text: bool, reset: BytePos) -> TokenAndSpan;
-    fn scan_jsx_identifier(&mut self, start: BytePos) -> TokenAndSpan;
+    fn rescan_jsx_open_el_terminal_token(&mut self, reset: u32) -> TokenAndSpan;
+    fn rescan_jsx_token(&mut self, allow_multiline_jsx_text: bool, reset: u32) -> TokenAndSpan;
+    fn scan_jsx_identifier(&mut self, start: u32) -> TokenAndSpan;
     fn scan_jsx_attribute_value(&mut self) -> TokenAndSpan;
-    fn rescan_template_token(&mut self, start: BytePos, start_with_back_tick: bool)
-    -> TokenAndSpan;
+    fn rescan_template_token(&mut self, start: u32, start_with_back_tick: bool) -> TokenAndSpan;
 }
 
 /// This struct is responsible for managing current token and peeked token.
@@ -136,7 +134,7 @@ impl<I: Tokens> Buffer<I> {
         value
     }
 
-    pub fn expect_regex_token_value(&mut self) -> BytePos {
+    pub fn expect_regex_token_value(&mut self) -> u32 {
         let Some(crate::lexer::TokenValue::Regex(exp_end)) = self.iter.take_token_value() else {
             unreachable!()
         };
@@ -181,13 +179,13 @@ impl<I: Tokens> Buffer<I> {
             return;
         }
         // rescan `>=`, `>>`, `>>=`, `>>>`, `>>>=` into `>`
-        let start = self.cur.span.lo;
+        let start = self.cur.span.start;
         let t = self.iter.rescan_jsx_open_el_terminal_token(start);
         self.set_cur(t);
     }
 
     pub fn rescan_jsx_token(&mut self, allow_multiline_jsx_text: bool) {
-        let start = self.cur.span.lo;
+        let start = self.cur.span.start;
         let t = self.iter.rescan_jsx_token(allow_multiline_jsx_text, start);
         self.set_cur(t);
     }
@@ -196,7 +194,7 @@ impl<I: Tokens> Buffer<I> {
         if !self.cur().is_word() {
             return;
         }
-        let start = self.cur.span.lo;
+        let start = self.cur.span.start;
         let cur = self.iter.scan_jsx_identifier(start);
         debug_assert!(cur.token == Token::JSXName);
         self.set_cur(cur);
@@ -215,7 +213,7 @@ impl<I: Tokens> Buffer<I> {
 impl<I: Tokens> Buffer<I> {
     pub fn new(lexer: I) -> Self {
         let start_pos = lexer.start_pos();
-        let prev_span = Span::new_with_checked(start_pos, start_pos);
+        let prev_span = Span::new(start_pos, start_pos);
         Buffer {
             iter: lexer,
             cur: TokenAndSpan::new(Token::Eof, prev_span, false),
@@ -375,7 +373,7 @@ impl<I: Tokens> Buffer<I> {
             self.is(Token::LShift),
             "parser should only call cut_lshift when encountering LShift token"
         );
-        let span = self.cur_span().with_lo(self.cur_span().lo + BytePos(1));
+        let span = Span::new(self.cur_span().start + 1, self.cur_span().end);
         let token = TokenAndSpan::new(Token::Lt, span, false);
         self.set_cur(token);
     }
@@ -390,7 +388,7 @@ impl<I: Tokens> Buffer<I> {
         }
         let span = self.cur_span();
         let next = self.next().unwrap();
-        if span.hi != next.span().lo {
+        if span.end != next.span().start {
             return;
         }
         let next = self.next_mut().take().unwrap();
@@ -436,7 +434,7 @@ impl<I: Tokens> Buffer<I> {
             self.set_next(Some(next));
             return;
         };
-        let span = span.with_hi(next.span().hi);
+        let span = Span::new(span.start, next.span().end);
         let token = TokenAndSpan::new(token, span, cur.had_line_break);
         self.set_cur(token);
     }
@@ -458,8 +456,8 @@ impl<I: Tokens> Buffer<I> {
 
     /// Returns start of current token.
     #[inline]
-    pub fn cur_pos(&self) -> BytePos {
-        self.cur.span.lo
+    pub fn cur_pos(&self) -> u32 {
+        self.cur.span.start
     }
 
     #[inline]
@@ -469,8 +467,8 @@ impl<I: Tokens> Buffer<I> {
 
     /// Returns last byte position of previous token.
     #[inline]
-    pub fn last_pos(&self) -> BytePos {
-        self.prev_span.hi
+    pub fn last_pos(&self) -> u32 {
+        self.prev_span.end
     }
 
     #[inline]
@@ -494,12 +492,12 @@ impl<I: Tokens> Buffer<I> {
     }
 
     #[inline]
-    pub fn set_next_regexp(&mut self, start: Option<BytePos>) {
+    pub fn set_next_regexp(&mut self, start: Option<u32>) {
         self.iter_mut().set_next_regexp(start);
     }
 
     #[inline]
-    pub fn end_pos(&self) -> BytePos {
+    pub fn end_pos(&self) -> u32 {
         self.iter().end_pos()
     }
 

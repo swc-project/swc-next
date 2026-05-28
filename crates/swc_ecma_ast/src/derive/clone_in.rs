@@ -1,8 +1,6 @@
-use swc_core::common::Span;
-
 use crate::{
     AssignOp, Ast, BigIntId, BinaryOp, ImportPhase, MetaPropKind, MethodKind, OptionalUtf8Ref,
-    OptionalWtf8Ref, TypedSubRange, UnaryOp, UpdateOp, Utf8Ref, VarDeclKind, Wtf8Ref,
+    OptionalWtf8Ref, Span, TypedSubRange, UnaryOp, UpdateOp, Utf8Ref, VarDeclKind, Wtf8Ref,
     node_id::ExtraDataCompact,
 };
 

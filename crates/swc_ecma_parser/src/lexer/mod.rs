@@ -8,11 +8,11 @@ use rustc_hash::FxHashMap;
 use smartstring::{LazyCompact, SmartString};
 use swc_core::atoms::{Atom, wtf8::CodePoint};
 use swc_core::common::{
-    BytePos, Span,
+    Span as SwcSpan,
     comments::{Comment, CommentKind, Comments},
 };
 use swc_experimental_ecma_ast::{
-    EsVersion, StringAllocator, is_valid_ascii_continue, is_valid_ascii_start,
+    EsVersion, Span, StringAllocator, is_valid_ascii_continue, is_valid_ascii_start,
     is_valid_non_ascii_continue, is_valid_non_ascii_start,
 };
 
@@ -128,7 +128,7 @@ pub struct Lexer<'a> {
 
     pub ctx: Context,
     input: StringSource<'a>,
-    start_pos: BytePos,
+    start_pos: u32,
 
     state: State,
     token_flags: TokenFlags,
@@ -178,12 +178,12 @@ impl<'a> Lexer<'a> {
     }
 
     #[inline(always)]
-    unsafe fn input_slice_to_cur(&mut self, start: BytePos) -> &'a str {
+    unsafe fn input_slice_to_cur(&mut self, start: u32) -> &'a str {
         unsafe { self.input.slice_to_cur(start) }
     }
 
     #[inline(always)]
-    unsafe fn input_slice(&mut self, start: BytePos, end: BytePos) -> &'a str {
+    unsafe fn input_slice(&mut self, start: u32, end: u32) -> &'a str {
         unsafe { self.input.slice(start, end) }
     }
 }
@@ -385,11 +385,7 @@ impl Lexer<'_> {
         self.scan_template_token(start, true)
     }
 
-    fn scan_template_token(
-        &mut self,
-        start: BytePos,
-        started_with_backtick: bool,
-    ) -> LexResult<Token> {
+    fn scan_template_token(&mut self, start: u32, started_with_backtick: bool) -> LexResult<Token> {
         debug_assert!(self.peek() == Some(if started_with_backtick { b'`' } else { b'}' }));
         let mut cooked = Ok(self.sb.alloc_wtf8());
         self.bump(1); // `}` or `\``
@@ -492,16 +488,16 @@ impl Lexer<'_> {
 
 impl<'a> Lexer<'a> {
     #[inline(always)]
-    fn span(&self, start: BytePos) -> Span {
+    fn span(&self, start: u32) -> Span {
         let end = self.last_pos();
         if cfg!(debug_assertions) && start > end {
             unreachable!(
                 "assertion failed: (span.start <= span.end).
  start = {}, end = {}",
-                start.0, end.0
+                start, end
             )
         }
-        Span { lo: start, hi: end }
+        Span::new(start, end)
     }
 
     /// Advances the input by `len` bytes.
@@ -546,19 +542,19 @@ impl<'a> Lexer<'a> {
     }
 
     #[inline(always)]
-    fn cur_pos(&self) -> BytePos {
+    fn cur_pos(&self) -> u32 {
         self.input().cur_pos()
     }
 
     #[inline(always)]
-    fn last_pos(&self) -> BytePos {
+    fn last_pos(&self) -> u32 {
         self.input().cur_pos()
     }
 
     /// Shorthand for `let span = self.span(start); self.error_span(span)`
     #[cold]
     #[inline(never)]
-    fn error<T>(&self, start: BytePos, kind: SyntaxError) -> LexResult<T> {
+    fn error<T>(&self, start: u32, kind: SyntaxError) -> LexResult<T> {
         let span = self.span(start);
         self.error_span(span, kind)
     }
@@ -571,7 +567,7 @@ impl<'a> Lexer<'a> {
 
     #[cold]
     #[inline(never)]
-    fn emit_error(&mut self, start: BytePos, kind: SyntaxError) {
+    fn emit_error(&mut self, start: u32, kind: SyntaxError) {
         let span = self.span(start);
         self.emit_error_span(span, kind)
     }
@@ -589,7 +585,7 @@ impl<'a> Lexer<'a> {
 
     #[cold]
     #[inline(never)]
-    fn emit_strict_mode_error(&mut self, start: BytePos, kind: SyntaxError) {
+    fn emit_strict_mode_error(&mut self, start: u32, kind: SyntaxError) {
         let span = self.span(start);
         if self.ctx().contains(Context::Strict) {
             self.emit_error_span(span, kind);
@@ -601,7 +597,7 @@ impl<'a> Lexer<'a> {
 
     #[cold]
     #[inline(never)]
-    fn emit_module_mode_error(&mut self, start: BytePos, kind: SyntaxError) {
+    fn emit_module_mode_error(&mut self, start: u32, kind: SyntaxError) {
         let span = self.span(start);
         let err = crate::error::Error::new(span, kind);
         self.add_module_mode_error(err);
@@ -661,7 +657,10 @@ impl<'a> Lexer<'a> {
                     let s = unsafe { self.input_slice(slice_start, end) };
                     let cmt = swc_core::common::comments::Comment {
                         kind: swc_core::common::comments::CommentKind::Line,
-                        span: Span::new_with_checked(start, end),
+                        span: SwcSpan::new_with_checked(
+                            crate::swc_pos(start),
+                            crate::swc_pos(end),
+                        ),
                         text: Atom::new(s),
                     };
 
@@ -692,7 +691,7 @@ impl<'a> Lexer<'a> {
             };
             let cmt = swc_core::common::comments::Comment {
                 kind: swc_core::common::comments::CommentKind::Line,
-                span: Span::new_with_checked(start, end),
+                span: SwcSpan::new_with_checked(crate::swc_pos(start), crate::swc_pos(end)),
                 text: Atom::new(s),
             };
 
@@ -770,13 +769,16 @@ impl<'a> Lexer<'a> {
                                     let cur = self.input().cur_pos();
                                     // Safety: We got slice_start and end from self.input so those are
                                     // valid.
-                                    let s = self.input_mut().slice(slice_start, slice_start + BytePos((pos_offset - 2) as u32));
+                                    let s = self.input_mut().slice(slice_start, slice_start + (pos_offset - 2) as u32);
                                     self.input_mut().reset_to(cur);
                                     s
                                 };
                                 let cmt = Comment {
                                     kind: CommentKind::Block,
-                                    span: Span::new_with_checked(start, slice_start + BytePos(pos_offset as u32)),
+                                    span: SwcSpan::new_with_checked(
+                                        crate::swc_pos(start),
+                                        crate::swc_pos(slice_start + pos_offset as u32),
+                                    ),
                                     text: Atom::new(s),
                                 };
 
@@ -807,7 +809,7 @@ impl<'a> Lexer<'a> {
             },
             handle_eof: {
                 let end_pos = self.input().end_pos();
-                let span = Span::new_with_checked(end_pos, end_pos);
+                let span = Span::new(end_pos, end_pos);
                 self.emit_error_span(span, SyntaxError::UnterminatedBlockComment);
                 return;
             }
@@ -825,7 +827,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn make_legacy_octal(&mut self, start: BytePos, val: f64) -> LexResult<f64> {
+    fn make_legacy_octal(&mut self, start: u32, val: f64) -> LexResult<f64> {
         self.ensure_not_ident()?;
         if self.syntax().typescript() && self.target() >= EsVersion::Es5 {
             self.emit_error(start, SyntaxError::TS1085);
@@ -992,9 +994,7 @@ impl<'a> Lexer<'a> {
             };
 
             // legacy octal number is not allowed in bigint.
-            if (!START_WITH_ZERO || lazy_integer.end - lazy_integer.start == BytePos(1))
-                && self.eat(b'n')
-            {
+            if (!START_WITH_ZERO || lazy_integer.end - lazy_integer.start == 1) && self.eat(b'n') {
                 let bigint_value = num_bigint::BigInt::parse_bytes(s.as_bytes(), 10).unwrap();
                 return Ok(Either::Right(Box::new(bigint_value)));
             }
@@ -1009,7 +1009,7 @@ impl<'a> Lexer<'a> {
                     // e.g. `0` is decimal (so it can be part of float)
                     //
                     // e.g. `000` is octal
-                    if start.0 != self.last_pos().0 - 1 {
+                    if start != self.last_pos() - 1 {
                         return self.make_legacy_octal(start, 0f64).map(Either::Left);
                     }
                 } else if lazy_integer.not_octal {
@@ -1101,7 +1101,7 @@ impl<'a> Lexer<'a> {
                     .checked_mul(radix as u32)
                     .and_then(|v| v.checked_add(val))
                     .ok_or_else(|| {
-                        let span = Span::new_with_checked(start, start);
+                        let span = Span::new(start, start);
                         crate::error::Error::new(span, SyntaxError::InvalidUnicodeEscape)
                     })?;
 
@@ -1192,10 +1192,10 @@ impl<'a> Lexer<'a> {
             for comment in comments_buffer.take_comments() {
                 match comment.kind {
                     BufferedCommentKind::Leading => {
-                        comments.add_leading(comment.pos, comment.comment);
+                        comments.add_leading(crate::swc_pos(comment.pos), comment.comment);
                     }
                     BufferedCommentKind::Trailing => {
-                        comments.add_trailing(comment.pos, comment.comment);
+                        comments.add_trailing(crate::swc_pos(comment.pos), comment.comment);
                     }
                 }
             }
@@ -1347,7 +1347,7 @@ impl<'a> Lexer<'a> {
                     }
                 }
 
-                chunk_start = cur_pos + BytePos(1);
+                chunk_start = cur_pos + 1;
             } else {
                 self.bump(1);
             }
@@ -1656,7 +1656,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Expects current char to be '/'
-    fn read_regexp(&mut self, start: BytePos) -> LexResult<Token> {
+    fn read_regexp(&mut self, start: u32) -> LexResult<Token> {
         unsafe {
             // Safety: start is valid position, and peek() is Some('/')
             self.input_mut().reset_to(start);
@@ -1796,7 +1796,7 @@ impl<'a> Lexer<'a> {
     #[cold]
     fn read_word_as_str_with_slow_path(
         &mut self,
-        mut slice_start: BytePos,
+        mut slice_start: u32,
     ) -> LexResult<(MaybeSubUtf8, bool)> {
         let mut first = true;
         let mut has_escape = false;
@@ -2144,7 +2144,7 @@ impl<'a> Lexer<'a> {
                     return Ok(Token::str(s, self));
                 },
             };
-            // dbg!(char::from_u32(fast_path_result as u32));
+            // dbg!(char::from_fast_path_result as u32);
 
             match fast_path_result {
                 b'"' | b'\'' if fast_path_result == quote => {
@@ -2262,10 +2262,10 @@ impl<'a> Lexer<'a> {
     }
 }
 
-fn pos_span(p: BytePos) -> Span {
-    Span::new_with_checked(p, p)
+fn pos_span(p: u32) -> Span {
+    Span::new(p, p)
 }
 
-fn fixed_len_span(p: BytePos, len: u32) -> Span {
-    Span::new_with_checked(p, p + BytePos(len))
+fn fixed_len_span(p: u32, len: u32) -> Span {
+    Span::new(p, p + len)
 }

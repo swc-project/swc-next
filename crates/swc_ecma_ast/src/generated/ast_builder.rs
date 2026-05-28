@@ -1,6 +1,5 @@
 #![allow(unused, clippy::useless_conversion, clippy::identity_op)]
 use crate::*;
-use swc_core::common::Span;
 impl Ast {
     #[inline]
     pub fn program_module(

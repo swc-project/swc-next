@@ -1,10 +1,7 @@
 #![allow(clippy::let_unit_value)]
 #![deny(non_snake_case)]
 
-use swc_core::{
-    atoms::wtf8::Wtf8,
-    common::{BytePos, Span, comments::Comments},
-};
+use swc_core::{atoms::wtf8::Wtf8, common::comments::Comments};
 use swc_experimental_ecma_ast::*;
 
 use crate::{
@@ -114,9 +111,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
     #[inline]
     fn read_maybe_utf8(&self, maybe: MaybeSubUtf8) -> &str {
         match maybe {
-            MaybeSubUtf8::Inline((s, e)) => {
-                self.input.iter.read_string(Span::new_with_checked(s, e))
-            }
+            MaybeSubUtf8::Inline((s, e)) => self.input.iter.read_string(Span::new(s, e)),
             MaybeSubUtf8::Alloc(utf8_ref) => self.ast.get_utf8(utf8_ref),
         }
     }
@@ -126,7 +121,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         match maybe {
             MaybeSubUtf8::Inline((s, e)) => self
                 .ast
-                .add_utf8(self.input.iter.read_string(Span::new_with_checked(s, e))),
+                .add_utf8(self.input.iter.read_string(Span::new(s, e))),
             MaybeSubUtf8::Alloc(utf8_ref) => utf8_ref,
         }
     }
@@ -134,9 +129,9 @@ impl<'a, I: Tokens> Parser<'a, I> {
     #[inline]
     fn to_wtf8_ref(&mut self, maybe: MaybeSubWtf8) -> Wtf8Ref {
         match maybe {
-            MaybeSubWtf8::Inline((s, e)) => self.ast.add_wtf8(Wtf8::from_str(
-                self.input.iter.read_string(Span::new_with_checked(s, e)),
-            )),
+            MaybeSubWtf8::Inline((s, e)) => self
+                .ast
+                .add_wtf8(Wtf8::from_str(self.input.iter.read_string(Span::new(s, e)))),
             MaybeSubWtf8::Alloc(wtf8_ref) => wtf8_ref,
         }
     }
@@ -180,7 +175,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         // This is a workaround to make comments work when there are only comments in a
         // source file.
         if p.input.cur.token == Token::Eof {
-            p.input.cur.span = Span::new_with_checked(BytePos(0), BytePos(0));
+            p.input.cur.span = Span::default();
         }
 
         p
@@ -451,13 +446,13 @@ impl<'a, I: Tokens> Parser<'a, I> {
     }
 
     #[inline(always)]
-    pub fn cur_pos(&self) -> BytePos {
+    pub fn cur_pos(&self) -> u32 {
         self.input().cur_pos()
     }
 
     #[inline(always)]
-    pub fn last_pos(&self) -> BytePos {
-        self.input().prev_span().hi
+    pub fn last_pos(&self) -> u32 {
+        self.input().prev_span().end
     }
 
     #[inline]
@@ -522,13 +517,13 @@ impl<'a, I: Tokens> Parser<'a, I> {
     }
 
     #[inline]
-    pub fn span(&self, start: BytePos) -> Span {
+    pub(crate) fn span(&self, start: u32) -> Span {
         let end = self.last_pos();
         debug_assert!(
             start <= end,
             "assertion failed: (span.start <= span.end). start = {start:?}, end = {end:?}",
         );
-        Span::new_with_checked(start, end)
+        Span::new(start, end)
     }
 
     #[inline(always)]
@@ -610,7 +605,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             "Parser should not call throw_eof_error() without knowing current token"
         );
         let pos = self.input().end_pos();
-        let last = Span { lo: pos, hi: pos };
+        let last = Span::new(pos, pos);
         Error::new(last, SyntaxError::Eof)
     }
 }

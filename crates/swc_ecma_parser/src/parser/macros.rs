@@ -93,7 +93,7 @@ macro_rules! return_if_arrow {
         //
 
         // let is_cur = match $p.state.potential_arrow_start {
-        //     Some(start) => $expr.span.lo() == start,
+        //     Some(start) => $expr.span.start() == start,
         //     None => false
         // };
         // if is_cur {

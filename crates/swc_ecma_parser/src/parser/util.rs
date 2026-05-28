@@ -1,6 +1,5 @@
 use std::marker::PhantomData;
 
-use swc_core::common::Span;
 use swc_experimental_ecma_ast::*;
 
 use crate::{Parser, input::Tokens};

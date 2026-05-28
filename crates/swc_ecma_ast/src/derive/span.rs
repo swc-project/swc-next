@@ -1,18 +1,16 @@
-use swc_core::common::{BytePos, DUMMY_SP};
-
-use crate::NodeIdTrait;
+use crate::{DUMMY_SP, NodeIdTrait};
 
 pub trait GetSpan {
     fn span(&self, ast: &crate::Ast) -> crate::Span;
 
     #[inline]
-    fn span_lo(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).lo
+    fn span_lo(&self, ast: &crate::Ast) -> u32 {
+        self.span(ast).start
     }
 
     #[inline]
-    fn span_hi(&self, ast: &crate::Ast) -> crate::BytePos {
-        self.span(ast).hi
+    fn span_hi(&self, ast: &crate::Ast) -> u32 {
+        self.span(ast).end
     }
 }
 
@@ -33,14 +31,6 @@ impl<T: NodeIdTrait> SetSpan for T {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.node_id()) = span;
         }
-    }
-}
-
-impl GetSpan for BytePos {
-    /// Creates a new single-byte span.
-    #[inline(always)]
-    fn span(&self, _ast: &crate::Ast) -> crate::Span {
-        crate::Span::new(*self, *self)
     }
 }
 

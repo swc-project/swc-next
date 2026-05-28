@@ -1,5 +1,4 @@
 use swc_core::atoms::{atom, wtf8::Wtf8};
-use swc_core::common::{BytePos, Span};
 use swc_experimental_ecma_ast::*;
 
 use crate::{
@@ -14,7 +13,7 @@ use crate::{
 };
 
 struct MakeMethodArgs {
-    start: BytePos,
+    start: u32,
     // accessibility: Option<Accessibility>,
     is_abstract: bool,
     static_token: Option<Span>,
@@ -202,7 +201,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
     pub(crate) fn parse_fn_args_body<F>(
         &mut self,
         decorators: TypedSubRange<Decorator>,
-        start: BytePos,
+        start: u32,
         parse_args: F,
         is_async: bool,
         is_generator: bool,
@@ -333,7 +332,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
     pub(crate) fn parse_default_async_fn(
         &mut self,
-        start: BytePos,
+        start: u32,
         decorators: TypedSubRange<Decorator>,
     ) -> PResult<ExportDefaultDecl> {
         let start_of_async = self.cur_pos();
@@ -343,7 +342,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
     pub(crate) fn parse_default_fn(
         &mut self,
-        start: BytePos,
+        start: u32,
         decorators: TypedSubRange<Decorator>,
     ) -> PResult<ExportDefaultDecl> {
         self.parse_fn(Some(start), None, decorators)
@@ -351,8 +350,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
     fn parse_fn_inner(
         &mut self,
-        _start_of_output_type: Option<BytePos>,
-        start_of_async: Option<BytePos>,
+        _start_of_output_type: Option<u32>,
+        start_of_async: Option<u32>,
         decorators: TypedSubRange<Decorator>,
         is_fn_expr: bool,
         is_ident_required: bool,
@@ -416,8 +415,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
     fn parse_fn<T>(
         &mut self,
-        start_of_output_type: Option<BytePos>,
-        start_of_async: Option<BytePos>,
+        start_of_output_type: Option<u32>,
+        start_of_async: Option<u32>,
         decorators: TypedSubRange<Decorator>,
     ) -> PResult<T>
     where
@@ -441,8 +440,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
     pub(crate) fn parse_class_decl(
         &mut self,
-        start: BytePos,
-        class_start: BytePos,
+        start: u32,
+        class_start: u32,
         decorators: TypedSubRange<Decorator>,
         is_abstract: bool,
     ) -> PResult<Decl> {
@@ -451,7 +450,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
     pub(crate) fn parse_class_expr(
         &mut self,
-        start: BytePos,
+        start: u32,
         decorators: TypedSubRange<Decorator>,
     ) -> PResult<Expr> {
         self.parse_class(start, start, decorators, false)
@@ -459,8 +458,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
     pub(crate) fn parse_default_class(
         &mut self,
-        start: BytePos,
-        class_start: BytePos,
+        start: u32,
+        class_start: u32,
         decorators: TypedSubRange<Decorator>,
         is_abstract: bool,
     ) -> PResult<ExportDefaultDecl> {
@@ -654,7 +653,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
     fn make_property(
         &mut self,
-        start: BytePos,
+        start: u32,
         decorators: TypedSubRange<Decorator>,
         // accessibility: Option<Accessibility>,
         key: Key,
@@ -744,7 +743,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         })
     }
 
-    fn parse_static_block(&mut self, start: BytePos) -> PResult<ClassMember> {
+    fn parse_static_block(&mut self, start: u32) -> PResult<ClassMember> {
         let body = self.do_inside_of_context(
             Context::InStaticBlock
                 .union(Context::InClassField)
@@ -758,7 +757,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
     fn parse_class_member_with_is_static(
         &mut self,
-        start: BytePos,
+        start: u32,
         declare_token: Option<Span>,
         // accessibility: Option<Accessibility>,
         static_token: Option<Span>,
@@ -1413,7 +1412,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             while !p.input().is(Token::RBrace) {
                 if p.input_mut().eat(Token::Semi) {
                     let span = p.input().prev_span();
-                    debug_assert!(span.lo <= span.hi);
+                    debug_assert!(span.start <= span.end);
                     let member = p.ast.class_member_empty_stmt(span);
                     elems.push(p, member);
                     continue;
@@ -1437,8 +1436,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
     fn parse_class<T>(
         &mut self,
-        start: BytePos,
-        class_start: BytePos,
+        start: u32,
+        class_start: u32,
         decorators: TypedSubRange<Decorator>,
         is_abstract: bool,
     ) -> PResult<T>
@@ -1479,8 +1478,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
     /// Not generic
     fn parse_class_inner(
         &mut self,
-        _start: BytePos,
-        class_start: BytePos,
+        _start: u32,
+        class_start: u32,
         decorators: TypedSubRange<Decorator>,
         is_ident_required: bool,
     ) -> PResult<(Option<Ident>, Class)> {

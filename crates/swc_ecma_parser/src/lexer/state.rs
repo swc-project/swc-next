@@ -3,7 +3,6 @@ use std::mem::take;
 use swc_core::atoms::wtf8::CodePoint;
 use swc_experimental_ecma_ast::{EsVersion, Span, StringAllocator};
 // use swc_core::atoms::wtf8::CodePoint;
-use swc_core::common::BytePos;
 
 use super::{Context, Lexer};
 use crate::{
@@ -32,8 +31,8 @@ bitflags::bitflags! {
 pub struct State {
     /// if line break exists between previous token and new token?
     pub had_line_break: bool,
-    pub next_regexp: Option<BytePos>,
-    pub prev_hi: BytePos,
+    pub next_regexp: Option<u32>,
+    pub prev_hi: u32,
 
     pub(super) token_value: Option<TokenValue>,
     token_type: Token,
@@ -43,7 +42,7 @@ pub struct LexerCheckpoint {
     comments_buffer: CommentsBufferCheckpoint,
     state: State,
     ctx: Context,
-    input_cur_pos: BytePos,
+    input_cur_pos: u32,
 }
 
 impl crate::input::Tokens for Lexer<'_> {
@@ -76,7 +75,7 @@ impl crate::input::Tokens for Lexer<'_> {
     }
 
     fn read_string(&self, span: Span) -> &str {
-        unsafe { self.input.slice(span.lo, span.hi) }
+        unsafe { self.input.slice(span.start, span.end) }
     }
 
     #[inline]
@@ -105,12 +104,12 @@ impl crate::input::Tokens for Lexer<'_> {
     }
 
     #[inline]
-    fn start_pos(&self) -> BytePos {
+    fn start_pos(&self) -> u32 {
         self.start_pos
     }
 
     #[inline]
-    fn set_next_regexp(&mut self, start: Option<BytePos>) {
+    fn set_next_regexp(&mut self, start: Option<u32>) {
         self.state.next_regexp = start;
     }
 
@@ -141,7 +140,7 @@ impl crate::input::Tokens for Lexer<'_> {
     }
 
     #[inline]
-    fn end_pos(&self) -> BytePos {
+    fn end_pos(&self) -> u32 {
         self.input.end_pos()
     }
 
@@ -197,7 +196,7 @@ impl crate::input::Tokens for Lexer<'_> {
     fn next_token(&mut self) -> TokenAndSpan {
         // `read_next_token` always overwrites this out-parameter before
         // returning, including the regexp path.
-        let mut start = BytePos(0);
+        let mut start = 0;
 
         let token = match self.read_next_token(&mut start) {
             Ok(res) => res,
@@ -210,14 +209,14 @@ impl crate::input::Tokens for Lexer<'_> {
         self.finish_next_token(self.span(start), token)
     }
 
-    fn rescan_jsx_token(&mut self, allow_multiline_jsx_text: bool, reset: BytePos) -> TokenAndSpan {
+    fn rescan_jsx_token(&mut self, allow_multiline_jsx_text: bool, reset: u32) -> TokenAndSpan {
         unsafe {
             self.input.reset_to(reset);
         }
         Tokens::scan_jsx_token(self, allow_multiline_jsx_text)
     }
 
-    fn rescan_jsx_open_el_terminal_token(&mut self, reset: BytePos) -> TokenAndSpan {
+    fn rescan_jsx_open_el_terminal_token(&mut self, reset: u32) -> TokenAndSpan {
         unsafe {
             self.input.reset_to(reset);
         }
@@ -257,7 +256,7 @@ impl crate::input::Tokens for Lexer<'_> {
         self.finish_next_token(self.span(start), token)
     }
 
-    fn scan_jsx_identifier(&mut self, start: BytePos) -> TokenAndSpan {
+    fn scan_jsx_identifier(&mut self, start: u32) -> TokenAndSpan {
         let token = self.state.token_type;
         debug_assert!(token.is_word());
         let mut v = String::with_capacity(16);
@@ -347,11 +346,7 @@ impl crate::input::Tokens for Lexer<'_> {
         }
     }
 
-    fn rescan_template_token(
-        &mut self,
-        start: BytePos,
-        start_with_back_tick: bool,
-    ) -> TokenAndSpan {
+    fn rescan_template_token(&mut self, start: u32, start_with_back_tick: bool) -> TokenAndSpan {
         unsafe { self.input.reset_to(start) };
         let res = self.scan_template_token(start, start_with_back_tick);
         let token = match res.map_err(|e| {
@@ -364,15 +359,15 @@ impl crate::input::Tokens for Lexer<'_> {
         let span = if start_with_back_tick {
             self.span(start)
         } else {
-            // `+ BytePos(1)` is used to skip `{`
-            self.span(start + BytePos(1))
+            // `+ 1` is used to skip `{`
+            self.span(start + 1)
         };
         self.finish_next_token(span, token)
     }
 }
 
 impl Lexer<'_> {
-    fn read_next_token(&mut self, start: &mut BytePos) -> Result<Token, Error> {
+    fn read_next_token(&mut self, start: &mut u32) -> Result<Token, Error> {
         if let Some(next_regexp) = self.state.next_regexp {
             *start = next_regexp;
             return self.read_regexp(next_regexp);
@@ -395,13 +390,13 @@ impl Lexer<'_> {
                     unreachable!();
                 };
                 if comments_buffer.has_pending() {
-                    comments_buffer.pending_to_comment(BufferedCommentKind::Leading, span.lo);
+                    comments_buffer.pending_to_comment(BufferedCommentKind::Leading, span.start);
                 }
             }
         }
 
         self.state.set_token_type(token);
-        self.state.prev_hi = span.hi;
+        self.state.prev_hi = span.end;
         TokenAndSpan {
             token,
             had_line_break: self.state.had_line_break,
@@ -463,7 +458,7 @@ impl Lexer<'_> {
             {
                 break;
             } else if (ch as char).is_whitespace() {
-                first_non_whitespace = self.cur_pos().0 as i32;
+                first_non_whitespace = self.cur_pos() as i32;
             }
 
             if ch == b'&' {
@@ -539,7 +534,7 @@ impl Lexer<'_> {
 }
 
 impl State {
-    pub fn new(start_pos: BytePos) -> Self {
+    pub fn new(start_pos: u32) -> Self {
         State {
             had_line_break: false,
             next_regexp: None,

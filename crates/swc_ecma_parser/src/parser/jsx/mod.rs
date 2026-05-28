@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 
 use swc_core::atoms::Atom;
-use swc_core::common::{BytePos, Span};
 use swc_experimental_ecma_ast::*;
 
 use super::{Parser, input::Tokens};
@@ -37,13 +36,12 @@ impl<'a, I: Tokens> Parser<'a, I> {
         debug_assert!(self.input().syntax().jsx());
         let start = self.input().cur_pos();
 
-        self.ast
-            .jsx_empty_expr(Span::new_with_checked(start, start))
+        self.ast.jsx_empty_expr(Span::new(start, start))
     }
 
     fn jsx_expr_container_to_jsx_attr_value(
         &mut self,
-        start: BytePos,
+        start: u32,
         node: JSXExprContainer,
     ) -> PResult<JSXAttrValue> {
         match node.expr(self.ast) {
@@ -108,7 +106,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             let name = self.ast.ident_name(span, sym);
 
             self.ast.jsx_attr_name_jsx_namespaced_name(
-                Span::new_with_checked(start, name.span(self.ast).hi),
+                Span::new(start, name.span(self.ast).end),
                 ns,
                 name,
             )
@@ -279,11 +277,9 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
             let ns = self.ast.ident_name(attr_span, attr_name);
             let name = self.ast.ident_name(span, sym);
-            Ok(self.ast.jsx_attr_name_jsx_namespaced_name(
-                Span::new_with_checked(start, span.hi),
-                ns,
-                name,
-            ))
+            Ok(self
+                .ast
+                .jsx_attr_name_jsx_namespaced_name(Span::new(start, span.end), ns, name))
         } else {
             Ok(JSXAttrName::Ident(
                 self.ast.ident_name(attr_span, attr_name),
@@ -333,7 +329,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             self.expect(Token::RBrace)?;
 
             Ok(self.ast.jsx_attr_or_spread_spread_element(
-                Span::new_with_checked(dot3_start, expr.span_hi(self.ast)),
+                Span::new(dot3_start, expr.span_hi(self.ast)),
                 dot3_token,
                 expr,
             ))
@@ -410,15 +406,15 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 if p.input().cur() == Token::Gt {
                     // <xxxxx>xxxxx</xxxxx>
                     p.input_mut().scan_jsx_token(true);
-                    let span = Span::new_with_checked(start, p.input.get_cur().span.lo);
+                    let span = Span::new(start, p.input.get_cur().span.start);
                     let opening = p.ast.jsx_opening_element(span, name, attrs, false);
                     let children = p.parse_jsx_children();
                     let closing =
                         p.parse_jsx_closing_element(in_expr_context, opening.name(p.ast))?;
                     let span = if in_expr_context {
-                        Span::new_with_checked(start, p.last_pos())
+                        Span::new(start, p.last_pos())
                     } else {
-                        Span::new_with_checked(start, p.cur_pos())
+                        Span::new(start, p.cur_pos())
                     };
                     Ok(either::Either::Right(p.ast.jsx_element(
                         span,
@@ -444,7 +440,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     let span = if in_expr_context {
                         p.span(start)
                     } else {
-                        Span::new_with_checked(start, p.cur_pos())
+                        Span::new(start, p.cur_pos())
                     };
 
                     let opening = p.ast.jsx_opening_element(span, name, attrs, true);

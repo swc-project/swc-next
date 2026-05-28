@@ -1,8 +1,6 @@
-use swc_core::common::BytePos;
-
 pub struct LazyInteger {
-    pub(super) start: BytePos,
-    pub(super) end: BytePos,
+    pub(super) start: u32,
+    pub(super) end: u32,
     /// `true` if there was `8` or `9``
     pub(super) not_octal: bool,
     pub(super) has_underscore: bool,

@@ -144,7 +144,7 @@ pub mod unstable {
     };
 }
 
-use swc_core::common::comments::Comments;
+use swc_core::common::{Span as SwcSpan, comments::Comments};
 use swc_experimental_ecma_ast::*;
 
 mod context;
@@ -158,6 +158,16 @@ pub use lexer::Lexer;
 pub use lexer::source::StringSource;
 pub use parser::*;
 pub use syntax::{EsSyntax, Syntax, SyntaxFlags, TsSyntax};
+
+#[inline]
+pub(crate) fn swc_span(span: Span) -> SwcSpan {
+    SwcSpan::new_with_checked(swc_pos(span.start), swc_pos(span.end))
+}
+
+#[inline]
+pub(crate) fn swc_pos(pos: u32) -> swc_core::common::BytePos {
+    swc_core::common::BytePos(pos)
+}
 
 pub fn with_file_parser<'a, T>(
     ast: &'a mut Ast,

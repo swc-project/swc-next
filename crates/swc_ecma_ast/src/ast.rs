@@ -25,4 +25,3 @@ pub use operator::*;
 pub use pat::*;
 pub use prop::*;
 pub use stmt::*;
-pub use swc_core::common::Span;

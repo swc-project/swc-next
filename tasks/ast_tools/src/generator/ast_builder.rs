@@ -36,7 +36,6 @@ pub fn ast_builder(schema: &Schema) -> RawOutput {
 
     let output = quote! {
             #![allow(unused, clippy::useless_conversion, clippy::identity_op)]
-            use swc_core::common::Span;
             use crate::*;
 
             impl Ast {

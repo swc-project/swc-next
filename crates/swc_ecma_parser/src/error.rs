@@ -3,10 +3,8 @@
 use std::{borrow::Cow, fmt::Debug};
 
 use swc_core::atoms::Atom;
-use swc_core::common::{
-    Span,
-    errors::{DiagnosticBuilder, Handler},
-};
+use swc_core::common::errors::{DiagnosticBuilder, Handler};
+use swc_experimental_ecma_ast::Span;
 
 /// Note: this struct is 8 bytes.
 #[derive(Debug, Clone, PartialEq)]
@@ -759,7 +757,7 @@ impl Error {
     pub fn into_diagnostic(self, handler: &'_ Handler) -> DiagnosticBuilder<'_> {
         if let SyntaxError::WithLabel { inner, note, span } = self.error.1 {
             let mut db = inner.into_diagnostic(handler);
-            db.span_label(span, note);
+            db.span_label(crate::swc_span(span), note);
             return db;
         }
 
@@ -768,17 +766,20 @@ impl Error {
         let kind = self.into_kind();
         let msg = kind.msg();
 
-        let mut db = handler.struct_span_err(span, &msg);
+        let mut db = handler.struct_span_err(crate::swc_span(span), &msg);
 
         match kind {
             SyntaxError::ExpectedSemiForExprStmt { expr } => {
                 db.span_label(
-                    expr,
+                    crate::swc_span(expr),
                     "This is the expression part of an expression statement",
                 );
             }
             SyntaxError::MultipleDefault { previous } => {
-                db.span_label(previous, "previous default case is declared at here");
+                db.span_label(
+                    crate::swc_span(previous),
+                    "previous default case is declared at here",
+                );
             }
             _ => {}
         }

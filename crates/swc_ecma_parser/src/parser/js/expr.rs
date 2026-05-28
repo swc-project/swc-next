@@ -1,5 +1,4 @@
 use either::Either;
-use swc_core::common::{BytePos, Span};
 use swc_experimental_ecma_ast::*;
 
 use crate::lexer::MaybeSubUtf8;
@@ -47,7 +46,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         let expr = self.parse_assignment_expr()?;
 
         if self.input_mut().is(Token::Comma) {
-            let start = expr.span(self.ast).lo;
+            let start = expr.span(self.ast).start;
             let exprs = self.scratch_start(|p, exprs| {
                 exprs.push(p, expr);
 
@@ -70,7 +69,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         trace_cur!(self, parse_expr_or_spread);
         if self.input().cur() == Token::DotDotDot {
             self.bump();
-            let start = self.input().prev_span().lo;
+            let start = self.input().prev_span().start;
             let spread_span = self.span(start);
             self.allow_in_expr(Self::parse_assignment_expr)
                 .map_err(|err| {
@@ -86,7 +85,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 .map(|expr| {
                     let spread = self.ast.spread_dot_3_token(spread_span);
                     self.ast.expr_or_spread(
-                        expr.span(self.ast).with_lo(spread_span.lo()),
+                        Span::new(spread_span.start, expr.span_hi(self.ast)),
                         Some(spread),
                         expr,
                     )
@@ -140,7 +139,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         //                     ref mut type_params,
         //                     ..
         //                 }) => {
-        //                     *span = Span::new_with_checked(type_parameters.span.lo, span.hi);
+        //                     *span = Span::new(type_parameters.span.start, span.hi);
         //                     *type_params = Some(type_parameters);
         //                 }
         //                 _ => unexpected!(p, "("),
@@ -171,7 +170,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             if cur.is_known_ident() || matches!(cur, Token::Ident | Token::Yield | Token::LParen) {
                 self.cur_pos()
             } else {
-                BytePos::SYNTHESIZED
+                u32::MAX
             };
 
         // Try to parse conditional expression.
@@ -243,7 +242,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 self.bump();
 
                 let arg = self.parse_unary_expr()?;
-                let span = Span::new_with_checked(start, arg.span_hi(self.ast));
+                let span = Span::new(start, arg.span_hi(self.ast));
                 self.check_assign_target(arg, false);
 
                 return Ok(self.ast.expr_update_expr(span, op, true, arg));
@@ -274,13 +273,12 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     UnaryOp::Bang
                 };
                 self.bump();
-                let arg_start = self.cur_pos() - BytePos(1);
+                let arg_start = self.cur_pos() - 1;
                 let arg = match self.parse_unary_expr() {
                     Ok(expr) => expr,
                     Err(err) => {
                         self.emit_error(err);
-                        self.ast
-                            .expr_invalid(Span::new_with_checked(arg_start, arg_start))
+                        self.ast.expr_invalid(Span::new(arg_start, arg_start))
                     }
                 };
 
@@ -291,7 +289,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 }
 
                 return Ok(self.ast.expr_unary_expr(
-                    Span::new_with_checked(start, arg.span_hi(self.ast)),
+                    Span::new(start, arg.span_hi(self.ast)),
                     op,
                     arg,
                 ));
@@ -635,7 +633,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         debug_assert!(matches!(cur, Token::NoSubstitutionTemplateLiteral));
 
         // exclude the leading and the trailing `\``
-        let span = Span::new_with_checked(token_span.lo + BytePos(1), token_span.hi - BytePos(1));
+        let span = Span::new(token_span.start + 1, token_span.end - 1);
         let raw = self.to_utf8_ref(MaybeSubUtf8::new_from_span(span));
         let cooked = self.input.expect_template_token_value();
         let cooked = match cooked {
@@ -665,7 +663,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         debug_assert!(matches!(cur, Token::TemplateHead));
 
         // exclude the leading `\`` and the trailing `${`
-        let span = Span::new_with_checked(token_span.lo + BytePos(1), token_span.hi - BytePos(2));
+        let span = Span::new(token_span.start + 1, token_span.end - 2);
         let raw = self.to_utf8_ref(MaybeSubUtf8::new_from_span(span));
         let cooked = self.input.expect_template_token_value();
         let cooked = match cooked {
@@ -702,7 +700,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
         let (raw, cooked, tail, span) = match cur {
             Token::TemplateMiddle => {
-                let span = Span::new_with_checked(token_span.lo, token_span.hi - BytePos(2));
+                let span = Span::new(token_span.start, token_span.end - 2);
                 let raw = self.to_utf8_ref(MaybeSubUtf8::new_from_span(span));
                 let cooked = self.input.expect_template_token_value();
                 self.bump();
@@ -719,7 +717,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 }
             }
             Token::TemplateTail => {
-                let span = Span::new_with_checked(token_span.lo, token_span.hi - BytePos(1));
+                let span = Span::new(token_span.start, token_span.end - 1);
                 let raw = self.to_utf8_ref(MaybeSubUtf8::new_from_span(span));
                 let cooked = self.input.expect_template_token_value();
                 self.bump();
@@ -776,22 +774,19 @@ impl<'a, I: Tokens> Parser<'a, I> {
     //         Err(_) => (raw, None),
     //     };
     //     self.bump();
-    //     let pos = self.input.prev_span().hi;
-    //     debug_assert!(start.0 <= pos.0);
-    //     let span = Span::new_with_checked(start, pos);
+    //     let pos = self.input.prev_span().end;
+    //     debug_assert!(start <= pos);
+    //     let span = Span::new(start, pos);
     //     Ok(TsTplLitType {
     //         span,
     //         types: vec![],
     //         quasis: vec![TplElement {
     //             span: {
-    //                 debug_assert!(start.0 <= pos.0 - 2);
+    //                 debug_assert!(start <= pos - 2);
     //                 // `____`
-    //                 // `start.0 + 1` means skip the first backtick
-    //                 // `pos.0 - 1` means skip the last backtick
-    //                 Span::new_with_checked(
-    //                     BytePos::from_u32(start.0 + 1),
-    //                     BytePos::from_u32(pos.0 - 1),
-    //                 )
+    //                 // `start + 1` means skip the first backtick
+    //                 // `pos - 1` means skip the last backtick
+    //                 Span::new(start + 1, pos - 1)
     //             },
     //             tail: true,
     //             raw,
@@ -838,7 +833,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
     pub(crate) fn parse_str_lit(&mut self) -> Str {
         debug_assert!(self.input().cur() == Token::Str);
         let token_and_span = self.input().get_cur();
-        let start = token_and_span.span.lo;
+        let start = token_and_span.span.start;
 
         let raw = self.to_utf8_ref(MaybeSubUtf8::new_from_span(token_and_span.span));
         let value = self.input.expect_string_token_value();
@@ -849,7 +844,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
     pub(crate) fn parse_lit(&mut self) -> PResult<Lit> {
         let token_and_span = self.input().get_cur();
-        let start = token_and_span.span.lo;
+        let start = token_and_span.span.start;
         let cur = token_and_span.token;
         let v = if cur == Token::Null {
             self.bump();
@@ -937,7 +932,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         })
     }
 
-    fn finish_assignment_expr(&mut self, start: BytePos, cond: Expr) -> PResult<Expr> {
+    fn finish_assignment_expr(&mut self, start: u32, cond: Expr) -> PResult<Expr> {
         trace_cur!(self, finish_assignment_expr);
 
         if let Some(op) = self.input().cur().as_assign_op() {
@@ -1018,7 +1013,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 )
             })?;
 
-            let span = Span::new_with_checked(start, alt.span_hi(self.ast));
+            let span = Span::new(start, alt.span_hi(self.ast));
             Ok(self.ast.expr_cond_expr(span, test, cons, alt))
         } else {
             Ok(test)
@@ -1032,7 +1027,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         no_call: bool,
         no_computed_member: bool,
     ) -> PResult<Expr> {
-        let start = obj.span(self.ast).lo;
+        let start = obj.span(self.ast).start;
         let expr = match obj {
             Callee::Import(import) => self.parse_subscript_import_call(start, import)?,
             Callee::Super(s) => self.parse_subscript_super(start, s, no_call)?,
@@ -1100,7 +1095,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
     #[cfg_attr(feature = "tracing-spans", tracing::instrument(skip_all))]
     fn parse_subscript<const NO_COMPUTED: bool>(
         &mut self,
-        start: BytePos,
+        start: u32,
         callee: Expr,
         no_call: bool,
     ) -> PResult<(Expr, bool)> {
@@ -1218,15 +1213,14 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
         // $obj[name()]
         if !NO_COMPUTED && self.input_mut().eat(Token::LBracket) {
-            let bracket_lo = self.input().prev_span().lo;
+            let bracket_lo = self.input().prev_span().start;
             let prop = self.allow_in_expr(|p| p.parse_expr_inner())?;
             expect!(self, Token::RBracket);
-            let span = Span::new_with_checked(callee.span_lo(self.ast), self.input().last_pos());
-            debug_assert_eq!(callee.span_lo(self.ast), span.lo());
-            let prop = self.ast.computed_prop_name(
-                Span::new_with_checked(bracket_lo, self.input().last_pos()),
-                prop,
-            );
+            let span = Span::new(callee.span_lo(self.ast), self.input().last_pos());
+            debug_assert_eq!(callee.span_lo(self.ast), span.start);
+            let prop = self
+                .ast
+                .computed_prop_name(Span::new(bracket_lo, self.input().last_pos()), prop);
 
             // let type_args = None;
             // let type_args = if self.syntax().typescript() && self.input().is(Token::Lt) {
@@ -1298,8 +1292,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 }
             })?;
             let span = self.span(callee.span_lo(self.ast));
-            debug_assert_eq!(callee.span_lo(self.ast), span.lo());
-            debug_assert_eq!(prop.span_hi(self.ast), span.hi());
+            debug_assert_eq!(callee.span_lo(self.ast), span.start);
+            debug_assert_eq!(prop.span_hi(self.ast), span.end);
 
             // let type_args = None;
             // let type_args = if self.syntax().typescript() && self.input().is(Token::Lt) {
@@ -1393,8 +1387,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 }
             })?;
             let span = self.span(callee.span_lo(self.ast));
-            debug_assert_eq!(callee.span_lo(self.ast), span.lo());
-            debug_assert_eq!(prop.span_hi(self.ast), span.hi());
+            debug_assert_eq!(callee.span_lo(self.ast), span.start);
+            debug_assert_eq!(prop.span_hi(self.ast), span.end);
 
             let is_opt_chain = unwrap_ts_non_null(callee).is_opt_chain();
             let expr = self.ast.member_expr(span, callee, prop);
@@ -1410,15 +1404,14 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
         if !NO_COMPUTED && cur == Token::LBracket {
             self.bump();
-            let bracket_lo = self.input().prev_span().lo;
+            let bracket_lo = self.input().prev_span().start;
             let prop = self.allow_in_expr(|p| p.parse_expr_inner())?;
             expect!(self, Token::RBracket);
-            let span = Span::new_with_checked(callee.span_lo(self.ast), self.input().last_pos());
-            debug_assert_eq!(callee.span_lo(self.ast), span.lo());
-            let prop = self.ast.computed_prop_name(
-                Span::new_with_checked(bracket_lo, self.input().last_pos()),
-                prop,
-            );
+            let span = Span::new(callee.span_lo(self.ast), self.input().last_pos());
+            debug_assert_eq!(callee.span_lo(self.ast), span.start);
+            let prop = self
+                .ast
+                .computed_prop_name(Span::new(bracket_lo, self.input().last_pos()), prop);
 
             let is_opt_chain = unwrap_ts_non_null(callee).is_opt_chain();
             let expr = self
@@ -1457,8 +1450,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 }
             })?;
             let span = self.span(callee.span_lo(self.ast));
-            debug_assert_eq!(callee.span_lo(self.ast), span.lo());
-            debug_assert_eq!(prop.span_hi(self.ast), span.hi());
+            debug_assert_eq!(callee.span_lo(self.ast), span.start);
+            debug_assert_eq!(prop.span_hi(self.ast), span.end);
 
             let expr = self.ast.member_expr(span, callee, prop);
             let expr = self
@@ -1483,25 +1476,19 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
     /// Section 13.3 ImportCall
     #[cfg_attr(feature = "tracing-spans", tracing::instrument(skip_all))]
-    fn parse_subscript_super(
-        &mut self,
-        start: BytePos,
-        lhs: Super,
-        no_call: bool,
-    ) -> PResult<Expr> {
+    fn parse_subscript_super(&mut self, start: u32, lhs: Super, no_call: bool) -> PResult<Expr> {
         trace_cur!(self, parse_subscript_super);
         match self.input().cur() {
             Token::LBracket => {
                 self.bump();
-                let bracket_lo = self.input().prev_span().lo;
+                let bracket_lo = self.input().prev_span().start;
                 let prop = self.allow_in_expr(|p| p.parse_expr_inner())?;
                 expect!(self, Token::RBracket);
-                let span = Span::new_with_checked(lhs.span_lo(self.ast), self.input().last_pos());
-                debug_assert_eq!(lhs.span_lo(self.ast), span.lo());
-                let prop = self.ast.computed_prop_name(
-                    Span::new_with_checked(bracket_lo, self.input().last_pos()),
-                    prop,
-                );
+                let span = Span::new(lhs.span_lo(self.ast), self.input().last_pos());
+                debug_assert_eq!(lhs.span_lo(self.ast), span.start);
+                let prop = self
+                    .ast
+                    .computed_prop_name(Span::new(bracket_lo, self.input().last_pos()), prop);
 
                 if !self.ctx().contains(Context::AllowDirectSuper)
                     && !self.input().syntax().allow_super_outside_method()
@@ -1529,8 +1516,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     }
                 })?;
                 let span = self.span(lhs.span_lo(self.ast));
-                debug_assert_eq!(lhs.span_lo(self.ast), span.lo());
-                debug_assert_eq!(prop.span_hi(self.ast), span.hi());
+                debug_assert_eq!(lhs.span_lo(self.ast), span.start);
+                debug_assert_eq!(prop.span_hi(self.ast), span.end);
 
                 if !self.ctx().contains(Context::AllowDirectSuper)
                     && !self.input().syntax().allow_super_outside_method()
@@ -1568,7 +1555,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
     /// Section 13.3 ImportCall
     #[cfg_attr(feature = "tracing-spans", tracing::instrument(skip_all))]
-    fn parse_subscript_import_call(&mut self, start: BytePos, lhs: Import) -> PResult<Expr> {
+    fn parse_subscript_import_call(&mut self, start: u32, lhs: Import) -> PResult<Expr> {
         trace_cur!(self, parse_subscript_import);
 
         if self.input().is(Token::LParen) {
@@ -1592,11 +1579,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         syntax_error!(self, self.input().cur_span(), SyntaxError::InvalidImport);
     }
 
-    fn parse_dynamic_import_or_import_meta(
-        &mut self,
-        start: BytePos,
-        no_call: bool,
-    ) -> PResult<Expr> {
+    fn parse_dynamic_import_or_import_meta(&mut self, start: u32, no_call: bool) -> PResult<Expr> {
         if self.input_mut().eat(Token::Dot) {
             self.mark_found_module_item();
 
@@ -1619,7 +1602,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         }
     }
 
-    fn parse_dynamic_import_call(&mut self, start: BytePos, phase: ImportPhase) -> PResult<Expr> {
+    fn parse_dynamic_import_call(&mut self, start: u32, phase: ImportPhase) -> PResult<Expr> {
         let import = self.ast.callee_import(self.span(start), phase);
         self.parse_subscripts(import, false, false)
     }
@@ -1645,7 +1628,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         let cur = self.input().cur();
         if cur == Token::New {
             self.bump();
-            let start = self.input().prev_span().lo;
+            let start = self.input().prev_span().start;
             if self.input_mut().eat(Token::Dot) {
                 if self.input_mut().eat(Token::Target) {
                     let span = self.span(start);
@@ -1732,12 +1715,12 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
         if cur == Token::Super {
             self.bump();
-            let start = self.input().prev_span().lo;
+            let start = self.input().prev_span().start;
             let base = self.ast.callee_super(self.span(start));
             return self.parse_subscripts(base, true, false);
         } else if cur == Token::Import {
             self.bump();
-            let start = self.input().prev_span().lo;
+            let start = self.input().prev_span().start;
             return self.parse_dynamic_import_or_import_meta(start, true);
         }
         let obj = self.parse_primary_expr()?;
@@ -1974,7 +1957,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             }
         }
 
-        let span = Span::new_with_checked(left.span_lo(self.ast), right.span_hi(self.ast));
+        let span = Span::new(left.span_lo(self.ast), right.span_hi(self.ast));
         if matches!(op, BinaryOp::LogicalAnd | BinaryOp::LogicalOr)
             && matches!(
                 left,
@@ -1989,10 +1972,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         Ok((node, Some(min_prec)))
     }
 
-    pub(crate) fn parse_await_expr(
-        &mut self,
-        start_of_await_token: Option<BytePos>,
-    ) -> PResult<Expr> {
+    pub(crate) fn parse_await_expr(&mut self, start_of_await_token: Option<u32>) -> PResult<Expr> {
         let start = start_of_await_token.unwrap_or_else(|| self.cur_pos());
 
         if start_of_await_token.is_none() {
@@ -2155,7 +2135,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             //             })?;
 
             //             arg = ExprOrSpread::Expr(self.ast.expr_cond_expr(
-            //                 Span::new_with_checked(start, alt.span_hi(self.ast)),
+            //                 Span::new(start, alt.span_hi(self.ast)),
             //                 test,
             //                 cons,
             //                 alt,
@@ -2212,7 +2192,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             //         }) => {
             //             let new_type_ann = self.try_parse_ts_type_ann()?;
             //             if new_type_ann.is_some() {
-            //                 *span = Span::new_with_checked(pat_start, self.input().prev_span().hi);
+            //                 *span = Span::new(pat_start, self.input().prev_span().end);
             //             }
             //             *type_ann = new_type_ann;
             //         }
@@ -2303,7 +2283,9 @@ impl<'a, I: Tokens> Parser<'a, I> {
     ) -> PResult<Expr> {
         trace_cur!(self, parse_paren_expr_or_arrow_fn);
 
-        let expr_start = async_span.map(|x| x.lo()).unwrap_or_else(|| self.cur_pos());
+        let expr_start = async_span
+            .map(|x| x.start)
+            .unwrap_or_else(|| self.cur_pos());
 
         // At this point, we can't know if it's parenthesized
         // expression or head of arrow function.
@@ -2464,7 +2446,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             let sym = self.ast.add_utf8("async");
             let callee = self.ast.callee_expr_ident(async_span, sym, false);
             return Ok(self.ast.expr_call_expr(
-                self.span(async_span.lo()),
+                self.span(async_span.start),
                 callee,
                 expr_or_spreads,
             ));
@@ -2474,7 +2456,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         if expr_or_spreads.is_empty() {
             syntax_error!(
                 self,
-                Span::new_with_checked(expr_start, self.last_pos()),
+                Span::new(expr_start, self.last_pos()),
                 SyntaxError::EmptyParenExpr
             );
         }
@@ -2532,9 +2514,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 .ast
                 .get_node_in_sub_range(exprs.last().unwrap())
                 .span_hi(self.ast);
-            let seq_expr = self
-                .ast
-                .expr_seq_expr(Span::new_with_checked(span_lo, span_hi), exprs);
+            let seq_expr = self.ast.expr_seq_expr(Span::new(span_lo, span_hi), exprs);
 
             if self.syntax().no_paren() {
                 return Ok(seq_expr);
@@ -2543,7 +2523,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         }
     }
 
-    fn parse_primary_expr_rest(&mut self, start: BytePos, can_be_arrow: bool) -> PResult<Expr> {
+    fn parse_primary_expr_rest(&mut self, start: u32, can_be_arrow: bool) -> PResult<Expr> {
         let decorators = if self.input().is(Token::At) {
             Some(self.parse_decorators(false)?)
         } else {
@@ -2690,7 +2670,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         }
     }
 
-    fn try_parse_regexp(&mut self, start: BytePos) -> Option<Expr> {
+    fn try_parse_regexp(&mut self, start: u32) -> Option<Expr> {
         // Regexp
         debug_assert!(self.input().cur() == Token::Slash || self.input().cur() == Token::DivEq);
 
@@ -2704,15 +2684,13 @@ impl<'a, I: Tokens> Parser<'a, I> {
             let token_span = self.input.cur_span();
             let exp_end = self.input_mut().expect_regex_token_value();
 
-            let exp_start = token_span.lo + BytePos(1); // +1 to exclude left `/`
-            let exp = self.to_utf8_ref(MaybeSubUtf8::new_from_span(Span::new_with_checked(
-                exp_start, exp_end,
-            )));
-            let flags_start = exp_end + BytePos(1); // +1 to exclude right `/`
-            let flags = if flags_start <= token_span.hi {
-                self.to_utf8_ref(MaybeSubUtf8::new_from_span(Span::new_with_checked(
+            let exp_start = token_span.start + 1; // +1 to exclude left `/`
+            let exp = self.to_utf8_ref(MaybeSubUtf8::new_from_span(Span::new(exp_start, exp_end)));
+            let flags_start = exp_end + 1; // +1 to exclude right `/`
+            let flags = if flags_start <= token_span.end {
+                self.to_utf8_ref(MaybeSubUtf8::new_from_span(Span::new(
                     flags_start,
-                    token_span.hi,
+                    token_span.end,
                 )))
             } else {
                 self.ast.empty_utf8_ref()
@@ -2762,7 +2740,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         None
     }
 
-    fn parse_this_expr(&mut self, start: BytePos) -> PResult<Expr> {
+    fn parse_this_expr(&mut self, start: u32) -> PResult<Expr> {
         debug_assert!(self.input().cur() == Token::This);
         self.input_mut().bump();
         Ok(self.ast.expr_this_expr(self.span(start)))
