@@ -144,7 +144,7 @@ pub mod unstable {
     };
 }
 
-use swc_core::common::{Span as SwcSpan, comments::Comments};
+use swc_core::common::Span as SwcSpan;
 use swc_experimental_ecma_ast::*;
 
 mod context;
@@ -174,7 +174,7 @@ pub fn with_file_parser<'a, T>(
     src: &'a str,
     syntax: Syntax,
     target: EsVersion,
-    comments: Option<&'a dyn Comments>,
+    comments: Option<Vec<Comment>>,
     op: impl FnOnce(&mut Parser<self::Lexer<'a>>) -> T,
 ) -> T {
     let lexer = self::Lexer::new(
@@ -203,7 +203,7 @@ macro_rules! expose {
             src: &'a str,
             syntax: Syntax,
             target: EsVersion,
-            comments: Option<&'a dyn Comments>,
+            comments: Option<Vec<Comment>>,
         ) -> PResult<$T> {
             with_file_parser(ast, src, syntax, target, comments, $($t)*)
         }

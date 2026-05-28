@@ -1,4 +1,4 @@
-use swc_core::common::comments::Comment;
+use swc_experimental_ecma_ast::Comment;
 
 #[derive(Debug, Clone)]
 pub struct BufferedComment {

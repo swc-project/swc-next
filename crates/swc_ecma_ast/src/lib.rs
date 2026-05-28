@@ -1,6 +1,7 @@
 mod assert_layout;
 mod ast;
 mod atom;
+mod comment;
 mod common;
 mod derive;
 mod multi_index_vec;
@@ -25,6 +26,7 @@ use oxc_index::IndexVec;
 
 pub use ast::*;
 pub use atom::*;
+pub use comment::*;
 pub use common::*;
 pub use derive::*;
 pub use generated::ast_visitor::*;

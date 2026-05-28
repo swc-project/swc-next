@@ -7,13 +7,10 @@ use num_bigint::BigInt as BigIntValue;
 use rustc_hash::FxHashMap;
 use smartstring::{LazyCompact, SmartString};
 use swc_core::atoms::{Atom, wtf8::CodePoint};
-use swc_core::common::{
-    Span as SwcSpan,
-    comments::{Comment, CommentKind, Comments},
-};
 use swc_experimental_ecma_ast::{
-    EsVersion, Span, StringAllocator, is_valid_ascii_continue, is_valid_ascii_start,
-    is_valid_non_ascii_continue, is_valid_non_ascii_start,
+    Comment, CommentKind, CommentPosition, EsVersion, Span, StringAllocator,
+    is_valid_ascii_continue, is_valid_ascii_start, is_valid_non_ascii_continue,
+    is_valid_non_ascii_start,
 };
 
 use self::table::{BYTE_HANDLERS, ByteHandler};
@@ -122,7 +119,7 @@ fn remove_underscore(s: &str, has_underscore: bool) -> Cow<'_, str> {
 
 #[derive(Clone)]
 pub struct Lexer<'a> {
-    comments: Option<&'a dyn Comments>,
+    comments: Option<Vec<Comment>>,
     /// [Some] if comment comment parsing is enabled. Otherwise [None]
     comments_buffer: Option<CommentsBuffer>,
 
@@ -163,18 +160,8 @@ impl<'a> Lexer<'a> {
     }
 
     #[inline(always)]
-    fn comments(&self) -> Option<&'a dyn swc_core::common::comments::Comments> {
-        self.comments
-    }
-
-    #[inline(always)]
     fn comments_buffer(&self) -> Option<&CommentsBuffer> {
         self.comments_buffer.as_ref()
-    }
-
-    #[inline(always)]
-    fn comments_buffer_mut(&mut self) -> Option<&mut CommentsBuffer> {
-        self.comments_buffer.as_mut()
     }
 
     #[inline(always)]
@@ -193,14 +180,14 @@ impl<'a> Lexer<'a> {
         syntax: Syntax,
         target: EsVersion,
         input: StringSource<'a>,
-        comments: Option<&'a dyn Comments>,
+        comments: Option<Vec<Comment>>,
         string_allocator: StringAllocator,
     ) -> Self {
         let start_pos = input.cur_pos();
-
+        let comments_buffer = comments.is_some().then(CommentsBuffer::new);
         Lexer {
             comments,
-            comments_buffer: comments.is_some().then(CommentsBuffer::new),
+            comments_buffer,
             ctx: Default::default(),
             input,
             start_pos,
@@ -655,20 +642,13 @@ impl<'a> Lexer<'a> {
 
                 if self.comments_buffer().is_some() {
                     let s = unsafe { self.input_slice(slice_start, end) };
-                    let cmt = swc_core::common::comments::Comment {
-                        kind: swc_core::common::comments::CommentKind::Line,
-                        span: SwcSpan::new_with_checked(
-                            crate::swc_pos(start),
-                            crate::swc_pos(end),
-                        ),
-                        text: Atom::new(s),
-                    };
+                    let cmt = Comment::new(CommentKind::Line, Span::new(start, end), Atom::new(s));
 
                     if is_for_next {
-                        self.comments_buffer_mut().unwrap().push_pending(cmt);
+                        self.comments_buffer.as_mut().unwrap().push_pending(cmt);
                     } else {
                         let pos = self.state.prev_hi;
-                        self.comments_buffer_mut().unwrap().push_comment(BufferedComment {
+                        self.comments_buffer.as_mut().unwrap().push_comment(BufferedComment {
                             kind: BufferedCommentKind::Trailing,
                             pos,
                             comment: cmt,
@@ -689,17 +669,14 @@ impl<'a> Lexer<'a> {
                 // Safety: We know that the start and the end are valid
                 self.input_slice_to_cur(slice_start)
             };
-            let cmt = swc_core::common::comments::Comment {
-                kind: swc_core::common::comments::CommentKind::Line,
-                span: SwcSpan::new_with_checked(crate::swc_pos(start), crate::swc_pos(end)),
-                text: Atom::new(s),
-            };
+            let cmt = Comment::new(CommentKind::Line, Span::new(start, end), Atom::new(s));
 
             if is_for_next {
-                self.comments_buffer_mut().unwrap().push_pending(cmt);
+                self.comments_buffer.as_mut().unwrap().push_pending(cmt);
             } else {
                 let pos = self.state.prev_hi;
-                self.comments_buffer_mut()
+                self.comments_buffer
+                    .as_mut()
                     .unwrap()
                     .push_comment(BufferedComment {
                         kind: BufferedCommentKind::Trailing,
@@ -773,20 +750,21 @@ impl<'a> Lexer<'a> {
                                     self.input_mut().reset_to(cur);
                                     s
                                 };
-                                let cmt = Comment {
-                                    kind: CommentKind::Block,
-                                    span: SwcSpan::new_with_checked(
-                                        crate::swc_pos(start),
-                                        crate::swc_pos(slice_start + pos_offset as u32),
+                                let cmt = Comment::new(
+                                    CommentKind::Block,
+                                    Span::new(
+                                        start,
+                                        slice_start + pos_offset as u32,
                                     ),
-                                    text: Atom::new(s),
-                                };
+                                    Atom::new(s),
+                                );
 
                                 if is_for_next {
-                                    self.comments_buffer_mut().unwrap().push_pending(cmt);
+                                    self.comments_buffer.as_mut().unwrap().push_pending(cmt);
                                 } else {
                                     let pos = self.state.prev_hi;
-                                    self.comments_buffer_mut()
+                                    self.comments_buffer
+                                        .as_mut()
                                         .unwrap()
                                         .push_comment(BufferedComment {
                                             kind: BufferedCommentKind::Trailing,
@@ -1172,11 +1150,11 @@ impl<'a> Lexer<'a> {
     #[cold]
     #[inline(never)]
     fn consume_pending_comments(&mut self) {
-        if let Some(comments) = self.comments() {
-            let last = self.state.prev_hi;
-            let start_pos = self.start_pos();
-            let comments_buffer = self.comments_buffer_mut().unwrap();
-
+        let last = self.state.prev_hi;
+        let start_pos = self.start_pos();
+        if let (Some(comments), Some(comments_buffer)) =
+            (self.comments.as_mut(), self.comments_buffer.as_mut())
+        {
             // if the file had no tokens and no shebang, then treat any
             // comments in the leading comments buffer as leading.
             // Otherwise treat them as trailing.
@@ -1189,13 +1167,17 @@ impl<'a> Lexer<'a> {
             comments_buffer.pending_to_comment(kind, last);
 
             // now fill the user's passed in comments
-            for comment in comments_buffer.take_comments() {
+            for mut comment in comments_buffer.take_comments() {
                 match comment.kind {
                     BufferedCommentKind::Leading => {
-                        comments.add_leading(crate::swc_pos(comment.pos), comment.comment);
+                        comment.comment.attached_to = comment.pos;
+                        comment.comment.position = CommentPosition::Leading;
+                        comments.push(comment.comment);
                     }
                     BufferedCommentKind::Trailing => {
-                        comments.add_trailing(crate::swc_pos(comment.pos), comment.comment);
+                        comment.comment.attached_to = comment.pos;
+                        comment.comment.position = CommentPosition::Trailing;
+                        comments.push(comment.comment);
                     }
                 }
             }

@@ -1,7 +1,7 @@
 #![allow(clippy::let_unit_value)]
 #![deny(non_snake_case)]
 
-use swc_core::{atoms::wtf8::Wtf8, common::comments::Comments};
+use swc_core::atoms::wtf8::Wtf8;
 use swc_experimental_ecma_ast::*;
 
 use crate::{
@@ -142,7 +142,7 @@ impl<'a> Parser<'a, Lexer<'a>> {
         ast: &'a mut Ast,
         syntax: Syntax,
         input: StringSource<'a>,
-        comments: Option<&'a dyn Comments>,
+        comments: Option<Vec<Comment>>,
     ) -> Self {
         let lexer = Lexer::new(
             syntax,
