@@ -1,5 +1,5 @@
 use swc_core::atoms::{Atom, Wtf8Atom};
-use swc_core::common::{BytePos, Span as SwcSpan};
+use swc_core::common::{BytePos, Span as SwcSpan, SyntaxContext};
 use swc_core::ecma::ast::{self as legacy};
 use swc_experimental_ecma_ast::{
     self as experimental, Ast, BigIntId, ExtraDataCompact, GetSpan, OptionalUtf8Ref,
@@ -330,7 +330,7 @@ pub(crate) trait CompatImpl {
         legacy::BlockStmt {
             span: compat_span(block_stmt.span(self.ast())),
             stmts: self.compat_type_sub_range(block_stmt.stmts(self.ast()), Self::compat_stmt),
-            ctxt: self.semantic().body_scope(block_stmt).to_ctxt(),
+            ctxt: SyntaxContext::from_u32(self.semantic().body_scope(block_stmt).raw()),
         }
     }
 
@@ -618,7 +618,7 @@ pub(crate) trait CompatImpl {
     fn compat_ident(&mut self, ident: experimental::Ident) -> legacy::Ident {
         legacy::Ident {
             span: compat_span(ident.span(self.ast())),
-            ctxt: self.semantic().node_scope(ident).to_ctxt(),
+            ctxt: SyntaxContext::from_u32(self.semantic().node_scope(ident).raw()),
             sym: self.compat_utf8_ref(ident.sym(self.ast())),
             optional: ident.optional(self.ast()),
         }

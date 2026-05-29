@@ -1,7 +1,6 @@
 use std::num::NonZeroU32;
 
 use oxc_index::Idx;
-use swc_core::common::SyntaxContext;
 use swc_experimental_ecma_ast::VarDeclKind;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -20,8 +19,8 @@ impl Idx for ScopeId {
 }
 
 impl ScopeId {
-    pub fn to_ctxt(self) -> SyntaxContext {
-        SyntaxContext::from_u32(self.0.get())
+    pub fn raw(self) -> u32 {
+        self.0.get()
     }
 }
 
