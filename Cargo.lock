@@ -2171,7 +2171,6 @@ version = "0.6.8"
 dependencies = [
  "indexmap",
  "rustc-hash",
- "swc_core",
  "swc_experimental_ecma_ast",
 ]
 
@@ -2255,7 +2254,6 @@ dependencies = [
  "pico-args",
  "rayon",
  "saphyr",
- "swc_core",
  "swc_experimental_ecma_ast",
  "swc_experimental_ecma_parser",
  "swc_experimental_ecma_semantic",
