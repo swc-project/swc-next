@@ -117,9 +117,8 @@ fn remove_underscore(s: &str, has_underscore: bool) -> Cow<'_, str> {
     }
 }
 
-#[derive(Clone)]
 pub struct Lexer<'a> {
-    comments: Option<Vec<Comment>>,
+    comments: Option<&'a mut Vec<Comment>>,
     /// [Some] if comment comment parsing is enabled. Otherwise [None]
     comments_buffer: Option<CommentsBuffer>,
 
@@ -180,7 +179,7 @@ impl<'a> Lexer<'a> {
         syntax: Syntax,
         target: EsVersion,
         input: StringSource<'a>,
-        comments: Option<Vec<Comment>>,
+        comments: Option<&'a mut Vec<Comment>>,
         string_allocator: StringAllocator,
     ) -> Self {
         let start_pos = input.cur_pos();

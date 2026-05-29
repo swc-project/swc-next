@@ -18,9 +18,9 @@ pub enum ParseResult {
 
 pub fn parse<C: Case>(case: &C) -> ParseResult {
     let input = StringSource::new(case.code());
-    let comments = Vec::new();
+    let mut comments = Vec::new();
     let mut ast = Ast::new(input.source_len(), StringAllocator::default());
-    let mut parser = Parser::new(&mut ast, case.syntax(), input, Some(comments));
+    let mut parser = Parser::new(&mut ast, case.syntax(), input, Some(&mut comments));
     let ret = match case.is_module() {
         IsModule::Script => catch_unwind(AssertUnwindSafe(|| {
             parser.parse_script().map(Program::Script)

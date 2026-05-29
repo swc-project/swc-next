@@ -10,7 +10,7 @@ use crate::{
 
 /// Clone should be cheap if you are parsing typescript because typescript
 /// syntax requires backtracking.
-pub trait Tokens: Clone {
+pub trait Tokens {
     type Checkpoint;
 
     fn set_ctx(&mut self, ctx: Context);

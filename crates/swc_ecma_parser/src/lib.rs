@@ -174,7 +174,7 @@ pub fn with_file_parser<'a, T>(
     src: &'a str,
     syntax: Syntax,
     target: EsVersion,
-    comments: Option<Vec<Comment>>,
+    comments: Option<&'a mut Vec<Comment>>,
     op: impl FnOnce(&mut Parser<self::Lexer<'a>>) -> T,
 ) -> T {
     let lexer = self::Lexer::new(
@@ -203,7 +203,7 @@ macro_rules! expose {
             src: &'a str,
             syntax: Syntax,
             target: EsVersion,
-            comments: Option<Vec<Comment>>,
+            comments: Option<&'a mut Vec<Comment>>,
         ) -> PResult<$T> {
             with_file_parser(ast, src, syntax, target, comments, $($t)*)
         }

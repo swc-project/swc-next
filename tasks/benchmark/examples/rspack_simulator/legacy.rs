@@ -1,7 +1,7 @@
 use rustc_hash::FxHashSet;
 use swc_core::{
     atoms::Atom,
-    common::{BytePos, GLOBALS, Globals, Mark, comments::SingleThreadedComments},
+    common::{BytePos, GLOBALS, Globals, Mark, Span, comments::SingleThreadedComments},
     ecma::{
         ast::{ClassMember, Ident, Program},
         parser::{
@@ -12,7 +12,6 @@ use swc_core::{
         visit::{Visit, VisitMutWith, VisitWith},
     },
 };
-use swc_experimental_ecma_ast::Span;
 
 pub fn run(src: &'static str) {
     GLOBALS.set(&Globals::default(), || {

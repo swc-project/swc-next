@@ -2,7 +2,6 @@
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use swc_core::common::comments::SingleThreadedComments;
 use swc_experimental_ecma_ast::{Ast, StringAllocator};
 use swc_experimental_ecma_parser::{Parser, StringSource};
 use swc_experimental_ecma_transforms_base::remove_paren::remove_paren;
@@ -14,20 +13,22 @@ fn bench_transform(c: &mut Criterion) {
         group.bench_function(format!("{name}/transform/remove_paren"), |b| {
             b.iter_batched(
                 || {
-                    let comments = SingleThreadedComments::default();
+                    let mut comments = Vec::new();
                     let input = StringSource::new(source);
                     let mut ast = Ast::new(input.source_len(), StringAllocator::default());
-                    let mut parser = Parser::new(
-                        &mut ast,
-                        swc_experimental_ecma_parser::Syntax::Es(Default::default()),
-                        input,
-                        Some(&comments),
-                    );
-                    let module = parser.parse_module().unwrap();
+                    let module = {
+                        let mut parser = Parser::new(
+                            &mut ast,
+                            swc_experimental_ecma_parser::Syntax::Es(Default::default()),
+                            input,
+                            Some(&mut comments),
+                        );
+                        parser.parse_module().unwrap()
+                    };
                     (module, ast, comments)
                 },
-                |(module, mut ast, comments)| {
-                    remove_paren(module, &mut ast, Some(&comments));
+                |(module, mut ast, mut comments)| {
+                    remove_paren(module, &mut ast, Some(&mut comments));
                 },
                 BatchSize::SmallInput,
             );

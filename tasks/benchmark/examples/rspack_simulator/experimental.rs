@@ -1,10 +1,7 @@
 use rustc_hash::FxHashSet;
-use swc_core::{
-    atoms::Atom,
-    common::{BytePos, comments::SingleThreadedComments},
-};
+use swc_core::atoms::Atom;
 use swc_experimental_ecma_ast::{
-    Ast, BreakStmt, ClassMember, ContinueStmt, DebuggerStmt, ExportAll, ExportDefaultExpr,
+    Ast, BreakStmt, ClassMember, Comment, ContinueStmt, DebuggerStmt, ExportAll, ExportDefaultExpr,
     ExprStmt, GetSpan, ImportDecl, NamedExport, Program, ReturnStmt, Span, StringAllocator,
     ThrowStmt, UpdateExpr, VarDecl, Visit, VisitWith, YieldExpr,
 };
@@ -23,9 +20,8 @@ pub enum CompatMode {
 }
 
 pub fn run(src: &'static str, compat: Option<CompatMode>) {
-    let comments = SingleThreadedComments::default();
-    let (program, mut ast, tokens) = run_parse(src, &comments);
-    run_remove_paren(program, &mut ast, &comments);
+    let (program, mut ast, tokens, mut comments) = run_parse(src);
+    run_remove_paren(program, &mut ast, &mut comments);
     let semantic = run_resolver(program, &ast);
     let _semi = run_collect_semiconlons(&ast, program, &tokens);
     match compat {
@@ -35,28 +31,32 @@ pub fn run(src: &'static str, compat: Option<CompatMode>) {
 }
 
 #[inline(never)]
-fn run_parse(src: &str, comments: &SingleThreadedComments) -> (Program, Ast, Vec<TokenAndSpan>) {
+fn run_parse(src: &str) -> (Program, Ast, Vec<TokenAndSpan>, Vec<Comment>) {
     let string_allocator = StringAllocator::default();
+    let mut comments = Vec::new();
     let mut ast = Ast::new(src.len(), string_allocator.clone());
-    let parser_lexer = Lexer::new(
-        Syntax::Es(Default::default()),
-        Default::default(),
-        StringSource::new(src),
-        Some(comments),
-        string_allocator,
-    );
+    let (program, tokens) = {
+        let parser_lexer = Lexer::new(
+            Syntax::Es(Default::default()),
+            Default::default(),
+            StringSource::new(src),
+            Some(&mut comments),
+            string_allocator,
+        );
 
-    // Empirically, 1/8 of the source length is a good capacity.
-    let lexer = Capturing::with_capacity(parser_lexer, src.len() / 8);
-    let mut parser = Parser::new_from(&mut ast, lexer);
+        // Empirically, 1/8 of the source length is a good capacity.
+        let lexer = Capturing::with_capacity(parser_lexer, src.len() / 8);
+        let mut parser = Parser::new_from(&mut ast, lexer);
 
-    let program = parser.parse_program().unwrap();
-    let tokens = Capturing::take(&mut parser.input_mut().iter);
-    (program, ast, tokens)
+        let program = parser.parse_program().unwrap();
+        let tokens = Capturing::take(&mut parser.input_mut().iter);
+        (program, tokens)
+    };
+    (program, ast, tokens, comments)
 }
 
 #[inline(never)]
-fn run_remove_paren(root: Program, ast: &mut Ast, comments: &SingleThreadedComments) {
+fn run_remove_paren(root: Program, ast: &mut Ast, comments: &mut Vec<Comment>) {
     remove_paren(root, ast, Some(comments));
 }
 
@@ -96,11 +96,7 @@ fn run_scan_dependencies_legacy(program: &swc_core::ecma::ast::Program) {
 }
 
 #[inline(never)]
-fn run_collect_semiconlons(
-    ast: &Ast,
-    root: Program,
-    tokens: &[TokenAndSpan],
-) -> FxHashSet<BytePos> {
+fn run_collect_semiconlons(ast: &Ast, root: Program, tokens: &[TokenAndSpan]) -> FxHashSet<u32> {
     let mut semicolons_set = FxHashSet::default();
     let mut semicolons = InsertedSemicolons {
         ast,
@@ -113,7 +109,7 @@ fn run_collect_semiconlons(
 
 struct InsertedSemicolons<'a> {
     ast: &'a Ast,
-    semicolons: &'a mut FxHashSet<BytePos>,
+    semicolons: &'a mut FxHashSet<u32>,
     tokens: &'a [TokenAndSpan],
 }
 
@@ -124,7 +120,7 @@ impl InsertedSemicolons<'_> {
     #[inline]
     fn curr_token(&self, span: &Span) -> Option<usize> {
         self.tokens
-            .binary_search_by(|t| t.span.lo.cmp(&span.lo))
+            .binary_search_by(|t| t.span.start.cmp(&span.start))
             .ok()
     }
 
@@ -134,7 +130,7 @@ impl InsertedSemicolons<'_> {
     #[inline]
     fn next_token(&self, span: &Span) -> Option<usize> {
         self.tokens
-            .binary_search_by(|t| t.span.hi.cmp(&span.hi))
+            .binary_search_by(|t| t.span.end.cmp(&span.end))
             .ok()
             .map(|i| i + 1)
     }
@@ -157,7 +153,7 @@ impl InsertedSemicolons<'_> {
         if index > 0 {
             let prev = &self.tokens[index - 1];
             if !matches!(prev.token, Token::Semi) && self.can_insert_semi(index) {
-                self.semicolons.insert(prev.span.hi);
+                self.semicolons.insert(prev.span.end);
             }
         }
     }
@@ -170,7 +166,7 @@ impl InsertedSemicolons<'_> {
         if index > 0 {
             let prev = &self.tokens[index - 1];
             if !matches!(prev.token, Token::Semi) && self.can_insert_semi(index) {
-                self.semicolons.insert(prev.span.hi);
+                self.semicolons.insert(prev.span.end);
             }
         }
     }
