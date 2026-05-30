@@ -18,18 +18,18 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
     visit_functions.extend(quote! {
         fn ast(&self) -> &Ast;
 
-       #[inline]
+        #[inline]
         fn enter_node(&mut self, node_id: NodeId) {}
-       #[inline]
+        #[inline]
         fn leave_node(&mut self, node_id: NodeId) {}
     });
 
     visit_mut_functions.extend(quote! {
         fn ast(&mut self) -> &mut Ast;
 
-       #[inline]
+        #[inline]
         fn enter_node(&mut self, node_kind: NodeKind) {}
-       #[inline]
+        #[inline]
         fn leave_node(&mut self, node_kind: NodeKind) {}
     });
 
@@ -42,7 +42,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
 
                 // Visit/VisitMut
                 visit_functions.extend(quote! {
-                   #[inline]
+                    #[inline]
                     fn #fn_name(&mut self, node: #ty_ident) {
                         self.enter_node(node.node_id());
                         <#ty_ident as VisitWith<Self>>::visit_children_with(node, self);
@@ -52,7 +52,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
 
                 let node_kind = format_ident!("{}", ast.name);
                 visit_mut_functions.extend(quote! {
-                   #[inline]
+                    #[inline]
                     fn #fn_mut_name(&mut self, node: #ty_ident) -> #ty_ident {
                         self.enter_node(NodeKind::#node_kind);
                         let node = <#ty_ident as VisitMutWith<Self>>::visit_mut_children_with(node, self);
@@ -86,12 +86,12 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
 
                 visit_with_impls.extend(quote! {
                     impl<V: ?Sized + Visit> VisitWith<V> for #ty_ident {
-                       #[inline]
+                        #[inline]
                         fn visit_with(self, visitor: &mut V) {
                             <V as Visit>::#fn_name(visitor, self)
                         }
 
-                       #[inline]
+                        #[inline]
                         fn visit_children_with(self, visitor: &mut V) {
                             #visit_children
                         }
@@ -99,12 +99,12 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 });
                 visit_mut_with_impls.extend(quote! {
                     impl<V: ?Sized + VisitMut> VisitMutWith<V> for #ty_ident {
-                       #[inline]
+                        #[inline]
                         fn visit_mut_with(self, visitor: &mut V) -> Self {
                             <V as VisitMut>::#fn_mut_name(visitor, self)
                         }
 
-                       #[inline]
+                        #[inline]
                         fn visit_mut_children_with(self, visitor: &mut V) -> Self {
                             #visit_mut_children
                             self
@@ -119,13 +119,13 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
 
                 // Visit/VisitMut
                 visit_functions.extend(quote! {
-                   #[inline]
+                    #[inline]
                     fn #fn_name(&mut self, node: #ty_ident) {
                         <#ty_ident as VisitWith<Self>>::visit_children_with(node, self)
                     }
                 });
                 visit_mut_functions.extend(quote! {
-                   #[inline]
+                    #[inline]
                     fn #fn_mut_name(&mut self, node: #ty_ident) -> #ty_ident {
                         <#ty_ident as VisitMutWith<Self>>::visit_mut_children_with(node, self)
                     }
@@ -155,12 +155,12 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
 
                 visit_with_impls.extend(quote! {
                     impl<V: ?Sized + Visit> VisitWith<V> for #ty_ident {
-                       #[inline]
+                        #[inline]
                         fn visit_with(self, visitor: &mut V) {
                             <V as Visit>::#fn_name(visitor, self)
                         }
 
-                       #[inline]
+                        #[inline]
                         fn visit_children_with(self, visitor: &mut V) {
                             match self {
                                 #visit_children_arms
@@ -170,12 +170,12 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 });
                 visit_mut_with_impls.extend(quote! {
                     impl<V: ?Sized + VisitMut> VisitMutWith<V> for #ty_ident {
-                       #[inline]
+                        #[inline]
                         fn visit_mut_with(self, visitor: &mut V) -> Self {
                             <V as VisitMut>::#fn_mut_name(visitor, self)
                         }
 
-                       #[inline]
+                        #[inline]
                         fn visit_mut_children_with(self, visitor: &mut V) -> Self {
                             match self {
                                 #visit_mut_children_arms
@@ -212,13 +212,13 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
 
                 // Visit/VisitMut
                 visit_functions.extend(quote! {
-                   #[inline]
+                    #[inline]
                     fn #fn_name(&mut self, node: #ty_ident) {
                         <#ty_ident as VisitWith<Self>>::visit_children_with(node, self);
                     }
                 });
                 visit_mut_functions.extend(quote! {
-                   #[inline]
+                    #[inline]
                     fn #fn_mut_name(&mut self, node: #ty_ident) -> #ty_ident {
                         <#ty_ident as VisitMutWith<Self>>::visit_mut_children_with(node, self)
                     }
@@ -227,12 +227,12 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 // VisitWith/VisitMutWith
                 visit_with_impls.extend(quote! {
                     impl<V: ?Sized + Visit> VisitWith<V> for #ty_ident {
-                       #[inline]
+                        #[inline]
                         fn visit_with(self, visitor: &mut V) {
                             <V as Visit>::#fn_name(visitor, self)
                         }
 
-                       #[inline]
+                        #[inline]
                         fn visit_children_with(self, visitor: &mut V) {
                             match self {
                                 Some(it) => it.visit_with(visitor),
@@ -243,12 +243,12 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 });
                 visit_mut_with_impls.extend(quote! {
                     impl<V: ?Sized + VisitMut> VisitMutWith<V> for #ty_ident {
-                       #[inline]
+                        #[inline]
                         fn visit_mut_with(self, visitor: &mut V) -> Self {
                             <V as VisitMut>::#fn_mut_name(visitor, self)
                         }
 
-                       #[inline]
+                        #[inline]
                         fn visit_mut_children_with(self, visitor: &mut V) -> Self {
                             match self {
                                 Some(it) => {
@@ -287,13 +287,13 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
 
                 // Visit/VisitMut
                 visit_functions.extend(quote! {
-                   #[inline]
+                    #[inline]
                     fn #fn_name(&mut self, node: #ty_ident) {
                         <#ty_ident as VisitWith<Self>>::visit_children_with(node, self)
                     }
                 });
                 visit_mut_functions.extend(quote! {
-                   #[inline]
+                    #[inline]
                     fn #fn_mut_name(&mut self, node: #ty_ident) -> #ty_ident {
                         <#ty_ident as VisitMutWith<Self>>::visit_mut_children_with(node, self);
                         node
@@ -305,12 +305,12 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     quote! ( let child = visitor.ast().get_node_in_sub_range(child_idx); );
                 visit_with_impls.extend(quote! {
                     impl<V: ?Sized + Visit> VisitWith<V> for #ty_ident {
-                       #[inline]
+                        #[inline]
                         fn visit_with(self, visitor: &mut V) {
                             <V as Visit>::#fn_name(visitor, self)
                         }
 
-                       #[inline]
+                        #[inline]
                         fn visit_children_with(self, visitor: &mut V) {
                             for child_idx in self.iter() {
                                 #get_node
@@ -321,12 +321,12 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 });
                 visit_mut_with_impls.extend(quote! {
                     impl<V: ?Sized + VisitMut> VisitMutWith<V> for #ty_ident {
-                       #[inline]
+                        #[inline]
                         fn visit_mut_with(self, visitor: &mut V) -> Self {
                             <V as VisitMut>::#fn_mut_name(visitor, self)
                         }
 
-                       #[inline]
+                        #[inline]
                         fn visit_mut_children_with(self, visitor: &mut V) -> Self {
                             for child_idx in self.iter() {
                                 #get_node
