@@ -1,7 +1,7 @@
 #![allow(clippy::let_unit_value)]
 #![deny(non_snake_case)]
 
-use swc_core::atoms::wtf8::Wtf8;
+use swc_atoms::wtf8::Wtf8;
 use swc_experimental_ecma_ast::*;
 
 use crate::{

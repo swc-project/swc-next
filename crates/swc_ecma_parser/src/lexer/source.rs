@@ -1,4 +1,4 @@
-/// Optimized [swc_core::common::input::StringInput]
+/// Optimized string input for the parser.
 #[derive(Clone)]
 pub struct StringSource<'a> {
     source: &'a [u8],

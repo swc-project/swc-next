@@ -1,4 +1,4 @@
-use swc_core::atoms::Atom;
+use swc_atoms::Atom;
 
 use crate::Span;
 

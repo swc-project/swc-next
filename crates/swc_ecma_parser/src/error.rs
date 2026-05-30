@@ -3,7 +3,7 @@
 use std::{borrow::Cow, fmt::Debug};
 
 use miette::{LabeledSpan, MietteDiagnostic, SourceSpan};
-use swc_core::atoms::Atom;
+use swc_atoms::Atom;
 use swc_experimental_ecma_ast::Span;
 
 /// Note: this struct is 8 bytes.

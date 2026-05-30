@@ -2,7 +2,7 @@ use std::hash::{BuildHasher, Hash, Hasher};
 
 use hashbrown::{DefaultHashBuilder, HashTable};
 use oxc_index::IndexVec;
-use swc_core::atoms::{Wtf8Atom, wtf8::Wtf8};
+use swc_atoms::{Wtf8Atom, wtf8::Wtf8};
 
 #[derive(Default)]
 pub struct Wtf8Allocator {

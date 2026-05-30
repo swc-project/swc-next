@@ -2143,7 +2143,7 @@ dependencies = [
  "hashbrown 0.16.1",
  "num-bigint",
  "oxc_index",
- "swc_core",
+ "swc_atoms",
  "swc_experimental_ast_macros",
  "unicode-id-start",
 ]
@@ -2170,7 +2170,7 @@ dependencies = [
  "rustc-hash",
  "seq-macro",
  "smartstring",
- "swc_core",
+ "swc_atoms",
  "swc_experimental_ecma_ast",
  "tracing",
 ]

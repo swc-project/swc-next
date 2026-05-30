@@ -19,7 +19,7 @@ mod generated {
 }
 
 use std::marker::PhantomData;
-use swc_core::atoms::{Atom, Wtf8Atom, wtf8::Wtf8};
+use swc_atoms::{Atom, Wtf8Atom, wtf8::Wtf8};
 
 use num_bigint::BigInt as BigIntValue;
 use oxc_index::IndexVec;

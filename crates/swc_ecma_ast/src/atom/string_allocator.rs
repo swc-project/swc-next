@@ -1,6 +1,6 @@
 use std::{cell::UnsafeCell, rc::Rc};
 
-use swc_core::atoms::{Atom, Wtf8Atom, wtf8::Wtf8};
+use swc_atoms::{Atom, Wtf8Atom, wtf8::Wtf8};
 
 use crate::{
     OptionalUtf8Ref, OptionalWtf8Ref, Utf8Ref, Wtf8Ref, utf8::Utf8Allocator, wtf8::Wtf8Allocator,

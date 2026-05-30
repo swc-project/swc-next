@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use swc_core::atoms::Atom;
+use swc_atoms::Atom;
 use swc_experimental_ecma_ast::*;
 
 use super::{Parser, input::Tokens};

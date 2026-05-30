@@ -1,4 +1,4 @@
-use swc_core::atoms::{atom, wtf8::Wtf8};
+use swc_atoms::{atom, wtf8::Wtf8};
 use swc_experimental_ecma_ast::*;
 
 use crate::{

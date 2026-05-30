@@ -1,6 +1,6 @@
 use std::mem::take;
 
-use swc_core::atoms::wtf8::CodePoint;
+use swc_atoms::wtf8::CodePoint;
 use swc_experimental_ecma_ast::{EsVersion, Span, StringAllocator};
 
 use super::{Context, Lexer};

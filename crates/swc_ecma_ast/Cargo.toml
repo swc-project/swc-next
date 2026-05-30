@@ -15,7 +15,7 @@ shared_string_allocator = []
 hashbrown        = { workspace = true }
 num-bigint       = { workspace = true }
 oxc_index        = { workspace = true }
-swc_core         = { workspace = true }
+swc_atoms        = { workspace = true }
 unicode-id-start = { workspace = true }
 
 swc_experimental_ast_macros = { workspace = true }

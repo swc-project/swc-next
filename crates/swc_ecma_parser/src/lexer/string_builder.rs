@@ -1,4 +1,4 @@
-use swc_core::atoms::wtf8::{CodePoint, Wtf8Buf};
+use swc_atoms::wtf8::{CodePoint, Wtf8Buf};
 use swc_experimental_ecma_ast::{Span, StringAllocator, Utf8Ref, Wtf8Ref};
 
 use crate::Lexer;

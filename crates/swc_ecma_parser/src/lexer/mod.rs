@@ -6,7 +6,7 @@ use either::Either::{self, Left, Right};
 use num_bigint::BigInt as BigIntValue;
 use rustc_hash::FxHashMap;
 use smartstring::{LazyCompact, SmartString};
-use swc_core::atoms::{Atom, wtf8::CodePoint};
+use swc_atoms::{Atom, wtf8::CodePoint};
 use swc_experimental_ecma_ast::{
     Comment, CommentKind, Comments, EsVersion, Span, StringAllocator, is_valid_ascii_continue,
     is_valid_ascii_start, is_valid_non_ascii_continue, is_valid_non_ascii_start,
