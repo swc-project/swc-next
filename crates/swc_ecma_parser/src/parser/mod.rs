@@ -142,7 +142,7 @@ impl<'a> Parser<'a, Lexer<'a>> {
         ast: &'a mut Ast,
         syntax: Syntax,
         input: StringSource<'a>,
-        comments: Option<&'a mut Vec<Comment>>,
+        comments: Option<&'a mut Comments>,
     ) -> Self {
         let lexer = Lexer::new(
             syntax,

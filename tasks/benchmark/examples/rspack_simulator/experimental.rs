@@ -1,9 +1,9 @@
 use rustc_hash::FxHashSet;
 use swc_core::atoms::Atom;
 use swc_experimental_ecma_ast::{
-    Ast, BreakStmt, ClassMember, Comment, ContinueStmt, DebuggerStmt, ExportAll, ExportDefaultExpr,
-    ExprStmt, GetSpan, ImportDecl, NamedExport, Program, ReturnStmt, Span, StringAllocator,
-    ThrowStmt, UpdateExpr, VarDecl, Visit, VisitWith, YieldExpr,
+    Ast, BreakStmt, ClassMember, Comments, ContinueStmt, DebuggerStmt, ExportAll,
+    ExportDefaultExpr, ExprStmt, GetSpan, ImportDecl, NamedExport, Program, ReturnStmt, Span,
+    StringAllocator, ThrowStmt, UpdateExpr, VarDecl, Visit, VisitWith, YieldExpr,
 };
 use swc_experimental_ecma_ast_compat::{AstCompat, UnsafeArenaAstCompat};
 use swc_experimental_ecma_parser::{
@@ -31,9 +31,9 @@ pub fn run(src: &'static str, compat: Option<CompatMode>) {
 }
 
 #[inline(never)]
-fn run_parse(src: &str) -> (Program, Ast, Vec<TokenAndSpan>, Vec<Comment>) {
+fn run_parse(src: &str) -> (Program, Ast, Vec<TokenAndSpan>, Comments) {
     let string_allocator = StringAllocator::default();
-    let mut comments = Vec::new();
+    let mut comments = Comments::default();
     let mut ast = Ast::new(src.len(), string_allocator.clone());
     let (program, tokens) = {
         let parser_lexer = Lexer::new(
@@ -56,7 +56,7 @@ fn run_parse(src: &str) -> (Program, Ast, Vec<TokenAndSpan>, Vec<Comment>) {
 }
 
 #[inline(never)]
-fn run_remove_paren(root: Program, ast: &mut Ast, comments: &mut Vec<Comment>) {
+fn run_remove_paren(root: Program, ast: &mut Ast, comments: &mut Comments) {
     remove_paren(root, ast, Some(comments));
 }
 

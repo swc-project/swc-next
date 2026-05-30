@@ -8,9 +8,8 @@ use rustc_hash::FxHashMap;
 use smartstring::{LazyCompact, SmartString};
 use swc_core::atoms::{Atom, wtf8::CodePoint};
 use swc_experimental_ecma_ast::{
-    Comment, CommentKind, CommentPosition, EsVersion, Span, StringAllocator,
-    is_valid_ascii_continue, is_valid_ascii_start, is_valid_non_ascii_continue,
-    is_valid_non_ascii_start,
+    Comment, CommentKind, Comments, EsVersion, Span, StringAllocator, is_valid_ascii_continue,
+    is_valid_ascii_start, is_valid_non_ascii_continue, is_valid_non_ascii_start,
 };
 
 use self::table::{BYTE_HANDLERS, ByteHandler};
@@ -118,7 +117,7 @@ fn remove_underscore(s: &str, has_underscore: bool) -> Cow<'_, str> {
 }
 
 pub struct Lexer<'a> {
-    comments: Option<&'a mut Vec<Comment>>,
+    comments: Option<&'a mut Comments>,
     /// [Some] if comment comment parsing is enabled. Otherwise [None]
     comments_buffer: Option<CommentsBuffer>,
 
@@ -179,7 +178,7 @@ impl<'a> Lexer<'a> {
         syntax: Syntax,
         target: EsVersion,
         input: StringSource<'a>,
-        comments: Option<&'a mut Vec<Comment>>,
+        comments: Option<&'a mut Comments>,
         string_allocator: StringAllocator,
     ) -> Self {
         let start_pos = input.cur_pos();
@@ -1166,18 +1165,18 @@ impl<'a> Lexer<'a> {
             comments_buffer.pending_to_comment(kind, last);
 
             // now fill the user's passed in comments
-            for mut comment in comments_buffer.take_comments() {
+            for comment in comments_buffer.take_comments() {
                 match comment.kind {
-                    BufferedCommentKind::Leading => {
-                        comment.comment.attached_to = comment.pos;
-                        comment.comment.position = CommentPosition::Leading;
-                        comments.push(comment.comment);
-                    }
-                    BufferedCommentKind::Trailing => {
-                        comment.comment.attached_to = comment.pos;
-                        comment.comment.position = CommentPosition::Trailing;
-                        comments.push(comment.comment);
-                    }
+                    BufferedCommentKind::Leading => comments
+                        .leading
+                        .entry(comment.pos)
+                        .or_default()
+                        .push(comment.comment),
+                    BufferedCommentKind::Trailing => comments
+                        .trailing
+                        .entry(comment.pos)
+                        .or_default()
+                        .push(comment.comment),
                 }
             }
         }

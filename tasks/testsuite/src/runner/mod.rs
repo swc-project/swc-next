@@ -4,7 +4,7 @@ pub mod transform_remove_paren;
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-use swc_experimental_ecma_ast::{Ast, Program, StringAllocator};
+use swc_experimental_ecma_ast::{Ast, Comments, Program, StringAllocator};
 use swc_experimental_ecma_parser::{Parser, StringSource, error::Error};
 
 use crate::cases::{Case, IsModule};
@@ -18,7 +18,7 @@ pub enum ParseResult {
 
 pub fn parse<C: Case>(case: &C) -> ParseResult {
     let input = StringSource::new(case.code());
-    let mut comments = Vec::new();
+    let mut comments = Comments::default();
     let mut ast = Ast::new(input.source_len(), StringAllocator::default());
     let mut parser = Parser::new(&mut ast, case.syntax(), input, Some(&mut comments));
     let ret = match case.is_module() {

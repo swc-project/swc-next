@@ -2,7 +2,7 @@
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use swc_experimental_ecma_ast::{Ast, StringAllocator};
+use swc_experimental_ecma_ast::{Ast, Comments, StringAllocator};
 use swc_experimental_ecma_parser::{Parser, StringSource};
 use swc_experimental_ecma_transforms_base::remove_paren::remove_paren;
 
@@ -13,7 +13,7 @@ fn bench_transform(c: &mut Criterion) {
         group.bench_function(format!("{name}/transform/remove_paren"), |b| {
             b.iter_batched(
                 || {
-                    let mut comments = Vec::new();
+                    let mut comments = Comments::default();
                     let input = StringSource::new(source);
                     let mut ast = Ast::new(input.source_len(), StringAllocator::default());
                     let module = {

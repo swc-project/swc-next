@@ -2,25 +2,45 @@ use swc_core::atoms::Atom;
 
 use crate::Span;
 
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct Comments {
+    pub leading: hashbrown::HashMap<u32, Vec<Comment>>,
+    pub trailing: hashbrown::HashMap<u32, Vec<Comment>>,
+}
+
+impl Comments {
+    pub fn move_leading(&mut self, from: u32, to: u32) {
+        move_comments(&mut self.leading, from, to);
+    }
+
+    pub fn move_trailing(&mut self, from: u32, to: u32) {
+        move_comments(&mut self.trailing, from, to);
+    }
+}
+
+fn move_comments(comments: &mut hashbrown::HashMap<u32, Vec<Comment>>, from: u32, to: u32) {
+    if from == to {
+        return;
+    }
+
+    let Some(moved) = comments.remove(&from) else {
+        return;
+    };
+
+    comments.entry(to).or_default().extend(moved);
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Comment {
     pub kind: CommentKind,
     pub span: Span,
     /// [`Atom::new_bad`][] is perfectly fine for this value.
     pub text: Atom,
-    pub position: CommentPosition,
-    pub attached_to: u32,
 }
 
 impl Comment {
     pub fn new(kind: CommentKind, span: Span, text: Atom) -> Self {
-        Self {
-            kind,
-            span,
-            text,
-            position: CommentPosition::Trailing,
-            attached_to: 0,
-        }
+        Self { kind, span, text }
     }
 }
 
@@ -31,24 +51,4 @@ pub enum CommentKind {
     Line = 0,
     // Block comment
     Block = 1,
-}
-
-#[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
-pub enum CommentPosition {
-    /// Comments prior to a token until another token or trailing comment.
-    ///
-    /// e.g.
-    ///
-    /// ```ignore
-    /// /* leading */ token;
-    /// /* leading */
-    /// // leading
-    /// token;
-    /// ```
-    #[default]
-    Leading = 0,
-
-    /// Comments tailing a token until a newline.
-    /// e.g. `token /* trailing */ // trailing`
-    Trailing = 1,
 }
