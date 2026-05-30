@@ -2,8 +2,8 @@
 
 use std::{borrow::Cow, fmt::Debug};
 
+use miette::{LabeledSpan, MietteDiagnostic, SourceSpan};
 use swc_core::atoms::Atom;
-use swc_core::common::errors::{DiagnosticBuilder, Handler};
 use swc_experimental_ecma_ast::Span;
 
 /// Note: this struct is 8 bytes.
@@ -754,11 +754,11 @@ impl SyntaxError {
 impl Error {
     #[cold]
     #[inline(never)]
-    pub fn into_diagnostic(self, handler: &'_ Handler) -> DiagnosticBuilder<'_> {
+    pub fn into_diagnostic(self) -> MietteDiagnostic {
         if let SyntaxError::WithLabel { inner, note, span } = self.error.1 {
-            let mut db = inner.into_diagnostic(handler);
-            db.span_label(crate::swc_span(span), note);
-            return db;
+            return inner
+                .into_diagnostic()
+                .and_label(LabeledSpan::at(source_span(span), note));
         }
 
         let span = self.span();
@@ -766,24 +766,31 @@ impl Error {
         let kind = self.into_kind();
         let msg = kind.msg();
 
-        let mut db = handler.struct_span_err(crate::swc_span(span), &msg);
+        let mut labels = vec![LabeledSpan::new_primary_with_span(None, source_span(span))];
 
         match kind {
             SyntaxError::ExpectedSemiForExprStmt { expr } => {
-                db.span_label(
-                    crate::swc_span(expr),
+                labels.push(LabeledSpan::at(
+                    source_span(expr),
                     "This is the expression part of an expression statement",
-                );
+                ));
             }
             SyntaxError::MultipleDefault { previous } => {
-                db.span_label(
-                    crate::swc_span(previous),
+                labels.push(LabeledSpan::at(
+                    source_span(previous),
                     "previous default case is declared at here",
-                );
+                ));
             }
             _ => {}
         }
 
-        db
+        MietteDiagnostic::new(msg).with_labels(labels)
     }
+}
+
+fn source_span(span: Span) -> SourceSpan {
+    SourceSpan::from((
+        span.start as usize,
+        span.end.saturating_sub(span.start) as usize,
+    ))
 }

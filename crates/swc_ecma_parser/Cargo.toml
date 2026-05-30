@@ -14,6 +14,7 @@ unstable = []
 [dependencies]
 bitflags    = { workspace = true }
 either      = { workspace = true }
+miette      = { workspace = true }
 num-bigint  = { workspace = true }
 rustc-hash  = { workspace = true }
 seq-macro   = { workspace = true }
