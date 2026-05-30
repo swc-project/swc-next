@@ -1,10 +1,10 @@
 use rustc_hash::FxHashMap;
+use swc_experimental_allocator::atom::Atom;
 use swc_experimental_ecma_ast::Span;
-use swc_experimental_ecma_ast::Utf8Ref;
 
 #[derive(Clone)]
-pub struct State {
-    pub labels: Vec<Utf8Ref>,
+pub struct State<'a> {
+    pub labels: Vec<Atom<'a>>,
     /// Start position of an assignment expression that can become an arrow.
     ///
     /// `u32::MAX` is reserved outside real source positions, so it
@@ -15,7 +15,7 @@ pub struct State {
     pub trailing_commas: FxHashMap<u32, Span>,
 }
 
-impl Default for State {
+impl Default for State<'_> {
     fn default() -> Self {
         State {
             labels: Default::default(),

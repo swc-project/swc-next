@@ -1,196 +1,238 @@
-use std::mem;
-
+use crate::Allocator;
+use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
+use swc_experimental_allocator::boxed::Box;
+use swc_experimental_allocator::vec::Vec;
 use swc_experimental_ast_macros::ast;
 
-use crate::{Ast, ExtraData, GetSpan, ast::*, node_id::ExtraDataCompact};
+use crate::{Span, ast::*};
 
 #[ast]
-pub enum Expr {
-    This(ThisExpr),
-    Array(ArrayLit),
-    Object(ObjectLit),
-    Fn(FnExpr),
-    Unary(UnaryExpr),
-    Update(UpdateExpr),
-    Bin(BinExpr),
-    Assign(AssignExpr),
-    Member(MemberExpr),
-    SuperProp(SuperPropExpr),
-    Cond(CondExpr),
-    Call(CallExpr),
-    New(NewExpr),
-    Seq(SeqExpr),
-    Ident(Ident),
-    Lit(Lit),
-    Tpl(Tpl),
-    TaggedTpl(TaggedTpl),
-    Arrow(ArrowExpr),
-    Class(ClassExpr),
-    Yield(YieldExpr),
-    MetaProp(MetaPropExpr),
-    Await(AwaitExpr),
-    Paren(ParenExpr),
-    JSXMember(JSXMemberExpr),
-    JSXNamespacedName(JSXNamespacedName),
-    JSXEmpty(JSXEmptyExpr),
-    JSXElement(JSXElement),
-    JSXFragment(JSXFragment),
+#[derive(Debug)]
+pub enum Expr<'a> {
+    This(Box<'a, ThisExpr>),
+    Array(Box<'a, ArrayLit<'a>>),
+    Object(Box<'a, ObjectLit<'a>>),
+    Fn(Box<'a, FnExpr<'a>>),
+    Unary(Box<'a, UnaryExpr<'a>>),
+    Update(Box<'a, UpdateExpr<'a>>),
+    Bin(Box<'a, BinExpr<'a>>),
+    Assign(Box<'a, AssignExpr<'a>>),
+    Member(Box<'a, MemberExpr<'a>>),
+    SuperProp(Box<'a, SuperPropExpr<'a>>),
+    Cond(Box<'a, CondExpr<'a>>),
+    Call(Box<'a, CallExpr<'a>>),
+    New(Box<'a, NewExpr<'a>>),
+    Seq(Box<'a, SeqExpr<'a>>),
+    Ident(Box<'a, Ident<'a>>),
+    Lit(Box<'a, Lit<'a>>),
+    Tpl(Box<'a, Tpl<'a>>),
+    TaggedTpl(Box<'a, TaggedTpl<'a>>),
+    Arrow(Box<'a, ArrowExpr<'a>>),
+    Class(Box<'a, ClassExpr<'a>>),
+    Yield(Box<'a, YieldExpr<'a>>),
+    MetaProp(Box<'a, MetaPropExpr>),
+    Await(Box<'a, AwaitExpr<'a>>),
+    Paren(Box<'a, ParenExpr<'a>>),
+    JSXMember(Box<'a, JSXMemberExpr<'a>>),
+    JSXNamespacedName(Box<'a, JSXNamespacedName<'a>>),
+    JSXEmpty(Box<'a, JSXEmptyExpr>),
+    JSXElement(Box<'a, JSXElement<'a>>),
+    JSXFragment(Box<'a, JSXFragment<'a>>),
     // TsTypeAssertion(TsTypeAssertion),
     // TsConstAssertion(TsConstAssertion),
     // TsNonNull(TsNonNullExpr),
     // TsAs(TsAsExpr),
     // TsInstantiation(TsInstantiation),
     // TsSatisfies(TsSatisfiesExpr),
-    PrivateName(PrivateName),
-    OptChain(OptChainExpr),
-    Invalid(Invalid),
+    PrivateName(Box<'a, PrivateName<'a>>),
+    OptChain(Box<'a, OptChainExpr<'a>>),
+    Invalid(Box<'a, Invalid>),
 }
 
 #[ast]
-pub struct ThisExpr {}
-
-#[ast]
-pub struct ArrayLit {
-    elems: Vec<Option<ExprOrSpread>>,
+#[derive(Debug)]
+pub struct ThisExpr {
+    pub span: Span,
 }
 
 #[ast]
-pub struct ObjectLit {
-    props: Vec<PropOrSpread>,
+#[derive(Debug)]
+pub struct ArrayLit<'a> {
+    pub span: Span,
+    pub elems: Vec<'a, Option<Box<'a, ExprOrSpread<'a>>>>,
 }
 
 #[ast]
-pub enum PropOrSpread {
-    SpreadElement(SpreadElement),
-    Prop(Prop),
+#[derive(Debug)]
+pub struct ObjectLit<'a> {
+    pub span: Span,
+    pub props: Vec<'a, PropOrSpread<'a>>,
 }
 
 #[ast]
-pub struct SpreadElement {
-    dot3_token: Span,
-    expr: Expr,
+#[derive(Debug)]
+pub enum PropOrSpread<'a> {
+    SpreadElement(Box<'a, SpreadElement<'a>>),
+    Prop(Box<'a, Prop<'a>>),
 }
 
 #[ast]
-pub struct UnaryExpr {
-    op: UnaryOp,
-    arg: Expr,
+#[derive(Debug)]
+pub struct SpreadElement<'a> {
+    pub dot3_token: Span,
+    pub expr: Expr<'a>,
 }
 
 #[ast]
-pub struct UpdateExpr {
-    op: UpdateOp,
-    prefix: bool,
-    arg: Expr,
+#[derive(Debug)]
+pub struct UnaryExpr<'a> {
+    pub span: Span,
+    pub op: UnaryOp,
+    pub arg: Expr<'a>,
 }
 
 #[ast]
-pub struct BinExpr {
-    op: BinaryOp,
-    left: Expr,
-    right: Expr,
-}
-#[ast]
-pub struct FnExpr {
-    ident: Option<Ident>,
-    function: Function,
+#[derive(Debug)]
+pub struct UpdateExpr<'a> {
+    pub span: Span,
+    pub op: UpdateOp,
+    pub prefix: bool,
+    pub arg: Expr<'a>,
 }
 
 #[ast]
-pub struct ClassExpr {
-    ident: Option<Ident>,
-    class: Class,
+#[derive(Debug)]
+pub struct BinExpr<'a> {
+    pub span: Span,
+    pub op: BinaryOp,
+    pub left: Expr<'a>,
+    pub right: Expr<'a>,
+}
+#[ast]
+#[derive(Debug)]
+pub struct FnExpr<'a> {
+    pub ident: Option<Box<'a, Ident<'a>>>,
+    pub function: Box<'a, Function<'a>>,
 }
 
 #[ast]
-pub struct AssignExpr {
-    op: AssignOp,
-    left: AssignTarget,
-    right: Expr,
+#[derive(Debug)]
+pub struct ClassExpr<'a> {
+    pub ident: Option<Box<'a, Ident<'a>>>,
+    pub class: Box<'a, Class<'a>>,
 }
 
 #[ast]
-pub struct MemberExpr {
-    obj: Expr,
-    prop: MemberProp,
+#[derive(Debug)]
+pub struct AssignExpr<'a> {
+    pub span: Span,
+    pub op: AssignOp,
+    pub left: AssignTarget<'a>,
+    pub right: Expr<'a>,
 }
 
 #[ast]
-pub enum MemberProp {
-    Ident(IdentName),
-    PrivateName(PrivateName),
-    Computed(ComputedPropName),
+#[derive(Debug)]
+pub struct MemberExpr<'a> {
+    pub span: Span,
+    pub obj: Expr<'a>,
+    pub prop: MemberProp<'a>,
 }
 
-impl MemberProp {
-    pub fn is_ident_with(&self, ast: &Ast, sym: &str) -> bool {
-        matches!(self, MemberProp::Ident(i) if ast.get_utf8(i.sym(ast)) == sym)
+#[ast]
+#[derive(Debug)]
+pub enum MemberProp<'a> {
+    Ident(Box<'a, IdentName<'a>>),
+    PrivateName(Box<'a, PrivateName<'a>>),
+    Computed(Box<'a, ComputedPropName<'a>>),
+}
+
+impl MemberProp<'_> {
+    pub fn is_ident_with(&self, sym: &str) -> bool {
+        matches!(self, MemberProp::Ident(i) if i.sym == sym)
     }
 }
 
 #[ast]
-pub struct SuperPropExpr {
-    obj: Super,
-    prop: SuperProp,
+#[derive(Debug)]
+pub struct SuperPropExpr<'a> {
+    pub span: Span,
+    pub obj: Box<'a, Super>,
+    pub prop: SuperProp<'a>,
 }
 
 #[ast]
-pub enum SuperProp {
-    Ident(IdentName),
-    Computed(ComputedPropName),
+#[derive(Debug)]
+pub enum SuperProp<'a> {
+    Ident(Box<'a, IdentName<'a>>),
+    Computed(Box<'a, ComputedPropName<'a>>),
 }
 
 #[ast]
-pub struct CondExpr {
-    test: Expr,
-    cons: Expr,
-    alt: Expr,
+#[derive(Debug)]
+pub struct CondExpr<'a> {
+    pub span: Span,
+    pub test: Expr<'a>,
+    pub cons: Expr<'a>,
+    pub alt: Expr<'a>,
 }
 
 #[ast]
-pub struct CallExpr {
-    callee: Callee,
-    args: Vec<ExprOrSpread>,
+#[derive(Debug)]
+pub struct CallExpr<'a> {
+    pub span: Span,
+    pub callee: Callee<'a>,
+    pub args: Vec<'a, Box<'a, ExprOrSpread<'a>>>,
     // type_args: Option<Box<TsTypeParamInstantiation>>,
     // pub type_params: Option<TsTypeParamInstantiation>,
 }
 
 #[ast]
-pub struct NewExpr {
-    callee: Expr,
-    args: Option<Vec<ExprOrSpread>>,
+#[derive(Debug)]
+pub struct NewExpr<'a> {
+    pub span: Span,
+    pub callee: Expr<'a>,
+    pub args: Option<Vec<'a, Box<'a, ExprOrSpread<'a>>>>,
     // type_args: Option<Box<TsTypeParamInstantiation>>,
     // pub type_params: Option<TsTypeParamInstantiation>,
 }
 
 #[ast]
-pub struct SeqExpr {
-    exprs: Vec<Expr>,
+#[derive(Debug)]
+pub struct SeqExpr<'a> {
+    pub span: Span,
+    pub exprs: Vec<'a, Expr<'a>>,
 }
 
 #[ast]
-pub struct ArrowExpr {
-    params: Vec<Pat>,
-    body: BlockStmtOrExpr,
-    is_async: bool,
-    is_generator: bool,
+#[derive(Debug)]
+pub struct ArrowExpr<'a> {
+    pub span: Span,
+    pub params: Vec<'a, Pat<'a>>,
+    pub body: BlockStmtOrExpr<'a>,
+    pub is_async: bool,
+    pub is_generator: bool,
     // type_params: Option<Box<TsTypeParamDecl>>,
     // return_type: Option<Box<TsTypeAnn>>,
 }
 
 #[ast]
-pub struct YieldExpr {
-    arg: Option<Expr>,
-    delegate: bool,
+#[derive(Debug)]
+pub struct YieldExpr<'a> {
+    pub span: Span,
+    pub arg: Option<Expr<'a>>,
+    pub delegate: bool,
 }
 
 #[ast]
+#[derive(Debug)]
 pub struct MetaPropExpr {
-    kind: MetaPropKind,
+    pub span: Span,
+    pub kind: MetaPropKind,
 }
 
 #[repr(u8)]
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MetaPropKind {
     /// `new.target`
     NewTarget,
@@ -198,165 +240,184 @@ pub enum MetaPropKind {
     ImportMeta,
 }
 
-impl ExtraDataCompact for MetaPropKind {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData { other: self as u64 }
-    }
-
-    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast) -> Self {
-        unsafe { mem::transmute(data.other as u8) }
-    }
+#[ast]
+#[derive(Debug)]
+pub struct AwaitExpr<'a> {
+    pub span: Span,
+    pub arg: Expr<'a>,
 }
 
 #[ast]
-pub struct AwaitExpr {
-    arg: Expr,
+#[derive(Debug)]
+pub struct Tpl<'a> {
+    pub span: Span,
+    pub exprs: Vec<'a, Expr<'a>>,
+    pub quasis: Vec<'a, Box<'a, TplElement<'a>>>,
 }
 
 #[ast]
-pub struct Tpl {
-    exprs: Vec<Expr>,
-    quasis: Vec<TplElement>,
-}
-
-#[ast]
-pub struct TaggedTpl {
-    tag: Expr,
+#[derive(Debug)]
+pub struct TaggedTpl<'a> {
+    pub span: Span,
+    pub tag: Expr<'a>,
     // type_params: Option<TsTypeParamInstantiation>,
-    tpl: Tpl,
+    pub tpl: Box<'a, Tpl<'a>>,
 }
 
 #[ast]
-pub struct TplElement {
-    tail: bool,
-    cooked: OptionalWtf8Ref,
-    raw: Utf8Ref,
+#[derive(Debug)]
+pub struct TplElement<'a> {
+    pub span: Span,
+    pub tail: bool,
+    pub cooked: Option<Wtf8Atom<'a>>,
+    pub raw: Atom<'a>,
 }
 
 #[ast]
-pub struct ParenExpr {
-    expr: Expr,
+#[derive(Debug)]
+pub struct ParenExpr<'a> {
+    pub span: Span,
+    pub expr: Expr<'a>,
 }
 
 #[ast]
-pub enum Callee {
-    Super(Super),
-    Import(Import),
-    Expr(Expr),
+#[derive(Debug)]
+pub enum Callee<'a> {
+    Super(Box<'a, Super>),
+    Import(Box<'a, Import>),
+    Expr(Box<'a, Expr<'a>>),
 }
 
 #[ast]
-pub struct Super {}
+#[derive(Debug)]
+pub struct Super {
+    pub span: Span,
+}
 
 #[ast]
+#[derive(Debug)]
 pub struct Import {
-    phase: ImportPhase,
+    pub span: Span,
+    pub phase: ImportPhase,
 }
 
 #[ast]
-pub struct ExprOrSpread {
-    spread: Option<SpreadDot3Token>,
-    expr: Expr,
+#[derive(Debug)]
+pub struct ExprOrSpread<'a> {
+    pub spread: Option<Box<'a, SpreadDot3Token>>,
+    pub expr: Expr<'a>,
 }
 
 #[ast]
+#[derive(Debug)]
 pub struct SpreadDot3Token {}
 
 #[ast]
-pub enum BlockStmtOrExpr {
-    BlockStmt(BlockStmt),
-    Expr(Expr),
+#[derive(Debug)]
+pub enum BlockStmtOrExpr<'a> {
+    BlockStmt(Box<'a, BlockStmt<'a>>),
+    Expr(Box<'a, Expr<'a>>),
 }
 
 #[ast]
-pub enum AssignTarget {
-    Simple(SimpleAssignTarget),
-    Pat(AssignTargetPat),
+#[derive(Debug)]
+pub enum AssignTarget<'a> {
+    Simple(Box<'a, SimpleAssignTarget<'a>>),
+    Pat(Box<'a, AssignTargetPat<'a>>),
 }
 
 #[ast]
-pub enum AssignTargetPat {
-    Array(ArrayPat),
-    Object(ObjectPat),
-    Invalid(Invalid),
+#[derive(Debug)]
+pub enum AssignTargetPat<'a> {
+    Array(Box<'a, ArrayPat<'a>>),
+    Object(Box<'a, ObjectPat<'a>>),
+    Invalid(Box<'a, Invalid>),
 }
 
 #[ast]
-pub enum SimpleAssignTarget {
-    Ident(BindingIdent),
-    Member(MemberExpr),
-    SuperProp(SuperPropExpr),
-    Paren(ParenExpr),
-    OptChain(OptChainExpr),
+#[derive(Debug)]
+pub enum SimpleAssignTarget<'a> {
+    Ident(Box<'a, BindingIdent<'a>>),
+    Member(Box<'a, MemberExpr<'a>>),
+    SuperProp(Box<'a, SuperPropExpr<'a>>),
+    Paren(Box<'a, ParenExpr<'a>>),
+    OptChain(Box<'a, OptChainExpr<'a>>),
     // TsAs(TsAsExpr),
     // TsSatisfies(TsSatisfiesExpr),
     // TsNonNull(TsNonNullExpr),
     // TsTypeAssertion(TsTypeAssertion),
     // TsInstantiation(TsInstantiation),
-    Invalid(Invalid),
+    Invalid(Box<'a, Invalid>),
 }
 
 #[ast]
-pub struct OptChainExpr {
-    optional: bool,
-    base: OptChainBase,
+#[derive(Debug)]
+pub struct OptChainExpr<'a> {
+    pub span: Span,
+    pub optional: bool,
+    pub base: OptChainBase<'a>,
 }
 
 #[ast]
-pub enum OptChainBase {
-    Member(MemberExpr),
-    Call(OptCall),
+#[derive(Debug)]
+pub enum OptChainBase<'a> {
+    Member(Box<'a, MemberExpr<'a>>),
+    Call(Box<'a, OptCall<'a>>),
 }
 
 #[ast]
-pub struct OptCall {
-    callee: Expr,
-    args: Vec<ExprOrSpread>,
+#[derive(Debug)]
+pub struct OptCall<'a> {
+    pub span: Span,
+    pub callee: Expr<'a>,
+    pub args: Vec<'a, Box<'a, ExprOrSpread<'a>>>,
     // type_args: Option<Box<TsTypeParamInstantiation>>,
     // pub type_params: Option<TsTypeParamInstantiation>,
 }
 
 #[ast]
+#[derive(Debug)]
 pub struct Invalid {}
 
-impl Expr {
-    pub fn is_ident_ref_to<S>(&self, ast: &Ast, ident: &S) -> bool
+impl<'a> Expr<'a> {
+    pub fn is_ident_ref_to<S>(&self, ident: &S) -> bool
     where
         S: ?Sized + AsRef<str>,
     {
         match self {
-            Expr::Ident(i) => ast.get_utf8(i.sym(ast)) == ident.as_ref(),
+            Expr::Ident(i) => i.sym == ident.as_ref(),
             _ => false,
         }
     }
 }
 
-impl AssignTarget {
-    pub fn try_from_pat(ast: &mut Ast, p: Pat) -> Result<Self, Pat> {
+impl<'a> AssignTarget<'a> {
+    pub fn try_from_pat(p: Pat<'a>, allocator: &'a Allocator) -> Result<Self, Pat<'a>> {
         Ok(match p {
-            Pat::Array(a) => AssignTarget::Pat(AssignTargetPat::Array(a)),
-            Pat::Object(o) => AssignTarget::Pat(AssignTargetPat::Object(o)),
-            Pat::Ident(i) => AssignTarget::Simple(SimpleAssignTarget::Ident(i)),
-            Pat::Invalid(i) => AssignTarget::Simple(SimpleAssignTarget::Invalid(i)),
-            Pat::Expr(e) => match Self::try_from_expr(ast, e) {
+            Pat::Array(a) => AssignTarget::Pat(allocator.boxed(AssignTargetPat::Array(a))),
+            Pat::Object(o) => AssignTarget::Pat(allocator.boxed(AssignTargetPat::Object(o))),
+            Pat::Ident(i) => AssignTarget::Simple(allocator.boxed(SimpleAssignTarget::Ident(i))),
+            Pat::Invalid(i) => {
+                AssignTarget::Simple(allocator.boxed(SimpleAssignTarget::Invalid(i)))
+            }
+            Pat::Expr(e) => match Self::try_from_expr(Box::into_inner(e), allocator) {
                 Ok(v) => v,
-                Err(e) => return Err(Pat::Expr(e)),
+                Err(e) => return Err(Pat::Expr(allocator.boxed(e))),
             },
             _ => return Err(p),
         })
     }
-}
-
-impl AssignTarget {
-    pub fn try_from_expr(ast: &mut Ast, e: Expr) -> Result<Self, Expr> {
-        Ok(Self::Simple(SimpleAssignTarget::try_from_expr(ast, e)?))
+    pub fn try_from_expr(e: Expr<'a>, allocator: &'a Allocator) -> Result<Self, Expr<'a>> {
+        Ok(Self::Simple(
+            allocator.boxed(SimpleAssignTarget::try_from_expr(e, allocator)?),
+        ))
     }
 }
 
-impl SimpleAssignTarget {
-    pub fn try_from_expr(ast: &mut Ast, e: Expr) -> Result<Self, Expr> {
+impl<'a> SimpleAssignTarget<'a> {
+    pub fn try_from_expr(e: Expr<'a>, allocator: &'a Allocator) -> Result<Self, Expr<'a>> {
         Ok(match e {
-            Expr::Ident(i) => SimpleAssignTarget::Ident(ast.binding_ident(i.span(ast), i)),
+            Expr::Ident(i) => SimpleAssignTarget::Ident(allocator.boxed(BindingIdent { id: i })),
             Expr::Member(m) => SimpleAssignTarget::Member(m),
             Expr::SuperProp(s) => SimpleAssignTarget::SuperProp(s),
             Expr::OptChain(s) => SimpleAssignTarget::OptChain(s),

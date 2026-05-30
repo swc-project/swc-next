@@ -1,6 +1,7 @@
 use colored::Colorize;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use swc_experimental_ecma_ast::{Ast, Visit};
+use swc_experimental_allocator::Allocator;
+use swc_experimental_ecma_ast::{AstBuilder, ParenExpr, Visit};
 use swc_experimental_ecma_transforms_base::remove_paren;
 
 use crate::{
@@ -31,17 +32,21 @@ impl RemoveParenRunner {
                 });
             }
 
-            let (root, mut ast) = match parse(case) {
+            let allocator = Allocator::new();
+            let root = match parse(&allocator, case) {
                 ParseResult::Succ(ret) => ret,
                 _ => return None,
             };
 
-            remove_paren::remove_paren(root, &mut ast, None);
-            let mut collector = ParenCollector {
-                ast: &ast,
-                count: 0,
-            };
-            collector.visit_program(root);
+            let root = remove_paren::remove_paren(
+                root,
+                AstBuilder {
+                    allocator: &allocator,
+                },
+                None,
+            );
+            let mut collector = ParenCollector { count: 0 };
+            collector.visit_program(&root);
             if collector.count > 0 {
                 return Some(TestResult::Failed {
                     path: case.relative_path().to_owned(),
@@ -57,17 +62,12 @@ impl RemoveParenRunner {
     }
 }
 
-struct ParenCollector<'a> {
-    ast: &'a Ast,
+struct ParenCollector {
     count: usize,
 }
 
-impl<'a> Visit for ParenCollector<'a> {
-    fn ast(&self) -> &Ast {
-        self.ast
-    }
-
-    fn visit_paren_expr(&mut self, _node: swc_experimental_ecma_ast::ParenExpr) {
+impl<'a> Visit<'a> for ParenCollector {
+    fn visit_paren_expr(&mut self, _node: &ParenExpr<'a>) {
         self.count += 1;
     }
 }

@@ -3,7 +3,6 @@
 use std::{borrow::Cow, fmt::Debug};
 
 use miette::{LabeledSpan, MietteDiagnostic, SourceSpan};
-use swc_atoms::Atom;
 use swc_experimental_ecma_ast::Span;
 
 /// Note: this struct is 8 bytes.
@@ -79,7 +78,7 @@ pub enum SyntaxError {
     UnterminatedStrLit,
     ExpectedUnicodeEscape,
     EscapeInReservedWord {
-        word: Atom,
+        word: String,
     },
     UnterminatedRegExp,
     UnterminatedTpl,
@@ -97,7 +96,7 @@ pub enum SyntaxError {
 
     /// "implements", "interface", "let", "package", "private", "protected",
     /// "public", "static", or "yield"
-    InvalidIdentInStrict(Atom),
+    InvalidIdentInStrict(String),
 
     InvalidIdentInAsync,
     /// 'eval' and 'arguments' are invalid identifier in strict mode.
@@ -147,7 +146,7 @@ pub enum SyntaxError {
     InvalidAssignTarget,
     ExpectedIdent,
     ExpectedSemi,
-    DuplicateLabel(Atom),
+    DuplicateLabel(String),
     AsyncGenerator,
     NonTopLevelImportExport,
     ImportExportInScript,
@@ -171,7 +170,7 @@ pub enum SyntaxError {
     InvalidJSXValue,
     JSXExpectedClosingTagForLtGt,
     JSXExpectedClosingTag {
-        tag: Atom,
+        tag: String,
     },
     InvalidLeadingDecorator,
     DecoratorOnExport,
@@ -184,7 +183,7 @@ pub enum SyntaxError {
     AsyncConstructor,
     PropertyNamedConstructor,
     PrivateConstructor,
-    PrivateNameModifier(Atom),
+    PrivateNameModifier(String),
     ConstructorAccessor,
     ReadOnlyMethod,
     GeneratorConstructor,
@@ -198,13 +197,13 @@ pub enum SyntaxError {
     ImportRequiresOneOrTwoArgs,
 
     ExportDefaultWithOutFrom,
-    ExportExpectFrom(Atom),
+    ExportExpectFrom(String),
 
     DotsWithoutIdentifier,
 
     NumericSeparatorIsAllowedOnlyBetweenTwoDigits,
 
-    ImportBindingIsString(Atom),
+    ImportBindingIsString(String),
     ExportBindingIsString,
 
     ConstDeclarationsRequireInitialization,
@@ -217,8 +216,8 @@ pub enum SyntaxError {
     TS1009,
     TS1014,
     TS1015,
-    TS1029(Atom, Atom),
-    TS1030(Atom),
+    TS1029(String, String),
+    TS1030(String),
     TS1031,
     TS1038,
     TS1042,
@@ -226,7 +225,7 @@ pub enum SyntaxError {
     TS1048,
     TS1056,
     TS1085,
-    TS1089(Atom),
+    TS1089(String),
     TS1092,
     TS1096,
     TS1098,
@@ -255,13 +254,13 @@ pub enum SyntaxError {
     TS1093,
     TS1196,
     TS1242,
-    TS1243(Atom, Atom),
+    TS1243(String, String),
     TS1244,
     TS1245,
     TS1267,
-    TS1273(Atom),
-    TS1274(Atom),
-    TS1277(Atom),
+    TS1273(String),
+    TS1274(String),
+    TS1277(String),
     TS2206,
     TS2207,
     TS2369,
@@ -279,7 +278,7 @@ pub enum SyntaxError {
     TS8038,
     TS18010,
     TSTypeAnnotationAfterAssign,
-    TsNonNullAssertionNotAllowed(Atom),
+    TsNonNullAssertionNotAllowed(String),
 
     WithLabel {
         inner: Box<Error>,

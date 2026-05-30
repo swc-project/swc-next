@@ -2,87 +2,65 @@
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use criterion::{Bencher, Criterion, criterion_group, criterion_main};
-use swc_experimental_ecma_ast::StringAllocator;
+use swc_experimental_allocator::Allocator;
 
 fn bench_new(b: &mut Bencher, src: &'static str) {
-    use swc_experimental_ecma_ast::Ast;
     use swc_experimental_ecma_parser::{Parser, StringSource};
     use swc_experimental_ecma_visit::VisitWith;
 
+    let allocator = Allocator::new();
     let input = StringSource::new(src);
-    let mut ast = Ast::new(input.source_len(), StringAllocator::default());
     let mut parser = Parser::new(
-        &mut ast,
+        &allocator,
         swc_experimental_ecma_parser::Syntax::Es(Default::default()),
         input,
         None,
     );
     let module = parser.parse_module().unwrap();
 
-    struct Counter<'a> {
-        ast: &'a Ast,
+    struct Counter {
         count: usize,
     }
 
-    impl swc_experimental_ecma_visit::Visit for Counter<'_> {
-        fn ast(&self) -> &swc_experimental_ecma_ast::Ast {
-            self.ast
-        }
-
-        fn visit_ident(&mut self, _node: swc_experimental_ecma_ast::Ident) {
+    impl<'a> swc_experimental_ecma_visit::Visit<'a> for Counter {
+        fn visit_ident(&mut self, _node: &swc_experimental_ecma_ast::Ident) {
             self.count += 1;
         }
     }
 
     b.iter(|| {
-        let mut counter = Counter {
-            ast: &ast,
-            count: 0,
-        };
+        let mut counter = Counter { count: 0 };
         module.visit_with(&mut counter);
         std::hint::black_box(counter.count);
     });
 }
 
 fn bench_new_mut(b: &mut Bencher, src: &'static str) {
-    use swc_experimental_ecma_ast::Ast;
     use swc_experimental_ecma_parser::{Parser, StringSource};
     use swc_experimental_ecma_visit::VisitMutWith;
 
-    struct Counter<'a> {
-        ast: &'a mut Ast,
+    struct Counter {
         count: usize,
     }
 
-    impl swc_experimental_ecma_visit::VisitMut for Counter<'_> {
-        fn ast(&mut self) -> &mut swc_experimental_ecma_ast::Ast {
-            self.ast
-        }
-
-        fn visit_mut_ident(
-            &mut self,
-            node: swc_experimental_ecma_ast::Ident,
-        ) -> swc_experimental_ecma_ast::Ident {
+    impl<'a> swc_experimental_ecma_visit::VisitMut<'a> for Counter {
+        fn visit_mut_ident(&mut self, _node: &mut swc_experimental_ecma_ast::Ident) {
             self.count += 1;
-            node
         }
     }
 
+    let allocator = Allocator::new();
     let input = StringSource::new(src);
-    let mut ast = Ast::new(input.source_len(), StringAllocator::default());
     let mut parser = Parser::new(
-        &mut ast,
+        &allocator,
         swc_experimental_ecma_parser::Syntax::Es(Default::default()),
         input,
         None,
     );
-    let module = parser.parse_module().unwrap();
+    let mut module = parser.parse_module().unwrap();
 
     b.iter(|| {
-        let mut counter = Counter {
-            ast: &mut ast,
-            count: 0,
-        };
+        let mut counter = Counter { count: 0 };
         module.visit_mut_with(&mut counter);
         std::hint::black_box(counter.count);
     });

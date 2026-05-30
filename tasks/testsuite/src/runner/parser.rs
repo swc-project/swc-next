@@ -1,5 +1,6 @@
 use colored::Colorize;
 use rayon::prelude::*;
+use swc_experimental_allocator::Allocator;
 
 use crate::{
     AppArgs,
@@ -29,7 +30,8 @@ impl ParserRunner {
                 };
             }
 
-            match (case.should_fail(), parse(case)) {
+            let allocator = Allocator::new();
+            match (case.should_fail(), parse(&allocator, case)) {
                 (false, ParseResult::Succ(_)) => TestResult::Passed {
                     path: case.relative_path().to_owned(),
                 },

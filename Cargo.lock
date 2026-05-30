@@ -112,6 +112,7 @@ dependencies = [
  "oxc_allocator",
  "rustc-hash",
  "swc_core",
+ "swc_experimental_allocator",
  "swc_experimental_ecma_ast",
  "swc_experimental_ecma_ast_compat",
  "swc_experimental_ecma_parser",
@@ -366,7 +367,7 @@ version = "3.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "faf9468729b8cbcea668e36183cb69d317348c2e08e994829fb56ebfdfbaac34"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -598,7 +599,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -624,12 +625,6 @@ name = "foldhash"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
-
-[[package]]
-name = "foldhash"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
 
 [[package]]
 name = "form_urlencoded"
@@ -735,7 +730,7 @@ version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
 dependencies = [
- "foldhash 0.1.5",
+ "foldhash",
 ]
 
 [[package]]
@@ -745,8 +740,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
 dependencies = [
  "allocator-api2",
- "equivalent",
- "foldhash 0.2.0",
 ]
 
 [[package]]
@@ -944,7 +937,7 @@ checksum = "3640c1c38b8e4e43584d8df18be5fc6b0aa314ce6ebf51b53313d4306cca8e46"
 dependencies = [
  "hermit-abi",
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1126,7 +1119,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1732,7 +1725,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2128,6 +2121,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "swc_experimental_allocator"
+version = "0.7.2"
+dependencies = [
+ "bumpalo",
+]
+
+[[package]]
 name = "swc_experimental_ast_macros"
 version = "0.7.2"
 dependencies = [
@@ -2140,10 +2140,9 @@ dependencies = [
 name = "swc_experimental_ecma_ast"
 version = "0.7.2"
 dependencies = [
- "hashbrown 0.16.1",
  "num-bigint",
  "oxc_index",
- "swc_atoms",
+ "swc_experimental_allocator",
  "swc_experimental_ast_macros",
  "unicode-id-start",
 ]
@@ -2155,6 +2154,7 @@ dependencies = [
  "bumpalo",
  "stacker",
  "swc_core",
+ "swc_experimental_allocator",
  "swc_experimental_ecma_ast",
  "swc_experimental_ecma_semantic",
 ]
@@ -2170,7 +2170,7 @@ dependencies = [
  "rustc-hash",
  "seq-macro",
  "smartstring",
- "swc_atoms",
+ "swc_experimental_allocator",
  "swc_experimental_ecma_ast",
  "tracing",
 ]
@@ -2182,6 +2182,7 @@ dependencies = [
  "insta",
  "oxc_index",
  "rustc-hash",
+ "swc_experimental_allocator",
  "swc_experimental_ecma_ast",
  "swc_experimental_ecma_parser",
  "swc_experimental_ecma_visit",
@@ -2264,7 +2265,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2276,6 +2277,7 @@ dependencies = [
  "pico-args",
  "rayon",
  "saphyr",
+ "swc_experimental_allocator",
  "swc_experimental_ecma_ast",
  "swc_experimental_ecma_parser",
  "swc_experimental_ecma_semantic",
@@ -2661,7 +2663,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

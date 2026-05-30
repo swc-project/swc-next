@@ -1,19 +1,15 @@
+use swc_experimental_allocator::boxed::Box;
+use swc_experimental_allocator::vec::Vec;
 use swc_experimental_ecma_ast::*;
 
-use crate::lexer::MaybeSubUtf8;
 use crate::parser::js::is_not_this;
 use crate::{Context, PResult, Parser, error::SyntaxError, input::Tokens, lexer::Token};
 
-impl<'a, I: Tokens> Parser<'a, I> {
-    pub(crate) fn parse_object<Object, ObjectProp: ExtraDataCompact>(
+impl<'a, I: Tokens<'a>> Parser<'a, I> {
+    pub(crate) fn parse_object<Object, ObjectProp: 'a>(
         &mut self,
         parse_prop: impl Fn(&mut Self) -> PResult<ObjectProp>,
-        make_object: impl Fn(
-            &mut Self,
-            Span,
-            TypedSubRange<ObjectProp>,
-            Option<Span>,
-        ) -> PResult<Object>,
+        make_object: impl Fn(&mut Self, Span, Vec<'a, ObjectProp>, Option<Span>) -> PResult<Object>,
     ) -> PResult<Object> {
         self.do_outside_of_context(Context::WillExpectColonForCond, |p| {
             trace_cur!(p, parse_object);
@@ -22,10 +18,10 @@ impl<'a, I: Tokens> Parser<'a, I> {
             let mut trailing_comma = None;
             p.assert_and_bump(Token::LBrace);
 
-            let props = p.scratch_start(|p, props| {
+            let props = p.collect_vec(|p, props| {
                 while !p.input_mut().eat(Token::RBrace) {
                     let prop = parse_prop(p)?;
-                    props.push(p, prop);
+                    props.push(prop);
 
                     if !p.input().is(Token::RBrace) {
                         expect!(p, Token::Comma);
@@ -43,7 +39,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
     }
 
     /// Production 'BindingProperty'
-    pub(crate) fn parse_binding_object_prop(&mut self) -> PResult<ObjectPatProp> {
+    pub(crate) fn parse_binding_object_prop(&mut self) -> PResult<ObjectPatProp<'a>> {
         let start = self.cur_pos();
 
         if self.input_mut().eat(Token::DotDotDot) {
@@ -61,11 +57,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         if self.input_mut().eat(Token::Colon) {
             let value = self.parse_binding_element()?;
 
-            return Ok(self.ast.object_pat_prop_key_value_pat_prop(
-                Span::new(key.span_lo(self.ast), key.span_hi(self.ast)),
-                key,
-                value,
-            ));
+            return Ok(self.ast.object_pat_prop_key_value_pat_prop(key, value));
         }
         let key = match key {
             PropName::Ident(ident) => ident,
@@ -75,21 +67,15 @@ impl<'a, I: Tokens> Parser<'a, I> {
         let value = if self.input_mut().eat(Token::Eq) {
             self.allow_in_expr(Self::parse_assignment_expr).map(Some)?
         } else {
-            if self
-                .ctx()
-                .is_reserved_word(self.ast.get_utf8(key.sym(self.ast)))
-            {
-                self.emit_err(
-                    key.span(self.ast),
-                    SyntaxError::ReservedWordInObjShorthandOrPat,
-                );
+            if self.ctx().is_reserved_word(key.sym.as_str()) {
+                self.emit_err(key.span(), SyntaxError::ReservedWordInObjShorthandOrPat);
             }
 
             None
         };
 
-        let key_ident = self.ast.ident(key.span(self.ast), key.sym(self.ast), false);
-        let key_ident = self.ast.binding_ident(key_ident.span(self.ast), key_ident);
+        let key_ident = self.ast.box_ident(key.span(), key.sym, false);
+        let key_ident = self.ast.box_binding_ident(key_ident);
         Ok(self
             .ast
             .object_pat_prop_assign_pat_prop(self.span(start), key_ident, value))
@@ -98,32 +84,27 @@ impl<'a, I: Tokens> Parser<'a, I> {
     fn make_binding_object(
         &mut self,
         span: Span,
-        props: TypedSubRange<ObjectPatProp>,
+        props: Vec<'a, ObjectPatProp<'a>>,
         trailing_comma: Option<Span>,
-    ) -> PResult<Pat> {
+    ) -> PResult<Pat<'a>> {
         let len = props.len();
         for (i, prop) in props.iter().enumerate() {
-            let prop = self.ast.get_node_in_sub_range(prop);
             if i == len - 1 {
                 if let ObjectPatProp::Rest(rest) = prop {
-                    match rest.arg(self.ast) {
+                    match &rest.arg {
                         Pat::Ident(..) => {
                             if let Some(trailing_comma) = trailing_comma {
                                 self.emit_err(trailing_comma, SyntaxError::CommaAfterRestElement);
                             }
                         }
-                        _ => syntax_error!(
-                            self,
-                            prop.span(self.ast),
-                            SyntaxError::DotsWithoutIdentifier
-                        ),
+                        _ => syntax_error!(self, prop.span(), SyntaxError::DotsWithoutIdentifier),
                     }
                 }
                 continue;
             }
 
             if let ObjectPatProp::Rest(..) = prop {
-                self.emit_err(prop.span(self.ast), SyntaxError::NonLastRestParam)
+                self.emit_err(prop.span(), SyntaxError::NonLastRestParam)
             }
         }
 
@@ -133,16 +114,19 @@ impl<'a, I: Tokens> Parser<'a, I> {
         Ok(self.ast.pat_object_pat(span, props, optional))
     }
 
-    pub(super) fn parse_object_pat(&mut self) -> PResult<Pat> {
-        self.parse_object(Self::parse_binding_object_prop, Self::make_binding_object)
+    pub(super) fn parse_object_pat(&mut self) -> PResult<Pat<'a>> {
+        self.parse_object(
+            |p| p.parse_binding_object_prop(),
+            |p, span, props, trailing_comma| p.make_binding_object(span, props, trailing_comma),
+        )
     }
 
     fn make_expr_object(
         &mut self,
         span: Span,
-        props: TypedSubRange<PropOrSpread>,
+        props: Vec<'a, PropOrSpread<'a>>,
         trailing_comma: Option<Span>,
-    ) -> PResult<Expr> {
+    ) -> PResult<Expr<'a>> {
         if let Some(trailing_comma) = trailing_comma {
             self.state_mut()
                 .trailing_commas
@@ -152,7 +136,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         Ok(self.ast.expr_object_lit(span, props))
     }
 
-    fn parse_expr_object_prop(&mut self) -> PResult<PropOrSpread> {
+    fn parse_expr_object_prop(&mut self) -> PResult<PropOrSpread<'a>> {
         trace_cur!(self, parse_object_prop);
 
         let start = self.cur_pos();
@@ -164,9 +148,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
             let expr = self.allow_in_expr(Self::parse_assignment_expr)?;
 
-            return Ok(self
-                .ast
-                .prop_or_spread_spread_element(dot3_token, dot3_token, expr));
+            return Ok(self.ast.prop_or_spread_spread_element(dot3_token, expr));
         }
 
         if self.input_mut().eat(Token::Asterisk) {
@@ -176,7 +158,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     p.do_outside_of_context(Context::InClassField, |p| {
                         p.parse_fn_args_body(
                             // no decorator in an object literal
-                            TypedSubRange::empty(),
+                            p.vec(),
                             start,
                             Self::parse_unique_formal_params,
                             false,
@@ -185,11 +167,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     })
                 })
                 .map(|function| {
-                    self.ast.prop_or_spread_prop_method_prop(
-                        function.span(self.ast),
-                        name,
-                        function,
-                    )
+                    self.ast
+                        .prop_or_spread_prop_method_prop(name, self.boxed(function))
                 });
         }
 
@@ -220,12 +199,10 @@ impl<'a, I: Tokens> Parser<'a, I> {
             trace_cur!(self, parse_object_prop_error);
 
             self.emit_err(self.input().cur_span(), SyntaxError::TS1005);
-            let value = self.ast.invalid(self.span(start));
-            return Ok(self.ast.prop_or_spread_prop_key_value_prop(
-                Span::new(key.span_lo(self.ast), self.last_pos()),
-                key,
-                Expr::Invalid(value),
-            ));
+            let value = self.ast.invalid();
+            return Ok(self
+                .ast
+                .prop_or_spread_prop_key_value_prop(key, Expr::Invalid(self.boxed(value))));
         }
         //
         // {[computed()]: a,}
@@ -234,10 +211,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         // { a: expr, }
         if self.input_mut().eat(Token::Colon) {
             let value = self.allow_in_expr(Self::parse_assignment_expr)?;
-            let span = Span::new(key.span_lo(self.ast), value.span_hi(self.ast));
-            return Ok(self
-                .ast
-                .prop_or_spread_prop_key_value_prop(span, key, value));
+            return Ok(self.ast.prop_or_spread_prop_key_value_prop(key, value));
         }
 
         // Handle `a(){}` (and async(){} / get(){} / set(){})
@@ -249,7 +223,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     p.do_outside_of_context(Context::InClassField, |p| {
                         p.parse_fn_args_body(
                             // no decorator in an object literal
-                            TypedSubRange::empty(),
+                            p.vec(),
                             start,
                             Self::parse_unique_formal_params,
                             false,
@@ -259,7 +233,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 })
                 .map(|function| {
                     self.ast
-                        .prop_or_spread_prop_method_prop(function.span(self.ast), key, function)
+                        .prop_or_spread_prop_method_prop(key, self.boxed(function))
                 });
         }
 
@@ -268,8 +242,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
             // TODO
             _ => unexpected!(self, "identifier"),
         };
-        let ident_span = ident.span(self.ast);
-        let ident_sym = ident.sym(self.ast);
+        let ident_span = ident.span();
+        let ident_sym = ident.sym;
 
         if self.input_mut().eat(Token::QuestionMark) {
             self.emit_err(self.input().prev_span(), SyntaxError::TS1162);
@@ -279,18 +253,20 @@ impl<'a, I: Tokens> Parser<'a, I> {
         // It means we should check for invalid expressions like { for, }
         let cur = self.input().cur();
         if matches!(cur, Token::Eq | Token::Comma | Token::RBrace) {
-            if self.ctx().is_reserved_word(self.ast.get_utf8(ident_sym)) {
+            if self.ctx().is_reserved_word(ident_sym.as_str()) {
                 self.emit_err(ident_span, SyntaxError::ReservedWordInObjShorthandOrPat);
             }
 
-            let ident = self.ast.ident(ident_span, ident_sym, false);
+            let ident = self.ast.box_ident(ident_span, ident_sym, false);
             if self.input_mut().eat(Token::Eq) {
                 let value = self.allow_in_expr(Self::parse_assignment_expr)?;
                 let span = self.span(start);
                 return Ok(self.ast.prop_or_spread_prop_assign_prop(span, ident, value));
             }
 
-            return Ok(PropOrSpread::Prop(Prop::Shorthand(ident)));
+            return Ok(self
+                .ast
+                .prop_or_spread_prop_ident(ident_span, ident_sym, false));
         }
 
         // get a(){}
@@ -309,21 +285,19 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
             let is_generator = is_async && self.input_mut().eat(Token::Asterisk);
             let key = self.parse_prop_name()?;
-            let key_span = key.span(self.ast);
+            let key_span = key.span();
             self.do_inside_of_context(Context::AllowDirectSuper, |p| {
                 p.do_outside_of_context(Context::InClassField, |p| {
                     if is_get {
                         return p
                             .parse_fn_args_body(
                                 // no decorator in an object literal
-                                TypedSubRange::empty(),
+                                p.vec(),
                                 start,
                                 |p| {
                                     let params = p.parse_formal_params()?;
 
-                                    if params.iter().any(|param| {
-                                        is_not_this(p.ast, p.ast.get_node_in_sub_range(param))
-                                    }) {
+                                    if params.iter().any(is_not_this) {
                                         p.emit_err(key_span, SyntaxError::GetterParam);
                                     }
 
@@ -339,7 +313,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                                     p.emit_err(key_span, SyntaxError::TS1056);
                                 }
 
-                                let body = function.body(p.ast);
+                                let body = function.body;
                                 p.ast
                                     .prop_or_spread_prop_getter_prop(p.span(start), key, body)
                             });
@@ -349,29 +323,20 @@ impl<'a, I: Tokens> Parser<'a, I> {
                         return p
                             .parse_fn_args_body(
                                 // no decorator in an object literal
-                                TypedSubRange::empty(),
+                                p.vec(),
                                 start,
                                 |p| {
                                     let params = p.parse_formal_params()?;
 
-                                    if params
-                                        .iter()
-                                        .filter(|param| {
-                                            is_not_this(p.ast, p.ast.get_node_in_sub_range(*param))
-                                        })
-                                        .count()
-                                        != 1
+                                    if params.iter().filter(|param| is_not_this(param)).count() != 1
                                     {
                                         p.emit_err(key_span, SyntaxError::SetterParam);
                                     }
 
                                     if !params.is_empty()
-                                        && let Pat::Rest(rest) = p
-                                            .ast
-                                            .get_node_in_sub_range(params.get(0).unwrap())
-                                            .pat(p.ast)
+                                        && let Pat::Rest(rest) = &params.first().unwrap().pat
                                     {
-                                        p.emit_err(rest.span(p.ast), SyntaxError::RestPatInSetter);
+                                        p.emit_err(rest.span(), SyntaxError::RestPatInSetter);
                                     }
 
                                     if p.input().syntax().typescript()
@@ -387,31 +352,21 @@ impl<'a, I: Tokens> Parser<'a, I> {
                             )
                             .map(|function| {
                                 let mut this = None;
-                                let mut params = function.params(p.ast);
+                                let mut params = function.params;
                                 if params.len() >= 2 {
-                                    this = Some(
-                                        p.ast
-                                            .get_node_in_sub_range(params.remove_first())
-                                            .pat(p.ast),
-                                    );
+                                    this = Some(Box::into_inner(params.remove(0)).pat);
                                 }
 
-                                if params.len() != 1 {
-                                    p.emit_err(key_span, SyntaxError::SetterParam);
-                                }
-
-                                let param = match params.iter().next() {
-                                    Some(param) => {
-                                        let param = p.ast.get_node_in_sub_range(param);
-                                        param.pat(p.ast)
-                                    }
-                                    None => {
+                                let param = params
+                                    .into_iter()
+                                    .next()
+                                    .map(|v| Box::into_inner(v).pat)
+                                    .unwrap_or_else(|| {
                                         p.emit_err(key_span, SyntaxError::SetterParam);
-                                        p.ast.pat_invalid(DUMMY_SP)
-                                    }
-                                };
+                                        p.ast.pat_invalid()
+                                    });
 
-                                let body = function.body(p.ast);
+                                let body = function.body;
                                 p.ast.prop_or_spread_prop_setter_prop(
                                     p.span(start),
                                     key,
@@ -426,15 +381,15 @@ impl<'a, I: Tokens> Parser<'a, I> {
                         return p
                             .parse_fn_args_body(
                                 // no decorator in an object literal
-                                TypedSubRange::empty(),
+                                p.vec(),
                                 start,
                                 Self::parse_unique_formal_params,
                                 true,
                                 is_generator,
                             )
                             .map(|function| {
-                                let span = Span::new(key.span_lo(p.ast), key.span_hi(p.ast));
-                                p.ast.prop_or_spread_prop_method_prop(span, key, function)
+                                p.ast
+                                    .prop_or_spread_prop_method_prop(key, p.boxed(function))
                             });
                     }
 
@@ -452,44 +407,46 @@ impl<'a, I: Tokens> Parser<'a, I> {
         }
     }
 
-    pub(crate) fn parse_object_expr(&mut self) -> PResult<Expr> {
-        self.parse_object(Self::parse_expr_object_prop, Self::make_expr_object)
+    pub(crate) fn parse_object_expr(&mut self) -> PResult<Expr<'a>> {
+        self.parse_object(
+            |p| p.parse_expr_object_prop(),
+            |p, span, props, trailing_comma| p.make_expr_object(span, props, trailing_comma),
+        )
     }
 
     /// spec: 'PropertyName'
-    pub fn parse_prop_name(&mut self) -> PResult<PropName> {
+    pub fn parse_prop_name(&mut self) -> PResult<PropName<'a>> {
         trace_cur!(self, parse_prop_name);
         let start = self.input().cur_pos();
         let cur = self.input().cur();
         let v = if cur == Token::Str {
-            PropName::Str(self.parse_str_lit())
+            let str_lit = self.parse_str_lit();
+            PropName::Str(self.boxed(str_lit))
         } else if cur == Token::Num {
-            let raw = self.to_utf8_ref(MaybeSubUtf8::new_from_span(self.input.cur_span()));
+            let raw = self.atom_from_span(self.input.cur_span());
             let value = self.input_mut().expect_number_token_value();
             self.bump();
             self.ast
                 .prop_name_number(self.span(start), value, raw.into())
         } else if cur == Token::BigInt {
-            let raw = self.to_utf8_ref(MaybeSubUtf8::new_from_span(self.input.cur_span()));
+            let raw = self.atom_from_span(self.input.cur_span());
             let value = self.input_mut().expect_bigint_token_value();
-            let value = self.ast.add_bigint(*value);
             self.bump();
             self.ast
                 .prop_name_big_int(self.span(start), value, raw.into())
         } else if cur.is_word() {
             let w = self.input_mut().expect_word_token_and_bump();
-            let w = self.to_utf8_ref(w);
             self.ast.prop_name_ident_name(self.span(start), w)
         } else if cur == Token::LBracket {
             self.bump();
             let inner_start = self.input().cur_pos();
             let mut expr = self.allow_in_expr(Self::parse_assignment_expr)?;
             if self.syntax().typescript() && self.input().is(Token::Comma) {
-                let exprs = self.scratch_start(|p, exprs| {
-                    exprs.push(p, expr);
+                let exprs = self.collect_vec(|p, exprs| {
+                    exprs.push(expr);
                     while p.input_mut().eat(Token::Comma) {
                         let expr = p.allow_in_expr(Self::parse_assignment_expr)?;
-                        exprs.push(p, expr);
+                        exprs.push(expr);
                     }
                     p.emit_err(p.span(inner_start), SyntaxError::TS1171);
                     Ok(())

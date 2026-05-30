@@ -13,6 +13,7 @@ tracy-client = { workspace = true, optional = true }
 [dev-dependencies]
 oxc                                   = { workspace = true }
 oxc_allocator                         = { workspace = true }
+swc_experimental_allocator            = { workspace = true }
 swc_experimental_ecma_ast             = { workspace = true }
 swc_experimental_ecma_ast_compat      = { workspace = true }
 swc_experimental_ecma_parser          = { workspace = true, features = ["unstable"] }

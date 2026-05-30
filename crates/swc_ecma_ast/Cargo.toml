@@ -12,10 +12,9 @@ version               = "0.7.2"
 shared_string_allocator = []
 
 [dependencies]
-hashbrown        = { workspace = true }
 num-bigint       = { workspace = true }
 oxc_index        = { workspace = true }
-swc_atoms        = { workspace = true }
 unicode-id-start = { workspace = true }
 
+swc_experimental_allocator  = { workspace = true }
 swc_experimental_ast_macros = { workspace = true }

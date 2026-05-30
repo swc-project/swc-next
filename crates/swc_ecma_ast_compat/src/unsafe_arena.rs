@@ -2,7 +2,8 @@ use std::mem::ManuallyDrop;
 
 use bumpalo::Bump;
 use swc_core::ecma::ast::{self as legacy};
-use swc_experimental_ecma_ast::{self as experimental, Ast, ExtraDataCompact, TypedSubRange};
+use swc_experimental_allocator::vec::Vec as AstVec;
+use swc_experimental_ecma_ast::{self as experimental};
 use swc_experimental_ecma_semantic::resolver::Semantic;
 
 use crate::compat_impl::CompatImpl;
@@ -70,25 +71,22 @@ impl<T> UnsafeConverted<T> {
 /// Converts the experimental AST into legacy SWC AST nodes allocated inside a
 /// bump arena owned by the returned wrapper.
 pub struct UnsafeArenaAstCompat<'ast> {
-    ast: &'ast Ast,
     semantic: &'ast Semantic,
 }
 
 struct UnsafeArenaCompatSession<'ast, 'alloc> {
-    ast: &'ast Ast,
     semantic: &'ast Semantic,
     allocator: &'alloc Bump,
 }
 
 impl<'ast> UnsafeArenaAstCompat<'ast> {
-    pub fn new(ast: &'ast Ast, semantic: &'ast Semantic) -> Self {
-        Self { ast, semantic }
+    pub fn new(semantic: &'ast Semantic) -> Self {
+        Self { semantic }
     }
 
     pub fn compat_program(&self, root: experimental::Program) -> UnsafeConverted<legacy::Program> {
         let allocator = Bump::new();
         let value = UnsafeArenaCompatSession {
-            ast: self.ast,
             semantic: self.semantic,
             allocator: &allocator,
         }
@@ -99,7 +97,6 @@ impl<'ast> UnsafeArenaAstCompat<'ast> {
     pub fn compat_module(&self, module: experimental::Module) -> UnsafeConverted<legacy::Module> {
         let allocator = Bump::new();
         let value = UnsafeArenaCompatSession {
-            ast: self.ast,
             semantic: self.semantic,
             allocator: &allocator,
         }
@@ -110,7 +107,6 @@ impl<'ast> UnsafeArenaAstCompat<'ast> {
     pub fn compat_script(&self, script: experimental::Script) -> UnsafeConverted<legacy::Script> {
         let allocator = Bump::new();
         let value = UnsafeArenaCompatSession {
-            ast: self.ast,
             semantic: self.semantic,
             allocator: &allocator,
         }
@@ -120,10 +116,6 @@ impl<'ast> UnsafeArenaAstCompat<'ast> {
 }
 
 impl CompatImpl for UnsafeArenaCompatSession<'_, '_> {
-    fn ast(&self) -> &Ast {
-        self.ast
-    }
-
     fn semantic(&self) -> &Semantic {
         self.semantic
     }
@@ -138,19 +130,19 @@ impl CompatImpl for UnsafeArenaCompatSession<'_, '_> {
         unsafe { Box::from_raw(ptr) }
     }
 
-    fn compat_type_sub_range<T: ExtraDataCompact, U, F: Fn(&mut Self, T) -> U>(
+    fn compat_vec<T, U, F: Fn(&mut Self, T) -> U>(
         &mut self,
-        typed_range: TypedSubRange<T>,
+        items: AstVec<'_, T>,
         transformer: F,
     ) -> Vec<U> {
-        let len = typed_range.len();
-        let mut iter = typed_range.iter();
+        let len = items.len();
+        let mut iter = items.into_iter();
         let allocator = self.allocator;
         let slice = allocator.alloc_slice_fill_with(len, |_| {
             let item = iter
                 .next()
-                .expect("typed sub range length should match iterator length");
-            transformer(self, self.ast.get_node_in_sub_range(item))
+                .expect("vec length should match iterator length");
+            transformer(self, item)
         });
 
         // Safety: `slice` is fully initialized and lives inside the same bump

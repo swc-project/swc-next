@@ -13,5 +13,6 @@ bumpalo  = { workspace = true }
 stacker  = { workspace = true }
 swc_core = { workspace = true }
 
+swc_experimental_allocator     = { workspace = true }
 swc_experimental_ecma_ast      = { workspace = true }
 swc_experimental_ecma_semantic = { workspace = true }

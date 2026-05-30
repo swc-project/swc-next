@@ -1,121 +1,161 @@
+use crate::Span;
+use swc_experimental_allocator::atom::Atom;
+use swc_experimental_allocator::boxed::Box;
+use swc_experimental_allocator::vec::Vec;
 use swc_experimental_ast_macros::ast;
 
 use crate::{Expr, Ident, IdentName, SpreadElement, Str};
 
 #[ast]
-pub enum JSXObject {
-    JSXMemberExpr(JSXMemberExpr),
-    Ident(Ident),
+#[derive(Debug)]
+pub enum JSXObject<'a> {
+    JSXMemberExpr(Box<'a, JSXMemberExpr<'a>>),
+    Ident(Box<'a, Ident<'a>>),
 }
 
 #[ast]
-pub struct JSXMemberExpr {
-    obj: JSXObject,
-    prop: IdentName,
+#[derive(Debug)]
+pub struct JSXMemberExpr<'a> {
+    pub span: Span,
+    pub obj: JSXObject<'a>,
+    pub prop: Box<'a, IdentName<'a>>,
 }
 
 #[ast]
-pub struct JSXNamespacedName {
-    ns: IdentName,
-    name: IdentName,
+#[derive(Debug)]
+pub struct JSXNamespacedName<'a> {
+    pub span: Span,
+    pub ns: Box<'a, IdentName<'a>>,
+    pub name: Box<'a, IdentName<'a>>,
 }
 
 #[ast]
-pub struct JSXEmptyExpr {}
-
-#[ast]
-pub struct JSXExprContainer {
-    expr: JSXExpr,
+#[derive(Debug)]
+pub struct JSXEmptyExpr {
+    pub span: Span,
 }
 
 #[ast]
-pub enum JSXExpr {
-    JSXEmptyExpr(JSXEmptyExpr),
-    Expr(Expr),
+#[derive(Debug)]
+pub struct JSXExprContainer<'a> {
+    pub span: Span,
+    pub expr: JSXExpr<'a>,
 }
 
 #[ast]
-pub struct JSXSpreadChild {
-    expr: Expr,
+#[derive(Debug)]
+pub enum JSXExpr<'a> {
+    JSXEmptyExpr(Box<'a, JSXEmptyExpr>),
+    Expr(Box<'a, Expr<'a>>),
 }
 
 #[ast]
-pub enum JSXElementName {
-    Ident(Ident),
-    JSXMemberExpr(JSXMemberExpr),
-    JSXNamespacedName(JSXNamespacedName),
+#[derive(Debug)]
+pub struct JSXSpreadChild<'a> {
+    pub span: Span,
+    pub expr: Expr<'a>,
 }
 
 #[ast]
-pub struct JSXOpeningElement {
-    name: JSXElementName,
-    attrs: Vec<JSXAttrOrSpread>,
-    self_closing: bool,
+#[derive(Debug)]
+pub enum JSXElementName<'a> {
+    Ident(Box<'a, Ident<'a>>),
+    JSXMemberExpr(Box<'a, JSXMemberExpr<'a>>),
+    JSXNamespacedName(Box<'a, JSXNamespacedName<'a>>),
+}
+
+#[ast]
+#[derive(Debug)]
+pub struct JSXOpeningElement<'a> {
+    pub span: Span,
+    pub name: JSXElementName<'a>,
+    pub attrs: Vec<'a, JSXAttrOrSpread<'a>>,
+    pub self_closing: bool,
     // type_args: Option<Box<TsTypeParamInstantiation>>,
 }
 
 #[ast]
-pub enum JSXAttrOrSpread {
-    JSXAttr(JSXAttr),
-    SpreadElement(SpreadElement),
+#[derive(Debug)]
+pub enum JSXAttrOrSpread<'a> {
+    JSXAttr(Box<'a, JSXAttr<'a>>),
+    SpreadElement(Box<'a, SpreadElement<'a>>),
 }
 
 #[ast]
-pub struct JSXClosingElement {
-    name: JSXElementName,
+#[derive(Debug)]
+pub struct JSXClosingElement<'a> {
+    pub span: Span,
+    pub name: JSXElementName<'a>,
 }
 
 #[ast]
-pub struct JSXAttr {
-    name: JSXAttrName,
-    value: Option<JSXAttrValue>,
+#[derive(Debug)]
+pub struct JSXAttr<'a> {
+    pub span: Span,
+    pub name: JSXAttrName<'a>,
+    pub value: Option<JSXAttrValue<'a>>,
 }
 
 #[ast]
-pub enum JSXAttrName {
-    Ident(IdentName),
-    JSXNamespacedName(JSXNamespacedName),
+#[derive(Debug)]
+pub enum JSXAttrName<'a> {
+    Ident(Box<'a, IdentName<'a>>),
+    JSXNamespacedName(Box<'a, JSXNamespacedName<'a>>),
 }
 
 #[ast]
-pub enum JSXAttrValue {
-    Str(Str),
-    JSXExprContainer(JSXExprContainer),
-    JSXElement(JSXElement),
-    JSXFragment(JSXFragment),
+#[derive(Debug)]
+pub enum JSXAttrValue<'a> {
+    Str(Box<'a, Str<'a>>),
+    JSXExprContainer(Box<'a, JSXExprContainer<'a>>),
+    JSXElement(Box<'a, JSXElement<'a>>),
+    JSXFragment(Box<'a, JSXFragment<'a>>),
 }
 
 #[ast]
-pub struct JSXText {
-    value: Utf8Ref,
-    raw: Utf8Ref,
+#[derive(Debug)]
+pub struct JSXText<'a> {
+    pub span: Span,
+    pub value: Atom<'a>,
+    pub raw: Atom<'a>,
 }
 
 #[ast]
-pub struct JSXElement {
-    opening: JSXOpeningElement,
-    children: Vec<JSXElementChild>,
-    closing: Option<JSXClosingElement>,
+#[derive(Debug)]
+pub struct JSXElement<'a> {
+    pub span: Span,
+    pub opening: Box<'a, JSXOpeningElement<'a>>,
+    pub children: Vec<'a, JSXElementChild<'a>>,
+    pub closing: Option<Box<'a, JSXClosingElement<'a>>>,
 }
 
 #[ast]
-pub enum JSXElementChild {
-    JSXText(JSXText),
-    JSXExprContainer(JSXExprContainer),
-    JSXSpreadChild(JSXSpreadChild),
-    JSXElement(JSXElement),
-    JSXFragment(JSXFragment),
+#[derive(Debug)]
+pub enum JSXElementChild<'a> {
+    JSXText(Box<'a, JSXText<'a>>),
+    JSXExprContainer(Box<'a, JSXExprContainer<'a>>),
+    JSXSpreadChild(Box<'a, JSXSpreadChild<'a>>),
+    JSXElement(Box<'a, JSXElement<'a>>),
+    JSXFragment(Box<'a, JSXFragment<'a>>),
 }
 
 #[ast]
-pub struct JSXFragment {
-    opening: JSXOpeningFragment,
-    children: Vec<JSXElementChild>,
-    closing: JSXClosingFragment,
+#[derive(Debug)]
+pub struct JSXFragment<'a> {
+    pub span: Span,
+    pub opening: Box<'a, JSXOpeningFragment>,
+    pub children: Vec<'a, JSXElementChild<'a>>,
+    pub closing: Box<'a, JSXClosingFragment>,
 }
 
 #[ast]
-pub struct JSXOpeningFragment {}
+#[derive(Debug)]
+pub struct JSXOpeningFragment {
+    pub span: Span,
+}
 
 #[ast]
-pub struct JSXClosingFragment {}
+#[derive(Debug)]
+pub struct JSXClosingFragment {
+    pub span: Span,
+}

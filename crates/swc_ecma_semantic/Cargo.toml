@@ -12,6 +12,7 @@ version               = "0.7.2"
 oxc_index  = { workspace = true }
 rustc-hash = { workspace = true }
 
+swc_experimental_allocator  = { workspace = true }
 swc_experimental_ecma_ast   = { workspace = true }
 swc_experimental_ecma_visit = { workspace = true }
 

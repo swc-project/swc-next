@@ -1,6 +1,9 @@
-use swc_experimental_ecma_ast::{EsVersion, Span, StringAllocator};
+use swc_experimental_allocator::{
+    Allocator,
+    atom::{Atom, Wtf8Atom},
+};
+use swc_experimental_ecma_ast::{EsVersion, Span};
 
-use crate::lexer::{MaybeSubUtf8, MaybeSubWtf8};
 use crate::{
     Context,
     error::Error,
@@ -10,7 +13,7 @@ use crate::{
 
 /// Clone should be cheap if you are parsing typescript because typescript
 /// syntax requires backtracking.
-pub trait Tokens {
+pub trait Tokens<'a> {
     type Checkpoint;
 
     fn set_ctx(&mut self, ctx: Context);
@@ -18,11 +21,11 @@ pub trait Tokens {
     fn ctx_mut(&mut self) -> &mut Context;
     fn syntax(&self) -> SyntaxFlags;
     fn target(&self) -> EsVersion;
+    fn allocator(&self) -> &'a Allocator;
 
     fn checkpoint_save(&self) -> Self::Checkpoint;
     fn checkpoint_load(&mut self, checkpoint: Self::Checkpoint);
 
-    fn string_allocator(&self) -> StringAllocator;
     fn read_string(&self, span: Span) -> &str;
 
     fn start_pos(&self) -> u32 {
@@ -56,9 +59,9 @@ pub trait Tokens {
     fn update_token_flags(&mut self, f: impl FnOnce(&mut TokenFlags));
     fn token_flags(&self) -> TokenFlags;
 
-    fn take_token_value(&mut self) -> Option<TokenValue>;
-    fn get_token_value(&self) -> Option<&TokenValue>;
-    fn set_token_value(&mut self, token_value: Option<TokenValue>);
+    fn take_token_value(&mut self) -> Option<TokenValue<'a>>;
+    fn get_token_value(&self) -> Option<&TokenValue<'a>>;
+    fn set_token_value(&mut self, token_value: Option<TokenValue<'a>>);
 
     /// Returns the first token in the file.
     ///
@@ -82,24 +85,24 @@ pub trait Tokens {
 
 /// This struct is responsible for managing current token and peeked token.
 #[derive(Clone)]
-pub struct Buffer<I> {
+pub struct Buffer<'a, I> {
     pub iter: I,
     /// Span of the previous token.
     pub prev_span: Span,
     pub cur: TokenAndSpan,
     /// Peeked token
-    pub next: Option<NextTokenAndSpan>,
+    pub next: Option<NextTokenAndSpan<'a>>,
 }
 
-impl<I: Tokens> Buffer<I> {
-    pub fn expect_word_token_value(&mut self) -> MaybeSubUtf8 {
+impl<'a, I: Tokens<'a>> Buffer<'a, I> {
+    pub fn expect_word_token_value(&mut self) -> Atom<'a> {
         let Some(crate::lexer::TokenValue::Word(word)) = self.iter.take_token_value() else {
             unreachable!()
         };
         word
     }
 
-    pub fn expect_word_token_value_ref(&self) -> MaybeSubUtf8 {
+    pub fn expect_word_token_value_ref(&self) -> Atom<'a> {
         let Some(crate::lexer::TokenValue::Word(word)) = self.iter.get_token_value() else {
             unreachable!("token_value: {:?}", self.iter.get_token_value())
         };
@@ -113,21 +116,21 @@ impl<I: Tokens> Buffer<I> {
         value
     }
 
-    pub fn expect_string_token_value(&mut self) -> MaybeSubWtf8 {
+    pub fn expect_string_token_value(&mut self) -> Wtf8Atom<'a> {
         let Some(crate::lexer::TokenValue::Str(value)) = self.iter.take_token_value() else {
             unreachable!()
         };
         value
     }
 
-    pub fn expect_jsx_token_value(&mut self) -> MaybeSubUtf8 {
+    pub fn expect_jsx_token_value(&mut self) -> Atom<'a> {
         let Some(crate::lexer::TokenValue::JsxText(value)) = self.iter.take_token_value() else {
             unreachable!()
         };
         value
     }
 
-    pub fn expect_bigint_token_value(&mut self) -> Box<num_bigint::BigInt> {
+    pub fn expect_bigint_token_value(&mut self) -> Atom<'a> {
         let Some(crate::lexer::TokenValue::BigInt(value)) = self.iter.take_token_value() else {
             unreachable!()
         };
@@ -141,7 +144,7 @@ impl<I: Tokens> Buffer<I> {
         exp_end
     }
 
-    pub fn expect_template_token_value(&mut self) -> LexResult<MaybeSubWtf8> {
+    pub fn expect_template_token_value(&mut self) -> LexResult<Wtf8Atom<'a>> {
         let Some(crate::lexer::TokenValue::Template(cooked)) = self.iter.take_token_value() else {
             unreachable!()
         };
@@ -155,7 +158,7 @@ impl<I: Tokens> Buffer<I> {
         error
     }
 
-    pub fn get_token_value(&self) -> Option<&TokenValue> {
+    pub fn get_token_value(&self) -> Option<&TokenValue<'a>> {
         self.iter.get_token_value()
     }
 
@@ -210,7 +213,7 @@ impl<I: Tokens> Buffer<I> {
     }
 }
 
-impl<I: Tokens> Buffer<I> {
+impl<'a, I: Tokens<'a>> Buffer<'a, I> {
     pub fn new(lexer: I) -> Self {
         let start_pos = lexer.start_pos();
         let prev_span = Span::new(start_pos, start_pos);
@@ -228,17 +231,17 @@ impl<I: Tokens> Buffer<I> {
     }
 
     #[inline(always)]
-    pub fn next(&self) -> Option<&NextTokenAndSpan> {
+    pub fn next(&self) -> Option<&NextTokenAndSpan<'a>> {
         self.next.as_ref()
     }
 
     #[inline(always)]
-    pub fn set_next(&mut self, token: Option<NextTokenAndSpan>) {
+    pub fn set_next(&mut self, token: Option<NextTokenAndSpan<'a>>) {
         self.next = token;
     }
 
     #[inline(always)]
-    pub fn next_mut(&mut self) -> &mut Option<NextTokenAndSpan> {
+    pub fn next_mut(&mut self) -> &mut Option<NextTokenAndSpan<'a>> {
         &mut self.next
     }
 
@@ -315,7 +318,7 @@ impl<I: Tokens> Buffer<I> {
         self.set_cur(next);
     }
 
-    pub fn expect_word_token_and_bump(&mut self) -> MaybeSubUtf8 {
+    pub fn expect_word_token_and_bump(&mut self) -> Atom<'a> {
         let cur = self.cur();
         let word = if cur == Token::Ident {
             self.expect_word_token_value()
@@ -326,14 +329,14 @@ impl<I: Tokens> Buffer<I> {
         word
     }
 
-    pub fn expect_shebang_token_and_bump(&mut self) -> MaybeSubUtf8 {
+    pub fn expect_shebang_token_and_bump(&mut self) -> Atom<'a> {
         let cur = self.cur();
         let ret = cur.take_shebang(self);
         self.bump();
         ret
     }
 
-    pub fn expect_jsx_name_token_and_bump(&mut self) -> MaybeSubUtf8 {
+    pub fn expect_jsx_name_token_and_bump(&mut self) -> Atom<'a> {
         let cur = self.cur();
         let word = cur.take_jsx_name(self);
         self.bump();
@@ -355,7 +358,7 @@ impl<I: Tokens> Buffer<I> {
     }
 }
 
-impl<I: Tokens> Buffer<I> {
+impl<'a, I: Tokens<'a>> Buffer<'a, I> {
     pub fn had_line_break_before_cur(&self) -> bool {
         self.cur.had_line_break
     }

@@ -1,15 +1,17 @@
-use std::mem;
-
+use crate::Span;
+use swc_experimental_allocator::boxed::Box;
+use swc_experimental_allocator::vec::Vec;
 use swc_experimental_ast_macros::ast;
 
-use crate::{Ast, ExtraData, node_id::ExtraDataCompact};
+use crate::ast::{Class, Expr, Function, Ident, Pat};
 
 #[ast]
-pub enum Decl {
-    Class(ClassDecl),
-    Fn(FnDecl),
-    Var(VarDecl),
-    Using(UsingDecl),
+#[derive(Debug)]
+pub enum Decl<'a> {
+    Class(Box<'a, ClassDecl<'a>>),
+    Fn(Box<'a, FnDecl<'a>>),
+    Var(Box<'a, VarDecl<'a>>),
+    Using(Box<'a, UsingDecl<'a>>),
     // TsInterface(Box<TsInterfaceDecl>),
     // TsTypeAlias(Box<TsTypeAliasDecl>),
     // TsEnum(Box<TsEnumDecl>),
@@ -17,24 +19,28 @@ pub enum Decl {
 }
 
 #[ast]
-pub struct FnDecl {
-    ident: Ident,
-    declare: bool,
-    function: Function,
+#[derive(Debug)]
+pub struct FnDecl<'a> {
+    pub ident: Box<'a, Ident<'a>>,
+    pub declare: bool,
+    pub function: Box<'a, Function<'a>>,
 }
 
 #[ast]
-pub struct ClassDecl {
-    ident: Ident,
-    declare: bool,
-    class: Class,
+#[derive(Debug)]
+pub struct ClassDecl<'a> {
+    pub ident: Box<'a, Ident<'a>>,
+    pub declare: bool,
+    pub class: Box<'a, Class<'a>>,
 }
 
 #[ast]
-pub struct VarDecl {
-    kind: VarDeclKind,
-    declare: bool,
-    decls: Vec<VarDeclarator>,
+#[derive(Debug)]
+pub struct VarDecl<'a> {
+    pub span: Span,
+    pub kind: VarDeclKind,
+    pub declare: bool,
+    pub decls: Vec<'a, Box<'a, VarDeclarator<'a>>>,
 }
 
 #[repr(u8)]
@@ -45,25 +51,19 @@ pub enum VarDeclKind {
     Const,
 }
 
-impl ExtraDataCompact for VarDeclKind {
-    fn to_extra_data(self) -> ExtraData {
-        ExtraData { other: self as u64 }
-    }
-
-    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast) -> Self {
-        unsafe { mem::transmute(data.other as u8) }
-    }
-}
-
 #[ast]
-pub struct VarDeclarator {
-    name: Pat,
-    init: Option<Expr>,
+#[derive(Debug)]
+pub struct VarDeclarator<'a> {
+    pub span: Span,
+    pub name: Pat<'a>,
+    pub init: Option<Expr<'a>>,
     // pub definite: bool,
 }
 
 #[ast]
-pub struct UsingDecl {
-    is_await: bool,
-    decls: Vec<VarDeclarator>,
+#[derive(Debug)]
+pub struct UsingDecl<'a> {
+    pub span: Span,
+    pub is_await: bool,
+    pub decls: Vec<'a, Box<'a, VarDeclarator<'a>>>,
 }

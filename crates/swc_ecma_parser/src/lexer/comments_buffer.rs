@@ -1,10 +1,10 @@
 use swc_experimental_ecma_ast::Comment;
 
 #[derive(Debug, Clone)]
-pub struct BufferedComment {
+pub struct BufferedComment<'a> {
     pub kind: BufferedCommentKind,
     pub pos: u32,
-    pub comment: Comment,
+    pub comment: Comment<'a>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -14,9 +14,9 @@ pub enum BufferedCommentKind {
 }
 
 #[derive(Default, Clone)]
-pub struct CommentsBuffer {
-    comments: Vec<BufferedComment>,
-    pending_leading: Vec<Comment>,
+pub struct CommentsBuffer<'a> {
+    comments: Vec<BufferedComment<'a>>,
+    pending_leading: Vec<Comment<'a>>,
 }
 
 #[derive(Debug, Default)]
@@ -25,7 +25,7 @@ pub struct CommentsBufferCheckpoint {
     pending_leading: usize,
 }
 
-impl CommentsBuffer {
+impl CommentsBuffer<'_> {
     pub fn new() -> Self {
         Self::default()
     }
@@ -43,14 +43,14 @@ impl CommentsBuffer {
     }
 }
 
-impl CommentsBuffer {
+impl<'a> CommentsBuffer<'a> {
     #[inline(always)]
-    pub fn push_comment(&mut self, comment: BufferedComment) {
+    pub fn push_comment(&mut self, comment: BufferedComment<'a>) {
         self.comments.push(comment);
     }
 
     #[inline(always)]
-    pub fn push_pending(&mut self, comment: Comment) {
+    pub fn push_pending(&mut self, comment: Comment<'a>) {
         self.pending_leading.push(comment);
     }
 
@@ -81,7 +81,7 @@ impl CommentsBuffer {
     }
 
     #[inline(always)]
-    pub fn take_comments(&mut self) -> impl Iterator<Item = BufferedComment> + '_ {
+    pub fn take_comments(&mut self) -> impl Iterator<Item = BufferedComment<'a>> + '_ {
         self.comments.drain(..)
     }
 }

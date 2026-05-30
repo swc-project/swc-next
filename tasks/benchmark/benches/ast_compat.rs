@@ -3,7 +3,8 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use criterion::{Bencher, Criterion, criterion_group, criterion_main};
 use swc_core::common::{BytePos, GLOBALS, Globals, Mark};
-use swc_experimental_ecma_ast::{Ast, StringAllocator};
+use swc_experimental_allocator::{Allocator, boxed::Box as AstBox};
+use swc_experimental_ecma_ast::Program;
 
 fn bench_legacy(b: &mut Bencher, src: &'static str) {
     use swc_core::ecma::parser::{Parser, StringInput, Syntax, lexer::Lexer};
@@ -31,18 +32,25 @@ fn bench_new(b: &mut Bencher, src: &'static str) {
     use swc_experimental_ecma_semantic::resolver::resolver;
 
     b.iter(|| {
+        let allocator = Allocator::new();
         let input = StringSource::new(src);
-        let mut ast = Ast::new(input.source_len(), StringAllocator::default());
         let mut parser = Parser::new(
-            &mut ast,
+            &allocator,
             swc_experimental_ecma_parser::Syntax::Es(Default::default()),
             input,
             None,
         );
         let module = parser.parse_module().unwrap();
+        let program = Program::Module(allocator.boxed(module));
 
-        let semantic = resolver(module, &ast);
-        swc_experimental_ecma_ast_compat::AstCompat::new(&ast, &semantic).compat_module(module);
+        let semantic = resolver(&program);
+        match program {
+            Program::Module(module) => {
+                swc_experimental_ecma_ast_compat::AstCompat::new(&semantic)
+                    .compat_module(AstBox::into_inner(module));
+            }
+            Program::Script(_) => unreachable!(),
+        }
     });
 }
 
@@ -52,21 +60,25 @@ fn bench_new_unsafe(b: &mut Bencher, src: &'static str) {
     use swc_experimental_ecma_semantic::resolver::resolver;
 
     b.iter(|| {
+        let allocator = Allocator::new();
         let input = StringSource::new(src);
-        let mut ast = Ast::new(input.source_len(), StringAllocator::default());
         let mut parser = Parser::new(
-            &mut ast,
+            &allocator,
             swc_experimental_ecma_parser::Syntax::Es(Default::default()),
             input,
             None,
         );
         let module = parser.parse_module().unwrap();
+        let program = Program::Module(allocator.boxed(module));
 
-        let semantic = resolver(module, &ast);
-        std::hint::black_box(
-            swc_experimental_ecma_ast_compat::UnsafeArenaAstCompat::new(&ast, &semantic)
-                .compat_module(module),
-        )
+        let semantic = resolver(&program);
+        match program {
+            Program::Module(module) => std::hint::black_box(
+                swc_experimental_ecma_ast_compat::UnsafeArenaAstCompat::new(&semantic)
+                    .compat_module(AstBox::into_inner(module)),
+            ),
+            Program::Script(_) => unreachable!(),
+        }
     });
 }
 

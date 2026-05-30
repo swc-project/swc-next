@@ -1,26 +1,22 @@
 use std::{fmt::Write, fs};
 
-use swc_experimental_ecma_ast::{Ast, StringAllocator, Visit};
-use swc_experimental_ecma_parser::{EsSyntax, Parser, StringSource, Syntax};
+use swc_experimental_allocator::Allocator;
+use swc_experimental_ecma_ast::{EsVersion, Ident, Visit};
+use swc_experimental_ecma_parser::{EsSyntax, Syntax, parse_file_as_program};
 use swc_experimental_ecma_semantic::resolver::{Semantic, resolver};
 
-struct ScopeDisplayVisitor<'a> {
-    ast: &'a Ast,
+struct ScopeDisplayVisitor<'a, 'b> {
     semantic: &'a Semantic,
-    output: String,
+    output: &'b mut String,
 }
 
-impl Visit for ScopeDisplayVisitor<'_> {
-    fn ast(&self) -> &Ast {
-        self.ast
-    }
-
-    fn visit_ident(&mut self, node: swc_experimental_ecma_ast::Ident) {
+impl<'a> Visit<'a> for ScopeDisplayVisitor<'_, '_> {
+    fn visit_ident(&mut self, node: &Ident) {
         let _ = writeln!(
             self.output,
             "{} ({:?}) -> {:?}",
-            self.ast.get_utf8(node.sym(self.ast)),
-            node.sym(self.ast),
+            node.sym,
+            node.sym,
             self.semantic.node_scope(node),
         );
     }
@@ -32,17 +28,16 @@ fn main() {
         let source_text = fs::read_to_string(path).unwrap();
 
         let syntax = Syntax::Es(EsSyntax::default());
-        let input = StringSource::new(&source_text);
 
-        let mut ast = Ast::new(input.source_len(), StringAllocator::default());
-        let mut parser = Parser::new(&mut ast, syntax, input, None);
-        let root = parser.parse_program().unwrap();
-        let semantic = resolver(root, &ast);
+        let bump = Allocator::new();
+        let root =
+            parse_file_as_program(&bump, &source_text, syntax, EsVersion::EsNext, None).unwrap();
+        let semantic = resolver(&root);
 
+        let mut output = String::new();
         let mut visitor = ScopeDisplayVisitor {
-            ast: &ast,
             semantic: &semantic,
-            output: String::new(),
+            output: &mut output,
         };
 
         let _ = writeln!(
@@ -55,12 +50,12 @@ fn main() {
             "Unresolved: {:?}",
             semantic.unresolved_scope_id()
         );
-        visitor.visit_program(root);
+        visitor.visit_program(&root);
 
         let name = path.file_stem().unwrap().to_str().unwrap();
 
         insta::with_settings!({ snapshot_path => path.parent().unwrap(), prepend_module_to_snapshot => false, snapshot_suffix => "", omit_expression => true }, {
-            insta::assert_snapshot!(name, visitor.output);
+            insta::assert_snapshot!(name, output);
         });
     });
 }

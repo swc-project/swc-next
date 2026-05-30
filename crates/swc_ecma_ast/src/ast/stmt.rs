@@ -1,169 +1,222 @@
+use std::cell::Cell;
+
+use crate::{Span, semantic::ScopeId};
+use swc_experimental_allocator::boxed::Box;
+use swc_experimental_allocator::vec::Vec;
 use swc_experimental_ast_macros::ast;
 
-use crate::{
-    Ast, Lit,
-    ast::{Decl, Expr, Pat, UsingDecl, VarDecl},
-};
+use crate::ast::{Decl, Expr, Ident, Lit, Pat, UsingDecl, VarDecl};
 
 #[ast]
-pub struct BlockStmt {
-    stmts: Vec<Stmt>,
+#[derive(Debug)]
+pub struct BlockStmt<'a> {
+    pub span: Span,
+    pub stmts: Vec<'a, Stmt<'a>>,
+    pub scope_id: Cell<Option<ScopeId>>,
 }
 
 #[ast]
-pub enum Stmt {
-    Block(BlockStmt),
-    Empty(EmptyStmt),
-    Debugger(DebuggerStmt),
-    With(WithStmt),
-    Return(ReturnStmt),
-    Labeled(LabeledStmt),
-    Break(BreakStmt),
-    Continue(ContinueStmt),
-    If(IfStmt),
-    Switch(SwitchStmt),
-    Throw(ThrowStmt),
-    Try(TryStmt),
-    While(WhileStmt),
-    DoWhile(DoWhileStmt),
-    For(ForStmt),
-    ForIn(ForInStmt),
-    ForOf(ForOfStmt),
-    Decl(Decl),
-    Expr(ExprStmt),
+#[derive(Debug)]
+pub enum Stmt<'a> {
+    Block(Box<'a, BlockStmt<'a>>),
+    Empty(Box<'a, EmptyStmt>),
+    Debugger(Box<'a, DebuggerStmt>),
+    With(Box<'a, WithStmt<'a>>),
+    Return(Box<'a, ReturnStmt<'a>>),
+    Labeled(Box<'a, LabeledStmt<'a>>),
+    Break(Box<'a, BreakStmt<'a>>),
+    Continue(Box<'a, ContinueStmt<'a>>),
+    If(Box<'a, IfStmt<'a>>),
+    Switch(Box<'a, SwitchStmt<'a>>),
+    Throw(Box<'a, ThrowStmt<'a>>),
+    Try(Box<'a, TryStmt<'a>>),
+    While(Box<'a, WhileStmt<'a>>),
+    DoWhile(Box<'a, DoWhileStmt<'a>>),
+    For(Box<'a, ForStmt<'a>>),
+    ForIn(Box<'a, ForInStmt<'a>>),
+    ForOf(Box<'a, ForOfStmt<'a>>),
+    Decl(Box<'a, Decl<'a>>),
+    Expr(Box<'a, ExprStmt<'a>>),
 }
 
 #[ast]
-pub struct ExprStmt {
-    expr: Expr,
+#[derive(Debug)]
+pub struct ExprStmt<'a> {
+    pub span: Span,
+    pub expr: Expr<'a>,
 }
 
 #[ast]
-pub struct EmptyStmt {}
-
-#[ast]
-pub struct DebuggerStmt {}
-
-#[ast]
-pub struct WithStmt {
-    obj: Expr,
-    body: Stmt,
+#[derive(Debug)]
+pub struct EmptyStmt {
+    pub span: Span,
 }
 
 #[ast]
-pub struct ReturnStmt {
-    arg: Option<Expr>,
+#[derive(Debug)]
+pub struct DebuggerStmt {
+    pub span: Span,
 }
 
 #[ast]
-pub struct LabeledStmt {
-    label: Ident,
-    body: Stmt,
+#[derive(Debug)]
+pub struct WithStmt<'a> {
+    pub span: Span,
+    pub obj: Expr<'a>,
+    pub body: Stmt<'a>,
 }
 
 #[ast]
-pub struct BreakStmt {
-    label: Option<Ident>,
+#[derive(Debug)]
+pub struct ReturnStmt<'a> {
+    pub span: Span,
+    pub arg: Option<Expr<'a>>,
 }
 
 #[ast]
-pub struct ContinueStmt {
-    label: Option<Ident>,
+#[derive(Debug)]
+pub struct LabeledStmt<'a> {
+    pub span: Span,
+    pub label: Box<'a, Ident<'a>>,
+    pub body: Stmt<'a>,
 }
 
 #[ast]
-pub struct IfStmt {
-    test: Expr,
-    cons: Stmt,
-    alt: Option<Stmt>,
+#[derive(Debug)]
+pub struct BreakStmt<'a> {
+    pub span: Span,
+    pub label: Option<Box<'a, Ident<'a>>>,
 }
 
 #[ast]
-pub struct SwitchStmt {
-    discriminant: Expr,
-    cases: Vec<SwitchCase>,
+#[derive(Debug)]
+pub struct ContinueStmt<'a> {
+    pub span: Span,
+    pub label: Option<Box<'a, Ident<'a>>>,
 }
 
 #[ast]
-pub struct ThrowStmt {
-    arg: Expr,
+#[derive(Debug)]
+pub struct IfStmt<'a> {
+    pub span: Span,
+    pub test: Expr<'a>,
+    pub cons: Stmt<'a>,
+    pub alt: Option<Stmt<'a>>,
 }
 
 #[ast]
-pub struct TryStmt {
-    block: BlockStmt,
-    handler: Option<CatchClause>,
-    finalizer: Option<BlockStmt>,
+#[derive(Debug)]
+pub struct SwitchStmt<'a> {
+    pub span: Span,
+    pub discriminant: Expr<'a>,
+    pub cases: Vec<'a, Box<'a, SwitchCase<'a>>>,
 }
 
 #[ast]
-pub struct WhileStmt {
-    test: Expr,
-    body: Stmt,
+#[derive(Debug)]
+pub struct ThrowStmt<'a> {
+    pub span: Span,
+    pub arg: Expr<'a>,
 }
 
 #[ast]
-pub struct DoWhileStmt {
-    test: Expr,
-    body: Stmt,
+#[derive(Debug)]
+pub struct TryStmt<'a> {
+    pub span: Span,
+    pub block: Box<'a, BlockStmt<'a>>,
+    pub handler: Option<Box<'a, CatchClause<'a>>>,
+    pub finalizer: Option<Box<'a, BlockStmt<'a>>>,
 }
 
 #[ast]
-pub struct ForStmt {
-    init: Option<VarDeclOrExpr>,
-    test: Option<Expr>,
-    update: Option<Expr>,
-    body: Stmt,
+#[derive(Debug)]
+pub struct WhileStmt<'a> {
+    pub span: Span,
+    pub test: Expr<'a>,
+    pub body: Stmt<'a>,
 }
 
 #[ast]
-pub struct ForInStmt {
-    left: ForHead,
-    right: Expr,
-    body: Stmt,
+#[derive(Debug)]
+pub struct DoWhileStmt<'a> {
+    pub span: Span,
+    pub test: Expr<'a>,
+    pub body: Stmt<'a>,
 }
 
 #[ast]
-pub struct ForOfStmt {
-    is_await: bool,
-    left: ForHead,
-    right: Expr,
-    body: Stmt,
+#[derive(Debug)]
+pub struct ForStmt<'a> {
+    pub span: Span,
+    pub init: Option<VarDeclOrExpr<'a>>,
+    pub test: Option<Expr<'a>>,
+    pub update: Option<Expr<'a>>,
+    pub body: Stmt<'a>,
 }
 
 #[ast]
-pub struct SwitchCase {
-    test: Option<Expr>,
-    cons: Vec<Stmt>,
+#[derive(Debug)]
+pub struct ForInStmt<'a> {
+    pub span: Span,
+    pub left: ForHead<'a>,
+    pub right: Expr<'a>,
+    pub body: Stmt<'a>,
 }
 
 #[ast]
-pub struct CatchClause {
-    param: Option<Pat>,
-    body: BlockStmt,
+#[derive(Debug)]
+pub struct ForOfStmt<'a> {
+    pub span: Span,
+    pub is_await: bool,
+    pub left: ForHead<'a>,
+    pub right: Expr<'a>,
+    pub body: Stmt<'a>,
 }
 
 #[ast]
-pub enum ForHead {
-    VarDecl(VarDecl),
-    UsingDecl(UsingDecl),
-    Pat(Pat),
+#[derive(Debug)]
+pub struct SwitchCase<'a> {
+    pub span: Span,
+    pub test: Option<Expr<'a>>,
+    pub cons: Vec<'a, Stmt<'a>>,
 }
 
 #[ast]
-pub enum VarDeclOrExpr {
-    VarDecl(VarDecl),
-    Expr(Expr),
+#[derive(Debug)]
+pub struct CatchClause<'a> {
+    pub span: Span,
+    pub param: Option<Pat<'a>>,
+    pub body: Box<'a, BlockStmt<'a>>,
 }
 
-impl Stmt {
-    pub fn is_use_strict(&self, ast: &Ast) -> bool {
+#[ast]
+#[derive(Debug)]
+pub enum ForHead<'a> {
+    VarDecl(Box<'a, VarDecl<'a>>),
+    UsingDecl(Box<'a, UsingDecl<'a>>),
+    Pat(Box<'a, Pat<'a>>),
+}
+
+#[ast]
+#[derive(Debug)]
+pub enum VarDeclOrExpr<'a> {
+    VarDecl(Box<'a, VarDecl<'a>>),
+    Expr(Box<'a, Expr<'a>>),
+}
+
+impl Stmt<'_> {
+    pub fn is_use_strict(&self) -> bool {
         match self {
-            Stmt::Expr(expr) => match expr.expr(ast) {
-                Expr::Lit(Lit::Str(s)) => {
-                    let raw = ast.get_optional_utf8(s.raw(ast));
-                    matches!(raw, Some(value) if value == "\"use strict\"" || value == "'use strict'")
-                }
+            Stmt::Expr(expr) => match &expr.expr {
+                Expr::Lit(lit) => match &**lit {
+                    Lit::Str(s) => {
+                        matches!(
+                            s.raw.as_ref().map(|raw| raw.as_str()),
+                            Some("\"use strict\"" | "'use strict'")
+                        )
+                    }
+                    _ => false,
+                },
                 _ => false,
             },
             _ => false,
@@ -172,10 +225,7 @@ impl Stmt {
 
     /// Returns true if the statement does not prevent the directives below
     /// `self` from being directives.
-    pub fn can_precede_directive(&self, ast: &Ast) -> bool {
-        match self {
-            Stmt::Expr(expr) => matches!(expr.expr(ast), Expr::Lit(Lit::Str(_))),
-            _ => false,
-        }
+    pub fn can_precede_directive(&self) -> bool {
+        matches!(self, Stmt::Expr(expr) if matches!(&expr.expr, Expr::Lit(lit) if matches!(&**lit, Lit::Str(_))))
     }
 }

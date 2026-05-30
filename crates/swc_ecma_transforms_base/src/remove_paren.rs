@@ -3,19 +3,22 @@ use std::{hash::BuildHasherDefault, ops::RangeFull};
 use indexmap::IndexMap;
 use rustc_hash::FxHasher;
 use swc_experimental_ecma_ast::{
-    Ast, Comments, Expr, GetSpan, SimpleAssignTarget, Span, VisitMut, VisitMutWith,
+    AstBuilder, Comments, Expr, GetSpan, SimpleAssignTarget, Span, VisitMut, VisitMutWith,
 };
 
-pub fn remove_paren<'ast, N: VisitMutWith<ParenRemover<'ast>>>(
-    root: N,
-    ast: &'ast mut Ast,
+pub fn remove_paren<'ast, N>(
+    mut root: N,
+    ast: AstBuilder<'ast>,
     comments: Option<&mut Comments>,
-) -> N {
+) -> N
+where
+    N: VisitMutWith<'ast, ParenRemover<'ast>>,
+{
     let mut visitor = ParenRemover {
         ast,
         span_map: Default::default(),
     };
-    let root = root.visit_mut_with(&mut visitor);
+    root.visit_mut_with(&mut visitor);
     if let Some(c) = comments {
         for (to, from) in visitor.span_map.drain(RangeFull).rev() {
             c.move_leading(from.start, to.start);
@@ -26,7 +29,7 @@ pub fn remove_paren<'ast, N: VisitMutWith<ParenRemover<'ast>>>(
 }
 
 pub struct ParenRemover<'a> {
-    ast: &'a mut Ast,
+    ast: AstBuilder<'a>,
     /// A hash map to preserve original span.
     ///
     /// Key is span of inner expression, and value is span of the paren
@@ -34,33 +37,27 @@ pub struct ParenRemover<'a> {
     span_map: IndexMap<Span, Span, BuildHasherDefault<FxHasher>>,
 }
 
-impl VisitMut for ParenRemover<'_> {
-    fn ast(&mut self) -> &mut Ast {
-        self.ast
-    }
-
-    fn visit_mut_expr(&mut self, node: Expr) -> Expr {
-        let node = node.visit_mut_children_with(self);
+impl<'a> VisitMut<'a> for ParenRemover<'a> {
+    fn visit_mut_expr(&mut self, node: &mut Expr<'a>) {
+        node.visit_mut_children_with(self);
         if let Expr::Paren(expr) = node {
-            let paren_span = expr.span(self.ast);
-            let inner_expr = expr.expr(self.ast);
-            let expr_span = inner_expr.span(self.ast);
+            let paren_span = expr.span();
+            let inner_expr = std::mem::replace(&mut expr.expr, self.ast.expr_invalid());
+            let expr_span = inner_expr.span();
             self.span_map.insert(expr_span, paren_span);
-            return inner_expr;
+            *node = inner_expr;
         }
-        node
     }
 
-    fn visit_mut_simple_assign_target(&mut self, node: SimpleAssignTarget) -> SimpleAssignTarget {
-        let node = node.visit_mut_children_with(self);
+    fn visit_mut_simple_assign_target(&mut self, node: &mut SimpleAssignTarget<'a>) {
+        node.visit_mut_children_with(self);
         if let SimpleAssignTarget::Paren(expr) = node {
-            let paren_expr = expr.span(self.ast);
-            let inner_expr = expr.expr(self.ast);
-            let expr_span = inner_expr.span(self.ast);
-            let target = SimpleAssignTarget::try_from_expr(self.ast, inner_expr).unwrap();
-            self.span_map.insert(expr_span, paren_expr);
-            return target;
+            let paren_span = expr.span();
+            let inner_expr = std::mem::replace(&mut expr.expr, self.ast.expr_invalid());
+            let expr_span = inner_expr.span();
+            let target = SimpleAssignTarget::try_from_expr(inner_expr, self.ast.allocator).unwrap();
+            self.span_map.insert(expr_span, paren_span);
+            *node = target;
         }
-        node
     }
 }

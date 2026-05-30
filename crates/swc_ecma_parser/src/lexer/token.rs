@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
 use swc_experimental_ecma_ast::{AssignOp, Span};
 
 use super::LexResult;
@@ -7,22 +8,21 @@ use crate::{
     Context, Lexer,
     error::Error,
     input::{Buffer, Tokens},
-    lexer::{MaybeSubUtf8, MaybeSubWtf8},
 };
 
 #[derive(Debug, Clone)]
-pub enum TokenValue {
+pub enum TokenValue<'a> {
     /// unknown ident, jsx name and shebang
-    Word(MaybeSubUtf8),
-    Template(LexResult<MaybeSubWtf8>),
+    Word(Atom<'a>),
+    Template(LexResult<Wtf8Atom<'a>>),
     // string
-    Str(MaybeSubWtf8),
+    Str(Wtf8Atom<'a>),
     // jsx text
-    JsxText(MaybeSubUtf8),
+    JsxText(Atom<'a>),
     // regexp
     Regex(u32),
     Num(f64),
-    BigInt(Box<num_bigint::BigInt>),
+    BigInt(Atom<'a>),
     Error(crate::error::Error),
 }
 
@@ -320,18 +320,18 @@ impl Token {
 
 impl<'a> Token {
     #[inline(always)]
-    pub fn take_jsx_name<I: Tokens>(self, buffer: &mut Buffer<I>) -> MaybeSubUtf8 {
+    pub fn take_jsx_name<I: Tokens<'a>>(self, buffer: &mut Buffer<'a, I>) -> Atom<'a> {
         buffer.expect_word_token_value()
     }
 
     #[inline(always)]
-    pub fn str(value: MaybeSubWtf8, lexer: &mut crate::Lexer<'a>) -> Self {
+    pub fn str(value: Wtf8Atom<'a>, lexer: &mut crate::Lexer<'a>) -> Self {
         lexer.set_token_value(Some(TokenValue::Str(value)));
         Token::Str
     }
 
     #[inline(always)]
-    pub fn template(cooked: LexResult<MaybeSubWtf8>, lexer: &mut crate::Lexer<'a>) -> Self {
+    pub fn template(cooked: LexResult<Wtf8Atom<'a>>, lexer: &mut crate::Lexer<'a>) -> Self {
         lexer.set_token_value(Some(TokenValue::Template(cooked)));
         Token::Template
     }
@@ -349,46 +349,46 @@ impl<'a> Token {
     }
 
     #[inline(always)]
-    pub fn bigint(value: Box<num_bigint::BigInt>, lexer: &mut crate::Lexer<'a>) -> Self {
+    pub fn bigint(value: Atom<'a>, lexer: &mut crate::Lexer<'a>) -> Self {
         lexer.set_token_value(Some(TokenValue::BigInt(value)));
         Self::BigInt
     }
 
     #[inline(always)]
-    pub fn unknown_ident(value: MaybeSubUtf8, lexer: &mut crate::Lexer<'a>) -> Self {
+    pub fn unknown_ident(value: Atom<'a>, lexer: &mut crate::Lexer<'a>) -> Self {
         lexer.set_token_value(Some(TokenValue::Word(value)));
         Token::Ident
     }
 
     #[inline(always)]
-    pub fn take_error<I: Tokens>(self, buffer: &mut Buffer<I>) -> Error {
+    pub fn take_error<I: Tokens<'a>>(self, buffer: &mut Buffer<'a, I>) -> Error {
         buffer.expect_error_token_value()
     }
 
     #[inline(always)]
-    pub fn take_word<I: Tokens>(self, buffer: &Buffer<I>) -> MaybeSubUtf8 {
+    pub fn take_word<I: Tokens<'a>>(self, buffer: &Buffer<'a, I>) -> Atom<'a> {
         let span = buffer.cur.span;
-        MaybeSubUtf8::Inline((span.start, span.end))
+        Atom::new_in(buffer.iter.read_string(span), buffer.iter.allocator())
     }
 
     #[inline(always)]
-    pub fn take_unknown_ident<I: Tokens>(self, buffer: &mut Buffer<I>) -> MaybeSubUtf8 {
+    pub fn take_unknown_ident<I: Tokens<'a>>(self, buffer: &mut Buffer<'a, I>) -> Atom<'a> {
         buffer.expect_word_token_value()
     }
 
     #[inline(always)]
-    pub fn take_unknown_ident_ref<'b, I: Tokens>(&'b self, buffer: &'b Buffer<I>) -> MaybeSubUtf8 {
+    pub fn take_unknown_ident_ref<I: Tokens<'a>>(&self, buffer: &Buffer<'a, I>) -> Atom<'a> {
         buffer.expect_word_token_value_ref()
     }
 
     #[inline(always)]
-    pub fn shebang(value: MaybeSubUtf8, lexer: &mut Lexer) -> Self {
+    pub fn shebang(value: Atom<'a>, lexer: &mut Lexer<'a>) -> Self {
         lexer.set_token_value(Some(TokenValue::Word(value)));
         Token::Shebang
     }
 
     #[inline(always)]
-    pub fn take_shebang<I: Tokens>(self, buffer: &mut Buffer<I>) -> MaybeSubUtf8 {
+    pub fn take_shebang<I: Tokens<'a>>(self, buffer: &mut Buffer<'a, I>) -> Atom<'a> {
         buffer.expect_word_token_value()
     }
 }
@@ -877,12 +877,12 @@ impl TokenAndSpan {
 }
 
 #[derive(Clone)]
-pub struct NextTokenAndSpan {
+pub struct NextTokenAndSpan<'a> {
     pub token_and_span: TokenAndSpan,
-    pub value: Option<TokenValue>,
+    pub value: Option<TokenValue<'a>>,
 }
 
-impl NextTokenAndSpan {
+impl NextTokenAndSpan<'_> {
     #[inline(always)]
     pub fn token(&self) -> Token {
         self.token_and_span.token

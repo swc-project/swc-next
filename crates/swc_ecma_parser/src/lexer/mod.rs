@@ -3,17 +3,20 @@
 use std::{borrow::Cow, char};
 
 use either::Either::{self, Left, Right};
-use num_bigint::BigInt as BigIntValue;
+use num_bigint::BigInt as NumBigInt;
 use rustc_hash::FxHashMap;
 use smartstring::{LazyCompact, SmartString};
-use swc_atoms::{Atom, wtf8::CodePoint};
+use swc_experimental_allocator::{
+    Allocator,
+    atom::{Atom, Wtf8Atom},
+    wtf8::{CodePoint, Wtf8Buf},
+};
 use swc_experimental_ecma_ast::{
-    Comment, CommentKind, Comments, EsVersion, Span, StringAllocator, is_valid_ascii_continue,
-    is_valid_ascii_start, is_valid_non_ascii_continue, is_valid_non_ascii_start,
+    Comment, CommentKind, Comments, EsVersion, Span, is_valid_ascii_continue, is_valid_ascii_start,
+    is_valid_non_ascii_continue, is_valid_non_ascii_start,
 };
 
 use self::table::{BYTE_HANDLERS, ByteHandler};
-use crate::lexer::string_builder::{StringBuilder, Wtf8Builder};
 use crate::{
     Context, Syntax, byte_search,
     error::{Error, SyntaxError},
@@ -40,13 +43,11 @@ mod number;
 pub(crate) mod search;
 pub(crate) mod source;
 mod state;
-mod string_builder;
 mod table;
 pub(crate) mod token;
 mod whitespace;
 
 pub(crate) use state::TokenFlags;
-pub(crate) use string_builder::{MaybeSubUtf8, MaybeSubWtf8};
 pub(crate) use token::{NextTokenAndSpan, Token, TokenAndSpan, TokenValue};
 
 // ===== Byte match tables for comment scanning =====
@@ -104,7 +105,7 @@ impl From<UnicodeEscape> for CodePoint {
 }
 
 pub type LexResult<T> = Result<T, crate::error::Error>;
-type NumberEither = Either<f64, Box<BigIntValue>>;
+type NumberEither<'a> = Either<f64, Atom<'a>>;
 
 fn remove_underscore(s: &str, has_underscore: bool) -> Cow<'_, str> {
     if has_underscore {
@@ -116,24 +117,38 @@ fn remove_underscore(s: &str, has_underscore: bool) -> Cow<'_, str> {
     }
 }
 
+fn bigint_atom_from_digits<'a>(
+    s: &str,
+    radix: u32,
+    has_underscore: bool,
+    allocator: &'a Allocator,
+) -> Option<Atom<'a>> {
+    let s = remove_underscore(s, has_underscore);
+    if radix == 10 {
+        return Some(Atom::new_in(s.as_ref(), allocator));
+    }
+
+    let value = NumBigInt::parse_bytes(s.as_bytes(), radix)?;
+    Some(Atom::new_in(&value.to_string(), allocator))
+}
+
 pub struct Lexer<'a> {
-    comments: Option<&'a mut Comments>,
+    allocator: &'a Allocator,
+    comments: Option<&'a mut Comments<'a>>,
     /// [Some] if comment comment parsing is enabled. Otherwise [None]
-    comments_buffer: Option<CommentsBuffer>,
+    comments_buffer: Option<CommentsBuffer<'a>>,
 
     pub ctx: Context,
     input: StringSource<'a>,
     start_pos: u32,
 
-    state: State,
+    state: State<'a>,
     token_flags: TokenFlags,
     pub(crate) syntax: SyntaxFlags,
     pub(crate) target: EsVersion,
 
     errors: Vec<Error>,
     module_errors: Vec<Error>,
-
-    sb: StringBuilder,
 }
 
 impl<'a> Lexer<'a> {
@@ -153,12 +168,12 @@ impl<'a> Lexer<'a> {
     }
 
     #[inline(always)]
-    fn state(&self) -> &State {
+    fn state(&self) -> &State<'a> {
         &self.state
     }
 
     #[inline(always)]
-    fn comments_buffer(&self) -> Option<&CommentsBuffer> {
+    fn comments_buffer(&self) -> Option<&CommentsBuffer<'a>> {
         self.comments_buffer.as_ref()
     }
 
@@ -171,19 +186,30 @@ impl<'a> Lexer<'a> {
     unsafe fn input_slice(&mut self, start: u32, end: u32) -> &'a str {
         unsafe { self.input.slice(start, end) }
     }
+
+    #[inline(always)]
+    fn atom_from_slice(&self, start: u32, end: u32) -> Atom<'a> {
+        Atom::new_in(unsafe { self.input.slice(start, end) }, self.allocator)
+    }
+
+    #[inline(always)]
+    fn wtf8_atom_from_slice(&self, start: u32, end: u32) -> Wtf8Atom<'a> {
+        Wtf8Atom::new_in(unsafe { self.input.slice(start, end) }, self.allocator)
+    }
 }
 
 impl<'a> Lexer<'a> {
     pub fn new(
+        allocator: &'a Allocator,
         syntax: Syntax,
         target: EsVersion,
         input: StringSource<'a>,
-        comments: Option<&'a mut Comments>,
-        string_allocator: StringAllocator,
+        comments: Option<&'a mut Comments<'a>>,
     ) -> Self {
         let start_pos = input.cur_pos();
         let comments_buffer = comments.is_some().then(CommentsBuffer::new);
         Lexer {
+            allocator,
             comments,
             comments_buffer,
             ctx: Default::default(),
@@ -195,7 +221,6 @@ impl<'a> Lexer<'a> {
             errors: Default::default(),
             module_errors: Default::default(),
             token_flags: TokenFlags::empty(),
-            sb: StringBuilder::new(string_allocator),
         }
     }
 
@@ -285,7 +310,7 @@ impl<'a> Lexer<'a> {
     }
 }
 
-impl Lexer<'_> {
+impl<'a> Lexer<'a> {
     fn read_token_lt_gt<const C: u8>(&mut self) -> LexResult<Token> {
         let had_line_break_before_last = self.state.had_line_break;
         let start = self.cur_pos();
@@ -372,7 +397,7 @@ impl Lexer<'_> {
 
     fn scan_template_token(&mut self, start: u32, started_with_backtick: bool) -> LexResult<Token> {
         debug_assert!(self.peek() == Some(if started_with_backtick { b'`' } else { b'}' }));
-        let mut cooked = Ok(self.sb.alloc_wtf8());
+        let mut cooked = Ok(Wtf8Buf::new());
         self.bump(1); // `}` or `\``
         let mut cooked_slice_start = self.cur_pos();
         macro_rules! consume_cooked {
@@ -384,7 +409,7 @@ impl Lexer<'_> {
                         // from `self.input`
                         self.input.slice(cooked_slice_start, last_pos)
                     };
-                    cooked.push_str(&mut self.sb, s);
+                    cooked.push_str(s);
                 }
             }};
         }
@@ -392,7 +417,7 @@ impl Lexer<'_> {
         while let Some(c) = self.peek() {
             if c == b'`' {
                 consume_cooked!();
-                let cooked = cooked.map(|cooked| cooked.finish(&mut self.sb));
+                let cooked = cooked.map(|atom| Wtf8Atom::new_in(atom, self.allocator));
                 self.bump(1);
                 return Ok(if started_with_backtick {
                     self.set_token_value(Some(TokenValue::Template(cooked)));
@@ -403,7 +428,7 @@ impl Lexer<'_> {
                 });
             } else if c == b'$' && self.input.peek_2() == Some(b'{') {
                 consume_cooked!();
-                let cooked = cooked.map(|cooked| cooked.finish(&mut self.sb));
+                let cooked = cooked.map(|atom| Wtf8Atom::new_in(atom, self.allocator));
 
                 // Safety: `self.input.peek_2() == Some(b'{')`
                 self.bump(2);
@@ -420,7 +445,7 @@ impl Lexer<'_> {
                 match self.read_escaped_char(true) {
                     Ok(Some(escaped)) => {
                         if let Ok(ref mut cooked) = cooked {
-                            cooked.push(&mut self.sb, escaped);
+                            cooked.push(escaped);
                         }
                     }
                     Ok(None) => {}
@@ -456,7 +481,7 @@ impl Lexer<'_> {
                 self.bump(c_char.len_utf8());
 
                 if let Ok(ref mut cooked) = cooked {
-                    cooked.push_char(&mut self.sb, c);
+                    cooked.push_char(c);
                 }
                 cooked_slice_start = self.cur_pos();
             } else if c <= 0x7f {
@@ -640,7 +665,7 @@ impl<'a> Lexer<'a> {
 
                 if self.comments_buffer().is_some() {
                     let s = unsafe { self.input_slice(slice_start, end) };
-                    let cmt = Comment::new(CommentKind::Line, Span::new(start, end), Atom::new(s));
+                    let cmt = Comment::new(CommentKind::Line, Span::new(start, end), Atom::new_in(s, self.allocator));
 
                     if is_for_next {
                         self.comments_buffer.as_mut().unwrap().push_pending(cmt);
@@ -667,7 +692,11 @@ impl<'a> Lexer<'a> {
                 // Safety: We know that the start and the end are valid
                 self.input_slice_to_cur(slice_start)
             };
-            let cmt = Comment::new(CommentKind::Line, Span::new(start, end), Atom::new(s));
+            let cmt = Comment::new(
+                CommentKind::Line,
+                Span::new(start, end),
+                Atom::new_in(s, self.allocator),
+            );
 
             if is_for_next {
                 self.comments_buffer.as_mut().unwrap().push_pending(cmt);
@@ -754,7 +783,7 @@ impl<'a> Lexer<'a> {
                                         start,
                                         slice_start + pos_offset as u32,
                                     ),
-                                    Atom::new(s),
+                                    Atom::new_in(s, self.allocator),
                                 );
 
                                 if is_for_next {
@@ -939,7 +968,7 @@ impl<'a> Lexer<'a> {
     /// Reads an integer, octal integer, or floating-point number
     fn read_number<const START_WITH_DOT: bool, const START_WITH_ZERO: bool>(
         &mut self,
-    ) -> LexResult<NumberEither> {
+    ) -> LexResult<NumberEither<'a>> {
         debug_assert!(!(START_WITH_DOT && START_WITH_ZERO));
         debug_assert!(self.peek().is_some());
 
@@ -971,8 +1000,10 @@ impl<'a> Lexer<'a> {
 
             // legacy octal number is not allowed in bigint.
             if (!START_WITH_ZERO || lazy_integer.end - lazy_integer.start == 1) && self.eat(b'n') {
-                let bigint_value = num_bigint::BigInt::parse_bytes(s.as_bytes(), 10).unwrap();
-                return Ok(Either::Right(Box::new(bigint_value)));
+                let bigint_value =
+                    bigint_atom_from_digits(s, 10, lazy_integer.has_underscore, self.allocator)
+                        .unwrap();
+                return Ok(Either::Right(bigint_value));
             }
 
             if START_WITH_ZERO {
@@ -1094,7 +1125,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Returns `Left(value)` or `Right(BigInt)`
-    fn read_radix_number<const RADIX: u8>(&mut self) -> LexResult<NumberEither> {
+    fn read_radix_number<const RADIX: u8>(&mut self) -> LexResult<NumberEither<'a>> {
         debug_assert!(
             RADIX == 2 || RADIX == 8 || RADIX == 16,
             "radix should be one of 2, 8, 16, but got {RADIX}"
@@ -1124,7 +1155,8 @@ impl<'a> Lexer<'a> {
                 ));
             }
 
-            let Some(bigint_value) = num_bigint::BigInt::parse_bytes(s.as_bytes(), RADIX as _)
+            let Some(bigint_value) =
+                bigint_atom_from_digits(s, RADIX as _, has_underscore, self.allocator)
             else {
                 // just a fallback in case there is anything we did not catch
                 return Err(Error::new(
@@ -1132,7 +1164,7 @@ impl<'a> Lexer<'a> {
                     SyntaxError::ExpectedDigit { radix: RADIX },
                 ));
             };
-            return Ok(Either::Right(Box::new(bigint_value)));
+            return Ok(Either::Right(bigint_value));
         }
         let s = remove_underscore(s, has_underscore);
         let val = parse_integer::<RADIX>(&s);
@@ -1185,14 +1217,10 @@ impl<'a> Lexer<'a> {
     fn read_jsx_entity(&mut self) -> LexResult<(char, String)> {
         debug_assert!(self.syntax().jsx());
 
-        fn from_code(s: &str, radix: u32) -> LexResult<char> {
+        fn from_code(s: &str, radix: u32) -> char {
             // TODO(kdy1): unwrap -> Err
-            let c = char::from_u32(
-                u32::from_str_radix(s, radix).expect("failed to parse string as number"),
-            )
-            .expect("failed to parse number as char");
-
-            Ok(c)
+            char::from_u32(u32::from_str_radix(s, radix).expect("failed to parse string as number"))
+                .expect("failed to parse number as char")
         }
 
         fn is_hex(s: &str) -> bool {
@@ -1221,12 +1249,12 @@ impl<'a> Lexer<'a> {
                 if let Some(stripped) = s.strip_prefix('#') {
                     if stripped.starts_with('x') {
                         if is_hex(&s[2..]) {
-                            let value = from_code(&s[2..], 16)?;
+                            let value = from_code(&s[2..], 16);
 
                             return Ok((value, format!("&{s};")));
                         }
                     } else if is_dec(stripped) {
-                        let value = from_code(stripped, 10)?;
+                        let value = from_code(stripped, 10);
 
                         return Ok((value, format!("&{s};")));
                     }
@@ -1266,7 +1294,7 @@ impl<'a> Lexer<'a> {
         debug_assert!(self.syntax().jsx());
         let start = self.input().cur_pos();
         self.bump(1); // `quote`
-        let mut out = self.sb.alloc_wtf8();
+        let mut out = Wtf8Buf::new();
         let mut chunk_start = self.input().cur_pos();
         loop {
             let ch = match self.input().peek() {
@@ -1283,8 +1311,8 @@ impl<'a> Lexer<'a> {
                     self.input_slice_to_cur(chunk_start)
                 };
 
-                out.push_str(&mut self.sb, value);
-                out.push_char(&mut self.sb, '\\');
+                out.push_str(value);
+                out.push_char('\\');
 
                 self.bump(1);
 
@@ -1303,11 +1331,11 @@ impl<'a> Lexer<'a> {
                     self.input_slice_to_cur(chunk_start)
                 };
 
-                out.push_str(&mut self.sb, value);
+                out.push_str(value);
 
                 let jsx_entity = self.read_jsx_entity()?;
 
-                out.push_char(&mut self.sb, jsx_entity.0);
+                out.push_char(jsx_entity.0);
 
                 chunk_start = self.input().cur_pos();
             } else if ch.is_line_terminator() {
@@ -1316,14 +1344,14 @@ impl<'a> Lexer<'a> {
                     self.input_slice_to_cur(chunk_start)
                 };
 
-                out.push_str(&mut self.sb, value);
+                out.push_str(value);
 
                 match self.read_jsx_new_line(false)? {
                     Either::Left(s) => {
-                        out.push_str(&mut self.sb, s);
+                        out.push_str(s);
                     }
                     Either::Right(c) => {
-                        out.push_char(&mut self.sb, c);
+                        out.push_char(c);
                     }
                 }
 
@@ -1332,16 +1360,16 @@ impl<'a> Lexer<'a> {
                 self.bump(1);
             }
         }
-        let value = if out.is_empty(&self.sb) {
+        let value = if out.is_empty() {
             // Fast path: We don't need to allocate
-            MaybeSubWtf8::new_from_source(chunk_start, self.cur_pos())
+            self.wtf8_atom_from_slice(chunk_start, self.cur_pos())
         } else {
             let s = unsafe {
                 // Safety: We already checked for the range
                 self.input_slice_to_cur(chunk_start)
             };
-            out.push_str(&mut self.sb, s);
-            out.finish(&mut self.sb)
+            out.push_str(s);
+            Wtf8Atom::new_in(out, self.allocator)
         };
 
         // it might be at the end of the file when
@@ -1499,7 +1527,7 @@ impl<'a> Lexer<'a> {
     }
 
     #[cold]
-    fn read_shebang(&mut self) -> LexResult<Option<MaybeSubUtf8>> {
+    fn read_shebang(&mut self) -> LexResult<Option<Atom<'a>>> {
         if self.input().peek() != Some(b'#') || self.input().peek_2() != Some(b'!') {
             return Ok(None);
         }
@@ -1513,7 +1541,7 @@ impl<'a> Lexer<'a> {
             self.bump(c.len_utf8());
         }
 
-        Ok(Some(MaybeSubUtf8::Inline((start_pos, self.cur_pos()))))
+        Ok(Some(self.atom_from_slice(start_pos, self.cur_pos())))
     }
 
     /// Read an escaped character for string literal.
@@ -1701,24 +1729,23 @@ impl<'a> Lexer<'a> {
         let flags = {
             match self.peek() {
                 Some(c) if c.is_ident_start() => self.read_word_as_str_with().map(|(s, _)| s),
-                _ => Ok(self.empty_utf8_ref()),
+                _ => Ok(Atom::default()),
             }
         }?;
 
-        let flags = self.get_utf8(flags);
-        if !flags.is_empty() {
-            let mut flags_count =
-                flags
-                    .chars()
-                    .fold(FxHashMap::<char, usize>::default(), |mut map, flag| {
-                        let key = match flag {
-                            // https://tc39.es/ecma262/#sec-isvalidregularexpressionliteral
-                            'd' | 'g' | 'i' | 'm' | 's' | 'u' | 'v' | 'y' => flag,
-                            _ => '\u{0000}', // special marker for unknown flags
-                        };
-                        map.entry(key).and_modify(|count| *count += 1).or_insert(1);
-                        map
-                    });
+        if !flags.as_str().is_empty() {
+            let mut flags_count = flags.as_str().chars().fold(
+                FxHashMap::<char, usize>::default(),
+                |mut map, flag| {
+                    let key = match flag {
+                        // https://tc39.es/ecma262/#sec-isvalidregularexpressionliteral
+                        'd' | 'g' | 'i' | 'm' | 's' | 'u' | 'v' | 'y' => flag,
+                        _ => '\u{0000}', // special marker for unknown flags
+                    };
+                    map.entry(key).and_modify(|count| *count += 1).or_insert(1);
+                    map
+                },
+            );
 
             if flags_count.remove(&'\u{0000}').is_some() {
                 let span = self.span(start);
@@ -1735,7 +1762,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// This method is optimized for texts without escape sequences.
-    fn read_word_as_str_with(&mut self) -> LexResult<(MaybeSubUtf8, bool)> {
+    fn read_word_as_str_with(&mut self) -> LexResult<(Atom<'a>, bool)> {
         debug_assert!(self.peek().is_some());
         let slice_start = self.cur_pos();
 
@@ -1750,7 +1777,7 @@ impl<'a> Lexer<'a> {
                 start_at: 1,
                 handle_eof: {
                     // Reached EOF, entire remainder is identifier
-                    return Ok((MaybeSubUtf8::Inline((slice_start, self.cur_pos())), false))
+                    return Ok((self.atom_from_slice(slice_start, self.cur_pos()), false))
                 },
             };
 
@@ -1763,7 +1790,7 @@ impl<'a> Lexer<'a> {
                 return self.read_word_as_str_with_slow_path(slice_start);
             } else {
                 // Hit end of identifier (non-continue ASCII char)
-                let s = MaybeSubUtf8::Inline((slice_start, self.cur_pos()));
+                let s = self.atom_from_slice(slice_start, self.cur_pos());
                 return Ok((s, false));
             }
         }
@@ -1777,11 +1804,11 @@ impl<'a> Lexer<'a> {
     fn read_word_as_str_with_slow_path(
         &mut self,
         mut slice_start: u32,
-    ) -> LexResult<(MaybeSubUtf8, bool)> {
+    ) -> LexResult<(Atom<'a>, bool)> {
         let mut first = true;
         let mut has_escape = false;
 
-        let mut buf = self.sb.alloc_utf8();
+        let mut buf = String::new();
         loop {
             if let Some(c) = self.input().peek_ascii() {
                 if is_valid_ascii_continue(c) {
@@ -1811,7 +1838,7 @@ impl<'a> Lexer<'a> {
                             // `self.input`
                             self.input_slice(slice_start, start)
                         };
-                        buf.push_str(&mut self.sb, s);
+                        buf.push_str(s);
                         unsafe {
                             // Safety: We got end from `self.input`
                             self.input_mut().reset_to(end);
@@ -1830,14 +1857,14 @@ impl<'a> Lexer<'a> {
                             if !valid {
                                 self.emit_error(start, SyntaxError::InvalidIdentChar);
                             }
-                            buf.push(&mut self.sb, ch);
+                            buf.push(ch);
                         }
                         UnicodeEscape::SurrogatePair(ch) => {
-                            buf.push(&mut self.sb, ch);
+                            buf.push(ch);
                             self.emit_error(start, SyntaxError::InvalidIdentChar);
                         }
                         UnicodeEscape::LoneSurrogate(code_point) => {
-                            buf.push_str(&mut self.sb, format!("\\u{code_point:04X}").as_str());
+                            buf.push_str(format!("\\u{code_point:04X}").as_str());
                             self.emit_error(start, SyntaxError::InvalidIdentChar);
                         }
                     };
@@ -1865,7 +1892,7 @@ impl<'a> Lexer<'a> {
         let end = self.cur_pos();
         let value = if !has_escape {
             // Fast path: raw slice is enough if there's no escape.
-            MaybeSubUtf8::Inline((slice_start, end))
+            self.atom_from_slice(slice_start, end)
         } else {
             let s = unsafe {
                 // Safety: slice_start and end are valid position because we got them from
@@ -1873,8 +1900,8 @@ impl<'a> Lexer<'a> {
                 self.input_slice(slice_start, end)
             };
 
-            buf.push_str(&mut self.sb, s);
-            buf.finish(&mut self.sb)
+            buf.push_str(s);
+            Atom::new_in(buf, self.allocator)
         };
 
         Ok((value, has_escape))
@@ -2103,7 +2130,7 @@ impl<'a> Lexer<'a> {
 
         let mut slice_start = self.input().cur_pos();
 
-        let mut buf: Option<Wtf8Builder> = None;
+        let mut buf: Option<Wtf8Buf> = None;
 
         loop {
             let table = if quote == b'"' {
@@ -2117,7 +2144,7 @@ impl<'a> Lexer<'a> {
                 table: table,
                 handle_eof: {
                     let value_end = self.cur_pos();
-                    let s = MaybeSubWtf8::Inline((slice_start, value_end));
+                    let s = self.wtf8_atom_from_slice(slice_start, value_end);
 
                     self.emit_error(start, SyntaxError::UnterminatedStrLit);
 
@@ -2138,10 +2165,10 @@ impl<'a> Lexer<'a> {
                             // got them from `self.input`
                             self.input_slice(slice_start, value_end)
                         };
-                        buf.push_str(&mut self.sb, s);
-                        buf.finish(&mut self.sb)
+                        buf.push_str(s);
+                        Wtf8Atom::new_in(buf, self.allocator)
                     } else {
-                        MaybeSubWtf8::Inline((slice_start, value_end))
+                        self.wtf8_atom_from_slice(slice_start, value_end)
                     };
 
                     self.bump(1);
@@ -2157,15 +2184,15 @@ impl<'a> Lexer<'a> {
                     };
 
                     if buf.is_none() {
-                        let mut builder = self.sb.alloc_wtf8();
-                        builder.push_str(&mut self.sb, s);
+                        let mut builder = Wtf8Buf::new();
+                        builder.push_str(s);
                         buf = Some(builder);
                     } else {
-                        buf.as_mut().unwrap().push_str(&mut self.sb, s);
+                        buf.as_mut().unwrap().push_str(s);
                     }
 
                     if let Some(escaped) = self.read_escaped_char(false)? {
-                        buf.as_mut().unwrap().push(&mut self.sb, escaped);
+                        buf.as_mut().unwrap().push(escaped);
                     }
 
                     slice_start = self.cur_pos();
@@ -2173,7 +2200,7 @@ impl<'a> Lexer<'a> {
                 }
                 b'\n' | b'\r' => {
                     let end = self.cur_pos();
-                    let s = MaybeSubWtf8::Inline((slice_start, end));
+                    let s = self.wtf8_atom_from_slice(slice_start, end);
 
                     self.emit_error(start, SyntaxError::UnterminatedStrLit);
 
@@ -2189,7 +2216,7 @@ impl<'a> Lexer<'a> {
 
         let start = self.cur_pos();
         let (s, has_escape) = self.read_keyword_as_str_with()?;
-        if let Some(word) = convert(self.get_utf8(s)) {
+        if let Some(word) = convert(s.as_str()) {
             // Note: ctx is store in lexer because of this error.
             // 'await' and 'yield' may have semantic of reserved word, which means lexer
             // should know context or parser should handle this error. Our approach to this
@@ -2198,7 +2225,7 @@ impl<'a> Lexer<'a> {
                 self.error(
                     start,
                     SyntaxError::EscapeInReservedWord {
-                        word: Atom::new(self.get_utf8(s)),
+                        word: s.to_string(),
                     },
                 )
             } else {
@@ -2212,7 +2239,7 @@ impl<'a> Lexer<'a> {
     /// This is a performant version of [Lexer::read_word_as_str_with] for
     /// reading keywords. We should make sure the first byte is a valid
     /// ASCII.
-    fn read_keyword_as_str_with(&mut self) -> LexResult<(MaybeSubUtf8, bool)> {
+    fn read_keyword_as_str_with(&mut self) -> LexResult<(Atom<'a>, bool)> {
         let slice_start = self.cur_pos();
 
         // Fast path: try to scan ASCII identifier using byte_search
@@ -2224,7 +2251,7 @@ impl<'a> Lexer<'a> {
             start_at: 1,
             handle_eof: {
                 // Reached EOF, entire remainder is identifier
-                let s = MaybeSubUtf8::Inline((slice_start, self.cur_pos()));
+                let s = self.atom_from_slice(slice_start, self.cur_pos());
                 return Ok((s, false));
             },
         };
@@ -2236,7 +2263,7 @@ impl<'a> Lexer<'a> {
             self.read_word_as_str_with_slow_path(slice_start)
         } else {
             // Hit end of identifier (non-continue ASCII char)
-            let s = MaybeSubUtf8::Inline((slice_start, self.cur_pos()));
+            let s = self.atom_from_slice(slice_start, self.cur_pos());
             Ok((s, false))
         }
     }

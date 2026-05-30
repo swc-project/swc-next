@@ -1,14 +1,16 @@
-use swc_atoms::Atom;
+use std::collections::HashMap;
+
+use swc_experimental_allocator::atom::Atom;
 
 use crate::Span;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct Comments {
-    pub leading: hashbrown::HashMap<u32, Vec<Comment>>,
-    pub trailing: hashbrown::HashMap<u32, Vec<Comment>>,
+pub struct Comments<'a> {
+    pub leading: HashMap<u32, Vec<Comment<'a>>>,
+    pub trailing: HashMap<u32, Vec<Comment<'a>>>,
 }
 
-impl Comments {
+impl Comments<'_> {
     pub fn move_leading(&mut self, from: u32, to: u32) {
         move_comments(&mut self.leading, from, to);
     }
@@ -18,7 +20,7 @@ impl Comments {
     }
 }
 
-fn move_comments(comments: &mut hashbrown::HashMap<u32, Vec<Comment>>, from: u32, to: u32) {
+fn move_comments<'a>(comments: &mut HashMap<u32, Vec<Comment<'a>>>, from: u32, to: u32) {
     if from == to {
         return;
     }
@@ -31,15 +33,15 @@ fn move_comments(comments: &mut hashbrown::HashMap<u32, Vec<Comment>>, from: u32
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Comment {
+pub struct Comment<'a> {
     pub kind: CommentKind,
     pub span: Span,
     /// [`Atom::new_bad`][] is perfectly fine for this value.
-    pub text: Atom,
+    pub text: Atom<'a>,
 }
 
-impl Comment {
-    pub fn new(kind: CommentKind, span: Span, text: Atom) -> Self {
+impl<'a> Comment<'a> {
+    pub fn new(kind: CommentKind, span: Span, text: Atom<'a>) -> Self {
         Self { kind, span, text }
     }
 }

@@ -1,14 +1,14 @@
 use std::mem::take;
 
-use swc_atoms::wtf8::CodePoint;
-use swc_experimental_ecma_ast::{EsVersion, Span, StringAllocator};
+use swc_experimental_allocator::{Allocator, atom::Atom, wtf8::CodePoint};
+use swc_experimental_ecma_ast::{EsVersion, Span};
 
 use super::{Context, Lexer};
 use crate::{
     error::{Error, SyntaxError},
     input::Tokens,
     lexer::{
-        LexResult, MaybeSubUtf8,
+        LexResult,
         char_ext::CharExt,
         comments_buffer::{BufferedCommentKind, CommentsBufferCheckpoint},
         token::{Token, TokenAndSpan, TokenValue},
@@ -27,27 +27,27 @@ bitflags::bitflags! {
 ///
 /// Ported from babylon.
 #[derive(Clone)]
-pub struct State {
+pub struct State<'a> {
     /// if line break exists between previous token and new token?
     pub had_line_break: bool,
     pub next_regexp: Option<u32>,
     pub prev_hi: u32,
 
-    pub(super) token_value: Option<TokenValue>,
+    pub(super) token_value: Option<TokenValue<'a>>,
     token_type: Token,
 }
 
-pub struct LexerCheckpoint {
+pub struct LexerCheckpoint<'a> {
     comments_buffer: CommentsBufferCheckpoint,
-    state: State,
+    state: State<'a>,
     ctx: Context,
     input_cur_pos: u32,
 }
 
-impl crate::input::Tokens for Lexer<'_> {
-    type Checkpoint = LexerCheckpoint;
+impl<'a> crate::input::Tokens<'a> for Lexer<'a> {
+    type Checkpoint = LexerCheckpoint<'a>;
 
-    fn checkpoint_save(&self) -> LexerCheckpoint {
+    fn checkpoint_save(&self) -> LexerCheckpoint<'a> {
         LexerCheckpoint {
             state: self.state.clone(),
             ctx: self.ctx,
@@ -60,17 +60,13 @@ impl crate::input::Tokens for Lexer<'_> {
         }
     }
 
-    fn checkpoint_load(&mut self, checkpoint: LexerCheckpoint) {
+    fn checkpoint_load(&mut self, checkpoint: LexerCheckpoint<'a>) {
         self.state = checkpoint.state;
         self.ctx = checkpoint.ctx;
         unsafe { self.input.reset_to(checkpoint.input_cur_pos) };
         if let Some(comments_buffer) = self.comments_buffer.as_mut() {
             comments_buffer.checkpoint_load(checkpoint.comments_buffer);
         }
-    }
-
-    fn string_allocator(&self) -> StringAllocator {
-        self._string_allocator()
     }
 
     fn read_string(&self, span: Span) -> &str {
@@ -100,6 +96,11 @@ impl crate::input::Tokens for Lexer<'_> {
     #[inline]
     fn target(&self) -> EsVersion {
         self.target
+    }
+
+    #[inline]
+    fn allocator(&self) -> &'a Allocator {
+        self.allocator
     }
 
     #[inline]
@@ -153,15 +154,15 @@ impl crate::input::Tokens for Lexer<'_> {
         self.token_flags
     }
 
-    fn get_token_value(&self) -> Option<&TokenValue> {
+    fn get_token_value(&self) -> Option<&TokenValue<'a>> {
         self.state.token_value.as_ref()
     }
 
-    fn set_token_value(&mut self, token_value: Option<TokenValue>) {
+    fn set_token_value(&mut self, token_value: Option<TokenValue<'a>>) {
         self.state.token_value = token_value;
     }
 
-    fn take_token_value(&mut self) -> Option<TokenValue> {
+    fn take_token_value(&mut self) -> Option<TokenValue<'a>> {
         self.state.token_value.take()
     }
 
@@ -273,23 +274,20 @@ impl crate::input::Tokens for Lexer<'_> {
             }
         }
         let v = if !v.is_empty() {
-            let mut builder = self.sb.alloc_utf8();
+            let mut builder = String::new();
             if token.is_known_ident() || token.is_keyword() {
-                builder.push_str(&mut self.sb, &token.to_string());
-                builder.push_str(&mut self.sb, &v);
+                builder.push_str(&token.to_string());
+                builder.push_str(&v);
             } else if let Some(TokenValue::Word(value)) = self.state.token_value.take() {
-                let value = self.get_utf8(value).to_string();
-                builder.push_str(&mut self.sb, &value);
-                builder.push_str(&mut self.sb, &v);
+                builder.push_str(value.as_str());
+                builder.push_str(&v);
             } else {
-                builder.push_str(&mut self.sb, &token.to_string());
-                builder.push_str(&mut self.sb, &v);
+                builder.push_str(&token.to_string());
+                builder.push_str(&v);
             };
-            builder.finish(&mut self.sb)
+            Atom::new_in(builder, self.allocator)
         } else if token.is_known_ident() || token.is_keyword() {
-            let mut builder = self.sb.alloc_utf8();
-            builder.push_str(&mut self.sb, &token.to_string());
-            builder.finish(&mut self.sb)
+            Atom::new_in(token.to_string(), self.allocator)
         } else if let Some(TokenValue::Word(value)) = self.state.token_value.take() {
             value
         } else {
@@ -333,7 +331,7 @@ impl crate::input::Tokens for Lexer<'_> {
                 };
                 debug_assert!(
                     self.get_token_value()
-                        .is_some_and(|t| matches!(t, TokenValue::Str { .. }))
+                        .is_some_and(|t| matches!(t, TokenValue::Str(..)))
                 );
                 debug_assert!(token == Token::Str);
                 TokenAndSpan {
@@ -366,7 +364,7 @@ impl crate::input::Tokens for Lexer<'_> {
     }
 }
 
-impl Lexer<'_> {
+impl<'a> Lexer<'a> {
     #[inline]
     fn read_next_token(&mut self, start: &mut u32) -> Result<Token, Error> {
         if let Some(next_regexp) = self.state.next_regexp {
@@ -425,7 +423,7 @@ impl Lexer<'_> {
         let start = self.input.cur_pos();
         let mut first_non_whitespace = 0;
         let mut chunk_start = start;
-        let mut value = self.sb.alloc_utf8();
+        let mut value = String::new();
 
         while let Some(ch) = self.input_mut().peek() {
             if ch == b'{' {
@@ -467,10 +465,10 @@ impl Lexer<'_> {
                     // Safety: We already checked for the range
                     self.input_slice_to_cur(chunk_start)
                 };
-                value.push_str(&mut self.sb, s);
+                value.push_str(s);
 
                 if let Ok(jsx_entity) = self.read_jsx_entity() {
-                    value.push(&mut self.sb, jsx_entity.0);
+                    value.push(jsx_entity.0);
                     chunk_start = self.input.cur_pos();
                 }
             } else {
@@ -478,15 +476,15 @@ impl Lexer<'_> {
             }
         }
 
-        let value = if value.is_empty(&self.sb) {
-            MaybeSubUtf8::Inline((start, self.cur_pos()))
+        let value = if value.is_empty() {
+            self.atom_from_slice(start, self.cur_pos())
         } else {
             let s = unsafe {
                 // Safety: We already checked for the range
                 self.input_slice_to_cur(chunk_start)
             };
-            value.push_str(&mut self.sb, s);
-            value.finish(&mut self.sb)
+            value.push_str(s);
+            Atom::new_in(value, self.allocator)
         };
 
         self.state.set_token_value(TokenValue::JsxText(value));
@@ -534,7 +532,7 @@ impl Lexer<'_> {
     }
 }
 
-impl State {
+impl<'a> State<'a> {
     pub fn new(start_pos: u32) -> Self {
         State {
             had_line_break: false,
@@ -545,12 +543,12 @@ impl State {
         }
     }
 
-    pub(crate) fn set_token_value(&mut self, token_value: TokenValue) {
+    pub(crate) fn set_token_value(&mut self, token_value: TokenValue<'a>) {
         self.token_value = Some(token_value);
     }
 }
 
-impl State {
+impl<'a> State<'a> {
     #[inline(always)]
     pub fn set_token_type(&mut self, token_type: Token) {
         self.token_type = token_type;

@@ -4,7 +4,8 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use swc_experimental_ecma_ast::{Ast, StringAllocator};
+use swc_experimental_allocator::Allocator;
+use swc_experimental_ecma_ast::Program;
 use swc_experimental_ecma_parser::{Parser, StringSource};
 use swc_experimental_ecma_semantic::resolver::resolver;
 
@@ -13,17 +14,23 @@ fn bench_semantic(c: &mut Criterion) {
     let mut group = c.benchmark_group("semantic");
     for (name, source) in bench_cases {
         group.bench_function(format!("{name}/semantic/legacy"), |b| {
-            let input = StringSource::new(source);
-            let mut ast = Ast::new(input.source_len(), StringAllocator::default());
-            let mut parser = Parser::new(
-                &mut ast,
-                swc_experimental_ecma_parser::Syntax::Es(Default::default()),
-                input,
-                None,
-            );
-            let ret = parser.parse_module().unwrap();
+            let mut allocator = Allocator::new();
             b.iter(|| {
-                black_box(resolver(ret, &ast));
+                let semantic = {
+                    let input = StringSource::new(source);
+                    let mut parser = Parser::new(
+                        &allocator,
+                        swc_experimental_ecma_parser::Syntax::Es(Default::default()),
+                        input,
+                        None,
+                    );
+                    let ret = parser.parse_module().unwrap();
+                    let ret = Program::Module(allocator.boxed(ret));
+                    resolver(&ret)
+                };
+
+                black_box(semantic);
+                allocator.reset();
             });
         });
     }

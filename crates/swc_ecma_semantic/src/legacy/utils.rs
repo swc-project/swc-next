@@ -1,31 +1,25 @@
-use rustc_hash::FxHashSet;
-use swc_experimental_ecma_ast::{Ast, Expr, Ident, PropName, Utf8Ref};
+use swc_experimental_allocator::atom::Atom;
+use swc_experimental_ecma_ast::{Expr, Ident, PropName};
 use swc_experimental_ecma_visit::{Visit, VisitWith};
 
-pub struct DestructuringFinder<'ast> {
-    ast: &'ast Ast,
-    found: &'ast mut Vec<Utf8Ref>,
+pub struct DestructuringFinder<'found, 'ast> {
+    found: &'found mut Vec<Atom<'ast>>,
 }
 
-pub fn find_pat_ids<'ast, N: VisitWith<DestructuringFinder<'ast>>>(
-    ast: &'ast Ast,
-    node: N,
-    found: &'ast mut Vec<Utf8Ref>,
-) {
-    let mut v = DestructuringFinder { ast, found };
+pub fn find_pat_ids<'found, 'ast, N>(node: &N, found: &'found mut Vec<Atom<'ast>>)
+where
+    N: VisitWith<'ast, DestructuringFinder<'found, 'ast>>,
+{
+    let mut v = DestructuringFinder { found };
     node.visit_with(&mut v);
 }
 
-impl<'ast> Visit for DestructuringFinder<'ast> {
-    fn ast(&self) -> &Ast {
-        self.ast
-    }
-
+impl<'found, 'ast> Visit<'ast> for DestructuringFinder<'found, 'ast> {
     /// No-op (we don't care about expressions)
-    fn visit_expr(&mut self, _: Expr) {}
+    fn visit_expr(&mut self, _: &Expr<'ast>) {}
 
-    fn visit_ident(&mut self, i: Ident) {
-        self.found.push(i.sym(self.ast));
+    fn visit_ident(&mut self, i: &Ident<'ast>) {
+        self.found.push(i.sym);
     }
 
     // fn visit_jsx_member_expr(&mut self, n: &JSXMemberExpr) {
@@ -33,7 +27,7 @@ impl<'ast> Visit for DestructuringFinder<'ast> {
     // }
 
     /// No-op (we don't care about expressions)
-    fn visit_prop_name(&mut self, _: PropName) {}
+    fn visit_prop_name(&mut self, _: &PropName<'ast>) {}
 
     // fn visit_ts_type(&mut self, _: &TsType) {}
 }

@@ -1,9 +1,10 @@
 use rustc_hash::FxHashSet;
-use swc_core::atoms::Atom;
+use swc_core::atoms::Atom as LegacyAtom;
+use swc_experimental_allocator::{Allocator, atom::Atom};
 use swc_experimental_ecma_ast::{
-    Ast, BreakStmt, ClassMember, Comments, ContinueStmt, DebuggerStmt, ExportAll,
-    ExportDefaultExpr, ExprStmt, GetSpan, ImportDecl, NamedExport, Program, ReturnStmt, Span,
-    StringAllocator, ThrowStmt, UpdateExpr, VarDecl, Visit, VisitWith, YieldExpr,
+    AstBuilder, BreakStmt, ClassMember, ContinueStmt, DebuggerStmt, ExportAll, ExportDefaultExpr,
+    ExprStmt, GetSpan, ImportDecl, NamedExport, Program, ReturnStmt, Span, ThrowStmt, UpdateExpr,
+    VarDecl, Visit, VisitWith, YieldExpr,
 };
 use swc_experimental_ecma_ast_compat::{AstCompat, UnsafeArenaAstCompat};
 use swc_experimental_ecma_parser::{
@@ -20,68 +21,63 @@ pub enum CompatMode {
 }
 
 pub fn run(src: &'static str, compat: Option<CompatMode>) {
-    let (program, mut ast, tokens, mut comments) = run_parse(src);
-    run_remove_paren(program, &mut ast, &mut comments);
-    let semantic = run_resolver(program, &ast);
-    let _semi = run_collect_semiconlons(&ast, program, &tokens);
+    let allocator = Allocator::new();
+    let (program, tokens) = run_parse(&allocator, src);
+    let program = run_remove_paren(program, &allocator);
+    let semantic = run_resolver(&program);
+    let _semi = run_collect_semiconlons(&program, &tokens);
     match compat {
-        Some(compat) => run_compat_and_scan(program, &ast, &semantic, compat),
-        None => run_scan_dependencies(program, &ast),
+        Some(compat) => run_compat_and_scan(program, &semantic, compat),
+        None => run_scan_dependencies(&program),
     }
 }
 
 #[inline(never)]
-fn run_parse(src: &str) -> (Program, Ast, Vec<TokenAndSpan>, Comments) {
-    let string_allocator = StringAllocator::default();
-    let mut comments = Comments::default();
-    let mut ast = Ast::new(src.len(), string_allocator.clone());
+fn run_parse<'a>(allocator: &'a Allocator, src: &'a str) -> (Program<'a>, Vec<TokenAndSpan>) {
     let (program, tokens) = {
         let parser_lexer = Lexer::new(
+            allocator,
             Syntax::Es(Default::default()),
             Default::default(),
             StringSource::new(src),
-            Some(&mut comments),
-            string_allocator,
+            None,
         );
 
         // Empirically, 1/8 of the source length is a good capacity.
         let lexer = Capturing::with_capacity(parser_lexer, src.len() / 8);
-        let mut parser = Parser::new_from(&mut ast, lexer);
+        let mut parser = Parser::new_from(allocator, lexer);
 
         let program = parser.parse_program().unwrap();
         let tokens = Capturing::take(&mut parser.input_mut().iter);
         (program, tokens)
     };
-    (program, ast, tokens, comments)
+    (program, tokens)
 }
 
 #[inline(never)]
-fn run_remove_paren(root: Program, ast: &mut Ast, comments: &mut Comments) {
-    remove_paren(root, ast, Some(comments));
+fn run_remove_paren<'a>(root: Program<'a>, allocator: &'a Allocator) -> Program<'a> {
+    remove_paren(root, AstBuilder { allocator }, None)
 }
 
 #[inline(never)]
-fn run_resolver(root: Program, ast: &Ast) -> Semantic {
-    resolver(root, ast)
+fn run_resolver(root: &Program<'_>) -> Semantic {
+    resolver(root)
 }
 
 #[inline(never)]
-fn run_scan_dependencies(root: Program, ast: &Ast) {
-    root.visit_with(&mut JavascriptParser {
-        ast,
-        idents: Vec::new(),
-    });
+fn run_scan_dependencies(root: &Program<'_>) {
+    root.visit_with(&mut JavascriptParser { idents: Vec::new() });
 }
 
 #[inline(never)]
-fn run_compat_and_scan(root: Program, ast: &Ast, semantic: &Semantic, compat: CompatMode) {
+fn run_compat_and_scan(root: Program<'_>, semantic: &Semantic, compat: CompatMode) {
     match compat {
         CompatMode::Safe => {
-            let program = AstCompat::new(ast, semantic).compat_program(root);
+            let program = AstCompat::new(semantic).compat_program(root);
             run_scan_dependencies_legacy(&program);
         }
         CompatMode::Unsafe => {
-            let program = UnsafeArenaAstCompat::new(ast, semantic).compat_program(root);
+            let program = UnsafeArenaAstCompat::new(semantic).compat_program(root);
             program.with_ref(run_scan_dependencies_legacy);
         }
     }
@@ -96,10 +92,9 @@ fn run_scan_dependencies_legacy(program: &swc_core::ecma::ast::Program) {
 }
 
 #[inline(never)]
-fn run_collect_semiconlons(ast: &Ast, root: Program, tokens: &[TokenAndSpan]) -> FxHashSet<u32> {
+fn run_collect_semiconlons(root: &Program, tokens: &[TokenAndSpan]) -> FxHashSet<u32> {
     let mut semicolons_set = FxHashSet::default();
     let mut semicolons = InsertedSemicolons {
-        ast,
         semicolons: &mut semicolons_set,
         tokens,
     };
@@ -108,7 +103,6 @@ fn run_collect_semiconlons(ast: &Ast, root: Program, tokens: &[TokenAndSpan]) ->
 }
 
 struct InsertedSemicolons<'a> {
-    ast: &'a Ast,
     semicolons: &'a mut FxHashSet<u32>,
     tokens: &'a [TokenAndSpan],
 }
@@ -172,105 +166,96 @@ impl InsertedSemicolons<'_> {
     }
 }
 
-impl<'ast> Visit for InsertedSemicolons<'ast> {
-    fn ast(&self) -> &Ast {
-        self.ast
-    }
-
-    fn visit_expr_stmt(&mut self, n: ExprStmt) {
-        self.post_semi(&n.span(self.ast));
+impl<'ast> Visit<'ast> for InsertedSemicolons<'_> {
+    fn visit_expr_stmt(&mut self, n: &ExprStmt<'ast>) {
+        self.post_semi(&n.span());
         n.visit_children_with(self)
     }
 
-    fn visit_var_decl(&mut self, n: VarDecl) {
-        self.post_semi(&n.span(self.ast));
+    fn visit_var_decl(&mut self, n: &VarDecl<'ast>) {
+        self.post_semi(&n.span());
         n.visit_children_with(self)
     }
 
-    fn visit_update_expr(&mut self, n: UpdateExpr) {
-        self.semi(&n.span(self.ast));
+    fn visit_update_expr(&mut self, n: &UpdateExpr<'ast>) {
+        self.semi(&n.span());
         n.visit_children_with(self)
     }
 
-    fn visit_continue_stmt(&mut self, n: ContinueStmt) {
-        self.post_semi(&n.span(self.ast));
+    fn visit_continue_stmt(&mut self, n: &ContinueStmt<'ast>) {
+        self.post_semi(&n.span());
         n.visit_children_with(self)
     }
 
-    fn visit_break_stmt(&mut self, n: BreakStmt) {
-        self.post_semi(&n.span(self.ast));
+    fn visit_break_stmt(&mut self, n: &BreakStmt<'ast>) {
+        self.post_semi(&n.span());
         n.visit_children_with(self)
     }
 
-    fn visit_return_stmt(&mut self, n: ReturnStmt) {
-        self.post_semi(&n.span(self.ast));
+    fn visit_return_stmt(&mut self, n: &ReturnStmt<'ast>) {
+        self.post_semi(&n.span());
         n.visit_children_with(self)
     }
 
-    fn visit_throw_stmt(&mut self, n: ThrowStmt) {
-        self.post_semi(&n.span(self.ast));
+    fn visit_throw_stmt(&mut self, n: &ThrowStmt<'ast>) {
+        self.post_semi(&n.span());
         n.visit_children_with(self)
     }
 
-    fn visit_yield_expr(&mut self, n: YieldExpr) {
-        self.post_semi(&n.span(self.ast));
-        if let Some(arg) = &n.arg(self.ast) {
+    fn visit_yield_expr(&mut self, n: &YieldExpr<'ast>) {
+        self.post_semi(&n.span());
+        if let Some(arg) = &n.arg {
             arg.visit_children_with(self)
         }
     }
 
-    fn visit_import_decl(&mut self, n: ImportDecl) {
-        self.post_semi(&n.span(self.ast));
+    fn visit_import_decl(&mut self, n: &ImportDecl<'ast>) {
+        self.post_semi(&n.span());
         n.visit_children_with(self)
     }
 
-    fn visit_named_export(&mut self, n: NamedExport) {
-        self.post_semi(&n.span(self.ast));
+    fn visit_named_export(&mut self, n: &NamedExport<'ast>) {
+        self.post_semi(&n.span());
         n.visit_children_with(self)
     }
 
-    fn visit_export_default_expr(&mut self, n: ExportDefaultExpr) {
-        self.post_semi(&n.span(self.ast));
+    fn visit_export_default_expr(&mut self, n: &ExportDefaultExpr<'ast>) {
+        self.post_semi(&n.span());
         n.visit_children_with(self)
     }
 
-    fn visit_export_all(&mut self, n: ExportAll) {
-        self.post_semi(&n.span(self.ast));
+    fn visit_export_all(&mut self, n: &ExportAll<'ast>) {
+        self.post_semi(&n.span());
         n.visit_children_with(self)
     }
 
-    fn visit_debugger_stmt(&mut self, n: DebuggerStmt) {
-        self.post_semi(&n.span(self.ast));
+    fn visit_debugger_stmt(&mut self, n: &DebuggerStmt) {
+        self.post_semi(&n.span());
         n.visit_children_with(self);
     }
 
-    fn visit_class_member(&mut self, n: ClassMember) {
+    fn visit_class_member(&mut self, n: &ClassMember<'ast>) {
         match n {
-            ClassMember::ClassProp(prop) => self.post_semi(&prop.span(self.ast)),
-            ClassMember::PrivateProp(prop) => self.post_semi(&prop.span(self.ast)),
+            ClassMember::ClassProp(prop) => self.post_semi(&prop.span()),
+            ClassMember::PrivateProp(prop) => self.post_semi(&prop.span()),
             _ => {}
         };
         n.visit_children_with(self);
     }
 }
 
-struct JavascriptParser<'a> {
-    ast: &'a Ast,
-    idents: Vec<Atom>,
+struct JavascriptParser<'ast> {
+    idents: Vec<Atom<'ast>>,
 }
 
-impl<'ast> Visit for JavascriptParser<'ast> {
-    fn ast(&self) -> &Ast {
-        self.ast
-    }
-
-    fn visit_ident(&mut self, node: swc_experimental_ecma_ast::Ident) {
-        self.idents.push(self.ast.get_atom(node.sym(self.ast)));
+impl<'ast> Visit<'ast> for JavascriptParser<'ast> {
+    fn visit_ident(&mut self, node: &swc_experimental_ecma_ast::Ident<'ast>) {
+        self.idents.push(node.sym);
     }
 }
 
 struct JavascriptParserLegacy {
-    idents: Vec<Atom>,
+    idents: Vec<LegacyAtom>,
 }
 
 impl swc_core::ecma::visit::Visit for JavascriptParserLegacy {

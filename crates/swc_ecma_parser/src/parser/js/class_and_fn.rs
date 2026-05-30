@@ -1,4 +1,6 @@
-use swc_atoms::{atom, wtf8::Wtf8};
+use swc_experimental_allocator::vec::Vec;
+use swc_experimental_allocator::wtf8::Wtf8;
+use swc_experimental_allocator::{atom::Atom, boxed::Box};
 use swc_experimental_ecma_ast::*;
 
 use crate::{
@@ -12,27 +14,27 @@ use crate::{
     },
 };
 
-struct MakeMethodArgs {
+struct MakeMethodArgs<'a> {
     start: u32,
     // accessibility: Option<Accessibility>,
     is_abstract: bool,
     static_token: Option<Span>,
-    decorators: TypedSubRange<Decorator>,
+    decorators: Vec<'a, Decorator<'a>>,
     is_optional: bool,
     is_override: bool,
-    key: Key,
+    key: Key<'a>,
     kind: MethodKind,
     is_async: bool,
     is_generator: bool,
 }
 
-impl<'a, I: Tokens> Parser<'a, I> {
+impl<'a, I: Tokens<'a>> Parser<'a, I> {
     /// If `required` is `true`, this never returns `None`.
     fn parse_maybe_opt_binding_ident(
         &mut self,
         required: bool,
         disallow_let: bool,
-    ) -> PResult<Option<Ident>> {
+    ) -> PResult<Option<Ident<'a>>> {
         if required {
             self.parse_binding_ident(disallow_let).map(Some)
         } else {
@@ -40,7 +42,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         }
     }
 
-    fn parse_maybe_decorator_args(&mut self, expr: Expr) -> PResult<Expr> {
+    fn parse_maybe_decorator_args(&mut self, expr: Expr<'a>) -> PResult<Expr<'a>> {
         // let type_args = if self.input().syntax().typescript() && self.input().is(Token::Lt) {
         //     let ret = self.parse_ts_type_args()?;
         //     self.assert_and_bump(Token::Gt);
@@ -67,17 +69,17 @@ impl<'a, I: Tokens> Parser<'a, I> {
     pub(crate) fn parse_decorators(
         &mut self,
         allow_export: bool,
-    ) -> PResult<TypedSubRange<Decorator>> {
+    ) -> PResult<Vec<'a, Decorator<'a>>> {
         if !self.syntax().decorators() {
-            return Ok(TypedSubRange::empty());
+            return Ok(self.vec());
         }
         trace_cur!(self, parse_decorators);
 
         let start = self.cur_pos();
-        let decorators = self.scratch_start(|p, decorators| {
+        let decorators = self.collect_vec(|p, decorators| {
             while p.input().is(Token::At) {
                 let decorator = p.parse_decorator()?;
-                decorators.push(p, decorator);
+                decorators.push(decorator);
             }
             Ok(())
         })?;
@@ -108,7 +110,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         Ok(decorators)
     }
 
-    fn parse_decorator(&mut self) -> PResult<Decorator> {
+    fn parse_decorator(&mut self) -> PResult<Decorator<'a>> {
         let start = self.cur_pos();
         trace_cur!(self, parse_decorator);
 
@@ -119,8 +121,9 @@ impl<'a, I: Tokens> Parser<'a, I> {
             expect!(self, Token::RParen);
             expr
         } else {
-            let expr = self.parse_ident(false, false).map(Expr::Ident)?;
-            self.parse_subscripts(Callee::Expr(expr), false, true)?
+            let ident = self.parse_ident(false, false)?;
+            let expr = Expr::Ident(self.boxed(ident));
+            self.parse_subscripts(Callee::Expr(self.boxed(expr)), false, true)?
         };
 
         let expr = self.parse_maybe_decorator_args(expr)?;
@@ -143,7 +146,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
     // }
 
     // fn parse_super_class(&mut self) -> PResult<(Expr, Option<Box<TsTypeParamInstantiation>>)> {
-    fn parse_super_class(&mut self) -> PResult<Expr> {
+    fn parse_super_class(&mut self) -> PResult<Expr<'a>> {
         let super_class = self.parse_lhs_expr()?;
         Ok(super_class)
         // match super_class {
@@ -185,29 +188,30 @@ impl<'a, I: Tokens> Parser<'a, I> {
             }
     }
 
-    fn parse_class_prop_name(&mut self) -> PResult<Key> {
+    fn parse_class_prop_name(&mut self) -> PResult<Key<'a>> {
         if self.input().is(Token::Hash) {
             let name = self.parse_private_name()?;
-            if self.ast.get_utf8(name.name(self.ast)) == "constructor" {
-                self.emit_err(name.span(self.ast), SyntaxError::PrivateConstructor);
+            if name.name == "constructor" {
+                self.emit_err(name.span(), SyntaxError::PrivateConstructor);
             }
-            Ok(Key::Private(name))
+            Ok(Key::Private(self.boxed(name)))
         } else {
-            self.parse_prop_name().map(Key::Public)
+            self.parse_prop_name()
+                .map(|name| Key::Public(self.boxed(name)))
         }
     }
 
     /// `parse_args` closure should not eat '(' or ')'.
     pub(crate) fn parse_fn_args_body<F>(
         &mut self,
-        decorators: TypedSubRange<Decorator>,
+        decorators: Vec<'a, Decorator<'a>>,
         start: u32,
         parse_args: F,
         is_async: bool,
         is_generator: bool,
-    ) -> PResult<Function>
+    ) -> PResult<Function<'a>>
     where
-        F: FnOnce(&mut Self) -> PResult<TypedSubRange<Param>>,
+        F: FnOnce(&mut Self) -> PResult<Vec<'a, Param<'a>>>,
     {
         trace_cur!(self, parse_fn_args_body);
         let f = |p: &mut Self| {
@@ -261,7 +265,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 is_async,
                 is_generator,
                 false,
-                params.is_simple_parameter_list(p.ast),
+                params.is_simple_parameter_list(),
             )?;
 
             if p.syntax().typescript() && body.is_none() {
@@ -269,9 +273,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 for param in params.iter() {
                     // TODO: Search deeply for assignment pattern using a Visitor
 
-                    let param = p.ast.get_node_in_sub_range(param);
-                    let span = match param.pat(p.ast) {
-                        Pat::Assign(pat) => Some(pat.span(p.ast)),
+                    let span = match &param.pat {
+                        Pat::Assign(pat) => Some(pat.span()),
                         _ => None,
                     };
 
@@ -283,9 +286,9 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
             Ok(p.ast.function(
                 p.span(start),
-                params,
-                decorators,
-                body,
+                p.box_vec(params),
+                p.box_vec(decorators),
+                p.box_opt(body),
                 is_generator,
                 is_async,
             ))
@@ -306,35 +309,38 @@ impl<'a, I: Tokens> Parser<'a, I> {
         }
     }
 
-    pub(crate) fn parse_async_fn_expr(&mut self) -> PResult<Expr> {
+    pub(crate) fn parse_async_fn_expr(&mut self) -> PResult<Expr<'a>> {
         let start = self.cur_pos();
         expect!(self, Token::Async);
-        self.parse_fn(None, Some(start), TypedSubRange::empty())
+        self.parse_fn(None, Some(start), self.vec())
     }
 
     /// Parse function expression
-    pub(crate) fn parse_fn_expr(&mut self) -> PResult<Expr> {
-        self.parse_fn(None, None, TypedSubRange::empty())
+    pub(crate) fn parse_fn_expr(&mut self) -> PResult<Expr<'a>> {
+        self.parse_fn(None, None, self.vec())
     }
 
     pub(crate) fn parse_async_fn_decl(
         &mut self,
-        decorators: TypedSubRange<Decorator>,
-    ) -> PResult<Decl> {
+        decorators: Vec<'a, Decorator<'a>>,
+    ) -> PResult<Decl<'a>> {
         let start = self.cur_pos();
         expect!(self, Token::Async);
         self.parse_fn(None, Some(start), decorators)
     }
 
-    pub(crate) fn parse_fn_decl(&mut self, decorators: TypedSubRange<Decorator>) -> PResult<Decl> {
+    pub(crate) fn parse_fn_decl(
+        &mut self,
+        decorators: Vec<'a, Decorator<'a>>,
+    ) -> PResult<Decl<'a>> {
         self.parse_fn(None, None, decorators)
     }
 
     pub(crate) fn parse_default_async_fn(
         &mut self,
         start: u32,
-        decorators: TypedSubRange<Decorator>,
-    ) -> PResult<ExportDefaultDecl> {
+        decorators: Vec<'a, Decorator<'a>>,
+    ) -> PResult<ExportDefaultDecl<'a>> {
         let start_of_async = self.cur_pos();
         expect!(self, Token::Async);
         self.parse_fn(Some(start), Some(start_of_async), decorators)
@@ -343,8 +349,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
     pub(crate) fn parse_default_fn(
         &mut self,
         start: u32,
-        decorators: TypedSubRange<Decorator>,
-    ) -> PResult<ExportDefaultDecl> {
+        decorators: Vec<'a, Decorator<'a>>,
+    ) -> PResult<ExportDefaultDecl<'a>> {
         self.parse_fn(Some(start), None, decorators)
     }
 
@@ -352,10 +358,10 @@ impl<'a, I: Tokens> Parser<'a, I> {
         &mut self,
         _start_of_output_type: Option<u32>,
         start_of_async: Option<u32>,
-        decorators: TypedSubRange<Decorator>,
+        decorators: Vec<'a, Decorator<'a>>,
         is_fn_expr: bool,
         is_ident_required: bool,
-    ) -> PResult<(Option<Ident>, Function)> {
+    ) -> PResult<(Option<Ident<'a>>, Function<'a>)> {
         let start = start_of_async.unwrap_or_else(|| self.cur_pos());
         self.assert_and_bump(Token::Function);
         let is_async = start_of_async.is_some();
@@ -405,7 +411,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     is_async,
                     is_generator,
                 )?;
-                if is_fn_expr && f.body(p.ast).is_none() {
+                if is_fn_expr && f.body.is_none() {
                     unexpected!(p, "{");
                 }
                 Ok((ident, f))
@@ -417,10 +423,10 @@ impl<'a, I: Tokens> Parser<'a, I> {
         &mut self,
         start_of_output_type: Option<u32>,
         start_of_async: Option<u32>,
-        decorators: TypedSubRange<Decorator>,
+        decorators: Vec<'a, Decorator<'a>>,
     ) -> PResult<T>
     where
-        T: OutputType,
+        T: OutputType<'a>,
     {
         let start = start_of_async.unwrap_or_else(|| self.cur_pos());
         let (ident, f) = self.parse_fn_inner(
@@ -432,7 +438,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         )?;
 
         let span = self.span(start_of_output_type.unwrap_or(start));
-        match T::finish_fn(self.ast, span, ident, f) {
+        match T::finish_fn(&self.ast, span, ident, f) {
             Ok(v) => Ok(v),
             Err(kind) => syntax_error!(self, kind),
         }
@@ -442,17 +448,17 @@ impl<'a, I: Tokens> Parser<'a, I> {
         &mut self,
         start: u32,
         class_start: u32,
-        decorators: TypedSubRange<Decorator>,
+        decorators: Vec<'a, Decorator<'a>>,
         is_abstract: bool,
-    ) -> PResult<Decl> {
+    ) -> PResult<Decl<'a>> {
         self.parse_class(start, class_start, decorators, is_abstract)
     }
 
     pub(crate) fn parse_class_expr(
         &mut self,
         start: u32,
-        decorators: TypedSubRange<Decorator>,
-    ) -> PResult<Expr> {
+        decorators: Vec<'a, Decorator<'a>>,
+    ) -> PResult<Expr<'a>> {
         self.parse_class(start, start, decorators, false)
     }
 
@@ -460,9 +466,9 @@ impl<'a, I: Tokens> Parser<'a, I> {
         &mut self,
         start: u32,
         class_start: u32,
-        decorators: TypedSubRange<Decorator>,
+        decorators: Vec<'a, Decorator<'a>>,
         is_abstract: bool,
-    ) -> PResult<ExportDefaultDecl> {
+    ) -> PResult<ExportDefaultDecl<'a>> {
         self.parse_class(start, class_start, decorators, is_abstract)
     }
 
@@ -481,10 +487,10 @@ impl<'a, I: Tokens> Parser<'a, I> {
             kind,
             is_async,
             is_generator,
-        }: MakeMethodArgs,
-    ) -> PResult<ClassMember>
+        }: MakeMethodArgs<'a>,
+    ) -> PResult<ClassMember<'a>>
     where
-        F: FnOnce(&mut Self) -> PResult<TypedSubRange<Param>>,
+        F: FnOnce(&mut Self) -> PResult<Vec<'a, Param<'a>>>,
     {
         trace_cur!(self, make_method);
 
@@ -500,7 +506,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 if self.input().syntax().typescript()
                     && self.input().target() == EsVersion::Es3 =>
             {
-                self.emit_err(key.span(self.ast), SyntaxError::TS1056);
+                self.emit_err(key.span(), SyntaxError::TS1056);
             }
             _ => {}
         }
@@ -512,19 +518,27 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 //     self.emit_err(span.with_hi(key.span_hi()), SyntaxError::TS18010);
                 // }
 
-                Ok(self
-                    .ast
-                    .class_member_private_method(span, key, function, kind, is_static))
+                Ok(self.ast.class_member_private_method(
+                    span,
+                    key,
+                    self.boxed(function),
+                    kind,
+                    is_static,
+                ))
             }
             Key::Public(key) => {
                 let span = self.span(start);
-                if is_abstract && function.body(self.ast).is_some() {
+                if is_abstract && function.body.is_some() {
                     self.emit_err(span, SyntaxError::TS1245)
                 }
 
-                Ok(self
-                    .ast
-                    .class_member_class_method(span, key, function, kind, is_static))
+                Ok(self.ast.class_member_class_method(
+                    span,
+                    Box::into_inner(key),
+                    self.boxed(function),
+                    kind,
+                    is_static,
+                ))
             }
             #[cfg(swc_ast_unknown)]
             _ => unreachable!(),
@@ -537,7 +551,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         is_generator: bool,
         is_arrow_function: bool,
         is_simple_parameter_list: bool,
-    ) -> PResult<BlockStmtOrExpr> {
+    ) -> PResult<BlockStmtOrExpr<'a>> {
         self.parse_fn_body(
             is_async,
             is_generator,
@@ -546,15 +560,15 @@ impl<'a, I: Tokens> Parser<'a, I> {
             |p, is_simple_parameter_list| {
                 if p.input().is(Token::LBrace) {
                     p.parse_block(false).map(|block_stmt| {
-                        if !is_simple_parameter_list
-                            && let Some(span) = has_use_strict(p.ast, block_stmt)
+                        if !is_simple_parameter_list && let Some(span) = has_use_strict(&block_stmt)
                         {
                             p.emit_err(span, SyntaxError::IllegalLanguageModeDirective);
                         }
-                        BlockStmtOrExpr::BlockStmt(block_stmt)
+                        BlockStmtOrExpr::BlockStmt(p.ast.allocator.boxed(block_stmt))
                     })
                 } else {
-                    p.parse_assignment_expr().map(BlockStmtOrExpr::Expr)
+                    p.parse_assignment_expr()
+                        .map(|expr| BlockStmtOrExpr::Expr(p.ast.allocator.boxed(expr)))
                 }
             },
         )
@@ -625,7 +639,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         is_generator: bool,
         is_arrow_function: bool,
         is_simple_parameter_list: bool,
-    ) -> PResult<Option<BlockStmt>> {
+    ) -> PResult<Option<BlockStmt<'a>>> {
         self.parse_fn_body(
             is_async,
             is_generator,
@@ -640,9 +654,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     return Ok(None);
                 }
                 p.allow_in_expr(|p| p.parse_block(true)).map(|block_stmt| {
-                    if !is_simple_parameter_list
-                        && let Some(span) = has_use_strict(p.ast, block_stmt)
-                    {
+                    if !is_simple_parameter_list && let Some(span) = has_use_strict(&block_stmt) {
                         p.emit_err(span, SyntaxError::IllegalLanguageModeDirective);
                     }
                     Some(block_stmt)
@@ -654,9 +666,9 @@ impl<'a, I: Tokens> Parser<'a, I> {
     fn make_property(
         &mut self,
         start: u32,
-        decorators: TypedSubRange<Decorator>,
+        decorators: Vec<'a, Decorator<'a>>,
         // accessibility: Option<Accessibility>,
-        key: Key,
+        key: Key<'a>,
         is_static: bool,
         accessor_token: Option<Span>,
         _is_optional: bool,
@@ -664,25 +676,21 @@ impl<'a, I: Tokens> Parser<'a, I> {
         declare: bool,
         is_abstract: bool,
         _is_override: bool,
-    ) -> PResult<ClassMember> {
-        if is_constructor(self.ast, key) {
-            syntax_error!(
-                self,
-                key.span(self.ast),
-                SyntaxError::PropertyNamedConstructor
-            );
+    ) -> PResult<ClassMember<'a>> {
+        if is_constructor(&key) {
+            syntax_error!(self, key.span(), SyntaxError::PropertyNamedConstructor);
         }
         if key.is_private() {
             if declare {
                 self.emit_err(
-                    key.span(self.ast),
-                    SyntaxError::PrivateNameModifier(atom!("declare")),
+                    key.span(),
+                    SyntaxError::PrivateNameModifier("declare".to_string()),
                 )
             }
             if is_abstract {
                 self.emit_err(
-                    key.span(self.ast),
-                    SyntaxError::PrivateNameModifier(atom!("abstract")),
+                    key.span(),
+                    SyntaxError::PrivateNameModifier("abstract".to_string()),
                 )
             }
         }
@@ -709,7 +717,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     key,
                     value,
                     is_static,
-                    decorators,
+                    p.box_vec(decorators),
                 ));
             }
 
@@ -725,7 +733,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                         key,
                         value,
                         is_static,
-                        decorators,
+                        p.box_vec(decorators),
                     )
                 }
                 Key::Public(key) => {
@@ -734,8 +742,13 @@ impl<'a, I: Tokens> Parser<'a, I> {
                         p.emit_err(span, SyntaxError::TS1267)
                     }
 
-                    p.ast
-                        .class_member_class_prop(span, key, value, is_static, decorators)
+                    p.ast.class_member_class_prop(
+                        span,
+                        Box::into_inner(key),
+                        value,
+                        is_static,
+                        p.box_vec(decorators),
+                    )
                 }
                 #[cfg(swc_ast_unknown)]
                 _ => unreachable!(),
@@ -743,7 +756,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         })
     }
 
-    fn parse_static_block(&mut self, start: u32) -> PResult<ClassMember> {
+    fn parse_static_block(&mut self, start: u32) -> PResult<ClassMember<'a>> {
         let body = self.do_inside_of_context(
             Context::InStaticBlock
                 .union(Context::InClassField)
@@ -752,7 +765,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         )?;
 
         let span = self.span(start);
-        Ok(self.ast.class_member_static_block(span, body))
+        Ok(self.ast.class_member_static_block(span, self.boxed(body)))
     }
 
     fn parse_class_member_with_is_static(
@@ -762,8 +775,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
         // accessibility: Option<Accessibility>,
         static_token: Option<Span>,
         accessor_token: Option<Span>,
-        decorators: TypedSubRange<Decorator>,
-    ) -> PResult<ClassMember> {
+        decorators: Vec<'a, Decorator<'a>>,
+    ) -> PResult<ClassMember<'a>> {
         let is_static = static_token.is_some();
 
         let is_abstract = false;
@@ -888,7 +901,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             if readonly.is_some() {
                 self.emit_err(self.span(start), SyntaxError::ReadOnlyMethod);
             }
-            if is_constructor(self.ast, key) {
+            if is_constructor(&key) {
                 self.emit_err(self.span(start), SyntaxError::GeneratorConstructor);
             }
 
@@ -915,7 +928,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         let key = if let Some(readonly) = readonly
             && matches!(key_token, Token::Bang | Token::Colon)
         {
-            let sym = self.ast.add_utf8("readonly");
+            let sym = Atom::new_const("readonly");
             self.ast.key_prop_name_ident_name(readonly, sym)
         } else {
             self.parse_class_prop_name()?
@@ -935,11 +948,14 @@ impl<'a, I: Tokens> Parser<'a, I> {
             if readonly.is_some() {
                 syntax_error!(self, self.span(start), SyntaxError::ReadOnlyMethod);
             }
-            let is_constructor = is_constructor(self.ast, key);
+            let is_constructor = is_constructor(&key);
 
             if is_constructor {
                 if self.syntax().typescript() && is_override {
-                    self.emit_err(self.span(start), SyntaxError::TS1089(atom!("override")));
+                    self.emit_err(
+                        self.span(start),
+                        SyntaxError::TS1089("override".to_string()),
+                    );
                 }
 
                 if self.syntax().typescript() && self.input().is(Token::Lt) {
@@ -977,13 +993,13 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     false,
                     false,
                     false,
-                    params.is_simple_parameter_list(self.ast),
+                    params.is_simple_parameter_list(),
                 )?;
 
                 // if body.is_none() {
                 //     for param in params.iter() {
                 //         if param.is_ts_param_prop() {
-                //             self.emit_err(param.span(self.ast), SyntaxError::TS2369)
+                //             self.emit_err(param.span(), SyntaxError::TS2369)
                 //         }
                 //     }
                 // }
@@ -1012,7 +1028,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 // }
 
                 if let Some(static_token) = static_token {
-                    self.emit_err(static_token, SyntaxError::TS1089(atom!("static")))
+                    self.emit_err(static_token, SyntaxError::TS1089("static".to_string()))
                 }
 
                 if let Some(span) = modifier_span
@@ -1022,13 +1038,16 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 }
 
                 let key = match key {
-                    Key::Public(key) => key,
+                    Key::Public(key) => Box::into_inner(key),
                     _ => unreachable!("is_constructor() returns false for PrivateName"),
                 };
 
-                return Ok(self
-                    .ast
-                    .class_member_constructor(self.span(start), key, params, body));
+                return Ok(self.ast.class_member_constructor(
+                    self.span(start),
+                    key,
+                    params,
+                    self.box_opt(body),
+                ));
             } else {
                 return self.make_method(
                     Self::parse_formal_params,
@@ -1090,8 +1109,8 @@ impl<'a, I: Tokens> Parser<'a, I> {
 
             let is_generator = self.input_mut().eat(Token::Asterisk);
             let key = self.parse_class_prop_name()?;
-            if is_constructor(self.ast, key) {
-                syntax_error!(self, key.span(self.ast), SyntaxError::AsyncConstructor)
+            if is_constructor(&key) {
+                syntax_error!(self, key.span(), SyntaxError::AsyncConstructor)
             }
             if readonly.is_some() {
                 syntax_error!(self, self.span(start), SyntaxError::ReadOnlyMethod);
@@ -1119,7 +1138,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         }
 
         if getter_or_setter_ident {
-            let key_span = key.span(self.ast);
+            let key_span = key.span();
 
             // handle get foo(){} / set foo(v){}
             let key = self.parse_class_prop_name()?;
@@ -1128,7 +1147,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 self.emit_err(key_span, SyntaxError::GetterSetterCannotBeReadonly);
             }
 
-            if is_constructor(self.ast, key) {
+            if is_constructor(&key) {
                 self.emit_err(key_span, SyntaxError::ConstructorAccessor);
             }
 
@@ -1137,10 +1156,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     |p| {
                         let params = p.parse_formal_params()?;
 
-                        if params
-                            .iter()
-                            .any(|param| is_not_this(p.ast, p.ast.get_node_in_sub_range(param)))
-                        {
+                        if params.iter().any(is_not_this) {
                             p.emit_err(key_span, SyntaxError::GetterParam);
                         }
 
@@ -1164,22 +1180,14 @@ impl<'a, I: Tokens> Parser<'a, I> {
                     |p| {
                         let params = p.parse_formal_params()?;
 
-                        if params
-                            .iter()
-                            .filter(|param| is_not_this(p.ast, p.ast.get_node_in_sub_range(*param)))
-                            .count()
-                            != 1
-                        {
+                        if params.iter().filter(|param| is_not_this(param)).count() != 1 {
                             p.emit_err(key_span, SyntaxError::SetterParam);
                         }
 
                         if !params.is_empty()
-                            && let Pat::Rest(rest) = p
-                                .ast
-                                .get_node_in_sub_range(params.get(0).unwrap())
-                                .pat(p.ast)
+                            && let Pat::Rest(rest) = &params.first().unwrap().pat
                         {
-                            p.emit_err(rest.span(p.ast), SyntaxError::RestPatInSetter);
+                            p.emit_err(rest.span(), SyntaxError::RestPatInSetter);
                         }
 
                         Ok(params)
@@ -1205,7 +1213,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         unexpected!(self, "* for generator, private key, identifier or async")
     }
 
-    fn parse_class_member(&mut self) -> PResult<ClassMember> {
+    fn parse_class_member(&mut self) -> PResult<ClassMember<'a>> {
         trace_cur!(self, parse_class_member);
 
         let start = self.cur_pos();
@@ -1222,7 +1230,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         let declare_token = if declare {
             // Handle declare(){}
             if self.is_class_method() {
-                let sym = self.ast.add_utf8("declare");
+                let sym = Atom::new_const("declare");
                 let key = self.ast.key_prop_name_ident_name(self.span(start), sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
@@ -1247,7 +1255,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             {
                 // Property named `declare`
 
-                let sym = self.ast.add_utf8("declare");
+                let sym = Atom::new_const("declare");
                 let key = self.ast.key_prop_name_ident_name(self.span(start), sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
@@ -1294,7 +1302,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         if let Some(accessor_token) = accessor_token {
             // Handle accessor(){}
             if self.is_class_method() {
-                let sym = self.ast.add_utf8("accessor");
+                let sym = Atom::new_const("accessor");
                 let key = self.ast.key_prop_name_ident_name(accessor_token, sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
@@ -1319,7 +1327,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
             {
                 // Property named `accessor`
 
-                let sym = self.ast.add_utf8("accessor");
+                let sym = Atom::new_const("accessor");
                 let key = self.ast.key_prop_name_ident_name(accessor_token, sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
@@ -1343,7 +1351,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         if let Some(static_token) = static_token {
             // Handle static(){}
             if self.is_class_method() {
-                let sym = self.ast.add_utf8("static");
+                let sym = Atom::new_const("static");
                 let key = self.ast.key_prop_name_ident_name(static_token, sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
@@ -1373,7 +1381,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
                 //   {}
                 let is_parsing_static_blocks = self.input().is(Token::LBrace);
                 if !is_parsing_static_blocks {
-                    let sym = self.ast.add_utf8("static");
+                    let sym = Atom::new_const("static");
                     let key = self.ast.key_prop_name_ident_name(static_token, sym);
                     let is_optional = self.input().syntax().typescript()
                         && self.input_mut().eat(Token::QuestionMark);
@@ -1406,29 +1414,29 @@ impl<'a, I: Tokens> Parser<'a, I> {
         )
     }
 
-    fn parse_class_body(&mut self) -> PResult<TypedSubRange<ClassMember>> {
-        self.scratch_start(|p, elems| {
+    fn parse_class_body(&mut self) -> PResult<Vec<'a, ClassMember<'a>>> {
+        self.collect_vec(|p, elems| {
             let mut has_constructor_with_body = false;
             while !p.input().is(Token::RBrace) {
                 if p.input_mut().eat(Token::Semi) {
                     let span = p.input().prev_span();
                     debug_assert!(span.start <= span.end);
                     let member = p.ast.class_member_empty_stmt(span);
-                    elems.push(p, member);
+                    elems.push(member);
                     continue;
                 }
                 let elem =
                     p.do_inside_of_context(Context::AllowDirectSuper, Self::parse_class_member)?;
 
                 if !p.ctx().contains(Context::InDeclare)
-                    && let ClassMember::Constructor(constructor) = elem
+                    && let ClassMember::Constructor(ref constructor) = elem
                 {
-                    if constructor.body(p.ast).is_some() && has_constructor_with_body {
-                        p.emit_err(constructor.span(p.ast), SyntaxError::DuplicateConstructor);
+                    if constructor.body.is_some() && has_constructor_with_body {
+                        p.emit_err(constructor.span(), SyntaxError::DuplicateConstructor);
                     }
                     has_constructor_with_body = true;
                 }
-                elems.push(p, elem);
+                elems.push(elem);
             }
             Ok(())
         })
@@ -1438,20 +1446,20 @@ impl<'a, I: Tokens> Parser<'a, I> {
         &mut self,
         start: u32,
         class_start: u32,
-        decorators: TypedSubRange<Decorator>,
+        decorators: Vec<'a, Decorator<'a>>,
         is_abstract: bool,
     ) -> PResult<T>
     where
-        T: OutputType,
+        T: OutputType<'a>,
     {
-        let (ident, class) = self.do_inside_of_context(Context::InClass, |p| {
+        let (ident, mut class) = self.do_inside_of_context(Context::InClass, |p| {
             p.parse_class_inner(start, class_start, decorators, T::IS_IDENT_REQUIRED)
         })?;
 
         if is_abstract {
-            class.set_is_abstract(self.ast, true);
+            class.is_abstract = true;
         } else {
-            // for member in class.body(self.ast).iter(self.ast) {
+            // for member in class.body.iter(self.ast) {
             //     match member {
             //         ClassMember::ClassProp(ClassProp {
             //             is_abstract: true,
@@ -1469,7 +1477,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         }
 
         let span = self.span(start);
-        match T::finish_class(self.ast, span, ident, class) {
+        match T::finish_class(&self.ast, span, ident, class) {
             Ok(v) => Ok(v),
             Err(kind) => syntax_error!(self, kind),
         }
@@ -1480,15 +1488,15 @@ impl<'a, I: Tokens> Parser<'a, I> {
         &mut self,
         _start: u32,
         class_start: u32,
-        decorators: TypedSubRange<Decorator>,
+        decorators: Vec<'a, Decorator<'a>>,
         is_ident_required: bool,
-    ) -> PResult<(Option<Ident>, Class)> {
+    ) -> PResult<(Option<Ident<'a>>, Class<'a>)> {
         self.strict_mode(|p| {
             expect!(p, Token::Class);
 
             let ident = p.parse_maybe_opt_binding_ident(is_ident_required, true)?;
             if p.input().syntax().typescript()
-                && let Some(span) = ident.invalid_class_name(p.ast)
+                && let Some(span) = ident.invalid_class_name()
             {
                 p.emit_err(span, SyntaxError::TS2414);
             }
@@ -1575,13 +1583,15 @@ impl<'a, I: Tokens> Parser<'a, I> {
             }
 
             let span = p.span(class_start);
-            let class = p.ast.class(span, decorators, body, super_class, false);
+            let class = p
+                .ast
+                .class(span, p.box_vec(decorators), body, super_class, false);
             Ok((ident, class))
         })
     }
 }
 
-trait OutputType: Sized {
+trait OutputType<'a>: Sized {
     const IS_IDENT_REQUIRED: bool;
 
     /// From babel..
@@ -1599,21 +1609,21 @@ trait OutputType: Sized {
     }
 
     fn finish_fn(
-        ast: &mut Ast,
+        ast: &AstBuilder<'a>,
         span: Span,
-        ident: Option<Ident>,
-        f: Function,
+        ident: Option<Ident<'a>>,
+        f: Function<'a>,
     ) -> Result<Self, SyntaxError>;
 
     fn finish_class(
-        ast: &mut Ast,
+        ast: &AstBuilder<'a>,
         span: Span,
-        ident: Option<Ident>,
-        class: Class,
+        ident: Option<Ident<'a>>,
+        class: Class<'a>,
     ) -> Result<Self, SyntaxError>;
 }
 
-impl OutputType for Expr {
+impl<'a> OutputType<'a> for Expr<'a> {
     const IS_IDENT_REQUIRED: bool = false;
 
     fn is_fn_expr() -> bool {
@@ -1621,94 +1631,101 @@ impl OutputType for Expr {
     }
 
     fn finish_fn(
-        ast: &mut Ast,
+        ast: &AstBuilder<'a>,
         _span: Span,
-        ident: Option<Ident>,
-        function: Function,
+        ident: Option<Ident<'a>>,
+        function: Function<'a>,
     ) -> Result<Self, SyntaxError> {
-        Ok(ast.expr_fn_expr(function.span(ast), ident, function))
+        let ident = ident.map(|ident| ast.allocator.boxed(ident));
+        Ok(ast.expr_fn_expr(ident, ast.allocator.boxed(function)))
     }
 
     fn finish_class(
-        ast: &mut Ast,
+        ast: &AstBuilder<'a>,
         _span: Span,
-        ident: Option<Ident>,
-        class: Class,
+        ident: Option<Ident<'a>>,
+        class: Class<'a>,
     ) -> Result<Self, SyntaxError> {
-        Ok(ast.expr_class_expr(class.span(ast), ident, class))
+        let ident = ident.map(|ident| ast.allocator.boxed(ident));
+        Ok(ast.expr_class_expr(ident, ast.allocator.boxed(class)))
     }
 }
 
-impl OutputType for ExportDefaultDecl {
+impl<'a> OutputType<'a> for ExportDefaultDecl<'a> {
     const IS_IDENT_REQUIRED: bool = false;
 
     fn finish_fn(
-        ast: &mut Ast,
+        ast: &AstBuilder<'a>,
         span: Span,
-        ident: Option<Ident>,
-        function: Function,
+        ident: Option<Ident<'a>>,
+        function: Function<'a>,
     ) -> Result<Self, SyntaxError> {
-        let decl = ast.default_decl_fn_expr(function.span(ast), ident, function);
+        let ident = ident.map(|ident| ast.allocator.boxed(ident));
+        let decl = ast.default_decl_fn_expr(ident, ast.allocator.boxed(function));
         Ok(ast.export_default_decl(span, decl))
     }
 
     fn finish_class(
-        ast: &mut Ast,
+        ast: &AstBuilder<'a>,
         span: Span,
-        ident: Option<Ident>,
-        class: Class,
+        ident: Option<Ident<'a>>,
+        class: Class<'a>,
     ) -> Result<Self, SyntaxError> {
-        let class = ast.default_decl_class_expr(class.span(ast), ident, class);
+        let ident = ident.map(|ident| ast.allocator.boxed(ident));
+        let class = ast.default_decl_class_expr(ident, ast.allocator.boxed(class));
         Ok(ast.export_default_decl(span, class))
     }
 }
 
-impl OutputType for Decl {
+impl<'a> OutputType<'a> for Decl<'a> {
     const IS_IDENT_REQUIRED: bool = true;
 
     fn finish_fn(
-        ast: &mut Ast,
+        ast: &AstBuilder<'a>,
         _span: Span,
-        ident: Option<Ident>,
-        function: Function,
+        ident: Option<Ident<'a>>,
+        function: Function<'a>,
     ) -> Result<Self, SyntaxError> {
-        let ident = ident.ok_or(SyntaxError::ExpectedIdent)?;
-        Ok(ast.decl_fn_decl(function.span(ast), ident, false, function))
+        let ident = ast
+            .allocator
+            .boxed(ident.ok_or(SyntaxError::ExpectedIdent)?);
+        Ok(ast.decl_fn_decl(ident, false, ast.allocator.boxed(function)))
     }
 
     fn finish_class(
-        ast: &mut Ast,
+        ast: &AstBuilder<'a>,
         _: Span,
-        ident: Option<Ident>,
-        class: Class,
+        ident: Option<Ident<'a>>,
+        class: Class<'a>,
     ) -> Result<Self, SyntaxError> {
-        let ident = ident.ok_or(SyntaxError::ExpectedIdent)?;
-
-        Ok(ast.decl_class_decl(class.span(ast), ident, false, class))
+        let ident = ast
+            .allocator
+            .boxed(ident.ok_or(SyntaxError::ExpectedIdent)?);
+        Ok(ast.decl_class_decl(ident, false, ast.allocator.boxed(class)))
     }
 }
 
-fn has_use_strict(ast: &Ast, block: BlockStmt) -> Option<Span> {
+fn has_use_strict(block: &BlockStmt) -> Option<Span> {
     block
-        .stmts(ast)
+        .stmts
         .iter()
-        .map(|id| ast.get_node_in_sub_range(id))
-        .take_while(|s| s.can_precede_directive(ast))
+        .take_while(|s| s.can_precede_directive())
         .find_map(|s| {
-            if s.is_use_strict(ast) {
-                Some(s.span(ast))
+            if s.is_use_strict() {
+                Some(s.span())
             } else {
                 None
             }
         })
 }
 
-fn is_constructor(ast: &Ast, key: Key) -> bool {
-    if let Key::Public(PropName::Ident(ident_name)) = key {
-        ast.get_utf8(ident_name.sym(ast)).eq("constructor")
-    } else if let Key::Public(PropName::Str(s)) = key {
-        ast.get_wtf8(s.value(ast)).eq(Wtf8::from_str("constructor"))
-    } else {
-        false
-    }
+fn is_constructor(key: &Key<'_>) -> bool {
+    matches!(
+        key,
+        Key::Public(prop)
+            if matches!(
+                &**prop,
+                PropName::Ident(ident_name) if ident_name.sym.eq("constructor")
+            ) || matches!(&**prop, PropName::Str(s) if s.value.eq(Wtf8::from_str("constructor")))
+    )
 }

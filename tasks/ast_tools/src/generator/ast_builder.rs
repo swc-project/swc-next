@@ -5,11 +5,8 @@ use quote::{ToTokens, format_ident, quote};
 use crate::{
     AST_CRATE_PATH,
     output::{RawOutput, RustOutput, output_path},
-    schema::{AstEnum, AstStruct, AstType, Schema},
-    util::{
-        INLINE_DATA_U32_SIZE, InlineStorageMode, calculate_inline_layout, generate_field_to_u32,
-        safe_ident,
-    },
+    schema::{AstEnum, AstStruct, AstType, Schema, TypeId},
+    util::safe_ident,
 };
 
 pub fn ast_builder(schema: &Schema) -> RawOutput {
@@ -17,14 +14,14 @@ pub fn ast_builder(schema: &Schema) -> RawOutput {
     for ty in schema.types.iter() {
         match ty {
             AstType::Struct(ast_struct) => {
-                build_functions.extend(generate_build_function_for_struct(ast_struct, schema))
+                build_functions.extend(generate_build_functions_for_struct(ast_struct, schema))
             }
             AstType::Enum(ast_enum) => {
                 let mut context = RecursiveEnumContext {
-                    ret_ty: format_ident!("{}", ast_enum.name).to_token_stream(),
+                    ret_ty: type_ref(ast_enum.type_id, schema),
                     ..Default::default()
                 };
-                build_functions.extend(generate_build_function_for_enum(
+                build_functions.extend(generate_build_functions_for_enum(
                     ast_enum,
                     schema,
                     &mut context,
@@ -35,12 +32,15 @@ pub fn ast_builder(schema: &Schema) -> RawOutput {
     }
 
     let output = quote! {
-            #![allow(unused, clippy::useless_conversion, clippy::identity_op)]
-            use crate::*;
+        #![allow(unused, clippy::useless_conversion, clippy::identity_op)]
+        use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
+        use swc_experimental_allocator::boxed::Box;
+        use swc_experimental_allocator::vec::Vec;
+        use crate::*;
 
-            impl Ast {
-                #build_functions
-            }
+        impl<'a> AstBuilder<'a> {
+            #build_functions
+        }
     };
 
     RustOutput {
@@ -50,255 +50,30 @@ pub fn ast_builder(schema: &Schema) -> RawOutput {
     .into()
 }
 
-fn generate_build_function_for_struct(ast: &AstStruct, schema: &Schema) -> TokenStream {
+fn generate_build_functions_for_struct(ast: &AstStruct, schema: &Schema) -> TokenStream {
     let fn_name = safe_ident(&ast.name.to_case(Case::Snake));
-    let ret_ty = format_ident!("{}", ast.name);
+    let box_fn_name = safe_ident(&format!("box_{}", ast.name.to_case(Case::Snake)));
+    let ret_ty = type_ref(ast.type_id, schema);
+    let constructor = format_ident!("{}", ast.name);
     let fn_params = generate_fn_params_decl(ast, schema);
+    let fn_args = generate_fn_args(ast);
+    let fields = generate_struct_fields(ast);
 
-    // Check if this struct can use inline storage
-    if let Some(layout) = calculate_inline_layout(ast, schema) {
-        generate_build_function_inline(ast, schema, fn_name, ret_ty, fn_params, &layout)
-    } else {
-        generate_build_function_extra_data(ast, schema, fn_name, ret_ty, fn_params)
-    }
-}
-
-/// Generate build function using inline storage (for small nodes)
-/// Layout (8 bytes total):
-/// - Bytes 0-3: NodeData.inline_data (u32)
-/// - Bytes 4-7: AstNode.inline_data (u32)
-fn generate_build_function_inline(
-    ast: &AstStruct,
-    schema: &Schema,
-    fn_name: syn::Ident,
-    ret_ty: syn::Ident,
-    fn_params: TokenStream,
-    layout: &crate::util::InlineLayout,
-) -> TokenStream {
-    // Optimization: zero-field nodes use empty: () for shorter generated code
-    if layout.fields.is_empty() {
-        return quote! {
-            #[inline]
-            pub fn #fn_name(&mut self, span: Span) -> #ret_ty {
-                #ret_ty(self.add_node(
-                    span,
-                    NodeKind::#ret_ty,
-                    0u32,
-                    NodeData { empty: () },
-                ))
-            }
-        };
-    }
-
-    // Optimization: if FourBytes mode with a single field at offset 0 (1-4 bytes),
-    // we can directly assign the u32 value without byte conversion
-    let is_single_u32_field = layout.mode == InlineStorageMode::FourBytes
-        && layout.fields.len() == 1
-        && layout.fields[0].1 == 0   // byte_offset == 0
-        && layout.fields[0].2 <= INLINE_DATA_U32_SIZE; // byte_size <= 4
-
-    if is_single_u32_field {
-        let (field_idx, _, _) = layout.fields[0];
-        let field = &ast.fields[field_idx];
-        let field_name = format_ident!("{}", field.name);
-        let field_ty = &schema.types[field.type_id];
-
-        // Generate direct u32 value
-        let u32_value = generate_field_to_u32(field_ty, &field_name, schema);
-
-        return quote! {
-            #[inline]
-            pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
-                #ret_ty(self.add_node(
-                    span,
-                    NodeKind::#ret_ty,
-                    0u32,
-                    NodeData {
-                        inline_data: #u32_value,
-                    },
-                ))
-            }
-        };
-    }
-
-    // General case: pack fields using bit operations
-    // inline_u32: bytes 0-3 (node.data.inline_data)
-    // inline_extra_u32: bytes 4-7 (node.inline_data as u32)
-    let mut pack_u32 = TokenStream::new();
-    let mut pack_extra_u32 = TokenStream::new();
-
-    for &(field_idx, byte_offset, byte_size) in &layout.fields {
-        let field = &ast.fields[field_idx];
-        let field_name = format_ident!("{}", field.name);
-        let field_ty = &schema.types[field.type_id];
-
-        // Generate u32 value for this field
-        let field_u32 = generate_field_to_u32(field_ty, &field_name, schema);
-        let bit_offset = byte_offset * 8;
-        let field_end = byte_offset + byte_size;
-
-        if field_end <= INLINE_DATA_U32_SIZE {
-            // Field entirely in bytes 0-3 (inline_u32)
-            if byte_offset == 0 {
-                pack_u32.extend(quote! { | #field_u32 });
-            } else {
-                pack_u32.extend(quote! { | ((#field_u32) << #bit_offset) });
-            }
-        } else if byte_offset >= INLINE_DATA_U32_SIZE {
-            // Field entirely in bytes 4-7 (inline_extra_u32)
-            let extra_u32_bit_offset = (byte_offset - INLINE_DATA_U32_SIZE) * 8;
-            if extra_u32_bit_offset == 0 {
-                pack_extra_u32.extend(quote! { | #field_u32 });
-            } else {
-                pack_extra_u32.extend(quote! { | ((#field_u32) << #extra_u32_bit_offset) });
-            }
-        } else {
-            // Field spans the boundary (bytes in both u32 and extra u32)
-            // Split: lower bits go to u32, upper bits go to extra u32
-            let bits_in_u32 = (INLINE_DATA_U32_SIZE - byte_offset) * 8;
-            let mask_u32 = (1u32 << bits_in_u32) - 1;
-
-            if byte_offset == 0 {
-                pack_u32.extend(quote! { | ((#field_u32) & #mask_u32) });
-            } else {
-                pack_u32.extend(quote! { | (((#field_u32) & #mask_u32) << #bit_offset) });
-            }
-            pack_extra_u32.extend(quote! { | ((#field_u32) >> #bits_in_u32) });
-        }
-    }
-
-    match layout.mode {
-        InlineStorageMode::FourBytes => {
-            quote! {
-                #[inline]
-                pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
-                    #ret_ty(
-                        self.add_node(
-                            span,
-                            NodeKind::#ret_ty,
-                            0u32,
-                            NodeData {
-                                inline_data: 0u32 #pack_u32,
-                            },
-                        )
-                    )
-                }
-            }
-        }
-        InlineStorageMode::Full => {
-            quote! {
-                #[inline]
-                pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
-                    #ret_ty(
-                        self.add_node(
-                            span,
-                            NodeKind::#ret_ty,
-                            0u32 #pack_extra_u32,
-                            NodeData {
-                                inline_data: 0u32 #pack_u32,
-                            },
-                        )
-                    )
-                }
-            }
-        }
-        InlineStorageMode::Partial => {
-            // Partial mode:
-            // 1. Pack extra u32 fields (bytes 4-7) into inline_data
-            // 2. Generate ExtraData entries for non-inlined fields
-            // 3. Store the first extra data index in data.extra_data_start
-
-            let mut add_extra_data = TokenStream::new();
-            let mut first_extra_data_id: Option<syn::Ident> = None;
-            let mut current_extra_data_index = 0usize;
-
-            for (index, field) in ast.fields.iter().enumerate() {
-                // Skip inlined fields
-                if layout.fields.iter().any(|(idx, _, _)| *idx == index) {
-                    continue;
-                }
-
-                let extra_data_id = format_ident!("_f{}", current_extra_data_index);
-                if first_extra_data_id.is_none() {
-                    first_extra_data_id = Some(extra_data_id.clone());
-                }
-
-                current_extra_data_index += 1;
-
-                let field_name = format_ident!("{}", field.name);
-                add_extra_data.extend(quote! {
-                    let #extra_data_id = self.add_extra(#field_name.to_extra_data());
-                });
-            }
-
-            let start_id =
-                first_extra_data_id.expect("Partial mode must have at least one non-inlined field");
-
-            quote! {
-                #[inline]
-                pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
-                    #add_extra_data
-
-                    #ret_ty(
-                        self.add_node(
-                            span,
-                            NodeKind::#ret_ty,
-                            0u32 #pack_extra_u32,
-                            NodeData {
-                                extra_data_start: #start_id,
-                            },
-                        )
-                    )
-                }
-            }
-        }
-    }
-}
-
-/// Generate build function using extra_data storage (for large nodes)
-fn generate_build_function_extra_data(
-    ast: &AstStruct,
-    _schema: &Schema,
-    fn_name: syn::Ident,
-    ret_ty: syn::Ident,
-    fn_params: TokenStream,
-) -> TokenStream {
-    let mut add_extra_data = TokenStream::new();
-    for (index, field) in ast.fields.iter().enumerate() {
-        let extra_data_id = format_ident!("_f{}", index);
-        let field_name = format_ident!("{}", field.name);
-        add_extra_data.extend(quote! {
-            let #extra_data_id = self.add_extra(#field_name.to_extra_data());
-        });
-    }
-
-    let node_data = match ast.fields.len() {
-        0 => quote!(empty: ()),
-        _ => quote!(extra_data_start: _f0),
-    };
-
-    let tokens = quote! {
+    quote! {
         #[inline]
-        pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
-            #add_extra_data
-
-            #ret_ty(
-                self.add_node(
-                    span,
-                    NodeKind::#ret_ty,
-                    0u32,
-                    NodeData {
-                        #node_data
-                    },
-                )
-            )
+        pub fn #fn_name(&self, #fn_params) -> #ret_ty {
+            #constructor {
+                #fields
+            }
         }
-    };
 
-    tokens
+        #[inline]
+        pub fn #box_fn_name(&self, #fn_params) -> Box<'a, #ret_ty> {
+            self.allocator.boxed(self.#fn_name(#fn_args))
+        }
+    }
 }
 
-// TODO: Use [crate::util::flat_enum_type]
 #[derive(Default)]
 struct RecursiveEnumContext {
     ret_ty: TokenStream,
@@ -306,7 +81,7 @@ struct RecursiveEnumContext {
     constructor: Vec<TokenStream>,
 }
 
-fn generate_build_function_for_enum(
+fn generate_build_functions_for_enum(
     ast: &AstEnum,
     schema: &Schema,
     recursive_context: &mut RecursiveEnumContext,
@@ -339,22 +114,23 @@ fn generate_build_function_for_enum(
                 };
 
                 let args = generate_fn_args(ast_struct);
-                let constructor = safe_ident(&ast_struct.name.to_case(Case::Snake));
-                let body = recursive_context.constructor.iter().rev().fold(
-                    quote!( self.#constructor(span, #args).into() ),
-                    |acc, constructor| quote!(#constructor(#acc)),
+                let box_constructor =
+                    safe_ident(&format!("box_{}", ast_struct.name.to_case(Case::Snake)));
+                let body = wrap_enum_constructors(
+                    quote!( self.#box_constructor(#args) ),
+                    &recursive_context.constructor,
                 );
 
                 let fn_params = generate_fn_params_decl(ast_struct, schema);
                 build_variants.extend(quote! {
                     #[inline]
-                    pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
+                    pub fn #fn_name(&self, #fn_params) -> #ret_ty {
                         #body
                     }
                 });
             }
             AstType::Enum(inner_enum) => {
-                build_variants.extend(generate_build_function_for_enum(
+                build_variants.extend(generate_build_functions_for_enum(
                     inner_enum,
                     schema,
                     recursive_context,
@@ -370,11 +146,27 @@ fn generate_build_function_for_enum(
     build_variants
 }
 
+fn wrap_enum_constructors(mut payload: TokenStream, constructors: &[TokenStream]) -> TokenStream {
+    for (index, constructor) in constructors.iter().rev().enumerate() {
+        payload = if index == 0 {
+            quote!(#constructor(#payload))
+        } else {
+            quote!(#constructor(self.allocator.boxed(#payload)))
+        };
+    }
+
+    payload
+}
+
 fn generate_fn_params_decl(ast: &AstStruct, schema: &Schema) -> TokenStream {
     let mut fields = Vec::default();
     for field in ast.fields.iter() {
+        if should_default_in_builder(ast, &field.name) {
+            continue;
+        }
+
         let field_name = format_ident!("{}", field.name);
-        let field_ty = schema.types[field.type_id].repr_ident(schema);
+        let field_ty = field_type_ref(field.type_id, schema);
         fields.push(quote!(#field_name: #field_ty));
     }
 
@@ -384,9 +176,136 @@ fn generate_fn_params_decl(ast: &AstStruct, schema: &Schema) -> TokenStream {
 fn generate_fn_args(ast: &AstStruct) -> TokenStream {
     let mut fields = Vec::default();
     for field in ast.fields.iter() {
+        if should_default_in_builder(ast, &field.name) {
+            continue;
+        }
+
         let field_name = format_ident!("{}", field.name);
         fields.push(quote!(#field_name));
     }
 
     quote!( #(#fields),* )
+}
+
+fn generate_struct_fields(ast: &AstStruct) -> TokenStream {
+    let fields = ast.fields.iter().map(|field| {
+        let field_name = format_ident!("{}", field.name);
+        if should_default_in_builder(ast, &field.name) {
+            quote!(#field_name: Default::default())
+        } else {
+            quote!(#field_name)
+        }
+    });
+
+    quote!(#(#fields),*)
+}
+
+fn should_default_in_builder(ast: &AstStruct, field_name: &str) -> bool {
+    matches!(
+        (ast.name.as_str(), field_name),
+        ("Ident", "symbol_id") | ("BlockStmt", "scope_id")
+    )
+}
+
+fn type_ref(type_id: TypeId, schema: &Schema) -> TokenStream {
+    match &schema.types[type_id] {
+        AstType::Struct(ast) => named_type_ref(&ast.name, type_has_lifetime(type_id, schema)),
+        AstType::Enum(ast) => named_type_ref(&ast.name, type_has_lifetime(type_id, schema)),
+        AstType::Box(ast) => {
+            let inner_ty = type_ref(ast.inner_type_id, schema);
+            quote!(Box<'a, #inner_ty>)
+        }
+        AstType::Vec(ast) => {
+            let inner_ty = field_type_ref(ast.inner_type_id, schema);
+            quote!(Vec<'a, #inner_ty>)
+        }
+        AstType::Option(ast) => {
+            let inner_ty = field_type_ref(ast.inner_type_id, schema);
+            quote!(Option<#inner_ty>)
+        }
+        AstType::Primitive(ast) => primitive_type_ref(ast.name),
+    }
+}
+
+fn field_type_ref(type_id: TypeId, schema: &Schema) -> TokenStream {
+    match &schema.types[type_id] {
+        AstType::Struct(_) => {
+            let inner_ty = type_ref(type_id, schema);
+            quote!(Box<'a, #inner_ty>)
+        }
+        AstType::Enum(_) => type_ref(type_id, schema),
+        AstType::Box(ast) => {
+            let inner_ty = type_ref(ast.inner_type_id, schema);
+            quote!(Box<'a, #inner_ty>)
+        }
+        AstType::Vec(ast) => {
+            let inner_ty = field_type_ref(ast.inner_type_id, schema);
+            quote!(Vec<'a, #inner_ty>)
+        }
+        AstType::Option(ast) => {
+            let inner_ty = field_type_ref(ast.inner_type_id, schema);
+            quote!(Option<#inner_ty>)
+        }
+        AstType::Primitive(ast) => primitive_type_ref(ast.name),
+    }
+}
+
+fn named_type_ref(name: &str, has_lifetime: bool) -> TokenStream {
+    let ident = format_ident!("{}", name);
+    if has_lifetime {
+        quote!(#ident<'a>)
+    } else {
+        ident.into_token_stream()
+    }
+}
+
+fn primitive_type_ref(name: &str) -> TokenStream {
+    match name {
+        "Utf8Ref" | "Atom" => quote!(Atom<'a>),
+        "Wtf8Ref" | "Wtf8Atom" => quote!(Wtf8Atom<'a>),
+        "OptionalUtf8Ref" => quote!(Option<Atom<'a>>),
+        "OptionalWtf8Ref" => quote!(Option<Wtf8Atom<'a>>),
+        "swc_experimental_num_bigint::BigInt" => quote!(swc_experimental_num_bigint::BigInt<'a>),
+        "ScopeId" => quote!(ScopeId),
+        "SymbolId" => quote!(SymbolId),
+        _ => format_ident!("{}", name).into_token_stream(),
+    }
+}
+
+fn type_has_lifetime(type_id: TypeId, schema: &Schema) -> bool {
+    match &schema.types[type_id] {
+        AstType::Struct(ast) => ast
+            .fields
+            .iter()
+            .any(|field| field_type_needs_lifetime(field.type_id, schema)),
+        AstType::Enum(ast) => ast.variants.iter().any(|variant| variant.type_id.is_some()),
+        AstType::Box(_) => true,
+        AstType::Vec(_) => true,
+        AstType::Option(ast) => field_type_needs_lifetime(ast.inner_type_id, schema),
+        AstType::Primitive(ast) => primitive_type_needs_lifetime(ast.name),
+    }
+}
+
+fn field_type_needs_lifetime(type_id: TypeId, schema: &Schema) -> bool {
+    match &schema.types[type_id] {
+        AstType::Struct(_) => true,
+        AstType::Enum(_) => type_has_lifetime(type_id, schema),
+        AstType::Box(_) => true,
+        AstType::Vec(_) => true,
+        AstType::Option(ast) => field_type_needs_lifetime(ast.inner_type_id, schema),
+        AstType::Primitive(ast) => primitive_type_needs_lifetime(ast.name),
+    }
+}
+
+fn primitive_type_needs_lifetime(name: &str) -> bool {
+    matches!(
+        name,
+        "Utf8Ref"
+            | "Atom"
+            | "Wtf8Ref"
+            | "Wtf8Atom"
+            | "OptionalUtf8Ref"
+            | "OptionalWtf8Ref"
+            | "swc_experimental_num_bigint::BigInt"
+    )
 }

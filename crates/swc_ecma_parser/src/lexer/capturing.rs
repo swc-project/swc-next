@@ -1,6 +1,7 @@
 use std::mem;
 
-use swc_experimental_ecma_ast::{Span, StringAllocator};
+use swc_experimental_allocator::Allocator;
+use swc_experimental_ecma_ast::Span;
 
 use crate::{
     Context,
@@ -16,7 +17,7 @@ pub struct Capturing<I> {
     captured: Vec<TokenAndSpan>,
 }
 
-pub struct CapturingCheckpoint<I: Tokens> {
+pub struct CapturingCheckpoint<'a, I: Tokens<'a>> {
     pos: usize,
     inner: I::Checkpoint,
 }
@@ -30,7 +31,7 @@ impl<I: Clone> Clone for Capturing<I> {
     }
 }
 
-impl<I: Tokens> Capturing<I> {
+impl<'a, I: Tokens<'a>> Capturing<I> {
     pub fn new(input: I) -> Self {
         Capturing {
             inner: input,
@@ -70,8 +71,8 @@ impl<I: Tokens> Capturing<I> {
     }
 }
 
-impl<I: Tokens> Tokens for Capturing<I> {
-    type Checkpoint = CapturingCheckpoint<I>;
+impl<'a, I: Tokens<'a>> Tokens<'a> for Capturing<I> {
+    type Checkpoint = CapturingCheckpoint<'a, I>;
 
     fn checkpoint_save(&self) -> Self::Checkpoint {
         Self::Checkpoint {
@@ -109,6 +110,10 @@ impl<I: Tokens> Tokens for Capturing<I> {
         self.inner.set_next_regexp(start);
     }
 
+    fn allocator(&self) -> &'a Allocator {
+        self.inner.allocator()
+    }
+
     fn add_error(&mut self, error: Error) {
         self.inner.add_error(error);
     }
@@ -137,11 +142,11 @@ impl<I: Tokens> Tokens for Capturing<I> {
         self.inner.token_flags()
     }
 
-    fn take_token_value(&mut self) -> Option<super::TokenValue> {
+    fn take_token_value(&mut self) -> Option<super::TokenValue<'a>> {
         self.inner.take_token_value()
     }
 
-    fn get_token_value(&self) -> Option<&super::TokenValue> {
+    fn get_token_value(&self) -> Option<&super::TokenValue<'a>> {
         self.inner.get_token_value()
     }
 
@@ -161,7 +166,7 @@ impl<I: Tokens> Tokens for Capturing<I> {
         next
     }
 
-    fn set_token_value(&mut self, token_value: Option<super::TokenValue>) {
+    fn set_token_value(&mut self, token_value: Option<super::TokenValue<'a>>) {
         self.inner.set_token_value(token_value);
     }
 
@@ -203,10 +208,6 @@ impl<I: Tokens> Tokens for Capturing<I> {
             .rescan_template_token(start, start_with_back_tick);
         self.capture(ts);
         ts
-    }
-
-    fn string_allocator(&self) -> StringAllocator {
-        self.inner.string_allocator()
     }
 
     fn read_string(&self, span: Span) -> &str {

@@ -1,24 +1,34 @@
+use crate::Span;
+use swc_experimental_allocator::boxed::Box;
+use swc_experimental_allocator::vec::Vec;
 use swc_experimental_ast_macros::ast;
 
+use crate::ast::{BlockStmt, Decorator, Pat};
+
 #[ast]
-pub struct Function {
-    params: Vec<Param>,
-    decorators: Vec<Decorator>,
-    body: Option<BlockStmt>,
-    is_generator: bool,
-    is_async: bool,
+#[derive(Debug)]
+pub struct Function<'a> {
+    pub span: Span,
+    pub params: Vec<'a, Box<'a, Param<'a>>>,
+    pub decorators: Vec<'a, Box<'a, Decorator<'a>>>,
+    pub body: Option<Box<'a, BlockStmt<'a>>>,
+    pub is_generator: bool,
+    pub is_async: bool,
     // pub type_params: Option<Box<TsTypeParamDecl>>,
     // pub return_type: Option<Box<TsTypeAnn>>,
 }
 
 #[ast]
-pub struct Param {
-    decorators: Vec<Decorator>,
-    pat: Pat,
+#[derive(Debug)]
+pub struct Param<'a> {
+    pub span: Span,
+    pub decorators: Vec<'a, Box<'a, Decorator<'a>>>,
+    pub pat: Pat<'a>,
 }
 
 #[ast]
-pub enum ParamOrTsParamProp {
+#[derive(Debug)]
+pub enum ParamOrTsParamProp<'a> {
     // TsParamProp(TsParamProp),
-    Param(Param),
+    Param(Box<'a, Param<'a>>),
 }

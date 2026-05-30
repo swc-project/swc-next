@@ -1,0 +1,12 @@
+[package]
+description.workspace = true
+edition               = "2024"
+homepage.workspace    = true
+keywords.workspace    = true
+license.workspace     = true
+name                  = "swc_experimental_allocator"
+repository.workspace  = true
+version               = "0.7.2"
+
+[dependencies]
+bumpalo = { workspace = true }

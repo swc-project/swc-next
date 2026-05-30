@@ -19,7 +19,7 @@ num-bigint  = { workspace = true }
 rustc-hash  = { workspace = true }
 seq-macro   = { workspace = true }
 smartstring = { workspace = true }
-swc_atoms   = { workspace = true }
 tracing     = { workspace = true }
 
-swc_experimental_ecma_ast = { workspace = true }
+swc_experimental_allocator = { workspace = true }
+swc_experimental_ecma_ast  = { workspace = true }

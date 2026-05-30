@@ -1,8 +1,8 @@
 use std::{fmt::Write, mem};
 
 use either::Either;
-use swc_atoms::{Atom, Wtf8Atom, atom};
-use swc_ecma_ast::*;
+use swc_experimental_ecma_ast::{Atom, Wtf8Atom, atom};
+use swc_experimental_ecma_ast::*;
 
 use crate::{
     Context, PResult, Parser, error::SyntaxError, input::Tokens, lexer::Token,
@@ -48,7 +48,7 @@ fn make_decl_declare(mut decl: Decl) -> Decl {
     decl
 }
 
-impl<I: Tokens> Parser<I> {
+impl<'a, I: Tokens<'a>> Parser<'a, I> {
     /// `tsParseList`
     fn parse_ts_list<T, F>(&mut self, kind: ParsingContext, mut parse_element: F) -> PResult<Vec<T>>
     where
@@ -668,32 +668,32 @@ impl<I: Tokens> Parser<I> {
                     if !permit_const {
                         self.emit_err(
                             self.input().prev_span(),
-                            SyntaxError::TS1277(atom!("const")),
+                            SyntaxError::TS1277("const".to_string()),
                         );
                     }
                 }
                 Token::In => {
                     if !permit_in_out {
-                        self.emit_err(self.input().prev_span(), SyntaxError::TS1274(atom!("in")));
+                        self.emit_err(self.input().prev_span(), SyntaxError::TS1274("in".to_string()));
                     } else if is_in {
-                        self.emit_err(self.input().prev_span(), SyntaxError::TS1030(atom!("in")));
+                        self.emit_err(self.input().prev_span(), SyntaxError::TS1030("in".to_string()));
                     } else if is_out {
                         self.emit_err(
                             self.input().prev_span(),
-                            SyntaxError::TS1029(atom!("in"), atom!("out")),
+                            SyntaxError::TS1029("in".to_string(), "out".to_string()),
                         );
                     }
                     is_in = true;
                 }
                 Token::Out => {
                     if !permit_in_out {
-                        self.emit_err(self.input().prev_span(), SyntaxError::TS1274(atom!("out")));
+                        self.emit_err(self.input().prev_span(), SyntaxError::TS1274("out".to_string()));
                     } else if is_out {
-                        self.emit_err(self.input().prev_span(), SyntaxError::TS1030(atom!("out")));
+                        self.emit_err(self.input().prev_span(), SyntaxError::TS1030("out".to_string()));
                     }
                     is_out = true;
                 }
-                other => self.emit_err(self.input().prev_span(), SyntaxError::TS1273(other.into())),
+                other => self.emit_err(self.input().prev_span(), SyntaxError::TS1273(other.to_string())),
             };
         }
 
@@ -1366,7 +1366,7 @@ impl<I: Tokens> Parser<I> {
     pub(crate) fn parse_ts_import_equals_decl(
         &mut self,
         start: u32,
-        id: Ident,
+        id: Ident<'a>,
         is_export: bool,
         is_type_only: bool,
     ) -> PResult<Box<TsImportEqualsDecl>> {
@@ -2606,9 +2606,9 @@ impl<I: Tokens> Parser<I> {
     /// `tsParseExpressionStatement`
     pub(crate) fn parse_ts_expr_stmt(
         &mut self,
-        decorators: Vec<Decorator>,
-        expr: Ident,
-    ) -> PResult<Option<Decl>> {
+        decorators: Vec<'a, Decorator<'a>>,
+        expr: Ident<'a>,
+    ) -> PResult<Option<Decl<'a>>> {
         if !cfg!(feature = "typescript") {
             return Ok(Default::default());
         }

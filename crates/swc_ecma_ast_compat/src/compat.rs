@@ -1,25 +1,21 @@
 use swc_core::ecma::ast::{self as legacy};
-use swc_experimental_ecma_ast::{self as experimental, Ast, ExtraDataCompact, TypedSubRange};
+use swc_experimental_allocator::vec::Vec as AstVec;
+use swc_experimental_ecma_ast::{self as experimental};
 use swc_experimental_ecma_semantic::resolver::Semantic;
 
 use crate::compat_impl::CompatImpl;
 
 pub struct AstCompat<'a> {
-    ast: &'a Ast,
     semantic: &'a Semantic,
 }
 
 impl<'a> AstCompat<'a> {
-    pub fn new(ast: &'a Ast, semantic: &'a Semantic) -> Self {
-        Self { ast, semantic }
+    pub fn new(semantic: &'a Semantic) -> Self {
+        Self { semantic }
     }
 }
 
 impl CompatImpl for AstCompat<'_> {
-    fn ast(&self) -> &Ast {
-        self.ast
-    }
-
     fn semantic(&self) -> &Semantic {
         self.semantic
     }
@@ -28,14 +24,14 @@ impl CompatImpl for AstCompat<'_> {
         Box::new(value)
     }
 
-    fn compat_type_sub_range<T: ExtraDataCompact, U, F: Fn(&mut Self, T) -> U>(
+    fn compat_vec<T, U, F: Fn(&mut Self, T) -> U>(
         &mut self,
-        typed_range: TypedSubRange<T>,
+        items: AstVec<'_, T>,
         transformer: F,
     ) -> Vec<U> {
-        let mut ret = Vec::with_capacity(typed_range.len());
-        for item in typed_range.iter() {
-            ret.push(transformer(self, self.ast.get_node_in_sub_range(item)));
+        let mut ret = Vec::with_capacity(items.len());
+        for item in items {
+            ret.push(transformer(self, item));
         }
         ret
     }

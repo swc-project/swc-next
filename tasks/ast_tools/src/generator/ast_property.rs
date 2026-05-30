@@ -1,15 +1,11 @@
 use convert_case::{Case, Casing};
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
+use quote::{ToTokens, format_ident, quote};
 
 use crate::{
     AST_CRATE_PATH,
     output::{RawOutput, RustOutput, output_path},
-    schema::{AstEnum, AstStruct, AstType, Schema},
-    util::{
-        INLINE_DATA_U32_SIZE, InlineLayout, InlineStorageMode, calculate_inline_layout,
-        generate_field_to_u32, generate_u32_to_field, safe_ident,
-    },
+    schema::{AstEnum, AstStruct, AstType, Schema, TypeId},
 };
 
 pub fn ast_property(schema: &Schema) -> RawOutput {
@@ -17,18 +13,24 @@ pub fn ast_property(schema: &Schema) -> RawOutput {
     for ty in schema.types.iter() {
         match ty {
             AstType::Struct(ast_struct) => {
-                impls.extend(generate_property_for_struct(ast_struct, schema))
+                impls.extend(generate_span_for_struct(ast_struct, schema));
             }
-            AstType::Enum(ast_enum) => impls.extend(generate_property_for_enum(ast_enum, schema)),
-            _ => continue,
-        };
+            AstType::Enum(ast_enum) => {
+                impls.extend(generate_property_for_enum(ast_enum, schema));
+                impls.extend(generate_span_for_enum(ast_enum, schema));
+            }
+            _ => {}
+        }
     }
 
     let output = quote! {
-            #![allow(unused, clippy::useless_conversion, clippy::identity_op, clippy::erasing_op, clippy::let_and_return)]
-            use crate::*;
+        #![allow(unused, clippy::useless_conversion, clippy::identity_op)]
+        use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
+        use swc_experimental_allocator::boxed::Box;
+        use crate::*;
+        use crate::span::{DUMMY_SP, GetSpan, SetSpan};
 
-            #impls
+        #impls
     };
 
     RustOutput {
@@ -38,459 +40,14 @@ pub fn ast_property(schema: &Schema) -> RawOutput {
     .into()
 }
 
-fn generate_property_for_struct(ast: &AstStruct, schema: &Schema) -> TokenStream {
-    let name = format_ident!("{}", ast.name);
-
-    let mut field_getters = TokenStream::new();
-    let mut field_setters = TokenStream::new();
-
-    // Check if this struct uses inline storage
-    if let Some(layout) = calculate_inline_layout(ast, schema) {
-        match layout.mode {
-            InlineStorageMode::Partial => {
-                // Partial inlining: generates both inline accessors and extra data accessors
-                generate_inline_property_accessors(
-                    ast,
-                    schema,
-                    &mut field_getters,
-                    &mut field_setters,
-                    &layout,
-                );
-                generate_extra_data_property_accessors_partial(
-                    ast,
-                    schema,
-                    &mut field_getters,
-                    &mut field_setters,
-                    &layout,
-                );
-            }
-            _ => {
-                generate_inline_property_accessors(
-                    ast,
-                    schema,
-                    &mut field_getters,
-                    &mut field_setters,
-                    &layout,
-                );
-            }
-        }
-    } else {
-        generate_extra_data_property_accessors(ast, schema, &mut field_getters, &mut field_setters);
-    }
-
-    quote! {
-        impl #name {
-            #field_getters
-            #field_setters
-        }
-    }
-}
-
-/// Generate getters/setters for inline storage
-/// Layout (8 bytes total):
-/// - Bytes 0-3: NodeData.inline_data (u32)
-/// - Bytes 4-7: AstNode.inline_data (u32)
-fn generate_inline_property_accessors(
-    ast: &AstStruct,
-    schema: &Schema,
-    field_getters: &mut TokenStream,
-    field_setters: &mut TokenStream,
-    layout: &InlineLayout,
-) {
-    for &(field_idx, byte_offset, byte_size) in &layout.fields {
-        let field = &ast.fields[field_idx];
-        let field_name = format_ident!("{}", field.name);
-        let field_ty = &schema.types[field.type_id];
-        let getter_name = safe_ident(&field.name.to_case(Case::Snake));
-        let ret_ty = field_ty.repr_ident(schema);
-
-        // Optimization: single field at offset 0 (1-4 bytes) can directly use u32
-        let is_direct_u32 =
-            byte_offset == 0 && byte_size <= 4 && layout.mode == InlineStorageMode::FourBytes;
-
-        if is_direct_u32 {
-            // Generate optimized getter (direct u32 read)
-            let cast_expr = generate_u32_to_field(field_ty, schema);
-            field_getters.extend(quote! {
-                #[inline]
-                pub fn #getter_name(&self, ast: &crate::Ast) -> #ret_ty {
-                    let raw = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
-                    #cast_expr
-                }
-            });
-
-            // Generate optimized setter (direct u32 write)
-            let to_u32_expr = generate_field_to_u32(field_ty, &field_name, schema);
-            let setter_name = format_ident!("set_{}", field_name);
-            field_setters.extend(quote! {
-                #[inline]
-                pub fn #setter_name(&self, ast: &mut crate::Ast, #field_name: #ret_ty) {
-                    unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = #to_u32_expr };
-                }
-            });
-        } else {
-            // General case: use byte packing/unpacking
-            let read_expr =
-                generate_inline_read(field_ty, schema, byte_offset, byte_size, &layout.mode);
-            field_getters.extend(quote! {
-                #[inline]
-                pub fn #getter_name(&self, ast: &crate::Ast) -> #ret_ty {
-                    #read_expr
-                }
-            });
-
-            let setter_name = format_ident!("set_{}", field_name);
-            let write_expr = generate_inline_write(
-                field_ty,
-                &field_name,
-                byte_offset,
-                byte_size,
-                &layout.mode,
-                schema,
-            );
-            field_setters.extend(quote! {
-                #[inline]
-                pub fn #setter_name(&self, ast: &mut crate::Ast, #field_name: #ret_ty) {
-                    #write_expr
-                }
-            });
-        }
-    }
-}
-
-/// Generate read expression for a field from inline storage using bit operations
-fn generate_inline_read(
-    field_ty: &AstType,
-    schema: &Schema,
-    byte_offset: usize,
-    byte_size: usize,
-    mode: &InlineStorageMode,
-) -> TokenStream {
-    // Extract raw u32 value using bit operations
-    let extract_expr = generate_extract_bits(byte_offset, byte_size, mode);
-    // Then, cast to the appropriate type
-    let cast_expr = generate_u32_to_field(field_ty, schema);
-
-    quote! {
-        #extract_expr
-        #cast_expr
-    }
-}
-
-/// Generate code to extract a field value as u32 using bit operations
-fn generate_extract_bits(
-    byte_offset: usize,
-    byte_size: usize,
-    mode: &InlineStorageMode,
-) -> TokenStream {
-    let bit_offset = byte_offset * 8;
-    let bit_size = byte_size * 8;
-    let field_end = byte_offset + byte_size;
-
-    // Create mask for the field
-    let mask: u32 = if bit_size >= 32 {
-        u32::MAX
-    } else {
-        (1u32 << bit_size) - 1
-    };
-
-    match mode {
-        InlineStorageMode::FourBytes => {
-            // All data is in node.data.inline_data (u32)
-            if byte_offset == 0 {
-                quote! {
-                    let raw = (unsafe { ast.nodes.data_unchecked(self.0).inline_data }) & #mask;
-                }
-            } else {
-                quote! {
-                    let raw = ((unsafe { ast.nodes.data_unchecked(self.0).inline_data }) >> #bit_offset) & #mask;
-                }
-            }
-        }
-        InlineStorageMode::Full => {
-            // Bytes 0-3 in node.data.inline_data, bytes 4-7 in node.inline_data (extra u32)
-            if field_end <= INLINE_DATA_U32_SIZE {
-                // Field entirely in inline_data u32
-                if byte_offset == 0 {
-                    quote! {
-                        let raw = (unsafe { ast.nodes.data_unchecked(self.0).inline_data }) & #mask;
-                    }
-                } else {
-                    quote! {
-                        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).inline_data }) >> #bit_offset) & #mask;
-                    }
-                }
-            } else if byte_offset >= INLINE_DATA_U32_SIZE {
-                // Field entirely in extra u32
-                let extra_u32_bit_offset = (byte_offset - INLINE_DATA_U32_SIZE) * 8;
-                if extra_u32_bit_offset == 0 {
-                    quote! {
-                        let raw = (*unsafe { ast.nodes.inline_data_unchecked(self.0) }) & #mask;
-                    }
-                } else {
-                    quote! {
-                        let raw = ((*unsafe { ast.nodes.inline_data_unchecked(self.0) }) >> #extra_u32_bit_offset) & #mask;
-                    }
-                }
-            } else {
-                // Field spans across primary u32 and extra u32 boundary
-                let bits_in_u32 = (INLINE_DATA_U32_SIZE - byte_offset) * 8;
-                let mask_u32: u32 = (1u32 << bits_in_u32) - 1;
-                quote! {
-                    let low_bits = ((unsafe { ast.nodes.data_unchecked(self.0).inline_data }) >> #bit_offset) & #mask_u32;
-                    let high_bits = (*unsafe { ast.nodes.inline_data_unchecked(self.0) }) << #bits_in_u32;
-                    let raw = (low_bits | high_bits) & #mask;
-                }
-            }
-        }
-        InlineStorageMode::Partial => {
-            // Only fields in extra u32 (bytes 4-7) are supported in layout.fields
-            // Logic is same as "Field entirely in extra u32" case of Full mode
-            debug_assert!(
-                byte_offset >= INLINE_DATA_U32_SIZE,
-                "Partial mode only supports fields in extra u32 region"
-            );
-            let extra_u32_bit_offset = (byte_offset - INLINE_DATA_U32_SIZE) * 8;
-            if extra_u32_bit_offset == 0 {
-                quote! {
-                    let raw = (*unsafe { ast.nodes.inline_data_unchecked(self.0) }) & #mask;
-                }
-            } else {
-                quote! {
-                    let raw = ((*unsafe { ast.nodes.inline_data_unchecked(self.0) }) >> #extra_u32_bit_offset) & #mask;
-                }
-            }
-        }
-    }
-}
-
-/// Generate write expression for a field to inline storage using bit operations
-fn generate_inline_write(
-    field_ty: &AstType,
-    field_name: &syn::Ident,
-    byte_offset: usize,
-    byte_size: usize,
-    mode: &InlineStorageMode,
-    schema: &Schema,
-) -> TokenStream {
-    // First, convert the value to u32
-    let to_u32 = generate_field_to_u32(field_ty, field_name, schema);
-    // Then, insert using bit operations
-    let insert_expr = generate_insert_bits(byte_offset, byte_size, mode);
-
-    quote! {
-        let field_val: u32 = #to_u32;
-        #insert_expr
-    }
-}
-
-/// Generate code to insert a field value using bit operations (read-modify-write)
-fn generate_insert_bits(
-    byte_offset: usize,
-    byte_size: usize,
-    mode: &InlineStorageMode,
-) -> TokenStream {
-    let bit_offset = byte_offset * 8;
-    let bit_size = byte_size * 8;
-    let field_end = byte_offset + byte_size;
-
-    // Create mask for the field
-    let mask: u32 = if bit_size >= 32 {
-        u32::MAX
-    } else {
-        (1u32 << bit_size) - 1
-    };
-
-    match mode {
-        InlineStorageMode::FourBytes => {
-            // All data in node.data.inline_data (u32)
-            let clear_mask = !(mask << bit_offset);
-            if byte_offset == 0 {
-                quote! {
-                    let old = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
-                    unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old & #clear_mask) | (field_val & #mask) };
-                }
-            } else {
-                quote! {
-                    let old = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
-                    unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old & #clear_mask) | ((field_val & #mask) << #bit_offset) };
-                }
-            }
-        }
-        InlineStorageMode::Full => {
-            if field_end <= INLINE_DATA_U32_SIZE {
-                // Field entirely in u32
-                let clear_mask = !(mask << bit_offset);
-                if byte_offset == 0 {
-                    quote! {
-                        let old = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
-                        unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old & #clear_mask) | (field_val & #mask) };
-                    }
-                } else {
-                    quote! {
-                        let old = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
-                        unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old & #clear_mask) | ((field_val & #mask) << #bit_offset) };
-                    }
-                }
-            } else if byte_offset >= INLINE_DATA_U32_SIZE {
-                // Field entirely in extra u32
-                let extra_u32_bit_offset = (byte_offset - INLINE_DATA_U32_SIZE) * 8;
-                let extra_u32_clear_mask = !(mask << extra_u32_bit_offset); // clear mask for 32-bit limit is implicit in the bit manipulation
-                if extra_u32_bit_offset == 0 {
-                    quote! {
-                        let old = *unsafe { ast.nodes.inline_data_unchecked(self.0) };
-                        unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = (old & #extra_u32_clear_mask) | (field_val & #mask) };
-                    }
-                } else {
-                    quote! {
-                        let old = *unsafe { ast.nodes.inline_data_unchecked(self.0) };
-                        unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = (old & #extra_u32_clear_mask) | ((field_val & #mask) << #extra_u32_bit_offset) };
-                    }
-                }
-            } else {
-                // Field spans across primary u32 and extra u32 boundary
-                let bits_in_u32 = (INLINE_DATA_U32_SIZE - byte_offset) * 8;
-                let bits_in_extra_u32 = bit_size - bits_in_u32;
-                let mask_u32: u32 = (1u32 << bits_in_u32) - 1;
-                let mask_extra_u32: u32 = if bits_in_extra_u32 >= 32 {
-                    u32::MAX
-                } else {
-                    (1u32 << bits_in_extra_u32) - 1
-                };
-                let clear_mask_u32 = !(mask_u32 << bit_offset);
-                let clear_mask_extra_u32 = !mask_extra_u32;
-                quote! {
-                quote! {
-                    // Update u32 part
-                    let old_u32 = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
-                    unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = (old_u32 & #clear_mask_u32) | ((field_val & #mask_u32) << #bit_offset) };
-                    // Update extra u32 part
-                    let old_extra_u32 = *unsafe { ast.nodes.inline_data_unchecked(self.0) };
-                    unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = (old_extra_u32 & #clear_mask_extra_u32) | ((field_val >> #bits_in_u32) & #mask_extra_u32) };
-                }
-                }
-            }
-        }
-        InlineStorageMode::Partial => {
-            // Only fields in extra u32
-            debug_assert!(
-                byte_offset >= INLINE_DATA_U32_SIZE,
-                "Partial mode only supports fields in extra u32 region"
-            );
-            let extra_u32_bit_offset = (byte_offset - INLINE_DATA_U32_SIZE) * 8;
-            let extra_u32_clear_mask = !(mask << extra_u32_bit_offset);
-            if extra_u32_bit_offset == 0 {
-                quote! {
-                    let old = *unsafe { ast.nodes.inline_data_unchecked(self.0) };
-                    unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = (old & #extra_u32_clear_mask) | (field_val & #mask) };
-                }
-            } else {
-                quote! {
-                    let old = *unsafe { ast.nodes.inline_data_unchecked(self.0) };
-                    unsafe { *ast.nodes.inline_data_mut_unchecked(self.0) = (old & #extra_u32_clear_mask) | ((field_val & #mask) << #extra_u32_bit_offset) };
-                }
-            }
-        }
-    }
-}
-
-/// Generate getters/setters for extra_data storage (original implementation)
-fn generate_extra_data_property_accessors(
-    ast: &AstStruct,
-    schema: &Schema,
-    field_getters: &mut TokenStream,
-    field_setters: &mut TokenStream,
-) {
-    for (offset, field) in ast.fields.iter().enumerate() {
-        let field_name = format_ident!("{}", field.name);
-        let field_ty = &schema.types[field.type_id].repr_ident(schema);
-
-        let getter_name = safe_ident(&field.name.to_case(Case::Snake));
-        field_getters.extend(quote! {
-            #[inline]
-            pub fn #getter_name(&self, ast: &crate::Ast) -> #field_ty {
-                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.data_unchecked(self.0).extra_data_start.index().wrapping_add(#offset)) };
-
-                debug_assert!(offset < ast.extra_data.len());
-                unsafe {
-                    ExtraDataCompact::from_extra_data(
-                        *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
-                        ast,
-                    )
-                }
-            }
-        });
-
-        let setter_name = format_ident!("set_{}", field_name);
-        field_setters.extend(quote! {
-            #[inline]
-            pub fn #setter_name(&self, ast: &mut crate::Ast, #field_name: #field_ty) {
-                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.data_unchecked(self.0).extra_data_start.index().wrapping_add(#offset)) };
-
-                debug_assert!(offset < ast.extra_data.len());
-                unsafe {
-                    *ast.extra_data.as_raw_slice_mut().get_unchecked_mut(offset.index()) = #field_name.to_extra_data();
-                };
-            }
-        });
-    }
-}
-
-/// Generate getters/setters for extra_data storage when Partial inlining is used
-fn generate_extra_data_property_accessors_partial(
-    ast: &AstStruct,
-    schema: &Schema,
-    field_getters: &mut TokenStream,
-    field_setters: &mut TokenStream,
-    layout: &InlineLayout,
-) {
-    let mut current_extra_offset = 0usize;
-
-    for (field_idx, field) in ast.fields.iter().enumerate() {
-        // Skip fields that are inlined
-        if layout.fields.iter().any(|(idx, _, _)| *idx == field_idx) {
-            continue;
-        }
-
-        let field_name = format_ident!("{}", field.name);
-        let field_ty = &schema.types[field.type_id].repr_ident(schema);
-
-        let offset = current_extra_offset;
-        let getter_name = safe_ident(&field.name.to_case(Case::Snake));
-        field_getters.extend(quote! {
-            #[inline]
-            pub fn #getter_name(&self, ast: &crate::Ast) -> #field_ty {
-                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.data_unchecked(self.0).extra_data_start.index().wrapping_add(#offset)) };
-
-                debug_assert!(offset < ast.extra_data.len());
-                unsafe {
-                    ExtraDataCompact::from_extra_data(
-                        *ast.extra_data.as_raw_slice().get_unchecked(offset.index()),
-                        ast,
-                    )
-                }
-            }
-        });
-
-        let setter_name = format_ident!("set_{}", field_name);
-        field_setters.extend(quote! {
-            #[inline]
-            pub fn #setter_name(&self, ast: &mut crate::Ast, #field_name: #field_ty) {
-                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.data_unchecked(self.0).extra_data_start.index().wrapping_add(#offset)) };
-
-                debug_assert!(offset < ast.extra_data.len());
-                unsafe {
-                    *ast.extra_data.as_raw_slice_mut().get_unchecked_mut(offset.index()) = #field_name.to_extra_data();
-                };
-            }
-        });
-
-        current_extra_offset += 1;
-    }
-}
-
 fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
     let name = format_ident!("{}", ast.name);
+    let impl_generics = if type_has_lifetime(ast.type_id, schema) {
+        quote!(<'a>)
+    } else {
+        TokenStream::new()
+    };
+    let type_generics = impl_generics.clone();
 
     let mut is_variant = TokenStream::new();
     let mut as_variant = TokenStream::new();
@@ -505,11 +62,15 @@ fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
             }
         });
 
+        let Some(payload_ty_id) = variant.type_id else {
+            continue;
+        };
+
         let as_fn_name = format_ident!("as_{}", variant.name.to_case(Case::Snake));
-        let struct_name = format_ident!("{}", schema.types[variant.type_id.unwrap()].name());
+        let payload_ty = type_ref(payload_ty_id, schema);
         as_variant.extend(quote! {
             #[inline]
-            pub fn #as_fn_name(self) -> Option<#struct_name> {
+            pub fn #as_fn_name(self) -> Option<Box<'a, #payload_ty>> {
                 match self {
                     Self::#variant_name(it) => Some(it),
                     _ => None,
@@ -519,9 +80,189 @@ fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
     }
 
     quote! {
-        impl #name {
+        impl #impl_generics #name #type_generics {
             #is_variant
             #as_variant
         }
     }
+}
+
+fn generate_span_for_struct(ast: &AstStruct, schema: &Schema) -> TokenStream {
+    let name = format_ident!("{}", ast.name);
+    let impl_generics = if type_has_lifetime(ast.type_id, schema) {
+        quote!(<'a>)
+    } else {
+        TokenStream::new()
+    };
+    let type_generics = impl_generics.clone();
+
+    let get_span = if struct_has_span(ast, schema) {
+        quote!(self.span)
+    } else {
+        quote!(DUMMY_SP)
+    };
+
+    let set_span = if struct_has_span(ast, schema) {
+        quote!(self.span = span;)
+    } else {
+        TokenStream::new()
+    };
+
+    quote! {
+        impl #impl_generics GetSpan for #name #type_generics {
+            #[inline]
+            fn span(&self) -> Span {
+                #get_span
+            }
+        }
+
+        impl #impl_generics SetSpan for #name #type_generics {
+            #[inline]
+            fn set_span(&mut self, span: Span) {
+                #set_span
+            }
+        }
+    }
+}
+
+fn generate_span_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
+    let name = format_ident!("{}", ast.name);
+    let impl_generics = if type_has_lifetime(ast.type_id, schema) {
+        quote!(<'a>)
+    } else {
+        TokenStream::new()
+    };
+    let type_generics = impl_generics.clone();
+
+    let mut get_arms = TokenStream::new();
+    let mut set_arms = TokenStream::new();
+    for variant in ast.variants.iter() {
+        let variant_name = format_ident!("{}", variant.name);
+
+        if variant.type_id.is_some() {
+            get_arms.extend(quote! {
+                Self::#variant_name(it) => it.span(),
+            });
+            set_arms.extend(quote! {
+                Self::#variant_name(it) => it.set_span(span),
+            });
+        } else {
+            get_arms.extend(quote! {
+                Self::#variant_name => DUMMY_SP,
+            });
+            set_arms.extend(quote! {
+                Self::#variant_name => {}
+            });
+        }
+    }
+
+    quote! {
+        impl #impl_generics GetSpan for #name #type_generics {
+            #[inline]
+            fn span(&self) -> Span {
+                match self {
+                    #get_arms
+                }
+            }
+        }
+
+        impl #impl_generics SetSpan for #name #type_generics {
+            #[inline]
+            fn set_span(&mut self, span: Span) {
+                match self {
+                    #set_arms
+                }
+            }
+        }
+    }
+}
+
+fn type_ref(type_id: TypeId, schema: &Schema) -> TokenStream {
+    match &schema.types[type_id] {
+        AstType::Struct(ast) => named_type_ref(&ast.name, type_has_lifetime(type_id, schema)),
+        AstType::Enum(ast) => named_type_ref(&ast.name, type_has_lifetime(type_id, schema)),
+        AstType::Box(ast) => {
+            let inner_ty = type_ref(ast.inner_type_id, schema);
+            quote!(Box<'a, #inner_ty>)
+        }
+        AstType::Vec(ast) => {
+            let inner_ty = type_ref(ast.inner_type_id, schema);
+            quote!(Vec<'a, #inner_ty>)
+        }
+        AstType::Option(ast) => {
+            let inner_ty = type_ref(ast.inner_type_id, schema);
+            quote!(Option<#inner_ty>)
+        }
+        AstType::Primitive(ast) => primitive_type_ref(ast.name),
+    }
+}
+
+fn primitive_type_ref(name: &str) -> TokenStream {
+    match name {
+        "Utf8Ref" | "Atom" => quote!(Atom<'a>),
+        "Wtf8Ref" | "Wtf8Atom" => quote!(Wtf8Atom<'a>),
+        "OptionalUtf8Ref" => quote!(Option<Atom<'a>>),
+        "OptionalWtf8Ref" => quote!(Option<Wtf8Atom<'a>>),
+        "swc_experimental_num_bigint::BigInt" => quote!(swc_experimental_num_bigint::BigInt<'a>),
+        "ScopeId" => quote!(ScopeId),
+        "SymbolId" => quote!(SymbolId),
+        _ => format_ident!("{}", name).into_token_stream(),
+    }
+}
+
+fn named_type_ref(name: &str, has_lifetime: bool) -> TokenStream {
+    let ident = format_ident!("{}", name);
+    if has_lifetime {
+        quote!(#ident<'a>)
+    } else {
+        ident.into_token_stream()
+    }
+}
+
+fn type_has_lifetime(type_id: TypeId, schema: &Schema) -> bool {
+    match &schema.types[type_id] {
+        AstType::Struct(ast) => ast
+            .fields
+            .iter()
+            .any(|field| field_type_needs_lifetime(field.type_id, schema)),
+        AstType::Enum(ast) => ast.variants.iter().any(|variant| variant.type_id.is_some()),
+        AstType::Box(_) => true,
+        AstType::Vec(_) => true,
+        AstType::Option(ast) => field_type_needs_lifetime(ast.inner_type_id, schema),
+        AstType::Primitive(ast) => primitive_type_needs_lifetime(ast.name),
+    }
+}
+
+fn field_type_needs_lifetime(type_id: TypeId, schema: &Schema) -> bool {
+    match &schema.types[type_id] {
+        AstType::Struct(_) => true,
+        AstType::Enum(_) => type_has_lifetime(type_id, schema),
+        AstType::Box(_) => true,
+        AstType::Vec(_) => true,
+        AstType::Option(ast) => field_type_needs_lifetime(ast.inner_type_id, schema),
+        AstType::Primitive(ast) => primitive_type_needs_lifetime(ast.name),
+    }
+}
+
+fn primitive_type_needs_lifetime(name: &str) -> bool {
+    matches!(
+        name,
+        "Utf8Ref"
+            | "Atom"
+            | "Wtf8Ref"
+            | "Wtf8Atom"
+            | "OptionalUtf8Ref"
+            | "OptionalWtf8Ref"
+            | "swc_experimental_num_bigint::BigInt"
+    )
+}
+
+fn struct_has_span(ast: &AstStruct, schema: &Schema) -> bool {
+    ast.fields
+        .iter()
+        .any(|field| field.name == "span" && is_span_type(field.type_id, schema))
+}
+
+fn is_span_type(type_id: TypeId, schema: &Schema) -> bool {
+    matches!(&schema.types[type_id], AstType::Primitive(ast) if ast.name == "Span")
 }

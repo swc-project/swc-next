@@ -1,5 +1,6 @@
 use colored::Colorize;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use swc_experimental_allocator::Allocator;
 use swc_experimental_ecma_semantic::resolver::resolver;
 
 use crate::{
@@ -30,12 +31,13 @@ impl SemanticRunner {
                 });
             }
 
-            let (root, ast) = match parse(case) {
+            let allocator = Allocator::new();
+            let root = match parse(&allocator, case) {
                 ParseResult::Succ(ret) => ret,
                 _ => return None,
             };
 
-            let _semantic = resolver(root, &ast);
+            let _semantic = resolver(&root);
             Some(TestResult::Passed {
                 path: case.path().to_owned(),
             })

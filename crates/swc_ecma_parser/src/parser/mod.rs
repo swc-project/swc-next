@@ -1,19 +1,17 @@
 #![allow(clippy::let_unit_value)]
 #![deny(non_snake_case)]
 
-use swc_atoms::wtf8::Wtf8;
+use swc_experimental_allocator::atom::Atom;
+use swc_experimental_allocator::vec::Vec;
+use swc_experimental_allocator::{Allocator, boxed::Box};
 use swc_experimental_ecma_ast::*;
 
 use crate::{
     Context, Lexer, Syntax,
     error::SyntaxError,
     input::Buffer,
-    lexer::{MaybeSubUtf8, MaybeSubWtf8, Token, TokenAndSpan, source::StringSource},
-    parser::{
-        input::Tokens,
-        state::State,
-        util::{ExprExt, ScratchIndex},
-    },
+    lexer::{Token, TokenAndSpan, source::StringSource},
+    parser::{input::Tokens, state::State, util::ExprExt},
     syntax::SyntaxFlags,
 };
 
@@ -32,46 +30,44 @@ pub(crate) mod util;
 pub type PResult<T> = Result<T, crate::error::Error>;
 
 #[allow(unused)]
-pub struct ParserCheckpoint<I: Tokens> {
+pub struct ParserCheckpoint<'a, I: Tokens<'a>> {
     lexer: I::Checkpoint,
     buffer_prev_span: Span,
     buffer_cur: TokenAndSpan,
-    buffer_next: Option<crate::lexer::NextTokenAndSpan>,
+    buffer_next: Option<crate::lexer::NextTokenAndSpan<'a>>,
 }
 
 /// EcmaScript parser.
-pub struct Parser<'a, I: self::input::Tokens> {
-    ast: &'a mut Ast,
-    /// Don't mutable this directly. Use Parser::scratch_xxx instead for safety.
-    scratch: Vec<ExtraData>,
-    state: State,
-    input: self::input::Buffer<I>,
+pub struct Parser<'a, I: self::input::Tokens<'a>> {
+    ast: AstBuilder<'a>,
+    state: State<'a>,
+    input: self::input::Buffer<'a, I>,
     found_module_item: bool,
 }
 
-impl<'a, I: Tokens> Parser<'a, I> {
+impl<'a, I: Tokens<'a>> Parser<'a, I> {
     #[inline(always)]
-    pub fn input(&self) -> &Buffer<I> {
+    pub fn input(&self) -> &Buffer<'a, I> {
         &self.input
     }
 
     #[inline(always)]
-    pub fn input_mut(&mut self) -> &mut Buffer<I> {
+    pub fn input_mut(&mut self) -> &mut Buffer<'a, I> {
         &mut self.input
     }
 
     #[inline(always)]
-    fn state(&self) -> &State {
+    fn state(&self) -> &State<'a> {
         &self.state
     }
 
     #[inline(always)]
-    fn state_mut(&mut self) -> &mut State {
+    fn state_mut(&mut self) -> &mut State<'a> {
         &mut self.state
     }
 
     #[allow(unused)]
-    fn checkpoint_save(&self) -> ParserCheckpoint<I> {
+    fn checkpoint_save(&self) -> ParserCheckpoint<'a, I> {
         ParserCheckpoint {
             lexer: self.input.iter.checkpoint_save(),
             buffer_cur: self.input.cur,
@@ -81,7 +77,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
     }
 
     #[allow(unused)]
-    fn checkpoint_load(&mut self, checkpoint: ParserCheckpoint<I>) {
+    fn checkpoint_load(&mut self, checkpoint: ParserCheckpoint<'a, I>) {
         self.input.iter.checkpoint_load(checkpoint.lexer);
         self.input.cur = checkpoint.buffer_cur;
         self.input.next = checkpoint.buffer_next;
@@ -94,77 +90,65 @@ impl<'a, I: Tokens> Parser<'a, I> {
     }
 
     #[inline]
-    fn scratch_start<
-        N: ExtraDataCompact,
-        F: FnOnce(&mut Self, &mut ScratchIndex<N>) -> PResult<R>,
-        R,
-    >(
+    fn vec<T>(&self) -> Vec<'a, T> {
+        Vec::new_in(self.ast.allocator)
+    }
+
+    #[inline]
+    fn boxed<T>(&self, value: T) -> Box<'a, T> {
+        self.ast.allocator.boxed(value)
+    }
+
+    #[inline]
+    fn box_opt<T>(&self, value: Option<T>) -> Option<Box<'a, T>> {
+        value.map(|value| self.boxed(value))
+    }
+
+    #[inline]
+    fn box_vec<T>(&self, values: Vec<'a, T>) -> Vec<'a, Box<'a, T>> {
+        let mut boxed = self.vec();
+        for value in values {
+            boxed.push(self.boxed(value));
+        }
+        boxed
+    }
+
+    #[inline]
+    fn collect_vec<T, F: FnOnce(&mut Self, &mut Vec<'a, T>) -> PResult<R>, R>(
         &mut self,
         f: F,
-    ) -> PResult<TypedSubRange<N>> {
-        let mut scratch = ScratchIndex::new(self.scratch.len());
-        let ret = f(self, &mut scratch);
-        let range = scratch.end(self);
-        ret.map(|_| range)
+    ) -> PResult<Vec<'a, T>> {
+        let mut items = self.vec();
+        f(self, &mut items).map(|_| items)
     }
 
     #[inline]
-    fn read_maybe_utf8(&self, maybe: MaybeSubUtf8) -> &str {
-        match maybe {
-            MaybeSubUtf8::Inline((s, e)) => self.input.iter.read_string(Span::new(s, e)),
-            MaybeSubUtf8::Alloc(utf8_ref) => self.ast.get_utf8(utf8_ref),
-        }
-    }
-
-    #[inline]
-    fn to_utf8_ref(&mut self, maybe: MaybeSubUtf8) -> Utf8Ref {
-        match maybe {
-            MaybeSubUtf8::Inline((s, e)) => self
-                .ast
-                .add_utf8(self.input.iter.read_string(Span::new(s, e))),
-            MaybeSubUtf8::Alloc(utf8_ref) => utf8_ref,
-        }
-    }
-
-    #[inline]
-    fn to_wtf8_ref(&mut self, maybe: MaybeSubWtf8) -> Wtf8Ref {
-        match maybe {
-            MaybeSubWtf8::Inline((s, e)) => self
-                .ast
-                .add_wtf8(Wtf8::from_str(self.input.iter.read_string(Span::new(s, e)))),
-            MaybeSubWtf8::Alloc(wtf8_ref) => wtf8_ref,
-        }
+    fn atom_from_span(&self, span: Span) -> Atom<'a> {
+        Atom::new_in(self.input.iter.read_string(span), self.ast.allocator)
     }
 }
 
 impl<'a> Parser<'a, Lexer<'a>> {
     pub fn new(
-        ast: &'a mut Ast,
+        allocator: &'a Allocator,
         syntax: Syntax,
         input: StringSource<'a>,
-        comments: Option<&'a mut Comments>,
+        comments: Option<&'a mut Comments<'a>>,
     ) -> Self {
-        let lexer = Lexer::new(
-            syntax,
-            Default::default(),
-            input,
-            comments,
-            ast.string_allocator(),
-        );
-        Self::new_from(ast, lexer)
+        let lexer = Lexer::new(allocator, syntax, Default::default(), input, comments);
+        Self::new_from(allocator, lexer)
     }
 }
 
-impl<'a, I: Tokens> Parser<'a, I> {
-    pub fn new_from(ast: &'a mut Ast, mut input: I) -> Self {
+impl<'a, I: Tokens<'a>> Parser<'a, I> {
+    pub fn new_from(allocator: &'a Allocator, mut input: I) -> Self {
         let in_declare = input.syntax().dts();
         let mut ctx = input.ctx() | Context::TopLevel;
         ctx.set(Context::InDeclare, in_declare);
         input.set_ctx(ctx);
 
         let mut p = Self {
-            ast,
-            scratch: Vec::new(),
+            ast: AstBuilder { allocator },
             state: Default::default(),
             input: crate::parser::input::Buffer::new(input),
             found_module_item: false,
@@ -181,15 +165,15 @@ impl<'a, I: Tokens> Parser<'a, I> {
         p
     }
 
-    pub fn take_errors(&mut self) -> Vec<Error> {
+    pub fn take_errors(&mut self) -> std::vec::Vec<Error> {
         self.input.iter.take_errors()
     }
 
-    pub fn take_script_module_errors(&mut self) -> Vec<Error> {
+    pub fn take_script_module_errors(&mut self) -> std::vec::Vec<Error> {
         self.input.iter.take_script_module_errors()
     }
 
-    pub fn parse_script(&mut self) -> PResult<Script> {
+    pub fn parse_script(&mut self) -> PResult<Script<'a>> {
         trace_cur!(self, parse_script);
 
         let ctx = (self.ctx() & !Context::Module) | Context::TopLevel;
@@ -205,7 +189,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         Ok(ret)
     }
 
-    pub fn parse_commonjs(&mut self) -> PResult<Script> {
+    pub fn parse_commonjs(&mut self) -> PResult<Script<'a>> {
         trace_cur!(self, parse_commonjs);
 
         // CommonJS module is acctually in a function scope
@@ -226,12 +210,12 @@ impl<'a, I: Tokens> Parser<'a, I> {
         Ok(ret)
     }
 
-    pub fn parse_typescript_module(&mut self) -> PResult<Module> {
+    pub fn parse_typescript_module(&mut self) -> PResult<Module<'a>> {
         trace_cur!(self, parse_typescript_module);
 
         debug_assert!(self.syntax().typescript());
 
-        //TODO: parse() -> PResult<Program>
+        //TODO: parse() -> PResult<Program<'a>>
         let ctx = (self.ctx() | Context::Module | Context::TopLevel) & !Context::Strict;
         // Module code is always in strict mode
         self.set_ctx(ctx);
@@ -253,7 +237,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
     ///
     /// Note: This is not perfect yet. It means, some strict mode violations may
     /// not be reported even if the method returns [Module].
-    pub fn parse_program(&mut self) -> PResult<Program> {
+    pub fn parse_program(&mut self) -> PResult<Program<'a>> {
         let start = self.cur_pos();
         let shebang = self.parse_shebang()?;
 
@@ -264,7 +248,6 @@ impl<'a, I: Tokens> Parser<'a, I> {
         let has_module_item = self.found_module_item
             || body
                 .iter()
-                .map(|id| self.ast.get_node_in_sub_range(id))
                 .any(|item| matches!(item, ModuleItem::ModuleDecl(..)));
         if has_module_item && !self.ctx().contains(Context::Module) {
             let ctx = self.ctx()
@@ -279,11 +262,10 @@ impl<'a, I: Tokens> Parser<'a, I> {
         let ret = if has_module_item {
             self.ast.program_module(self.span(start), body, shebang)
         } else {
-            let body = self.scratch_start(|p, stmts| {
-                for item in body.iter() {
-                    let item = p.ast.get_node_in_sub_range(item);
+            let body = self.collect_vec(|_p, stmts| {
+                for item in body {
                     match item {
-                        ModuleItem::Stmt(stmt) => stmts.push(p, stmt),
+                        ModuleItem::Stmt(stmt) => stmts.push(Box::into_inner(stmt)),
                         ModuleItem::ModuleDecl(_) => {
                             unreachable!("module is handled above")
                         }
@@ -302,7 +284,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         Ok(ret)
     }
 
-    pub fn parse_module(&mut self) -> PResult<Module> {
+    pub fn parse_module(&mut self) -> PResult<Module<'a>> {
         let ctx = self.ctx()
             | Context::Module
             | Context::CanBeModule
@@ -323,7 +305,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         Ok(ret)
     }
 
-    pub fn parse_expr(&mut self) -> PResult<Expr> {
+    pub fn parse_expr(&mut self) -> PResult<Expr<'a>> {
         // This allow to parse `import.meta`
         let ctx = self.ctx();
         self.set_ctx(ctx.union(Context::CanBeModule));
@@ -333,7 +315,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
     }
 }
 
-impl<'a, I: Tokens> Parser<'a, I> {
+impl<'a, I: Tokens<'a>> Parser<'a, I> {
     #[inline(always)]
     pub fn ctx(&self) -> Context {
         self.input().get_ctx()
@@ -432,11 +414,13 @@ impl<'a, I: Tokens> Parser<'a, I> {
         }
     }
 
-    pub fn verify_expr(&mut self, expr: Expr) -> PResult<Expr> {
+    pub fn verify_expr(&mut self, expr: Expr<'a>) -> PResult<Expr<'a>> {
         #[cfg(feature = "verify")]
         {
             use swc_ecma_visit::Visit;
-            let mut v = self::verifier::Verifier { errors: Vec::new() };
+            let mut v = self::verifier::Verifier {
+                errors: std::vec::Vec::new(),
+            };
             v.visit_expr(&expr);
             for (span, error) in v.errors {
                 self.emit_err(span, error);
@@ -536,20 +520,20 @@ impl<'a, I: Tokens> Parser<'a, I> {
         self.bump();
     }
 
-    pub fn check_assign_target(&mut self, expr: Expr, _deny_call: bool) {
-        if !expr.is_valid_simple_assignment_target(self.ast, self.ctx().contains(Context::Strict)) {
-            self.emit_err(expr.span(self.ast), SyntaxError::TS2406);
+    pub fn check_assign_target(&mut self, expr: &Expr<'a>, _deny_call: bool) {
+        if !expr.is_valid_simple_assignment_target(self.ctx().contains(Context::Strict)) {
+            self.emit_err(expr.span(), SyntaxError::TS2406);
         }
 
         // We follow behavior of tsc
         // if self.input().syntax().typescript() && self.syntax().early_errors() {
         //     let is_eval_or_arguments = match expr {
-        //         Expr::Ident(i) => i.is_reserved_in_strict_bind(self.ast),
+        //         Expr::Ident(i) => i.is_reserved_in_strict_bind(),
         //         _ => false,
         //     };
 
         //     if is_eval_or_arguments {
-        //         self.emit_strict_mode_err(expr.span(self.ast), SyntaxError::TS1100);
+        //         self.emit_strict_mode_err(expr.span(), SyntaxError::TS1100);
         //     }
 
         //     fn should_deny(e: &Expr, deny_call: bool) -> bool {
@@ -570,7 +554,7 @@ impl<'a, I: Tokens> Parser<'a, I> {
         //         && !expr.is_valid_simple_assignment_target(self.ctx().contains(Context::Strict))
         //         && should_deny(expr, deny_call)
         //     {
-        //         self.emit_err(expr.span(self.ast), SyntaxError::TS2406);
+        //         self.emit_err(expr.span(), SyntaxError::TS2406);
         //     }
         // }
     }
