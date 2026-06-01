@@ -455,13 +455,11 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                     let base = self.ast.opt_chain_base_opt_call(
                         self.span(start),
                         AstBox::into_inner(e),
-                        self.box_vec(args),
+                        args,
                     );
                     self.ast.expr_opt_chain_expr(self.span(start), false, base)
                 }
-                _ => self
-                    .ast
-                    .expr_call_expr(self.span(start), callee, self.box_vec(args)),
+                _ => self.ast.expr_call_expr(self.span(start), callee, args),
             };
 
             return self.parse_subscripts_expr::<false>(call_expr, false);
@@ -571,20 +569,20 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
     fn parse_tpl_elements(
         &mut self,
         is_tagged_tpl: bool,
-    ) -> PResult<(Vec<'a, Expr<'a>>, Vec<'a, AstBox<'a, TplElement<'a>>>)> {
+    ) -> PResult<(Vec<'a, Expr<'a>>, Vec<'a, TplElement<'a>>)> {
         trace_cur!(self, parse_tpl_elements);
 
         let mut exprs = self.vec();
         let cur_elem = self.parse_template_head(is_tagged_tpl)?;
         let mut is_tail = cur_elem.tail;
         let mut quasis = self.vec();
-        quasis.push(self.ast.allocator.boxed(cur_elem));
+        quasis.push(cur_elem);
 
         while !is_tail {
             exprs.push(self.allow_in_expr(|p| p.parse_expr_inner())?);
             let elem = self.parse_tpl_element(is_tagged_tpl)?;
             is_tail = elem.tail;
-            quasis.push(self.ast.allocator.boxed(elem));
+            quasis.push(elem);
         }
 
         Ok((exprs, quasis))
@@ -640,8 +638,8 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         self.bump();
 
         let tpl_element = self.ast.tpl_element(span, true, cooked, raw);
-        let quasis = self.collect_vec(|p, quasis| {
-            quasis.push(p.ast.allocator.boxed(tpl_element));
+        let quasis = self.collect_vec(|_p, quasis| {
+            quasis.push(tpl_element);
             Ok(())
         })?;
         let exprs = self.vec();
@@ -1257,17 +1255,15 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
             let span = self.span(start);
             return if question_dot || unwrap_ts_non_null(&callee).is_opt_chain() {
-                let base =
-                    self.ast
-                        .opt_chain_base_opt_call(self.span(start), callee, self.box_vec(args));
+                let base = self
+                    .ast
+                    .opt_chain_base_opt_call(self.span(start), callee, args);
                 let expr = self.ast.opt_chain_expr(span, question_dot, base);
                 Ok((Expr::OptChain(self.boxed(expr)), true))
             } else {
-                let expr = self.ast.call_expr(
-                    self.span(start),
-                    Callee::Expr(self.boxed(callee)),
-                    self.box_vec(args),
-                );
+                let expr =
+                    self.ast
+                        .call_expr(self.span(start), Callee::Expr(self.boxed(callee)), args);
                 Ok((Expr::Call(self.boxed(expr)), true))
             };
         }
@@ -1421,15 +1417,13 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             let start = callee.span_lo();
             let span = self.span(start);
             return if question_dot || unwrap_ts_non_null(&callee).is_opt_chain() {
-                let base = self
-                    .ast
-                    .opt_chain_base_opt_call(span, callee, self.box_vec(args));
+                let base = self.ast.opt_chain_base_opt_call(span, callee, args);
                 let expr = self.ast.opt_chain_expr(span, question_dot, base);
                 Ok((Expr::OptChain(self.boxed(expr)), true))
             } else {
-                let expr =
-                    self.ast
-                        .call_expr(span, Callee::Expr(self.boxed(callee)), self.box_vec(args));
+                let expr = self
+                    .ast
+                    .call_expr(span, Callee::Expr(self.boxed(callee)), args);
                 Ok((Expr::Call(self.boxed(expr)), true))
             };
         }
@@ -1499,11 +1493,9 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             }
             Token::LParen if !no_call => {
                 let args = self.parse_args(false)?;
-                Ok(self.ast.expr_call_expr(
-                    self.span(start),
-                    Callee::Super(self.boxed(lhs)),
-                    self.box_vec(args),
-                ))
+                Ok(self
+                    .ast
+                    .expr_call_expr(self.span(start), Callee::Super(self.boxed(lhs)), args))
             }
             Token::Dot => {
                 self.bump();
@@ -1569,11 +1561,9 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 );
             }
 
-            let expr = self.ast.expr_call_expr(
-                self.span(start),
-                Callee::Import(self.boxed(lhs)),
-                self.box_vec(args),
-            );
+            let expr =
+                self.ast
+                    .expr_call_expr(self.span(start), Callee::Import(self.boxed(lhs)), args);
             return Ok(expr);
         }
 
@@ -1706,9 +1696,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             if !is_new_expr || self.input().is(Token::LParen) {
                 // Parsed with 'MemberExpression' production.
                 let args = self.parse_args(false)?;
-                let new_expr =
-                    self.ast
-                        .expr_new_expr(self.span(start), callee, Some(self.box_vec(args)));
+                let new_expr = self.ast.expr_new_expr(self.span(start), callee, Some(args));
 
                 // We should parse subscripts for MemberExpression.
                 // Because it's left recursive.
@@ -2454,7 +2442,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             return Ok(self.ast.expr_call_expr(
                 self.span(async_span.start),
                 callee,
-                self.box_vec(expr_or_spreads),
+                expr_or_spreads,
             ));
         }
 

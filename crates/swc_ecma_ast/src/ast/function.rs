@@ -9,8 +9,8 @@ use crate::ast::{BlockStmt, Decorator, Pat};
 #[derive(Debug)]
 pub struct Function<'a> {
     pub span: Span,
-    pub params: Vec<'a, Box<'a, Param<'a>>>,
-    pub decorators: Vec<'a, Box<'a, Decorator<'a>>>,
+    pub params: Vec<'a, Param<'a>>,
+    pub decorators: Vec<'a, Decorator<'a>>,
     pub body: Option<Box<'a, BlockStmt<'a>>>,
     pub is_generator: bool,
     pub is_async: bool,
@@ -22,7 +22,7 @@ pub struct Function<'a> {
 #[derive(Debug)]
 pub struct Param<'a> {
     pub span: Span,
-    pub decorators: Vec<'a, Box<'a, Decorator<'a>>>,
+    pub decorators: Vec<'a, Decorator<'a>>,
     pub pat: Pat<'a>,
 }
 

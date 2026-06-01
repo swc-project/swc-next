@@ -216,7 +216,7 @@ fn type_ref(type_id: TypeId, schema: &Schema) -> TokenStream {
             quote!(Box<'a, #inner_ty>)
         }
         AstType::Vec(ast) => {
-            let inner_ty = field_type_ref(ast.inner_type_id, schema);
+            let inner_ty = type_ref(ast.inner_type_id, schema);
             quote!(Vec<'a, #inner_ty>)
         }
         AstType::Option(ast) => {
@@ -239,7 +239,7 @@ fn field_type_ref(type_id: TypeId, schema: &Schema) -> TokenStream {
             quote!(Box<'a, #inner_ty>)
         }
         AstType::Vec(ast) => {
-            let inner_ty = field_type_ref(ast.inner_type_id, schema);
+            let inner_ty = type_ref(ast.inner_type_id, schema);
             quote!(Vec<'a, #inner_ty>)
         }
         AstType::Option(ast) => {

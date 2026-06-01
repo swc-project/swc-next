@@ -245,7 +245,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                     p.parse_var_declarator(for_loop, kind)
                 }?;
 
-                decls.push(p.boxed(decl));
+                decls.push(decl);
 
                 if !p.input_mut().eat(Token::Comma) {
                     break;
@@ -299,7 +299,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 }
 
                 let decl = p.parse_var_declarator(false, VarDeclKind::Var)?;
-                decls.push(p.boxed(decl));
+                decls.push(decl);
                 if !p.input_mut().eat(Token::Comma) {
                     break;
                 }
@@ -419,7 +419,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             let name = self.ast.box_binding_ident(self.boxed(name));
             let decl = self
                 .ast
-                .box_var_declarator(self.span(start), Pat::Ident(name), Some(init));
+                .var_declarator(self.span(start), Pat::Ident(name), Some(init));
 
             let decls = self.collect_vec(|_p, decls| {
                 decls.push(decl);
@@ -841,7 +841,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                         test,
                         cons,
                     );
-                    cases.push(p.boxed(case));
+                    cases.push(case);
                 }
                 Ok(())
             })?;

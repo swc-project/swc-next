@@ -233,7 +233,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         discriminant: Expr<'a>,
-        cases: Vec<'a, Box<'a, SwitchCase<'a>>>,
+        cases: Vec<'a, SwitchCase<'a>>,
     ) -> ModuleItem<'a> {
         ModuleItem::Stmt(self.allocator.boxed(Stmt::Switch(self.box_switch_stmt(
             span,
@@ -358,7 +358,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         kind: VarDeclKind,
         declare: bool,
-        decls: Vec<'a, Box<'a, VarDeclarator<'a>>>,
+        decls: Vec<'a, VarDeclarator<'a>>,
     ) -> ModuleItem<'a> {
         ModuleItem::Stmt(
             self.allocator
@@ -372,7 +372,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         is_await: bool,
-        decls: Vec<'a, Box<'a, VarDeclarator<'a>>>,
+        decls: Vec<'a, VarDeclarator<'a>>,
     ) -> ModuleItem<'a> {
         ModuleItem::Stmt(
             self.allocator
@@ -823,7 +823,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         discriminant: Expr<'a>,
-        cases: Vec<'a, Box<'a, SwitchCase<'a>>>,
+        cases: Vec<'a, SwitchCase<'a>>,
     ) -> Stmt<'a> {
         Stmt::Switch(self.box_switch_stmt(span, discriminant, cases))
     }
@@ -911,7 +911,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         kind: VarDeclKind,
         declare: bool,
-        decls: Vec<'a, Box<'a, VarDeclarator<'a>>>,
+        decls: Vec<'a, VarDeclarator<'a>>,
     ) -> Stmt<'a> {
         Stmt::Decl(
             self.allocator
@@ -923,7 +923,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         is_await: bool,
-        decls: Vec<'a, Box<'a, VarDeclarator<'a>>>,
+        decls: Vec<'a, VarDeclarator<'a>>,
     ) -> Stmt<'a> {
         Stmt::Decl(
             self.allocator
@@ -1051,7 +1051,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         discriminant: Expr<'a>,
-        cases: Vec<'a, Box<'a, SwitchCase<'a>>>,
+        cases: Vec<'a, SwitchCase<'a>>,
     ) -> SwitchStmt<'a> {
         SwitchStmt {
             span,
@@ -1064,7 +1064,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         discriminant: Expr<'a>,
-        cases: Vec<'a, Box<'a, SwitchCase<'a>>>,
+        cases: Vec<'a, SwitchCase<'a>>,
     ) -> Box<'a, SwitchStmt<'a>> {
         self.allocator
             .boxed(self.switch_stmt(span, discriminant, cases))
@@ -1255,7 +1255,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         kind: VarDeclKind,
         declare: bool,
-        decls: Vec<'a, Box<'a, VarDeclarator<'a>>>,
+        decls: Vec<'a, VarDeclarator<'a>>,
     ) -> ForHead<'a> {
         ForHead::VarDecl(self.box_var_decl(span, kind, declare, decls))
     }
@@ -1264,7 +1264,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         is_await: bool,
-        decls: Vec<'a, Box<'a, VarDeclarator<'a>>>,
+        decls: Vec<'a, VarDeclarator<'a>>,
     ) -> ForHead<'a> {
         ForHead::UsingDecl(self.box_using_decl(span, is_await, decls))
     }
@@ -1471,7 +1471,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Callee<'a>,
-        args: Vec<'a, Box<'a, ExprOrSpread<'a>>>,
+        args: Vec<'a, ExprOrSpread<'a>>,
     ) -> ForHead<'a> {
         ForHead::Pat(
             self.allocator.boxed(Pat::Expr(
@@ -1485,7 +1485,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Expr<'a>,
-        args: Option<Vec<'a, Box<'a, ExprOrSpread<'a>>>>,
+        args: Option<Vec<'a, ExprOrSpread<'a>>>,
     ) -> ForHead<'a> {
         ForHead::Pat(
             self.allocator.boxed(Pat::Expr(
@@ -1604,7 +1604,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         exprs: Vec<'a, Expr<'a>>,
-        quasis: Vec<'a, Box<'a, TplElement<'a>>>,
+        quasis: Vec<'a, TplElement<'a>>,
     ) -> ForHead<'a> {
         ForHead::Pat(
             self.allocator.boxed(Pat::Expr(
@@ -1796,7 +1796,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         kind: VarDeclKind,
         declare: bool,
-        decls: Vec<'a, Box<'a, VarDeclarator<'a>>>,
+        decls: Vec<'a, VarDeclarator<'a>>,
     ) -> VarDeclOrExpr<'a> {
         VarDeclOrExpr::VarDecl(self.box_var_decl(span, kind, declare, decls))
     }
@@ -1930,7 +1930,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Callee<'a>,
-        args: Vec<'a, Box<'a, ExprOrSpread<'a>>>,
+        args: Vec<'a, ExprOrSpread<'a>>,
     ) -> VarDeclOrExpr<'a> {
         VarDeclOrExpr::Expr(
             self.allocator
@@ -1942,7 +1942,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Expr<'a>,
-        args: Option<Vec<'a, Box<'a, ExprOrSpread<'a>>>>,
+        args: Option<Vec<'a, ExprOrSpread<'a>>>,
     ) -> VarDeclOrExpr<'a> {
         VarDeclOrExpr::Expr(
             self.allocator
@@ -2045,7 +2045,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         exprs: Vec<'a, Expr<'a>>,
-        quasis: Vec<'a, Box<'a, TplElement<'a>>>,
+        quasis: Vec<'a, TplElement<'a>>,
     ) -> VarDeclOrExpr<'a> {
         VarDeclOrExpr::Expr(
             self.allocator
@@ -2237,7 +2237,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         kind: VarDeclKind,
         declare: bool,
-        decls: Vec<'a, Box<'a, VarDeclarator<'a>>>,
+        decls: Vec<'a, VarDeclarator<'a>>,
     ) -> Decl<'a> {
         Decl::Var(self.box_var_decl(span, kind, declare, decls))
     }
@@ -2246,7 +2246,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         is_await: bool,
-        decls: Vec<'a, Box<'a, VarDeclarator<'a>>>,
+        decls: Vec<'a, VarDeclarator<'a>>,
     ) -> Decl<'a> {
         Decl::Using(self.box_using_decl(span, is_await, decls))
     }
@@ -2300,7 +2300,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         kind: VarDeclKind,
         declare: bool,
-        decls: Vec<'a, Box<'a, VarDeclarator<'a>>>,
+        decls: Vec<'a, VarDeclarator<'a>>,
     ) -> VarDecl<'a> {
         VarDecl {
             span,
@@ -2315,7 +2315,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         kind: VarDeclKind,
         declare: bool,
-        decls: Vec<'a, Box<'a, VarDeclarator<'a>>>,
+        decls: Vec<'a, VarDeclarator<'a>>,
     ) -> Box<'a, VarDecl<'a>> {
         self.allocator
             .boxed(self.var_decl(span, kind, declare, decls))
@@ -2343,7 +2343,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         is_await: bool,
-        decls: Vec<'a, Box<'a, VarDeclarator<'a>>>,
+        decls: Vec<'a, VarDeclarator<'a>>,
     ) -> UsingDecl<'a> {
         UsingDecl {
             span,
@@ -2356,7 +2356,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         is_await: bool,
-        decls: Vec<'a, Box<'a, VarDeclarator<'a>>>,
+        decls: Vec<'a, VarDeclarator<'a>>,
     ) -> Box<'a, UsingDecl<'a>> {
         self.allocator.boxed(self.using_decl(span, is_await, decls))
     }
@@ -2446,7 +2446,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Callee<'a>,
-        args: Vec<'a, Box<'a, ExprOrSpread<'a>>>,
+        args: Vec<'a, ExprOrSpread<'a>>,
     ) -> Expr<'a> {
         Expr::Call(self.box_call_expr(span, callee, args))
     }
@@ -2455,7 +2455,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Expr<'a>,
-        args: Option<Vec<'a, Box<'a, ExprOrSpread<'a>>>>,
+        args: Option<Vec<'a, ExprOrSpread<'a>>>,
     ) -> Expr<'a> {
         Expr::New(self.box_new_expr(span, callee, args))
     }
@@ -2508,7 +2508,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         exprs: Vec<'a, Expr<'a>>,
-        quasis: Vec<'a, Box<'a, TplElement<'a>>>,
+        quasis: Vec<'a, TplElement<'a>>,
     ) -> Expr<'a> {
         Expr::Tpl(self.box_tpl(span, exprs, quasis))
     }
@@ -2935,7 +2935,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Callee<'a>,
-        args: Vec<'a, Box<'a, ExprOrSpread<'a>>>,
+        args: Vec<'a, ExprOrSpread<'a>>,
     ) -> CallExpr<'a> {
         CallExpr { span, callee, args }
     }
@@ -2944,7 +2944,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Callee<'a>,
-        args: Vec<'a, Box<'a, ExprOrSpread<'a>>>,
+        args: Vec<'a, ExprOrSpread<'a>>,
     ) -> Box<'a, CallExpr<'a>> {
         self.allocator.boxed(self.call_expr(span, callee, args))
     }
@@ -2953,7 +2953,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Expr<'a>,
-        args: Option<Vec<'a, Box<'a, ExprOrSpread<'a>>>>,
+        args: Option<Vec<'a, ExprOrSpread<'a>>>,
     ) -> NewExpr<'a> {
         NewExpr { span, callee, args }
     }
@@ -2962,7 +2962,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Expr<'a>,
-        args: Option<Vec<'a, Box<'a, ExprOrSpread<'a>>>>,
+        args: Option<Vec<'a, ExprOrSpread<'a>>>,
     ) -> Box<'a, NewExpr<'a>> {
         self.allocator.boxed(self.new_expr(span, callee, args))
     }
@@ -3041,7 +3041,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         exprs: Vec<'a, Expr<'a>>,
-        quasis: Vec<'a, Box<'a, TplElement<'a>>>,
+        quasis: Vec<'a, TplElement<'a>>,
     ) -> Tpl<'a> {
         Tpl {
             span,
@@ -3054,7 +3054,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         exprs: Vec<'a, Expr<'a>>,
-        quasis: Vec<'a, Box<'a, TplElement<'a>>>,
+        quasis: Vec<'a, TplElement<'a>>,
     ) -> Box<'a, Tpl<'a>> {
         self.allocator.boxed(self.tpl(span, exprs, quasis))
     }
@@ -3238,7 +3238,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Callee<'a>,
-        args: Vec<'a, Box<'a, ExprOrSpread<'a>>>,
+        args: Vec<'a, ExprOrSpread<'a>>,
     ) -> Callee<'a> {
         Callee::Expr(
             self.allocator
@@ -3250,7 +3250,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Expr<'a>,
-        args: Option<Vec<'a, Box<'a, ExprOrSpread<'a>>>>,
+        args: Option<Vec<'a, ExprOrSpread<'a>>>,
     ) -> Callee<'a> {
         Callee::Expr(
             self.allocator
@@ -3339,7 +3339,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         exprs: Vec<'a, Expr<'a>>,
-        quasis: Vec<'a, Box<'a, TplElement<'a>>>,
+        quasis: Vec<'a, TplElement<'a>>,
     ) -> Callee<'a> {
         Callee::Expr(
             self.allocator
@@ -3673,7 +3673,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Callee<'a>,
-        args: Vec<'a, Box<'a, ExprOrSpread<'a>>>,
+        args: Vec<'a, ExprOrSpread<'a>>,
     ) -> BlockStmtOrExpr<'a> {
         BlockStmtOrExpr::Expr(
             self.allocator
@@ -3685,7 +3685,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Expr<'a>,
-        args: Option<Vec<'a, Box<'a, ExprOrSpread<'a>>>>,
+        args: Option<Vec<'a, ExprOrSpread<'a>>>,
     ) -> BlockStmtOrExpr<'a> {
         BlockStmtOrExpr::Expr(
             self.allocator
@@ -3788,7 +3788,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         exprs: Vec<'a, Expr<'a>>,
-        quasis: Vec<'a, Box<'a, TplElement<'a>>>,
+        quasis: Vec<'a, TplElement<'a>>,
     ) -> BlockStmtOrExpr<'a> {
         BlockStmtOrExpr::Expr(
             self.allocator
@@ -4155,7 +4155,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Expr<'a>,
-        args: Vec<'a, Box<'a, ExprOrSpread<'a>>>,
+        args: Vec<'a, ExprOrSpread<'a>>,
     ) -> OptChainBase<'a> {
         OptChainBase::Call(self.box_opt_call(span, callee, args))
     }
@@ -4164,7 +4164,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Expr<'a>,
-        args: Vec<'a, Box<'a, ExprOrSpread<'a>>>,
+        args: Vec<'a, ExprOrSpread<'a>>,
     ) -> OptCall<'a> {
         OptCall { span, callee, args }
     }
@@ -4173,7 +4173,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Expr<'a>,
-        args: Vec<'a, Box<'a, ExprOrSpread<'a>>>,
+        args: Vec<'a, ExprOrSpread<'a>>,
     ) -> Box<'a, OptCall<'a>> {
         self.allocator.boxed(self.opt_call(span, callee, args))
     }
@@ -4189,8 +4189,8 @@ impl<'a> AstBuilder<'a> {
     pub fn function(
         &self,
         span: Span,
-        params: Vec<'a, Box<'a, Param<'a>>>,
-        decorators: Vec<'a, Box<'a, Decorator<'a>>>,
+        params: Vec<'a, Param<'a>>,
+        decorators: Vec<'a, Decorator<'a>>,
         body: Option<Box<'a, BlockStmt<'a>>>,
         is_generator: bool,
         is_async: bool,
@@ -4208,8 +4208,8 @@ impl<'a> AstBuilder<'a> {
     pub fn box_function(
         &self,
         span: Span,
-        params: Vec<'a, Box<'a, Param<'a>>>,
-        decorators: Vec<'a, Box<'a, Decorator<'a>>>,
+        params: Vec<'a, Param<'a>>,
+        decorators: Vec<'a, Decorator<'a>>,
         body: Option<Box<'a, BlockStmt<'a>>>,
         is_generator: bool,
         is_async: bool,
@@ -4218,12 +4218,7 @@ impl<'a> AstBuilder<'a> {
             .boxed(self.function(span, params, decorators, body, is_generator, is_async))
     }
     #[inline]
-    pub fn param(
-        &self,
-        span: Span,
-        decorators: Vec<'a, Box<'a, Decorator<'a>>>,
-        pat: Pat<'a>,
-    ) -> Param<'a> {
+    pub fn param(&self, span: Span, decorators: Vec<'a, Decorator<'a>>, pat: Pat<'a>) -> Param<'a> {
         Param {
             span,
             decorators,
@@ -4234,7 +4229,7 @@ impl<'a> AstBuilder<'a> {
     pub fn box_param(
         &self,
         span: Span,
-        decorators: Vec<'a, Box<'a, Decorator<'a>>>,
+        decorators: Vec<'a, Decorator<'a>>,
         pat: Pat<'a>,
     ) -> Box<'a, Param<'a>> {
         self.allocator.boxed(self.param(span, decorators, pat))
@@ -4243,7 +4238,7 @@ impl<'a> AstBuilder<'a> {
     pub fn param_or_ts_param_prop_param(
         &self,
         span: Span,
-        decorators: Vec<'a, Box<'a, Decorator<'a>>>,
+        decorators: Vec<'a, Decorator<'a>>,
         pat: Pat<'a>,
     ) -> ParamOrTsParamProp<'a> {
         ParamOrTsParamProp::Param(self.box_param(span, decorators, pat))
@@ -4252,7 +4247,7 @@ impl<'a> AstBuilder<'a> {
     pub fn class(
         &self,
         span: Span,
-        decorators: Vec<'a, Box<'a, Decorator<'a>>>,
+        decorators: Vec<'a, Decorator<'a>>,
         body: Vec<'a, ClassMember<'a>>,
         super_class: Option<Expr<'a>>,
         is_abstract: bool,
@@ -4269,7 +4264,7 @@ impl<'a> AstBuilder<'a> {
     pub fn box_class(
         &self,
         span: Span,
-        decorators: Vec<'a, Box<'a, Decorator<'a>>>,
+        decorators: Vec<'a, Decorator<'a>>,
         body: Vec<'a, ClassMember<'a>>,
         super_class: Option<Expr<'a>>,
         is_abstract: bool,
@@ -4316,7 +4311,7 @@ impl<'a> AstBuilder<'a> {
         key: PropName<'a>,
         value: Option<Expr<'a>>,
         is_static: bool,
-        decorators: Vec<'a, Box<'a, Decorator<'a>>>,
+        decorators: Vec<'a, Decorator<'a>>,
     ) -> ClassMember<'a> {
         ClassMember::ClassProp(self.box_class_prop(span, key, value, is_static, decorators))
     }
@@ -4327,7 +4322,7 @@ impl<'a> AstBuilder<'a> {
         key: Box<'a, PrivateName<'a>>,
         value: Option<Expr<'a>>,
         is_static: bool,
-        decorators: Vec<'a, Box<'a, Decorator<'a>>>,
+        decorators: Vec<'a, Decorator<'a>>,
     ) -> ClassMember<'a> {
         ClassMember::PrivateProp(self.box_private_prop(span, key, value, is_static, decorators))
     }
@@ -4350,7 +4345,7 @@ impl<'a> AstBuilder<'a> {
         key: Key<'a>,
         value: Option<Expr<'a>>,
         is_static: bool,
-        decorators: Vec<'a, Box<'a, Decorator<'a>>>,
+        decorators: Vec<'a, Decorator<'a>>,
     ) -> ClassMember<'a> {
         ClassMember::AutoAccessor(self.box_auto_accessor(span, key, value, is_static, decorators))
     }
@@ -4361,7 +4356,7 @@ impl<'a> AstBuilder<'a> {
         key: PropName<'a>,
         value: Option<Expr<'a>>,
         is_static: bool,
-        decorators: Vec<'a, Box<'a, Decorator<'a>>>,
+        decorators: Vec<'a, Decorator<'a>>,
     ) -> ClassProp<'a> {
         ClassProp {
             span,
@@ -4378,7 +4373,7 @@ impl<'a> AstBuilder<'a> {
         key: PropName<'a>,
         value: Option<Expr<'a>>,
         is_static: bool,
-        decorators: Vec<'a, Box<'a, Decorator<'a>>>,
+        decorators: Vec<'a, Decorator<'a>>,
     ) -> Box<'a, ClassProp<'a>> {
         self.allocator
             .boxed(self.class_prop(span, key, value, is_static, decorators))
@@ -4390,7 +4385,7 @@ impl<'a> AstBuilder<'a> {
         key: Box<'a, PrivateName<'a>>,
         value: Option<Expr<'a>>,
         is_static: bool,
-        decorators: Vec<'a, Box<'a, Decorator<'a>>>,
+        decorators: Vec<'a, Decorator<'a>>,
     ) -> PrivateProp<'a> {
         PrivateProp {
             span,
@@ -4407,7 +4402,7 @@ impl<'a> AstBuilder<'a> {
         key: Box<'a, PrivateName<'a>>,
         value: Option<Expr<'a>>,
         is_static: bool,
-        decorators: Vec<'a, Box<'a, Decorator<'a>>>,
+        decorators: Vec<'a, Decorator<'a>>,
     ) -> Box<'a, PrivateProp<'a>> {
         self.allocator
             .boxed(self.private_prop(span, key, value, is_static, decorators))
@@ -4572,7 +4567,7 @@ impl<'a> AstBuilder<'a> {
         key: Key<'a>,
         value: Option<Expr<'a>>,
         is_static: bool,
-        decorators: Vec<'a, Box<'a, Decorator<'a>>>,
+        decorators: Vec<'a, Decorator<'a>>,
     ) -> AutoAccessor<'a> {
         AutoAccessor {
             span,
@@ -4589,7 +4584,7 @@ impl<'a> AstBuilder<'a> {
         key: Key<'a>,
         value: Option<Expr<'a>>,
         is_static: bool,
-        decorators: Vec<'a, Box<'a, Decorator<'a>>>,
+        decorators: Vec<'a, Decorator<'a>>,
     ) -> Box<'a, AutoAccessor<'a>> {
         self.allocator
             .boxed(self.auto_accessor(span, key, value, is_static, decorators))
@@ -4920,7 +4915,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Callee<'a>,
-        args: Vec<'a, Box<'a, ExprOrSpread<'a>>>,
+        args: Vec<'a, ExprOrSpread<'a>>,
     ) -> Pat<'a> {
         Pat::Expr(
             self.allocator
@@ -4932,7 +4927,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Expr<'a>,
-        args: Option<Vec<'a, Box<'a, ExprOrSpread<'a>>>>,
+        args: Option<Vec<'a, ExprOrSpread<'a>>>,
     ) -> Pat<'a> {
         Pat::Expr(
             self.allocator
@@ -5016,7 +5011,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         exprs: Vec<'a, Expr<'a>>,
-        quasis: Vec<'a, Box<'a, TplElement<'a>>>,
+        quasis: Vec<'a, TplElement<'a>>,
     ) -> Pat<'a> {
         Pat::Expr(
             self.allocator
@@ -5610,7 +5605,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Callee<'a>,
-        args: Vec<'a, Box<'a, ExprOrSpread<'a>>>,
+        args: Vec<'a, ExprOrSpread<'a>>,
     ) -> JSXExpr<'a> {
         JSXExpr::Expr(
             self.allocator
@@ -5622,7 +5617,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         callee: Expr<'a>,
-        args: Option<Vec<'a, Box<'a, ExprOrSpread<'a>>>>,
+        args: Option<Vec<'a, ExprOrSpread<'a>>>,
     ) -> JSXExpr<'a> {
         JSXExpr::Expr(
             self.allocator
@@ -5716,7 +5711,7 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         exprs: Vec<'a, Expr<'a>>,
-        quasis: Vec<'a, Box<'a, TplElement<'a>>>,
+        quasis: Vec<'a, TplElement<'a>>,
     ) -> JSXExpr<'a> {
         JSXExpr::Expr(
             self.allocator

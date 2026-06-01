@@ -411,7 +411,7 @@ pub(crate) trait CompatImpl {
                     legacy::Expr::Array(legacy::ArrayLit {
                         span: compat_span(a.span),
                         elems: self.compat_vec(a.elems, |this, e| {
-                            e.map(|e| this.compat_expr_or_spread(e))
+                            e.map(|e| this.compat_expr_or_spread(AstBox::into_inner(e)))
                         }),
                     })
                 }
@@ -763,11 +763,7 @@ pub(crate) trait CompatImpl {
         }
     }
 
-    fn compat_switch_case<'a>(
-        &mut self,
-        c: AstBox<'a, experimental::SwitchCase<'a>>,
-    ) -> legacy::SwitchCase {
-        let c = AstBox::into_inner(c);
+    fn compat_switch_case<'a>(&mut self, c: experimental::SwitchCase<'a>) -> legacy::SwitchCase {
         legacy::SwitchCase {
             span: compat_span(c.span),
             test: c.test.map(|e| self.compat_expr(e)),
@@ -1081,8 +1077,7 @@ pub(crate) trait CompatImpl {
         }
     }
 
-    fn compat_param<'a>(&mut self, p: AstBox<'a, experimental::Param<'a>>) -> legacy::Param {
-        let p = AstBox::into_inner(p);
+    fn compat_param<'a>(&mut self, p: experimental::Param<'a>) -> legacy::Param {
         legacy::Param {
             span: compat_span(p.span),
             decorators: self.compat_vec(p.decorators, Self::compat_decorator),
@@ -1090,11 +1085,7 @@ pub(crate) trait CompatImpl {
         }
     }
 
-    fn compat_decorator<'a>(
-        &mut self,
-        d: AstBox<'a, experimental::Decorator<'a>>,
-    ) -> legacy::Decorator {
-        let d = AstBox::into_inner(d);
+    fn compat_decorator<'a>(&mut self, d: experimental::Decorator<'a>) -> legacy::Decorator {
         legacy::Decorator {
             span: compat_span(d.span),
             expr: self.compat_expr(d.expr),
@@ -1255,7 +1246,7 @@ pub(crate) trait CompatImpl {
     ) -> legacy::ParamOrTsParamProp {
         match p {
             experimental::ParamOrTsParamProp::Param(pp) => {
-                legacy::ParamOrTsParamProp::Param(self.compat_param(pp))
+                legacy::ParamOrTsParamProp::Param(self.compat_param(AstBox::into_inner(pp)))
             }
         }
     }
@@ -1300,9 +1291,8 @@ pub(crate) trait CompatImpl {
 
     fn compat_var_declarator<'a>(
         &mut self,
-        d: AstBox<'a, experimental::VarDeclarator<'a>>,
+        d: experimental::VarDeclarator<'a>,
     ) -> legacy::VarDeclarator {
-        let d = AstBox::into_inner(d);
         legacy::VarDeclarator {
             span: compat_span(d.span),
             name: self.compat_pat(d.name),
@@ -1401,9 +1391,8 @@ pub(crate) trait CompatImpl {
     }
     fn compat_expr_or_spread<'a>(
         &mut self,
-        e: AstBox<'a, experimental::ExprOrSpread<'a>>,
+        e: experimental::ExprOrSpread<'a>,
     ) -> legacy::ExprOrSpread {
-        let e = AstBox::into_inner(e);
         legacy::ExprOrSpread {
             spread: e.spread.map(|_| Default::default()),
             expr: self.compat_expr(e.expr),
@@ -1480,11 +1469,7 @@ pub(crate) trait CompatImpl {
         }
     }
 
-    fn compat_tpl_element(
-        &mut self,
-        e: AstBox<'_, experimental::TplElement>,
-    ) -> legacy::TplElement {
-        let e = AstBox::into_inner(e);
+    fn compat_tpl_element(&mut self, e: experimental::TplElement) -> legacy::TplElement {
         legacy::TplElement {
             span: compat_span(e.span),
             tail: e.tail,

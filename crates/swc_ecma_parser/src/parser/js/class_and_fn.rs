@@ -286,8 +286,8 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
             Ok(p.ast.function(
                 p.span(start),
-                p.box_vec(params),
-                p.box_vec(decorators),
+                params,
+                decorators,
                 p.box_opt(body),
                 is_generator,
                 is_async,
@@ -717,7 +717,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                     key,
                     value,
                     is_static,
-                    p.box_vec(decorators),
+                    decorators,
                 ));
             }
 
@@ -733,7 +733,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                         key,
                         value,
                         is_static,
-                        p.box_vec(decorators),
+                        decorators,
                     )
                 }
                 Key::Public(key) => {
@@ -747,7 +747,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                         Box::into_inner(key),
                         value,
                         is_static,
-                        p.box_vec(decorators),
+                        decorators,
                     )
                 }
                 #[cfg(swc_ast_unknown)]
@@ -1583,9 +1583,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             }
 
             let span = p.span(class_start);
-            let class = p
-                .ast
-                .class(span, p.box_vec(decorators), body, super_class, false);
+            let class = p.ast.class(span, decorators, body, super_class, false);
             Ok((ident, class))
         })
     }

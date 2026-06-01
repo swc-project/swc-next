@@ -642,11 +642,9 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         //     }))
         // }
         let pat = self.parse_formal_param_pat()?;
-        Ok(self.ast.param_or_ts_param_prop_param(
-            self.span(param_start),
-            self.box_vec(decorators),
-            pat,
-        ))
+        Ok(self
+            .ast
+            .param_or_ts_param_prop_param(self.span(param_start), decorators, pat))
     }
 
     pub(crate) fn parse_constructor_params(&mut self) -> PResult<Vec<'a, ParamOrTsParamProp<'a>>> {
@@ -678,11 +676,9 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
                     rest_span = p.span(pat_start);
                     let pat = p.ast.pat_rest_pat(rest_span, dot3_token, pat);
-                    let param = p.ast.param_or_ts_param_prop_param(
-                        p.span(param_start),
-                        p.box_vec(decorators),
-                        pat,
-                    );
+                    let param =
+                        p.ast
+                            .param_or_ts_param_prop_param(p.span(param_start), decorators, pat);
                     params.push(param);
                 } else {
                     let param = p.parse_constructor_param(param_start, decorators)?;
@@ -747,7 +743,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 };
                 let is_rest = matches!(pat, Pat::Rest(_));
 
-                let param = p.ast.param(p.span(param_start), p.box_vec(decorators), pat);
+                let param = p.ast.param(p.span(param_start), decorators, pat);
                 params.push(param);
 
                 if !p.input().is(Token::RParen) {

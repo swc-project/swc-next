@@ -109,7 +109,7 @@ pub struct IfStmt<'a> {
 pub struct SwitchStmt<'a> {
     pub span: Span,
     pub discriminant: Expr<'a>,
-    pub cases: Vec<'a, Box<'a, SwitchCase<'a>>>,
+    pub cases: Vec<'a, SwitchCase<'a>>,
 }
 
 #[ast]

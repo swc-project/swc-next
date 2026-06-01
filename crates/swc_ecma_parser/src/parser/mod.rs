@@ -105,15 +105,6 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
     }
 
     #[inline]
-    fn box_vec<T>(&self, values: Vec<'a, T>) -> Vec<'a, Box<'a, T>> {
-        let mut boxed = self.vec();
-        for value in values {
-            boxed.push(self.boxed(value));
-        }
-        boxed
-    }
-
-    #[inline]
     fn collect_vec<T, F: FnOnce(&mut Self, &mut Vec<'a, T>) -> PResult<R>, R>(
         &mut self,
         f: F,

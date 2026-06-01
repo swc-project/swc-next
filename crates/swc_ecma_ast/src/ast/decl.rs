@@ -40,7 +40,7 @@ pub struct VarDecl<'a> {
     pub span: Span,
     pub kind: VarDeclKind,
     pub declare: bool,
-    pub decls: Vec<'a, Box<'a, VarDeclarator<'a>>>,
+    pub decls: Vec<'a, VarDeclarator<'a>>,
 }
 
 #[repr(u8)]
@@ -65,5 +65,5 @@ pub struct VarDeclarator<'a> {
 pub struct UsingDecl<'a> {
     pub span: Span,
     pub is_await: bool,
-    pub decls: Vec<'a, Box<'a, VarDeclarator<'a>>>,
+    pub decls: Vec<'a, VarDeclarator<'a>>,
 }

@@ -629,11 +629,11 @@ pub trait Visit<'a> {
         node.visit_children_with(self);
     }
     #[inline]
-    fn visit_switch_cases(&mut self, node: &Vec<'a, Box<'a, SwitchCase<'a>>>) {
+    fn visit_switch_cases(&mut self, node: &Vec<'a, SwitchCase<'a>>) {
         node.visit_children_with(self);
     }
     #[inline]
-    fn visit_var_declarators(&mut self, node: &Vec<'a, Box<'a, VarDeclarator<'a>>>) {
+    fn visit_var_declarators(&mut self, node: &Vec<'a, VarDeclarator<'a>>) {
         node.visit_children_with(self);
     }
     #[inline]
@@ -645,7 +645,7 @@ pub trait Visit<'a> {
         node.visit_children_with(self);
     }
     #[inline]
-    fn visit_expr_or_spreads(&mut self, node: &Vec<'a, Box<'a, ExprOrSpread<'a>>>) {
+    fn visit_expr_or_spreads(&mut self, node: &Vec<'a, ExprOrSpread<'a>>) {
         node.visit_children_with(self);
     }
     #[inline]
@@ -657,15 +657,15 @@ pub trait Visit<'a> {
         node.visit_children_with(self);
     }
     #[inline]
-    fn visit_tpl_elements(&mut self, node: &Vec<'a, Box<'a, TplElement<'a>>>) {
+    fn visit_tpl_elements(&mut self, node: &Vec<'a, TplElement<'a>>) {
         node.visit_children_with(self);
     }
     #[inline]
-    fn visit_params(&mut self, node: &Vec<'a, Box<'a, Param<'a>>>) {
+    fn visit_params(&mut self, node: &Vec<'a, Param<'a>>) {
         node.visit_children_with(self);
     }
     #[inline]
-    fn visit_decorators(&mut self, node: &Vec<'a, Box<'a, Decorator<'a>>>) {
+    fn visit_decorators(&mut self, node: &Vec<'a, Decorator<'a>>) {
         node.visit_children_with(self);
     }
     #[inline]
@@ -2528,7 +2528,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, ExportSpecifier<'a>
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, Box<'a, SwitchCase<'a>>> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, SwitchCase<'a>> {
     #[inline]
     fn visit_with(&self, visitor: &mut V) {
         <V as Visit<'a>>::visit_switch_cases(visitor, self)
@@ -2540,7 +2540,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, Box<'a, SwitchCase<
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, Box<'a, VarDeclarator<'a>>> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, VarDeclarator<'a>> {
     #[inline]
     fn visit_with(&self, visitor: &mut V) {
         <V as Visit<'a>>::visit_var_declarators(visitor, self)
@@ -2576,7 +2576,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, PropOrSpread<'a>> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, Box<'a, ExprOrSpread<'a>>> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, ExprOrSpread<'a>> {
     #[inline]
     fn visit_with(&self, visitor: &mut V) {
         <V as Visit<'a>>::visit_expr_or_spreads(visitor, self)
@@ -2612,7 +2612,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, Pat<'a>> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, Box<'a, TplElement<'a>>> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, TplElement<'a>> {
     #[inline]
     fn visit_with(&self, visitor: &mut V) {
         <V as Visit<'a>>::visit_tpl_elements(visitor, self)
@@ -2624,7 +2624,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, Box<'a, TplElement<
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, Box<'a, Param<'a>>> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, Param<'a>> {
     #[inline]
     fn visit_with(&self, visitor: &mut V) {
         <V as Visit<'a>>::visit_params(visitor, self)
@@ -2636,7 +2636,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, Box<'a, Param<'a>>>
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, Box<'a, Decorator<'a>>> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, Decorator<'a>> {
     #[inline]
     fn visit_with(&self, visitor: &mut V) {
         <V as Visit<'a>>::visit_decorators(visitor, self)
@@ -3346,11 +3346,11 @@ pub trait VisitMut<'a> {
         node.visit_mut_children_with(self);
     }
     #[inline]
-    fn visit_mut_switch_cases(&mut self, node: &mut Vec<'a, Box<'a, SwitchCase<'a>>>) {
+    fn visit_mut_switch_cases(&mut self, node: &mut Vec<'a, SwitchCase<'a>>) {
         node.visit_mut_children_with(self);
     }
     #[inline]
-    fn visit_mut_var_declarators(&mut self, node: &mut Vec<'a, Box<'a, VarDeclarator<'a>>>) {
+    fn visit_mut_var_declarators(&mut self, node: &mut Vec<'a, VarDeclarator<'a>>) {
         node.visit_mut_children_with(self);
     }
     #[inline]
@@ -3365,7 +3365,7 @@ pub trait VisitMut<'a> {
         node.visit_mut_children_with(self);
     }
     #[inline]
-    fn visit_mut_expr_or_spreads(&mut self, node: &mut Vec<'a, Box<'a, ExprOrSpread<'a>>>) {
+    fn visit_mut_expr_or_spreads(&mut self, node: &mut Vec<'a, ExprOrSpread<'a>>) {
         node.visit_mut_children_with(self);
     }
     #[inline]
@@ -3377,15 +3377,15 @@ pub trait VisitMut<'a> {
         node.visit_mut_children_with(self);
     }
     #[inline]
-    fn visit_mut_tpl_elements(&mut self, node: &mut Vec<'a, Box<'a, TplElement<'a>>>) {
+    fn visit_mut_tpl_elements(&mut self, node: &mut Vec<'a, TplElement<'a>>) {
         node.visit_mut_children_with(self);
     }
     #[inline]
-    fn visit_mut_params(&mut self, node: &mut Vec<'a, Box<'a, Param<'a>>>) {
+    fn visit_mut_params(&mut self, node: &mut Vec<'a, Param<'a>>) {
         node.visit_mut_children_with(self);
     }
     #[inline]
-    fn visit_mut_decorators(&mut self, node: &mut Vec<'a, Box<'a, Decorator<'a>>>) {
+    fn visit_mut_decorators(&mut self, node: &mut Vec<'a, Decorator<'a>>) {
         node.visit_mut_children_with(self);
     }
     #[inline]
@@ -5248,7 +5248,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, ExportSpecifi
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, Box<'a, SwitchCase<'a>>> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, SwitchCase<'a>> {
     #[inline]
     fn visit_mut_with(&mut self, visitor: &mut V) {
         <V as VisitMut<'a>>::visit_mut_switch_cases(visitor, self)
@@ -5260,7 +5260,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, Box<'a, Switc
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, Box<'a, VarDeclarator<'a>>> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, VarDeclarator<'a>> {
     #[inline]
     fn visit_mut_with(&mut self, visitor: &mut V) {
         <V as VisitMut<'a>>::visit_mut_var_declarators(visitor, self)
@@ -5298,7 +5298,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, PropOrSpread<
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, Box<'a, ExprOrSpread<'a>>> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, ExprOrSpread<'a>> {
     #[inline]
     fn visit_mut_with(&mut self, visitor: &mut V) {
         <V as VisitMut<'a>>::visit_mut_expr_or_spreads(visitor, self)
@@ -5334,7 +5334,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, Pat<'a>> {
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, Box<'a, TplElement<'a>>> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, TplElement<'a>> {
     #[inline]
     fn visit_mut_with(&mut self, visitor: &mut V) {
         <V as VisitMut<'a>>::visit_mut_tpl_elements(visitor, self)
@@ -5346,7 +5346,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, Box<'a, TplEl
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, Box<'a, Param<'a>>> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, Param<'a>> {
     #[inline]
     fn visit_mut_with(&mut self, visitor: &mut V) {
         <V as VisitMut<'a>>::visit_mut_params(visitor, self)
@@ -5358,7 +5358,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, Box<'a, Param
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, Box<'a, Decorator<'a>>> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, Decorator<'a>> {
     #[inline]
     fn visit_mut_with(&mut self, visitor: &mut V) {
         <V as VisitMut<'a>>::visit_mut_decorators(visitor, self)

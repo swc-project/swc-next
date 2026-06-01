@@ -1,4 +1,3 @@
-use swc_experimental_allocator::boxed::Box;
 use swc_experimental_allocator::vec::Vec;
 use swc_experimental_ecma_ast::*;
 
@@ -354,14 +353,11 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                                 let mut this = None;
                                 let mut params = function.params;
                                 if params.len() >= 2 {
-                                    this = Some(Box::into_inner(params.remove(0)).pat);
+                                    this = Some(params.remove(0).pat);
                                 }
 
-                                let param = params
-                                    .into_iter()
-                                    .next()
-                                    .map(|v| Box::into_inner(v).pat)
-                                    .unwrap_or_else(|| {
+                                let param =
+                                    params.into_iter().next().map(|v| v.pat).unwrap_or_else(|| {
                                         p.emit_err(key_span, SyntaxError::SetterParam);
                                         p.ast.pat_invalid()
                                     });

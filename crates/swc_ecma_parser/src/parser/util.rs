@@ -6,13 +6,6 @@ pub trait IsSimpleParameterList {
     fn is_simple_parameter_list(&self) -> bool;
 }
 
-impl<'a> IsSimpleParameterList for Vec<'a, Box<'a, Param<'a>>> {
-    #[inline]
-    fn is_simple_parameter_list(&self) -> bool {
-        self.iter().all(|param| matches!(param.pat, Pat::Ident(_)))
-    }
-}
-
 impl<'a> IsSimpleParameterList for Vec<'a, Param<'a>> {
     #[inline]
     fn is_simple_parameter_list(&self) -> bool {
