@@ -1735,17 +1735,17 @@ impl<'a> SetSpan for ObjectLit<'a> {
 }
 impl<'a> PropOrSpread<'a> {
     #[inline]
-    pub fn is_spread_element(&self) -> bool {
-        matches!(self, Self::SpreadElement(_))
+    pub fn is_spread(&self) -> bool {
+        matches!(self, Self::Spread(_))
     }
     #[inline]
     pub fn is_prop(&self) -> bool {
         matches!(self, Self::Prop(_))
     }
     #[inline]
-    pub fn as_spread_element(self) -> Option<Box<'a, SpreadElement<'a>>> {
+    pub fn as_spread(self) -> Option<Box<'a, SpreadElement<'a>>> {
         match self {
-            Self::SpreadElement(it) => Some(it),
+            Self::Spread(it) => Some(it),
             _ => None,
         }
     }
@@ -1761,7 +1761,7 @@ impl<'a> GetSpan for PropOrSpread<'a> {
     #[inline]
     fn span(&self) -> Span {
         match self {
-            Self::SpreadElement(it) => it.span(),
+            Self::Spread(it) => it.span(),
             Self::Prop(it) => it.span(),
         }
     }
@@ -1770,7 +1770,7 @@ impl<'a> SetSpan for PropOrSpread<'a> {
     #[inline]
     fn set_span(&mut self, span: Span) {
         match self {
-            Self::SpreadElement(it) => it.set_span(span),
+            Self::Spread(it) => it.set_span(span),
             Self::Prop(it) => it.set_span(span),
         }
     }
@@ -2204,16 +2204,6 @@ impl<'a> GetSpan for ExprOrSpread<'a> {
     }
 }
 impl<'a> SetSpan for ExprOrSpread<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {}
-}
-impl GetSpan for SpreadDot3Token {
-    #[inline]
-    fn span(&self) -> Span {
-        DUMMY_SP
-    }
-}
-impl SetSpan for SpreadDot3Token {
     #[inline]
     fn set_span(&mut self, span: Span) {}
 }

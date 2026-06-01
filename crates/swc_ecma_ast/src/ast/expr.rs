@@ -72,7 +72,7 @@ pub struct ObjectLit<'a> {
 #[ast]
 #[derive(Debug)]
 pub enum PropOrSpread<'a> {
-    SpreadElement(Box<'a, SpreadElement<'a>>),
+    Spread(Box<'a, SpreadElement<'a>>),
     Prop(Box<'a, Prop<'a>>),
 }
 
@@ -304,13 +304,9 @@ pub struct Import {
 #[ast]
 #[derive(Debug)]
 pub struct ExprOrSpread<'a> {
-    pub spread: Option<Box<'a, SpreadDot3Token>>,
+    pub spread: Option<Span>,
     pub expr: Expr<'a>,
 }
-
-#[ast]
-#[derive(Debug)]
-pub struct SpreadDot3Token {}
 
 #[ast]
 #[derive(Debug)]

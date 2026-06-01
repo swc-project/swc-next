@@ -88,10 +88,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                         },
                     )
                 })
-                .map(|expr| {
-                    let spread = self.ast.spread_dot_3_token();
-                    self.ast.expr_or_spread(Some(self.boxed(spread)), expr)
-                })
+                .map(|expr| self.ast.expr_or_spread(Some(spread_span), expr))
         } else {
             self.parse_assignment_expr()
                 .map(|expr| self.ast.expr_or_spread(None, expr))

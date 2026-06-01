@@ -126,7 +126,7 @@ impl<'a> ExprExt for Expr<'a> {
                     }
                     Expr::Object(obj_lit) => {
                         let can_have_side_effect = |prop: &PropOrSpread<'_>| match prop {
-                            PropOrSpread::SpreadElement(_) => true,
+                            PropOrSpread::Spread(_) => true,
                             PropOrSpread::Prop(prop) => match &**prop {
                                 Prop::Getter(_) | Prop::Setter(_) | Prop::Method(_) => true,
                                 Prop::Shorthand(ident) => ident.sym == "__proto__",
@@ -235,7 +235,7 @@ impl<'a> ExprExt for Expr<'a> {
                     Prop::Assign(_) => true,
                 },
                 // may trigger getter
-                PropOrSpread::SpreadElement(_) => true,
+                PropOrSpread::Spread(_) => true,
             }),
 
             Expr::JSXMember(..)

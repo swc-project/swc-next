@@ -333,10 +333,6 @@ pub trait Visit<'a> {
         node.visit_children_with(self);
     }
     #[inline]
-    fn visit_spread_dot_3_token(&mut self, node: &SpreadDot3Token) {
-        node.visit_children_with(self);
-    }
-    #[inline]
     fn visit_block_stmt_or_expr(&mut self, node: &BlockStmtOrExpr<'a>) {
         node.visit_children_with(self);
     }
@@ -1391,7 +1387,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PropOrSpread<'a> {
     #[inline]
     fn visit_children_with(&self, visitor: &mut V) {
         match self {
-            Self::SpreadElement(it) => it.visit_with(visitor),
+            Self::Spread(it) => it.visit_with(visitor),
             Self::Prop(it) => it.visit_with(visitor),
         }
     }
@@ -1679,17 +1675,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExprOrSpread<'a> {
     }
     #[inline]
     fn visit_children_with(&self, visitor: &mut V) {
-        self.spread.visit_with(visitor);
         self.expr.visit_with(visitor);
     }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SpreadDot3Token {
-    #[inline]
-    fn visit_with(&self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_spread_dot_3_token(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(&self, visitor: &mut V) {}
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BlockStmtOrExpr<'a> {
     #[inline]
@@ -3050,10 +3037,6 @@ pub trait VisitMut<'a> {
         node.visit_mut_children_with(self);
     }
     #[inline]
-    fn visit_mut_spread_dot_3_token(&mut self, node: &mut SpreadDot3Token) {
-        node.visit_mut_children_with(self);
-    }
-    #[inline]
     fn visit_mut_block_stmt_or_expr(&mut self, node: &mut BlockStmtOrExpr<'a>) {
         node.visit_mut_children_with(self);
     }
@@ -4111,7 +4094,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for PropOrSpread<'a> {
     #[inline]
     fn visit_mut_children_with(&mut self, visitor: &mut V) {
         match self {
-            Self::SpreadElement(it) => it.visit_mut_with(visitor),
+            Self::Spread(it) => it.visit_mut_with(visitor),
             Self::Prop(it) => it.visit_mut_with(visitor),
         }
     }
@@ -4399,17 +4382,8 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExprOrSpread<'a> {
     }
     #[inline]
     fn visit_mut_children_with(&mut self, visitor: &mut V) {
-        self.spread.visit_mut_with(visitor);
         self.expr.visit_mut_with(visitor);
     }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SpreadDot3Token {
-    #[inline]
-    fn visit_mut_with(&mut self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_spread_dot_3_token(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(&mut self, visitor: &mut V) {}
 }
 impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BlockStmtOrExpr<'a> {
     #[inline]

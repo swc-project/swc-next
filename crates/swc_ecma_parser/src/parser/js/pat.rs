@@ -259,7 +259,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                                 _ => syntax_error!(p, span, SyntaxError::InvalidPat),
                             },
 
-                            PropOrSpread::SpreadElement(spread) => {
+                            PropOrSpread::Spread(spread) => {
                                 let spread = Box::into_inner(spread);
                                 let dot_3_token = spread.dot3_token;
                                 let expr = spread.expr;
@@ -366,7 +366,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                                         );
                                     }
                                     let expr_span = expr.span();
-                                    let spread_span = spread.span();
+                                    let spread_span = spread;
 
                                     Some(self.reparse_expr_as_pat(pat_ty.element(), expr).map(
                                         |pat| self.ast.pat_rest_pat(expr_span, spread_span, pat),
@@ -811,7 +811,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                         }
 
                         let expr_span = expr.span();
-                        let dot3_span = dot3_token.span();
+                        let dot3_span = dot3_token;
                         p.reparse_expr_as_pat(pat_ty, expr)
                             .map(|pat| p.ast.pat_rest_pat(expr_span, dot3_span, pat))?
                     }

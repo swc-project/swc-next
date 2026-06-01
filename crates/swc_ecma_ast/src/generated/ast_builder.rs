@@ -2652,7 +2652,7 @@ impl<'a> AstBuilder<'a> {
         dot3_token: Span,
         expr: Expr<'a>,
     ) -> PropOrSpread<'a> {
-        PropOrSpread::SpreadElement(self.box_spread_element(dot3_token, expr))
+        PropOrSpread::Spread(self.box_spread_element(dot3_token, expr))
     }
     #[inline]
     pub fn prop_or_spread_prop_ident(
@@ -3512,28 +3512,16 @@ impl<'a> AstBuilder<'a> {
         self.allocator.boxed(self.import(span, phase))
     }
     #[inline]
-    pub fn expr_or_spread(
-        &self,
-        spread: Option<Box<'a, SpreadDot3Token>>,
-        expr: Expr<'a>,
-    ) -> ExprOrSpread<'a> {
+    pub fn expr_or_spread(&self, spread: Option<Span>, expr: Expr<'a>) -> ExprOrSpread<'a> {
         ExprOrSpread { spread, expr }
     }
     #[inline]
     pub fn box_expr_or_spread(
         &self,
-        spread: Option<Box<'a, SpreadDot3Token>>,
+        spread: Option<Span>,
         expr: Expr<'a>,
     ) -> Box<'a, ExprOrSpread<'a>> {
         self.allocator.boxed(self.expr_or_spread(spread, expr))
-    }
-    #[inline]
-    pub fn spread_dot_3_token(&self) -> SpreadDot3Token {
-        SpreadDot3Token {}
-    }
-    #[inline]
-    pub fn box_spread_dot_3_token(&self) -> Box<'a, SpreadDot3Token> {
-        self.allocator.boxed(self.spread_dot_3_token())
     }
     #[inline]
     pub fn block_stmt_or_expr_block_stmt(

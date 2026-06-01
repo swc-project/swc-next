@@ -639,7 +639,7 @@ impl<'a, 'src> CloneIn<'a> for PropOrSpread<'src> {
     #[inline]
     fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
         match self {
-            Self::SpreadElement(it) => PropOrSpread::SpreadElement(it.clone_in(allocator)),
+            Self::Spread(it) => PropOrSpread::Spread(it.clone_in(allocator)),
             Self::Prop(it) => PropOrSpread::Prop(it.clone_in(allocator)),
         }
     }
@@ -934,13 +934,6 @@ impl<'a, 'src> CloneIn<'a> for ExprOrSpread<'src> {
             spread: self.spread.clone_in(allocator),
             expr: self.expr.clone_in(allocator),
         }
-    }
-}
-impl<'a> CloneIn<'a> for SpreadDot3Token {
-    type Cloned = SpreadDot3Token;
-    #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        SpreadDot3Token {}
     }
 }
 impl<'a, 'src> CloneIn<'a> for BlockStmtOrExpr<'src> {

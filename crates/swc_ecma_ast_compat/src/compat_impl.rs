@@ -931,7 +931,7 @@ pub(crate) trait CompatImpl {
         p: experimental::PropOrSpread<'a>,
     ) -> legacy::PropOrSpread {
         match p {
-            experimental::PropOrSpread::SpreadElement(s) => {
+            experimental::PropOrSpread::Spread(s) => {
                 let s = AstBox::into_inner(s);
                 legacy::PropOrSpread::Spread(legacy::SpreadElement {
                     dot3_token: compat_span(s.dot3_token),
@@ -1394,7 +1394,7 @@ pub(crate) trait CompatImpl {
         e: experimental::ExprOrSpread<'a>,
     ) -> legacy::ExprOrSpread {
         legacy::ExprOrSpread {
-            spread: e.spread.map(|_| Default::default()),
+            spread: e.spread.map(compat_span),
             expr: self.compat_expr(e.expr),
         }
     }
