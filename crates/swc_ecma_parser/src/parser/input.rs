@@ -300,7 +300,7 @@ impl<I: Tokens> Buffer<I> {
         self.set_cur(first_token);
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn bump(&mut self) {
         let next = if self.next.is_none() {
             self.iter.next_token()
