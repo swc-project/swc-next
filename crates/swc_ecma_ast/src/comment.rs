@@ -1,11 +1,13 @@
+use std::collections::HashMap;
+
 use swc_atoms::Atom;
 
 use crate::Span;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Comments {
-    pub leading: hashbrown::HashMap<u32, Vec<Comment>>,
-    pub trailing: hashbrown::HashMap<u32, Vec<Comment>>,
+    pub leading: HashMap<u32, Vec<Comment>>,
+    pub trailing: HashMap<u32, Vec<Comment>>,
 }
 
 impl Comments {
@@ -18,7 +20,7 @@ impl Comments {
     }
 }
 
-fn move_comments(comments: &mut hashbrown::HashMap<u32, Vec<Comment>>, from: u32, to: u32) {
+fn move_comments(comments: &mut HashMap<u32, Vec<Comment>>, from: u32, to: u32) {
     if from == to {
         return;
     }
