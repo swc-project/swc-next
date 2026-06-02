@@ -5,7 +5,8 @@ publish = false
 version = "0.1.0"
 
 [features]
-tracy = ["dep:tracy-client"]
+codspeed = []
+tracy    = ["dep:tracy-client"]
 
 [dependencies]
 tracy-client = { workspace = true, optional = true }

@@ -5,6 +5,24 @@ use criterion::{Bencher, Criterion, criterion_group, criterion_main};
 use swc_experimental_allocator::Allocator;
 use swc_experimental_ecma_parser::StringSource;
 
+#[cfg(not(feature = "codspeed"))]
+fn bench_legacy(b: &mut Bencher, src: &'static str) {
+    use swc_core::common::BytePos;
+    use swc_core::ecma::parser::{Parser, StringInput, Syntax, lexer::Lexer};
+
+    b.iter(|| {
+        let input = StringInput::new(src, BytePos(0), BytePos(src.len() as u32));
+        let lexer = Lexer::new(
+            Syntax::Es(Default::default()),
+            Default::default(),
+            input,
+            None,
+        );
+        let mut parser = Parser::new_from(lexer);
+        parser.parse_module().unwrap();
+    });
+}
+
 fn bench_new(b: &mut Bencher, src: &'static str) {
     use swc_experimental_ecma_parser::Parser;
     b.iter(|| {
@@ -38,6 +56,10 @@ fn bench_files(c: &mut Criterion) {
     ];
 
     for (name, source) in bench_cases {
+        #[cfg(not(feature = "codspeed"))]
+        c.bench_function(&format!("{name}/parser/legacy"), |b| {
+            bench_legacy(b, source)
+        });
         c.bench_function(&format!("{name}/parser/new"), |b| bench_new(b, source));
     }
 }

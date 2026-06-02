@@ -4,6 +4,39 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use criterion::{Bencher, Criterion, criterion_group, criterion_main};
 use swc_experimental_allocator::Allocator;
 
+#[cfg(not(feature = "codspeed"))]
+fn bench_legacy(b: &mut Bencher, src: &'static str) {
+    use swc_core::common::BytePos;
+    use swc_core::ecma::parser::{Parser, StringInput, Syntax, lexer::Lexer};
+    use swc_core::ecma::visit::VisitWith;
+
+    let input = StringInput::new(src, BytePos(0), BytePos(src.len() as u32));
+    let lexer = Lexer::new(
+        Syntax::Es(Default::default()),
+        Default::default(),
+        input,
+        None,
+    );
+    let mut parser = Parser::new_from(lexer);
+    let module = parser.parse_module().unwrap();
+
+    struct Counter {
+        count: usize,
+    }
+
+    impl swc_core::ecma::visit::Visit for Counter {
+        fn visit_ident(&mut self, _node: &swc_core::ecma::ast::Ident) {
+            self.count += 1;
+        }
+    }
+
+    b.iter(|| {
+        let mut counter = Counter { count: 0 };
+        module.visit_with(&mut counter);
+        std::hint::black_box(counter.count);
+    });
+}
+
 fn bench_new(b: &mut Bencher, src: &'static str) {
     use swc_experimental_ecma_parser::{Parser, StringSource};
     use swc_experimental_ecma_visit::VisitWith;
@@ -35,37 +68,6 @@ fn bench_new(b: &mut Bencher, src: &'static str) {
     });
 }
 
-fn bench_new_mut(b: &mut Bencher, src: &'static str) {
-    use swc_experimental_ecma_parser::{Parser, StringSource};
-    use swc_experimental_ecma_visit::VisitMutWith;
-
-    struct Counter {
-        count: usize,
-    }
-
-    impl<'a> swc_experimental_ecma_visit::VisitMut<'a> for Counter {
-        fn visit_mut_ident(&mut self, _node: &mut swc_experimental_ecma_ast::Ident) {
-            self.count += 1;
-        }
-    }
-
-    let allocator = Allocator::new();
-    let input = StringSource::new(src);
-    let mut parser = Parser::new(
-        &allocator,
-        swc_experimental_ecma_parser::Syntax::Es(Default::default()),
-        input,
-        None,
-    );
-    let mut module = parser.parse_module().unwrap();
-
-    b.iter(|| {
-        let mut counter = Counter { count: 0 };
-        module.visit_mut_with(&mut counter);
-        std::hint::black_box(counter.count);
-    });
-}
-
 fn bench_files(c: &mut Criterion) {
     let bench_cases = &[
         ("colors", include_str!("../files/colors.js")),
@@ -84,10 +86,9 @@ fn bench_files(c: &mut Criterion) {
     ];
 
     for (name, source) in bench_cases {
+        #[cfg(not(feature = "codspeed"))]
+        c.bench_function(&format!("{name}/visit/legacy"), |b| bench_legacy(b, source));
         c.bench_function(&format!("{name}/visit/new"), |b| bench_new(b, source));
-        c.bench_function(&format!("{name}/visit_mut/new"), |b| {
-            bench_new_mut(b, source)
-        });
     }
 }
 
