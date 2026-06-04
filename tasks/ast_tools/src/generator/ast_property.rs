@@ -51,14 +51,18 @@ fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
 
     let mut is_variant = TokenStream::new();
     let mut as_variant = TokenStream::new();
+    let mut as_mut_variant = TokenStream::new();
 
     for variant in ast.variants.iter() {
         let variant_name = format_ident!("{}", variant.name);
         let is_fn_name = format_ident!("is_{}", variant.name.to_case(Case::Snake));
         is_variant.extend(quote! {
             #[inline]
-            pub fn #is_fn_name(&self) -> bool {
-                matches!(self, Self::#variant_name(_))
+            pub const fn #is_fn_name(&self) -> bool {
+                match self {
+                    Self::#variant_name { .. } => true,
+                    _ => false,
+                }
             }
         });
 
@@ -67,10 +71,20 @@ fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
         };
 
         let as_fn_name = format_ident!("as_{}", variant.name.to_case(Case::Snake));
+        let as_mut_fn_name = format_ident!("as_mut_{}", variant.name.to_case(Case::Snake));
         let payload_ty = type_ref(payload_ty_id, schema);
         as_variant.extend(quote! {
             #[inline]
-            pub fn #as_fn_name(self) -> Option<Box<'a, #payload_ty>> {
+            pub fn #as_fn_name(&self) -> Option<&#payload_ty> {
+                match self {
+                    Self::#variant_name(it) => Some(it),
+                    _ => None,
+                }
+            }
+        });
+        as_mut_variant.extend(quote! {
+            #[inline]
+            pub fn #as_mut_fn_name(&mut self) -> Option<&mut #payload_ty> {
                 match self {
                     Self::#variant_name(it) => Some(it),
                     _ => None,
@@ -83,6 +97,7 @@ fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
         impl #impl_generics #name #type_generics {
             #is_variant
             #as_variant
+            #as_mut_variant
         }
     }
 }

@@ -5,22 +5,42 @@ use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
 use swc_experimental_allocator::boxed::Box;
 impl<'a> Program<'a> {
     #[inline]
-    pub fn is_module(&self) -> bool {
-        matches!(self, Self::Module(_))
+    pub const fn is_module(&self) -> bool {
+        match self {
+            Self::Module { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_script(&self) -> bool {
-        matches!(self, Self::Script(_))
+    pub const fn is_script(&self) -> bool {
+        match self {
+            Self::Script { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_module(self) -> Option<Box<'a, Module<'a>>> {
+    pub fn as_module(&self) -> Option<&Module<'a>> {
         match self {
             Self::Module(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_script(self) -> Option<Box<'a, Script<'a>>> {
+    pub fn as_script(&self) -> Option<&Script<'a>> {
+        match self {
+            Self::Script(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_module(&mut self) -> Option<&mut Module<'a>> {
+        match self {
+            Self::Module(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_script(&mut self) -> Option<&mut Script<'a>> {
         match self {
             Self::Script(it) => Some(it),
             _ => None,
@@ -71,22 +91,42 @@ impl<'a> SetSpan for Script<'a> {
 }
 impl<'a> ModuleItem<'a> {
     #[inline]
-    pub fn is_module_decl(&self) -> bool {
-        matches!(self, Self::ModuleDecl(_))
+    pub const fn is_module_decl(&self) -> bool {
+        match self {
+            Self::ModuleDecl { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_stmt(&self) -> bool {
-        matches!(self, Self::Stmt(_))
+    pub const fn is_stmt(&self) -> bool {
+        match self {
+            Self::Stmt { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_module_decl(self) -> Option<Box<'a, ModuleDecl<'a>>> {
+    pub fn as_module_decl(&self) -> Option<&ModuleDecl<'a>> {
         match self {
             Self::ModuleDecl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_stmt(self) -> Option<Box<'a, Stmt<'a>>> {
+    pub fn as_stmt(&self) -> Option<&Stmt<'a>> {
+        match self {
+            Self::Stmt(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_module_decl(&mut self) -> Option<&mut ModuleDecl<'a>> {
+        match self {
+            Self::ModuleDecl(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_stmt(&mut self) -> Option<&mut Stmt<'a>> {
         match self {
             Self::Stmt(it) => Some(it),
             _ => None,
@@ -113,66 +153,126 @@ impl<'a> SetSpan for ModuleItem<'a> {
 }
 impl<'a> ModuleDecl<'a> {
     #[inline]
-    pub fn is_import(&self) -> bool {
-        matches!(self, Self::Import(_))
+    pub const fn is_import(&self) -> bool {
+        match self {
+            Self::Import { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_export_decl(&self) -> bool {
-        matches!(self, Self::ExportDecl(_))
+    pub const fn is_export_decl(&self) -> bool {
+        match self {
+            Self::ExportDecl { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_export_named(&self) -> bool {
-        matches!(self, Self::ExportNamed(_))
+    pub const fn is_export_named(&self) -> bool {
+        match self {
+            Self::ExportNamed { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_export_default_decl(&self) -> bool {
-        matches!(self, Self::ExportDefaultDecl(_))
+    pub const fn is_export_default_decl(&self) -> bool {
+        match self {
+            Self::ExportDefaultDecl { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_export_default_expr(&self) -> bool {
-        matches!(self, Self::ExportDefaultExpr(_))
+    pub const fn is_export_default_expr(&self) -> bool {
+        match self {
+            Self::ExportDefaultExpr { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_export_all(&self) -> bool {
-        matches!(self, Self::ExportAll(_))
+    pub const fn is_export_all(&self) -> bool {
+        match self {
+            Self::ExportAll { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_import(self) -> Option<Box<'a, ImportDecl<'a>>> {
+    pub fn as_import(&self) -> Option<&ImportDecl<'a>> {
         match self {
             Self::Import(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_export_decl(self) -> Option<Box<'a, ExportDecl<'a>>> {
+    pub fn as_export_decl(&self) -> Option<&ExportDecl<'a>> {
         match self {
             Self::ExportDecl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_export_named(self) -> Option<Box<'a, NamedExport<'a>>> {
+    pub fn as_export_named(&self) -> Option<&NamedExport<'a>> {
         match self {
             Self::ExportNamed(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_export_default_decl(self) -> Option<Box<'a, ExportDefaultDecl<'a>>> {
+    pub fn as_export_default_decl(&self) -> Option<&ExportDefaultDecl<'a>> {
         match self {
             Self::ExportDefaultDecl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_export_default_expr(self) -> Option<Box<'a, ExportDefaultExpr<'a>>> {
+    pub fn as_export_default_expr(&self) -> Option<&ExportDefaultExpr<'a>> {
         match self {
             Self::ExportDefaultExpr(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_export_all(self) -> Option<Box<'a, ExportAll<'a>>> {
+    pub fn as_export_all(&self) -> Option<&ExportAll<'a>> {
+        match self {
+            Self::ExportAll(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_import(&mut self) -> Option<&mut ImportDecl<'a>> {
+        match self {
+            Self::Import(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_export_decl(&mut self) -> Option<&mut ExportDecl<'a>> {
+        match self {
+            Self::ExportDecl(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_export_named(&mut self) -> Option<&mut NamedExport<'a>> {
+        match self {
+            Self::ExportNamed(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_export_default_decl(&mut self) -> Option<&mut ExportDefaultDecl<'a>> {
+        match self {
+            Self::ExportDefaultDecl(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_export_default_expr(&mut self) -> Option<&mut ExportDefaultExpr<'a>> {
+        match self {
+            Self::ExportDefaultExpr(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_export_all(&mut self) -> Option<&mut ExportAll<'a>> {
         match self {
             Self::ExportAll(it) => Some(it),
             _ => None,
@@ -219,33 +319,63 @@ impl<'a> SetSpan for ImportDecl<'a> {
 }
 impl<'a> ImportSpecifier<'a> {
     #[inline]
-    pub fn is_named(&self) -> bool {
-        matches!(self, Self::Named(_))
+    pub const fn is_named(&self) -> bool {
+        match self {
+            Self::Named { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_default(&self) -> bool {
-        matches!(self, Self::Default(_))
+    pub const fn is_default(&self) -> bool {
+        match self {
+            Self::Default { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_namespace(&self) -> bool {
-        matches!(self, Self::Namespace(_))
+    pub const fn is_namespace(&self) -> bool {
+        match self {
+            Self::Namespace { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_named(self) -> Option<Box<'a, ImportNamedSpecifier<'a>>> {
+    pub fn as_named(&self) -> Option<&ImportNamedSpecifier<'a>> {
         match self {
             Self::Named(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_default(self) -> Option<Box<'a, ImportDefaultSpecifier<'a>>> {
+    pub fn as_default(&self) -> Option<&ImportDefaultSpecifier<'a>> {
         match self {
             Self::Default(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_namespace(self) -> Option<Box<'a, ImportStarAsSpecifier<'a>>> {
+    pub fn as_namespace(&self) -> Option<&ImportStarAsSpecifier<'a>> {
+        match self {
+            Self::Namespace(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_named(&mut self) -> Option<&mut ImportNamedSpecifier<'a>> {
+        match self {
+            Self::Named(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_default(&mut self) -> Option<&mut ImportDefaultSpecifier<'a>> {
+        match self {
+            Self::Default(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_namespace(&mut self) -> Option<&mut ImportStarAsSpecifier<'a>> {
         match self {
             Self::Namespace(it) => Some(it),
             _ => None,
@@ -334,33 +464,63 @@ impl<'a> SetSpan for NamedExport<'a> {
 }
 impl<'a> ExportSpecifier<'a> {
     #[inline]
-    pub fn is_namespace(&self) -> bool {
-        matches!(self, Self::Namespace(_))
+    pub const fn is_namespace(&self) -> bool {
+        match self {
+            Self::Namespace { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_default(&self) -> bool {
-        matches!(self, Self::Default(_))
+    pub const fn is_default(&self) -> bool {
+        match self {
+            Self::Default { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_named(&self) -> bool {
-        matches!(self, Self::Named(_))
+    pub const fn is_named(&self) -> bool {
+        match self {
+            Self::Named { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_namespace(self) -> Option<Box<'a, ExportNamespaceSpecifier<'a>>> {
+    pub fn as_namespace(&self) -> Option<&ExportNamespaceSpecifier<'a>> {
         match self {
             Self::Namespace(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_default(self) -> Option<Box<'a, ExportDefaultSpecifier<'a>>> {
+    pub fn as_default(&self) -> Option<&ExportDefaultSpecifier<'a>> {
         match self {
             Self::Default(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_named(self) -> Option<Box<'a, ExportNamedSpecifier<'a>>> {
+    pub fn as_named(&self) -> Option<&ExportNamedSpecifier<'a>> {
+        match self {
+            Self::Named(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_namespace(&mut self) -> Option<&mut ExportNamespaceSpecifier<'a>> {
+        match self {
+            Self::Namespace(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_default(&mut self) -> Option<&mut ExportDefaultSpecifier<'a>> {
+        match self {
+            Self::Default(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_named(&mut self) -> Option<&mut ExportNamedSpecifier<'a>> {
         match self {
             Self::Named(it) => Some(it),
             _ => None,
@@ -401,22 +561,42 @@ impl<'a> SetSpan for ExportNamespaceSpecifier<'a> {
 }
 impl<'a> ModuleExportName<'a> {
     #[inline]
-    pub fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident(_))
+    pub const fn is_ident(&self) -> bool {
+        match self {
+            Self::Ident { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_str(&self) -> bool {
-        matches!(self, Self::Str(_))
+    pub const fn is_str(&self) -> bool {
+        match self {
+            Self::Str { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_ident(self) -> Option<Box<'a, Ident<'a>>> {
+    pub fn as_ident(&self) -> Option<&Ident<'a>> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_str(self) -> Option<Box<'a, Str<'a>>> {
+    pub fn as_str(&self) -> Option<&Str<'a>> {
+        match self {
+            Self::Str(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_ident(&mut self) -> Option<&mut Ident<'a>> {
+        match self {
+            Self::Ident(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_str(&mut self) -> Option<&mut Str<'a>> {
         match self {
             Self::Str(it) => Some(it),
             _ => None,
@@ -477,22 +657,42 @@ impl<'a> SetSpan for ExportDefaultDecl<'a> {
 }
 impl<'a> DefaultDecl<'a> {
     #[inline]
-    pub fn is_class(&self) -> bool {
-        matches!(self, Self::Class(_))
+    pub const fn is_class(&self) -> bool {
+        match self {
+            Self::Class { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_fn(&self) -> bool {
-        matches!(self, Self::Fn(_))
+    pub const fn is_fn(&self) -> bool {
+        match self {
+            Self::Fn { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_class(self) -> Option<Box<'a, ClassExpr<'a>>> {
+    pub fn as_class(&self) -> Option<&ClassExpr<'a>> {
         match self {
             Self::Class(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_fn(self) -> Option<Box<'a, FnExpr<'a>>> {
+    pub fn as_fn(&self) -> Option<&FnExpr<'a>> {
+        match self {
+            Self::Fn(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_class(&mut self) -> Option<&mut ClassExpr<'a>> {
+        match self {
+            Self::Class(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_fn(&mut self) -> Option<&mut FnExpr<'a>> {
         match self {
             Self::Fn(it) => Some(it),
             _ => None,
@@ -555,209 +755,399 @@ impl<'a> SetSpan for BlockStmt<'a> {
 }
 impl<'a> Stmt<'a> {
     #[inline]
-    pub fn is_block(&self) -> bool {
-        matches!(self, Self::Block(_))
+    pub const fn is_block(&self) -> bool {
+        match self {
+            Self::Block { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        matches!(self, Self::Empty(_))
+    pub const fn is_empty(&self) -> bool {
+        match self {
+            Self::Empty { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_debugger(&self) -> bool {
-        matches!(self, Self::Debugger(_))
+    pub const fn is_debugger(&self) -> bool {
+        match self {
+            Self::Debugger { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_with(&self) -> bool {
-        matches!(self, Self::With(_))
+    pub const fn is_with(&self) -> bool {
+        match self {
+            Self::With { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_return(&self) -> bool {
-        matches!(self, Self::Return(_))
+    pub const fn is_return(&self) -> bool {
+        match self {
+            Self::Return { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_labeled(&self) -> bool {
-        matches!(self, Self::Labeled(_))
+    pub const fn is_labeled(&self) -> bool {
+        match self {
+            Self::Labeled { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_break(&self) -> bool {
-        matches!(self, Self::Break(_))
+    pub const fn is_break(&self) -> bool {
+        match self {
+            Self::Break { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_continue(&self) -> bool {
-        matches!(self, Self::Continue(_))
+    pub const fn is_continue(&self) -> bool {
+        match self {
+            Self::Continue { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_if(&self) -> bool {
-        matches!(self, Self::If(_))
+    pub const fn is_if(&self) -> bool {
+        match self {
+            Self::If { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_switch(&self) -> bool {
-        matches!(self, Self::Switch(_))
+    pub const fn is_switch(&self) -> bool {
+        match self {
+            Self::Switch { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_throw(&self) -> bool {
-        matches!(self, Self::Throw(_))
+    pub const fn is_throw(&self) -> bool {
+        match self {
+            Self::Throw { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_try(&self) -> bool {
-        matches!(self, Self::Try(_))
+    pub const fn is_try(&self) -> bool {
+        match self {
+            Self::Try { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_while(&self) -> bool {
-        matches!(self, Self::While(_))
+    pub const fn is_while(&self) -> bool {
+        match self {
+            Self::While { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_do_while(&self) -> bool {
-        matches!(self, Self::DoWhile(_))
+    pub const fn is_do_while(&self) -> bool {
+        match self {
+            Self::DoWhile { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_for(&self) -> bool {
-        matches!(self, Self::For(_))
+    pub const fn is_for(&self) -> bool {
+        match self {
+            Self::For { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_for_in(&self) -> bool {
-        matches!(self, Self::ForIn(_))
+    pub const fn is_for_in(&self) -> bool {
+        match self {
+            Self::ForIn { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_for_of(&self) -> bool {
-        matches!(self, Self::ForOf(_))
+    pub const fn is_for_of(&self) -> bool {
+        match self {
+            Self::ForOf { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_decl(&self) -> bool {
-        matches!(self, Self::Decl(_))
+    pub const fn is_decl(&self) -> bool {
+        match self {
+            Self::Decl { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_expr(&self) -> bool {
-        matches!(self, Self::Expr(_))
+    pub const fn is_expr(&self) -> bool {
+        match self {
+            Self::Expr { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_block(self) -> Option<Box<'a, BlockStmt<'a>>> {
+    pub fn as_block(&self) -> Option<&BlockStmt<'a>> {
         match self {
             Self::Block(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_empty(self) -> Option<Box<'a, EmptyStmt>> {
+    pub fn as_empty(&self) -> Option<&EmptyStmt> {
         match self {
             Self::Empty(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_debugger(self) -> Option<Box<'a, DebuggerStmt>> {
+    pub fn as_debugger(&self) -> Option<&DebuggerStmt> {
         match self {
             Self::Debugger(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_with(self) -> Option<Box<'a, WithStmt<'a>>> {
+    pub fn as_with(&self) -> Option<&WithStmt<'a>> {
         match self {
             Self::With(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_return(self) -> Option<Box<'a, ReturnStmt<'a>>> {
+    pub fn as_return(&self) -> Option<&ReturnStmt<'a>> {
         match self {
             Self::Return(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_labeled(self) -> Option<Box<'a, LabeledStmt<'a>>> {
+    pub fn as_labeled(&self) -> Option<&LabeledStmt<'a>> {
         match self {
             Self::Labeled(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_break(self) -> Option<Box<'a, BreakStmt<'a>>> {
+    pub fn as_break(&self) -> Option<&BreakStmt<'a>> {
         match self {
             Self::Break(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_continue(self) -> Option<Box<'a, ContinueStmt<'a>>> {
+    pub fn as_continue(&self) -> Option<&ContinueStmt<'a>> {
         match self {
             Self::Continue(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_if(self) -> Option<Box<'a, IfStmt<'a>>> {
+    pub fn as_if(&self) -> Option<&IfStmt<'a>> {
         match self {
             Self::If(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_switch(self) -> Option<Box<'a, SwitchStmt<'a>>> {
+    pub fn as_switch(&self) -> Option<&SwitchStmt<'a>> {
         match self {
             Self::Switch(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_throw(self) -> Option<Box<'a, ThrowStmt<'a>>> {
+    pub fn as_throw(&self) -> Option<&ThrowStmt<'a>> {
         match self {
             Self::Throw(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_try(self) -> Option<Box<'a, TryStmt<'a>>> {
+    pub fn as_try(&self) -> Option<&TryStmt<'a>> {
         match self {
             Self::Try(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_while(self) -> Option<Box<'a, WhileStmt<'a>>> {
+    pub fn as_while(&self) -> Option<&WhileStmt<'a>> {
         match self {
             Self::While(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_do_while(self) -> Option<Box<'a, DoWhileStmt<'a>>> {
+    pub fn as_do_while(&self) -> Option<&DoWhileStmt<'a>> {
         match self {
             Self::DoWhile(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_for(self) -> Option<Box<'a, ForStmt<'a>>> {
+    pub fn as_for(&self) -> Option<&ForStmt<'a>> {
         match self {
             Self::For(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_for_in(self) -> Option<Box<'a, ForInStmt<'a>>> {
+    pub fn as_for_in(&self) -> Option<&ForInStmt<'a>> {
         match self {
             Self::ForIn(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_for_of(self) -> Option<Box<'a, ForOfStmt<'a>>> {
+    pub fn as_for_of(&self) -> Option<&ForOfStmt<'a>> {
         match self {
             Self::ForOf(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_decl(self) -> Option<Box<'a, Decl<'a>>> {
+    pub fn as_decl(&self) -> Option<&Decl<'a>> {
         match self {
             Self::Decl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_expr(self) -> Option<Box<'a, ExprStmt<'a>>> {
+    pub fn as_expr(&self) -> Option<&ExprStmt<'a>> {
+        match self {
+            Self::Expr(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_block(&mut self) -> Option<&mut BlockStmt<'a>> {
+        match self {
+            Self::Block(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_empty(&mut self) -> Option<&mut EmptyStmt> {
+        match self {
+            Self::Empty(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_debugger(&mut self) -> Option<&mut DebuggerStmt> {
+        match self {
+            Self::Debugger(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_with(&mut self) -> Option<&mut WithStmt<'a>> {
+        match self {
+            Self::With(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_return(&mut self) -> Option<&mut ReturnStmt<'a>> {
+        match self {
+            Self::Return(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_labeled(&mut self) -> Option<&mut LabeledStmt<'a>> {
+        match self {
+            Self::Labeled(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_break(&mut self) -> Option<&mut BreakStmt<'a>> {
+        match self {
+            Self::Break(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_continue(&mut self) -> Option<&mut ContinueStmt<'a>> {
+        match self {
+            Self::Continue(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_if(&mut self) -> Option<&mut IfStmt<'a>> {
+        match self {
+            Self::If(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_switch(&mut self) -> Option<&mut SwitchStmt<'a>> {
+        match self {
+            Self::Switch(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_throw(&mut self) -> Option<&mut ThrowStmt<'a>> {
+        match self {
+            Self::Throw(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_try(&mut self) -> Option<&mut TryStmt<'a>> {
+        match self {
+            Self::Try(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_while(&mut self) -> Option<&mut WhileStmt<'a>> {
+        match self {
+            Self::While(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_do_while(&mut self) -> Option<&mut DoWhileStmt<'a>> {
+        match self {
+            Self::DoWhile(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_for(&mut self) -> Option<&mut ForStmt<'a>> {
+        match self {
+            Self::For(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_for_in(&mut self) -> Option<&mut ForInStmt<'a>> {
+        match self {
+            Self::ForIn(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_for_of(&mut self) -> Option<&mut ForOfStmt<'a>> {
+        match self {
+            Self::ForOf(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_decl(&mut self) -> Option<&mut Decl<'a>> {
+        match self {
+            Self::Decl(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_expr(&mut self) -> Option<&mut ExprStmt<'a>> {
         match self {
             Self::Expr(it) => Some(it),
             _ => None,
@@ -1046,33 +1436,63 @@ impl<'a> SetSpan for CatchClause<'a> {
 }
 impl<'a> ForHead<'a> {
     #[inline]
-    pub fn is_var_decl(&self) -> bool {
-        matches!(self, Self::VarDecl(_))
+    pub const fn is_var_decl(&self) -> bool {
+        match self {
+            Self::VarDecl { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_using_decl(&self) -> bool {
-        matches!(self, Self::UsingDecl(_))
+    pub const fn is_using_decl(&self) -> bool {
+        match self {
+            Self::UsingDecl { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_pat(&self) -> bool {
-        matches!(self, Self::Pat(_))
+    pub const fn is_pat(&self) -> bool {
+        match self {
+            Self::Pat { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_var_decl(self) -> Option<Box<'a, VarDecl<'a>>> {
+    pub fn as_var_decl(&self) -> Option<&VarDecl<'a>> {
         match self {
             Self::VarDecl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_using_decl(self) -> Option<Box<'a, UsingDecl<'a>>> {
+    pub fn as_using_decl(&self) -> Option<&UsingDecl<'a>> {
         match self {
             Self::UsingDecl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_pat(self) -> Option<Box<'a, Pat<'a>>> {
+    pub fn as_pat(&self) -> Option<&Pat<'a>> {
+        match self {
+            Self::Pat(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_var_decl(&mut self) -> Option<&mut VarDecl<'a>> {
+        match self {
+            Self::VarDecl(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_using_decl(&mut self) -> Option<&mut UsingDecl<'a>> {
+        match self {
+            Self::UsingDecl(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_pat(&mut self) -> Option<&mut Pat<'a>> {
         match self {
             Self::Pat(it) => Some(it),
             _ => None,
@@ -1101,22 +1521,42 @@ impl<'a> SetSpan for ForHead<'a> {
 }
 impl<'a> VarDeclOrExpr<'a> {
     #[inline]
-    pub fn is_var_decl(&self) -> bool {
-        matches!(self, Self::VarDecl(_))
+    pub const fn is_var_decl(&self) -> bool {
+        match self {
+            Self::VarDecl { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_expr(&self) -> bool {
-        matches!(self, Self::Expr(_))
+    pub const fn is_expr(&self) -> bool {
+        match self {
+            Self::Expr { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_var_decl(self) -> Option<Box<'a, VarDecl<'a>>> {
+    pub fn as_var_decl(&self) -> Option<&VarDecl<'a>> {
         match self {
             Self::VarDecl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_expr(self) -> Option<Box<'a, Expr<'a>>> {
+    pub fn as_expr(&self) -> Option<&Expr<'a>> {
+        match self {
+            Self::Expr(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_var_decl(&mut self) -> Option<&mut VarDecl<'a>> {
+        match self {
+            Self::VarDecl(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_expr(&mut self) -> Option<&mut Expr<'a>> {
         match self {
             Self::Expr(it) => Some(it),
             _ => None,
@@ -1143,44 +1583,84 @@ impl<'a> SetSpan for VarDeclOrExpr<'a> {
 }
 impl<'a> Decl<'a> {
     #[inline]
-    pub fn is_class(&self) -> bool {
-        matches!(self, Self::Class(_))
+    pub const fn is_class(&self) -> bool {
+        match self {
+            Self::Class { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_fn(&self) -> bool {
-        matches!(self, Self::Fn(_))
+    pub const fn is_fn(&self) -> bool {
+        match self {
+            Self::Fn { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_var(&self) -> bool {
-        matches!(self, Self::Var(_))
+    pub const fn is_var(&self) -> bool {
+        match self {
+            Self::Var { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_using(&self) -> bool {
-        matches!(self, Self::Using(_))
+    pub const fn is_using(&self) -> bool {
+        match self {
+            Self::Using { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_class(self) -> Option<Box<'a, ClassDecl<'a>>> {
+    pub fn as_class(&self) -> Option<&ClassDecl<'a>> {
         match self {
             Self::Class(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_fn(self) -> Option<Box<'a, FnDecl<'a>>> {
+    pub fn as_fn(&self) -> Option<&FnDecl<'a>> {
         match self {
             Self::Fn(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_var(self) -> Option<Box<'a, VarDecl<'a>>> {
+    pub fn as_var(&self) -> Option<&VarDecl<'a>> {
         match self {
             Self::Var(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_using(self) -> Option<Box<'a, UsingDecl<'a>>> {
+    pub fn as_using(&self) -> Option<&UsingDecl<'a>> {
+        match self {
+            Self::Using(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_class(&mut self) -> Option<&mut ClassDecl<'a>> {
+        match self {
+            Self::Class(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_fn(&mut self) -> Option<&mut FnDecl<'a>> {
+        match self {
+            Self::Fn(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_var(&mut self) -> Option<&mut VarDecl<'a>> {
+        match self {
+            Self::Var(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_using(&mut self) -> Option<&mut UsingDecl<'a>> {
         match self {
             Self::Using(it) => Some(it),
             _ => None,
@@ -1267,352 +1747,672 @@ impl<'a> SetSpan for UsingDecl<'a> {
 }
 impl<'a> Expr<'a> {
     #[inline]
-    pub fn is_this(&self) -> bool {
-        matches!(self, Self::This(_))
+    pub const fn is_this(&self) -> bool {
+        match self {
+            Self::This { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_array(&self) -> bool {
-        matches!(self, Self::Array(_))
+    pub const fn is_array(&self) -> bool {
+        match self {
+            Self::Array { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_object(&self) -> bool {
-        matches!(self, Self::Object(_))
+    pub const fn is_object(&self) -> bool {
+        match self {
+            Self::Object { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_fn(&self) -> bool {
-        matches!(self, Self::Fn(_))
+    pub const fn is_fn(&self) -> bool {
+        match self {
+            Self::Fn { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_unary(&self) -> bool {
-        matches!(self, Self::Unary(_))
+    pub const fn is_unary(&self) -> bool {
+        match self {
+            Self::Unary { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_update(&self) -> bool {
-        matches!(self, Self::Update(_))
+    pub const fn is_update(&self) -> bool {
+        match self {
+            Self::Update { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_bin(&self) -> bool {
-        matches!(self, Self::Bin(_))
+    pub const fn is_bin(&self) -> bool {
+        match self {
+            Self::Bin { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_assign(&self) -> bool {
-        matches!(self, Self::Assign(_))
+    pub const fn is_assign(&self) -> bool {
+        match self {
+            Self::Assign { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_member(&self) -> bool {
-        matches!(self, Self::Member(_))
+    pub const fn is_member(&self) -> bool {
+        match self {
+            Self::Member { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_super_prop(&self) -> bool {
-        matches!(self, Self::SuperProp(_))
+    pub const fn is_super_prop(&self) -> bool {
+        match self {
+            Self::SuperProp { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_cond(&self) -> bool {
-        matches!(self, Self::Cond(_))
+    pub const fn is_cond(&self) -> bool {
+        match self {
+            Self::Cond { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_call(&self) -> bool {
-        matches!(self, Self::Call(_))
+    pub const fn is_call(&self) -> bool {
+        match self {
+            Self::Call { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_new(&self) -> bool {
-        matches!(self, Self::New(_))
+    pub const fn is_new(&self) -> bool {
+        match self {
+            Self::New { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_seq(&self) -> bool {
-        matches!(self, Self::Seq(_))
+    pub const fn is_seq(&self) -> bool {
+        match self {
+            Self::Seq { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident(_))
+    pub const fn is_ident(&self) -> bool {
+        match self {
+            Self::Ident { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_lit(&self) -> bool {
-        matches!(self, Self::Lit(_))
+    pub const fn is_lit(&self) -> bool {
+        match self {
+            Self::Lit { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_tpl(&self) -> bool {
-        matches!(self, Self::Tpl(_))
+    pub const fn is_tpl(&self) -> bool {
+        match self {
+            Self::Tpl { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_tagged_tpl(&self) -> bool {
-        matches!(self, Self::TaggedTpl(_))
+    pub const fn is_tagged_tpl(&self) -> bool {
+        match self {
+            Self::TaggedTpl { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_arrow(&self) -> bool {
-        matches!(self, Self::Arrow(_))
+    pub const fn is_arrow(&self) -> bool {
+        match self {
+            Self::Arrow { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_class(&self) -> bool {
-        matches!(self, Self::Class(_))
+    pub const fn is_class(&self) -> bool {
+        match self {
+            Self::Class { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_yield(&self) -> bool {
-        matches!(self, Self::Yield(_))
+    pub const fn is_yield(&self) -> bool {
+        match self {
+            Self::Yield { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_meta_prop(&self) -> bool {
-        matches!(self, Self::MetaProp(_))
+    pub const fn is_meta_prop(&self) -> bool {
+        match self {
+            Self::MetaProp { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_await(&self) -> bool {
-        matches!(self, Self::Await(_))
+    pub const fn is_await(&self) -> bool {
+        match self {
+            Self::Await { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_paren(&self) -> bool {
-        matches!(self, Self::Paren(_))
+    pub const fn is_paren(&self) -> bool {
+        match self {
+            Self::Paren { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_jsx_member(&self) -> bool {
-        matches!(self, Self::JSXMember(_))
+    pub const fn is_jsx_member(&self) -> bool {
+        match self {
+            Self::JSXMember { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_jsx_namespaced_name(&self) -> bool {
-        matches!(self, Self::JSXNamespacedName(_))
+    pub const fn is_jsx_namespaced_name(&self) -> bool {
+        match self {
+            Self::JSXNamespacedName { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_jsx_empty(&self) -> bool {
-        matches!(self, Self::JSXEmpty(_))
+    pub const fn is_jsx_empty(&self) -> bool {
+        match self {
+            Self::JSXEmpty { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_jsx_element(&self) -> bool {
-        matches!(self, Self::JSXElement(_))
+    pub const fn is_jsx_element(&self) -> bool {
+        match self {
+            Self::JSXElement { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_jsx_fragment(&self) -> bool {
-        matches!(self, Self::JSXFragment(_))
+    pub const fn is_jsx_fragment(&self) -> bool {
+        match self {
+            Self::JSXFragment { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_private_name(&self) -> bool {
-        matches!(self, Self::PrivateName(_))
+    pub const fn is_private_name(&self) -> bool {
+        match self {
+            Self::PrivateName { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_opt_chain(&self) -> bool {
-        matches!(self, Self::OptChain(_))
+    pub const fn is_opt_chain(&self) -> bool {
+        match self {
+            Self::OptChain { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_invalid(&self) -> bool {
-        matches!(self, Self::Invalid(_))
+    pub const fn is_invalid(&self) -> bool {
+        match self {
+            Self::Invalid { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_this(self) -> Option<Box<'a, ThisExpr>> {
+    pub fn as_this(&self) -> Option<&ThisExpr> {
         match self {
             Self::This(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_array(self) -> Option<Box<'a, ArrayLit<'a>>> {
+    pub fn as_array(&self) -> Option<&ArrayLit<'a>> {
         match self {
             Self::Array(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_object(self) -> Option<Box<'a, ObjectLit<'a>>> {
+    pub fn as_object(&self) -> Option<&ObjectLit<'a>> {
         match self {
             Self::Object(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_fn(self) -> Option<Box<'a, FnExpr<'a>>> {
+    pub fn as_fn(&self) -> Option<&FnExpr<'a>> {
         match self {
             Self::Fn(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_unary(self) -> Option<Box<'a, UnaryExpr<'a>>> {
+    pub fn as_unary(&self) -> Option<&UnaryExpr<'a>> {
         match self {
             Self::Unary(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_update(self) -> Option<Box<'a, UpdateExpr<'a>>> {
+    pub fn as_update(&self) -> Option<&UpdateExpr<'a>> {
         match self {
             Self::Update(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_bin(self) -> Option<Box<'a, BinExpr<'a>>> {
+    pub fn as_bin(&self) -> Option<&BinExpr<'a>> {
         match self {
             Self::Bin(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_assign(self) -> Option<Box<'a, AssignExpr<'a>>> {
+    pub fn as_assign(&self) -> Option<&AssignExpr<'a>> {
         match self {
             Self::Assign(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_member(self) -> Option<Box<'a, MemberExpr<'a>>> {
+    pub fn as_member(&self) -> Option<&MemberExpr<'a>> {
         match self {
             Self::Member(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_super_prop(self) -> Option<Box<'a, SuperPropExpr<'a>>> {
+    pub fn as_super_prop(&self) -> Option<&SuperPropExpr<'a>> {
         match self {
             Self::SuperProp(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_cond(self) -> Option<Box<'a, CondExpr<'a>>> {
+    pub fn as_cond(&self) -> Option<&CondExpr<'a>> {
         match self {
             Self::Cond(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_call(self) -> Option<Box<'a, CallExpr<'a>>> {
+    pub fn as_call(&self) -> Option<&CallExpr<'a>> {
         match self {
             Self::Call(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_new(self) -> Option<Box<'a, NewExpr<'a>>> {
+    pub fn as_new(&self) -> Option<&NewExpr<'a>> {
         match self {
             Self::New(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_seq(self) -> Option<Box<'a, SeqExpr<'a>>> {
+    pub fn as_seq(&self) -> Option<&SeqExpr<'a>> {
         match self {
             Self::Seq(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_ident(self) -> Option<Box<'a, Ident<'a>>> {
+    pub fn as_ident(&self) -> Option<&Ident<'a>> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_lit(self) -> Option<Box<'a, Lit<'a>>> {
+    pub fn as_lit(&self) -> Option<&Lit<'a>> {
         match self {
             Self::Lit(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_tpl(self) -> Option<Box<'a, Tpl<'a>>> {
+    pub fn as_tpl(&self) -> Option<&Tpl<'a>> {
         match self {
             Self::Tpl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_tagged_tpl(self) -> Option<Box<'a, TaggedTpl<'a>>> {
+    pub fn as_tagged_tpl(&self) -> Option<&TaggedTpl<'a>> {
         match self {
             Self::TaggedTpl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_arrow(self) -> Option<Box<'a, ArrowExpr<'a>>> {
+    pub fn as_arrow(&self) -> Option<&ArrowExpr<'a>> {
         match self {
             Self::Arrow(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_class(self) -> Option<Box<'a, ClassExpr<'a>>> {
+    pub fn as_class(&self) -> Option<&ClassExpr<'a>> {
         match self {
             Self::Class(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_yield(self) -> Option<Box<'a, YieldExpr<'a>>> {
+    pub fn as_yield(&self) -> Option<&YieldExpr<'a>> {
         match self {
             Self::Yield(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_meta_prop(self) -> Option<Box<'a, MetaPropExpr>> {
+    pub fn as_meta_prop(&self) -> Option<&MetaPropExpr> {
         match self {
             Self::MetaProp(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_await(self) -> Option<Box<'a, AwaitExpr<'a>>> {
+    pub fn as_await(&self) -> Option<&AwaitExpr<'a>> {
         match self {
             Self::Await(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_paren(self) -> Option<Box<'a, ParenExpr<'a>>> {
+    pub fn as_paren(&self) -> Option<&ParenExpr<'a>> {
         match self {
             Self::Paren(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_member(self) -> Option<Box<'a, JSXMemberExpr<'a>>> {
+    pub fn as_jsx_member(&self) -> Option<&JSXMemberExpr<'a>> {
         match self {
             Self::JSXMember(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_namespaced_name(self) -> Option<Box<'a, JSXNamespacedName<'a>>> {
+    pub fn as_jsx_namespaced_name(&self) -> Option<&JSXNamespacedName<'a>> {
         match self {
             Self::JSXNamespacedName(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_empty(self) -> Option<Box<'a, JSXEmptyExpr>> {
+    pub fn as_jsx_empty(&self) -> Option<&JSXEmptyExpr> {
         match self {
             Self::JSXEmpty(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_element(self) -> Option<Box<'a, JSXElement<'a>>> {
+    pub fn as_jsx_element(&self) -> Option<&JSXElement<'a>> {
         match self {
             Self::JSXElement(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_fragment(self) -> Option<Box<'a, JSXFragment<'a>>> {
+    pub fn as_jsx_fragment(&self) -> Option<&JSXFragment<'a>> {
         match self {
             Self::JSXFragment(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_private_name(self) -> Option<Box<'a, PrivateName<'a>>> {
+    pub fn as_private_name(&self) -> Option<&PrivateName<'a>> {
         match self {
             Self::PrivateName(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_opt_chain(self) -> Option<Box<'a, OptChainExpr<'a>>> {
+    pub fn as_opt_chain(&self) -> Option<&OptChainExpr<'a>> {
         match self {
             Self::OptChain(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_invalid(self) -> Option<Box<'a, Invalid>> {
+    pub fn as_invalid(&self) -> Option<&Invalid> {
+        match self {
+            Self::Invalid(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_this(&mut self) -> Option<&mut ThisExpr> {
+        match self {
+            Self::This(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_array(&mut self) -> Option<&mut ArrayLit<'a>> {
+        match self {
+            Self::Array(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_object(&mut self) -> Option<&mut ObjectLit<'a>> {
+        match self {
+            Self::Object(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_fn(&mut self) -> Option<&mut FnExpr<'a>> {
+        match self {
+            Self::Fn(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_unary(&mut self) -> Option<&mut UnaryExpr<'a>> {
+        match self {
+            Self::Unary(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_update(&mut self) -> Option<&mut UpdateExpr<'a>> {
+        match self {
+            Self::Update(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_bin(&mut self) -> Option<&mut BinExpr<'a>> {
+        match self {
+            Self::Bin(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_assign(&mut self) -> Option<&mut AssignExpr<'a>> {
+        match self {
+            Self::Assign(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_member(&mut self) -> Option<&mut MemberExpr<'a>> {
+        match self {
+            Self::Member(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_super_prop(&mut self) -> Option<&mut SuperPropExpr<'a>> {
+        match self {
+            Self::SuperProp(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_cond(&mut self) -> Option<&mut CondExpr<'a>> {
+        match self {
+            Self::Cond(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_call(&mut self) -> Option<&mut CallExpr<'a>> {
+        match self {
+            Self::Call(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_new(&mut self) -> Option<&mut NewExpr<'a>> {
+        match self {
+            Self::New(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_seq(&mut self) -> Option<&mut SeqExpr<'a>> {
+        match self {
+            Self::Seq(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_ident(&mut self) -> Option<&mut Ident<'a>> {
+        match self {
+            Self::Ident(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_lit(&mut self) -> Option<&mut Lit<'a>> {
+        match self {
+            Self::Lit(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_tpl(&mut self) -> Option<&mut Tpl<'a>> {
+        match self {
+            Self::Tpl(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_tagged_tpl(&mut self) -> Option<&mut TaggedTpl<'a>> {
+        match self {
+            Self::TaggedTpl(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_arrow(&mut self) -> Option<&mut ArrowExpr<'a>> {
+        match self {
+            Self::Arrow(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_class(&mut self) -> Option<&mut ClassExpr<'a>> {
+        match self {
+            Self::Class(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_yield(&mut self) -> Option<&mut YieldExpr<'a>> {
+        match self {
+            Self::Yield(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_meta_prop(&mut self) -> Option<&mut MetaPropExpr> {
+        match self {
+            Self::MetaProp(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_await(&mut self) -> Option<&mut AwaitExpr<'a>> {
+        match self {
+            Self::Await(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_paren(&mut self) -> Option<&mut ParenExpr<'a>> {
+        match self {
+            Self::Paren(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_jsx_member(&mut self) -> Option<&mut JSXMemberExpr<'a>> {
+        match self {
+            Self::JSXMember(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_jsx_namespaced_name(&mut self) -> Option<&mut JSXNamespacedName<'a>> {
+        match self {
+            Self::JSXNamespacedName(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_jsx_empty(&mut self) -> Option<&mut JSXEmptyExpr> {
+        match self {
+            Self::JSXEmpty(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_jsx_element(&mut self) -> Option<&mut JSXElement<'a>> {
+        match self {
+            Self::JSXElement(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_jsx_fragment(&mut self) -> Option<&mut JSXFragment<'a>> {
+        match self {
+            Self::JSXFragment(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_private_name(&mut self) -> Option<&mut PrivateName<'a>> {
+        match self {
+            Self::PrivateName(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_opt_chain(&mut self) -> Option<&mut OptChainExpr<'a>> {
+        match self {
+            Self::OptChain(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_invalid(&mut self) -> Option<&mut Invalid> {
         match self {
             Self::Invalid(it) => Some(it),
             _ => None,
@@ -1735,22 +2535,42 @@ impl<'a> SetSpan for ObjectLit<'a> {
 }
 impl<'a> PropOrSpread<'a> {
     #[inline]
-    pub fn is_spread(&self) -> bool {
-        matches!(self, Self::Spread(_))
+    pub const fn is_spread(&self) -> bool {
+        match self {
+            Self::Spread { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_prop(&self) -> bool {
-        matches!(self, Self::Prop(_))
+    pub const fn is_prop(&self) -> bool {
+        match self {
+            Self::Prop { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_spread(self) -> Option<Box<'a, SpreadElement<'a>>> {
+    pub fn as_spread(&self) -> Option<&SpreadElement<'a>> {
         match self {
             Self::Spread(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_prop(self) -> Option<Box<'a, Prop<'a>>> {
+    pub fn as_prop(&self) -> Option<&Prop<'a>> {
+        match self {
+            Self::Prop(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_spread(&mut self) -> Option<&mut SpreadElement<'a>> {
+        match self {
+            Self::Spread(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_prop(&mut self) -> Option<&mut Prop<'a>> {
         match self {
             Self::Prop(it) => Some(it),
             _ => None,
@@ -1867,33 +2687,63 @@ impl<'a> SetSpan for MemberExpr<'a> {
 }
 impl<'a> MemberProp<'a> {
     #[inline]
-    pub fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident(_))
+    pub const fn is_ident(&self) -> bool {
+        match self {
+            Self::Ident { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_private_name(&self) -> bool {
-        matches!(self, Self::PrivateName(_))
+    pub const fn is_private_name(&self) -> bool {
+        match self {
+            Self::PrivateName { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_computed(&self) -> bool {
-        matches!(self, Self::Computed(_))
+    pub const fn is_computed(&self) -> bool {
+        match self {
+            Self::Computed { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_ident(self) -> Option<Box<'a, IdentName<'a>>> {
+    pub fn as_ident(&self) -> Option<&IdentName<'a>> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_private_name(self) -> Option<Box<'a, PrivateName<'a>>> {
+    pub fn as_private_name(&self) -> Option<&PrivateName<'a>> {
         match self {
             Self::PrivateName(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_computed(self) -> Option<Box<'a, ComputedPropName<'a>>> {
+    pub fn as_computed(&self) -> Option<&ComputedPropName<'a>> {
+        match self {
+            Self::Computed(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_ident(&mut self) -> Option<&mut IdentName<'a>> {
+        match self {
+            Self::Ident(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_private_name(&mut self) -> Option<&mut PrivateName<'a>> {
+        match self {
+            Self::PrivateName(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_computed(&mut self) -> Option<&mut ComputedPropName<'a>> {
         match self {
             Self::Computed(it) => Some(it),
             _ => None,
@@ -1934,22 +2784,42 @@ impl<'a> SetSpan for SuperPropExpr<'a> {
 }
 impl<'a> SuperProp<'a> {
     #[inline]
-    pub fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident(_))
+    pub const fn is_ident(&self) -> bool {
+        match self {
+            Self::Ident { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_computed(&self) -> bool {
-        matches!(self, Self::Computed(_))
+    pub const fn is_computed(&self) -> bool {
+        match self {
+            Self::Computed { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_ident(self) -> Option<Box<'a, IdentName<'a>>> {
+    pub fn as_ident(&self) -> Option<&IdentName<'a>> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_computed(self) -> Option<Box<'a, ComputedPropName<'a>>> {
+    pub fn as_computed(&self) -> Option<&ComputedPropName<'a>> {
+        match self {
+            Self::Computed(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_ident(&mut self) -> Option<&mut IdentName<'a>> {
+        match self {
+            Self::Ident(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_computed(&mut self) -> Option<&mut ComputedPropName<'a>> {
         match self {
             Self::Computed(it) => Some(it),
             _ => None,
@@ -2120,33 +2990,63 @@ impl<'a> SetSpan for ParenExpr<'a> {
 }
 impl<'a> Callee<'a> {
     #[inline]
-    pub fn is_super(&self) -> bool {
-        matches!(self, Self::Super(_))
+    pub const fn is_super(&self) -> bool {
+        match self {
+            Self::Super { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_import(&self) -> bool {
-        matches!(self, Self::Import(_))
+    pub const fn is_import(&self) -> bool {
+        match self {
+            Self::Import { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_expr(&self) -> bool {
-        matches!(self, Self::Expr(_))
+    pub const fn is_expr(&self) -> bool {
+        match self {
+            Self::Expr { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_super(self) -> Option<Box<'a, Super>> {
+    pub fn as_super(&self) -> Option<&Super> {
         match self {
             Self::Super(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_import(self) -> Option<Box<'a, Import>> {
+    pub fn as_import(&self) -> Option<&Import> {
         match self {
             Self::Import(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_expr(self) -> Option<Box<'a, Expr<'a>>> {
+    pub fn as_expr(&self) -> Option<&Expr<'a>> {
+        match self {
+            Self::Expr(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_super(&mut self) -> Option<&mut Super> {
+        match self {
+            Self::Super(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_import(&mut self) -> Option<&mut Import> {
+        match self {
+            Self::Import(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_expr(&mut self) -> Option<&mut Expr<'a>> {
         match self {
             Self::Expr(it) => Some(it),
             _ => None,
@@ -2209,22 +3109,42 @@ impl<'a> SetSpan for ExprOrSpread<'a> {
 }
 impl<'a> BlockStmtOrExpr<'a> {
     #[inline]
-    pub fn is_block_stmt(&self) -> bool {
-        matches!(self, Self::BlockStmt(_))
+    pub const fn is_block_stmt(&self) -> bool {
+        match self {
+            Self::BlockStmt { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_expr(&self) -> bool {
-        matches!(self, Self::Expr(_))
+    pub const fn is_expr(&self) -> bool {
+        match self {
+            Self::Expr { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_block_stmt(self) -> Option<Box<'a, BlockStmt<'a>>> {
+    pub fn as_block_stmt(&self) -> Option<&BlockStmt<'a>> {
         match self {
             Self::BlockStmt(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_expr(self) -> Option<Box<'a, Expr<'a>>> {
+    pub fn as_expr(&self) -> Option<&Expr<'a>> {
+        match self {
+            Self::Expr(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_block_stmt(&mut self) -> Option<&mut BlockStmt<'a>> {
+        match self {
+            Self::BlockStmt(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_expr(&mut self) -> Option<&mut Expr<'a>> {
         match self {
             Self::Expr(it) => Some(it),
             _ => None,
@@ -2251,22 +3171,42 @@ impl<'a> SetSpan for BlockStmtOrExpr<'a> {
 }
 impl<'a> AssignTarget<'a> {
     #[inline]
-    pub fn is_simple(&self) -> bool {
-        matches!(self, Self::Simple(_))
+    pub const fn is_simple(&self) -> bool {
+        match self {
+            Self::Simple { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_pat(&self) -> bool {
-        matches!(self, Self::Pat(_))
+    pub const fn is_pat(&self) -> bool {
+        match self {
+            Self::Pat { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_simple(self) -> Option<Box<'a, SimpleAssignTarget<'a>>> {
+    pub fn as_simple(&self) -> Option<&SimpleAssignTarget<'a>> {
         match self {
             Self::Simple(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_pat(self) -> Option<Box<'a, AssignTargetPat<'a>>> {
+    pub fn as_pat(&self) -> Option<&AssignTargetPat<'a>> {
+        match self {
+            Self::Pat(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_simple(&mut self) -> Option<&mut SimpleAssignTarget<'a>> {
+        match self {
+            Self::Simple(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_pat(&mut self) -> Option<&mut AssignTargetPat<'a>> {
         match self {
             Self::Pat(it) => Some(it),
             _ => None,
@@ -2293,33 +3233,63 @@ impl<'a> SetSpan for AssignTarget<'a> {
 }
 impl<'a> AssignTargetPat<'a> {
     #[inline]
-    pub fn is_array(&self) -> bool {
-        matches!(self, Self::Array(_))
+    pub const fn is_array(&self) -> bool {
+        match self {
+            Self::Array { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_object(&self) -> bool {
-        matches!(self, Self::Object(_))
+    pub const fn is_object(&self) -> bool {
+        match self {
+            Self::Object { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_invalid(&self) -> bool {
-        matches!(self, Self::Invalid(_))
+    pub const fn is_invalid(&self) -> bool {
+        match self {
+            Self::Invalid { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_array(self) -> Option<Box<'a, ArrayPat<'a>>> {
+    pub fn as_array(&self) -> Option<&ArrayPat<'a>> {
         match self {
             Self::Array(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_object(self) -> Option<Box<'a, ObjectPat<'a>>> {
+    pub fn as_object(&self) -> Option<&ObjectPat<'a>> {
         match self {
             Self::Object(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_invalid(self) -> Option<Box<'a, Invalid>> {
+    pub fn as_invalid(&self) -> Option<&Invalid> {
+        match self {
+            Self::Invalid(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_array(&mut self) -> Option<&mut ArrayPat<'a>> {
+        match self {
+            Self::Array(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_object(&mut self) -> Option<&mut ObjectPat<'a>> {
+        match self {
+            Self::Object(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_invalid(&mut self) -> Option<&mut Invalid> {
         match self {
             Self::Invalid(it) => Some(it),
             _ => None,
@@ -2348,66 +3318,126 @@ impl<'a> SetSpan for AssignTargetPat<'a> {
 }
 impl<'a> SimpleAssignTarget<'a> {
     #[inline]
-    pub fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident(_))
+    pub const fn is_ident(&self) -> bool {
+        match self {
+            Self::Ident { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_member(&self) -> bool {
-        matches!(self, Self::Member(_))
+    pub const fn is_member(&self) -> bool {
+        match self {
+            Self::Member { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_super_prop(&self) -> bool {
-        matches!(self, Self::SuperProp(_))
+    pub const fn is_super_prop(&self) -> bool {
+        match self {
+            Self::SuperProp { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_paren(&self) -> bool {
-        matches!(self, Self::Paren(_))
+    pub const fn is_paren(&self) -> bool {
+        match self {
+            Self::Paren { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_opt_chain(&self) -> bool {
-        matches!(self, Self::OptChain(_))
+    pub const fn is_opt_chain(&self) -> bool {
+        match self {
+            Self::OptChain { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_invalid(&self) -> bool {
-        matches!(self, Self::Invalid(_))
+    pub const fn is_invalid(&self) -> bool {
+        match self {
+            Self::Invalid { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_ident(self) -> Option<Box<'a, BindingIdent<'a>>> {
+    pub fn as_ident(&self) -> Option<&BindingIdent<'a>> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_member(self) -> Option<Box<'a, MemberExpr<'a>>> {
+    pub fn as_member(&self) -> Option<&MemberExpr<'a>> {
         match self {
             Self::Member(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_super_prop(self) -> Option<Box<'a, SuperPropExpr<'a>>> {
+    pub fn as_super_prop(&self) -> Option<&SuperPropExpr<'a>> {
         match self {
             Self::SuperProp(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_paren(self) -> Option<Box<'a, ParenExpr<'a>>> {
+    pub fn as_paren(&self) -> Option<&ParenExpr<'a>> {
         match self {
             Self::Paren(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_opt_chain(self) -> Option<Box<'a, OptChainExpr<'a>>> {
+    pub fn as_opt_chain(&self) -> Option<&OptChainExpr<'a>> {
         match self {
             Self::OptChain(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_invalid(self) -> Option<Box<'a, Invalid>> {
+    pub fn as_invalid(&self) -> Option<&Invalid> {
+        match self {
+            Self::Invalid(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_ident(&mut self) -> Option<&mut BindingIdent<'a>> {
+        match self {
+            Self::Ident(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_member(&mut self) -> Option<&mut MemberExpr<'a>> {
+        match self {
+            Self::Member(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_super_prop(&mut self) -> Option<&mut SuperPropExpr<'a>> {
+        match self {
+            Self::SuperProp(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_paren(&mut self) -> Option<&mut ParenExpr<'a>> {
+        match self {
+            Self::Paren(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_opt_chain(&mut self) -> Option<&mut OptChainExpr<'a>> {
+        match self {
+            Self::OptChain(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_invalid(&mut self) -> Option<&mut Invalid> {
         match self {
             Self::Invalid(it) => Some(it),
             _ => None,
@@ -2454,22 +3484,42 @@ impl<'a> SetSpan for OptChainExpr<'a> {
 }
 impl<'a> OptChainBase<'a> {
     #[inline]
-    pub fn is_member(&self) -> bool {
-        matches!(self, Self::Member(_))
+    pub const fn is_member(&self) -> bool {
+        match self {
+            Self::Member { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_call(&self) -> bool {
-        matches!(self, Self::Call(_))
+    pub const fn is_call(&self) -> bool {
+        match self {
+            Self::Call { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_member(self) -> Option<Box<'a, MemberExpr<'a>>> {
+    pub fn as_member(&self) -> Option<&MemberExpr<'a>> {
         match self {
             Self::Member(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_call(self) -> Option<Box<'a, OptCall<'a>>> {
+    pub fn as_call(&self) -> Option<&OptCall<'a>> {
+        match self {
+            Self::Call(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_member(&mut self) -> Option<&mut MemberExpr<'a>> {
+        match self {
+            Self::Member(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_call(&mut self) -> Option<&mut OptCall<'a>> {
         match self {
             Self::Call(it) => Some(it),
             _ => None,
@@ -2542,11 +3592,21 @@ impl<'a> SetSpan for Param<'a> {
 }
 impl<'a> ParamOrTsParamProp<'a> {
     #[inline]
-    pub fn is_param(&self) -> bool {
-        matches!(self, Self::Param(_))
+    pub const fn is_param(&self) -> bool {
+        match self {
+            Self::Param { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_param(self) -> Option<Box<'a, Param<'a>>> {
+    pub fn as_param(&self) -> Option<&Param<'a>> {
+        match self {
+            Self::Param(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_param(&mut self) -> Option<&mut Param<'a>> {
         match self {
             Self::Param(it) => Some(it),
             _ => None,
@@ -2583,88 +3643,168 @@ impl<'a> SetSpan for Class<'a> {
 }
 impl<'a> ClassMember<'a> {
     #[inline]
-    pub fn is_constructor(&self) -> bool {
-        matches!(self, Self::Constructor(_))
+    pub const fn is_constructor(&self) -> bool {
+        match self {
+            Self::Constructor { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_method(&self) -> bool {
-        matches!(self, Self::Method(_))
+    pub const fn is_method(&self) -> bool {
+        match self {
+            Self::Method { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_private_method(&self) -> bool {
-        matches!(self, Self::PrivateMethod(_))
+    pub const fn is_private_method(&self) -> bool {
+        match self {
+            Self::PrivateMethod { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_class_prop(&self) -> bool {
-        matches!(self, Self::ClassProp(_))
+    pub const fn is_class_prop(&self) -> bool {
+        match self {
+            Self::ClassProp { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_private_prop(&self) -> bool {
-        matches!(self, Self::PrivateProp(_))
+    pub const fn is_private_prop(&self) -> bool {
+        match self {
+            Self::PrivateProp { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        matches!(self, Self::Empty(_))
+    pub const fn is_empty(&self) -> bool {
+        match self {
+            Self::Empty { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_static_block(&self) -> bool {
-        matches!(self, Self::StaticBlock(_))
+    pub const fn is_static_block(&self) -> bool {
+        match self {
+            Self::StaticBlock { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_auto_accessor(&self) -> bool {
-        matches!(self, Self::AutoAccessor(_))
+    pub const fn is_auto_accessor(&self) -> bool {
+        match self {
+            Self::AutoAccessor { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_constructor(self) -> Option<Box<'a, Constructor<'a>>> {
+    pub fn as_constructor(&self) -> Option<&Constructor<'a>> {
         match self {
             Self::Constructor(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_method(self) -> Option<Box<'a, ClassMethod<'a>>> {
+    pub fn as_method(&self) -> Option<&ClassMethod<'a>> {
         match self {
             Self::Method(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_private_method(self) -> Option<Box<'a, PrivateMethod<'a>>> {
+    pub fn as_private_method(&self) -> Option<&PrivateMethod<'a>> {
         match self {
             Self::PrivateMethod(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_class_prop(self) -> Option<Box<'a, ClassProp<'a>>> {
+    pub fn as_class_prop(&self) -> Option<&ClassProp<'a>> {
         match self {
             Self::ClassProp(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_private_prop(self) -> Option<Box<'a, PrivateProp<'a>>> {
+    pub fn as_private_prop(&self) -> Option<&PrivateProp<'a>> {
         match self {
             Self::PrivateProp(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_empty(self) -> Option<Box<'a, EmptyStmt>> {
+    pub fn as_empty(&self) -> Option<&EmptyStmt> {
         match self {
             Self::Empty(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_static_block(self) -> Option<Box<'a, StaticBlock<'a>>> {
+    pub fn as_static_block(&self) -> Option<&StaticBlock<'a>> {
         match self {
             Self::StaticBlock(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_auto_accessor(self) -> Option<Box<'a, AutoAccessor<'a>>> {
+    pub fn as_auto_accessor(&self) -> Option<&AutoAccessor<'a>> {
+        match self {
+            Self::AutoAccessor(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_constructor(&mut self) -> Option<&mut Constructor<'a>> {
+        match self {
+            Self::Constructor(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_method(&mut self) -> Option<&mut ClassMethod<'a>> {
+        match self {
+            Self::Method(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_private_method(&mut self) -> Option<&mut PrivateMethod<'a>> {
+        match self {
+            Self::PrivateMethod(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_class_prop(&mut self) -> Option<&mut ClassProp<'a>> {
+        match self {
+            Self::ClassProp(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_private_prop(&mut self) -> Option<&mut PrivateProp<'a>> {
+        match self {
+            Self::PrivateProp(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_empty(&mut self) -> Option<&mut EmptyStmt> {
+        match self {
+            Self::Empty(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_static_block(&mut self) -> Option<&mut StaticBlock<'a>> {
+        match self {
+            Self::StaticBlock(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_auto_accessor(&mut self) -> Option<&mut AutoAccessor<'a>> {
         match self {
             Self::AutoAccessor(it) => Some(it),
             _ => None,
@@ -2787,22 +3927,42 @@ impl<'a> SetSpan for StaticBlock<'a> {
 }
 impl<'a> Key<'a> {
     #[inline]
-    pub fn is_private(&self) -> bool {
-        matches!(self, Self::Private(_))
+    pub const fn is_private(&self) -> bool {
+        match self {
+            Self::Private { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_public(&self) -> bool {
-        matches!(self, Self::Public(_))
+    pub const fn is_public(&self) -> bool {
+        match self {
+            Self::Public { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_private(self) -> Option<Box<'a, PrivateName<'a>>> {
+    pub fn as_private(&self) -> Option<&PrivateName<'a>> {
         match self {
             Self::Private(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_public(self) -> Option<Box<'a, PropName<'a>>> {
+    pub fn as_public(&self) -> Option<&PropName<'a>> {
+        match self {
+            Self::Public(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_private(&mut self) -> Option<&mut PrivateName<'a>> {
+        match self {
+            Self::Private(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_public(&mut self) -> Option<&mut PropName<'a>> {
         match self {
             Self::Public(it) => Some(it),
             _ => None,
@@ -2841,66 +4001,126 @@ impl<'a> SetSpan for AutoAccessor<'a> {
 }
 impl<'a> Prop<'a> {
     #[inline]
-    pub fn is_shorthand(&self) -> bool {
-        matches!(self, Self::Shorthand(_))
+    pub const fn is_shorthand(&self) -> bool {
+        match self {
+            Self::Shorthand { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_key_value(&self) -> bool {
-        matches!(self, Self::KeyValue(_))
+    pub const fn is_key_value(&self) -> bool {
+        match self {
+            Self::KeyValue { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_assign(&self) -> bool {
-        matches!(self, Self::Assign(_))
+    pub const fn is_assign(&self) -> bool {
+        match self {
+            Self::Assign { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_getter(&self) -> bool {
-        matches!(self, Self::Getter(_))
+    pub const fn is_getter(&self) -> bool {
+        match self {
+            Self::Getter { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_setter(&self) -> bool {
-        matches!(self, Self::Setter(_))
+    pub const fn is_setter(&self) -> bool {
+        match self {
+            Self::Setter { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_method(&self) -> bool {
-        matches!(self, Self::Method(_))
+    pub const fn is_method(&self) -> bool {
+        match self {
+            Self::Method { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_shorthand(self) -> Option<Box<'a, Ident<'a>>> {
+    pub fn as_shorthand(&self) -> Option<&Ident<'a>> {
         match self {
             Self::Shorthand(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_key_value(self) -> Option<Box<'a, KeyValueProp<'a>>> {
+    pub fn as_key_value(&self) -> Option<&KeyValueProp<'a>> {
         match self {
             Self::KeyValue(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_assign(self) -> Option<Box<'a, AssignProp<'a>>> {
+    pub fn as_assign(&self) -> Option<&AssignProp<'a>> {
         match self {
             Self::Assign(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_getter(self) -> Option<Box<'a, GetterProp<'a>>> {
+    pub fn as_getter(&self) -> Option<&GetterProp<'a>> {
         match self {
             Self::Getter(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_setter(self) -> Option<Box<'a, SetterProp<'a>>> {
+    pub fn as_setter(&self) -> Option<&SetterProp<'a>> {
         match self {
             Self::Setter(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_method(self) -> Option<Box<'a, MethodProp<'a>>> {
+    pub fn as_method(&self) -> Option<&MethodProp<'a>> {
+        match self {
+            Self::Method(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_shorthand(&mut self) -> Option<&mut Ident<'a>> {
+        match self {
+            Self::Shorthand(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_key_value(&mut self) -> Option<&mut KeyValueProp<'a>> {
+        match self {
+            Self::KeyValue(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_assign(&mut self) -> Option<&mut AssignProp<'a>> {
+        match self {
+            Self::Assign(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_getter(&mut self) -> Option<&mut GetterProp<'a>> {
+        match self {
+            Self::Getter(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_setter(&mut self) -> Option<&mut SetterProp<'a>> {
+        match self {
+            Self::Setter(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_method(&mut self) -> Option<&mut MethodProp<'a>> {
         match self {
             Self::Method(it) => Some(it),
             _ => None,
@@ -2991,55 +4211,105 @@ impl<'a> SetSpan for MethodProp<'a> {
 }
 impl<'a> PropName<'a> {
     #[inline]
-    pub fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident(_))
+    pub const fn is_ident(&self) -> bool {
+        match self {
+            Self::Ident { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_str(&self) -> bool {
-        matches!(self, Self::Str(_))
+    pub const fn is_str(&self) -> bool {
+        match self {
+            Self::Str { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_num(&self) -> bool {
-        matches!(self, Self::Num(_))
+    pub const fn is_num(&self) -> bool {
+        match self {
+            Self::Num { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_computed(&self) -> bool {
-        matches!(self, Self::Computed(_))
+    pub const fn is_computed(&self) -> bool {
+        match self {
+            Self::Computed { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_big_int(&self) -> bool {
-        matches!(self, Self::BigInt(_))
+    pub const fn is_big_int(&self) -> bool {
+        match self {
+            Self::BigInt { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_ident(self) -> Option<Box<'a, IdentName<'a>>> {
+    pub fn as_ident(&self) -> Option<&IdentName<'a>> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_str(self) -> Option<Box<'a, Str<'a>>> {
+    pub fn as_str(&self) -> Option<&Str<'a>> {
         match self {
             Self::Str(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_num(self) -> Option<Box<'a, Number<'a>>> {
+    pub fn as_num(&self) -> Option<&Number<'a>> {
         match self {
             Self::Num(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_computed(self) -> Option<Box<'a, ComputedPropName<'a>>> {
+    pub fn as_computed(&self) -> Option<&ComputedPropName<'a>> {
         match self {
             Self::Computed(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_big_int(self) -> Option<Box<'a, BigInt<'a>>> {
+    pub fn as_big_int(&self) -> Option<&BigInt<'a>> {
+        match self {
+            Self::BigInt(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_ident(&mut self) -> Option<&mut IdentName<'a>> {
+        match self {
+            Self::Ident(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_str(&mut self) -> Option<&mut Str<'a>> {
+        match self {
+            Self::Str(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_num(&mut self) -> Option<&mut Number<'a>> {
+        match self {
+            Self::Num(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_computed(&mut self) -> Option<&mut ComputedPropName<'a>> {
+        match self {
+            Self::Computed(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_big_int(&mut self) -> Option<&mut BigInt<'a>> {
         match self {
             Self::BigInt(it) => Some(it),
             _ => None,
@@ -3084,77 +4354,147 @@ impl<'a> SetSpan for ComputedPropName<'a> {
 }
 impl<'a> Pat<'a> {
     #[inline]
-    pub fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident(_))
+    pub const fn is_ident(&self) -> bool {
+        match self {
+            Self::Ident { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_array(&self) -> bool {
-        matches!(self, Self::Array(_))
+    pub const fn is_array(&self) -> bool {
+        match self {
+            Self::Array { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_rest(&self) -> bool {
-        matches!(self, Self::Rest(_))
+    pub const fn is_rest(&self) -> bool {
+        match self {
+            Self::Rest { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_object(&self) -> bool {
-        matches!(self, Self::Object(_))
+    pub const fn is_object(&self) -> bool {
+        match self {
+            Self::Object { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_assign(&self) -> bool {
-        matches!(self, Self::Assign(_))
+    pub const fn is_assign(&self) -> bool {
+        match self {
+            Self::Assign { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_invalid(&self) -> bool {
-        matches!(self, Self::Invalid(_))
+    pub const fn is_invalid(&self) -> bool {
+        match self {
+            Self::Invalid { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_expr(&self) -> bool {
-        matches!(self, Self::Expr(_))
+    pub const fn is_expr(&self) -> bool {
+        match self {
+            Self::Expr { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_ident(self) -> Option<Box<'a, BindingIdent<'a>>> {
+    pub fn as_ident(&self) -> Option<&BindingIdent<'a>> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_array(self) -> Option<Box<'a, ArrayPat<'a>>> {
+    pub fn as_array(&self) -> Option<&ArrayPat<'a>> {
         match self {
             Self::Array(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_rest(self) -> Option<Box<'a, RestPat<'a>>> {
+    pub fn as_rest(&self) -> Option<&RestPat<'a>> {
         match self {
             Self::Rest(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_object(self) -> Option<Box<'a, ObjectPat<'a>>> {
+    pub fn as_object(&self) -> Option<&ObjectPat<'a>> {
         match self {
             Self::Object(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_assign(self) -> Option<Box<'a, AssignPat<'a>>> {
+    pub fn as_assign(&self) -> Option<&AssignPat<'a>> {
         match self {
             Self::Assign(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_invalid(self) -> Option<Box<'a, Invalid>> {
+    pub fn as_invalid(&self) -> Option<&Invalid> {
         match self {
             Self::Invalid(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_expr(self) -> Option<Box<'a, Expr<'a>>> {
+    pub fn as_expr(&self) -> Option<&Expr<'a>> {
+        match self {
+            Self::Expr(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_ident(&mut self) -> Option<&mut BindingIdent<'a>> {
+        match self {
+            Self::Ident(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_array(&mut self) -> Option<&mut ArrayPat<'a>> {
+        match self {
+            Self::Array(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_rest(&mut self) -> Option<&mut RestPat<'a>> {
+        match self {
+            Self::Rest(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_object(&mut self) -> Option<&mut ObjectPat<'a>> {
+        match self {
+            Self::Object(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_assign(&mut self) -> Option<&mut AssignPat<'a>> {
+        match self {
+            Self::Assign(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_invalid(&mut self) -> Option<&mut Invalid> {
+        match self {
+            Self::Invalid(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_expr(&mut self) -> Option<&mut Expr<'a>> {
         match self {
             Self::Expr(it) => Some(it),
             _ => None,
@@ -3239,33 +4579,63 @@ impl<'a> SetSpan for RestPat<'a> {
 }
 impl<'a> ObjectPatProp<'a> {
     #[inline]
-    pub fn is_key_value(&self) -> bool {
-        matches!(self, Self::KeyValue(_))
+    pub const fn is_key_value(&self) -> bool {
+        match self {
+            Self::KeyValue { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_assign(&self) -> bool {
-        matches!(self, Self::Assign(_))
+    pub const fn is_assign(&self) -> bool {
+        match self {
+            Self::Assign { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_rest(&self) -> bool {
-        matches!(self, Self::Rest(_))
+    pub const fn is_rest(&self) -> bool {
+        match self {
+            Self::Rest { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_key_value(self) -> Option<Box<'a, KeyValuePatProp<'a>>> {
+    pub fn as_key_value(&self) -> Option<&KeyValuePatProp<'a>> {
         match self {
             Self::KeyValue(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_assign(self) -> Option<Box<'a, AssignPatProp<'a>>> {
+    pub fn as_assign(&self) -> Option<&AssignPatProp<'a>> {
         match self {
             Self::Assign(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_rest(self) -> Option<Box<'a, RestPat<'a>>> {
+    pub fn as_rest(&self) -> Option<&RestPat<'a>> {
+        match self {
+            Self::Rest(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_key_value(&mut self) -> Option<&mut KeyValuePatProp<'a>> {
+        match self {
+            Self::KeyValue(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_assign(&mut self) -> Option<&mut AssignPatProp<'a>> {
+        match self {
+            Self::Assign(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_rest(&mut self) -> Option<&mut RestPat<'a>> {
         match self {
             Self::Rest(it) => Some(it),
             _ => None,
@@ -3362,66 +4732,126 @@ impl<'a> SetSpan for BindingIdent<'a> {
 }
 impl<'a> Lit<'a> {
     #[inline]
-    pub fn is_str(&self) -> bool {
-        matches!(self, Self::Str(_))
+    pub const fn is_str(&self) -> bool {
+        match self {
+            Self::Str { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_bool(&self) -> bool {
-        matches!(self, Self::Bool(_))
+    pub const fn is_bool(&self) -> bool {
+        match self {
+            Self::Bool { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_null(&self) -> bool {
-        matches!(self, Self::Null(_))
+    pub const fn is_null(&self) -> bool {
+        match self {
+            Self::Null { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_num(&self) -> bool {
-        matches!(self, Self::Num(_))
+    pub const fn is_num(&self) -> bool {
+        match self {
+            Self::Num { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_big_int(&self) -> bool {
-        matches!(self, Self::BigInt(_))
+    pub const fn is_big_int(&self) -> bool {
+        match self {
+            Self::BigInt { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_regex(&self) -> bool {
-        matches!(self, Self::Regex(_))
+    pub const fn is_regex(&self) -> bool {
+        match self {
+            Self::Regex { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_str(self) -> Option<Box<'a, Str<'a>>> {
+    pub fn as_str(&self) -> Option<&Str<'a>> {
         match self {
             Self::Str(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_bool(self) -> Option<Box<'a, Bool>> {
+    pub fn as_bool(&self) -> Option<&Bool> {
         match self {
             Self::Bool(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_null(self) -> Option<Box<'a, Null>> {
+    pub fn as_null(&self) -> Option<&Null> {
         match self {
             Self::Null(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_num(self) -> Option<Box<'a, Number<'a>>> {
+    pub fn as_num(&self) -> Option<&Number<'a>> {
         match self {
             Self::Num(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_big_int(self) -> Option<Box<'a, BigInt<'a>>> {
+    pub fn as_big_int(&self) -> Option<&BigInt<'a>> {
         match self {
             Self::BigInt(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_regex(self) -> Option<Box<'a, Regex<'a>>> {
+    pub fn as_regex(&self) -> Option<&Regex<'a>> {
+        match self {
+            Self::Regex(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_str(&mut self) -> Option<&mut Str<'a>> {
+        match self {
+            Self::Str(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_bool(&mut self) -> Option<&mut Bool> {
+        match self {
+            Self::Bool(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_null(&mut self) -> Option<&mut Null> {
+        match self {
+            Self::Null(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_num(&mut self) -> Option<&mut Number<'a>> {
+        match self {
+            Self::Num(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_big_int(&mut self) -> Option<&mut BigInt<'a>> {
+        match self {
+            Self::BigInt(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_regex(&mut self) -> Option<&mut Regex<'a>> {
         match self {
             Self::Regex(it) => Some(it),
             _ => None,
@@ -3528,22 +4958,42 @@ impl<'a> SetSpan for Regex<'a> {
 }
 impl<'a> JSXObject<'a> {
     #[inline]
-    pub fn is_jsx_member_expr(&self) -> bool {
-        matches!(self, Self::JSXMemberExpr(_))
+    pub const fn is_jsx_member_expr(&self) -> bool {
+        match self {
+            Self::JSXMemberExpr { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident(_))
+    pub const fn is_ident(&self) -> bool {
+        match self {
+            Self::Ident { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_jsx_member_expr(self) -> Option<Box<'a, JSXMemberExpr<'a>>> {
+    pub fn as_jsx_member_expr(&self) -> Option<&JSXMemberExpr<'a>> {
         match self {
             Self::JSXMemberExpr(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_ident(self) -> Option<Box<'a, Ident<'a>>> {
+    pub fn as_ident(&self) -> Option<&Ident<'a>> {
+        match self {
+            Self::Ident(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_jsx_member_expr(&mut self) -> Option<&mut JSXMemberExpr<'a>> {
+        match self {
+            Self::JSXMemberExpr(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_ident(&mut self) -> Option<&mut Ident<'a>> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
@@ -3618,22 +5068,42 @@ impl<'a> SetSpan for JSXExprContainer<'a> {
 }
 impl<'a> JSXExpr<'a> {
     #[inline]
-    pub fn is_jsx_empty_expr(&self) -> bool {
-        matches!(self, Self::JSXEmptyExpr(_))
+    pub const fn is_jsx_empty_expr(&self) -> bool {
+        match self {
+            Self::JSXEmptyExpr { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_expr(&self) -> bool {
-        matches!(self, Self::Expr(_))
+    pub const fn is_expr(&self) -> bool {
+        match self {
+            Self::Expr { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_jsx_empty_expr(self) -> Option<Box<'a, JSXEmptyExpr>> {
+    pub fn as_jsx_empty_expr(&self) -> Option<&JSXEmptyExpr> {
         match self {
             Self::JSXEmptyExpr(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_expr(self) -> Option<Box<'a, Expr<'a>>> {
+    pub fn as_expr(&self) -> Option<&Expr<'a>> {
+        match self {
+            Self::Expr(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_jsx_empty_expr(&mut self) -> Option<&mut JSXEmptyExpr> {
+        match self {
+            Self::JSXEmptyExpr(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_expr(&mut self) -> Option<&mut Expr<'a>> {
         match self {
             Self::Expr(it) => Some(it),
             _ => None,
@@ -3672,33 +5142,63 @@ impl<'a> SetSpan for JSXSpreadChild<'a> {
 }
 impl<'a> JSXElementName<'a> {
     #[inline]
-    pub fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident(_))
+    pub const fn is_ident(&self) -> bool {
+        match self {
+            Self::Ident { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_jsx_member_expr(&self) -> bool {
-        matches!(self, Self::JSXMemberExpr(_))
+    pub const fn is_jsx_member_expr(&self) -> bool {
+        match self {
+            Self::JSXMemberExpr { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_jsx_namespaced_name(&self) -> bool {
-        matches!(self, Self::JSXNamespacedName(_))
+    pub const fn is_jsx_namespaced_name(&self) -> bool {
+        match self {
+            Self::JSXNamespacedName { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_ident(self) -> Option<Box<'a, Ident<'a>>> {
+    pub fn as_ident(&self) -> Option<&Ident<'a>> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_member_expr(self) -> Option<Box<'a, JSXMemberExpr<'a>>> {
+    pub fn as_jsx_member_expr(&self) -> Option<&JSXMemberExpr<'a>> {
         match self {
             Self::JSXMemberExpr(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_namespaced_name(self) -> Option<Box<'a, JSXNamespacedName<'a>>> {
+    pub fn as_jsx_namespaced_name(&self) -> Option<&JSXNamespacedName<'a>> {
+        match self {
+            Self::JSXNamespacedName(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_ident(&mut self) -> Option<&mut Ident<'a>> {
+        match self {
+            Self::Ident(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_jsx_member_expr(&mut self) -> Option<&mut JSXMemberExpr<'a>> {
+        match self {
+            Self::JSXMemberExpr(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_jsx_namespaced_name(&mut self) -> Option<&mut JSXNamespacedName<'a>> {
         match self {
             Self::JSXNamespacedName(it) => Some(it),
             _ => None,
@@ -3739,22 +5239,42 @@ impl<'a> SetSpan for JSXOpeningElement<'a> {
 }
 impl<'a> JSXAttrOrSpread<'a> {
     #[inline]
-    pub fn is_jsx_attr(&self) -> bool {
-        matches!(self, Self::JSXAttr(_))
+    pub const fn is_jsx_attr(&self) -> bool {
+        match self {
+            Self::JSXAttr { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_spread_element(&self) -> bool {
-        matches!(self, Self::SpreadElement(_))
+    pub const fn is_spread_element(&self) -> bool {
+        match self {
+            Self::SpreadElement { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_jsx_attr(self) -> Option<Box<'a, JSXAttr<'a>>> {
+    pub fn as_jsx_attr(&self) -> Option<&JSXAttr<'a>> {
         match self {
             Self::JSXAttr(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_spread_element(self) -> Option<Box<'a, SpreadElement<'a>>> {
+    pub fn as_spread_element(&self) -> Option<&SpreadElement<'a>> {
+        match self {
+            Self::SpreadElement(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_jsx_attr(&mut self) -> Option<&mut JSXAttr<'a>> {
+        match self {
+            Self::JSXAttr(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_spread_element(&mut self) -> Option<&mut SpreadElement<'a>> {
         match self {
             Self::SpreadElement(it) => Some(it),
             _ => None,
@@ -3805,22 +5325,42 @@ impl<'a> SetSpan for JSXAttr<'a> {
 }
 impl<'a> JSXAttrName<'a> {
     #[inline]
-    pub fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident(_))
+    pub const fn is_ident(&self) -> bool {
+        match self {
+            Self::Ident { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_jsx_namespaced_name(&self) -> bool {
-        matches!(self, Self::JSXNamespacedName(_))
+    pub const fn is_jsx_namespaced_name(&self) -> bool {
+        match self {
+            Self::JSXNamespacedName { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_ident(self) -> Option<Box<'a, IdentName<'a>>> {
+    pub fn as_ident(&self) -> Option<&IdentName<'a>> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_namespaced_name(self) -> Option<Box<'a, JSXNamespacedName<'a>>> {
+    pub fn as_jsx_namespaced_name(&self) -> Option<&JSXNamespacedName<'a>> {
+        match self {
+            Self::JSXNamespacedName(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_ident(&mut self) -> Option<&mut IdentName<'a>> {
+        match self {
+            Self::Ident(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_jsx_namespaced_name(&mut self) -> Option<&mut JSXNamespacedName<'a>> {
         match self {
             Self::JSXNamespacedName(it) => Some(it),
             _ => None,
@@ -3847,44 +5387,84 @@ impl<'a> SetSpan for JSXAttrName<'a> {
 }
 impl<'a> JSXAttrValue<'a> {
     #[inline]
-    pub fn is_str(&self) -> bool {
-        matches!(self, Self::Str(_))
+    pub const fn is_str(&self) -> bool {
+        match self {
+            Self::Str { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_jsx_expr_container(&self) -> bool {
-        matches!(self, Self::JSXExprContainer(_))
+    pub const fn is_jsx_expr_container(&self) -> bool {
+        match self {
+            Self::JSXExprContainer { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_jsx_element(&self) -> bool {
-        matches!(self, Self::JSXElement(_))
+    pub const fn is_jsx_element(&self) -> bool {
+        match self {
+            Self::JSXElement { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_jsx_fragment(&self) -> bool {
-        matches!(self, Self::JSXFragment(_))
+    pub const fn is_jsx_fragment(&self) -> bool {
+        match self {
+            Self::JSXFragment { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_str(self) -> Option<Box<'a, Str<'a>>> {
+    pub fn as_str(&self) -> Option<&Str<'a>> {
         match self {
             Self::Str(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_expr_container(self) -> Option<Box<'a, JSXExprContainer<'a>>> {
+    pub fn as_jsx_expr_container(&self) -> Option<&JSXExprContainer<'a>> {
         match self {
             Self::JSXExprContainer(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_element(self) -> Option<Box<'a, JSXElement<'a>>> {
+    pub fn as_jsx_element(&self) -> Option<&JSXElement<'a>> {
         match self {
             Self::JSXElement(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_fragment(self) -> Option<Box<'a, JSXFragment<'a>>> {
+    pub fn as_jsx_fragment(&self) -> Option<&JSXFragment<'a>> {
+        match self {
+            Self::JSXFragment(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_str(&mut self) -> Option<&mut Str<'a>> {
+        match self {
+            Self::Str(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_jsx_expr_container(&mut self) -> Option<&mut JSXExprContainer<'a>> {
+        match self {
+            Self::JSXExprContainer(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_jsx_element(&mut self) -> Option<&mut JSXElement<'a>> {
+        match self {
+            Self::JSXElement(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_jsx_fragment(&mut self) -> Option<&mut JSXFragment<'a>> {
         match self {
             Self::JSXFragment(it) => Some(it),
             _ => None,
@@ -3939,55 +5519,105 @@ impl<'a> SetSpan for JSXElement<'a> {
 }
 impl<'a> JSXElementChild<'a> {
     #[inline]
-    pub fn is_jsx_text(&self) -> bool {
-        matches!(self, Self::JSXText(_))
+    pub const fn is_jsx_text(&self) -> bool {
+        match self {
+            Self::JSXText { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_jsx_expr_container(&self) -> bool {
-        matches!(self, Self::JSXExprContainer(_))
+    pub const fn is_jsx_expr_container(&self) -> bool {
+        match self {
+            Self::JSXExprContainer { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_jsx_spread_child(&self) -> bool {
-        matches!(self, Self::JSXSpreadChild(_))
+    pub const fn is_jsx_spread_child(&self) -> bool {
+        match self {
+            Self::JSXSpreadChild { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_jsx_element(&self) -> bool {
-        matches!(self, Self::JSXElement(_))
+    pub const fn is_jsx_element(&self) -> bool {
+        match self {
+            Self::JSXElement { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn is_jsx_fragment(&self) -> bool {
-        matches!(self, Self::JSXFragment(_))
+    pub const fn is_jsx_fragment(&self) -> bool {
+        match self {
+            Self::JSXFragment { .. } => true,
+            _ => false,
+        }
     }
     #[inline]
-    pub fn as_jsx_text(self) -> Option<Box<'a, JSXText<'a>>> {
+    pub fn as_jsx_text(&self) -> Option<&JSXText<'a>> {
         match self {
             Self::JSXText(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_expr_container(self) -> Option<Box<'a, JSXExprContainer<'a>>> {
+    pub fn as_jsx_expr_container(&self) -> Option<&JSXExprContainer<'a>> {
         match self {
             Self::JSXExprContainer(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_spread_child(self) -> Option<Box<'a, JSXSpreadChild<'a>>> {
+    pub fn as_jsx_spread_child(&self) -> Option<&JSXSpreadChild<'a>> {
         match self {
             Self::JSXSpreadChild(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_element(self) -> Option<Box<'a, JSXElement<'a>>> {
+    pub fn as_jsx_element(&self) -> Option<&JSXElement<'a>> {
         match self {
             Self::JSXElement(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_fragment(self) -> Option<Box<'a, JSXFragment<'a>>> {
+    pub fn as_jsx_fragment(&self) -> Option<&JSXFragment<'a>> {
+        match self {
+            Self::JSXFragment(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_jsx_text(&mut self) -> Option<&mut JSXText<'a>> {
+        match self {
+            Self::JSXText(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_jsx_expr_container(&mut self) -> Option<&mut JSXExprContainer<'a>> {
+        match self {
+            Self::JSXExprContainer(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_jsx_spread_child(&mut self) -> Option<&mut JSXSpreadChild<'a>> {
+        match self {
+            Self::JSXSpreadChild(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_jsx_element(&mut self) -> Option<&mut JSXElement<'a>> {
+        match self {
+            Self::JSXElement(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_mut_jsx_fragment(&mut self) -> Option<&mut JSXFragment<'a>> {
         match self {
             Self::JSXFragment(it) => Some(it),
             _ => None,
