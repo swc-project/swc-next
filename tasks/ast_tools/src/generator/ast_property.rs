@@ -59,10 +59,7 @@ fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
         is_variant.extend(quote! {
             #[inline]
             pub const fn #is_fn_name(&self) -> bool {
-                match self {
-                    Self::#variant_name { .. } => true,
-                    _ => false,
-                }
+                matches!(self, Self::#variant_name { .. })
             }
         });
 

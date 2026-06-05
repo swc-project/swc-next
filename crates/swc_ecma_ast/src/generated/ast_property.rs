@@ -6,17 +6,11 @@ use swc_experimental_allocator::boxed::Box;
 impl<'a> Program<'a> {
     #[inline]
     pub const fn is_module(&self) -> bool {
-        match self {
-            Self::Module { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Module { .. })
     }
     #[inline]
     pub const fn is_script(&self) -> bool {
-        match self {
-            Self::Script { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Script { .. })
     }
     #[inline]
     pub fn as_module(&self) -> Option<&Module<'a>> {
@@ -92,17 +86,11 @@ impl<'a> SetSpan for Script<'a> {
 impl<'a> ModuleItem<'a> {
     #[inline]
     pub const fn is_module_decl(&self) -> bool {
-        match self {
-            Self::ModuleDecl { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::ModuleDecl { .. })
     }
     #[inline]
     pub const fn is_stmt(&self) -> bool {
-        match self {
-            Self::Stmt { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Stmt { .. })
     }
     #[inline]
     pub fn as_module_decl(&self) -> Option<&ModuleDecl<'a>> {
@@ -154,45 +142,27 @@ impl<'a> SetSpan for ModuleItem<'a> {
 impl<'a> ModuleDecl<'a> {
     #[inline]
     pub const fn is_import(&self) -> bool {
-        match self {
-            Self::Import { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Import { .. })
     }
     #[inline]
     pub const fn is_export_decl(&self) -> bool {
-        match self {
-            Self::ExportDecl { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::ExportDecl { .. })
     }
     #[inline]
     pub const fn is_export_named(&self) -> bool {
-        match self {
-            Self::ExportNamed { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::ExportNamed { .. })
     }
     #[inline]
     pub const fn is_export_default_decl(&self) -> bool {
-        match self {
-            Self::ExportDefaultDecl { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::ExportDefaultDecl { .. })
     }
     #[inline]
     pub const fn is_export_default_expr(&self) -> bool {
-        match self {
-            Self::ExportDefaultExpr { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::ExportDefaultExpr { .. })
     }
     #[inline]
     pub const fn is_export_all(&self) -> bool {
-        match self {
-            Self::ExportAll { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::ExportAll { .. })
     }
     #[inline]
     pub fn as_import(&self) -> Option<&ImportDecl<'a>> {
@@ -320,24 +290,15 @@ impl<'a> SetSpan for ImportDecl<'a> {
 impl<'a> ImportSpecifier<'a> {
     #[inline]
     pub const fn is_named(&self) -> bool {
-        match self {
-            Self::Named { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Named { .. })
     }
     #[inline]
     pub const fn is_default(&self) -> bool {
-        match self {
-            Self::Default { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Default { .. })
     }
     #[inline]
     pub const fn is_namespace(&self) -> bool {
-        match self {
-            Self::Namespace { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Namespace { .. })
     }
     #[inline]
     pub fn as_named(&self) -> Option<&ImportNamedSpecifier<'a>> {
@@ -465,24 +426,15 @@ impl<'a> SetSpan for NamedExport<'a> {
 impl<'a> ExportSpecifier<'a> {
     #[inline]
     pub const fn is_namespace(&self) -> bool {
-        match self {
-            Self::Namespace { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Namespace { .. })
     }
     #[inline]
     pub const fn is_default(&self) -> bool {
-        match self {
-            Self::Default { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Default { .. })
     }
     #[inline]
     pub const fn is_named(&self) -> bool {
-        match self {
-            Self::Named { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Named { .. })
     }
     #[inline]
     pub fn as_namespace(&self) -> Option<&ExportNamespaceSpecifier<'a>> {
@@ -562,17 +514,11 @@ impl<'a> SetSpan for ExportNamespaceSpecifier<'a> {
 impl<'a> ModuleExportName<'a> {
     #[inline]
     pub const fn is_ident(&self) -> bool {
-        match self {
-            Self::Ident { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Ident { .. })
     }
     #[inline]
     pub const fn is_str(&self) -> bool {
-        match self {
-            Self::Str { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Str { .. })
     }
     #[inline]
     pub fn as_ident(&self) -> Option<&Ident<'a>> {
@@ -658,17 +604,11 @@ impl<'a> SetSpan for ExportDefaultDecl<'a> {
 impl<'a> DefaultDecl<'a> {
     #[inline]
     pub const fn is_class(&self) -> bool {
-        match self {
-            Self::Class { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Class { .. })
     }
     #[inline]
     pub const fn is_fn(&self) -> bool {
-        match self {
-            Self::Fn { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Fn { .. })
     }
     #[inline]
     pub fn as_class(&self) -> Option<&ClassExpr<'a>> {
@@ -756,136 +696,79 @@ impl<'a> SetSpan for BlockStmt<'a> {
 impl<'a> Stmt<'a> {
     #[inline]
     pub const fn is_block(&self) -> bool {
-        match self {
-            Self::Block { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Block { .. })
     }
     #[inline]
     pub const fn is_empty(&self) -> bool {
-        match self {
-            Self::Empty { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Empty { .. })
     }
     #[inline]
     pub const fn is_debugger(&self) -> bool {
-        match self {
-            Self::Debugger { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Debugger { .. })
     }
     #[inline]
     pub const fn is_with(&self) -> bool {
-        match self {
-            Self::With { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::With { .. })
     }
     #[inline]
     pub const fn is_return(&self) -> bool {
-        match self {
-            Self::Return { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Return { .. })
     }
     #[inline]
     pub const fn is_labeled(&self) -> bool {
-        match self {
-            Self::Labeled { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Labeled { .. })
     }
     #[inline]
     pub const fn is_break(&self) -> bool {
-        match self {
-            Self::Break { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Break { .. })
     }
     #[inline]
     pub const fn is_continue(&self) -> bool {
-        match self {
-            Self::Continue { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Continue { .. })
     }
     #[inline]
     pub const fn is_if(&self) -> bool {
-        match self {
-            Self::If { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::If { .. })
     }
     #[inline]
     pub const fn is_switch(&self) -> bool {
-        match self {
-            Self::Switch { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Switch { .. })
     }
     #[inline]
     pub const fn is_throw(&self) -> bool {
-        match self {
-            Self::Throw { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Throw { .. })
     }
     #[inline]
     pub const fn is_try(&self) -> bool {
-        match self {
-            Self::Try { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Try { .. })
     }
     #[inline]
     pub const fn is_while(&self) -> bool {
-        match self {
-            Self::While { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::While { .. })
     }
     #[inline]
     pub const fn is_do_while(&self) -> bool {
-        match self {
-            Self::DoWhile { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::DoWhile { .. })
     }
     #[inline]
     pub const fn is_for(&self) -> bool {
-        match self {
-            Self::For { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::For { .. })
     }
     #[inline]
     pub const fn is_for_in(&self) -> bool {
-        match self {
-            Self::ForIn { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::ForIn { .. })
     }
     #[inline]
     pub const fn is_for_of(&self) -> bool {
-        match self {
-            Self::ForOf { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::ForOf { .. })
     }
     #[inline]
     pub const fn is_decl(&self) -> bool {
-        match self {
-            Self::Decl { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Decl { .. })
     }
     #[inline]
     pub const fn is_expr(&self) -> bool {
-        match self {
-            Self::Expr { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Expr { .. })
     }
     #[inline]
     pub fn as_block(&self) -> Option<&BlockStmt<'a>> {
@@ -1437,24 +1320,15 @@ impl<'a> SetSpan for CatchClause<'a> {
 impl<'a> ForHead<'a> {
     #[inline]
     pub const fn is_var_decl(&self) -> bool {
-        match self {
-            Self::VarDecl { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::VarDecl { .. })
     }
     #[inline]
     pub const fn is_using_decl(&self) -> bool {
-        match self {
-            Self::UsingDecl { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::UsingDecl { .. })
     }
     #[inline]
     pub const fn is_pat(&self) -> bool {
-        match self {
-            Self::Pat { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Pat { .. })
     }
     #[inline]
     pub fn as_var_decl(&self) -> Option<&VarDecl<'a>> {
@@ -1522,17 +1396,11 @@ impl<'a> SetSpan for ForHead<'a> {
 impl<'a> VarDeclOrExpr<'a> {
     #[inline]
     pub const fn is_var_decl(&self) -> bool {
-        match self {
-            Self::VarDecl { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::VarDecl { .. })
     }
     #[inline]
     pub const fn is_expr(&self) -> bool {
-        match self {
-            Self::Expr { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Expr { .. })
     }
     #[inline]
     pub fn as_var_decl(&self) -> Option<&VarDecl<'a>> {
@@ -1584,31 +1452,19 @@ impl<'a> SetSpan for VarDeclOrExpr<'a> {
 impl<'a> Decl<'a> {
     #[inline]
     pub const fn is_class(&self) -> bool {
-        match self {
-            Self::Class { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Class { .. })
     }
     #[inline]
     pub const fn is_fn(&self) -> bool {
-        match self {
-            Self::Fn { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Fn { .. })
     }
     #[inline]
     pub const fn is_var(&self) -> bool {
-        match self {
-            Self::Var { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Var { .. })
     }
     #[inline]
     pub const fn is_using(&self) -> bool {
-        match self {
-            Self::Using { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Using { .. })
     }
     #[inline]
     pub fn as_class(&self) -> Option<&ClassDecl<'a>> {
@@ -1748,227 +1604,131 @@ impl<'a> SetSpan for UsingDecl<'a> {
 impl<'a> Expr<'a> {
     #[inline]
     pub const fn is_this(&self) -> bool {
-        match self {
-            Self::This { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::This { .. })
     }
     #[inline]
     pub const fn is_array(&self) -> bool {
-        match self {
-            Self::Array { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Array { .. })
     }
     #[inline]
     pub const fn is_object(&self) -> bool {
-        match self {
-            Self::Object { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Object { .. })
     }
     #[inline]
     pub const fn is_fn(&self) -> bool {
-        match self {
-            Self::Fn { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Fn { .. })
     }
     #[inline]
     pub const fn is_unary(&self) -> bool {
-        match self {
-            Self::Unary { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Unary { .. })
     }
     #[inline]
     pub const fn is_update(&self) -> bool {
-        match self {
-            Self::Update { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Update { .. })
     }
     #[inline]
     pub const fn is_bin(&self) -> bool {
-        match self {
-            Self::Bin { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Bin { .. })
     }
     #[inline]
     pub const fn is_assign(&self) -> bool {
-        match self {
-            Self::Assign { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Assign { .. })
     }
     #[inline]
     pub const fn is_member(&self) -> bool {
-        match self {
-            Self::Member { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Member { .. })
     }
     #[inline]
     pub const fn is_super_prop(&self) -> bool {
-        match self {
-            Self::SuperProp { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::SuperProp { .. })
     }
     #[inline]
     pub const fn is_cond(&self) -> bool {
-        match self {
-            Self::Cond { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Cond { .. })
     }
     #[inline]
     pub const fn is_call(&self) -> bool {
-        match self {
-            Self::Call { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Call { .. })
     }
     #[inline]
     pub const fn is_new(&self) -> bool {
-        match self {
-            Self::New { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::New { .. })
     }
     #[inline]
     pub const fn is_seq(&self) -> bool {
-        match self {
-            Self::Seq { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Seq { .. })
     }
     #[inline]
     pub const fn is_ident(&self) -> bool {
-        match self {
-            Self::Ident { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Ident { .. })
     }
     #[inline]
     pub const fn is_lit(&self) -> bool {
-        match self {
-            Self::Lit { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Lit { .. })
     }
     #[inline]
     pub const fn is_tpl(&self) -> bool {
-        match self {
-            Self::Tpl { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Tpl { .. })
     }
     #[inline]
     pub const fn is_tagged_tpl(&self) -> bool {
-        match self {
-            Self::TaggedTpl { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::TaggedTpl { .. })
     }
     #[inline]
     pub const fn is_arrow(&self) -> bool {
-        match self {
-            Self::Arrow { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Arrow { .. })
     }
     #[inline]
     pub const fn is_class(&self) -> bool {
-        match self {
-            Self::Class { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Class { .. })
     }
     #[inline]
     pub const fn is_yield(&self) -> bool {
-        match self {
-            Self::Yield { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Yield { .. })
     }
     #[inline]
     pub const fn is_meta_prop(&self) -> bool {
-        match self {
-            Self::MetaProp { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::MetaProp { .. })
     }
     #[inline]
     pub const fn is_await(&self) -> bool {
-        match self {
-            Self::Await { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Await { .. })
     }
     #[inline]
     pub const fn is_paren(&self) -> bool {
-        match self {
-            Self::Paren { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Paren { .. })
     }
     #[inline]
     pub const fn is_jsx_member(&self) -> bool {
-        match self {
-            Self::JSXMember { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::JSXMember { .. })
     }
     #[inline]
     pub const fn is_jsx_namespaced_name(&self) -> bool {
-        match self {
-            Self::JSXNamespacedName { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::JSXNamespacedName { .. })
     }
     #[inline]
     pub const fn is_jsx_empty(&self) -> bool {
-        match self {
-            Self::JSXEmpty { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::JSXEmpty { .. })
     }
     #[inline]
     pub const fn is_jsx_element(&self) -> bool {
-        match self {
-            Self::JSXElement { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::JSXElement { .. })
     }
     #[inline]
     pub const fn is_jsx_fragment(&self) -> bool {
-        match self {
-            Self::JSXFragment { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::JSXFragment { .. })
     }
     #[inline]
     pub const fn is_private_name(&self) -> bool {
-        match self {
-            Self::PrivateName { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::PrivateName { .. })
     }
     #[inline]
     pub const fn is_opt_chain(&self) -> bool {
-        match self {
-            Self::OptChain { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::OptChain { .. })
     }
     #[inline]
     pub const fn is_invalid(&self) -> bool {
-        match self {
-            Self::Invalid { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Invalid { .. })
     }
     #[inline]
     pub fn as_this(&self) -> Option<&ThisExpr> {
@@ -2536,17 +2296,11 @@ impl<'a> SetSpan for ObjectLit<'a> {
 impl<'a> PropOrSpread<'a> {
     #[inline]
     pub const fn is_spread(&self) -> bool {
-        match self {
-            Self::Spread { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Spread { .. })
     }
     #[inline]
     pub const fn is_prop(&self) -> bool {
-        match self {
-            Self::Prop { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Prop { .. })
     }
     #[inline]
     pub fn as_spread(&self) -> Option<&SpreadElement<'a>> {
@@ -2688,24 +2442,15 @@ impl<'a> SetSpan for MemberExpr<'a> {
 impl<'a> MemberProp<'a> {
     #[inline]
     pub const fn is_ident(&self) -> bool {
-        match self {
-            Self::Ident { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Ident { .. })
     }
     #[inline]
     pub const fn is_private_name(&self) -> bool {
-        match self {
-            Self::PrivateName { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::PrivateName { .. })
     }
     #[inline]
     pub const fn is_computed(&self) -> bool {
-        match self {
-            Self::Computed { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Computed { .. })
     }
     #[inline]
     pub fn as_ident(&self) -> Option<&IdentName<'a>> {
@@ -2785,17 +2530,11 @@ impl<'a> SetSpan for SuperPropExpr<'a> {
 impl<'a> SuperProp<'a> {
     #[inline]
     pub const fn is_ident(&self) -> bool {
-        match self {
-            Self::Ident { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Ident { .. })
     }
     #[inline]
     pub const fn is_computed(&self) -> bool {
-        match self {
-            Self::Computed { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Computed { .. })
     }
     #[inline]
     pub fn as_ident(&self) -> Option<&IdentName<'a>> {
@@ -2991,24 +2730,15 @@ impl<'a> SetSpan for ParenExpr<'a> {
 impl<'a> Callee<'a> {
     #[inline]
     pub const fn is_super(&self) -> bool {
-        match self {
-            Self::Super { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Super { .. })
     }
     #[inline]
     pub const fn is_import(&self) -> bool {
-        match self {
-            Self::Import { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Import { .. })
     }
     #[inline]
     pub const fn is_expr(&self) -> bool {
-        match self {
-            Self::Expr { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Expr { .. })
     }
     #[inline]
     pub fn as_super(&self) -> Option<&Super> {
@@ -3110,17 +2840,11 @@ impl<'a> SetSpan for ExprOrSpread<'a> {
 impl<'a> BlockStmtOrExpr<'a> {
     #[inline]
     pub const fn is_block_stmt(&self) -> bool {
-        match self {
-            Self::BlockStmt { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::BlockStmt { .. })
     }
     #[inline]
     pub const fn is_expr(&self) -> bool {
-        match self {
-            Self::Expr { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Expr { .. })
     }
     #[inline]
     pub fn as_block_stmt(&self) -> Option<&BlockStmt<'a>> {
@@ -3172,17 +2896,11 @@ impl<'a> SetSpan for BlockStmtOrExpr<'a> {
 impl<'a> AssignTarget<'a> {
     #[inline]
     pub const fn is_simple(&self) -> bool {
-        match self {
-            Self::Simple { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Simple { .. })
     }
     #[inline]
     pub const fn is_pat(&self) -> bool {
-        match self {
-            Self::Pat { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Pat { .. })
     }
     #[inline]
     pub fn as_simple(&self) -> Option<&SimpleAssignTarget<'a>> {
@@ -3234,24 +2952,15 @@ impl<'a> SetSpan for AssignTarget<'a> {
 impl<'a> AssignTargetPat<'a> {
     #[inline]
     pub const fn is_array(&self) -> bool {
-        match self {
-            Self::Array { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Array { .. })
     }
     #[inline]
     pub const fn is_object(&self) -> bool {
-        match self {
-            Self::Object { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Object { .. })
     }
     #[inline]
     pub const fn is_invalid(&self) -> bool {
-        match self {
-            Self::Invalid { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Invalid { .. })
     }
     #[inline]
     pub fn as_array(&self) -> Option<&ArrayPat<'a>> {
@@ -3319,45 +3028,27 @@ impl<'a> SetSpan for AssignTargetPat<'a> {
 impl<'a> SimpleAssignTarget<'a> {
     #[inline]
     pub const fn is_ident(&self) -> bool {
-        match self {
-            Self::Ident { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Ident { .. })
     }
     #[inline]
     pub const fn is_member(&self) -> bool {
-        match self {
-            Self::Member { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Member { .. })
     }
     #[inline]
     pub const fn is_super_prop(&self) -> bool {
-        match self {
-            Self::SuperProp { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::SuperProp { .. })
     }
     #[inline]
     pub const fn is_paren(&self) -> bool {
-        match self {
-            Self::Paren { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Paren { .. })
     }
     #[inline]
     pub const fn is_opt_chain(&self) -> bool {
-        match self {
-            Self::OptChain { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::OptChain { .. })
     }
     #[inline]
     pub const fn is_invalid(&self) -> bool {
-        match self {
-            Self::Invalid { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Invalid { .. })
     }
     #[inline]
     pub fn as_ident(&self) -> Option<&BindingIdent<'a>> {
@@ -3485,17 +3176,11 @@ impl<'a> SetSpan for OptChainExpr<'a> {
 impl<'a> OptChainBase<'a> {
     #[inline]
     pub const fn is_member(&self) -> bool {
-        match self {
-            Self::Member { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Member { .. })
     }
     #[inline]
     pub const fn is_call(&self) -> bool {
-        match self {
-            Self::Call { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Call { .. })
     }
     #[inline]
     pub fn as_member(&self) -> Option<&MemberExpr<'a>> {
@@ -3593,10 +3278,7 @@ impl<'a> SetSpan for Param<'a> {
 impl<'a> ParamOrTsParamProp<'a> {
     #[inline]
     pub const fn is_param(&self) -> bool {
-        match self {
-            Self::Param { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Param { .. })
     }
     #[inline]
     pub fn as_param(&self) -> Option<&Param<'a>> {
@@ -3644,59 +3326,35 @@ impl<'a> SetSpan for Class<'a> {
 impl<'a> ClassMember<'a> {
     #[inline]
     pub const fn is_constructor(&self) -> bool {
-        match self {
-            Self::Constructor { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Constructor { .. })
     }
     #[inline]
     pub const fn is_method(&self) -> bool {
-        match self {
-            Self::Method { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Method { .. })
     }
     #[inline]
     pub const fn is_private_method(&self) -> bool {
-        match self {
-            Self::PrivateMethod { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::PrivateMethod { .. })
     }
     #[inline]
     pub const fn is_class_prop(&self) -> bool {
-        match self {
-            Self::ClassProp { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::ClassProp { .. })
     }
     #[inline]
     pub const fn is_private_prop(&self) -> bool {
-        match self {
-            Self::PrivateProp { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::PrivateProp { .. })
     }
     #[inline]
     pub const fn is_empty(&self) -> bool {
-        match self {
-            Self::Empty { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Empty { .. })
     }
     #[inline]
     pub const fn is_static_block(&self) -> bool {
-        match self {
-            Self::StaticBlock { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::StaticBlock { .. })
     }
     #[inline]
     pub const fn is_auto_accessor(&self) -> bool {
-        match self {
-            Self::AutoAccessor { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::AutoAccessor { .. })
     }
     #[inline]
     pub fn as_constructor(&self) -> Option<&Constructor<'a>> {
@@ -3928,17 +3586,11 @@ impl<'a> SetSpan for StaticBlock<'a> {
 impl<'a> Key<'a> {
     #[inline]
     pub const fn is_private(&self) -> bool {
-        match self {
-            Self::Private { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Private { .. })
     }
     #[inline]
     pub const fn is_public(&self) -> bool {
-        match self {
-            Self::Public { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Public { .. })
     }
     #[inline]
     pub fn as_private(&self) -> Option<&PrivateName<'a>> {
@@ -4002,45 +3654,27 @@ impl<'a> SetSpan for AutoAccessor<'a> {
 impl<'a> Prop<'a> {
     #[inline]
     pub const fn is_shorthand(&self) -> bool {
-        match self {
-            Self::Shorthand { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Shorthand { .. })
     }
     #[inline]
     pub const fn is_key_value(&self) -> bool {
-        match self {
-            Self::KeyValue { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::KeyValue { .. })
     }
     #[inline]
     pub const fn is_assign(&self) -> bool {
-        match self {
-            Self::Assign { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Assign { .. })
     }
     #[inline]
     pub const fn is_getter(&self) -> bool {
-        match self {
-            Self::Getter { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Getter { .. })
     }
     #[inline]
     pub const fn is_setter(&self) -> bool {
-        match self {
-            Self::Setter { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Setter { .. })
     }
     #[inline]
     pub const fn is_method(&self) -> bool {
-        match self {
-            Self::Method { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Method { .. })
     }
     #[inline]
     pub fn as_shorthand(&self) -> Option<&Ident<'a>> {
@@ -4212,38 +3846,23 @@ impl<'a> SetSpan for MethodProp<'a> {
 impl<'a> PropName<'a> {
     #[inline]
     pub const fn is_ident(&self) -> bool {
-        match self {
-            Self::Ident { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Ident { .. })
     }
     #[inline]
     pub const fn is_str(&self) -> bool {
-        match self {
-            Self::Str { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Str { .. })
     }
     #[inline]
     pub const fn is_num(&self) -> bool {
-        match self {
-            Self::Num { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Num { .. })
     }
     #[inline]
     pub const fn is_computed(&self) -> bool {
-        match self {
-            Self::Computed { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Computed { .. })
     }
     #[inline]
     pub const fn is_big_int(&self) -> bool {
-        match self {
-            Self::BigInt { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::BigInt { .. })
     }
     #[inline]
     pub fn as_ident(&self) -> Option<&IdentName<'a>> {
@@ -4355,52 +3974,31 @@ impl<'a> SetSpan for ComputedPropName<'a> {
 impl<'a> Pat<'a> {
     #[inline]
     pub const fn is_ident(&self) -> bool {
-        match self {
-            Self::Ident { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Ident { .. })
     }
     #[inline]
     pub const fn is_array(&self) -> bool {
-        match self {
-            Self::Array { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Array { .. })
     }
     #[inline]
     pub const fn is_rest(&self) -> bool {
-        match self {
-            Self::Rest { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Rest { .. })
     }
     #[inline]
     pub const fn is_object(&self) -> bool {
-        match self {
-            Self::Object { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Object { .. })
     }
     #[inline]
     pub const fn is_assign(&self) -> bool {
-        match self {
-            Self::Assign { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Assign { .. })
     }
     #[inline]
     pub const fn is_invalid(&self) -> bool {
-        match self {
-            Self::Invalid { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Invalid { .. })
     }
     #[inline]
     pub const fn is_expr(&self) -> bool {
-        match self {
-            Self::Expr { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Expr { .. })
     }
     #[inline]
     pub fn as_ident(&self) -> Option<&BindingIdent<'a>> {
@@ -4580,24 +4178,15 @@ impl<'a> SetSpan for RestPat<'a> {
 impl<'a> ObjectPatProp<'a> {
     #[inline]
     pub const fn is_key_value(&self) -> bool {
-        match self {
-            Self::KeyValue { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::KeyValue { .. })
     }
     #[inline]
     pub const fn is_assign(&self) -> bool {
-        match self {
-            Self::Assign { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Assign { .. })
     }
     #[inline]
     pub const fn is_rest(&self) -> bool {
-        match self {
-            Self::Rest { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Rest { .. })
     }
     #[inline]
     pub fn as_key_value(&self) -> Option<&KeyValuePatProp<'a>> {
@@ -4733,45 +4322,27 @@ impl<'a> SetSpan for BindingIdent<'a> {
 impl<'a> Lit<'a> {
     #[inline]
     pub const fn is_str(&self) -> bool {
-        match self {
-            Self::Str { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Str { .. })
     }
     #[inline]
     pub const fn is_bool(&self) -> bool {
-        match self {
-            Self::Bool { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Bool { .. })
     }
     #[inline]
     pub const fn is_null(&self) -> bool {
-        match self {
-            Self::Null { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Null { .. })
     }
     #[inline]
     pub const fn is_num(&self) -> bool {
-        match self {
-            Self::Num { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Num { .. })
     }
     #[inline]
     pub const fn is_big_int(&self) -> bool {
-        match self {
-            Self::BigInt { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::BigInt { .. })
     }
     #[inline]
     pub const fn is_regex(&self) -> bool {
-        match self {
-            Self::Regex { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Regex { .. })
     }
     #[inline]
     pub fn as_str(&self) -> Option<&Str<'a>> {
@@ -4959,17 +4530,11 @@ impl<'a> SetSpan for Regex<'a> {
 impl<'a> JSXObject<'a> {
     #[inline]
     pub const fn is_jsx_member_expr(&self) -> bool {
-        match self {
-            Self::JSXMemberExpr { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::JSXMemberExpr { .. })
     }
     #[inline]
     pub const fn is_ident(&self) -> bool {
-        match self {
-            Self::Ident { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Ident { .. })
     }
     #[inline]
     pub fn as_jsx_member_expr(&self) -> Option<&JSXMemberExpr<'a>> {
@@ -5069,17 +4634,11 @@ impl<'a> SetSpan for JSXExprContainer<'a> {
 impl<'a> JSXExpr<'a> {
     #[inline]
     pub const fn is_jsx_empty_expr(&self) -> bool {
-        match self {
-            Self::JSXEmptyExpr { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::JSXEmptyExpr { .. })
     }
     #[inline]
     pub const fn is_expr(&self) -> bool {
-        match self {
-            Self::Expr { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Expr { .. })
     }
     #[inline]
     pub fn as_jsx_empty_expr(&self) -> Option<&JSXEmptyExpr> {
@@ -5143,24 +4702,15 @@ impl<'a> SetSpan for JSXSpreadChild<'a> {
 impl<'a> JSXElementName<'a> {
     #[inline]
     pub const fn is_ident(&self) -> bool {
-        match self {
-            Self::Ident { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Ident { .. })
     }
     #[inline]
     pub const fn is_jsx_member_expr(&self) -> bool {
-        match self {
-            Self::JSXMemberExpr { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::JSXMemberExpr { .. })
     }
     #[inline]
     pub const fn is_jsx_namespaced_name(&self) -> bool {
-        match self {
-            Self::JSXNamespacedName { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::JSXNamespacedName { .. })
     }
     #[inline]
     pub fn as_ident(&self) -> Option<&Ident<'a>> {
@@ -5240,17 +4790,11 @@ impl<'a> SetSpan for JSXOpeningElement<'a> {
 impl<'a> JSXAttrOrSpread<'a> {
     #[inline]
     pub const fn is_jsx_attr(&self) -> bool {
-        match self {
-            Self::JSXAttr { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::JSXAttr { .. })
     }
     #[inline]
     pub const fn is_spread_element(&self) -> bool {
-        match self {
-            Self::SpreadElement { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::SpreadElement { .. })
     }
     #[inline]
     pub fn as_jsx_attr(&self) -> Option<&JSXAttr<'a>> {
@@ -5326,17 +4870,11 @@ impl<'a> SetSpan for JSXAttr<'a> {
 impl<'a> JSXAttrName<'a> {
     #[inline]
     pub const fn is_ident(&self) -> bool {
-        match self {
-            Self::Ident { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Ident { .. })
     }
     #[inline]
     pub const fn is_jsx_namespaced_name(&self) -> bool {
-        match self {
-            Self::JSXNamespacedName { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::JSXNamespacedName { .. })
     }
     #[inline]
     pub fn as_ident(&self) -> Option<&IdentName<'a>> {
@@ -5388,31 +4926,19 @@ impl<'a> SetSpan for JSXAttrName<'a> {
 impl<'a> JSXAttrValue<'a> {
     #[inline]
     pub const fn is_str(&self) -> bool {
-        match self {
-            Self::Str { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Str { .. })
     }
     #[inline]
     pub const fn is_jsx_expr_container(&self) -> bool {
-        match self {
-            Self::JSXExprContainer { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::JSXExprContainer { .. })
     }
     #[inline]
     pub const fn is_jsx_element(&self) -> bool {
-        match self {
-            Self::JSXElement { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::JSXElement { .. })
     }
     #[inline]
     pub const fn is_jsx_fragment(&self) -> bool {
-        match self {
-            Self::JSXFragment { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::JSXFragment { .. })
     }
     #[inline]
     pub fn as_str(&self) -> Option<&Str<'a>> {
@@ -5520,38 +5046,23 @@ impl<'a> SetSpan for JSXElement<'a> {
 impl<'a> JSXElementChild<'a> {
     #[inline]
     pub const fn is_jsx_text(&self) -> bool {
-        match self {
-            Self::JSXText { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::JSXText { .. })
     }
     #[inline]
     pub const fn is_jsx_expr_container(&self) -> bool {
-        match self {
-            Self::JSXExprContainer { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::JSXExprContainer { .. })
     }
     #[inline]
     pub const fn is_jsx_spread_child(&self) -> bool {
-        match self {
-            Self::JSXSpreadChild { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::JSXSpreadChild { .. })
     }
     #[inline]
     pub const fn is_jsx_element(&self) -> bool {
-        match self {
-            Self::JSXElement { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::JSXElement { .. })
     }
     #[inline]
     pub const fn is_jsx_fragment(&self) -> bool {
-        match self {
-            Self::JSXFragment { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::JSXFragment { .. })
     }
     #[inline]
     pub fn as_jsx_text(&self) -> Option<&JSXText<'a>> {
