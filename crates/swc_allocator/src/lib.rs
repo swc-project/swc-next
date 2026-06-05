@@ -1,5 +1,6 @@
-use bumpalo::Bump;
 use std::cell::Cell;
+
+use stumpalo::Arena;
 
 pub mod atom;
 pub mod boxed;
@@ -127,12 +128,14 @@ impl<'a, T> FromIn<'a, Option<T>> for Option<boxed::Box<'a, T>> {
 }
 
 pub struct Allocator {
-    arena: Bump,
+    arena: Arena,
 }
 
 impl Allocator {
     pub fn new() -> Self {
-        Self { arena: Bump::new() }
+        Self {
+            arena: Arena::new(),
+        }
     }
 
     pub fn reset(&mut self) {

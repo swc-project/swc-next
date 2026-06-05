@@ -9,8 +9,8 @@ repository.workspace  = true
 version               = "0.8.0"
 
 [dependencies]
-bumpalo  = { workspace = true }
 stacker  = { workspace = true }
+stumpalo = { workspace = true }
 swc_core = { workspace = true }
 
 swc_experimental_allocator     = { workspace = true }

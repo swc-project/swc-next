@@ -17,6 +17,7 @@
 
 use core::cmp;
 use core::mem;
+use core::mem::MaybeUninit;
 use core::ptr::{self, NonNull};
 use std::alloc::{Layout, handle_alloc_error};
 
@@ -105,10 +106,7 @@ impl<'a, T> RawVec<'a, T> {
         } else {
             let align = mem::align_of::<T>();
             let layout = Layout::from_size_align(alloc_size, align).unwrap();
-            let ptr = a
-                .arena
-                .try_alloc_layout(layout)
-                .unwrap_or_else(|_| handle_alloc_error(layout));
+            let ptr = alloc_layout_in(a, layout).unwrap_or_else(|_| handle_alloc_error(layout));
             if zeroed {
                 unsafe {
                     ptr::write_bytes(ptr.as_ptr(), 0, alloc_size);
@@ -522,11 +520,7 @@ impl<'a, T> RawVec<'a, T> {
                     debug_assert!(new_layout.align() == layout.align());
                     self.realloc_buffer(layout, new_layout.size())
                 }
-                None => self
-                    .a
-                    .arena
-                    .try_alloc_layout(new_layout)
-                    .map_err(|_| CollectionAllocErr::AllocErr),
+                None => alloc_layout_in(self.a, new_layout),
             };
 
             if let (Err(AllocErr), Infallible) = (&res, fallibility) {
@@ -547,11 +541,7 @@ impl<'a, T> RawVec<'a, T> {
     ) -> Result<NonNull<u8>, CollectionAllocErr> {
         let new_layout =
             Layout::from_size_align(new_size, old_layout.align()).map_err(|_| CapacityOverflow)?;
-        let new_ptr = self
-            .a
-            .arena
-            .try_alloc_layout(new_layout)
-            .map_err(|_| CollectionAllocErr::AllocErr)?;
+        let new_ptr = alloc_layout_in(self.a, new_layout)?;
         unsafe {
             ptr::copy_nonoverlapping(
                 self.ptr.cast::<u8>().as_ptr(),
@@ -612,9 +602,31 @@ fn capacity_overflow() -> ! {
     panic!("capacity overflow")
 }
 
+fn alloc_layout_in(
+    allocator: &Allocator,
+    layout: Layout,
+) -> Result<NonNull<u8>, CollectionAllocErr> {
+    let padding = layout.align() - 1;
+    let capacity = layout
+        .size()
+        .checked_add(padding)
+        .ok_or(CollectionAllocErr::CapacityOverflow)?;
+    let buffer = allocator
+        .arena
+        .alloc_slice_fill_with(capacity, |_| MaybeUninit::<u8>::uninit());
+    let ptr = buffer.as_mut_ptr().cast::<u8>();
+    let offset = ptr.align_offset(layout.align());
+    debug_assert!(offset <= padding);
+    Ok(unsafe { NonNull::new_unchecked(ptr.add(offset)) })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    #[repr(align(64))]
+    struct Align64(u8);
 
     #[test]
     fn reserve_does_not_overallocate() {
@@ -647,5 +659,23 @@ mod tests {
             // of 1.5 is OK too. Hence `>= 18` in assert.
             assert!(v.cap() >= 12 + 12 / 2);
         }
+    }
+
+    #[test]
+    fn raw_layout_allocation_respects_alignment() {
+        let allocator = Allocator::new();
+        let mut v: RawVec<Align64> = RawVec::with_capacity_in(1, &allocator);
+
+        assert_eq!(0, (v.ptr() as usize) % mem::align_of::<Align64>());
+
+        unsafe {
+            ptr::write(v.ptr(), Align64(7));
+        }
+
+        v.reserve_exact(1, 3);
+
+        assert_eq!(4, v.cap());
+        assert_eq!(0, (v.ptr() as usize) % mem::align_of::<Align64>());
+        assert_eq!(unsafe { *v.ptr() }, Align64(7));
     }
 }

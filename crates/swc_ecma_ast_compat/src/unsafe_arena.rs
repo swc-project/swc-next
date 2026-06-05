@@ -1,6 +1,6 @@
 use std::mem::ManuallyDrop;
 
-use bumpalo::Bump;
+use stumpalo::Arena;
 use swc_core::ecma::ast::{self as legacy};
 use swc_experimental_allocator::vec::Vec as AstVec;
 use swc_experimental_ecma_ast::{self as experimental};
@@ -16,12 +16,12 @@ use crate::compat_impl::CompatImpl;
 /// exposed through callback helpers to keep the safe API scoped to the owner.
 #[must_use]
 pub struct UnsafeConverted<T> {
-    allocator: Bump,
+    allocator: Arena,
     inner: ManuallyDrop<T>,
 }
 
 impl<T> UnsafeConverted<T> {
-    fn new(allocator: Bump, value: T) -> Self {
+    fn new(allocator: Arena, value: T) -> Self {
         Self {
             allocator,
             inner: ManuallyDrop::new(value),
@@ -49,7 +49,7 @@ impl<T> UnsafeConverted<T> {
     }
 
     /// Returns the bump allocator that owns all storage for the converted AST.
-    pub fn allocator(&self) -> &Bump {
+    pub fn allocator(&self) -> &Arena {
         &self.allocator
     }
 
@@ -76,7 +76,7 @@ pub struct UnsafeArenaAstCompat<'ast> {
 
 struct UnsafeArenaCompatSession<'ast, 'alloc> {
     semantic: &'ast Semantic,
-    allocator: &'alloc Bump,
+    allocator: &'alloc Arena,
 }
 
 impl<'ast> UnsafeArenaAstCompat<'ast> {
@@ -85,7 +85,7 @@ impl<'ast> UnsafeArenaAstCompat<'ast> {
     }
 
     pub fn compat_program(&self, root: experimental::Program) -> UnsafeConverted<legacy::Program> {
-        let allocator = Bump::new();
+        let allocator = Arena::new();
         let value = UnsafeArenaCompatSession {
             semantic: self.semantic,
             allocator: &allocator,
@@ -95,7 +95,7 @@ impl<'ast> UnsafeArenaAstCompat<'ast> {
     }
 
     pub fn compat_module(&self, module: experimental::Module) -> UnsafeConverted<legacy::Module> {
-        let allocator = Bump::new();
+        let allocator = Arena::new();
         let value = UnsafeArenaCompatSession {
             semantic: self.semantic,
             allocator: &allocator,
@@ -105,7 +105,7 @@ impl<'ast> UnsafeArenaAstCompat<'ast> {
     }
 
     pub fn compat_script(&self, script: experimental::Script) -> UnsafeConverted<legacy::Script> {
-        let allocator = Bump::new();
+        let allocator = Arena::new();
         let value = UnsafeArenaCompatSession {
             semantic: self.semantic,
             allocator: &allocator,
