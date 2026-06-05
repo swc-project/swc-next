@@ -2463,10 +2463,6 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 }
                 None => expr_or_spread.expr,
             };
-
-            if self.syntax().no_paren() {
-                return Ok(expr);
-            }
             Ok(self.ast.expr_paren_expr(self.span(expr_start), expr))
         } else {
             debug_assert!(expr_or_spreads.len() >= 2);
@@ -2490,9 +2486,6 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             // span of sequence expression should not include '(', ')'
             let seq_expr = self.ast.expr_seq_expr(Span::new(span_lo, span_hi), exprs);
 
-            if self.syntax().no_paren() {
-                return Ok(seq_expr);
-            }
             Ok(self.ast.expr_paren_expr(self.span(expr_start), seq_expr))
         }
     }
