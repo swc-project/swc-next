@@ -59,7 +59,7 @@ pub fn is_irregular_line_terminator(c: char) -> bool {
 }
 
 /// Returns true if it's done
-type ByteHandler = fn(&mut Lexer<'_>) -> bool;
+type ByteHandler = fn(&mut Lexer<'_, '_>) -> bool;
 
 /// Lookup table for whitespace
 #[rustfmt::skip]
@@ -147,7 +147,7 @@ const UNI: ByteHandler = |lexer| {
     }
 };
 
-impl<'a> Lexer<'a> {
+impl<'a> Lexer<'a, '_> {
     /// Skip comments or whitespaces.
     ///
     /// See https://tc39.github.io/ecma262/#sec-white-space

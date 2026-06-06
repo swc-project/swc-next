@@ -44,7 +44,7 @@ pub struct LexerCheckpoint<'a> {
     input_cur_pos: u32,
 }
 
-impl<'a> crate::input::Tokens<'a> for Lexer<'a> {
+impl<'a> crate::input::Tokens<'a> for Lexer<'a, '_> {
     type Checkpoint = LexerCheckpoint<'a>;
 
     fn checkpoint_save(&self) -> LexerCheckpoint<'a> {
@@ -364,7 +364,7 @@ impl<'a> crate::input::Tokens<'a> for Lexer<'a> {
     }
 }
 
-impl<'a> Lexer<'a> {
+impl<'a> Lexer<'a, '_> {
     #[inline]
     fn read_next_token(&mut self, start: &mut u32) -> Result<Token, Error> {
         if let Some(next_regexp) = self.state.next_regexp {

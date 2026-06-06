@@ -132,9 +132,9 @@ fn bigint_atom_from_digits<'a>(
     Some(Atom::new_in(&value.to_string(), allocator))
 }
 
-pub struct Lexer<'a> {
+pub struct Lexer<'a, 'cmt> {
     allocator: &'a Allocator,
-    comments: Option<&'a mut Comments<'a>>,
+    comments: Option<&'cmt mut Comments<'a>>,
     /// [Some] if comment comment parsing is enabled. Otherwise [None]
     comments_buffer: Option<CommentsBuffer<'a>>,
 
@@ -151,7 +151,7 @@ pub struct Lexer<'a> {
     module_errors: Vec<Error>,
 }
 
-impl<'a> Lexer<'a> {
+impl<'a, 'cmt> Lexer<'a, 'cmt> {
     #[inline(always)]
     fn input(&self) -> &StringSource<'a> {
         &self.input
@@ -198,13 +198,13 @@ impl<'a> Lexer<'a> {
     }
 }
 
-impl<'a> Lexer<'a> {
+impl<'a, 'cmt> Lexer<'a, 'cmt> {
     pub fn new(
         allocator: &'a Allocator,
         syntax: Syntax,
         target: EsVersion,
         input: StringSource<'a>,
-        comments: Option<&'a mut Comments<'a>>,
+        comments: Option<&'cmt mut Comments<'a>>,
     ) -> Self {
         let start_pos = input.cur_pos();
         let comments_buffer = comments.is_some().then(CommentsBuffer::new);
@@ -310,7 +310,7 @@ impl<'a> Lexer<'a> {
     }
 }
 
-impl<'a> Lexer<'a> {
+impl<'a> Lexer<'a, '_> {
     fn read_token_lt_gt<const C: u8>(&mut self) -> LexResult<Token> {
         let had_line_break_before_last = self.state.had_line_break;
         let start = self.cur_pos();
@@ -496,7 +496,7 @@ impl<'a> Lexer<'a> {
     }
 }
 
-impl<'a> Lexer<'a> {
+impl<'a> Lexer<'a, '_> {
     #[inline(always)]
     fn span(&self, start: u32) -> Span {
         let end = self.last_pos();

@@ -119,7 +119,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
     }
 }
 
-impl<'a> Parser<'a, Lexer<'a>> {
+impl<'a> Parser<'a, Lexer<'a, '_>> {
     pub fn new(
         allocator: &'a Allocator,
         syntax: Syntax,

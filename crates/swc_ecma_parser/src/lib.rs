@@ -48,13 +48,13 @@ pub use lexer::source::StringSource;
 pub use parser::*;
 pub use syntax::{EsSyntax, Syntax, SyntaxFlags, TsSyntax};
 
-pub fn with_file_parser<'a, T>(
+pub fn with_file_parser<'a, 'cmt, T>(
     allocator: &'a Allocator,
     src: &'a str,
     syntax: Syntax,
     target: EsVersion,
-    comments: Option<&'a mut Comments<'a>>,
-    op: impl FnOnce(&mut Parser<'a, self::Lexer<'a>>) -> T,
+    comments: Option<&'cmt mut Comments<'a>>,
+    op: impl FnOnce(&mut Parser<'a, self::Lexer<'a, 'cmt>>) -> T,
 ) -> T {
     let lexer = self::Lexer::new(allocator, syntax, target, StringSource::new(src), comments);
     let mut p = Parser::new_from(allocator, lexer);
@@ -85,23 +85,23 @@ macro_rules! expose {
 
 expose!(parse_file_as_expr, Expr<'a>, |p: &mut Parser<
     'a,
-    Lexer<'a>,
+    Lexer<'a, '_>,
 >| { p.parse_expr() });
 expose!(parse_file_as_module, Module<'a>, |p: &mut Parser<
     'a,
-    Lexer<'a>,
+    Lexer<'a, '_>,
 >| { p.parse_module() });
 expose!(parse_file_as_script, Script<'a>, |p: &mut Parser<
     'a,
-    Lexer<'a>,
+    Lexer<'a, '_>,
 >| { p.parse_script() });
 expose!(parse_file_as_commonjs, Script<'a>, |p: &mut Parser<
     'a,
-    Lexer<'a>,
+    Lexer<'a, '_>,
 >| {
     p.parse_commonjs()
 });
 expose!(parse_file_as_program, Program<'a>, |p: &mut Parser<
     'a,
-    Lexer<'a>,
+    Lexer<'a, '_>,
 >| { p.parse_program() });

@@ -325,37 +325,37 @@ impl<'a> Token {
     }
 
     #[inline(always)]
-    pub fn str(value: Wtf8Atom<'a>, lexer: &mut crate::Lexer<'a>) -> Self {
+    pub fn str(value: Wtf8Atom<'a>, lexer: &mut crate::Lexer<'a, '_>) -> Self {
         lexer.set_token_value(Some(TokenValue::Str(value)));
         Token::Str
     }
 
     #[inline(always)]
-    pub fn template(cooked: LexResult<Wtf8Atom<'a>>, lexer: &mut crate::Lexer<'a>) -> Self {
+    pub fn template(cooked: LexResult<Wtf8Atom<'a>>, lexer: &mut crate::Lexer<'a, '_>) -> Self {
         lexer.set_token_value(Some(TokenValue::Template(cooked)));
         Token::Template
     }
 
     #[inline(always)]
-    pub fn regexp(exp_end: u32, lexer: &mut crate::Lexer<'a>) -> Self {
+    pub fn regexp(exp_end: u32, lexer: &mut crate::Lexer<'a, '_>) -> Self {
         lexer.set_token_value(Some(TokenValue::Regex(exp_end)));
         Token::Regex
     }
 
     #[inline(always)]
-    pub fn num(value: f64, lexer: &mut crate::Lexer<'a>) -> Self {
+    pub fn num(value: f64, lexer: &mut crate::Lexer<'a, '_>) -> Self {
         lexer.set_token_value(Some(TokenValue::Num(value)));
         Self::Num
     }
 
     #[inline(always)]
-    pub fn bigint(value: Atom<'a>, lexer: &mut crate::Lexer<'a>) -> Self {
+    pub fn bigint(value: Atom<'a>, lexer: &mut crate::Lexer<'a, '_>) -> Self {
         lexer.set_token_value(Some(TokenValue::BigInt(value)));
         Self::BigInt
     }
 
     #[inline(always)]
-    pub fn unknown_ident(value: Atom<'a>, lexer: &mut crate::Lexer<'a>) -> Self {
+    pub fn unknown_ident(value: Atom<'a>, lexer: &mut crate::Lexer<'a, '_>) -> Self {
         lexer.set_token_value(Some(TokenValue::Word(value)));
         Token::Ident
     }
@@ -382,7 +382,7 @@ impl<'a> Token {
     }
 
     #[inline(always)]
-    pub fn shebang(value: Atom<'a>, lexer: &mut Lexer<'a>) -> Self {
+    pub fn shebang(value: Atom<'a>, lexer: &mut Lexer<'a, '_>) -> Self {
         lexer.set_token_value(Some(TokenValue::Word(value)));
         Token::Shebang
     }
