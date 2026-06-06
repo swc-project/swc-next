@@ -5,7 +5,7 @@ use quote::{ToTokens, format_ident, quote};
 use crate::{
     AST_CRATE_PATH,
     output::{RawOutput, RustOutput, output_path},
-    schema::{AstEnum, AstStruct, AstType, Schema, TypeId},
+    schema::{AstEnum, AstStruct, AstStructField, AstType, Schema, SpanKind, TypeId},
 };
 
 pub fn ast_property(schema: &Schema) -> RawOutput {
@@ -108,17 +108,9 @@ fn generate_span_for_struct(ast: &AstStruct, schema: &Schema) -> TokenStream {
     };
     let type_generics = impl_generics.clone();
 
-    let get_span = if struct_has_span(ast, schema) {
-        quote!(self.span)
-    } else {
-        quote!(DUMMY_SP)
-    };
-
-    let set_span = if struct_has_span(ast, schema) {
-        quote!(self.span = span;)
-    } else {
-        TokenStream::new()
-    };
+    let span_spec = struct_span_spec(ast, schema);
+    let get_span = generate_struct_get_span(&span_spec, schema);
+    let set_span = generate_struct_set_span(&span_spec, schema);
 
     quote! {
         impl #impl_generics GetSpan for #name #type_generics {
@@ -269,12 +261,176 @@ fn primitive_type_needs_lifetime(name: &str) -> bool {
     )
 }
 
-fn struct_has_span(ast: &AstStruct, schema: &Schema) -> bool {
-    ast.fields
-        .iter()
-        .any(|field| field.name == "span" && is_span_type(field.type_id, schema))
-}
-
 fn is_span_type(type_id: TypeId, schema: &Schema) -> bool {
     matches!(&schema.types[type_id], AstType::Primitive(ast) if ast.name == "Span")
+}
+
+enum StructSpanSpec<'a> {
+    Field(&'a AstStructField),
+    Range {
+        lo: &'a AstStructField,
+        hi: &'a AstStructField,
+    },
+    None,
+}
+
+fn struct_span_spec<'a>(ast: &'a AstStruct, schema: &Schema) -> StructSpanSpec<'a> {
+    let full_fields = ast
+        .fields
+        .iter()
+        .filter(|field| field.span_kind == Some(SpanKind::Full))
+        .collect::<Vec<_>>();
+    let lo_fields = ast
+        .fields
+        .iter()
+        .filter(|field| field.span_kind == Some(SpanKind::Lo))
+        .collect::<Vec<_>>();
+    let hi_fields = ast
+        .fields
+        .iter()
+        .filter(|field| field.span_kind == Some(SpanKind::Hi))
+        .collect::<Vec<_>>();
+
+    assert!(
+        full_fields.len() <= 1,
+        "{} has multiple #[span] fields",
+        ast.name
+    );
+    assert!(
+        lo_fields.len() <= 1,
+        "{} has multiple #[span(lo)] fields",
+        ast.name
+    );
+    assert!(
+        hi_fields.len() <= 1,
+        "{} has multiple #[span(hi)] fields",
+        ast.name
+    );
+    assert!(
+        full_fields.is_empty() || (lo_fields.is_empty() && hi_fields.is_empty()),
+        "{} mixes #[span] with #[span(lo)] / #[span(hi)]",
+        ast.name
+    );
+
+    if let Some(field) = full_fields.first() {
+        return StructSpanSpec::Field(field);
+    }
+
+    if !lo_fields.is_empty() || !hi_fields.is_empty() {
+        assert!(
+            !lo_fields.is_empty() && !hi_fields.is_empty(),
+            "{} must have both #[span(lo)] and #[span(hi)]",
+            ast.name
+        );
+        return StructSpanSpec::Range {
+            lo: lo_fields[0],
+            hi: hi_fields[0],
+        };
+    }
+
+    ast.fields
+        .iter()
+        .find(|field| field.name == "span" && is_span_type(field.type_id, schema))
+        .map_or(StructSpanSpec::None, StructSpanSpec::Field)
+}
+
+fn generate_struct_get_span(span_spec: &StructSpanSpec<'_>, schema: &Schema) -> TokenStream {
+    match span_spec {
+        StructSpanSpec::Field(field) => field_span_expr(field, schema),
+        StructSpanSpec::Range { lo, hi } => {
+            let lo_expr = field_span_endpoint_expr(lo, SpanKind::Lo, schema);
+            let hi_expr = field_span_endpoint_expr(hi, SpanKind::Hi, schema);
+            quote!(Span::new(#lo_expr, #hi_expr))
+        }
+        StructSpanSpec::None => quote!(DUMMY_SP),
+    }
+}
+
+fn generate_struct_set_span(span_spec: &StructSpanSpec<'_>, schema: &Schema) -> TokenStream {
+    match span_spec {
+        StructSpanSpec::Field(field) => field_set_span_stmt(field, schema),
+        StructSpanSpec::Range { lo, hi } => {
+            let lo_stmt = field_set_span_endpoint_stmt(lo, SpanKind::Lo, schema);
+            let hi_stmt = field_set_span_endpoint_stmt(hi, SpanKind::Hi, schema);
+            quote! {
+                #lo_stmt
+                #hi_stmt
+            }
+        }
+        StructSpanSpec::None => TokenStream::new(),
+    }
+}
+
+fn field_span_expr(field: &AstStructField, schema: &Schema) -> TokenStream {
+    let field_name = format_ident!("{}", field.name);
+    if is_span_type(field.type_id, schema) {
+        quote!(self.#field_name)
+    } else {
+        quote!(self.#field_name.span())
+    }
+}
+
+fn field_set_span_stmt(field: &AstStructField, schema: &Schema) -> TokenStream {
+    let field_name = format_ident!("{}", field.name);
+    if is_span_type(field.type_id, schema) {
+        quote!(self.#field_name = span;)
+    } else {
+        quote!(self.#field_name.set_span(span);)
+    }
+}
+
+fn field_span_endpoint_expr(
+    field: &AstStructField,
+    span_kind: SpanKind,
+    schema: &Schema,
+) -> TokenStream {
+    let field_name = format_ident!("{}", field.name);
+    match span_kind {
+        SpanKind::Lo => {
+            if is_span_type(field.type_id, schema) {
+                quote!(self.#field_name.start)
+            } else {
+                quote!(self.#field_name.span_lo())
+            }
+        }
+        SpanKind::Hi => {
+            if is_span_type(field.type_id, schema) {
+                quote!(self.#field_name.end)
+            } else {
+                quote!(self.#field_name.span_hi())
+            }
+        }
+        SpanKind::Full => unreachable!("full span is not an endpoint"),
+    }
+}
+
+fn field_set_span_endpoint_stmt(
+    field: &AstStructField,
+    span_kind: SpanKind,
+    schema: &Schema,
+) -> TokenStream {
+    let field_name = format_ident!("{}", field.name);
+    match span_kind {
+        SpanKind::Lo => {
+            if is_span_type(field.type_id, schema) {
+                quote!(self.#field_name.start = span.start;)
+            } else {
+                quote! {
+                    let current = self.#field_name.span();
+                    self.#field_name.set_span(Span::new(span.start, current.end));
+                }
+            }
+        }
+        SpanKind::Hi => {
+            if is_span_type(field.type_id, schema) {
+                quote!(self.#field_name.end = span.end;)
+            } else {
+                quote! {
+                    let current = self.#field_name.span();
+                    self.#field_name.set_span(Span::new(current.start, span.end));
+                }
+            }
+        }
+        SpanKind::Full => unreachable!("full span is not an endpoint"),
+    }
 }

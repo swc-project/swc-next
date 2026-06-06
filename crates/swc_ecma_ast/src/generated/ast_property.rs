@@ -570,12 +570,14 @@ impl<'a> SetSpan for ModuleExportName<'a> {
 impl<'a> GetSpan for ExportDefaultSpecifier<'a> {
     #[inline]
     fn span(&self) -> Span {
-        DUMMY_SP
+        self.exported.span()
     }
 }
 impl<'a> SetSpan for ExportDefaultSpecifier<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {}
+    fn set_span(&mut self, span: Span) {
+        self.exported.set_span(span);
+    }
 }
 impl<'a> GetSpan for ExportNamedSpecifier<'a> {
     #[inline]
@@ -1548,22 +1550,26 @@ impl<'a> SetSpan for Decl<'a> {
 impl<'a> GetSpan for FnDecl<'a> {
     #[inline]
     fn span(&self) -> Span {
-        DUMMY_SP
+        self.function.span()
     }
 }
 impl<'a> SetSpan for FnDecl<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {}
+    fn set_span(&mut self, span: Span) {
+        self.function.set_span(span);
+    }
 }
 impl<'a> GetSpan for ClassDecl<'a> {
     #[inline]
     fn span(&self) -> Span {
-        DUMMY_SP
+        self.class.span()
     }
 }
 impl<'a> SetSpan for ClassDecl<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {}
+    fn set_span(&mut self, span: Span) {
+        self.class.set_span(span);
+    }
 }
 impl<'a> GetSpan for VarDecl<'a> {
     #[inline]
@@ -2352,12 +2358,16 @@ impl<'a> SetSpan for PropOrSpread<'a> {
 impl<'a> GetSpan for SpreadElement<'a> {
     #[inline]
     fn span(&self) -> Span {
-        DUMMY_SP
+        Span::new(self.dot3_token.start, self.expr.span_hi())
     }
 }
 impl<'a> SetSpan for SpreadElement<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {}
+    fn set_span(&mut self, span: Span) {
+        self.dot3_token.start = span.start;
+        let current = self.expr.span();
+        self.expr.set_span(Span::new(current.start, span.end));
+    }
 }
 impl<'a> GetSpan for UnaryExpr<'a> {
     #[inline]
@@ -2398,22 +2408,26 @@ impl<'a> SetSpan for BinExpr<'a> {
 impl<'a> GetSpan for FnExpr<'a> {
     #[inline]
     fn span(&self) -> Span {
-        DUMMY_SP
+        self.function.span()
     }
 }
 impl<'a> SetSpan for FnExpr<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {}
+    fn set_span(&mut self, span: Span) {
+        self.function.set_span(span);
+    }
 }
 impl<'a> GetSpan for ClassExpr<'a> {
     #[inline]
     fn span(&self) -> Span {
-        DUMMY_SP
+        self.class.span()
     }
 }
 impl<'a> SetSpan for ClassExpr<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {}
+    fn set_span(&mut self, span: Span) {
+        self.class.set_span(span);
+    }
 }
 impl<'a> GetSpan for AssignExpr<'a> {
     #[inline]
@@ -3790,12 +3804,17 @@ impl<'a> SetSpan for Prop<'a> {
 impl<'a> GetSpan for KeyValueProp<'a> {
     #[inline]
     fn span(&self) -> Span {
-        DUMMY_SP
+        Span::new(self.key.span_lo(), self.value.span_hi())
     }
 }
 impl<'a> SetSpan for KeyValueProp<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {}
+    fn set_span(&mut self, span: Span) {
+        let current = self.key.span();
+        self.key.set_span(Span::new(span.start, current.end));
+        let current = self.value.span();
+        self.value.set_span(Span::new(current.start, span.end));
+    }
 }
 impl<'a> GetSpan for AssignProp<'a> {
     #[inline]
@@ -3836,12 +3855,14 @@ impl<'a> SetSpan for SetterProp<'a> {
 impl<'a> GetSpan for MethodProp<'a> {
     #[inline]
     fn span(&self) -> Span {
-        DUMMY_SP
+        self.function.span()
     }
 }
 impl<'a> SetSpan for MethodProp<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {}
+    fn set_span(&mut self, span: Span) {
+        self.function.set_span(span);
+    }
 }
 impl<'a> PropName<'a> {
     #[inline]
@@ -4254,12 +4275,17 @@ impl<'a> SetSpan for ObjectPatProp<'a> {
 impl<'a> GetSpan for KeyValuePatProp<'a> {
     #[inline]
     fn span(&self) -> Span {
-        DUMMY_SP
+        Span::new(self.key.span_lo(), self.value.span_hi())
     }
 }
 impl<'a> SetSpan for KeyValuePatProp<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {}
+    fn set_span(&mut self, span: Span) {
+        let current = self.key.span();
+        self.key.set_span(Span::new(span.start, current.end));
+        let current = self.value.span();
+        self.value.set_span(Span::new(current.start, span.end));
+    }
 }
 impl<'a> GetSpan for AssignPatProp<'a> {
     #[inline]

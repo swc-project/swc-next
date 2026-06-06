@@ -65,7 +65,9 @@ pub enum ObjectPatProp<'a> {
 #[ast]
 #[derive(Debug)]
 pub struct KeyValuePatProp<'a> {
+    #[span(lo)]
     pub key: PropName<'a>,
+    #[span(hi)]
     pub value: Pat<'a>,
 }
 #[ast]

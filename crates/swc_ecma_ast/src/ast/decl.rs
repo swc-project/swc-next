@@ -23,6 +23,7 @@ pub enum Decl<'a> {
 pub struct FnDecl<'a> {
     pub ident: Box<'a, Ident<'a>>,
     pub declare: bool,
+    #[span]
     pub function: Box<'a, Function<'a>>,
 }
 
@@ -31,6 +32,7 @@ pub struct FnDecl<'a> {
 pub struct ClassDecl<'a> {
     pub ident: Box<'a, Ident<'a>>,
     pub declare: bool,
+    #[span]
     pub class: Box<'a, Class<'a>>,
 }
 

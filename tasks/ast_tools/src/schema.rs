@@ -46,6 +46,14 @@ pub struct AstStruct {
 pub struct AstStructField {
     pub type_id: TypeId,
     pub name: String,
+    pub span_kind: Option<SpanKind>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpanKind {
+    Full,
+    Lo,
+    Hi,
 }
 
 #[derive(Debug)]

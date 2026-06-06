@@ -4,13 +4,13 @@ use indexmap::IndexSet;
 use oxc_index::IndexVec;
 use quote::ToTokens;
 use syn::{
-    Attribute, Field, GenericArgument, Item, ItemEnum, ItemStruct, Meta, PathArguments, Type,
-    Variant,
+    Attribute, Field, GenericArgument, Ident, Item, ItemEnum, ItemStruct, Meta, PathArguments,
+    Type, Variant,
 };
 
 use crate::schema::{
     AstBox, AstEnum, AstEnumVariant, AstOption, AstPrimitive, AstStruct, AstStructField, AstType,
-    AstVec, Schema, TypeId,
+    AstVec, Schema, SpanKind, TypeId,
 };
 
 struct Parser {
@@ -198,10 +198,15 @@ impl Parser {
 
     fn parse_struct_field(&mut self, field: Field) -> AstStructField {
         let name = field.ident.unwrap().to_string();
+        let span_kind = parse_span_attr(&field.attrs);
         let type_id = self
             .parse_type_name(&field.ty)
             .unwrap_or_else(|| panic!("Cannot parse type {}", field.ty.to_token_stream()));
-        AstStructField { type_id, name }
+        AstStructField {
+            type_id,
+            name,
+            span_kind,
+        }
     }
 
     fn parse_enum(&mut self, type_id: TypeId, item: ItemEnum) -> AstType {
@@ -357,4 +362,23 @@ impl Parser {
         };
         Some(type_id)
     }
+}
+
+fn parse_span_attr(attrs: &[Attribute]) -> Option<SpanKind> {
+    attrs.iter().find_map(|attr| {
+        if !attr.path().is_ident("span") {
+            return None;
+        }
+
+        match &attr.meta {
+            Meta::Path(_) => Some(SpanKind::Full),
+            Meta::List(_) => match attr.parse_args::<Ident>() {
+                Ok(ident) if ident == "lo" => Some(SpanKind::Lo),
+                Ok(ident) if ident == "hi" => Some(SpanKind::Hi),
+                Ok(ident) => panic!("Unknown span attribute argument {ident}"),
+                Err(err) => panic!("Cannot parse span attribute: {err}"),
+            },
+            _ => panic!("Unsupported span attribute"),
+        }
+    })
 }

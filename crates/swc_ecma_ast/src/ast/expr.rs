@@ -79,7 +79,9 @@ pub enum PropOrSpread<'a> {
 #[ast]
 #[derive(Debug)]
 pub struct SpreadElement<'a> {
+    #[span(lo)]
     pub dot3_token: Span,
+    #[span(hi)]
     pub expr: Expr<'a>,
 }
 
@@ -112,6 +114,7 @@ pub struct BinExpr<'a> {
 #[derive(Debug)]
 pub struct FnExpr<'a> {
     pub ident: Option<Box<'a, Ident<'a>>>,
+    #[span]
     pub function: Box<'a, Function<'a>>,
 }
 
@@ -119,6 +122,7 @@ pub struct FnExpr<'a> {
 #[derive(Debug)]
 pub struct ClassExpr<'a> {
     pub ident: Option<Box<'a, Ident<'a>>>,
+    #[span]
     pub class: Box<'a, Class<'a>>,
 }
 

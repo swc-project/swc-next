@@ -18,7 +18,9 @@ pub enum Prop<'a> {
 #[ast]
 #[derive(Debug)]
 pub struct KeyValueProp<'a> {
+    #[span(lo)]
     pub key: PropName<'a>,
+    #[span(hi)]
     pub value: Expr<'a>,
 }
 
@@ -51,6 +53,7 @@ pub struct SetterProp<'a> {
 #[derive(Debug)]
 pub struct MethodProp<'a> {
     pub key: PropName<'a>,
+    #[span]
     pub function: Box<'a, Function<'a>>,
 }
 

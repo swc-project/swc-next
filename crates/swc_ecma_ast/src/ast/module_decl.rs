@@ -112,6 +112,7 @@ pub enum ModuleExportName<'a> {
 #[ast]
 #[derive(Debug)]
 pub struct ExportDefaultSpecifier<'a> {
+    #[span]
     pub exported: Box<'a, Ident<'a>>,
 }
 
