@@ -2,20 +2,18 @@ use std::{hash::BuildHasherDefault, ops::RangeFull};
 
 use indexmap::IndexMap;
 use rustc_hash::FxHasher;
+use swc_experimental_allocator::Allocator;
 use swc_experimental_ecma_ast::{
     AstBuilder, Comments, Expr, GetSpan, SimpleAssignTarget, Span, VisitMut, VisitMutWith,
 };
 
-pub fn remove_paren<'ast, N>(
-    mut root: N,
-    ast: AstBuilder<'ast>,
+pub fn remove_paren<'ast, N: VisitMutWith<'ast, ParenRemover<'ast>>>(
+    root: &mut N,
+    allocator: &'ast Allocator,
     comments: Option<&mut Comments>,
-) -> N
-where
-    N: VisitMutWith<'ast, ParenRemover<'ast>>,
-{
+) {
     let mut visitor = ParenRemover {
-        ast,
+        ast: AstBuilder { allocator },
         span_map: Default::default(),
     };
     root.visit_mut_with(&mut visitor);
@@ -25,7 +23,6 @@ where
             c.move_trailing(from.end, to.end);
         }
     }
-    root
 }
 
 pub struct ParenRemover<'a> {

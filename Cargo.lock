@@ -2194,6 +2194,7 @@ version = "0.8.0"
 dependencies = [
  "indexmap",
  "rustc-hash",
+ "swc_experimental_allocator",
  "swc_experimental_ecma_ast",
 ]
 

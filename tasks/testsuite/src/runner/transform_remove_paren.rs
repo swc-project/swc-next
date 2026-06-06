@@ -1,7 +1,7 @@
 use colored::Colorize;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use swc_experimental_allocator::Allocator;
-use swc_experimental_ecma_ast::{AstBuilder, ParenExpr, Visit};
+use swc_experimental_ecma_ast::{ParenExpr, Visit};
 use swc_experimental_ecma_transforms_base::remove_paren;
 
 use crate::{
@@ -33,18 +33,12 @@ impl RemoveParenRunner {
             }
 
             let allocator = Allocator::new();
-            let root = match parse(&allocator, case) {
+            let mut root = match parse(&allocator, case) {
                 ParseResult::Succ(ret) => ret,
                 _ => return None,
             };
 
-            let root = remove_paren::remove_paren(
-                root,
-                AstBuilder {
-                    allocator: &allocator,
-                },
-                None,
-            );
+            remove_paren::remove_paren(&mut root, &allocator, None);
             let mut collector = ParenCollector { count: 0 };
             collector.visit_program(&root);
             if collector.count > 0 {
