@@ -2,9 +2,9 @@ use rustc_hash::FxHashSet;
 use swc_core::atoms::Atom as LegacyAtom;
 use swc_experimental_allocator::{Allocator, atom::Atom};
 use swc_experimental_ecma_ast::{
-    AstBuilder, BreakStmt, ClassMember, ContinueStmt, DebuggerStmt, ExportAll, ExportDefaultExpr,
-    ExprStmt, GetSpan, ImportDecl, NamedExport, Program, ReturnStmt, Span, ThrowStmt, UpdateExpr,
-    VarDecl, Visit, VisitWith, YieldExpr,
+    BreakStmt, ClassMember, ContinueStmt, DebuggerStmt, ExportAll, ExportDefaultExpr, ExprStmt,
+    GetSpan, ImportDecl, NamedExport, Program, ReturnStmt, Span, ThrowStmt, UpdateExpr, VarDecl,
+    Visit, VisitWith, YieldExpr,
 };
 use swc_experimental_ecma_ast_compat::{AstCompat, UnsafeArenaAstCompat};
 use swc_experimental_ecma_parser::{
@@ -22,8 +22,8 @@ pub enum CompatMode {
 
 pub fn run(src: &'static str, compat: Option<CompatMode>) {
     let allocator = Allocator::new();
-    let (program, tokens) = run_parse(&allocator, src);
-    let program = run_remove_paren(program, &allocator);
+    let (mut program, tokens) = run_parse(&allocator, src);
+    run_remove_paren(&mut program, &allocator);
     let semantic = run_resolver(&program);
     let _semi = run_collect_semiconlons(&program, &tokens);
     match compat {
@@ -55,8 +55,8 @@ fn run_parse<'a>(allocator: &'a Allocator, src: &'a str) -> (Program<'a>, Vec<To
 }
 
 #[inline(never)]
-fn run_remove_paren<'a>(root: Program<'a>, allocator: &'a Allocator) -> Program<'a> {
-    remove_paren(root, AstBuilder { allocator }, None)
+fn run_remove_paren<'a>(root: &mut Program<'a>, allocator: &'a Allocator) {
+    remove_paren(root, allocator, None)
 }
 
 #[inline(never)]

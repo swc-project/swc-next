@@ -3,7 +3,6 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use swc_experimental_allocator::Allocator;
-use swc_experimental_ecma_ast::AstBuilder;
 use swc_experimental_ecma_parser::{Parser, StringSource};
 use swc_experimental_ecma_transforms_base::remove_paren::remove_paren;
 
@@ -24,14 +23,8 @@ fn bench_transform(c: &mut Criterion) {
                     );
                     parser.parse_module().unwrap()
                 },
-                |module| {
-                    remove_paren(
-                        module,
-                        AstBuilder {
-                            allocator: &allocator,
-                        },
-                        None,
-                    );
+                |mut module| {
+                    remove_paren(&mut module, &allocator, None);
                 },
                 BatchSize::PerIteration,
             );
