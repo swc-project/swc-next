@@ -21,6 +21,7 @@ pub use semantic::{ScopeId, SymbolId};
 pub use span::{DUMMY_SP, GetSpan, SetSpan, Span};
 use swc_experimental_allocator::Allocator;
 
+#[cfg(target_pointer_width = "64")]
 const _: () = {
     use std::mem::size_of;
 
