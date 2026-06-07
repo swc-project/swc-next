@@ -3,6 +3,7 @@ use std::cell::Cell;
 use crate::Allocator;
 use crate::Span;
 use crate::semantic::SymbolId;
+use crate::span::{GetSpan, SetSpan};
 use swc_experimental_allocator::atom::Atom;
 use swc_experimental_allocator::boxed::Box;
 use swc_experimental_ast_macros::ast;
@@ -30,11 +31,25 @@ pub struct PrivateName<'a> {
     pub name: Atom<'a>,
 }
 
-#[ast]
+#[ast(skip_span)]
 #[derive(Debug)]
 pub struct BindingIdent<'a> {
     pub id: Box<'a, Ident<'a>>,
     // pub type_ann: Option<Box<TsTypeAnn>>,
+}
+
+impl GetSpan for BindingIdent<'_> {
+    #[inline]
+    fn span(&self) -> Span {
+        self.id.span()
+    }
+}
+
+impl SetSpan for BindingIdent<'_> {
+    #[inline]
+    fn set_span(&mut self, span: Span) {
+        self.id.set_span(span);
+    }
 }
 
 impl<'a> Ident<'a> {

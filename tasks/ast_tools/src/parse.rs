@@ -5,7 +5,7 @@ use oxc_index::IndexVec;
 use quote::ToTokens;
 use syn::{
     Attribute, Field, GenericArgument, Ident, Item, ItemEnum, ItemStruct, Meta, PathArguments,
-    Type, Variant,
+    Token, Type, Variant, punctuated::Punctuated,
 };
 
 use crate::schema::{
@@ -184,6 +184,7 @@ fn has_ast_attr(attrs: &[Attribute]) -> bool {
 impl Parser {
     fn parse_struct(&mut self, type_id: TypeId, item: ItemStruct) -> AstType {
         let name = item.ident.to_string();
+        let skip_span = has_ast_option(&item.attrs, "skip_span");
         let fields = item
             .fields
             .into_iter()
@@ -192,6 +193,7 @@ impl Parser {
         AstType::Struct(AstStruct {
             type_id,
             name,
+            skip_span,
             fields,
         })
     }
@@ -211,6 +213,7 @@ impl Parser {
 
     fn parse_enum(&mut self, type_id: TypeId, item: ItemEnum) -> AstType {
         let name = item.ident.to_string();
+        let skip_span = has_ast_option(&item.attrs, "skip_span");
         let variants = item
             .variants
             .into_iter()
@@ -219,6 +222,7 @@ impl Parser {
         AstType::Enum(AstEnum {
             type_id,
             name,
+            skip_span,
             variants,
         })
     }
@@ -380,5 +384,22 @@ fn parse_span_attr(attrs: &[Attribute]) -> Option<SpanKind> {
             },
             _ => panic!("Unsupported span attribute"),
         }
+    })
+}
+
+fn has_ast_option(attrs: &[Attribute], option: &str) -> bool {
+    attrs.iter().any(|attr| {
+        if !attr.path().is_ident("ast") {
+            return false;
+        }
+
+        let Meta::List(_) = &attr.meta else {
+            return false;
+        };
+
+        let options = attr
+            .parse_args_with(Punctuated::<Ident, Token![,]>::parse_terminated)
+            .unwrap_or_else(|err| panic!("Cannot parse ast attribute: {err}"));
+        options.iter().any(|ident| ident == option)
     })
 }

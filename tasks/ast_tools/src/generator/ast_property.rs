@@ -13,11 +13,15 @@ pub fn ast_property(schema: &Schema) -> RawOutput {
     for ty in schema.types.iter() {
         match ty {
             AstType::Struct(ast_struct) => {
-                impls.extend(generate_span_for_struct(ast_struct, schema));
+                if !ast_struct.skip_span {
+                    impls.extend(generate_span_for_struct(ast_struct, schema));
+                }
             }
             AstType::Enum(ast_enum) => {
                 impls.extend(generate_property_for_enum(ast_enum, schema));
-                impls.extend(generate_span_for_enum(ast_enum, schema));
+                if !ast_enum.skip_span {
+                    impls.extend(generate_span_for_enum(ast_enum, schema));
+                }
             }
             _ => {}
         }

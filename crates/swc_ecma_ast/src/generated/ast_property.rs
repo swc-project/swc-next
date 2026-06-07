@@ -2841,16 +2841,6 @@ impl SetSpan for Import {
         self.span = span;
     }
 }
-impl<'a> GetSpan for ExprOrSpread<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        DUMMY_SP
-    }
-}
-impl<'a> SetSpan for ExprOrSpread<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {}
-}
 impl<'a> BlockStmtOrExpr<'a> {
     #[inline]
     pub const fn is_block_stmt(&self) -> bool {
@@ -4334,16 +4324,6 @@ impl<'a> SetSpan for PrivateName<'a> {
     fn set_span(&mut self, span: Span) {
         self.span = span;
     }
-}
-impl<'a> GetSpan for BindingIdent<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        DUMMY_SP
-    }
-}
-impl<'a> SetSpan for BindingIdent<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {}
 }
 impl<'a> Lit<'a> {
     #[inline]

@@ -4,7 +4,11 @@ use swc_experimental_allocator::boxed::Box;
 use swc_experimental_allocator::vec::Vec;
 use swc_experimental_ast_macros::ast;
 
-use crate::{Span, ast::*};
+use crate::{
+    Span,
+    ast::*,
+    span::{GetSpan, SetSpan},
+};
 
 #[ast]
 #[derive(Debug)]
@@ -305,11 +309,35 @@ pub struct Import {
     pub phase: ImportPhase,
 }
 
-#[ast]
+#[ast(skip_span)]
 #[derive(Debug)]
 pub struct ExprOrSpread<'a> {
     pub spread: Option<Span>,
     pub expr: Expr<'a>,
+}
+
+impl GetSpan for ExprOrSpread<'_> {
+    #[inline]
+    fn span(&self) -> Span {
+        let expr_span = self.expr.span();
+        match self.spread {
+            Some(spread) => Span::new(spread.start, expr_span.end),
+            None => expr_span,
+        }
+    }
+}
+
+impl SetSpan for ExprOrSpread<'_> {
+    #[inline]
+    fn set_span(&mut self, span: Span) {
+        if let Some(spread) = &mut self.spread {
+            spread.start = span.start;
+            let expr_span = self.expr.span();
+            self.expr.set_span(Span::new(expr_span.start, span.end));
+        } else {
+            self.expr.set_span(span);
+        }
+    }
 }
 
 #[ast]

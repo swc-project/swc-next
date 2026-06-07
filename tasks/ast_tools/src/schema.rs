@@ -39,6 +39,7 @@ impl AstType {
 pub struct AstStruct {
     pub type_id: TypeId,
     pub name: String,
+    pub skip_span: bool,
     pub fields: Vec<AstStructField>,
 }
 
@@ -60,6 +61,7 @@ pub enum SpanKind {
 pub struct AstEnum {
     pub type_id: TypeId,
     pub name: String,
+    pub skip_span: bool,
     pub variants: Vec<AstEnumVariant>,
 }
 
