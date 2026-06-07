@@ -268,3 +268,17 @@ impl PartialEq<&Wtf8> for Wtf8Atom<'_> {
         self.as_wtf8() == *other
     }
 }
+
+impl PartialEq<str> for Wtf8Atom<'_> {
+    #[inline]
+    fn eq(&self, other: &str) -> bool {
+        self.as_wtf8().as_str() == Some(other)
+    }
+}
+
+impl PartialEq<&str> for Wtf8Atom<'_> {
+    #[inline]
+    fn eq(&self, other: &&str) -> bool {
+        self.as_wtf8().as_str() == Some(*other)
+    }
+}
