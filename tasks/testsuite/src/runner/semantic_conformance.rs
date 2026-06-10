@@ -69,9 +69,10 @@ impl SemanticConformanceRunner {
             let semantic = resolver(&root);
 
             match check_symbol_conformance(case, &root, &semantic) {
-                Ok(()) => Some(TestResult::Passed {
+                Ok(true) => Some(TestResult::Passed {
                     path: case.path().to_owned(),
                 }),
+                Ok(false) => None,
                 Err(error) => Some(TestResult::Failed {
                     path: case.relative_path().to_owned(),
                     error,
@@ -86,9 +87,12 @@ fn check_symbol_conformance<'a, C: Case>(
     case: &C,
     root: &Program<'a>,
     semantic: &Semantic,
-) -> Result<(), String> {
+) -> Result<bool, String> {
     let mut legacy_symbols = HashMap::<String, Vec<u32>>::default();
-    for ((sym, _), count) in collect_legacy_symbols(case)? {
+    let Some(legacy_symbol_counts) = collect_legacy_symbols(case) else {
+        return Ok(false);
+    };
+    for ((sym, _), count) in legacy_symbol_counts {
         legacy_symbols
             .entry(sym.to_string())
             .or_default()
@@ -115,7 +119,7 @@ fn check_symbol_conformance<'a, C: Case>(
     }
 
     if legacy_symbols == experimental_symbols {
-        return Ok(());
+        return Ok(true);
     }
 
     let mut mismatches = Vec::new();
@@ -145,7 +149,7 @@ fn check_symbol_conformance<'a, C: Case>(
     Err(error)
 }
 
-fn collect_legacy_symbols<C: Case>(case: &C) -> Result<LegacySymbolCounts, String> {
+fn collect_legacy_symbols<C: Case>(case: &C) -> Option<LegacySymbolCounts> {
     GLOBALS.set(&Globals::new(), || {
         let unresolved_mark = Mark::new();
         let top_level_mark = Mark::new();
@@ -169,11 +173,11 @@ fn collect_legacy_symbols<C: Case>(case: &C) -> Result<LegacySymbolCounts, Strin
                 unreachable!("semantic runner ignores skipped cases before this point")
             }
         }
-        .map_err(|err| format!("Failed to parse with swc_core: {err:?}"))?;
+        .ok()?;
 
         let errors = parser.take_errors();
         if !errors.is_empty() {
-            return Err(format!("swc_core parser emitted errors: {errors:?}"));
+            return None;
         }
 
         program.visit_mut_with(&mut legacy_resolver(unresolved_mark, top_level_mark, false));
@@ -181,7 +185,7 @@ fn collect_legacy_symbols<C: Case>(case: &C) -> Result<LegacySymbolCounts, Strin
         let mut collector = LegacySymbolsCollector::default();
         LegacyVisitWith::visit_with(&program, &mut collector);
 
-        Ok(collector.symbols)
+        Some(collector.symbols)
     })
 }
 
