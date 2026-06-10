@@ -960,14 +960,16 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     // }
 
     fn visit_ident(&mut self, i: &Ident<'ast>) {
-        let symbol_id = self.symbol_id_for(i);
-        if self.symbol_scopes[symbol_id].is_some() {
-            return;
-        }
-
         match self.ident_type {
-            IdentType::Binding => self.modify(i, self.decl_kind),
+            IdentType::Binding => {
+                self.modify(i, self.decl_kind);
+            }
             IdentType::Ref => {
+                let symbol_id = self.symbol_id_for(i);
+                if self.symbol_scopes[symbol_id].is_some() {
+                    return;
+                }
+
                 // if cfg!(debug_assertions) && LOG {
                 //     debug!("IdentRef (type = {}) {}{:?}", self.in_type, sym, ctxt);
                 // }
