@@ -79,7 +79,6 @@ impl<'a> Visit<'a> for SemanticIdsCollector {
     fn visit_export_specifier(&mut self, node: &ExportSpecifier<'a>) {
         if let ExportSpecifier::Default(export_default_specifier) = node {
             export_default_specifier.visit_with(self);
-            return;
         }
     }
 
