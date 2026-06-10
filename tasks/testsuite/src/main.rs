@@ -12,7 +12,8 @@ use crate::{
         test262_parser::{self},
     },
     runner::{
-        parser::ParserRunner, semantic::SemanticRunner, transform_remove_paren::RemoveParenRunner,
+        parser::ParserRunner, semantic::SemanticRunner,
+        semantic_conformance::SemanticConformanceRunner, transform_remove_paren::RemoveParenRunner,
     },
     suite::TestResult,
     util::crate_root,
@@ -33,6 +34,7 @@ pub struct AppArgs {
 
 const PARSER_RUNNER: &str = "parser";
 const SEMANTIC_RUNNER: &str = "semantic";
+const SEMANTIC_CONFORMANCE_RUNNER: &str = "semantic_conformance";
 const REMOVE_PAREN_RUNNER: &str = "remove_paren";
 
 pub fn main() {
@@ -82,6 +84,11 @@ fn test_normal(args: &AppArgs) {
     if args.runners.is_empty() || args.runners.contains(SEMANTIC_RUNNER) {
         results.extend(SemanticRunner::run(args, &misc_cases));
         results.extend(SemanticRunner::run(args, &test262_parser_cases));
+    }
+
+    if args.runners.contains(SEMANTIC_CONFORMANCE_RUNNER) {
+        results.extend(SemanticConformanceRunner::run(args, &misc_cases));
+        results.extend(SemanticConformanceRunner::run(args, &test262_parser_cases));
     }
 
     if args.runners.is_empty() || args.runners.contains(REMOVE_PAREN_RUNNER) {
@@ -204,6 +211,15 @@ fn test_test262_snapshots(args: &AppArgs) {
         let results = SemanticRunner::run(args, &cases);
         fs::write(
             snapshot_dir.join("semantic_test262.snap"),
+            to_snapshot(&results),
+        )
+        .unwrap();
+    }
+
+    if args.runners.contains(SEMANTIC_CONFORMANCE_RUNNER) {
+        let results = SemanticConformanceRunner::run(args, &cases);
+        fs::write(
+            snapshot_dir.join("semantic_conformance_test262.snap"),
             to_snapshot(&results),
         )
         .unwrap();
