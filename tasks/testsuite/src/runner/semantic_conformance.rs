@@ -20,7 +20,8 @@ use swc_core::{
 use swc_experimental_allocator::Allocator;
 use swc_experimental_allocator::atom::Atom as ExperimentalAtom;
 use swc_experimental_ecma_ast::{
-    ExportSpecifier, Ident, ImportNamedSpecifier, Program, ScopeId, Visit, VisitWith,
+    BreakStmt, ContinueStmt, Ident, ImportNamedSpecifier, LabeledStmt, NamedExport, Program,
+    ScopeId, Visit, VisitWith,
 };
 use swc_experimental_ecma_parser::Syntax;
 use swc_experimental_ecma_semantic::resolver::{Semantic, resolver};
@@ -86,41 +87,52 @@ fn check_symbol_conformance<'a, C: Case>(
     root: &Program<'a>,
     semantic: &Semantic,
 ) -> Result<(), String> {
-    let legacy_symbols = collect_legacy_symbols(case)?
-        .into_iter()
-        .map(|((sym, ctxt), count)| ((sym.to_string(), ctxt.as_u32()), count))
-        .collect::<HashMap<_, _>>();
+    let mut legacy_symbols = HashMap::<String, Vec<u32>>::default();
+    for ((sym, _), count) in collect_legacy_symbols(case)? {
+        legacy_symbols
+            .entry(sym.to_string())
+            .or_default()
+            .push(count);
+    }
+    for counts in legacy_symbols.values_mut() {
+        counts.sort_unstable();
+    }
 
     let mut experimental_collector = ExperimentalSymbolsCollector {
         semantic,
         symbols: HashMap::default(),
     };
     root.visit_with(&mut experimental_collector);
-    let experimental_symbols = experimental_collector
-        .symbols
-        .into_iter()
-        .map(|((sym, scope), count)| ((sym.to_string(), scope.raw()), count))
-        .collect::<HashMap<_, _>>();
+    let mut experimental_symbols = HashMap::<String, Vec<u32>>::default();
+    for ((sym, _), count) in experimental_collector.symbols {
+        experimental_symbols
+            .entry(sym.to_string())
+            .or_default()
+            .push(count);
+    }
+    for counts in experimental_symbols.values_mut() {
+        counts.sort_unstable();
+    }
 
     if legacy_symbols == experimental_symbols {
         return Ok(());
     }
 
     let mut mismatches = Vec::new();
-    for key in legacy_symbols.keys().chain(experimental_symbols.keys()) {
-        let legacy_count = legacy_symbols.get(key).copied().unwrap_or_default();
-        let experimental_count = experimental_symbols.get(key).copied().unwrap_or_default();
-        if legacy_count != experimental_count {
-            mismatches.push((key.clone(), legacy_count, experimental_count));
+    for sym in legacy_symbols.keys().chain(experimental_symbols.keys()) {
+        let legacy_counts = legacy_symbols.get(sym).cloned().unwrap_or_default();
+        let experimental_counts = experimental_symbols.get(sym).cloned().unwrap_or_default();
+        if legacy_counts != experimental_counts {
+            mismatches.push((sym.clone(), legacy_counts, experimental_counts));
         }
     }
     mismatches.sort_by(|a, b| a.0.cmp(&b.0));
     mismatches.dedup_by(|a, b| a.0 == b.0);
 
     let mut error = String::from("Semantic symbol conformance mismatch");
-    for ((sym, scope), legacy_count, experimental_count) in mismatches.iter().take(20) {
+    for (sym, legacy_counts, experimental_counts) in mismatches.iter().take(20) {
         error.push_str(&format!(
-            "\n  {sym}@{scope}: swc_core={legacy_count}, swc_experimental={experimental_count}"
+            "\n  {sym}: swc_core={legacy_counts:?}, swc_experimental={experimental_counts:?}"
         ));
     }
     if mismatches.len() > 20 {
@@ -196,11 +208,29 @@ struct LegacySymbolsCollector {
 }
 
 impl LegacyVisit for LegacySymbolsCollector {
+    fn visit_break_stmt(&mut self, _: &legacy_ast::BreakStmt) {}
+
+    fn visit_continue_stmt(&mut self, _: &legacy_ast::ContinueStmt) {}
+
     fn visit_ident(&mut self, node: &legacy_ast::Ident) {
         *self
             .symbols
             .entry((node.sym.clone(), node.ctxt))
             .or_default() += 1;
+    }
+
+    fn visit_import_named_specifier(&mut self, node: &legacy_ast::ImportNamedSpecifier) {
+        LegacyVisitWith::visit_with(&node.local, self);
+    }
+
+    fn visit_labeled_stmt(&mut self, node: &legacy_ast::LabeledStmt) {
+        LegacyVisitWith::visit_with(&node.body, self);
+    }
+
+    fn visit_named_export(&mut self, node: &legacy_ast::NamedExport) {
+        if node.src.is_none() {
+            node.visit_children_with(self);
+        }
     }
 }
 
@@ -210,6 +240,10 @@ struct ExperimentalSymbolsCollector<'semantic, 'ast> {
 }
 
 impl<'a> Visit<'a> for ExperimentalSymbolsCollector<'_, 'a> {
+    fn visit_break_stmt(&mut self, _: &BreakStmt<'a>) {}
+
+    fn visit_continue_stmt(&mut self, _: &ContinueStmt<'a>) {}
+
     fn visit_import_named_specifier(&mut self, node: &ImportNamedSpecifier<'a>) {
         if node.imported.is_some() {
             node.local.visit_with(self);
@@ -218,13 +252,21 @@ impl<'a> Visit<'a> for ExperimentalSymbolsCollector<'_, 'a> {
         node.visit_children_with(self);
     }
 
-    fn visit_export_specifier(&mut self, node: &ExportSpecifier<'a>) {
-        if let ExportSpecifier::Default(export_default_specifier) = node {
-            export_default_specifier.visit_with(self);
+    fn visit_labeled_stmt(&mut self, node: &LabeledStmt<'a>) {
+        node.body.visit_with(self);
+    }
+
+    fn visit_named_export(&mut self, node: &NamedExport<'a>) {
+        if node.src.is_none() {
+            node.visit_children_with(self);
         }
     }
 
     fn visit_ident(&mut self, node: &Ident<'a>) {
+        if node.symbol_id.get().is_none() {
+            return;
+        }
+
         *self
             .symbols
             .entry((node.sym, self.semantic.node_scope(node)))
