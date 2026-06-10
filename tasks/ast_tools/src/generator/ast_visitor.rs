@@ -1,5 +1,5 @@
 use convert_case::{Case, Casing};
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, TokenStream};
 use quote::{ToTokens, format_ident, quote};
 
 use crate::{
@@ -154,28 +154,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     continue;
                 }
 
-                let inner_type = &schema.types[ast.inner_type_id];
-                let (fn_name, fn_mut_name) = match inner_type {
-                    AstType::Option(opt) => {
-                        let inner_type = &schema.types[opt.inner_type_id];
-                        let fn_name = format_ident!(
-                            "visit_opt_vec_{}s",
-                            &inner_type.name().to_case(Case::Snake)
-                        );
-                        let fn_mut_name = format_ident!(
-                            "visit_mut_opt_vec_{}s",
-                            &inner_type.name().to_case(Case::Snake)
-                        );
-                        (fn_name, fn_mut_name)
-                    }
-                    _ => {
-                        let fn_name =
-                            format_ident!("visit_{}s", &inner_type.name().to_case(Case::Snake));
-                        let fn_mut_name =
-                            format_ident!("visit_mut_{}s", &inner_type.name().to_case(Case::Snake));
-                        (fn_name, fn_mut_name)
-                    }
-                };
+                let (fn_name, fn_mut_name) = vec_visit_function_names(ast.inner_type_id, schema);
                 let ty_ref = type_ref(ast.type_id, schema);
 
                 visit_functions.extend(quote! {
@@ -222,6 +201,58 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     }
                 });
             }
+            AstType::Option(ast) => {
+                if !should_visit_type(ast.inner_type_id, schema) {
+                    continue;
+                }
+
+                let (fn_name, fn_mut_name) = option_visit_function_names(ast.inner_type_id, schema);
+                let ty_ref = type_ref(ast.type_id, schema);
+
+                visit_functions.extend(quote! {
+                    #[inline]
+                    fn #fn_name(&mut self, node: &#ty_ref) {
+                        node.visit_children_with(self);
+                    }
+                });
+                visit_mut_functions.extend(quote! {
+                    #[inline]
+                    fn #fn_mut_name(&mut self, node: &mut #ty_ref) {
+                        node.visit_mut_children_with(self);
+                    }
+                });
+
+                visit_with_impls.extend(quote! {
+                    impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for #ty_ref {
+                        #[inline]
+                        fn visit_with(&self, visitor: &mut V) {
+                            <V as Visit<'a>>::#fn_name(visitor, self)
+                        }
+
+                        #[inline]
+                        fn visit_children_with(&self, visitor: &mut V) {
+                            if let Some(node) = self {
+                                node.visit_with(visitor);
+                            }
+                        }
+                    }
+                });
+                visit_mut_with_impls.extend(quote! {
+                    impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for #ty_ref {
+                        #[inline]
+                        fn visit_mut_with(&mut self, visitor: &mut V) {
+                            <V as VisitMut<'a>>::#fn_mut_name(visitor, self)
+                        }
+
+                        #[inline]
+                        fn visit_mut_children_with(&mut self, visitor: &mut V) {
+                            if let Some(node) = self {
+                                node.visit_mut_with(visitor);
+                            }
+                        }
+                    }
+                });
+            }
             _ => continue,
         };
     }
@@ -258,26 +289,6 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
             }
         }
 
-        impl<'a, T, V> VisitWith<'a, V> for Option<T>
-        where
-            T: VisitWith<'a, V>,
-            V: ?Sized + Visit<'a>,
-        {
-            #[inline]
-            fn visit_with(&self, visitor: &mut V) {
-                if let Some(node) = self {
-                    node.visit_with(visitor);
-                }
-            }
-
-            #[inline]
-            fn visit_children_with(&self, visitor: &mut V) {
-                if let Some(node) = self {
-                    node.visit_children_with(visitor);
-                }
-            }
-        }
-
         #visit_with_impls
 
         pub trait VisitMut<'a> {
@@ -305,26 +316,6 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
             }
         }
 
-        impl<'a, T, V> VisitMutWith<'a, V> for Option<T>
-        where
-            T: VisitMutWith<'a, V>,
-            V: ?Sized + VisitMut<'a>,
-        {
-            #[inline]
-            fn visit_mut_with(&mut self, visitor: &mut V) {
-                if let Some(node) = self {
-                    node.visit_mut_with(visitor);
-                }
-            }
-
-            #[inline]
-            fn visit_mut_children_with(&mut self, visitor: &mut V) {
-                if let Some(node) = self {
-                    node.visit_mut_children_with(visitor);
-                }
-            }
-        }
-
         #visit_mut_with_impls
     };
 
@@ -333,6 +324,42 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
         tokens: output,
     }
     .into()
+}
+
+fn vec_visit_function_names(inner_type_id: TypeId, schema: &Schema) -> (Ident, Ident) {
+    let inner_type = &schema.types[inner_type_id];
+    let name = match inner_type {
+        AstType::Option(opt) => {
+            let inner_name = option_inner_visit_name(opt.inner_type_id, schema);
+            format!("opt_vec_{}s", inner_name)
+        }
+        _ => format!("{}s", inner_type.name().to_case(Case::Snake)),
+    };
+
+    (
+        format_ident!("visit_{}", name),
+        format_ident!("visit_mut_{}", name),
+    )
+}
+
+fn option_visit_function_names(inner_type_id: TypeId, schema: &Schema) -> (Ident, Ident) {
+    let name = option_inner_visit_name(inner_type_id, schema);
+
+    (
+        format_ident!("visit_opt_{}", name),
+        format_ident!("visit_mut_opt_{}", name),
+    )
+}
+
+fn option_inner_visit_name(type_id: TypeId, schema: &Schema) -> String {
+    match &schema.types[type_id] {
+        AstType::Box(ast) => option_inner_visit_name(ast.inner_type_id, schema),
+        AstType::Vec(ast) => {
+            let inner_name = option_inner_visit_name(ast.inner_type_id, schema);
+            format!("{}s", inner_name)
+        }
+        ty => ty.name().to_case(Case::Snake),
+    }
 }
 
 fn ast_type_ref(type_id: TypeId, schema: &Schema) -> TokenStream {

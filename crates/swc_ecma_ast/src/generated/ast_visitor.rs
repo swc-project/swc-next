@@ -621,7 +621,31 @@ pub trait Visit<'a> {
         node.visit_children_with(self);
     }
     #[inline]
+    fn visit_opt_object_lit(&mut self, node: &Option<Box<'a, ObjectLit<'a>>>) {
+        node.visit_children_with(self);
+    }
+    #[inline]
+    fn visit_opt_module_export_name(&mut self, node: &Option<ModuleExportName<'a>>) {
+        node.visit_children_with(self);
+    }
+    #[inline]
     fn visit_export_specifiers(&mut self, node: &Vec<'a, ExportSpecifier<'a>>) {
+        node.visit_children_with(self);
+    }
+    #[inline]
+    fn visit_opt_str(&mut self, node: &Option<Box<'a, Str<'a>>>) {
+        node.visit_children_with(self);
+    }
+    #[inline]
+    fn visit_opt_expr(&mut self, node: &Option<Expr<'a>>) {
+        node.visit_children_with(self);
+    }
+    #[inline]
+    fn visit_opt_ident(&mut self, node: &Option<Box<'a, Ident<'a>>>) {
+        node.visit_children_with(self);
+    }
+    #[inline]
+    fn visit_opt_stmt(&mut self, node: &Option<Stmt<'a>>) {
         node.visit_children_with(self);
     }
     #[inline]
@@ -629,7 +653,27 @@ pub trait Visit<'a> {
         node.visit_children_with(self);
     }
     #[inline]
+    fn visit_opt_catch_clause(&mut self, node: &Option<Box<'a, CatchClause<'a>>>) {
+        node.visit_children_with(self);
+    }
+    #[inline]
+    fn visit_opt_block_stmt(&mut self, node: &Option<Box<'a, BlockStmt<'a>>>) {
+        node.visit_children_with(self);
+    }
+    #[inline]
+    fn visit_opt_var_decl_or_expr(&mut self, node: &Option<VarDeclOrExpr<'a>>) {
+        node.visit_children_with(self);
+    }
+    #[inline]
+    fn visit_opt_pat(&mut self, node: &Option<Pat<'a>>) {
+        node.visit_children_with(self);
+    }
+    #[inline]
     fn visit_var_declarators(&mut self, node: &Vec<'a, VarDeclarator<'a>>) {
+        node.visit_children_with(self);
+    }
+    #[inline]
+    fn visit_opt_expr_or_spread(&mut self, node: &Option<Box<'a, ExprOrSpread<'a>>>) {
         node.visit_children_with(self);
     }
     #[inline]
@@ -642,6 +686,10 @@ pub trait Visit<'a> {
     }
     #[inline]
     fn visit_expr_or_spreads(&mut self, node: &Vec<'a, ExprOrSpread<'a>>) {
+        node.visit_children_with(self);
+    }
+    #[inline]
+    fn visit_opt_expr_or_spreads(&mut self, node: &Option<Vec<'a, ExprOrSpread<'a>>>) {
         node.visit_children_with(self);
     }
     #[inline]
@@ -685,7 +733,15 @@ pub trait Visit<'a> {
         node.visit_children_with(self);
     }
     #[inline]
+    fn visit_opt_jsx_attr_value(&mut self, node: &Option<JSXAttrValue<'a>>) {
+        node.visit_children_with(self);
+    }
+    #[inline]
     fn visit_jsx_element_childs(&mut self, node: &Vec<'a, JSXElementChild<'a>>) {
+        node.visit_children_with(self);
+    }
+    #[inline]
+    fn visit_opt_jsx_closing_element(&mut self, node: &Option<Box<'a, JSXClosingElement<'a>>>) {
         node.visit_children_with(self);
     }
 }
@@ -705,24 +761,6 @@ where
     #[inline]
     fn visit_children_with(&self, visitor: &mut V) {
         (**self).visit_children_with(visitor)
-    }
-}
-impl<'a, T, V> VisitWith<'a, V> for Option<T>
-where
-    T: VisitWith<'a, V>,
-    V: ?Sized + Visit<'a>,
-{
-    #[inline]
-    fn visit_with(&self, visitor: &mut V) {
-        if let Some(node) = self {
-            node.visit_with(visitor);
-        }
-    }
-    #[inline]
-    fn visit_children_with(&self, visitor: &mut V) {
-        if let Some(node) = self {
-            node.visit_children_with(visitor);
-        }
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Program<'a> {
@@ -2503,6 +2541,30 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, ImportSpecifier<'a>
         }
     }
 }
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Box<'a, ObjectLit<'a>>> {
+    #[inline]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_object_lit(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(&self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<ModuleExportName<'a>> {
+    #[inline]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_module_export_name(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(&self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_with(visitor);
+        }
+    }
+}
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, ExportSpecifier<'a>> {
     #[inline]
     fn visit_with(&self, visitor: &mut V) {
@@ -2511,6 +2573,54 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, ExportSpecifier<'a>
     #[inline]
     fn visit_children_with(&self, visitor: &mut V) {
         for node in self {
+            node.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Box<'a, Str<'a>>> {
+    #[inline]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_str(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(&self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Expr<'a>> {
+    #[inline]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_expr(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(&self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Box<'a, Ident<'a>>> {
+    #[inline]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_ident(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(&self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Stmt<'a>> {
+    #[inline]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_stmt(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(&self, visitor: &mut V) {
+        if let Some(node) = self {
             node.visit_with(visitor);
         }
     }
@@ -2527,6 +2637,54 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, SwitchCase<'a>> {
         }
     }
 }
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Box<'a, CatchClause<'a>>> {
+    #[inline]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_catch_clause(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(&self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Box<'a, BlockStmt<'a>>> {
+    #[inline]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_block_stmt(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(&self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<VarDeclOrExpr<'a>> {
+    #[inline]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_var_decl_or_expr(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(&self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Pat<'a>> {
+    #[inline]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_pat(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(&self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_with(visitor);
+        }
+    }
+}
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, VarDeclarator<'a>> {
     #[inline]
     fn visit_with(&self, visitor: &mut V) {
@@ -2535,6 +2693,18 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, VarDeclarator<'a>> 
     #[inline]
     fn visit_children_with(&self, visitor: &mut V) {
         for node in self {
+            node.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Box<'a, ExprOrSpread<'a>>> {
+    #[inline]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_expr_or_spread(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(&self, visitor: &mut V) {
+        if let Some(node) = self {
             node.visit_with(visitor);
         }
     }
@@ -2571,6 +2741,18 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, ExprOrSpread<'a>> {
     #[inline]
     fn visit_children_with(&self, visitor: &mut V) {
         for node in self {
+            node.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Vec<'a, ExprOrSpread<'a>>> {
+    #[inline]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_expr_or_spreads(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(&self, visitor: &mut V) {
+        if let Some(node) = self {
             node.visit_with(visitor);
         }
     }
@@ -2695,6 +2877,18 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, JSXAttrOrSpread<'a>
         }
     }
 }
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<JSXAttrValue<'a>> {
+    #[inline]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_jsx_attr_value(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(&self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_with(visitor);
+        }
+    }
+}
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, JSXElementChild<'a>> {
     #[inline]
     fn visit_with(&self, visitor: &mut V) {
@@ -2703,6 +2897,18 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Vec<'a, JSXElementChild<'a>
     #[inline]
     fn visit_children_with(&self, visitor: &mut V) {
         for node in self {
+            node.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Box<'a, JSXClosingElement<'a>>> {
+    #[inline]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_jsx_closing_element(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(&self, visitor: &mut V) {
+        if let Some(node) = self {
             node.visit_with(visitor);
         }
     }
@@ -3325,7 +3531,31 @@ pub trait VisitMut<'a> {
         node.visit_mut_children_with(self);
     }
     #[inline]
+    fn visit_mut_opt_object_lit(&mut self, node: &mut Option<Box<'a, ObjectLit<'a>>>) {
+        node.visit_mut_children_with(self);
+    }
+    #[inline]
+    fn visit_mut_opt_module_export_name(&mut self, node: &mut Option<ModuleExportName<'a>>) {
+        node.visit_mut_children_with(self);
+    }
+    #[inline]
     fn visit_mut_export_specifiers(&mut self, node: &mut Vec<'a, ExportSpecifier<'a>>) {
+        node.visit_mut_children_with(self);
+    }
+    #[inline]
+    fn visit_mut_opt_str(&mut self, node: &mut Option<Box<'a, Str<'a>>>) {
+        node.visit_mut_children_with(self);
+    }
+    #[inline]
+    fn visit_mut_opt_expr(&mut self, node: &mut Option<Expr<'a>>) {
+        node.visit_mut_children_with(self);
+    }
+    #[inline]
+    fn visit_mut_opt_ident(&mut self, node: &mut Option<Box<'a, Ident<'a>>>) {
+        node.visit_mut_children_with(self);
+    }
+    #[inline]
+    fn visit_mut_opt_stmt(&mut self, node: &mut Option<Stmt<'a>>) {
         node.visit_mut_children_with(self);
     }
     #[inline]
@@ -3333,7 +3563,27 @@ pub trait VisitMut<'a> {
         node.visit_mut_children_with(self);
     }
     #[inline]
+    fn visit_mut_opt_catch_clause(&mut self, node: &mut Option<Box<'a, CatchClause<'a>>>) {
+        node.visit_mut_children_with(self);
+    }
+    #[inline]
+    fn visit_mut_opt_block_stmt(&mut self, node: &mut Option<Box<'a, BlockStmt<'a>>>) {
+        node.visit_mut_children_with(self);
+    }
+    #[inline]
+    fn visit_mut_opt_var_decl_or_expr(&mut self, node: &mut Option<VarDeclOrExpr<'a>>) {
+        node.visit_mut_children_with(self);
+    }
+    #[inline]
+    fn visit_mut_opt_pat(&mut self, node: &mut Option<Pat<'a>>) {
+        node.visit_mut_children_with(self);
+    }
+    #[inline]
     fn visit_mut_var_declarators(&mut self, node: &mut Vec<'a, VarDeclarator<'a>>) {
+        node.visit_mut_children_with(self);
+    }
+    #[inline]
+    fn visit_mut_opt_expr_or_spread(&mut self, node: &mut Option<Box<'a, ExprOrSpread<'a>>>) {
         node.visit_mut_children_with(self);
     }
     #[inline]
@@ -3349,6 +3599,10 @@ pub trait VisitMut<'a> {
     }
     #[inline]
     fn visit_mut_expr_or_spreads(&mut self, node: &mut Vec<'a, ExprOrSpread<'a>>) {
+        node.visit_mut_children_with(self);
+    }
+    #[inline]
+    fn visit_mut_opt_expr_or_spreads(&mut self, node: &mut Option<Vec<'a, ExprOrSpread<'a>>>) {
         node.visit_mut_children_with(self);
     }
     #[inline]
@@ -3392,7 +3646,18 @@ pub trait VisitMut<'a> {
         node.visit_mut_children_with(self);
     }
     #[inline]
+    fn visit_mut_opt_jsx_attr_value(&mut self, node: &mut Option<JSXAttrValue<'a>>) {
+        node.visit_mut_children_with(self);
+    }
+    #[inline]
     fn visit_mut_jsx_element_childs(&mut self, node: &mut Vec<'a, JSXElementChild<'a>>) {
+        node.visit_mut_children_with(self);
+    }
+    #[inline]
+    fn visit_mut_opt_jsx_closing_element(
+        &mut self,
+        node: &mut Option<Box<'a, JSXClosingElement<'a>>>,
+    ) {
         node.visit_mut_children_with(self);
     }
 }
@@ -3412,24 +3677,6 @@ where
     #[inline]
     fn visit_mut_children_with(&mut self, visitor: &mut V) {
         (**self).visit_mut_children_with(visitor)
-    }
-}
-impl<'a, T, V> VisitMutWith<'a, V> for Option<T>
-where
-    T: VisitMutWith<'a, V>,
-    V: ?Sized + VisitMut<'a>,
-{
-    #[inline]
-    fn visit_mut_with(&mut self, visitor: &mut V) {
-        if let Some(node) = self {
-            node.visit_mut_with(visitor);
-        }
-    }
-    #[inline]
-    fn visit_mut_children_with(&mut self, visitor: &mut V) {
-        if let Some(node) = self {
-            node.visit_mut_children_with(visitor);
-        }
     }
 }
 impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Program<'a> {
@@ -5210,6 +5457,30 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, ImportSpecifi
         }
     }
 }
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Box<'a, ObjectLit<'a>>> {
+    #[inline]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_object_lit(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<ModuleExportName<'a>> {
+    #[inline]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_module_export_name(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_mut_with(visitor);
+        }
+    }
+}
 impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, ExportSpecifier<'a>> {
     #[inline]
     fn visit_mut_with(&mut self, visitor: &mut V) {
@@ -5218,6 +5489,54 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, ExportSpecifi
     #[inline]
     fn visit_mut_children_with(&mut self, visitor: &mut V) {
         for node in self {
+            node.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Box<'a, Str<'a>>> {
+    #[inline]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_str(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Expr<'a>> {
+    #[inline]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_expr(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Box<'a, Ident<'a>>> {
+    #[inline]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_ident(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Stmt<'a>> {
+    #[inline]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_stmt(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        if let Some(node) = self {
             node.visit_mut_with(visitor);
         }
     }
@@ -5234,6 +5553,54 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, SwitchCase<'a
         }
     }
 }
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Box<'a, CatchClause<'a>>> {
+    #[inline]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_catch_clause(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Box<'a, BlockStmt<'a>>> {
+    #[inline]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_block_stmt(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<VarDeclOrExpr<'a>> {
+    #[inline]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_var_decl_or_expr(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Pat<'a>> {
+    #[inline]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_pat(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_mut_with(visitor);
+        }
+    }
+}
 impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, VarDeclarator<'a>> {
     #[inline]
     fn visit_mut_with(&mut self, visitor: &mut V) {
@@ -5242,6 +5609,18 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, VarDeclarator
     #[inline]
     fn visit_mut_children_with(&mut self, visitor: &mut V) {
         for node in self {
+            node.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Box<'a, ExprOrSpread<'a>>> {
+    #[inline]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_expr_or_spread(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        if let Some(node) = self {
             node.visit_mut_with(visitor);
         }
     }
@@ -5280,6 +5659,18 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, ExprOrSpread<
     #[inline]
     fn visit_mut_children_with(&mut self, visitor: &mut V) {
         for node in self {
+            node.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Vec<'a, ExprOrSpread<'a>>> {
+    #[inline]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_expr_or_spreads(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        if let Some(node) = self {
             node.visit_mut_with(visitor);
         }
     }
@@ -5404,6 +5795,18 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, JSXAttrOrSpre
         }
     }
 }
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<JSXAttrValue<'a>> {
+    #[inline]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_jsx_attr_value(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        if let Some(node) = self {
+            node.visit_mut_with(visitor);
+        }
+    }
+}
 impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, JSXElementChild<'a>> {
     #[inline]
     fn visit_mut_with(&mut self, visitor: &mut V) {
@@ -5412,6 +5815,18 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Vec<'a, JSXElementChi
     #[inline]
     fn visit_mut_children_with(&mut self, visitor: &mut V) {
         for node in self {
+            node.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Box<'a, JSXClosingElement<'a>>> {
+    #[inline]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_jsx_closing_element(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        if let Some(node) = self {
             node.visit_mut_with(visitor);
         }
     }
