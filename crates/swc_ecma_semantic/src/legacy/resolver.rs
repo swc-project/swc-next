@@ -625,7 +625,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
 
         let old = self.ident_type;
         self.ident_type = IdentType::Ref;
-        // c.decorators.visit_with(self);
+        c.decorators.visit_with(self);
 
         self.ident_type = IdentType::Ref;
         c.super_class.visit_with(self);

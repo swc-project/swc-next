@@ -1,6 +1,9 @@
 use colored::Colorize;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use swc_experimental_allocator::Allocator;
+use swc_experimental_ecma_ast::{
+    BlockStmt, ExportSpecifier, Ident, ImportNamedSpecifier, Visit, VisitWith,
+};
 use swc_experimental_ecma_semantic::resolver::resolver;
 
 use crate::{
@@ -38,10 +41,63 @@ impl SemanticRunner {
             };
 
             let _semantic = resolver(&root);
+
+            // check semantic
+            if !case.syntax().export_default_from() {
+                let mut collector = SemanticIdsCollector::default();
+                root.visit_with(&mut collector);
+                if !collector.errors.is_empty() {
+                    return Some(TestResult::Failed {
+                        path: case.relative_path().to_owned(),
+                        error: collector.errors.join("\n"),
+                    });
+                }
+            }
+
             Some(TestResult::Passed {
                 path: case.path().to_owned(),
             })
         })
         .collect()
+    }
+}
+
+#[derive(Default)]
+struct SemanticIdsCollector {
+    errors: Vec<String>,
+}
+
+impl<'a> Visit<'a> for SemanticIdsCollector {
+    fn visit_import_named_specifier(&mut self, node: &ImportNamedSpecifier<'a>) {
+        if node.imported.is_some() {
+            node.local.visit_with(self);
+            return;
+        }
+        node.visit_children_with(self);
+    }
+
+    fn visit_export_specifier(&mut self, node: &ExportSpecifier<'a>) {
+        if let ExportSpecifier::Default(export_default_specifier) = node {
+            export_default_specifier.visit_with(self);
+            return;
+        }
+    }
+
+    fn visit_block_stmt(&mut self, node: &BlockStmt<'a>) {
+        if node.scope_id.get().is_none() {
+            self.errors
+                .push(format!("Missing ScopeId for BlockStmt: {:?}", node.span));
+        }
+
+        node.visit_children_with(self);
+    }
+
+    fn visit_ident(&mut self, node: &Ident<'a>) {
+        if node.symbol_id.get().is_none() {
+            self.errors.push(format!(
+                "Missing SymbolId for Ident {:?}: {:?}",
+                node.sym, node.span
+            ));
+        }
     }
 }
