@@ -4,7 +4,8 @@ use indexmap::IndexMap;
 use rustc_hash::FxHasher;
 use swc_experimental_allocator::Allocator;
 use swc_experimental_ecma_ast::{
-    AstBuilder, Comments, Expr, GetSpan, SimpleAssignTarget, Span, VisitMut, VisitMutWith,
+    AstBuilder, Class, ClassMember, Comments, Expr, GetSpan, SimpleAssignTarget, Span, VisitMut,
+    VisitMutWith,
 };
 
 pub fn remove_paren<'ast, N: VisitMutWith<'ast, ParenRemover<'ast>>>(
@@ -35,6 +36,11 @@ pub struct ParenRemover<'a> {
 }
 
 impl<'a> VisitMut<'a> for ParenRemover<'a> {
+    fn visit_mut_class(&mut self, node: &mut Class<'a>) {
+        node.visit_mut_children_with(self);
+        node.body.retain(|m| !matches!(m, ClassMember::Empty(..)));
+    }
+
     fn visit_mut_expr(&mut self, node: &mut Expr<'a>) {
         node.visit_mut_children_with(self);
         if let Expr::Paren(expr) = node {
