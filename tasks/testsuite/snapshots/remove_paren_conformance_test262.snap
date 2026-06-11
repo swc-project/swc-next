@@ -1,28 +1,8 @@
 Test Summary: 
-Passed: 46034/46043 (99.98%)
-Failed: 6/46043 (0.01%)
+Passed: 46039/46043 (99.99%)
+Failed: 1/46043 (0.00%)
 Panicked: 0/46043 (0.00%)
 Ignored: 3/46043 (0.01%)
-Failed: fixtures/test262/test/built-ins/Object/S15.2.1.1_A3_T3.js - Remove paren node conformance mismatch
-  Expr: swc_core=33 spans=[367..373, 367..393, 375..379, 375..385, 384..385, 388..389, 391..392, 396..402, ... +25], swc_experimental=34 spans=[368..374, 368..394, 376..380, 376..386, 382..383, 385..386, 389..390, 392..393, ... +26]
-  Lit: swc_core=11 spans=[375..379, 384..385, 388..389, 391..392, 438..509, 541..549, 551..605, 623..624, ... +3], swc_experimental=12 spans=[376..380, 382..383, 385..386, 389..390, 392..393, 439..510, 542..550, 552..606, ... +4]
-  Number: swc_core=5 spans=[384..385, 388..389, 391..392, 623..624, 714..715], swc_experimental=6 spans=[382..383, 385..386, 389..390, 392..393, 624..625, 715..716]
-Failed: fixtures/test262/test/built-ins/Object/S15.2.2.1_A6_T3.js - Remove paren node conformance mismatch
-  Expr: swc_core=33 spans=[371..401, 375..381, 383..387, 383..393, 392..393, 396..397, 399..400, 404..410, ... +25], swc_experimental=34 spans=[372..402, 376..382, 384..388, 384..394, 390..391, 393..394, 397..398, 400..401, ... +26]
-  Lit: swc_core=11 spans=[383..387, 392..393, 396..397, 399..400, 446..517, 549..557, 559..613, 630..631, ... +3], swc_experimental=12 spans=[384..388, 390..391, 393..394, 397..398, 400..401, 447..518, 550..558, 560..614, ... +4]
-  Number: swc_core=5 spans=[392..393, 396..397, 399..400, 630..631, 721..722], swc_experimental=6 spans=[390..391, 393..394, 397..398, 400..401, 631..632, 722..723]
-Failed: fixtures/test262/test/language/expressions/dynamic-import/assignment-expression/cover-parenthesized-expr.js - Remove paren node conformance mismatch
-  Expr: swc_core=35 spans=[1016..1068, 1022..1068, 1035..1061, 1113..1119, 1113..1129, 1113..1152, 1130..1133, 1130..1140, ... +27], swc_experimental=36 spans=[1017..1069, 1023..1069, 1036..1062, 1114..1120, 1114..1130, 1114..1153, 1131..1134, 1131..1141, ... +28]
-  Lit: swc_core=7 spans=[1035..1061, 1142..1151, 1188..1190, 1224..1225, 1230..1262, 1344..1361, 1398..1402], swc_experimental=8 spans=[1036..1062, 1143..1152, 1189..1191, 1225..1226, 1228..1229, 1231..1263, 1345..1362, 1399..1403]
-  Number: swc_core=3 spans=[1188..1190, 1224..1225, 1398..1402], swc_experimental=4 spans=[1189..1191, 1225..1226, 1228..1229, 1399..1403]
-Failed: fixtures/test262/test/language/expressions/optional-chaining/optional-chain-prod-expression.js - Remove paren node conformance mismatch
-  Expr: swc_core=133 spans=[309..312, 326..334, 327..329, 331..333, 337..340, 337..354, 348..354, 356..359, ... +125], swc_experimental=135 spans=[310..313, 327..335, 328..330, 332..334, 338..341, 338..355, 349..355, 357..360, ... +127]
-  Lit: swc_core=52 spans=[309..312, 327..329, 331..333, 348..354, 360..363, 367..379, 401..408, 423..425, ... +44], swc_experimental=54 spans=[310..313, 328..330, 332..334, 349..355, 361..364, 368..380, 402..409, 424..426, ... +46]
-  Number: swc_core=29 spans=[327..329, 331..333, 360..363, 423..425, 432..433, 442..444, 454..456, 463..465, ... +21], swc_experimental=31 spans=[328..330, 332..334, 361..364, 424..426, 433..434, 443..445, 455..457, 464..466, ... +23]
 Failed: fixtures/test262/test/language/statements/if/S12.5_A12_T4.js - Remove paren node conformance mismatch
   BlockStmt: swc_core=4 spans=[295..412, 445..463, 604..720, 745..861], swc_experimental=0 spans=[]
   Stmt: swc_core=19 spans=[284..412, 295..412, 295..412, 310..412, 425..433, 434..463, 445..463, 445..463, ... +11], swc_experimental=15 spans=[285..413, 296..413, 311..413, 426..434, 435..464, 446..464, 460..464, 465..580, ... +7]
-Failed: fixtures/test262/test/language/statements/using/syntax/using-for-using-of-of.js - Remove paren node conformance mismatch
-  Expr: swc_core=30 spans=[315..330, 316..319, 317..318, 321..324, 322..323, 326..329, 327..328, 341..343, ... +22], swc_experimental=31 spans=[316..331, 317..320, 318..319, 322..325, 323..324, 327..330, 328..329, 342..344, ... +23]
-  Lit: swc_core=8 spans=[317..318, 322..323, 327..328, 363..364, 369..370, 580..581, 608..609, 612..613], swc_experimental=9 spans=[318..319, 323..324, 328..329, 364..365, 367..368, 370..371, 581..582, 609..610, ... +1]
-  Number: swc_core=8 spans=[317..318, 322..323, 327..328, 363..364, 369..370, 580..581, 608..609, 612..613], swc_experimental=9 spans=[318..319, 323..324, 328..329, 364..365, 367..368, 370..371, 581..582, 609..610, ... +1]
