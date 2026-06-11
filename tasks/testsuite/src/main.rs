@@ -12,8 +12,8 @@ use crate::{
         test262_parser::{self},
     },
     runner::{
-        parser::ParserRunner, semantic::SemanticRunner,
-        semantic_conformance::SemanticConformanceRunner, transform_remove_paren::RemoveParenRunner,
+        conformance::semantic::SemanticConformanceRunner, parser::ParserRunner,
+        semantic::SemanticRunner, transform_remove_paren::RemoveParenRunner,
     },
     suite::TestResult,
     util::crate_root,

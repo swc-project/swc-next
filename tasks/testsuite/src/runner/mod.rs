@@ -1,6 +1,6 @@
+pub mod conformance;
 pub mod parser;
 pub mod semantic;
-pub mod semantic_conformance;
 pub mod transform_remove_paren;
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
