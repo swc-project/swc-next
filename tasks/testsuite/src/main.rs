@@ -12,8 +12,13 @@ use crate::{
         test262_parser::{self},
     },
     runner::{
-        conformance::semantic::SemanticConformanceRunner, parser::ParserRunner,
-        semantic::SemanticRunner, transform_remove_paren::RemoveParenRunner,
+        conformance::{
+            parser::ParserConformanceRunner, semantic::SemanticConformanceRunner,
+            transform_remove_paren::RemoveParenConformanceRunner,
+        },
+        parser::ParserRunner,
+        semantic::SemanticRunner,
+        transform_remove_paren::RemoveParenRunner,
     },
     suite::TestResult,
     util::crate_root,
@@ -34,8 +39,10 @@ pub struct AppArgs {
 
 const PARSER_RUNNER: &str = "parser";
 const SEMANTIC_RUNNER: &str = "semantic";
+const PARSER_CONFORMANCE_RUNNER: &str = "parser_conformance";
 const SEMANTIC_CONFORMANCE_RUNNER: &str = "semantic_conformance";
 const REMOVE_PAREN_RUNNER: &str = "remove_paren";
+const REMOVE_PAREN_CONFORMANCE_RUNNER: &str = "remove_paren_conformance";
 
 pub fn main() {
     // Initialize args
@@ -91,9 +98,22 @@ fn test_normal(args: &AppArgs) {
         results.extend(SemanticConformanceRunner::run(args, &test262_parser_cases));
     }
 
+    if args.runners.contains(PARSER_CONFORMANCE_RUNNER) {
+        results.extend(ParserConformanceRunner::run(args, &misc_cases));
+        results.extend(ParserConformanceRunner::run(args, &test262_parser_cases));
+    }
+
     if args.runners.is_empty() || args.runners.contains(REMOVE_PAREN_RUNNER) {
         results.extend(RemoveParenRunner::run(args, &misc_cases));
         results.extend(RemoveParenRunner::run(args, &test262_parser_cases));
+    }
+
+    if args.runners.contains(REMOVE_PAREN_CONFORMANCE_RUNNER) {
+        results.extend(RemoveParenConformanceRunner::run(args, &misc_cases));
+        results.extend(RemoveParenConformanceRunner::run(
+            args,
+            &test262_parser_cases,
+        ));
     }
 
     // Collect results
@@ -225,10 +245,28 @@ fn test_test262_snapshots(args: &AppArgs) {
         .unwrap();
     }
 
+    if args.runners.contains(PARSER_CONFORMANCE_RUNNER) {
+        let results = ParserConformanceRunner::run(args, &cases);
+        fs::write(
+            snapshot_dir.join("parser_conformance_test262.snap"),
+            to_snapshot(&results),
+        )
+        .unwrap();
+    }
+
     if args.runners.is_empty() || args.runners.contains(REMOVE_PAREN_RUNNER) {
         let results = RemoveParenRunner::run(args, &cases);
         fs::write(
             snapshot_dir.join("remove_paren_test262.snap"),
+            to_snapshot(&results),
+        )
+        .unwrap();
+    }
+
+    if args.runners.contains(REMOVE_PAREN_CONFORMANCE_RUNNER) {
+        let results = RemoveParenConformanceRunner::run(args, &cases);
+        fs::write(
+            snapshot_dir.join("remove_paren_conformance_test262.snap"),
             to_snapshot(&results),
         )
         .unwrap();

@@ -10,7 +10,7 @@ jwalk     = { workspace = true }
 pico-args = { workspace = true }
 rayon     = { workspace = true }
 saphyr    = { workspace = true }
-swc_core  = { workspace = true, features = ["ecma_parser_unstable"] }
+swc_core  = { workspace = true, features = ["__ecma_transforms", "ecma_parser_unstable"] }
 
 swc_experimental_allocator            = { workspace = true }
 swc_experimental_ecma_ast             = { workspace = true }
