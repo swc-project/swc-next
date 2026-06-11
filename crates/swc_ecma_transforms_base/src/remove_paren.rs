@@ -4,8 +4,8 @@ use indexmap::IndexMap;
 use rustc_hash::FxHasher;
 use swc_experimental_allocator::{Allocator, boxed::Box as AstBox, vec::Vec as AstVec};
 use swc_experimental_ecma_ast::{
-    AstBuilder, Class, ClassMember, Comments, Expr, GetSpan, SeqExpr, SimpleAssignTarget, Span,
-    UnaryExpr, UnaryOp, VisitMut, VisitMutWith,
+    AstBuilder, Class, ClassMember, Comments, Expr, GetSpan, IfStmt, SeqExpr, SimpleAssignTarget,
+    Span, Stmt, UnaryExpr, UnaryOp, VisitMut, VisitMutWith,
 };
 
 pub fn remove_paren<'ast, N: VisitMutWith<'ast, ParenRemover<'ast>>>(
@@ -147,6 +147,17 @@ impl<'a> VisitMut<'a> for ParenRemover<'a> {
         node.body.retain(|m| !matches!(m, ClassMember::Empty(..)));
     }
 
+    fn visit_mut_if_stmt(&mut self, node: &mut IfStmt<'a>) {
+        node.visit_mut_children_with(self);
+        if will_eat_else_token(&node.cons) {
+            let span = node.cons.span();
+            let cons = std::mem::replace(&mut node.cons, self.ast.stmt_empty_stmt(span));
+            let mut stmts = AstVec::with_capacity_in(1, self.ast.allocator);
+            stmts.push(cons);
+            node.cons = self.ast.stmt_block_stmt(span, stmts);
+        }
+    }
+
     fn visit_mut_expr(&mut self, node: &mut Expr<'a>) {
         self.unwrap_expr(node);
         node.visit_mut_children_with(self);
@@ -241,4 +252,20 @@ fn ignore_padding_value<'a>(
         }
     }
     new_exprs
+}
+
+fn will_eat_else_token(s: &Stmt) -> bool {
+    match s {
+        Stmt::If(s) => match &s.alt {
+            Some(alt) => will_eat_else_token(alt),
+            None => true,
+        },
+        Stmt::Block(..) => false,
+        Stmt::Labeled(s) => will_eat_else_token(&s.body),
+        Stmt::While(s) => will_eat_else_token(&s.body),
+        Stmt::For(s) => will_eat_else_token(&s.body),
+        Stmt::ForIn(s) => will_eat_else_token(&s.body),
+        Stmt::ForOf(s) => will_eat_else_token(&s.body),
+        _ => false,
+    }
 }

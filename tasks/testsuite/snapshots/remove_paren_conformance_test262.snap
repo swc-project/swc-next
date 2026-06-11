@@ -1,8 +1,5 @@
 Test Summary: 
-Passed: 46039/46043 (99.99%)
-Failed: 1/46043 (0.00%)
+Passed: 46040/46043 (99.99%)
+Failed: 0/46043 (0.00%)
 Panicked: 0/46043 (0.00%)
 Ignored: 3/46043 (0.01%)
-Failed: fixtures/test262/test/language/statements/if/S12.5_A12_T4.js - Remove paren node conformance mismatch
-  BlockStmt: swc_core=4 spans=[295..412, 445..463, 604..720, 745..861], swc_experimental=0 spans=[]
-  Stmt: swc_core=19 spans=[284..412, 295..412, 295..412, 310..412, 425..433, 434..463, 445..463, 445..463, ... +11], swc_experimental=15 spans=[285..413, 296..413, 311..413, 426..434, 435..464, 446..464, 460..464, 465..580, ... +7]
