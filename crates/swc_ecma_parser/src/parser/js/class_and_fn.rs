@@ -1415,7 +1415,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
     }
 
     fn parse_class_body(&mut self) -> PResult<Vec<'a, ClassMember<'a>>> {
-        self.collect_vec(|p, elems| {
+        self.collect_vec_with_capacity(32, |p, elems| {
             let mut has_constructor_with_body = false;
             while !p.input().is(Token::RBrace) {
                 if p.input_mut().eat(Token::Semi) {

@@ -346,7 +346,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
     }
 
     fn parse_jsx_attrs(&mut self) -> PResult<Vec<'a, JSXAttrOrSpread<'a>>> {
-        self.collect_vec(|p, attrs| {
+        self.collect_vec_with_capacity(8, |p, attrs| {
             loop {
                 trace_cur!(p, parse_jsx_opening__attrs_loop);
                 p.input_mut().rescan_jsx_open_el_terminal_token();

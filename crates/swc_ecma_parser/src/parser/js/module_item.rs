@@ -586,7 +586,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             let mut has_default = false;
             let mut has_ns = false;
 
-            let specifiers = self.collect_vec(|p, specifiers| {
+            let specifiers = self.collect_vec_with_capacity(4, |p, specifiers| {
                 if let Some(default) = default {
                     has_default = true;
 
@@ -780,7 +780,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
         let mut type_only = false;
         let mut phase = ImportPhase::Evaluation;
-        let specifiers = self.collect_vec(|p, specifiers| {
+        let specifiers = self.collect_vec_with_capacity(4, |p, specifiers| {
             'import_maybe_ident: {
                 if p.is_ident_ref() {
                     let local_token = p.input().cur();

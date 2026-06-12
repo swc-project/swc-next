@@ -17,7 +17,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             let mut trailing_comma = None;
             p.assert_and_bump(Token::LBrace);
 
-            let props = p.collect_vec(|p, props| {
+            let props = p.collect_vec_with_capacity(8, |p, props| {
                 while !p.input_mut().eat(Token::RBrace) {
                     let prop = parse_prop(p)?;
                     props.push(prop);

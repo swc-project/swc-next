@@ -487,7 +487,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             return Ok(self.ast.expr_array_lit(self.span(start), self.vec()));
         }
 
-        let mut elems = self.vec();
+        let mut elems = self.vec_with_capacity(8);
 
         while !self.input().is(Token::RBracket) {
             if self.input().is(Token::Comma) {
@@ -885,7 +885,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             }
 
             let mut first = true;
-            p.collect_vec(|p, expr_or_spreads| {
+            p.collect_vec_with_capacity(2, |p, expr_or_spreads| {
                 while !p.input().is(Token::RParen) {
                     if first {
                         first = false;
@@ -2469,17 +2469,22 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             let span_lo = expr_or_spreads.first().unwrap().span_lo();
             let span_hi = expr_or_spreads.last().unwrap().span_hi();
 
-            let exprs = self.collect_vec(|p, exprs| {
-                for expr_or_spread in expr_or_spreads {
-                    match expr_or_spread.spread {
-                        Some(_) => {
-                            syntax_error!(p, expr_or_spread.span(), SyntaxError::SpreadInParenExpr)
+            let exprs =
+                self.collect_vec_with_capacity(expr_or_spreads.len(), |p, exprs| {
+                    for expr_or_spread in expr_or_spreads {
+                        match expr_or_spread.spread {
+                            Some(_) => {
+                                syntax_error!(
+                                    p,
+                                    expr_or_spread.span(),
+                                    SyntaxError::SpreadInParenExpr
+                                )
+                            }
+                            None => exprs.push(expr_or_spread.expr),
                         }
-                        None => exprs.push(expr_or_spread.expr),
                     }
-                }
-                Ok(())
-            })?;
+                    Ok(())
+                })?;
 
             debug_assert!(exprs.len() >= 2);
 

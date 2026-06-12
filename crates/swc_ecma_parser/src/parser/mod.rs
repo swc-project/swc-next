@@ -95,6 +95,11 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
     }
 
     #[inline]
+    fn vec_with_capacity<T>(&self, capacity: usize) -> Vec<'a, T> {
+        Vec::with_capacity_in(capacity, self.ast.allocator)
+    }
+
+    #[inline]
     fn boxed<T>(&self, value: T) -> Box<'a, T> {
         self.ast.allocator.boxed(value)
     }
@@ -110,6 +115,16 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         f: F,
     ) -> PResult<Vec<'a, T>> {
         let mut items = self.vec();
+        f(self, &mut items).map(|_| items)
+    }
+
+    #[inline]
+    fn collect_vec_with_capacity<T, F: FnOnce(&mut Self, &mut Vec<'a, T>) -> PResult<R>, R>(
+        &mut self,
+        capacity: usize,
+        f: F,
+    ) -> PResult<Vec<'a, T>> {
+        let mut items = self.vec_with_capacity(capacity);
         f(self, &mut items).map(|_| items)
     }
 

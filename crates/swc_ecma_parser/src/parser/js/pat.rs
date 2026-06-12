@@ -310,7 +310,8 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 let count_of_trailing_comma =
                     exprs.iter().rev().take_while(|e| e.is_none()).count();
                 let len = exprs.len();
-                let mut params = self.vec();
+                let mut params =
+                    self.vec_with_capacity(exprs.len() - count_of_trailing_comma);
                 // Comma or other pattern cannot follow a rest pattern.
                 let idx_of_rest_not_allowed = if count_of_trailing_comma == 0 {
                     len - 1
@@ -775,7 +776,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             return Ok(self.vec());
         }
 
-        let params = self.collect_vec(|p, params| {
+        let params = self.collect_vec_with_capacity(len, |p, params| {
             for expr in exprs.drain(..len - 1) {
                 match expr {
                     AssignTargetOrSpread::ExprOrSpread(expr_or_spread) => {

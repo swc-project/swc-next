@@ -220,7 +220,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         //     }
         // }
 
-        let decls = self.collect_vec(|p, decls| {
+        let decls = self.collect_vec_with_capacity(4, |p, decls| {
             loop {
                 // Handle
                 //      var a,;
@@ -1194,7 +1194,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         let has_strict_directive =
             allow_directives && (cur_str == "\"use strict\"" || cur_str == "'use strict'");
 
-        let stmts = self.collect_vec(|p, stmts| {
+        let stmts = self.collect_vec_with_capacity(8, |p, stmts| {
             let parse_stmts = |p: &mut Self, stmts: &mut Vec<'a, Type>| -> PResult<()> {
                 if let Some(end) = end {
                     loop {
