@@ -368,7 +368,7 @@ impl<'a> Token {
     #[inline(always)]
     pub fn take_word<I: Tokens<'a>>(self, buffer: &Buffer<'a, I>) -> Atom<'a> {
         let span = buffer.cur.span;
-        Atom::new_in(buffer.iter.read_string(span), buffer.iter.allocator())
+        Atom::from(buffer.iter.read_string(span))
     }
 
     #[inline(always)]

@@ -210,7 +210,7 @@ impl<'a, I: Tokens<'a>> Tokens<'a> for Capturing<I> {
         ts
     }
 
-    fn read_string(&self, span: Span) -> &str {
+    fn read_string(&self, span: Span) -> &'a str {
         self.inner.read_string(span)
     }
 }

@@ -48,6 +48,14 @@ impl<'a> Atom<'a> {
     }
 }
 
+impl<'a> From<&'a str> for Atom<'a> {
+    #[expect(clippy::inline_always)]
+    #[inline(always)]
+    fn from(s: &'a str) -> Self {
+        Self(s)
+    }
+}
+
 impl<'a, 'b> FromIn<'a, &'b str> for Atom<'a> {
     #[inline]
     fn from_in(s: &'b str, allocator: &'a crate::Allocator) -> Self {
@@ -185,6 +193,22 @@ impl<'a> Wtf8Atom<'a> {
     #[inline]
     pub fn as_wtf8(&self) -> &Wtf8 {
         self.0
+    }
+}
+
+impl<'a> From<&'a str> for Wtf8Atom<'a> {
+    #[expect(clippy::inline_always)]
+    #[inline(always)]
+    fn from(s: &'a str) -> Self {
+        Self(s.into())
+    }
+}
+
+impl<'a> From<&'a Wtf8> for Wtf8Atom<'a> {
+    #[expect(clippy::inline_always)]
+    #[inline(always)]
+    fn from(s: &'a Wtf8) -> Self {
+        Self(s)
     }
 }
 

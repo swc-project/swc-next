@@ -69,7 +69,7 @@ impl<'a> crate::input::Tokens<'a> for Lexer<'a, '_> {
         }
     }
 
-    fn read_string(&self, span: Span) -> &str {
+    fn read_string(&self, span: Span) -> &'a str {
         unsafe { self.input.slice(span.start, span.end) }
     }
 

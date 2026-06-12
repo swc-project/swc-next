@@ -26,7 +26,7 @@ pub trait Tokens<'a> {
     fn checkpoint_save(&self) -> Self::Checkpoint;
     fn checkpoint_load(&mut self, checkpoint: Self::Checkpoint);
 
-    fn read_string(&self, span: Span) -> &str;
+    fn read_string(&self, span: Span) -> &'a str;
 
     fn start_pos(&self) -> u32 {
         0

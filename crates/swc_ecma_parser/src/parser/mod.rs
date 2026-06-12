@@ -115,7 +115,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
     #[inline]
     fn atom_from_span(&self, span: Span) -> Atom<'a> {
-        Atom::new_in(self.input.iter.read_string(span), self.ast.allocator)
+        Atom::from(self.input.iter.read_string(span))
     }
 }
 

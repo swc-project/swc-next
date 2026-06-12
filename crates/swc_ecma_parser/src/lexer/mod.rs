@@ -118,11 +118,15 @@ fn remove_underscore(s: &str, has_underscore: bool) -> Cow<'_, str> {
 }
 
 fn bigint_atom_from_digits<'a>(
-    s: &str,
+    s: &'a str,
     radix: u32,
     has_underscore: bool,
     allocator: &'a Allocator,
 ) -> Option<Atom<'a>> {
+    if radix == 10 && !has_underscore {
+        return Some(Atom::from(s));
+    }
+
     let s = remove_underscore(s, has_underscore);
     if radix == 10 {
         return Some(Atom::new_in(s.as_ref(), allocator));
@@ -189,12 +193,12 @@ impl<'a, 'cmt> Lexer<'a, 'cmt> {
 
     #[inline(always)]
     fn atom_from_slice(&self, start: u32, end: u32) -> Atom<'a> {
-        Atom::new_in(unsafe { self.input.slice(start, end) }, self.allocator)
+        Atom::from(unsafe { self.input.slice(start, end) })
     }
 
     #[inline(always)]
     fn wtf8_atom_from_slice(&self, start: u32, end: u32) -> Wtf8Atom<'a> {
-        Wtf8Atom::new_in(unsafe { self.input.slice(start, end) }, self.allocator)
+        Wtf8Atom::from(unsafe { self.input.slice(start, end) })
     }
 }
 
@@ -399,17 +403,30 @@ impl<'a> Lexer<'a, '_> {
         debug_assert!(self.peek() == Some(if started_with_backtick { b'`' } else { b'}' }));
         let mut cooked = Ok(Wtf8Buf::new());
         self.bump(1); // `}` or `\``
+        let cooked_start = self.cur_pos();
         let mut cooked_slice_start = self.cur_pos();
+        let mut cooked_needs_alloc = false;
         macro_rules! consume_cooked {
             () => {{
-                if let Ok(cooked) = &mut cooked {
-                    let last_pos = self.cur_pos();
-                    let s = unsafe {
-                        // Safety: Both of start and last_pos are valid position because we got them
-                        // from `self.input`
-                        self.input.slice(cooked_slice_start, last_pos)
-                    };
-                    cooked.push_str(s);
+                if cooked_needs_alloc {
+                    if let Ok(cooked) = &mut cooked {
+                        let last_pos = self.cur_pos();
+                        let s = unsafe {
+                            // Safety: Both of start and last_pos are valid position because we got them
+                            // from `self.input`
+                            self.input.slice(cooked_slice_start, last_pos)
+                        };
+                        cooked.push_str(s);
+                    }
+                }
+            }};
+        }
+        macro_rules! finish_cooked {
+            () => {{
+                if cooked_needs_alloc {
+                    cooked.map(|atom| Wtf8Atom::new_in(atom, self.allocator))
+                } else {
+                    Ok(self.wtf8_atom_from_slice(cooked_start, self.cur_pos()))
                 }
             }};
         }
@@ -417,7 +434,7 @@ impl<'a> Lexer<'a, '_> {
         while let Some(c) = self.peek() {
             if c == b'`' {
                 consume_cooked!();
-                let cooked = cooked.map(|atom| Wtf8Atom::new_in(atom, self.allocator));
+                let cooked = finish_cooked!();
                 self.bump(1);
                 return Ok(if started_with_backtick {
                     self.set_token_value(Some(TokenValue::Template(cooked)));
@@ -428,7 +445,7 @@ impl<'a> Lexer<'a, '_> {
                 });
             } else if c == b'$' && self.input.peek_2() == Some(b'{') {
                 consume_cooked!();
-                let cooked = cooked.map(|atom| Wtf8Atom::new_in(atom, self.allocator));
+                let cooked = finish_cooked!();
 
                 // Safety: `self.input.peek_2() == Some(b'{')`
                 self.bump(2);
@@ -440,6 +457,7 @@ impl<'a> Lexer<'a, '_> {
                     Token::TemplateMiddle
                 });
             } else if c == b'\\' {
+                cooked_needs_alloc = true;
                 consume_cooked!();
 
                 match self.read_escaped_char(true) {
@@ -456,6 +474,7 @@ impl<'a> Lexer<'a, '_> {
 
                 cooked_slice_start = self.cur_pos();
             } else if c.is_line_terminator() {
+                cooked_needs_alloc = true;
                 consume_cooked!();
 
                 // For line terminators, we need the full char (can be multi-byte UTF-8)
@@ -665,7 +684,7 @@ impl<'a> Lexer<'a, '_> {
 
                 if self.comments_buffer().is_some() {
                     let s = unsafe { self.input_slice(slice_start, end) };
-                    let cmt = Comment::new(CommentKind::Line, Span::new(start, end), Atom::new_in(s, self.allocator));
+                    let cmt = Comment::new(CommentKind::Line, Span::new(start, end), Atom::from(s));
 
                     if is_for_next {
                         self.comments_buffer.as_mut().unwrap().push_pending(cmt);
@@ -692,11 +711,7 @@ impl<'a> Lexer<'a, '_> {
                 // Safety: We know that the start and the end are valid
                 self.input_slice_to_cur(slice_start)
             };
-            let cmt = Comment::new(
-                CommentKind::Line,
-                Span::new(start, end),
-                Atom::new_in(s, self.allocator),
-            );
+            let cmt = Comment::new(CommentKind::Line, Span::new(start, end), Atom::from(s));
 
             if is_for_next {
                 self.comments_buffer.as_mut().unwrap().push_pending(cmt);
@@ -783,7 +798,7 @@ impl<'a> Lexer<'a, '_> {
                                         start,
                                         slice_start + pos_offset as u32,
                                     ),
-                                    Atom::new_in(s, self.allocator),
+                                    Atom::from(s),
                                 );
 
                                 if is_for_next {
