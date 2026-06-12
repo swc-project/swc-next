@@ -1,4 +1,4 @@
-use oxc_index::IndexVec;
+use oxc_index::{Idx, IndexVec};
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_experimental_allocator::{atom::Atom, vec::Vec as AstVec};
 use swc_experimental_ecma_ast::*;
@@ -126,6 +126,7 @@ pub fn resolver<'ast>(root: &Program<'ast>) -> Semantic {
     let mut scopes = IndexVec::new();
     let unresolved_scope_id = scopes.push(Scope::new(ScopeKind::Fn, None));
     let top_level_scope_id = scopes.push(Scope::new(ScopeKind::Fn, None));
+    let label_scope_id = ScopeId::from_usize(ScopeId::MAX);
 
     // Init symbol scopes
     let symbol_scopes = IndexVec::new();
@@ -136,6 +137,7 @@ pub fn resolver<'ast>(root: &Program<'ast>) -> Semantic {
 
         top_level_scope_id,
         unresolved_scope_id,
+        label_scope_id,
         current: top_level_scope_id,
 
         ident_type: IdentType::Ref,
@@ -213,6 +215,7 @@ pub struct Resolver<'ast> {
 
     top_level_scope_id: ScopeId,
     unresolved_scope_id: ScopeId,
+    label_scope_id: ScopeId,
     scopes: IndexVec<ScopeId, Scope<'ast>>,
     current: ScopeId,
 
@@ -996,7 +999,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
             IdentType::Label => {
                 let symbol_id = self.symbol_id_for(i);
                 if self.symbol_scopes[symbol_id].is_none() {
-                    self.symbol_scopes[symbol_id] = Some(self.unresolved_scope_id);
+                    self.symbol_scopes[symbol_id] = Some(self.label_scope_id);
                 }
             }
         }
