@@ -16,8 +16,7 @@ use swc_core::{
 use swc_experimental_allocator::Allocator;
 use swc_experimental_allocator::atom::Atom as ExperimentalAtom;
 use swc_experimental_ecma_ast::{
-    BreakStmt, ContinueStmt, Ident, ImportNamedSpecifier, LabeledStmt, NamedExport, Program,
-    ScopeId, Visit, VisitWith,
+    Ident, ImportNamedSpecifier, NamedExport, Program, ScopeId, Visit, VisitWith,
 };
 use swc_experimental_ecma_semantic::resolver::{Semantic, resolver};
 
@@ -175,10 +174,6 @@ struct LegacySymbolsCollector {
 }
 
 impl LegacyVisit for LegacySymbolsCollector {
-    fn visit_break_stmt(&mut self, _: &legacy_ast::BreakStmt) {}
-
-    fn visit_continue_stmt(&mut self, _: &legacy_ast::ContinueStmt) {}
-
     fn visit_ident(&mut self, node: &legacy_ast::Ident) {
         *self
             .symbols
@@ -188,10 +183,6 @@ impl LegacyVisit for LegacySymbolsCollector {
 
     fn visit_import_named_specifier(&mut self, node: &legacy_ast::ImportNamedSpecifier) {
         LegacyVisitWith::visit_with(&node.local, self);
-    }
-
-    fn visit_labeled_stmt(&mut self, node: &legacy_ast::LabeledStmt) {
-        LegacyVisitWith::visit_with(&node.body, self);
     }
 
     fn visit_named_export(&mut self, node: &legacy_ast::NamedExport) {
@@ -207,20 +198,12 @@ struct ExperimentalSymbolsCollector<'semantic, 'ast> {
 }
 
 impl<'a> Visit<'a> for ExperimentalSymbolsCollector<'_, 'a> {
-    fn visit_break_stmt(&mut self, _: &BreakStmt<'a>) {}
-
-    fn visit_continue_stmt(&mut self, _: &ContinueStmt<'a>) {}
-
     fn visit_import_named_specifier(&mut self, node: &ImportNamedSpecifier<'a>) {
         if node.imported.is_some() {
             node.local.visit_with(self);
             return;
         }
         node.visit_children_with(self);
-    }
-
-    fn visit_labeled_stmt(&mut self, node: &LabeledStmt<'a>) {
-        node.body.visit_with(self);
     }
 
     fn visit_named_export(&mut self, node: &NamedExport<'a>) {

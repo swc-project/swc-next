@@ -993,8 +993,12 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
                     self.modify(i, self.decl_kind)
                 }
             }
-            // We currently does not touch labels
-            IdentType::Label => {}
+            IdentType::Label => {
+                let symbol_id = self.symbol_id_for(i);
+                if self.symbol_scopes[symbol_id].is_none() {
+                    self.symbol_scopes[symbol_id] = Some(self.unresolved_scope_id);
+                }
+            }
         }
     }
 

@@ -2,8 +2,7 @@ use colored::Colorize;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use swc_experimental_allocator::Allocator;
 use swc_experimental_ecma_ast::{
-    BlockStmt, BreakStmt, ContinueStmt, ExportSpecifier, Ident, ImportNamedSpecifier, LabeledStmt,
-    Visit, VisitWith,
+    BlockStmt, ExportSpecifier, Ident, ImportNamedSpecifier, Visit, VisitWith,
 };
 use swc_experimental_ecma_semantic::resolver::resolver;
 
@@ -69,10 +68,6 @@ struct SemanticIdsCollector {
 }
 
 impl<'a> Visit<'a> for SemanticIdsCollector {
-    fn visit_break_stmt(&mut self, _: &BreakStmt<'a>) {}
-
-    fn visit_continue_stmt(&mut self, _: &ContinueStmt<'a>) {}
-
     fn visit_import_named_specifier(&mut self, node: &ImportNamedSpecifier<'a>) {
         if node.imported.is_some() {
             node.local.visit_with(self);
@@ -85,10 +80,6 @@ impl<'a> Visit<'a> for SemanticIdsCollector {
         if let ExportSpecifier::Default(export_default_specifier) = node {
             export_default_specifier.visit_with(self);
         }
-    }
-
-    fn visit_labeled_stmt(&mut self, node: &LabeledStmt<'a>) {
-        node.body.visit_with(self);
     }
 
     fn visit_block_stmt(&mut self, node: &BlockStmt<'a>) {
