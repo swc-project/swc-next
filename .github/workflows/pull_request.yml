@@ -1,0 +1,31 @@
+name: Pull Request
+
+on:
+  pull_request:
+    types: ["opened", "edited", "reopened", "synchronize"]
+
+permissions:
+  contents: read
+
+jobs:
+  pr-description:
+    name: Check PR description
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require PR description longer than 30 characters
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import sys
+
+          body = os.environ.get("PR_BODY", "").strip()
+          if len(body) <= 30:
+              print(
+                  "Pull request description must be longer than 30 characters "
+                  f"(current length: {len(body)}).",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+          PY
