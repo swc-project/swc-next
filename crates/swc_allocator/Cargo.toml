@@ -9,4 +9,7 @@ repository.workspace  = true
 version               = "0.10.2"
 
 [dependencies]
-bumpalo = { workspace = true }
+allocator-api2 = { workspace = true }
+bumpalo        = { workspace = true }
+hashbrown      = { workspace = true }
+rustc-hash     = { workspace = true }

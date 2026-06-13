@@ -10,9 +10,11 @@ license     = "Apache-2.0"
 repository  = "https://github.com/CPunisher/swc-experimental"
 
 [workspace.dependencies]
+allocator-api2   = "0.2.8"
 bitflags         = "2"
 bumpalo          = "3.20.2"
 either           = "1.10.0"
+hashbrown        = "0.17.1"
 indexmap         = "2.13.0"
 insta            = "1.46.3"
 miette           = "7.6.0"
