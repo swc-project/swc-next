@@ -23,5 +23,5 @@ clone_repo() {
     )
 }
 
-clone_repo "tc39/test262" "tasks/testsuite/fixtures/test262" "079b13f85da120049919365612163e4579678e89" "test262"
+clone_repo "tc39/test262" "tasks/testsuite/fixtures/test262" "de8e621cdba4f40cff3cf244e6cfb8cb48746b4a" "test262"
 clone_repo "tc39/test262-parser-tests" "tasks/testsuite/fixtures/test262-parser-tests" "0e808c74fbec780646434cad17bb22dc52461003" "test262-parser"

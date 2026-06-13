@@ -236,7 +236,7 @@ fn test_test262_snapshots(args: &AppArgs) {
         .unwrap();
     }
 
-    if args.runners.contains(SEMANTIC_CONFORMANCE_RUNNER) {
+    if args.runners.is_empty() || args.runners.contains(SEMANTIC_CONFORMANCE_RUNNER) {
         let results = SemanticConformanceRunner::run(args, &cases);
         fs::write(
             snapshot_dir.join("semantic_conformance_test262.snap"),
@@ -245,7 +245,7 @@ fn test_test262_snapshots(args: &AppArgs) {
         .unwrap();
     }
 
-    if args.runners.contains(PARSER_CONFORMANCE_RUNNER) {
+    if args.runners.is_empty() || args.runners.contains(PARSER_CONFORMANCE_RUNNER) {
         let results = ParserConformanceRunner::run(args, &cases);
         fs::write(
             snapshot_dir.join("parser_conformance_test262.snap"),
@@ -263,7 +263,7 @@ fn test_test262_snapshots(args: &AppArgs) {
         .unwrap();
     }
 
-    if args.runners.contains(REMOVE_PAREN_CONFORMANCE_RUNNER) {
+    if args.runners.is_empty() || args.runners.contains(REMOVE_PAREN_CONFORMANCE_RUNNER) {
         let results = RemoveParenConformanceRunner::run(args, &cases);
         fs::write(
             snapshot_dir.join("remove_paren_conformance_test262.snap"),

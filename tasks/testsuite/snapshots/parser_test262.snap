@@ -1,8 +1,8 @@
 Test Summary: 
-Passed: 48879/51034 (95.78%)
-Failed: 2152/51034 (4.22%)
-Panicked: 0/51034 (0.00%)
-Ignored: 3/51034 (0.01%)
+Passed: 49590/51897 (95.55%)
+Failed: 2304/51897 (4.44%)
+Panicked: 0/51897 (0.00%)
+Ignored: 3/51897 (0.01%)
 Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-in-lhs.js - [Error { error: (822..825, TS2406) }]
 Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-of-lhs.js - [Error { error: (822..825, TS2406) }]
 Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-compound-assignment.js - [Error { error: (899..902, InvalidAssignTarget) }]
@@ -942,122 +942,181 @@ Failed: fixtures/test262/test/language/expressions/compound-assignment/xor-eval-
 Failed: fixtures/test262/test/language/expressions/delete/identifier-strict-recursive.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/delete/identifier-strict.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/import-attributes/2nd-param-yield-ident-invalid.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-arrow-assignment-expression-import-defer-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-arrow-assignment-expression-import-defer-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-arrow-assignment-expression-import-defer-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-arrow-assignment-expression-import-source-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-arrow-assignment-expression-import-source-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-arrow-assignment-expression-import-source-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-arrow-assignment-expression-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-arrow-assignment-expression-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-arrow-assignment-expression-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-arrow-import-defer-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-arrow-import-defer-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-arrow-import-defer-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-arrow-import-source-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-arrow-import-source-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-arrow-import-source-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-arrow-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-arrow-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-arrow-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-arrow-function-await-import-defer-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-arrow-function-await-import-defer-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-arrow-function-await-import-defer-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-arrow-function-await-import-source-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-arrow-function-await-import-source-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-arrow-function-await-import-source-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-arrow-function-await-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-arrow-function-await-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-arrow-function-await-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-arrow-function-return-await-import-defer-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-arrow-function-return-await-import-defer-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-arrow-function-return-await-import-defer-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-arrow-function-return-await-import-source-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-arrow-function-return-await-import-source-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-arrow-function-return-await-import-source-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-arrow-function-return-await-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-arrow-function-return-await-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-arrow-function-return-await-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-await-import-defer-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-await-import-defer-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-await-import-defer-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-await-import-source-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-await-import-source-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-await-import-source-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-await-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-await-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-await-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-import-defer-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-import-defer-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-import-defer-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-import-source-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-import-source-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-import-source-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-return-await-import-defer-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-return-await-import-defer-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-return-await-import-defer-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-return-await-import-source-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-return-await-import-source-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-return-await-import-source-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-return-await-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-return-await-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-function-return-await-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-gen-await-import-defer-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-gen-await-import-defer-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-gen-await-import-defer-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-gen-await-import-source-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-gen-await-import-source-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-gen-await-import-source-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-gen-await-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-gen-await-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-async-gen-await-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-block-import-defer-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-block-import-defer-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-block-import-defer-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-block-import-source-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-block-import-source-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-block-import-source-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-block-labeled-import-defer-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-block-labeled-import-defer-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-block-labeled-import-defer-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-block-labeled-import-source-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-block-labeled-import-source-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-block-labeled-import-source-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-block-labeled-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-block-labeled-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-block-labeled-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-block-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-block-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-block-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-do-while-import-defer-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-do-while-import-defer-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-do-while-import-defer-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-do-while-import-source-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-do-while-import-source-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-do-while-import-source-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-do-while-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-do-while-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-do-while-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-else-braceless-import-defer-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-else-braceless-import-defer-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-else-braceless-import-defer-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-else-braceless-import-source-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-else-braceless-import-source-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-else-braceless-import-source-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-else-braceless-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-else-braceless-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-else-braceless-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-else-import-defer-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-else-import-defer-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-else-import-defer-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-else-import-source-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-else-import-source-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-else-import-source-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-else-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-else-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-else-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-function-import-defer-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-function-import-defer-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-function-import-defer-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-function-import-source-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-function-import-source-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-function-import-source-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-function-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-function-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-function-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-function-return-import-defer-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-function-return-import-defer-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-function-return-import-defer-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-function-return-import-source-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-function-return-import-source-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-function-return-import-source-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-function-return-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-function-return-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-function-return-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-if-braceless-import-defer-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-if-braceless-import-defer-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-if-braceless-import-defer-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-if-braceless-import-source-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-if-braceless-import-source-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-if-braceless-import-source-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-if-braceless-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-if-braceless-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-if-braceless-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-if-import-defer-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-if-import-defer-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-if-import-defer-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-if-import-source-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-if-import-source-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-if-import-source-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-if-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-if-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-if-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-while-import-defer-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-while-import-defer-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-while-import-defer-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-while-import-source-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-while-import-source-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-while-import-source-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-while-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-while-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-while-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-with-expression-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-with-expression-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-with-expression-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-with-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-with-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/nested-with-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/top-level-import-defer-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/top-level-import-defer-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/top-level-import-defer-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/top-level-import-source-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/top-level-import-source-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/top-level-import-source-no-rest-param.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/top-level-no-new-call-expression-prop-access.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/top-level-no-new-call-expression.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/invalid/top-level-no-rest-param.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/valid/nested-with-expression-import-defer-empty-str-is-valid-assign-expr.js - [Error { error: (1113..1117, WithInStrict) }]
@@ -1570,6 +1629,53 @@ Failed: fixtures/test262/test/language/statements/async-generator/await-as-label
 Failed: fixtures/test262/test/language/statements/async-generator/dflt-params-duplicates.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/statements/async-generator/yield-identifier-spread-strict.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/statements/async-generator/yield-identifier-strict.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/statements/await-using/Symbol.asyncDispose-getter.js - [Error { error: (2286..2310, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/Symbol.asyncDispose-method-called-with-correct-this.js - [Error { error: (1695..1719, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/Symbol.asyncDispose-method-not-async.js - [Error { error: (1746..1770, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/Symbol.dispose-getter.js - [Error { error: (2269..2293, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/Symbol.dispose-method-called-with-correct-this.js - [Error { error: (1675..1699, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/await-using-Symbol.asyncDispose-allows-non-promise-return-value.js - [Error { error: (1491..1515, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/await-using-Symbol.asyncDispose-allows-promiselike-return-value.js - [Error { error: (1582..1606, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/await-using-allows-null-initializer.js - [Error { error: (1220..1240, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/await-using-allows-undefined-initializer.js - [Error { error: (1225..1244, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/await-using-does-not-imply-await-if-not-evaluated.js - [Error { error: (3103..3123, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/await-using-implies-await-if-evaluated.js - [Error { error: (3141..3161, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/block-local-closure-get-before-initialization.js - [Error { error: (528..548, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/block-local-use-before-initialization-in-declaration-statement.js - [Error { error: (512..533, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/block-local-use-before-initialization-in-prior-statement.js - [Error { error: (507..527, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/fn-name-arrow.js - [Error { error: (799..827, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/fn-name-class.js - [Error { error: (637..707, UsingDeclNotEnabled) }, Error { error: (713..780, UsingDeclNotEnabled) }, Error { error: (786..872, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/fn-name-cover.js - [Error { error: (820..859, UsingDeclNotEnabled) }, Error { error: (863..898, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/fn-name-fn.js - [Error { error: (805..838, UsingDeclNotEnabled) }, Error { error: (844..874, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/fn-name-gen.js - [Error { error: (817..852, UsingDeclNotEnabled) }, Error { error: (858..890, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/function-local-closure-get-before-initialization.js - [Error { error: (531..551, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/function-local-use-before-initialization-in-declaration-statement.js - [Error { error: (512..533, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/function-local-use-before-initialization-in-prior-statement.js - [Error { error: (510..530, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/gets-initializer-Symbol.asyncDispose-property-once.js - [Error { error: (2507..2531, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/gets-initializer-Symbol.dispose-after-Symbol.asyncDispose-is-null.js - [Error { error: (2606..2630, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/gets-initializer-Symbol.dispose-after-Symbol.asyncDispose-is-undefined.js - [Error { error: (2617..2641, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/gets-initializer-Symbol.dispose-property-once.js - [Error { error: (2481..2505, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/gets-initializer-does-not-read-Symbol.dispose-if-Symbol.asyncDispose-exists.js - [Error { error: (2644..2668, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/global-closure-get-before-initialization.js - [Error { error: (522..542, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/global-use-before-initialization-in-declaration-statement.js - [Error { error: (506..527, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/global-use-before-initialization-in-prior-statement.js - [Error { error: (503..523, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/initializer-Symbol.asyncDispose-called-at-end-of-asyncfunctionbody.js - [Error { error: (3955..3979, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/initializer-Symbol.asyncDispose-called-at-end-of-asyncgeneratorbody.js - [Error { error: (3668..3692, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/initializer-Symbol.asyncDispose-called-at-end-of-block.js - [Error { error: (1754..1778, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/initializer-Symbol.asyncDispose-called-at-end-of-each-iteration-of-forofstatement.js - [Error { error: (2835..2836, Expected(";", "ident")) }]
+Failed: fixtures/test262/test/language/statements/await-using/initializer-Symbol.asyncDispose-called-at-end-of-forstatement.js - [Error { error: (2032..2033, Expected(";", "ident")) }]
+Failed: fixtures/test262/test/language/statements/await-using/initializer-Symbol.asyncDispose-called-if-subsequent-initializer-throws-in-forstatement-head.js - [Error { error: (2166..2168, Expected(";", "ident")) }]
+Failed: fixtures/test262/test/language/statements/await-using/initializer-Symbol.asyncDispose-called-if-subsequent-initializer-throws.js - [Error { error: (1873..1918, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/initializer-Symbol.dispose-called-at-end-of-asyncfunctionbody.js - [Error { error: (3944..3968, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/initializer-Symbol.dispose-called-at-end-of-asyncgeneratorbody.js - [Error { error: (3657..3681, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/initializer-Symbol.dispose-called-at-end-of-block.js - [Error { error: (1743..1767, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/initializer-Symbol.dispose-called-at-end-of-each-iteration-of-forofstatement.js - [Error { error: (2824..2825, Expected(";", "ident")) }]
+Failed: fixtures/test262/test/language/statements/await-using/initializer-Symbol.dispose-called-at-end-of-forstatement.js - [Error { error: (2032..2033, Expected(";", "ident")) }]
+Failed: fixtures/test262/test/language/statements/await-using/initializer-Symbol.dispose-called-if-subsequent-initializer-throws-in-forstatement-head.js - [Error { error: (2155..2157, Expected(";", "ident")) }]
+Failed: fixtures/test262/test/language/statements/await-using/initializer-Symbol.dispose-called-if-subsequent-initializer-throws.js - [Error { error: (1862..1907, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/multiple-resources-disposed-in-reverse-order.js - [Error { error: (1893..1935, UsingDeclNotEnabled) }, Error { error: (1941..1967, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/puts-initializer-on-top-of-disposableresourcestack-multiple-bindings.js - [Error { error: (1923..1965, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/puts-initializer-on-top-of-disposableresourcestack-subsequent-usings.js - [Error { error: (1716..1742, UsingDeclNotEnabled) }, Error { error: (1748..1774, UsingDeclNotEnabled) }]
 Failed: fixtures/test262/test/language/statements/await-using/syntax/await-using-allowed-at-top-level-of-module.js - [Error { error: (750..770, UsingDeclNotEnabled) }]
 Failed: fixtures/test262/test/language/statements/await-using/syntax/await-using-allows-bindingidentifier.js - [Error { error: (390..410, UsingDeclNotEnabled) }]
 Failed: fixtures/test262/test/language/statements/await-using/syntax/await-using-allows-multiple-bindings.js - [Error { error: (327..357, UsingDeclNotEnabled) }]
@@ -1578,7 +1684,16 @@ Failed: fixtures/test262/test/language/statements/await-using/syntax/await-using
 Failed: fixtures/test262/test/language/statements/await-using/syntax/await-using-outer-inner-using-bindings.js - [Error { error: (686..687, Expected(";", "ident")) }]
 Failed: fixtures/test262/test/language/statements/await-using/syntax/await-using-valid-for-await-using-of-of.js - [Error { error: (365..366, TS1109) }]
 Failed: fixtures/test262/test/language/statements/await-using/syntax/await-using.js - [Error { error: (308..328, UsingDeclNotEnabled) }, Error { error: (350..375, UsingDeclNotEnabled) }, Error { error: (464..483, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/throws-error-as-is-if-only-one-error-during-disposal.js - [Error { error: (1577..1652, UsingDeclNotEnabled) }, Error { error: (1658..1701, UsingDeclNotEnabled) }, Error { error: (1770..1824, UsingDeclNotEnabled) }, Error { error: (1830..1894, UsingDeclNotEnabled) }, Error { error: (1963..2017, UsingDeclNotEnabled) }, Error { error: (2023..2066, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/throws-if-initializer-Symbol.asyncDispose-property-is-null.js - [Error { error: (2248..2295, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/throws-if-initializer-Symbol.asyncDispose-property-is-undefined.js - [Error { error: (2253..2305, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/throws-if-initializer-Symbol.asyncDispose-property-not-callable.js - [Error { error: (2470..2517, UsingDeclNotEnabled) }, Error { error: (2595..2643, UsingDeclNotEnabled) }, Error { error: (2722..2766, UsingDeclNotEnabled) }, Error { error: (2846..2897, UsingDeclNotEnabled) }, Error { error: (2997..3041, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/throws-if-initializer-Symbol.dispose-property-is-null.js - [Error { error: (2209..2251, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/throws-if-initializer-Symbol.dispose-property-is-undefined.js - [Error { error: (2214..2261, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/throws-if-initializer-Symbol.dispose-property-not-callable.js - [Error { error: (2466..2508, UsingDeclNotEnabled) }, Error { error: (2587..2630, UsingDeclNotEnabled) }, Error { error: (2710..2749, UsingDeclNotEnabled) }, Error { error: (2830..2876, UsingDeclNotEnabled) }, Error { error: (2977..3016, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/throws-if-initializer-missing-both-Symbol.asyncDispose-and-Symbol.dispose.js - [Error { error: (2337..2355, UsingDeclNotEnabled) }]
 Failed: fixtures/test262/test/language/statements/await-using/throws-if-initializer-not-object.js - [Error { error: (1568..1588, UsingDeclNotEnabled) }, Error { error: (1666..1687, UsingDeclNotEnabled) }, Error { error: (1766..1783, UsingDeclNotEnabled) }, Error { error: (1863..1887, UsingDeclNotEnabled) }, Error { error: (1987..2004, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/await-using/throws-suppressederror-if-multiple-errors-during-disposal.js - [Error { error: (1652..1720, UsingDeclNotEnabled) }, Error { error: (1726..1783, UsingDeclNotEnabled) }]
 Failed: fixtures/test262/test/language/statements/block/early-errors/invalid-names-call-expression-bad-reference.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/statements/block/early-errors/invalid-names-call-expression-this.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/statements/block/early-errors/invalid-names-member-expression-bad-reference.js - Expected failure, but parsed successfully
@@ -2103,6 +2218,35 @@ Failed: fixtures/test262/test/language/statements/try/catch-parameter-boundnames
 Failed: fixtures/test262/test/language/statements/try/early-catch-duplicates.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/statements/try/early-catch-function.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/statements/try/early-catch-lex.js - Expected failure, but parsed successfully
+Failed: fixtures/test262/test/language/statements/using/Symbol.dispose-getter.js - [Error { error: (2247..2265, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/Symbol.dispose-method-called-with-correct-this.js - [Error { error: (1595..1613, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/block-local-closure-get-before-initialization.js - [Error { error: (450..464, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/block-local-use-before-initialization-in-declaration-statement.js - [Error { error: (416..431, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/block-local-use-before-initialization-in-prior-statement.js - [Error { error: (413..427, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/fn-name-arrow.js - [Error { error: (740..762, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/fn-name-class.js - [Error { error: (575..628, UsingDeclNotEnabled) }, Error { error: (634..684, UsingDeclNotEnabled) }, Error { error: (690..759, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/fn-name-cover.js - [Error { error: (761..794, UsingDeclNotEnabled) }, Error { error: (800..829, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/fn-name-fn.js - [Error { error: (745..772, UsingDeclNotEnabled) }, Error { error: (778..802, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/fn-name-gen.js - [Error { error: (757..786, UsingDeclNotEnabled) }, Error { error: (792..818, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/function-local-closure-get-before-initialization.js - [Error { error: (466..480, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/function-local-use-before-initialization-in-declaration-statement.js - [Error { error: (431..446, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/function-local-use-before-initialization-in-prior-statement.js - [Error { error: (428..442, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/gets-initializer-Symbol.dispose-property-once.js - [Error { error: (2341..2359, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/global-closure-get-before-initialization.js - [Error { error: (446..460, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/global-use-before-initialization-in-declaration-statement.js - [Error { error: (414..429, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/global-use-before-initialization-in-prior-statement.js - [Error { error: (411..425, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/initializer-disposed-at-end-of-asyncfunctionbody.js - [Error { error: (3923..3941, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/initializer-disposed-at-end-of-asyncgeneratorbody.js - [Error { error: (3636..3654, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/initializer-disposed-at-end-of-block.js - [Error { error: (1633..1651, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/initializer-disposed-at-end-of-forstatement.js - [Error { error: (1903..1904, Expected(";", "ident")) }]
+Failed: fixtures/test262/test/language/statements/using/initializer-disposed-at-end-of-functionbody.js - [Error { error: (1692..1710, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/initializer-disposed-at-end-of-generatorbody.js - [Error { error: (3549..3567, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/initializer-disposed-if-subsequent-initializer-throws-in-forstatement-head.js - [Error { error: (2014..2016, Expected(";", "ident")) }]
+Failed: fixtures/test262/test/language/statements/using/initializer-disposed-if-subsequent-initializer-throws.js - [Error { error: (1737..1776, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/multiple-resources-disposed-in-reverse-order.js - [Error { error: (1766..1802, UsingDeclNotEnabled) }, Error { error: (1806..1826, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/puts-initializer-on-top-of-disposableresourcestack-multiple-bindings.js - [Error { error: (1759..1795, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/puts-initializer-on-top-of-disposableresourcestack-subsequent-usings.js - [Error { error: (1552..1572, UsingDeclNotEnabled) }, Error { error: (1576..1596, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/static-init-await-binding-valid.js - [Error { error: (551..556, ExpectedSemiForExprStmt { expr: 545..550 }) }]
 Failed: fixtures/test262/test/language/statements/using/syntax/using-allowed-at-top-level-of-module.js - [Error { error: (696..710, UsingDeclNotEnabled) }]
 Failed: fixtures/test262/test/language/statements/using/syntax/using-allows-bindingidentifier.js - [Error { error: (313..327, UsingDeclNotEnabled) }]
 Failed: fixtures/test262/test/language/statements/using/syntax/using-allows-multiple-bindings.js - [Error { error: (302..326, UsingDeclNotEnabled) }]
@@ -2111,7 +2255,15 @@ Failed: fixtures/test262/test/language/statements/using/syntax/using-invalid-ass
 Failed: fixtures/test262/test/language/statements/using/syntax/using-invalid-assignment-statement-body-for-of.js - [Error { error: (478..479, Expected(";", "ident")) }]
 Failed: fixtures/test262/test/language/statements/using/syntax/using-outer-inner-using-bindings.js - [Error { error: (565..566, Expected(";", "ident")) }]
 Failed: fixtures/test262/test/language/statements/using/syntax/using.js - [Error { error: (302..316, UsingDeclNotEnabled) }, Error { error: (338..357, UsingDeclNotEnabled) }, Error { error: (446..459, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/throws-error-as-is-if-only-one-error-during-disposal.js - [Error { error: (1476..1534, UsingDeclNotEnabled) }, Error { error: (1538..1575, UsingDeclNotEnabled) }, Error { error: (1621..1658, UsingDeclNotEnabled) }, Error { error: (1662..1720, UsingDeclNotEnabled) }, Error { error: (1766..1803, UsingDeclNotEnabled) }, Error { error: (1807..1844, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/throws-if-initializer-Symbol.dispose-property-is-null.js - [Error { error: (1935..1971, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/throws-if-initializer-Symbol.dispose-property-is-undefined.js - [Error { error: (1940..1981, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/throws-if-initializer-Symbol.dispose-property-not-callable.js - [Error { error: (2191..2227, UsingDeclNotEnabled) }, Error { error: (2282..2319, UsingDeclNotEnabled) }, Error { error: (2375..2408, UsingDeclNotEnabled) }, Error { error: (2465..2505, UsingDeclNotEnabled) }, Error { error: (2580..2613, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/throws-if-initializer-missing-Symbol.dispose.js - [Error { error: (1872..1884, UsingDeclNotEnabled) }]
 Failed: fixtures/test262/test/language/statements/using/throws-if-initializer-not-object.js - [Error { error: (1425..1439, UsingDeclNotEnabled) }, Error { error: (1494..1509, UsingDeclNotEnabled) }, Error { error: (1565..1576, UsingDeclNotEnabled) }, Error { error: (1633..1651, UsingDeclNotEnabled) }, Error { error: (1726..1737, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/throws-suppressederror-if-multiple-errors-during-disposal.js - [Error { error: (1562..1613, UsingDeclNotEnabled) }, Error { error: (1617..1668, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/using-allows-null-initializer.js - [Error { error: (1094..1108, UsingDeclNotEnabled) }]
+Failed: fixtures/test262/test/language/statements/using/using-allows-undefined-initializer.js - [Error { error: (1099..1118, UsingDeclNotEnabled) }]
 Failed: fixtures/test262/test/language/statements/variable/12.2.1-1gs.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/statements/variable/12.2.1-4gs.js - Expected failure, but parsed successfully
 Failed: fixtures/test262/test/language/statements/variable/arguments-fn-strict-list-final-init.js - Expected failure, but parsed successfully
