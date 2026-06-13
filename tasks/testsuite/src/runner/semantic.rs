@@ -70,6 +70,8 @@ struct SemanticIdsCollector {
 impl<'a> Visit<'a> for SemanticIdsCollector {
     fn visit_import_named_specifier(&mut self, node: &ImportNamedSpecifier<'a>) {
         if node.imported.is_some() {
+            // swc_core only resolves the local binding in `import { foo as bar }`;
+            // semantic conformance keeps this smoke test aligned with that behavior.
             node.local.visit_with(self);
             return;
         }
@@ -77,6 +79,8 @@ impl<'a> Visit<'a> for SemanticIdsCollector {
     }
 
     fn visit_export_specifier(&mut self, node: &ExportSpecifier<'a>) {
+        // swc_core does not treat every export specifier name as a local semantic
+        // identifier; semantic conformance checks the exact swc_core boundary.
         if let ExportSpecifier::Default(export_default_specifier) = node {
             export_default_specifier.visit_with(self);
         }
