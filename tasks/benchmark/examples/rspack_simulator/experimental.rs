@@ -1,6 +1,6 @@
 use rustc_hash::FxHashSet;
 use swc_core::atoms::Atom as LegacyAtom;
-use swc_experimental_allocator::{Allocator, atom::Atom};
+use swc_experimental_allocator::{Allocator, atom::Atom, vec::Vec as AstVec};
 use swc_experimental_ecma_ast::{
     BreakStmt, ClassMember, ContinueStmt, DebuggerStmt, ExportAll, ExportDefaultExpr, ExprStmt,
     GetSpan, ImportDecl, NamedExport, Program, ReturnStmt, Span, ThrowStmt, UpdateExpr, VarDecl,
@@ -33,7 +33,10 @@ pub fn run(src: &'static str, compat: Option<CompatMode>) {
 }
 
 #[inline(never)]
-fn run_parse<'a>(allocator: &'a Allocator, src: &'a str) -> (Program<'a>, Vec<TokenAndSpan>) {
+fn run_parse<'a>(
+    allocator: &'a Allocator,
+    src: &'a str,
+) -> (Program<'a>, AstVec<'a, TokenAndSpan>) {
     let (program, tokens) = {
         let parser_lexer = Lexer::new(
             allocator,
