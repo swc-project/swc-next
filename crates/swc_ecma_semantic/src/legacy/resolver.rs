@@ -1,6 +1,6 @@
 use oxc_index::{Idx, IndexVec};
 use rustc_hash::{FxHashMap, FxHashSet};
-use swc_experimental_allocator::{atom::Atom, vec::Vec as AstVec};
+use swc_experimental_allocator::{atom::Atom, vec::Vec as ArenaVec};
 use swc_experimental_ecma_ast::*;
 use swc_experimental_ecma_visit::{Visit, VisitWith};
 // use swc_ecma_utils::{find_pat_ids, stack_size::maybe_grow_default};
@@ -1072,7 +1072,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         module.visit_children_with(self);
     }
 
-    fn visit_module_items(&mut self, stmts: &AstVec<'ast, ModuleItem<'ast>>) {
+    fn visit_module_items(&mut self, stmts: &ArenaVec<'ast, ModuleItem<'ast>>) {
         if !self.in_ts_module && self.scopes[self.current].kind != ScopeKind::Fn {
             stmts.visit_children_with(self);
             return;
@@ -1163,7 +1163,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         };
     }
 
-    fn visit_stmts(&mut self, stmts: &AstVec<'ast, Stmt<'ast>>) {
+    fn visit_stmts(&mut self, stmts: &ArenaVec<'ast, Stmt<'ast>>) {
         // Phase 1: Handle hoisting
         {
             let mut hoister = Hoister {
@@ -1971,14 +1971,14 @@ impl<'resolver, 'ast> Visit<'ast> for Hoister<'resolver, 'ast> {
     /// If we deal with the `var Ic` first, we can know
     /// that there is already an global declaration of Ic when deal with the try
     /// block.
-    fn visit_module_items(&mut self, items: &AstVec<'ast, ModuleItem<'ast>>) {
+    fn visit_module_items(&mut self, items: &ArenaVec<'ast, ModuleItem<'ast>>) {
         for item in items {
             item.visit_with(self);
         }
     }
 
     /// see docs for `self.visit_module_items`
-    fn visit_stmts(&mut self, stmts: &AstVec<'ast, Stmt<'ast>>) {
+    fn visit_stmts(&mut self, stmts: &ArenaVec<'ast, Stmt<'ast>>) {
         for item in stmts {
             if matches!(
                 item,

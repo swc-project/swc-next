@@ -5,7 +5,7 @@ use swc_experimental_allocator::atom::{
     Atom as ExperimentalAtom, Wtf8Atom as ExperimentalWtf8Atom,
 };
 use swc_experimental_allocator::boxed::Box as AstBox;
-use swc_experimental_allocator::vec::Vec as AstVec;
+use swc_experimental_allocator::vec::Vec as ArenaVec;
 use swc_experimental_ecma_ast::{self as experimental};
 use swc_experimental_ecma_semantic::resolver::Semantic;
 
@@ -27,7 +27,7 @@ pub(crate) trait CompatImpl {
 
     fn compat_vec<T, U, F: Fn(&mut Self, T) -> U>(
         &mut self,
-        items: AstVec<'_, T>,
+        items: ArenaVec<'_, T>,
         transformer: F,
     ) -> Vec<U>;
 

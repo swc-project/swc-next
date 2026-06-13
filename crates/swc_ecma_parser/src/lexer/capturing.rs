@@ -1,6 +1,6 @@
 use std::mem;
 
-use swc_experimental_allocator::{Allocator, vec::Vec as AstVec};
+use swc_experimental_allocator::{Allocator, vec::Vec as ArenaVec};
 use swc_experimental_ecma_ast::Span;
 
 use crate::{
@@ -14,7 +14,7 @@ use crate::{
 #[derive(Debug)]
 pub struct Capturing<'a, I> {
     inner: I,
-    captured: AstVec<'a, TokenAndSpan>,
+    captured: ArenaVec<'a, TokenAndSpan>,
 }
 
 pub struct CapturingCheckpoint<'a, I: Tokens<'a>> {
@@ -36,7 +36,7 @@ impl<'a, I: Tokens<'a>> Capturing<'a, I> {
         let allocator = input.allocator();
         Capturing {
             inner: input,
-            captured: AstVec::new_in(allocator),
+            captured: ArenaVec::new_in(allocator),
         }
     }
 
@@ -44,7 +44,7 @@ impl<'a, I: Tokens<'a>> Capturing<'a, I> {
         let allocator = input.allocator();
         Capturing {
             inner: input,
-            captured: AstVec::with_capacity_in(capacity, allocator),
+            captured: ArenaVec::with_capacity_in(capacity, allocator),
         }
     }
 
@@ -53,8 +53,8 @@ impl<'a, I: Tokens<'a>> Capturing<'a, I> {
     }
 
     /// Take captured tokens
-    pub fn take(&mut self) -> AstVec<'a, TokenAndSpan> {
-        mem::replace(&mut self.captured, AstVec::new_in(self.inner.allocator()))
+    pub fn take(&mut self) -> ArenaVec<'a, TokenAndSpan> {
+        mem::replace(&mut self.captured, ArenaVec::new_in(self.inner.allocator()))
     }
 
     fn capture(&mut self, ts: TokenAndSpan) {

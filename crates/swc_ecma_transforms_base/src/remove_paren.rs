@@ -2,7 +2,7 @@ use std::{hash::BuildHasherDefault, ops::RangeFull};
 
 use indexmap::IndexMap;
 use rustc_hash::FxHasher;
-use swc_experimental_allocator::{Allocator, boxed::Box as AstBox, vec::Vec as AstVec};
+use swc_experimental_allocator::{Allocator, boxed::Box as AstBox, vec::Vec as ArenaVec};
 use swc_experimental_ecma_ast::{
     AstBuilder, Class, ClassMember, Comments, Expr, GetSpan, IfStmt, SeqExpr, SimpleAssignTarget,
     Span, Stmt, UnaryExpr, UnaryOp, VisitMut, VisitMutWith,
@@ -64,10 +64,10 @@ impl<'a> ParenRemover<'a> {
                 let span = seq.span;
                 let exprs_len = seq.exprs.len();
                 let flattened_len = seq.exprs.iter().map(seq_expr_len).sum();
-                let exprs = std::mem::replace(&mut seq.exprs, AstVec::new_in(self.ast.allocator));
+                let exprs = std::mem::replace(&mut seq.exprs, ArenaVec::new_in(self.ast.allocator));
 
                 let mut has_padding_value = false;
-                let mut new_exprs = AstVec::with_capacity_in(flattened_len, self.ast.allocator);
+                let mut new_exprs = ArenaVec::with_capacity_in(flattened_len, self.ast.allocator);
 
                 if flattened_len == exprs_len {
                     for (idx, expr) in exprs.into_iter().enumerate() {
@@ -152,7 +152,7 @@ impl<'a> VisitMut<'a> for ParenRemover<'a> {
         if will_eat_else_token(&node.cons) {
             let span = node.cons.span();
             let cons = std::mem::replace(&mut node.cons, self.ast.stmt_empty_stmt(span));
-            let mut stmts = AstVec::with_capacity_in(1, self.ast.allocator);
+            let mut stmts = ArenaVec::with_capacity_in(1, self.ast.allocator);
             stmts.push(cons);
             node.cons = self.ast.stmt_block_stmt(span, stmts);
         }
@@ -205,7 +205,7 @@ fn ignore_return_value<'a>(
         Expr::Seq(seq) => {
             let SeqExpr { span, exprs } = AstBox::into_inner(seq);
             let len = exprs.len();
-            let mut new_exprs = AstVec::with_capacity_in(len, allocator);
+            let mut new_exprs = ArenaVec::with_capacity_in(len, allocator);
 
             for (idx, expr) in exprs.into_iter().enumerate() {
                 if idx + 1 == len {
@@ -236,15 +236,15 @@ fn ignore_return_value<'a>(
 }
 
 fn ignore_padding_value<'a>(
-    exprs: AstVec<'a, Expr<'a>>,
+    exprs: ArenaVec<'a, Expr<'a>>,
     allocator: &'a Allocator,
-) -> AstVec<'a, Expr<'a>> {
+) -> ArenaVec<'a, Expr<'a>> {
     let len = exprs.len();
     if len <= 2 {
         return exprs;
     }
 
-    let mut new_exprs = AstVec::with_capacity_in(len, allocator);
+    let mut new_exprs = ArenaVec::with_capacity_in(len, allocator);
     for (idx, expr) in exprs.into_iter().enumerate() {
         match &expr {
             Expr::Fn(..) | Expr::Arrow(..) | Expr::Lit(..) if idx + 1 != len => {}

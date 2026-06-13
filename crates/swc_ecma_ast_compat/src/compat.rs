@@ -1,5 +1,5 @@
 use swc_core::ecma::ast::{self as legacy};
-use swc_experimental_allocator::vec::Vec as AstVec;
+use swc_experimental_allocator::vec::Vec as ArenaVec;
 use swc_experimental_ecma_ast::{self as experimental};
 use swc_experimental_ecma_semantic::resolver::Semantic;
 
@@ -26,7 +26,7 @@ impl CompatImpl for AstCompat<'_> {
 
     fn compat_vec<T, U, F: Fn(&mut Self, T) -> U>(
         &mut self,
-        items: AstVec<'_, T>,
+        items: ArenaVec<'_, T>,
         transformer: F,
     ) -> Vec<U> {
         let mut ret = Vec::with_capacity(items.len());
