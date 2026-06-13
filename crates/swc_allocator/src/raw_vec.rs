@@ -96,7 +96,7 @@ impl<'a, T> RawVec<'a, T> {
     }
 
     fn allocate_in(cap: usize, zeroed: bool, a: &'a Allocator) -> Self {
-        if cap > u32::MAX as usize {
+        if mem::size_of::<T>() != 0 && cap > u32::MAX as usize {
             capacity_overflow();
         }
 
@@ -577,6 +577,10 @@ impl<'a, T> RawVec<'a, T> {
                     .ok_or(CapacityOverflow)?,
                 Amortized => self.amortized_new_size(used_cap, needed_extra_cap)?,
             };
+            if new_cap > u32::MAX as usize {
+                return Err(CapacityOverflow);
+            }
+
             let new_layout = Layout::array::<T>(new_cap).map_err(|_| CapacityOverflow)?;
 
             alloc_guard(new_layout.size())?;
@@ -598,9 +602,6 @@ impl<'a, T> RawVec<'a, T> {
             }
 
             self.ptr = res?.cast();
-            if new_cap > u32::MAX as usize {
-                return Err(CapacityOverflow);
-            }
             self.cap = new_cap as u32;
 
             Ok(())
