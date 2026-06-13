@@ -116,6 +116,7 @@ impl<'alloc, T, S> HashSet<'alloc, T, S> {
     ///
     /// We'll prevent access to it completely and remove this method as soon as we can.
     // TODO: Do that!
+    #[allow(unfulfilled_lint_expectations)]
     #[expect(clippy::unused_self)]
     pub fn allocator(&self) -> &'alloc Allocator {
         const { panic!("This method cannot be called") };

@@ -1,15 +1,37 @@
-use std::collections::HashMap;
 use std::fmt;
 
-use swc_experimental_allocator::{Allocator, atom::Atom, vec::Vec};
+use swc_experimental_allocator::{
+    Allocator, CloneIn, atom::Atom, hash_map::HashMap as ArenaHashMap, vec::Vec,
+};
 
 use crate::{DUMMY_SP, Span};
 
-#[derive(Clone)]
 pub struct Comments<'a> {
-    pub leading: HashMap<u32, Vec<'a, Comment<'a>>>,
-    pub trailing: HashMap<u32, Vec<'a, Comment<'a>>>,
+    pub leading: ArenaHashMap<'a, u32, Vec<'a, Comment<'a>>>,
+    pub trailing: ArenaHashMap<'a, u32, Vec<'a, Comment<'a>>>,
     allocator: &'a Allocator,
+}
+
+impl<'a> CloneIn<'a> for Comments<'_> {
+    type Cloned = Comments<'a>;
+
+    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+        let mut leading = ArenaHashMap::with_capacity_in(self.leading.len(), allocator);
+        for (&pos, comments) in &self.leading {
+            leading.insert(pos, comments.clone_in(allocator));
+        }
+
+        let mut trailing = ArenaHashMap::with_capacity_in(self.trailing.len(), allocator);
+        for (&pos, comments) in &self.trailing {
+            trailing.insert(pos, comments.clone_in(allocator));
+        }
+
+        Comments {
+            leading,
+            trailing,
+            allocator,
+        }
+    }
 }
 
 impl fmt::Debug for Comments<'_> {
@@ -32,8 +54,8 @@ impl Eq for Comments<'_> {}
 impl<'a> Comments<'a> {
     pub fn new_in(allocator: &'a Allocator) -> Self {
         Self {
-            leading: HashMap::default(),
-            trailing: HashMap::default(),
+            leading: ArenaHashMap::new_in(allocator),
+            trailing: ArenaHashMap::new_in(allocator),
             allocator,
         }
     }
@@ -179,7 +201,11 @@ impl<'a> Comments<'a> {
     }
 }
 
-fn move_comments<'a>(comments: &mut HashMap<u32, Vec<'a, Comment<'a>>>, from: u32, to: u32) {
+fn move_comments<'a>(
+    comments: &mut ArenaHashMap<'a, u32, Vec<'a, Comment<'a>>>,
+    from: u32,
+    to: u32,
+) {
     if from == to {
         return;
     }
@@ -211,6 +237,18 @@ pub struct Comment<'a> {
 impl<'a> Comment<'a> {
     pub fn new(kind: CommentKind, span: Span, text: Atom<'a>) -> Self {
         Self { kind, span, text }
+    }
+}
+
+impl<'a> CloneIn<'a> for Comment<'_> {
+    type Cloned = Comment<'a>;
+
+    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+        Comment {
+            kind: self.kind,
+            span: self.span,
+            text: self.text.clone_in(allocator),
+        }
     }
 }
 
