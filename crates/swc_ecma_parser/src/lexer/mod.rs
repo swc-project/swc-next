@@ -211,7 +211,9 @@ impl<'a, 'cmt> Lexer<'a, 'cmt> {
         comments: Option<&'cmt mut Comments<'a>>,
     ) -> Self {
         let start_pos = input.cur_pos();
-        let comments_buffer = comments.is_some().then(CommentsBuffer::new);
+        let comments_buffer = comments
+            .is_some()
+            .then(|| CommentsBuffer::new_in(allocator));
         Lexer {
             allocator,
             comments,
@@ -1214,16 +1216,12 @@ impl<'a> Lexer<'a, '_> {
             // now fill the user's passed in comments
             for comment in comments_buffer.take_comments() {
                 match comment.kind {
-                    BufferedCommentKind::Leading => comments
-                        .leading
-                        .entry(comment.pos)
-                        .or_default()
-                        .push(comment.comment),
-                    BufferedCommentKind::Trailing => comments
-                        .trailing
-                        .entry(comment.pos)
-                        .or_default()
-                        .push(comment.comment),
+                    BufferedCommentKind::Leading => {
+                        comments.add_leading(comment.pos, comment.comment)
+                    }
+                    BufferedCommentKind::Trailing => {
+                        comments.add_trailing(comment.pos, comment.comment)
+                    }
                 }
             }
         }

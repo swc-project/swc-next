@@ -10,6 +10,7 @@ use crate::{
     lexer::Token,
     parser::{
         js::is_not_this,
+        state::State,
         util::{IsInvalidClassName, IsSimpleParameterList},
     },
 };
@@ -596,7 +597,8 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         let f_with_generator_context = |p: &mut Self| {
             let f_with_inside_non_arrow_fn_scope = |p: &mut Self| {
                 let f_with_new_state = |p: &mut Self| {
-                    let orig_state = std::mem::take(&mut p.state);
+                    let orig_state =
+                        std::mem::replace(&mut p.state, State::new_in(p.ast.allocator));
                     let ret = f(p, is_simple_parameter_list);
                     p.state = orig_state;
                     ret

@@ -1,3 +1,4 @@
+use swc_experimental_allocator::{Allocator, vec::Vec};
 use swc_experimental_ecma_ast::Comment;
 
 #[derive(Debug, Clone)]
@@ -13,10 +14,10 @@ pub enum BufferedCommentKind {
     Trailing,
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct CommentsBuffer<'a> {
-    comments: Vec<BufferedComment<'a>>,
-    pending_leading: Vec<Comment<'a>>,
+    comments: Vec<'a, BufferedComment<'a>>,
+    pending_leading: Vec<'a, Comment<'a>>,
 }
 
 #[derive(Debug, Default)]
@@ -25,9 +26,12 @@ pub struct CommentsBufferCheckpoint {
     pending_leading: usize,
 }
 
-impl CommentsBuffer<'_> {
-    pub fn new() -> Self {
-        Self::default()
+impl<'a> CommentsBuffer<'a> {
+    pub fn new_in(allocator: &'a Allocator) -> Self {
+        Self {
+            comments: Vec::new_in(allocator),
+            pending_leading: Vec::new_in(allocator),
+        }
     }
 
     pub fn checkpoint_save(&self) -> CommentsBufferCheckpoint {
@@ -41,9 +45,6 @@ impl CommentsBuffer<'_> {
         self.comments.truncate(checkpoint.comments_pos);
         self.pending_leading.truncate(checkpoint.pending_leading);
     }
-}
-
-impl<'a> CommentsBuffer<'a> {
     #[inline(always)]
     pub fn push_comment(&mut self, comment: BufferedComment<'a>) {
         self.comments.push(comment);

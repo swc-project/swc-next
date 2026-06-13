@@ -1,6 +1,6 @@
 use std::mem;
 
-use swc_experimental_allocator::Allocator;
+use swc_experimental_allocator::{Allocator, vec::Vec as AstVec};
 use swc_experimental_ecma_ast::Span;
 
 use crate::{
@@ -12,9 +12,9 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct Capturing<I> {
+pub struct Capturing<'a, I> {
     inner: I,
-    captured: Vec<TokenAndSpan>,
+    captured: AstVec<'a, TokenAndSpan>,
 }
 
 pub struct CapturingCheckpoint<'a, I: Tokens<'a>> {
@@ -22,7 +22,7 @@ pub struct CapturingCheckpoint<'a, I: Tokens<'a>> {
     inner: I::Checkpoint,
 }
 
-impl<I: Clone> Clone for Capturing<I> {
+impl<'a, I: Clone> Clone for Capturing<'a, I> {
     fn clone(&self) -> Self {
         Capturing {
             inner: self.inner.clone(),
@@ -31,18 +31,20 @@ impl<I: Clone> Clone for Capturing<I> {
     }
 }
 
-impl<'a, I: Tokens<'a>> Capturing<I> {
+impl<'a, I: Tokens<'a>> Capturing<'a, I> {
     pub fn new(input: I) -> Self {
+        let allocator = input.allocator();
         Capturing {
             inner: input,
-            captured: Default::default(),
+            captured: AstVec::new_in(allocator),
         }
     }
 
     pub fn with_capacity(input: I, capacity: usize) -> Self {
+        let allocator = input.allocator();
         Capturing {
             inner: input,
-            captured: Vec::with_capacity(capacity),
+            captured: AstVec::with_capacity_in(capacity, allocator),
         }
     }
 
@@ -51,8 +53,8 @@ impl<'a, I: Tokens<'a>> Capturing<I> {
     }
 
     /// Take captured tokens
-    pub fn take(&mut self) -> Vec<TokenAndSpan> {
-        mem::take(&mut self.captured)
+    pub fn take(&mut self) -> AstVec<'a, TokenAndSpan> {
+        mem::replace(&mut self.captured, AstVec::new_in(self.inner.allocator()))
     }
 
     fn capture(&mut self, ts: TokenAndSpan) {
@@ -71,7 +73,7 @@ impl<'a, I: Tokens<'a>> Capturing<I> {
     }
 }
 
-impl<'a, I: Tokens<'a>> Tokens<'a> for Capturing<I> {
+impl<'a, I: Tokens<'a>> Tokens<'a> for Capturing<'a, I> {
     type Checkpoint = CapturingCheckpoint<'a, I>;
 
     fn checkpoint_save(&self) -> Self::Checkpoint {

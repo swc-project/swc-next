@@ -140,7 +140,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
         let mut p = Self {
             ast: AstBuilder { allocator },
-            state: Default::default(),
+            state: State::new_in(allocator),
             input: crate::parser::input::Buffer::new(input),
             found_module_item: false,
         };

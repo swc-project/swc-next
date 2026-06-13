@@ -1,22 +1,61 @@
 use std::collections::HashMap;
+use std::fmt;
 
-use swc_experimental_allocator::atom::Atom;
+use swc_experimental_allocator::{Allocator, atom::Atom, vec::Vec};
 
 use crate::{DUMMY_SP, Span};
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct Comments<'a> {
-    pub leading: HashMap<u32, Vec<Comment<'a>>>,
-    pub trailing: HashMap<u32, Vec<Comment<'a>>>,
+    pub leading: HashMap<u32, Vec<'a, Comment<'a>>>,
+    pub trailing: HashMap<u32, Vec<'a, Comment<'a>>>,
+    allocator: &'a Allocator,
 }
 
+impl fmt::Debug for Comments<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Comments")
+            .field("leading", &self.leading)
+            .field("trailing", &self.trailing)
+            .finish()
+    }
+}
+
+impl PartialEq for Comments<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.leading == other.leading && self.trailing == other.trailing
+    }
+}
+
+impl Eq for Comments<'_> {}
+
 impl<'a> Comments<'a> {
-    pub fn add_leading(&mut self, pos: u32, cmt: Comment<'a>) {
-        self.leading.entry(pos).or_default().push(cmt);
+    pub fn new_in(allocator: &'a Allocator) -> Self {
+        Self {
+            leading: HashMap::default(),
+            trailing: HashMap::default(),
+            allocator,
+        }
     }
 
-    pub fn add_leading_comments(&mut self, pos: u32, comments: Vec<Comment<'a>>) {
-        self.leading.entry(pos).or_default().extend(comments);
+    pub fn add_leading(&mut self, pos: u32, cmt: Comment<'a>) {
+        let allocator = self.allocator;
+        self.leading
+            .entry(pos)
+            .or_insert_with(|| Vec::new_in(allocator))
+            .push(cmt);
+    }
+
+    pub fn add_leading_comments(
+        &mut self,
+        pos: u32,
+        comments: impl IntoIterator<Item = Comment<'a>>,
+    ) {
+        let allocator = self.allocator;
+        self.leading
+            .entry(pos)
+            .or_insert_with(|| Vec::new_in(allocator))
+            .extend(comments);
     }
 
     pub fn has_leading(&self, pos: u32) -> bool {
@@ -27,20 +66,32 @@ impl<'a> Comments<'a> {
         move_comments(&mut self.leading, from, to);
     }
 
-    pub fn take_leading(&mut self, pos: u32) -> Option<Vec<Comment<'a>>> {
+    pub fn take_leading(&mut self, pos: u32) -> Option<Vec<'a, Comment<'a>>> {
         self.leading.remove(&pos)
     }
 
-    pub fn get_leading(&self, pos: u32) -> Option<Vec<Comment<'a>>> {
+    pub fn get_leading(&self, pos: u32) -> Option<Vec<'a, Comment<'a>>> {
         self.leading.get(&pos).cloned()
     }
 
     pub fn add_trailing(&mut self, pos: u32, cmt: Comment<'a>) {
-        self.trailing.entry(pos).or_default().push(cmt);
+        let allocator = self.allocator;
+        self.trailing
+            .entry(pos)
+            .or_insert_with(|| Vec::new_in(allocator))
+            .push(cmt);
     }
 
-    pub fn add_trailing_comments(&mut self, pos: u32, comments: Vec<Comment<'a>>) {
-        self.trailing.entry(pos).or_default().extend(comments);
+    pub fn add_trailing_comments(
+        &mut self,
+        pos: u32,
+        comments: impl IntoIterator<Item = Comment<'a>>,
+    ) {
+        let allocator = self.allocator;
+        self.trailing
+            .entry(pos)
+            .or_insert_with(|| Vec::new_in(allocator))
+            .extend(comments);
     }
 
     pub fn has_trailing(&self, pos: u32) -> bool {
@@ -51,18 +102,22 @@ impl<'a> Comments<'a> {
         move_comments(&mut self.trailing, from, to);
     }
 
-    pub fn take_trailing(&mut self, pos: u32) -> Option<Vec<Comment<'a>>> {
+    pub fn take_trailing(&mut self, pos: u32) -> Option<Vec<'a, Comment<'a>>> {
         self.trailing.remove(&pos)
     }
 
-    pub fn get_trailing(&self, pos: u32) -> Option<Vec<Comment<'a>>> {
+    pub fn get_trailing(&self, pos: u32) -> Option<Vec<'a, Comment<'a>>> {
         self.trailing.get(&pos).cloned()
     }
 
     pub fn add_pure_comment(&mut self, pos: u32) {
         assert_ne!(pos, 0, "cannot add pure comment to zero position");
 
-        let leading = self.leading.entry(pos).or_default();
+        let allocator = self.allocator;
+        let leading = self
+            .leading
+            .entry(pos)
+            .or_insert_with(|| Vec::new_in(allocator));
         let text = Atom::new_const("#__PURE__");
 
         if !leading.iter().any(|c| c.text == text) {
@@ -124,7 +179,7 @@ impl<'a> Comments<'a> {
     }
 }
 
-fn move_comments<'a>(comments: &mut HashMap<u32, Vec<Comment<'a>>>, from: u32, to: u32) {
+fn move_comments<'a>(comments: &mut HashMap<u32, Vec<'a, Comment<'a>>>, from: u32, to: u32) {
     if from == to {
         return;
     }
@@ -138,7 +193,11 @@ fn move_comments<'a>(comments: &mut HashMap<u32, Vec<Comment<'a>>>, from: u32, t
         moved.extend(comments.remove(&to).unwrap());
     }
 
-    comments.entry(to).or_default().extend(moved);
+    if let Some(target) = comments.get_mut(&to) {
+        target.extend(moved);
+    } else {
+        comments.insert(to, moved);
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
