@@ -63,6 +63,7 @@ use self::CollectionAllocErr::*;
 #[allow(missing_debug_implementations)]
 pub struct RawVec<'a, T> {
     ptr: NonNull<T>,
+    len: u32,
     cap: u32,
     a: &'a Allocator,
 }
@@ -74,6 +75,7 @@ impl<'a, T> RawVec<'a, T> {
         // `cap: 0` means "unallocated". zero-sized types are ignored.
         RawVec {
             ptr: NonNull::dangling(),
+            len: 0,
             cap: 0,
             a,
         }
@@ -122,12 +124,17 @@ impl<'a, T> RawVec<'a, T> {
         };
 
         let cap = cap as u32;
-        RawVec { ptr, cap, a }
+        RawVec {
+            ptr,
+            len: 0,
+            cap,
+            a,
+        }
     }
 }
 
 impl<'a, T> RawVec<'a, T> {
-    /// Reconstitutes a RawVec from a pointer, capacity, and allocator.
+    /// Reconstitutes a RawVec from a pointer, length, capacity, and allocator.
     ///
     /// # Undefined Behavior
     ///
@@ -140,11 +147,15 @@ impl<'a, T> RawVec<'a, T> {
     ///
     /// `ptr` must have been allocated by `a` for `cap` values of `T`, and the
     /// allocation must satisfy `RawVec`'s alignment and capacity invariants.
+    /// `len` must be less than or equal to `cap`.
+    /// `len` must be less than or equal to `u32::MAX`, as length is stored as `u32`.
     /// `cap` must be less than or equal to `u32::MAX`, as capacity is stored as `u32`.
-    pub unsafe fn from_raw_parts_in(ptr: *mut T, cap: usize, a: &'a Allocator) -> Self {
+    pub unsafe fn from_raw_parts_in(ptr: *mut T, len: usize, cap: usize, a: &'a Allocator) -> Self {
+        let len = len as u32;
         let cap = cap as u32;
         RawVec {
             ptr: unsafe { NonNull::new_unchecked(ptr) },
+            len,
             cap,
             a,
         }
@@ -157,6 +168,36 @@ impl<'a, T> RawVec<'a, T> {
     /// be careful.
     pub fn ptr(&self) -> *mut T {
         self.ptr.as_ptr()
+    }
+
+    /// Gets the number of elements as `u32`.
+    #[inline(always)]
+    pub fn len_u32(&self) -> u32 {
+        self.len
+    }
+
+    /// Gets the number of elements as `usize`.
+    #[inline(always)]
+    pub fn len_usize(&self) -> usize {
+        self.len as usize
+    }
+
+    /// Set the number of elements.
+    #[inline(always)]
+    pub fn set_len(&mut self, new_len: u32) {
+        self.len = new_len;
+    }
+
+    /// Increase the number of elements by `increment`.
+    #[inline(always)]
+    pub fn increase_len(&mut self, increment: u32) {
+        self.len += increment;
+    }
+
+    /// Decrease the number of elements by `decrement`.
+    #[inline(always)]
+    pub fn decrease_len(&mut self, decrement: u32) {
+        self.len -= decrement;
     }
 
     /// Gets the capacity of the allocation.

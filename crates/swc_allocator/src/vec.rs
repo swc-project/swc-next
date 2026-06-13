@@ -524,9 +524,9 @@ macro_rules! vec {
 /// [`insert`]: struct.Vec.html#method.insert
 /// [`reserve`]: struct.Vec.html#method.reserve
 /// [owned slice]: https://doc.rust-lang.org/std/boxed/struct.Box.html
+#[repr(transparent)]
 pub struct Vec<'bump, T: 'bump> {
     buf: RawVec<'bump, T>,
-    len: u32,
 }
 
 impl<T> Vec<'_, T> {
@@ -562,7 +562,6 @@ impl<'bump, T: 'bump> Vec<'bump, T> {
         const { Self::ASSERT_T_IS_NOT_DROP };
         Vec {
             buf: RawVec::new_in(bump),
-            len: 0,
         }
     }
 
@@ -603,7 +602,6 @@ impl<'bump, T: 'bump> Vec<'bump, T> {
         const { Self::ASSERT_T_IS_NOT_DROP };
         Vec {
             buf: RawVec::with_capacity_in(capacity, bump),
-            len: 0,
         }
     }
 
@@ -694,10 +692,8 @@ impl<'bump, T: 'bump> Vec<'bump, T> {
         bump: &'bump Allocator,
     ) -> Vec<'bump, T> {
         const { Self::ASSERT_T_IS_NOT_DROP };
-        let length = length as u32;
         Vec {
-            buf: RawVec::from_raw_parts_in(ptr, capacity, bump),
-            len: length,
+            buf: RawVec::from_raw_parts_in(ptr, length, capacity, bump),
         }
     }
 
@@ -745,12 +741,12 @@ impl<'bump, T: 'bump> Vec<'bump, T> {
 
     #[inline]
     fn len_u32(&self) -> u32 {
-        self.len
+        self.buf.len_u32()
     }
 
     #[inline]
     fn len_usize(&self) -> usize {
-        self.len as usize
+        self.buf.len_usize()
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted
@@ -985,7 +981,7 @@ impl<'bump, T: 'bump> Vec<'bump, T> {
             // dropping an element might panic. Works around a missed
             // optimization, as seen in the following issue:
             // https://github.com/rust-lang/rust/issues/51802
-            let mut local_len = SetLenOnDrop::new(&mut self.len);
+            let mut local_len = SetLenOnDrop::new(&mut self.buf);
 
             // drop any extra elements
             for _ in len..current_len {
@@ -1194,7 +1190,7 @@ impl<'bump, T: 'bump> Vec<'bump, T> {
     /// ```
     #[inline]
     pub unsafe fn set_len(&mut self, new_len: usize) {
-        self.len = new_len as u32;
+        self.buf.set_len(new_len as u32);
     }
 
     /// Removes an element from the vector and returns it.
@@ -1230,7 +1226,7 @@ impl<'bump, T: 'bump> Vec<'bump, T> {
             // can be self[index] itself).
             let hole: *mut T = &mut self[index];
             let last = ptr::read(self.get_unchecked(self.len_usize() - 1));
-            self.len -= 1;
+            self.buf.decrease_len(1);
             ptr::replace(hole, last)
         }
     }
@@ -1489,7 +1485,7 @@ impl<'bump, T: 'bump> Vec<'bump, T> {
         //   as ZSTs do not play nicely with separation logic.
         ptr::write(self.buf.ptr().add(self.len_usize()), value);
 
-        self.len += 1;
+        self.buf.increase_len(1);
     }
 
     /// Appends an element to the back of a vector.
@@ -1539,11 +1535,11 @@ impl<'bump, T: 'bump> Vec<'bump, T> {
     /// ```
     #[inline]
     pub fn pop(&mut self) -> Option<T> {
-        if self.len == 0 {
+        if self.len_u32() == 0 {
             None
         } else {
             unsafe {
-                self.len -= 1;
+                self.buf.decrease_len(1);
                 Some(ptr::read(self.as_ptr().add(self.len_usize())))
             }
         }
@@ -2174,7 +2170,7 @@ impl<'bump, T: 'bump> Vec<'bump, T> {
             // Use SetLenOnDrop to work around bug where compiler
             // may not realize the store through `ptr` through self.set_len()
             // don't alias.
-            let mut local_len = SetLenOnDrop::new(&mut self.len);
+            let mut local_len = SetLenOnDrop::new(&mut self.buf);
 
             // Write all elements except the last one
             for _ in 1..n {
@@ -2200,17 +2196,17 @@ impl<'bump, T: 'bump> Vec<'bump, T> {
 // The idea is: The length field in SetLenOnDrop is a local variable
 // that the optimizer will see does not alias with any stores through the Vec's data
 // pointer. This is a workaround for alias analysis issue #32155
-struct SetLenOnDrop<'a> {
-    len: &'a mut u32,
+struct SetLenOnDrop<'a, 'bump, T> {
+    buf: &'a mut RawVec<'bump, T>,
     local_len: u32,
 }
 
-impl<'a> SetLenOnDrop<'a> {
+impl<'a, 'bump, T> SetLenOnDrop<'a, 'bump, T> {
     #[inline]
-    fn new(len: &'a mut u32) -> Self {
+    fn new(buf: &'a mut RawVec<'bump, T>) -> Self {
         SetLenOnDrop {
-            local_len: *len,
-            len,
+            local_len: buf.len_u32(),
+            buf,
         }
     }
 
@@ -2225,9 +2221,9 @@ impl<'a> SetLenOnDrop<'a> {
     }
 }
 
-impl Drop for SetLenOnDrop<'_> {
+impl<T> Drop for SetLenOnDrop<'_, '_, T> {
     fn drop(&mut self) {
-        *self.len = self.local_len;
+        self.buf.set_len(self.local_len);
     }
 }
 
@@ -2899,7 +2895,7 @@ impl<'a, 'bump, T> Drain<'a, 'bump, T> {
         for place in range_slice {
             if let Some(new_item) = replace_with.next() {
                 ptr::write(place, new_item);
-                vec.len += 1;
+                vec.buf.increase_len(1);
             } else {
                 return false;
             }
