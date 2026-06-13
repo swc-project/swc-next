@@ -31,8 +31,15 @@ use crate::{
     suite::TestResult,
 };
 
-type LegacySymbolCounts = HashMap<(LegacyAtom, SyntaxContext), u32>;
-type ExperimentalSymbolCounts<'a> = HashMap<(ExperimentalAtom<'a>, ScopeId), u32>;
+type LegacySymbolSpans = HashMap<(LegacyAtom, SyntaxContext), Vec<SymbolSpan>>;
+type ExperimentalSymbolSpans<'a> = HashMap<(ExperimentalAtom<'a>, ScopeId), Vec<SymbolSpan>>;
+type SymbolGroups = HashMap<String, Vec<Vec<SymbolSpan>>>;
+
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct SymbolSpan {
+    start: u32,
+    end: u32,
+}
 
 pub struct SemanticConformanceRunner;
 
@@ -86,35 +93,26 @@ fn check_symbol_conformance<'a, C: Case>(
     root: &Program<'a>,
     semantic: &Semantic,
 ) -> Result<bool, String> {
-    let mut legacy_symbols = HashMap::<String, Vec<u32>>::default();
-    let Some(legacy_symbol_counts) = collect_legacy_symbols(case) else {
+    let Some(legacy_symbol_spans) = collect_legacy_symbols(case) else {
         return Ok(false);
     };
-    for ((sym, _), count) in legacy_symbol_counts {
-        legacy_symbols
-            .entry(sym.to_string())
-            .or_default()
-            .push(count);
-    }
-    for counts in legacy_symbols.values_mut() {
-        counts.sort_unstable();
-    }
+    let legacy_symbols = normalize_symbol_groups(
+        legacy_symbol_spans
+            .into_iter()
+            .map(|((sym, _), spans)| (sym.to_string(), spans)),
+    );
 
     let mut experimental_collector = ExperimentalSymbolsCollector {
         semantic,
         symbols: HashMap::default(),
     };
     root.visit_with(&mut experimental_collector);
-    let mut experimental_symbols = HashMap::<String, Vec<u32>>::default();
-    for ((sym, _), count) in experimental_collector.symbols {
-        experimental_symbols
-            .entry(sym.to_string())
-            .or_default()
-            .push(count);
-    }
-    for counts in experimental_symbols.values_mut() {
-        counts.sort_unstable();
-    }
+    let experimental_symbols = normalize_symbol_groups(
+        experimental_collector
+            .symbols
+            .into_iter()
+            .map(|((sym, _), spans)| (sym.to_string(), spans)),
+    );
 
     if legacy_symbols == experimental_symbols {
         return Ok(true);
@@ -132,9 +130,11 @@ fn check_symbol_conformance<'a, C: Case>(
     mismatches.dedup_by(|a, b| a.0 == b.0);
 
     let mut error = String::from("Semantic symbol conformance mismatch");
-    for (sym, legacy_counts, experimental_counts) in mismatches.iter().take(20) {
+    for (sym, legacy_groups, experimental_groups) in mismatches.iter().take(20) {
         error.push_str(&format!(
-            "\n  {sym}: swc_core={legacy_counts:?}, swc_experimental={experimental_counts:?}"
+            "\n  {sym}: swc_core={}, swc_experimental={}",
+            format_symbol_groups(legacy_groups),
+            format_symbol_groups(experimental_groups),
         ));
     }
     if mismatches.len() > 20 {
@@ -147,7 +147,7 @@ fn check_symbol_conformance<'a, C: Case>(
     Err(error)
 }
 
-fn collect_legacy_symbols<C: Case>(case: &C) -> Option<LegacySymbolCounts> {
+fn collect_legacy_symbols<C: Case>(case: &C) -> Option<LegacySymbolSpans> {
     GLOBALS.set(&Globals::new(), || {
         let unresolved_mark = Mark::new();
         let top_level_mark = Mark::new();
@@ -170,15 +170,18 @@ fn collect_legacy_symbols<C: Case>(case: &C) -> Option<LegacySymbolCounts> {
 
 #[derive(Default)]
 struct LegacySymbolsCollector {
-    symbols: LegacySymbolCounts,
+    symbols: LegacySymbolSpans,
 }
 
 impl LegacyVisit for LegacySymbolsCollector {
     fn visit_ident(&mut self, node: &legacy_ast::Ident) {
-        *self
-            .symbols
+        self.symbols
             .entry((node.sym.clone(), node.ctxt))
-            .or_default() += 1;
+            .or_default()
+            .push(SymbolSpan {
+                start: node.span.lo.0,
+                end: node.span.hi.0,
+            });
     }
 
     fn visit_import_named_specifier(&mut self, node: &legacy_ast::ImportNamedSpecifier) {
@@ -194,7 +197,7 @@ impl LegacyVisit for LegacySymbolsCollector {
 
 struct ExperimentalSymbolsCollector<'semantic, 'ast> {
     semantic: &'semantic Semantic,
-    symbols: ExperimentalSymbolCounts<'ast>,
+    symbols: ExperimentalSymbolSpans<'ast>,
 }
 
 impl<'a> Visit<'a> for ExperimentalSymbolsCollector<'_, 'a> {
@@ -213,13 +216,54 @@ impl<'a> Visit<'a> for ExperimentalSymbolsCollector<'_, 'a> {
     }
 
     fn visit_ident(&mut self, node: &Ident<'a>) {
-        if node.symbol_id.get().is_none() {
-            return;
-        }
+        node.symbol_id.get().unwrap();
 
-        *self
-            .symbols
+        self.symbols
             .entry((node.sym, self.semantic.node_scope(node)))
-            .or_default() += 1;
+            .or_default()
+            .push(SymbolSpan {
+                start: node.span.start,
+                end: node.span.end,
+            });
     }
+}
+
+fn normalize_symbol_groups<I>(groups: I) -> SymbolGroups
+where
+    I: IntoIterator<Item = (String, Vec<SymbolSpan>)>,
+{
+    let mut symbols = HashMap::<String, Vec<Vec<SymbolSpan>>>::default();
+    for (sym, mut spans) in groups {
+        spans.sort_unstable();
+        symbols.entry(sym).or_default().push(spans);
+    }
+    for groups in symbols.values_mut() {
+        groups.sort_unstable();
+    }
+    symbols
+}
+
+fn format_symbol_groups(groups: &[Vec<SymbolSpan>]) -> String {
+    let mut ret = String::from("[");
+    for (i, group) in groups.iter().take(6).enumerate() {
+        if i > 0 {
+            ret.push_str(", ");
+        }
+        ret.push('[');
+        for (j, span) in group.iter().take(8).enumerate() {
+            if j > 0 {
+                ret.push_str(", ");
+            }
+            ret.push_str(&format!("{}..{}", span.start, span.end));
+        }
+        if group.len() > 8 {
+            ret.push_str(&format!(", ... +{}", group.len() - 8));
+        }
+        ret.push(']');
+    }
+    if groups.len() > 6 {
+        ret.push_str(&format!(", ... +{}", groups.len() - 6));
+    }
+    ret.push(']');
+    ret
 }

@@ -45,7 +45,11 @@ pub fn parse_legacy<C: Case>(case: &C) -> LegacyParseResult {
 }
 
 pub fn parse_legacy_with_current_globals<C: Case>(case: &C) -> LegacyParseResult {
-    let input = StringInput::new(case.code(), BytePos(0), BytePos(case.code().len() as u32));
+    let input = StringInput::new(
+        case.code(),
+        BytePos(1),
+        BytePos(case.code().len() as u32 + 1),
+    );
     let lexer = Lexer::new(
         legacy_syntax(case.syntax()),
         Default::default(),
