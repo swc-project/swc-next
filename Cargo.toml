@@ -19,7 +19,7 @@ indexmap         = "2.13.0"
 insta            = "1.46.3"
 miette           = "7.6.0"
 num-bigint       = "0.4.6"
-oxc_index        = { version = "4.1.0", features = ["nonmax"] }
+oxc_index        = { version = "5.0.0", features = ["nonmax"] }
 rayon            = "1.11.0"
 rustc-hash       = "2"
 seq-macro        = "0.3.6"

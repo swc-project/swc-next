@@ -88,7 +88,7 @@ version = "0.1.0"
 dependencies = [
  "convert_case",
  "indexmap",
- "oxc_index",
+ "oxc_index 5.0.0",
  "phf 0.13.1",
  "prettyplease",
  "proc-macro2",
@@ -1360,6 +1360,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "oxc_index"
+version = "5.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "191884bee6c3744909a51acc7d78d4ae370d817b25875b10642f632327b6296e"
+dependencies = [
+ "nonmax",
+]
+
+[[package]]
 name = "oxc_parser"
 version = "0.120.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1411,7 +1420,7 @@ dependencies = [
  "oxc_ast_visit",
  "oxc_diagnostics",
  "oxc_ecmascript",
- "oxc_index",
+ "oxc_index 4.1.0",
  "oxc_span",
  "oxc_syntax",
  "rustc-hash",
@@ -1457,7 +1466,7 @@ dependencies = [
  "oxc_allocator",
  "oxc_ast_macros",
  "oxc_estree",
- "oxc_index",
+ "oxc_index 4.1.0",
  "oxc_span",
  "phf 0.13.1",
  "unicode-id-start",
@@ -2161,7 +2170,7 @@ name = "swc_experimental_ecma_ast"
 version = "0.11.0"
 dependencies = [
  "num-bigint",
- "oxc_index",
+ "oxc_index 5.0.0",
  "swc_experimental_allocator",
  "swc_experimental_ast_macros",
  "unicode-id-start",
@@ -2200,7 +2209,7 @@ name = "swc_experimental_ecma_semantic"
 version = "0.11.0"
 dependencies = [
  "insta",
- "oxc_index",
+ "oxc_index 5.0.0",
  "rustc-hash",
  "swc_experimental_allocator",
  "swc_experimental_ecma_ast",
