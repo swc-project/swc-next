@@ -60,16 +60,15 @@ swc_experimental_ecma_transforms_base = { version = "0.11.0", path = "crates/swc
 swc_experimental_ecma_visit           = { version = "0.11.0", path = "crates/swc_ecma_visit" }
 
 # Dev
-colored      = "3.1.1"
-criterion    = { package = "codspeed-criterion-compat", version = "5.0.0" }
-jwalk        = "0.8.1"
-mimalloc     = "0.1.52"
-pico-args    = "0.5.0"
-saphyr       = "0.0.6"
-tracy-client = { version = "=0.18.1", features = ["enable", "sampling", "demangle", "system-tracing"] }
-
+colored       = "3.1.1"
+criterion     = { package = "codspeed-criterion-compat", version = "5.0.0" }
+jwalk         = "0.8.1"
+mimalloc      = "0.1.52"
 oxc           = { version = "0.137.0", features = ["ast_visit", "semantic"] }
 oxc_allocator = "0.137.0"
+pico-args     = "0.5.0"
+saphyr        = "0.0.6"
+tracy-client  = { version = "=0.18.1", features = ["enable", "sampling", "demangle", "system-tracing"] }
 
 [profile.bench]
 codegen-units = 1
