@@ -1,0 +1,39 @@
+name: Renovate
+
+on:
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: Run without creating or updating branches and pull requests
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  renovate:
+    name: Renovate
+    runs-on: ubuntu-latest
+    env:
+      LOG_LEVEL: debug
+      RENOVATE_PLATFORM: github
+      RENOVATE_REPOSITORIES: ${{ github.repository }}
+      RENOVATE_FORCE: '{"schedule": null}'
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Self-hosted Renovate
+        if: ${{ !inputs.dryRun }}
+        uses: renovatebot/github-action@9dd450fe094737324c6740847d34d21d0a12670e
+        with:
+          token: ${{ secrets.RENOVATE_TOKEN }}
+
+      - name: Self-hosted Renovate (dry run)
+        if: ${{ inputs.dryRun }}
+        uses: renovatebot/github-action@9dd450fe094737324c6740847d34d21d0a12670e
+        with:
+          token: ${{ secrets.RENOVATE_TOKEN }}
+        env:
+          RENOVATE_DRY_RUN: full
