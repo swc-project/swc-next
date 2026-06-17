@@ -8,7 +8,7 @@ use oxc::{
     ast_visit::{Visit, walk},
     parser::{Kind, ParseOptions, Parser, Token, config::TokensParserConfig},
     semantic::{Semantic, SemanticBuilder},
-    span::{GetSpan, Ident, SourceType, Span},
+    span::{GetSpan, SourceType, Span},
 };
 use oxc_allocator::Allocator;
 use rustc_hash::FxHashSet;
@@ -36,7 +36,7 @@ fn run_parse<'a>(
         })
         .with_config(TokensParserConfig)
         .parse();
-    assert!(parser_return.errors.is_empty());
+    assert!(parser_return.diagnostics.is_empty());
     (parser_return.program, parser_return.tokens)
 }
 
@@ -60,7 +60,7 @@ fn run_collect_semicolons(program: &Program, tokens: &[Token]) -> FxHashSet<u32>
 }
 
 #[inline(never)]
-fn run_scan_dependencies<'a>(program: &Program<'a>) -> Vec<Ident<'a>> {
+fn run_scan_dependencies<'a>(program: &Program<'a>) -> Vec<&'a str> {
     let mut parser = JavascriptParser { idents: Vec::new() };
     parser.visit_program(program);
     parser.idents
@@ -200,19 +200,19 @@ impl<'a> Visit<'a> for InsertedSemicolons<'_> {
 }
 
 struct JavascriptParser<'a> {
-    idents: Vec<Ident<'a>>,
+    idents: Vec<&'a str>,
 }
 
 impl<'a> Visit<'a> for JavascriptParser<'a> {
     fn visit_identifier_reference(&mut self, it: &oxc::ast::ast::IdentifierReference<'a>) {
-        self.idents.push(it.name);
+        self.idents.push(it.name.as_str());
     }
 
     fn visit_binding_identifier(&mut self, it: &oxc::ast::ast::BindingIdentifier<'a>) {
-        self.idents.push(it.name);
+        self.idents.push(it.name.as_str());
     }
 
     fn visit_label_identifier(&mut self, it: &LabelIdentifier<'a>) {
-        self.idents.push(it.name);
+        self.idents.push(it.name.as_str());
     }
 }
