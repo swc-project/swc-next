@@ -1,4 +1,5 @@
 mod ast;
+mod codec;
 mod comment;
 mod common;
 mod derive;
@@ -14,6 +15,7 @@ mod generated {
 }
 
 pub use ast::*;
+pub use codec::encode::{EncodeError, Encoder};
 pub use comment::*;
 pub use common::*;
 pub use generated::ast_visitor::*;
