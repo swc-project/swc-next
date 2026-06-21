@@ -4,3 +4,7 @@ callgrind*
 input.*
 profile.json
 local
+
+node_modules
+*.node
+*.wasm

@@ -1,0 +1,7 @@
+packages:
+  - napi/*
+
+catalog:
+  '@napi-rs/cli': ^3.7.2
+
+catalogMode: prefer

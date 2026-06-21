@@ -13,11 +13,6 @@ pub struct Encoder {
     string_pool_ptr: *mut u8,
 }
 
-pub struct Ast<'a> {
-    pub source: &'a str,
-    pub program: &'a Program<'a>,
-}
-
 impl Encoder {
     pub fn new(header: Header, buf: &mut [u8]) -> Option<Self> {
         let size = header.size();
@@ -59,12 +54,12 @@ impl Encoder {
         })
     }
 
-    pub fn header(_ast: &Ast) -> Header {
+    pub fn header(_ast: &Program) -> Header {
         todo!()
     }
 
-    pub fn encode(&mut self, ast: &Ast) {
-        ast.program.encode(self);
+    pub fn encode(&mut self, ast: &Program) {
+        ast.encode(self);
     }
 }
 
