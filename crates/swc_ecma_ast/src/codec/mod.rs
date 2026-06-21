@@ -3,7 +3,9 @@ use std::mem;
 use crate::Encoder;
 
 pub mod ast_encode;
+pub mod ast_measure;
 pub mod encode;
+pub mod measure;
 
 const HEADER_SIZE: usize = mem::size_of::<Header>();
 const NODE_SIZE: usize = mem::size_of::<PackedNode>();
@@ -14,7 +16,12 @@ pub(crate) trait AstEncode {
     fn encode(&self, encoder: &mut Encoder) -> u32;
 }
 
+pub(crate) trait AstMeasure {
+    fn measure(&self, header: &mut Header);
+}
+
 #[repr(C)]
+#[derive(Debug)]
 pub struct Header {
     node_count: u32,
     extra_count: u32,

@@ -54,10 +54,6 @@ impl Encoder {
         })
     }
 
-    pub fn header(_ast: &Program) -> Header {
-        todo!()
-    }
-
     pub fn encode(&mut self, ast: &Program) {
         ast.encode(self);
     }
