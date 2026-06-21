@@ -8,8 +8,5 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "@napi-rs/cli": "catalog:"
-  }
+  "license": "ISC"
 }
