@@ -1,7 +1,7 @@
 use napi::bindgen_prelude::Buffer;
 use napi_derive::napi;
 use swc_experimental_allocator::Allocator;
-use swc_experimental_ecma_ast::Encoder;
+use swc_experimental_ecma_ast::{Encoder, Header};
 use swc_experimental_ecma_parser::{Parser, StringSource};
 
 #[napi(object)]
@@ -18,8 +18,8 @@ pub fn parse_sync<'a>(source: String, _options: ParseOptions) -> Buffer {
     );
     let program = parser.parse_program().unwrap();
 
-    let mut buf = Vec::with_capacity(1024 * 1024);
-    let header = Encoder::header(&program);
+    let header = Header::measure(&program);
+    let mut buf = vec![0; header.size()];
     let mut encoder = Encoder::new(header, &mut buf).unwrap();
     encoder.encode(&program);
     Buffer::from(buf)

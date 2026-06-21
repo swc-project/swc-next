@@ -29,7 +29,7 @@ pub struct Header {
 }
 
 impl Header {
-    fn size(&self) -> usize {
+    pub fn size(&self) -> usize {
         HEADER_SIZE
             + (self.node_count as usize) * NODE_SIZE
             + (self.extra_count as usize) * EXTRA_SIZE

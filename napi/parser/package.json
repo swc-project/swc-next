@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "type": "module",
-  "main": "index.js",
+  "main": "binding.js",
   "scripts": {
-    "build": "napi build --esm --platform --js bindings.js --dts binding.d.ts"
+    "build": "napi build --esm --platform --js binding.js --dts binding.d.ts"
   },
   "devDependencies": {
     "@napi-rs/cli": "catalog:"
