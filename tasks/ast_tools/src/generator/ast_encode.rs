@@ -4,7 +4,7 @@ use quote::{format_ident, quote};
 use crate::{
     AST_CRATE_PATH,
     output::{RawOutput, RustOutput},
-    schema::{AstEnum, AstStruct, AstStructField, AstType, Schema, SpanKind, TypeId},
+    schema::{AstEnum, AstStruct, AstStructField, AstType, Schema, TypeId},
 };
 
 pub fn ast_encode(schema: &Schema) -> RawOutput {
@@ -120,12 +120,12 @@ fn generate_encode_for_struct(ast: &AstStruct, schema: &Schema) -> TokenStream {
             let exprs = encoded.exprs;
             fields.extend(exprs);
         } else {
-            return todo_encode_impl(&name, impl_generics, ty_generics);
+            unreachable!("{} has unsupported field {}", ast.name, field.name);
         }
     }
 
     if fields.len() > 5 || flag_offset > u16::BITS as usize {
-        return todo_encode_impl(&name, impl_generics, ty_generics);
+        unreachable!("{} cannot fit in PackedNode", ast.name);
     }
 
     let field_stmts = fields.iter().enumerate().map(|(index, expr)| {
@@ -145,8 +145,6 @@ fn generate_encode_for_struct(ast: &AstStruct, schema: &Schema) -> TokenStream {
         quote!(#(#flags)|*)
     };
 
-    let (span_lo, span_hi) = struct_span_exprs(ast, schema);
-
     quote! {
         impl #impl_generics AstEncode for #name #ty_generics {
             fn encode(&self, encoder: &mut Encoder) -> u32 {
@@ -156,25 +154,11 @@ fn generate_encode_for_struct(ast: &AstStruct, schema: &Schema) -> TokenStream {
                 encoder.packed_node(PackedNode {
                     kind: NodeKind::#node_kind,
                     flags,
-                    span_lo: #span_lo,
-                    span_hi: #span_hi,
+                    span_lo: self.span_lo(),
+                    span_hi: self.span_hi(),
                     #(#field_inits,)*
                     ..Default::default()
                 })
-            }
-        }
-    }
-}
-
-fn todo_encode_impl(
-    name: &proc_macro2::Ident,
-    impl_generics: TokenStream,
-    ty_generics: TokenStream,
-) -> TokenStream {
-    quote! {
-        impl #impl_generics AstEncode for #name #ty_generics {
-            fn encode(&self, _encoder: &mut Encoder) -> u32 {
-                todo!()
             }
         }
     }
@@ -370,80 +354,7 @@ fn should_skip_field(field: &AstStructField, schema: &Schema) -> bool {
 }
 
 fn is_span_field(field: &AstStructField, schema: &Schema) -> bool {
-    field.span_kind.is_some()
-        || matches!(&schema.types[field.type_id], AstType::Primitive(ast) if ast.name == "Span")
-}
-
-fn struct_span_exprs(ast: &AstStruct, schema: &Schema) -> (TokenStream, TokenStream) {
-    if ast.skip_span {
-        return (quote!(0), quote!(0));
-    }
-
-    if let Some(field) = ast
-        .fields
-        .iter()
-        .find(|field| field.span_kind == Some(SpanKind::Full))
-        .or_else(|| {
-            ast.fields
-                .iter()
-                .find(|field| field.name == "span" && is_span_type(field.type_id, schema))
-        })
-    {
-        let expr = span_expr(field, schema);
-        return (quote!(#expr.start), quote!(#expr.end));
-    }
-
-    let lo = ast
-        .fields
-        .iter()
-        .find(|field| field.span_kind == Some(SpanKind::Lo));
-    let hi = ast
-        .fields
-        .iter()
-        .find(|field| field.span_kind == Some(SpanKind::Hi));
-
-    match (lo, hi) {
-        (Some(lo), Some(hi)) => {
-            let lo_expr = span_endpoint_expr(lo, SpanKind::Lo, schema);
-            let hi_expr = span_endpoint_expr(hi, SpanKind::Hi, schema);
-            (lo_expr, hi_expr)
-        }
-        _ => (quote!(0), quote!(0)),
-    }
-}
-
-fn span_expr(field: &AstStructField, schema: &Schema) -> TokenStream {
-    let field_name = format_ident!("{}", field.name);
-    if is_span_type(field.type_id, schema) {
-        quote!(self.#field_name)
-    } else {
-        quote!(self.#field_name.span())
-    }
-}
-
-fn span_endpoint_expr(field: &AstStructField, span_kind: SpanKind, schema: &Schema) -> TokenStream {
-    let field_name = format_ident!("{}", field.name);
-    match span_kind {
-        SpanKind::Lo => {
-            if is_span_type(field.type_id, schema) {
-                quote!(self.#field_name.start)
-            } else {
-                quote!(self.#field_name.span_lo())
-            }
-        }
-        SpanKind::Hi => {
-            if is_span_type(field.type_id, schema) {
-                quote!(self.#field_name.end)
-            } else {
-                quote!(self.#field_name.span_hi())
-            }
-        }
-        SpanKind::Full => unreachable!(),
-    }
-}
-
-fn is_span_type(type_id: TypeId, schema: &Schema) -> bool {
-    matches!(&schema.types[type_id], AstType::Primitive(ast) if ast.name == "Span")
+    matches!(&schema.types[field.type_id], AstType::Primitive(ast) if ast.name == "Span")
 }
 
 fn type_has_lifetime(type_id: TypeId, schema: &Schema) -> bool {

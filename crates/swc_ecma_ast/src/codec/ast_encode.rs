@@ -37,8 +37,8 @@ impl<'a> AstEncode for Module<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::Module,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -59,8 +59,8 @@ impl<'a> AstEncode for Script<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::Script,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -103,8 +103,8 @@ impl<'a> AstEncode for ImportDecl<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ImportDecl,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -133,8 +133,8 @@ impl<'a> AstEncode for ImportNamedSpecifier<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ImportNamedSpecifier,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -148,8 +148,8 @@ impl<'a> AstEncode for ImportDefaultSpecifier<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ImportDefaultSpecifier,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -162,8 +162,8 @@ impl<'a> AstEncode for ImportStarAsSpecifier<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ImportStarAsSpecifier,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -176,8 +176,8 @@ impl<'a> AstEncode for ExportDecl<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ExportDecl,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -200,8 +200,8 @@ impl<'a> AstEncode for NamedExport<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::NamedExport,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -226,8 +226,8 @@ impl<'a> AstEncode for ExportNamespaceSpecifier<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ExportNamespaceSpecifier,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -243,12 +243,14 @@ impl<'a> AstEncode for ModuleExportName<'a> {
 }
 impl<'a> AstEncode for ExportDefaultSpecifier<'a> {
     fn encode(&self, encoder: &mut Encoder) -> u32 {
+        let field0 = self.exported.encode(encoder);
         let flags = 0;
         encoder.packed_node(PackedNode {
             kind: NodeKind::ExportDefaultSpecifier,
             flags,
-            span_lo: self.exported.span().start,
-            span_hi: self.exported.span().end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
+            field0,
             ..Default::default()
         })
     }
@@ -264,8 +266,8 @@ impl<'a> AstEncode for ExportNamedSpecifier<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ExportNamedSpecifier,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -279,8 +281,8 @@ impl<'a> AstEncode for ExportDefaultDecl<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ExportDefaultDecl,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -301,8 +303,8 @@ impl<'a> AstEncode for ExportDefaultExpr<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ExportDefaultExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -319,8 +321,8 @@ impl<'a> AstEncode for ExportAll<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ExportAll,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -336,8 +338,8 @@ impl<'a> AstEncode for BlockStmt<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::BlockStmt,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -376,8 +378,8 @@ impl<'a> AstEncode for ExprStmt<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ExprStmt,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -389,8 +391,8 @@ impl AstEncode for EmptyStmt {
         encoder.packed_node(PackedNode {
             kind: NodeKind::EmptyStmt,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             ..Default::default()
         })
     }
@@ -401,8 +403,8 @@ impl AstEncode for DebuggerStmt {
         encoder.packed_node(PackedNode {
             kind: NodeKind::DebuggerStmt,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             ..Default::default()
         })
     }
@@ -415,8 +417,8 @@ impl<'a> AstEncode for WithStmt<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::WithStmt,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -433,8 +435,8 @@ impl<'a> AstEncode for ReturnStmt<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ReturnStmt,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -448,8 +450,8 @@ impl<'a> AstEncode for LabeledStmt<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::LabeledStmt,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -466,8 +468,8 @@ impl<'a> AstEncode for BreakStmt<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::BreakStmt,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -483,8 +485,8 @@ impl<'a> AstEncode for ContinueStmt<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ContinueStmt,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -502,8 +504,8 @@ impl<'a> AstEncode for IfStmt<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::IfStmt,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -521,8 +523,8 @@ impl<'a> AstEncode for SwitchStmt<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::SwitchStmt,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -537,8 +539,8 @@ impl<'a> AstEncode for ThrowStmt<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ThrowStmt,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -559,8 +561,8 @@ impl<'a> AstEncode for TryStmt<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::TryStmt,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -576,8 +578,8 @@ impl<'a> AstEncode for WhileStmt<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::WhileStmt,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -592,8 +594,8 @@ impl<'a> AstEncode for DoWhileStmt<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::DoWhileStmt,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -619,8 +621,8 @@ impl<'a> AstEncode for ForStmt<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ForStmt,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -638,8 +640,8 @@ impl<'a> AstEncode for ForInStmt<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ForInStmt,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -656,8 +658,8 @@ impl<'a> AstEncode for ForOfStmt<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ForOfStmt,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -678,8 +680,8 @@ impl<'a> AstEncode for SwitchCase<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::SwitchCase,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -698,8 +700,8 @@ impl<'a> AstEncode for CatchClause<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::CatchClause,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -736,13 +738,15 @@ impl<'a> AstEncode for Decl<'a> {
 impl<'a> AstEncode for FnDecl<'a> {
     fn encode(&self, encoder: &mut Encoder) -> u32 {
         let field0 = self.ident.encode(encoder);
+        let field1 = self.function.encode(encoder);
         let flags = if self.declare { 1u16 << 0u16 } else { 0 };
         encoder.packed_node(PackedNode {
             kind: NodeKind::FnDecl,
             flags,
-            span_lo: self.function.span().start,
-            span_hi: self.function.span().end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
+            field1,
             ..Default::default()
         })
     }
@@ -750,13 +754,15 @@ impl<'a> AstEncode for FnDecl<'a> {
 impl<'a> AstEncode for ClassDecl<'a> {
     fn encode(&self, encoder: &mut Encoder) -> u32 {
         let field0 = self.ident.encode(encoder);
+        let field1 = self.class.encode(encoder);
         let flags = if self.declare { 1u16 << 0u16 } else { 0 };
         encoder.packed_node(PackedNode {
             kind: NodeKind::ClassDecl,
             flags,
-            span_lo: self.class.span().start,
-            span_hi: self.class.span().end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
+            field1,
             ..Default::default()
         })
     }
@@ -770,8 +776,8 @@ impl<'a> AstEncode for VarDecl<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::VarDecl,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -789,8 +795,8 @@ impl<'a> AstEncode for VarDeclarator<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::VarDeclarator,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -806,8 +812,8 @@ impl<'a> AstEncode for UsingDecl<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::UsingDecl,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -858,8 +864,8 @@ impl AstEncode for ThisExpr {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ThisExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             ..Default::default()
         })
     }
@@ -873,8 +879,8 @@ impl<'a> AstEncode for ArrayLit<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ArrayLit,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -890,8 +896,8 @@ impl<'a> AstEncode for ObjectLit<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ObjectLit,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -908,12 +914,14 @@ impl<'a> AstEncode for PropOrSpread<'a> {
 }
 impl<'a> AstEncode for SpreadElement<'a> {
     fn encode(&self, encoder: &mut Encoder) -> u32 {
+        let field0 = self.expr.encode(encoder);
         let flags = 0;
         encoder.packed_node(PackedNode {
             kind: NodeKind::SpreadElement,
             flags,
-            span_lo: self.dot3_token.start,
-            span_hi: self.expr.span_hi(),
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
+            field0,
             ..Default::default()
         })
     }
@@ -925,8 +933,8 @@ impl<'a> AstEncode for UnaryExpr<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::UnaryExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -939,8 +947,8 @@ impl<'a> AstEncode for UpdateExpr<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::UpdateExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -954,8 +962,8 @@ impl<'a> AstEncode for BinExpr<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::BinExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -968,13 +976,15 @@ impl<'a> AstEncode for FnExpr<'a> {
             Some(it) => it.encode(encoder),
             None => NONE,
         };
+        let field1 = self.function.encode(encoder);
         let flags = 0;
         encoder.packed_node(PackedNode {
             kind: NodeKind::FnExpr,
             flags,
-            span_lo: self.function.span().start,
-            span_hi: self.function.span().end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
+            field1,
             ..Default::default()
         })
     }
@@ -985,13 +995,15 @@ impl<'a> AstEncode for ClassExpr<'a> {
             Some(it) => it.encode(encoder),
             None => NONE,
         };
+        let field1 = self.class.encode(encoder);
         let flags = 0;
         encoder.packed_node(PackedNode {
             kind: NodeKind::ClassExpr,
             flags,
-            span_lo: self.class.span().start,
-            span_hi: self.class.span().end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
+            field1,
             ..Default::default()
         })
     }
@@ -1004,8 +1016,8 @@ impl<'a> AstEncode for AssignExpr<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::AssignExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -1020,8 +1032,8 @@ impl<'a> AstEncode for MemberExpr<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::MemberExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -1045,8 +1057,8 @@ impl<'a> AstEncode for SuperPropExpr<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::SuperPropExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -1070,8 +1082,8 @@ impl<'a> AstEncode for CondExpr<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::CondExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -1089,8 +1101,8 @@ impl<'a> AstEncode for CallExpr<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::CallExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -1111,8 +1123,8 @@ impl<'a> AstEncode for NewExpr<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::NewExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -1129,8 +1141,8 @@ impl<'a> AstEncode for SeqExpr<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::SeqExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -1148,8 +1160,8 @@ impl<'a> AstEncode for ArrowExpr<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ArrowExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -1167,8 +1179,8 @@ impl<'a> AstEncode for YieldExpr<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::YieldExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -1180,8 +1192,8 @@ impl AstEncode for MetaPropExpr {
         encoder.packed_node(PackedNode {
             kind: NodeKind::MetaPropExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             ..Default::default()
         })
     }
@@ -1193,8 +1205,8 @@ impl<'a> AstEncode for AwaitExpr<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::AwaitExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -1212,8 +1224,8 @@ impl<'a> AstEncode for Tpl<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::Tpl,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -1230,8 +1242,8 @@ impl<'a> AstEncode for TaggedTpl<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::TaggedTpl,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -1250,8 +1262,8 @@ impl<'a> AstEncode for TplElement<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::TplElement,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -1267,8 +1279,8 @@ impl<'a> AstEncode for ParenExpr<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ParenExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -1289,8 +1301,8 @@ impl AstEncode for Super {
         encoder.packed_node(PackedNode {
             kind: NodeKind::Super,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             ..Default::default()
         })
     }
@@ -1301,8 +1313,8 @@ impl AstEncode for Import {
         encoder.packed_node(PackedNode {
             kind: NodeKind::Import,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             ..Default::default()
         })
     }
@@ -1316,8 +1328,8 @@ impl<'a> AstEncode for ExprOrSpread<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ExprOrSpread,
             flags,
-            span_lo: 0,
-            span_hi: 0,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -1369,8 +1381,8 @@ impl<'a> AstEncode for OptChainExpr<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::OptChainExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -1394,8 +1406,8 @@ impl<'a> AstEncode for OptCall<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::OptCall,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -1409,8 +1421,8 @@ impl AstEncode for Invalid {
         encoder.packed_node(PackedNode {
             kind: NodeKind::Invalid,
             flags,
-            span_lo: 0,
-            span_hi: 0,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             ..Default::default()
         })
     }
@@ -1432,8 +1444,8 @@ impl<'a> AstEncode for Function<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::Function,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -1453,8 +1465,8 @@ impl<'a> AstEncode for Param<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::Param,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -1485,8 +1497,8 @@ impl<'a> AstEncode for Class<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::Class,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -1524,8 +1536,8 @@ impl<'a> AstEncode for ClassProp<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ClassProp,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -1548,8 +1560,8 @@ impl<'a> AstEncode for PrivateProp<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::PrivateProp,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -1566,8 +1578,8 @@ impl<'a> AstEncode for ClassMethod<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ClassMethod,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -1582,8 +1594,8 @@ impl<'a> AstEncode for PrivateMethod<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::PrivateMethod,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -1604,8 +1616,8 @@ impl<'a> AstEncode for Constructor<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::Constructor,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -1621,8 +1633,8 @@ impl<'a> AstEncode for Decorator<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::Decorator,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -1635,8 +1647,8 @@ impl<'a> AstEncode for StaticBlock<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::StaticBlock,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -1664,8 +1676,8 @@ impl<'a> AstEncode for AutoAccessor<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::AutoAccessor,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -1688,12 +1700,16 @@ impl<'a> AstEncode for Prop<'a> {
 }
 impl<'a> AstEncode for KeyValueProp<'a> {
     fn encode(&self, encoder: &mut Encoder) -> u32 {
+        let field0 = self.key.encode(encoder);
+        let field1 = self.value.encode(encoder);
         let flags = 0;
         encoder.packed_node(PackedNode {
             kind: NodeKind::KeyValueProp,
             flags,
-            span_lo: self.key.span_lo(),
-            span_hi: self.value.span_hi(),
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
+            field0,
+            field1,
             ..Default::default()
         })
     }
@@ -1706,8 +1722,8 @@ impl<'a> AstEncode for AssignProp<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::AssignProp,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -1725,8 +1741,8 @@ impl<'a> AstEncode for GetterProp<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::GetterProp,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -1749,8 +1765,8 @@ impl<'a> AstEncode for SetterProp<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::SetterProp,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -1762,13 +1778,15 @@ impl<'a> AstEncode for SetterProp<'a> {
 impl<'a> AstEncode for MethodProp<'a> {
     fn encode(&self, encoder: &mut Encoder) -> u32 {
         let field0 = self.key.encode(encoder);
+        let field1 = self.function.encode(encoder);
         let flags = 0;
         encoder.packed_node(PackedNode {
             kind: NodeKind::MethodProp,
             flags,
-            span_lo: self.function.span().start,
-            span_hi: self.function.span().end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
+            field1,
             ..Default::default()
         })
     }
@@ -1791,8 +1809,8 @@ impl<'a> AstEncode for ComputedPropName<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ComputedPropName,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -1820,8 +1838,8 @@ impl<'a> AstEncode for ArrayPat<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ArrayPat,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -1837,8 +1855,8 @@ impl<'a> AstEncode for ObjectPat<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::ObjectPat,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -1853,8 +1871,8 @@ impl<'a> AstEncode for AssignPat<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::AssignPat,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -1868,8 +1886,8 @@ impl<'a> AstEncode for RestPat<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::RestPat,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -1886,12 +1904,16 @@ impl<'a> AstEncode for ObjectPatProp<'a> {
 }
 impl<'a> AstEncode for KeyValuePatProp<'a> {
     fn encode(&self, encoder: &mut Encoder) -> u32 {
+        let field0 = self.key.encode(encoder);
+        let field1 = self.value.encode(encoder);
         let flags = 0;
         encoder.packed_node(PackedNode {
             kind: NodeKind::KeyValuePatProp,
             flags,
-            span_lo: self.key.span_lo(),
-            span_hi: self.value.span_hi(),
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
+            field0,
+            field1,
             ..Default::default()
         })
     }
@@ -1907,8 +1929,8 @@ impl<'a> AstEncode for AssignPatProp<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::AssignPatProp,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -1924,8 +1946,8 @@ impl<'a> AstEncode for Ident<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::Ident,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -1941,8 +1963,8 @@ impl<'a> AstEncode for IdentName<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::IdentName,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -1958,8 +1980,8 @@ impl<'a> AstEncode for PrivateName<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::PrivateName,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -1973,8 +1995,8 @@ impl<'a> AstEncode for BindingIdent<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::BindingIdent,
             flags,
-            span_lo: 0,
-            span_hi: 0,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -2004,8 +2026,8 @@ impl<'a> AstEncode for Str<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::Str,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -2020,8 +2042,8 @@ impl AstEncode for Bool {
         encoder.packed_node(PackedNode {
             kind: NodeKind::Bool,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             ..Default::default()
         })
     }
@@ -2032,8 +2054,8 @@ impl AstEncode for Null {
         encoder.packed_node(PackedNode {
             kind: NodeKind::Null,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             ..Default::default()
         })
     }
@@ -2049,8 +2071,8 @@ impl<'a> AstEncode for Number<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::Number,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -2071,8 +2093,8 @@ impl<'a> AstEncode for BigInt<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::BigInt,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -2093,8 +2115,8 @@ impl<'a> AstEncode for Regex<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::Regex,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -2119,8 +2141,8 @@ impl<'a> AstEncode for JSXMemberExpr<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::JSXMemberExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -2135,8 +2157,8 @@ impl<'a> AstEncode for JSXNamespacedName<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::JSXNamespacedName,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -2149,8 +2171,8 @@ impl AstEncode for JSXEmptyExpr {
         encoder.packed_node(PackedNode {
             kind: NodeKind::JSXEmptyExpr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             ..Default::default()
         })
     }
@@ -2162,8 +2184,8 @@ impl<'a> AstEncode for JSXExprContainer<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::JSXExprContainer,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -2184,8 +2206,8 @@ impl<'a> AstEncode for JSXSpreadChild<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::JSXSpreadChild,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -2210,8 +2232,8 @@ impl<'a> AstEncode for JSXOpeningElement<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::JSXOpeningElement,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -2234,8 +2256,8 @@ impl<'a> AstEncode for JSXClosingElement<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::JSXClosingElement,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             ..Default::default()
         })
@@ -2252,8 +2274,8 @@ impl<'a> AstEncode for JSXAttr<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::JSXAttr,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             ..Default::default()
@@ -2290,8 +2312,8 @@ impl<'a> AstEncode for JSXText<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::JSXText,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -2314,8 +2336,8 @@ impl<'a> AstEncode for JSXElement<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::JSXElement,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -2346,8 +2368,8 @@ impl<'a> AstEncode for JSXFragment<'a> {
         encoder.packed_node(PackedNode {
             kind: NodeKind::JSXFragment,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             field0,
             field1,
             field2,
@@ -2362,8 +2384,8 @@ impl AstEncode for JSXOpeningFragment {
         encoder.packed_node(PackedNode {
             kind: NodeKind::JSXOpeningFragment,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             ..Default::default()
         })
     }
@@ -2374,8 +2396,8 @@ impl AstEncode for JSXClosingFragment {
         encoder.packed_node(PackedNode {
             kind: NodeKind::JSXClosingFragment,
             flags,
-            span_lo: self.span.start,
-            span_hi: self.span.end,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
             ..Default::default()
         })
     }
