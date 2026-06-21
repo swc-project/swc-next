@@ -2,10 +2,7 @@ use crate::{
     Program,
     codec::{AstEncode, Header, NONE, PackedNode},
 };
-use swc_experimental_allocator::{
-    atom::{Atom, Wtf8Atom},
-    boxed::Box,
-};
+use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
 
 pub struct Encoder {
     start_node_ptr: *mut PackedNode,
@@ -85,17 +82,6 @@ impl Encoder {
             // result follows the original encoder protocol: node ids are
             // one-based because the cursor is advanced before measuring.
             self.node_ptr.offset_from(self.start_node_ptr) as u32
-        }
-    }
-
-    pub(super) fn r#box<E: AstEncode>(&mut self, boxed: Box<E>) -> u32 {
-        boxed.encode(self)
-    }
-
-    pub(super) fn opt<E: AstEncode>(&mut self, opt: Option<E>) -> u32 {
-        match opt {
-            Some(it) => it.encode(self),
-            None => NONE,
         }
     }
 

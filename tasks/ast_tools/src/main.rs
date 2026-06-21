@@ -1,6 +1,9 @@
 use crate::{
     derive::ast_clone_in::ast_clone_in,
-    generator::{ast_builder::ast_builder, ast_property::ast_property, ast_visitor::ast_visitor},
+    generator::{
+        ast_builder::ast_builder, ast_encode::ast_encode, ast_property::ast_property,
+        ast_visitor::ast_visitor,
+    },
     parse::parse_files,
 };
 
@@ -47,4 +50,7 @@ fn main() {
 
     let ast_visitor = ast_visitor(&schema);
     ast_visitor.write_to_file().unwrap();
+
+    let ast_encode = ast_encode(&schema);
+    ast_encode.write_to_file().unwrap();
 }
