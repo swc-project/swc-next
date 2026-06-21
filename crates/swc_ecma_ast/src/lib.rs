@@ -15,7 +15,7 @@ mod generated {
 }
 
 pub use ast::*;
-pub use codec::encode::{EncodeError, Encoder};
+pub use codec::encode::Encoder;
 pub use comment::*;
 pub use common::*;
 pub use generated::ast_visitor::*;
