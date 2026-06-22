@@ -4,9 +4,17 @@
   "description": "",
   "type": "module",
   "main": "./src-js/index.js",
+  "types": "./src-js/index.d.ts",
   "scripts": {
     "build": "napi build --esm --platform --js binding.js --dts binding.d.ts",
     "build:release": "napi build --esm --platform --js binding.js --dts binding.d.ts --release"
+  },
+  "exports": {
+    ".": {
+      "import": "./src-js/index.js",
+      "types": "./src-js/index.d.ts",
+      "default": "./src-js/index.js"
+    }
   },
   "devDependencies": {
     "@napi-rs/cli": "catalog:",

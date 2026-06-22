@@ -1,0 +1,19 @@
+{
+  "name": "testsuite",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "private": true,
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "scripts": {
+    "test": "rstest --root napi"
+  },
+  "devDependencies": {
+    "@rstest/core": "catalog:",
+    "@swc/core": "catalog:",
+    "@swc-exp/parser": "workspace:*"
+  }
+}
