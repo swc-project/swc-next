@@ -20,6 +20,7 @@
     }
   },
   "devDependencies": {
+    "@babel/parser": "catalog:",
     "@napi-rs/cli": "catalog:",
     "@rslib/core": "catalog:",
     "@rstest/core": "catalog:",
