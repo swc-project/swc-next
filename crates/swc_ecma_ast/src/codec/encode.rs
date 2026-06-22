@@ -11,6 +11,7 @@ pub struct Encoder {
     extra_ptr: *mut u32,
     start_string_pool_ptr: *mut u8,
     string_pool_ptr: *mut u8,
+    scratch: Vec<u32>,
 }
 
 impl Encoder {
@@ -51,6 +52,7 @@ impl Encoder {
             extra_ptr,
             start_string_pool_ptr: string_pool_ptr,
             string_pool_ptr,
+            scratch: Vec::new(),
         })
     }
 
@@ -77,6 +79,13 @@ impl Encoder {
     }
 
     pub(super) fn nodes<E: AstEncode>(&mut self, nodes: &[E]) -> (u32, u32) {
+        let scratch_start = self.scratch.len();
+
+        for node in nodes {
+            let node_id = node.encode(self);
+            self.scratch.push(node_id);
+        }
+
         let start = unsafe {
             // SAFETY: Both pointers are derived from the same extra area, and
             // `extra_ptr` always points at the next extra slot.
@@ -84,24 +93,20 @@ impl Encoder {
         };
         let len = nodes.len() as u32;
 
-        for node in nodes {
-            let node_id = node.encode(self);
-            self.extra(node_id);
+        for &node_id in &self.scratch[scratch_start..] {
+            unsafe {
+                // SAFETY: `new` positions `extra_ptr` at the current slot in the
+                // extra area reserved by the caller-provided header.
+                self.extra_ptr.write(node_id);
+                // SAFETY: The header protocol reserves enough extra slots for all
+                // calls to this method. Advancing one serialized `u32` stays within
+                // or one-past that extra area.
+                self.extra_ptr = self.extra_ptr.add(1);
+            }
         }
 
+        self.scratch.truncate(scratch_start);
         (start, len)
-    }
-
-    fn extra(&mut self, value: u32) {
-        unsafe {
-            // SAFETY: `new` positions `extra_ptr` at the current slot in the
-            // extra area reserved by the caller-provided header.
-            self.extra_ptr.write(value);
-            // SAFETY: The header protocol reserves enough extra slots for all
-            // calls to this method. Advancing one serialized `u32` stays within
-            // or one-past that extra area.
-            self.extra_ptr = self.extra_ptr.add(1);
-        }
     }
 }
 
