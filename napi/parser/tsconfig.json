@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "rootDir": "src-js",
+    "lib": ["ESNext"],
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "target": "ESNext",
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "strict": false
+  },
+  "exclude": ["**/*.test.ts"]
+}

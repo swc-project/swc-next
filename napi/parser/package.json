@@ -3,21 +3,26 @@
   "version": "1.0.0",
   "description": "",
   "type": "module",
-  "main": "./src-js/index.js",
-  "types": "./src-js/index.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "napi build --esm --platform --js binding.js --dts binding.d.ts",
-    "build:release": "napi build --esm --platform --js binding.js --dts binding.d.ts --release"
+    "build": "pnpm build:rs && pnpm build:js",
+    "build:js": "rslib build --entry src-js/index.ts --dts --clean",
+    "build:rs": "napi build --esm --platform --js binding.js --dts binding.d.ts",
+    "build:rs:release": "napi build --esm --platform --js binding.js --dts binding.d.ts --release",
+    "test": "rstest --root src-js"
   },
   "exports": {
     ".": {
-      "import": "./src-js/index.js",
-      "types": "./src-js/index.d.ts",
-      "default": "./src-js/index.js"
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "devDependencies": {
     "@napi-rs/cli": "catalog:",
+    "@rslib/core": "catalog:",
+    "@rstest/core": "catalog:",
     "@swc/core": "catalog:",
     "tinybench": "catalog:",
     "yuku-parser": "catalog:"
@@ -35,5 +40,8 @@
       "x86_64-pc-windows-msvc",
       "x86_64-unknown-linux-gnu"
     ]
+  },
+  "dependencies": {
+    "typescript": "catalog:"
   }
 }

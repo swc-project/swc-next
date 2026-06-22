@@ -3,9 +3,11 @@ packages:
 
 catalog:
   "@napi-rs/cli": ^3.7.2
-  '@rstest/core': ^0.10.6
+  "@rslib/core": ^0.23.0
+  "@rstest/core": ^0.10.6
   "@swc/core": ^1.15.41
   tinybench: ^6.0.2
+  typescript: ^6.0.3
   yuku-parser: ^0.5.39
 
 catalogMode: prefer

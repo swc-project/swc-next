@@ -8,3 +8,4 @@ local
 node_modules
 *.node
 *.wasm
+dist

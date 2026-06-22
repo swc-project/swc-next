@@ -4,4 +4,4 @@ export interface ParseOptions {
 
 }
 
-export declare function parseSync(source: string, options: ParseOptions): Buffer
+export declare function parseSync(source: string, options?: ParseOptions | undefined | null): Buffer

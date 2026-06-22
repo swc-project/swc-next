@@ -1,5 +1,5 @@
 import { test, expect } from "@rstest/core";
-import { parseSync as swcExpParseSync } from "@swc-exp/parser";
+import { parseSync as swcExpParseSync } from "./index";
 import { parseSync as swcParseSync } from "@swc/core";
 
 test("should sayHi correctly", () => {

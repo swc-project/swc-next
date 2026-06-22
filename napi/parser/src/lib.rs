@@ -8,7 +8,7 @@ use swc_experimental_ecma_parser::{Parser, StringSource};
 pub struct ParseOptions {}
 
 #[napi]
-pub fn parse_sync<'a>(source: String, _options: ParseOptions) -> Buffer {
+pub fn parse_sync<'a>(source: String, _options: Option<ParseOptions>) -> Buffer {
     let allocator = Allocator::new();
     let mut parser = Parser::new(
         &allocator,
