@@ -144,7 +144,6 @@ export function decode(buffer) {{
   return {{
     type: "Program",
     span: root.span,
-    sourceType: root.type === "Module" ? "module" : "script",
     body: root.body,
     shebang: root.shebang,
   }};
