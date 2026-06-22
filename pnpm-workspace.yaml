@@ -2,6 +2,15 @@ packages:
   - napi/*
 
 catalog:
-  '@napi-rs/cli': ^3.7.2
+  "@napi-rs/cli": ^3.7.2
+  "@swc/core": ^1.15.41
+  tinybench: ^6.0.2
+  yuku-parser: ^0.5.39
 
 catalogMode: prefer
+
+onlyBuiltDependencies:
+  - "@swc/core"
+
+allowBuilds:
+  "@swc/core": true
