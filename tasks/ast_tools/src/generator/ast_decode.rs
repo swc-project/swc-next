@@ -3,6 +3,7 @@ use std::fs;
 use crate::{
     output::RawOutput,
     schema::{AstEnum, AstStruct, AstStructField, AstType, Schema, TypeId},
+    util::should_skip_field,
 };
 
 pub fn ast_decode(schema: &Schema) -> RawOutput {
@@ -185,12 +186,12 @@ fn generate_decode_for_struct(ast: &AstStruct, schema: &Schema) -> String {
         }
 
         if is_span_type(field.type_id, schema) {
-            props.push(format!("{}: {{ start, end }}", js_key(&field.name)));
+            props.push(format!("{}: {{ start, end }}", field.name));
             continue;
         }
 
         if let Some((expr, width)) = flag_decode_expr(field, flag_offset, schema) {
-            props.push(format!("{}: {expr}", js_key(&field.name)));
+            props.push(format!("{}: {expr}", field.name));
             flag_offset += width;
             continue;
         }
@@ -199,7 +200,7 @@ fn generate_decode_for_struct(ast: &AstStruct, schema: &Schema) -> String {
             unreachable!("{} has unsupported field {}", ast.name, field.name);
         };
         field_index += decoded.width;
-        props.push(format!("{}: {}", js_key(&field.name), decoded.expr));
+        props.push(format!("{}: {}", field.name, decoded.expr));
     }
 
     if field_index > 5 || flag_offset > u16::BITS as usize {
@@ -253,12 +254,10 @@ fn decode_option_field(
     let slot = |offset| format!("f{}", field_index + offset);
 
     Some(match &schema.types[inner_type_id] {
-        AstType::Primitive(ast) if is_utf8_type(ast.name) || is_wtf8_type(ast.name) => {
-            DecodedField {
-                width: 2,
-                expr: format!("stringAt({}, {})", slot(0), slot(1)),
-            }
-        }
+        AstType::Primitive(ast) if matches!(ast.name, "Atom" | "Wtf8Atom") => DecodedField {
+            width: 2,
+            expr: format!("stringAt({}, {})", slot(0), slot(1)),
+        },
         AstType::Primitive(ast) if ast.name == "Span" => DecodedField {
             width: 2,
             expr: format!(
@@ -298,7 +297,7 @@ fn decode_primitive_field(name: &str, field_index: usize) -> Option<DecodedField
     let slot = |offset| format!("f{}", field_index + offset);
 
     Some(match name {
-        name if is_utf8_type(name) || is_wtf8_type(name) => DecodedField {
+        name if matches!(name, "Atom" | "Wtf8Atom") => DecodedField {
             width: 2,
             expr: format!("stringAt({}, {})", slot(0), slot(1)),
         },
@@ -358,34 +357,12 @@ fn simple_enum_flag_array(name: &str) -> Option<(&'static str, usize)> {
     })
 }
 
-fn should_skip_field(field: &AstStructField, schema: &Schema) -> bool {
-    match &schema.types[field.type_id] {
-        AstType::Primitive(ast) => matches!(ast.name, "ScopeId" | "SymbolId"),
-        AstType::Option(ast) => {
-            matches!(&schema.types[ast.inner_type_id], AstType::Primitive(inner) if matches!(inner.name, "ScopeId" | "SymbolId"))
-        }
-        _ => false,
-    }
-}
-
 fn is_option_type(type_id: TypeId, schema: &Schema) -> bool {
     matches!(&schema.types[type_id], AstType::Option(_))
 }
 
 fn is_span_type(type_id: TypeId, schema: &Schema) -> bool {
     matches!(&schema.types[type_id], AstType::Primitive(ast) if ast.name == "Span")
-}
-
-fn is_utf8_type(name: &str) -> bool {
-    matches!(name, "Atom" | "Utf8Ref" | "AtomRef")
-}
-
-fn is_wtf8_type(name: &str) -> bool {
-    matches!(name, "Wtf8Atom" | "Wtf8Ref")
-}
-
-fn js_key(name: &str) -> String {
-    format!("{name:?}")
 }
 
 fn read_node_kinds() -> Vec<String> {

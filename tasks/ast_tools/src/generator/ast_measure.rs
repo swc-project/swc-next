@@ -5,6 +5,7 @@ use crate::{
     AST_CRATE_PATH,
     output::{RawOutput, RustOutput},
     schema::{AstEnum, AstStruct, AstStructField, AstType, Schema, TypeId},
+    util::{is_span_field, should_skip_field, simple_enum_flag_width, type_has_lifetime},
 };
 
 pub fn ast_measure(schema: &Schema) -> RawOutput {
@@ -136,10 +137,10 @@ fn measure_option_field_stmt(
     schema: &Schema,
 ) -> Option<TokenStream> {
     Some(match &schema.types[inner_type_id] {
-        AstType::Primitive(ast) if matches!(ast.name, "Atom" | "Utf8Ref" | "AtomRef") => {
+        AstType::Primitive(ast) if matches!(ast.name, "Atom") => {
             quote!(header.opt_utf8(self.#field_name);)
         }
-        AstType::Primitive(ast) if matches!(ast.name, "Wtf8Atom" | "Wtf8Ref") => {
+        AstType::Primitive(ast) if matches!(ast.name, "Wtf8Atom") => {
             quote!(header.opt_wtf8(self.#field_name);)
         }
         AstType::Struct(_) | AstType::Enum(_) | AstType::Box(_) => {
@@ -159,10 +160,8 @@ fn measure_primitive_field_stmt(
     name: &str,
 ) -> Option<TokenStream> {
     Some(match name {
-        "Atom" | "Utf8Ref" | "AtomRef" => quote!(header.utf8(self.#field_name);),
-        "Wtf8Atom" | "Wtf8Ref" => quote!(header.wtf8(self.#field_name);),
-        "OptionalUtf8Ref" => quote!(header.opt_utf8(self.#field_name);),
-        "OptionalWtf8Ref" => quote!(header.opt_wtf8(self.#field_name);),
+        "Atom" => quote!(header.utf8(self.#field_name);),
+        "Wtf8Atom" => quote!(header.wtf8(self.#field_name);),
         _ => return None,
     })
 }
@@ -173,71 +172,4 @@ fn is_flag_field(field: &AstStructField, schema: &Schema) -> bool {
     };
 
     ast.name == "bool" || simple_enum_flag_width(ast.name).is_some()
-}
-
-fn simple_enum_flag_width(name: &str) -> Option<usize> {
-    Some(match name {
-        "ImportPhase" => 2,
-        "VarDeclKind" => 2,
-        "UnaryOp" => 3,
-        "UpdateOp" => 1,
-        "AssignOp" => 5,
-        "BinaryOp" => 5,
-        "MetaPropKind" => 1,
-        "MethodKind" => 2,
-        _ => return None,
-    })
-}
-
-fn should_skip_field(field: &AstStructField, schema: &Schema) -> bool {
-    match &schema.types[field.type_id] {
-        AstType::Primitive(ast) => matches!(ast.name, "ScopeId" | "SymbolId"),
-        AstType::Option(ast) => {
-            matches!(&schema.types[ast.inner_type_id], AstType::Primitive(inner) if matches!(inner.name, "ScopeId" | "SymbolId"))
-        }
-        _ => false,
-    }
-}
-
-fn is_span_field(field: &AstStructField, schema: &Schema) -> bool {
-    matches!(&schema.types[field.type_id], AstType::Primitive(ast) if ast.name == "Span")
-}
-
-fn type_has_lifetime(type_id: TypeId, schema: &Schema) -> bool {
-    match &schema.types[type_id] {
-        AstType::Struct(ast) => ast
-            .fields
-            .iter()
-            .any(|field| field_type_needs_lifetime(field.type_id, schema)),
-        AstType::Enum(ast) => ast.variants.iter().any(|variant| variant.type_id.is_some()),
-        AstType::Box(_) => true,
-        AstType::Vec(_) => true,
-        AstType::Option(ast) => field_type_needs_lifetime(ast.inner_type_id, schema),
-        AstType::Primitive(ast) => primitive_type_needs_lifetime(ast.name),
-    }
-}
-
-fn field_type_needs_lifetime(type_id: TypeId, schema: &Schema) -> bool {
-    match &schema.types[type_id] {
-        AstType::Struct(_) => true,
-        AstType::Enum(_) => type_has_lifetime(type_id, schema),
-        AstType::Box(_) => true,
-        AstType::Vec(_) => true,
-        AstType::Option(ast) => field_type_needs_lifetime(ast.inner_type_id, schema),
-        AstType::Primitive(ast) => primitive_type_needs_lifetime(ast.name),
-    }
-}
-
-fn primitive_type_needs_lifetime(name: &str) -> bool {
-    matches!(
-        name,
-        "Utf8Ref"
-            | "Atom"
-            | "AtomRef"
-            | "Wtf8Ref"
-            | "Wtf8Atom"
-            | "OptionalUtf8Ref"
-            | "OptionalWtf8Ref"
-            | "swc_experimental_num_bigint::BigInt"
-    )
 }

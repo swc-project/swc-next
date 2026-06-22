@@ -149,16 +149,14 @@ impl Parser {
             "f32" => primitive("f32"),
             "f64" => primitive("f64"),
 
-            // Custom enum
+            // Data
             "Span" => primitive("Span"),
             "ScopeId" => primitive("ScopeId"),
             "SymbolId" => primitive("SymbolId"),
-            "AtomRef" => primitive("AtomRef"),
             "Atom" => primitive("Atom"),
             "Wtf8Atom" => primitive("Wtf8Atom"),
-            "swc_experimental_num_bigint::BigInt" => {
-                primitive("swc_experimental_num_bigint::BigInt")
-            }
+
+            // Enums
             "ImportPhase" => primitive("ImportPhase"),
             "VarDeclKind" => primitive("VarDeclKind"),
             "UnaryOp" => primitive("UnaryOp"),

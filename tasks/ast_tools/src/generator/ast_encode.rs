@@ -5,6 +5,7 @@ use crate::{
     AST_CRATE_PATH,
     output::{RawOutput, RustOutput},
     schema::{AstEnum, AstStruct, AstStructField, AstType, Schema, TypeId},
+    util::{is_span_field, should_skip_field, simple_enum_flag_width, type_has_lifetime},
 };
 
 pub fn ast_encode(schema: &Schema) -> RawOutput {
@@ -216,18 +217,14 @@ fn option_field_exprs(
     schema: &Schema,
 ) -> Option<EncodedField> {
     Some(match &schema.types[inner_type_id] {
-        AstType::Primitive(ast) if matches!(ast.name, "Atom" | "Utf8Ref" | "AtomRef") => {
-            string_field_exprs(
-                &field_name.to_string(),
-                quote!(encoder.opt_utf8(self.#field_name)),
-            )
-        }
-        AstType::Primitive(ast) if matches!(ast.name, "Wtf8Atom" | "Wtf8Ref") => {
-            string_field_exprs(
-                &field_name.to_string(),
-                quote!(encoder.opt_wtf8(self.#field_name)),
-            )
-        }
+        AstType::Primitive(ast) if matches!(ast.name, "Atom") => string_field_exprs(
+            &field_name.to_string(),
+            quote!(encoder.opt_utf8(self.#field_name)),
+        ),
+        AstType::Primitive(ast) if matches!(ast.name, "Wtf8Atom") => string_field_exprs(
+            &field_name.to_string(),
+            quote!(encoder.opt_wtf8(self.#field_name)),
+        ),
         AstType::Primitive(ast) if ast.name == "Span" => EncodedField {
             stmts: TokenStream::new(),
             exprs: vec![
@@ -260,21 +257,13 @@ fn option_field_exprs(
 
 fn primitive_field_exprs(field_name: &proc_macro2::Ident, name: &str) -> Option<EncodedField> {
     Some(match name {
-        "Atom" | "Utf8Ref" | "AtomRef" => string_field_exprs(
+        "Atom" => string_field_exprs(
             &field_name.to_string(),
             quote!(encoder.utf8(self.#field_name)),
         ),
-        "Wtf8Atom" | "Wtf8Ref" => string_field_exprs(
+        "Wtf8Atom" => string_field_exprs(
             &field_name.to_string(),
             quote!(encoder.wtf8(self.#field_name)),
-        ),
-        "OptionalUtf8Ref" => string_field_exprs(
-            &field_name.to_string(),
-            quote!(encoder.opt_utf8(self.#field_name)),
-        ),
-        "OptionalWtf8Ref" => string_field_exprs(
-            &field_name.to_string(),
-            quote!(encoder.opt_wtf8(self.#field_name)),
         ),
         "u8" | "u16" | "u32" | "usize" => encoded_expr(quote!(self.#field_name as u32)),
         "u64" => EncodedField {
@@ -327,71 +316,4 @@ fn flag_expr(
         },
         width,
     ))
-}
-
-fn simple_enum_flag_width(name: &str) -> Option<usize> {
-    Some(match name {
-        "ImportPhase" => 2,
-        "VarDeclKind" => 2,
-        "UnaryOp" => 3,
-        "UpdateOp" => 1,
-        "AssignOp" => 5,
-        "BinaryOp" => 5,
-        "MetaPropKind" => 1,
-        "MethodKind" => 2,
-        _ => return None,
-    })
-}
-
-fn should_skip_field(field: &AstStructField, schema: &Schema) -> bool {
-    match &schema.types[field.type_id] {
-        AstType::Primitive(ast) => matches!(ast.name, "ScopeId" | "SymbolId"),
-        AstType::Option(ast) => {
-            matches!(&schema.types[ast.inner_type_id], AstType::Primitive(inner) if matches!(inner.name, "ScopeId" | "SymbolId"))
-        }
-        _ => false,
-    }
-}
-
-fn is_span_field(field: &AstStructField, schema: &Schema) -> bool {
-    matches!(&schema.types[field.type_id], AstType::Primitive(ast) if ast.name == "Span")
-}
-
-fn type_has_lifetime(type_id: TypeId, schema: &Schema) -> bool {
-    match &schema.types[type_id] {
-        AstType::Struct(ast) => ast
-            .fields
-            .iter()
-            .any(|field| field_type_needs_lifetime(field.type_id, schema)),
-        AstType::Enum(ast) => ast.variants.iter().any(|variant| variant.type_id.is_some()),
-        AstType::Box(_) => true,
-        AstType::Vec(_) => true,
-        AstType::Option(ast) => field_type_needs_lifetime(ast.inner_type_id, schema),
-        AstType::Primitive(ast) => primitive_type_needs_lifetime(ast.name),
-    }
-}
-
-fn field_type_needs_lifetime(type_id: TypeId, schema: &Schema) -> bool {
-    match &schema.types[type_id] {
-        AstType::Struct(_) => true,
-        AstType::Enum(_) => type_has_lifetime(type_id, schema),
-        AstType::Box(_) => true,
-        AstType::Vec(_) => true,
-        AstType::Option(ast) => field_type_needs_lifetime(ast.inner_type_id, schema),
-        AstType::Primitive(ast) => primitive_type_needs_lifetime(ast.name),
-    }
-}
-
-fn primitive_type_needs_lifetime(name: &str) -> bool {
-    matches!(
-        name,
-        "Utf8Ref"
-            | "Atom"
-            | "AtomRef"
-            | "Wtf8Ref"
-            | "Wtf8Atom"
-            | "OptionalUtf8Ref"
-            | "OptionalWtf8Ref"
-            | "swc_experimental_num_bigint::BigInt"
-    )
 }
