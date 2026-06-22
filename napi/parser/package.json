@@ -7,9 +7,9 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "pnpm build:rs && pnpm build:js",
-    "build:js": "rslib build --entry src-js/index.ts --dts --clean",
-    "build:rs": "napi build --esm --platform --js binding.js --dts binding.d.ts",
-    "build:rs:release": "napi build --esm --platform --js binding.js --dts binding.d.ts --release",
+    "build:js": "rslib build",
+    "build:rs": "napi build --esm --platform --js binding.js --dts binding.d.ts --output-dir src-js",
+    "build:rs:release": "pnpm build:rs --release",
     "test": "rstest --root src-js"
   },
   "exports": {
@@ -24,6 +24,7 @@
     "@rslib/core": "catalog:",
     "@rstest/core": "catalog:",
     "@swc/core": "catalog:",
+    "@types/node": "catalog:",
     "tinybench": "catalog:",
     "yuku-parser": "catalog:"
   },

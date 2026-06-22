@@ -1,4 +1,4 @@
-import { parseSync as __parseSync, ParseOptions } from "../binding.js";
+import { parseSync as __parseSync, ParseOptions } from "./binding.js";
 import { decode } from "./decode.js";
 
 export function parseSync(source: string, options?: ParseOptions) {
@@ -6,4 +6,4 @@ export function parseSync(source: string, options?: ParseOptions) {
   return decode(buffer);
 }
 
-export { type ParseOptions } from "../binding";
+export { type ParseOptions } from "./binding.js";

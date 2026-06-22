@@ -1,8 +1,5 @@
 import { readFileSync } from "node:fs";
-import {
-  parseSync as swcExpParseSync,
-  decode as swcExpDecode,
-} from "./src-js/index.js";
+import { parseSync as swcExpParseSync } from "./dist/index.js";
 import { parseSync as swcParseSync } from "@swc/core";
 import { Bench } from "tinybench";
 import { parse as yukuParse } from "yuku-parser";
@@ -37,7 +34,7 @@ const bench = new Bench({
 
 bench
   .add("swc-exp parseSync + decode", () => {
-    sink = swcExpDecode(swcExpParseSync(source, swcExpOptions));
+    sink = swcExpParseSync(source, swcExpOptions);
   })
   .add("yuku-parser parse + program", () => {
     sink = yukuParse(source, yukuOptions).program;

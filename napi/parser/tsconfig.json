@@ -10,5 +10,5 @@
     "skipLibCheck": true,
     "strict": false
   },
-  "exclude": ["**/*.test.ts"]
+  "exclude": ["rslib.config.ts", "**/*.test.ts"]
 }
