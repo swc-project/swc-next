@@ -265,14 +265,6 @@ fn primitive_field_exprs(field_name: &proc_macro2::Ident, name: &str) -> Option<
             &field_name.to_string(),
             quote!(encoder.wtf8(self.#field_name)),
         ),
-        "u8" | "u16" | "u32" | "usize" => encoded_expr(quote!(self.#field_name as u32)),
-        "u64" => EncodedField {
-            stmts: TokenStream::new(),
-            exprs: vec![
-                quote!(self.#field_name as u32),
-                quote!((self.#field_name >> 32) as u32),
-            ],
-        },
         "f64" => EncodedField {
             stmts: TokenStream::new(),
             exprs: vec![

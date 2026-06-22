@@ -300,18 +300,6 @@ fn decode_primitive_field(name: &str, field_index: usize) -> Option<DecodedField
             width: 2,
             expr: format!("stringAt({}, {})", slot(0), slot(1)),
         },
-        "OptionalUtf8Ref" | "OptionalWtf8Ref" => DecodedField {
-            width: 2,
-            expr: format!("stringAt({}, {})", slot(0), slot(1)),
-        },
-        "u8" | "u16" | "u32" | "usize" => DecodedField {
-            width: 1,
-            expr: slot(0),
-        },
-        "u64" => DecodedField {
-            width: 2,
-            expr: format!("{} + {} * 0x100000000", slot(0), slot(1)),
-        },
         "f64" => DecodedField {
             width: 2,
             expr: format!(
