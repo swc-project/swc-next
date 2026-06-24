@@ -886,9 +886,7 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     }
 
     fn visit_function(&mut self, f: &Function<'ast>) {
-        if let Some(body) = &f.body {
-            self.mark_block(body);
-        }
+        self.mark_block(&f.body);
         // f.type_params.visit_with(self);
 
         self.ident_type = IdentType::Ref;
@@ -913,20 +911,19 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         // f.return_type.visit_with(self);
 
         self.ident_type = IdentType::Ref;
-        if let Some(body) = &f.body {
-            self.mark_block(body);
-            let old_strict_mode = self.strict_mode;
-            if !self.strict_mode {
-                self.strict_mode = body
-                    .stmts
-                    .first()
-                    .map(|stmt| stmt.is_use_strict())
-                    .unwrap_or(false);
-            }
-            // Prevent creating new scope.
-            self.visit_stmts(&body.stmts);
-            self.strict_mode = old_strict_mode;
+        self.mark_block(&f.body);
+        let old_strict_mode = self.strict_mode;
+        if !self.strict_mode {
+            self.strict_mode = f
+                .body
+                .stmts
+                .first()
+                .map(|stmt| stmt.is_use_strict())
+                .unwrap_or(false);
         }
+        // Prevent creating new scope.
+        self.visit_stmts(&f.body.stmts);
+        self.strict_mode = old_strict_mode;
     }
 
     fn visit_getter_prop(&mut self, f: &GetterProp<'ast>) {

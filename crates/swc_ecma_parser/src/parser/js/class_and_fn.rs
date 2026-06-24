@@ -289,7 +289,12 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 p.span(start),
                 params,
                 decorators,
-                p.box_opt(body),
+                match body {
+                    Some(body) => p.boxed(body),
+                    None => {
+                        todo!("TODO(ts): represent body-less functions as TSDeclareFunction/overload shape")
+                    }
+                },
                 is_generator,
                 is_async,
             ))
@@ -412,9 +417,6 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                     is_async,
                     is_generator,
                 )?;
-                if is_fn_expr && f.body.is_none() {
-                    unexpected!(p, "{");
-                }
                 Ok((ident, f))
             },
         )
@@ -529,7 +531,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             }
             Key::Public(key) => {
                 let span = self.span(start);
-                if is_abstract && function.body.is_some() {
+                if is_abstract {
                     self.emit_err(span, SyntaxError::TS1245)
                 }
 

@@ -308,8 +308,7 @@ impl<'a> ExprExt for Expr<'a> {
 
             Expr::Fn(fn_expr) => {
                 let f = &fn_expr.function;
-                f.params.iter().all(|p| matches!(&p.pat, Pat::Ident(_)))
-                    && f.body.as_ref().is_some_and(|body| body.stmts.is_empty())
+                f.params.iter().all(|p| matches!(&p.pat, Pat::Ident(_))) && f.body.stmts.is_empty()
             }
 
             _ => false,
@@ -450,7 +449,7 @@ fn is_pure_new_callee(expr: &Expr<'_>, ctx: ExprCtx<'_>) -> bool {
         Expr::Fn(func) => {
             let func = &func.function;
             func.params.iter().all(|p| matches!(&p.pat, Pat::Ident(_)))
-                && func.body.as_ref().is_some_and(|body| body.stmts.is_empty())
+                && func.body.stmts.is_empty()
         }
 
         // A class expression is pure for `new` if:

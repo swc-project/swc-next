@@ -312,7 +312,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                                     p.emit_err(key_span, SyntaxError::TS1056);
                                 }
 
-                                let body = function.body;
+                                let body = Some(function.body);
                                 p.ast
                                     .prop_or_spread_prop_getter_prop(p.span(start), key, body)
                             });
@@ -362,7 +362,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                                         p.ast.pat_invalid()
                                     });
 
-                                let body = function.body;
+                                let body = Some(function.body);
                                 p.ast.prop_or_spread_prop_setter_prop(
                                     p.span(start),
                                     key,

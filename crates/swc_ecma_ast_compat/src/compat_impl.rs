@@ -1069,7 +1069,7 @@ pub(crate) trait CompatImpl {
             decorators: self.compat_vec(f.decorators, Self::compat_decorator),
             span: compat_span(f.span),
             ctxt: Default::default(),
-            body: f.body.map(|b| self.compat_block_stmt(b)),
+            body: Some(self.compat_block_stmt(f.body)),
             is_generator: f.is_generator,
             is_async: f.is_async,
             type_params: None,

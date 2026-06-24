@@ -4179,7 +4179,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         params: Vec<'a, Param<'a>>,
         decorators: Vec<'a, Decorator<'a>>,
-        body: Option<Box<'a, BlockStmt<'a>>>,
+        body: Box<'a, BlockStmt<'a>>,
         is_generator: bool,
         is_async: bool,
     ) -> Function<'a> {
@@ -4198,7 +4198,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         params: Vec<'a, Param<'a>>,
         decorators: Vec<'a, Decorator<'a>>,
-        body: Option<Box<'a, BlockStmt<'a>>>,
+        body: Box<'a, BlockStmt<'a>>,
         is_generator: bool,
         is_async: bool,
     ) -> Box<'a, Function<'a>> {

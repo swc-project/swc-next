@@ -11,7 +11,7 @@ pub struct Function<'a> {
     pub span: Span,
     pub params: Vec<'a, Param<'a>>,
     pub decorators: Vec<'a, Decorator<'a>>,
-    pub body: Option<Box<'a, BlockStmt<'a>>>,
+    pub body: Box<'a, BlockStmt<'a>>,
     pub is_generator: bool,
     pub is_async: bool,
     // pub type_params: Option<Box<TsTypeParamDecl>>,
