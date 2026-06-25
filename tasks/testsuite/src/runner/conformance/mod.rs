@@ -19,8 +19,9 @@ use swc_core::{
     },
 };
 use swc_experimental_ecma_ast as experimental_ast;
-use swc_experimental_ecma_ast::{GetSpan, Visit, VisitWith};
+use swc_experimental_ecma_ast_compat::AstCompat;
 use swc_experimental_ecma_parser::Syntax;
+use swc_experimental_ecma_semantic::resolver::resolver;
 
 use crate::cases::{Case, IsModule};
 
@@ -108,11 +109,11 @@ pub fn collect_legacy_node_spans(program: &legacy_ast::Program) -> NodeSpans {
     collector.nodes
 }
 
-pub fn collect_experimental_node_spans<'a>(program: &experimental_ast::Program<'a>) -> NodeSpans {
-    let mut collector = ExperimentalNodeSpansCollector::default();
-    program.visit_with(&mut collector);
-    sort_node_spans(&mut collector.nodes);
-    collector.nodes
+pub fn compat_experimental_program<'a>(
+    program: experimental_ast::Program<'a>,
+) -> legacy_ast::Program {
+    let semantic = resolver(&program);
+    AstCompat::new(&semantic).compat_program(program)
 }
 
 pub fn format_node_count_mismatch(
@@ -188,31 +189,12 @@ fn legacy_node_span<T: Spanned>(node: &T) -> NodeSpan {
     }
 }
 
-fn experimental_node_span<T: GetSpan>(node: &T) -> NodeSpan {
-    let span = node.span();
-    NodeSpan {
-        start: span.start,
-        end: span.end,
-    }
-}
-
 #[derive(Default)]
 struct LegacyNodeSpansCollector {
     nodes: NodeSpans,
 }
 
 impl LegacyNodeSpansCollector {
-    fn push(&mut self, kind: NodeKind, span: NodeSpan) {
-        self.nodes.entry(kind).or_default().push(span);
-    }
-}
-
-#[derive(Default)]
-struct ExperimentalNodeSpansCollector {
-    nodes: NodeSpans,
-}
-
-impl ExperimentalNodeSpansCollector {
     fn push(&mut self, kind: NodeKind, span: NodeSpan) {
         self.nodes.entry(kind).or_default().push(span);
     }
@@ -225,15 +207,6 @@ macro_rules! node_span_collector_methods {
                 fn $method(&mut self, node: &legacy_ast::$legacy_ty) {
                     self.push($kind, legacy_node_span(node));
                     LegacyVisitWith::visit_children_with(node, self);
-                }
-            )*
-        }
-
-        impl<'a> Visit<'a> for ExperimentalNodeSpansCollector {
-            $(
-                fn $method(&mut self, node: &$experimental_ty) {
-                    self.push($kind, experimental_node_span(node));
-                    node.visit_children_with(self);
                 }
             )*
         }

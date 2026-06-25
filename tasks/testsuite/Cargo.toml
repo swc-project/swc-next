@@ -14,6 +14,7 @@ swc_core  = { workspace = true, features = ["__ecma_transforms", "ecma_parser_un
 
 swc_experimental_allocator            = { workspace = true }
 swc_experimental_ecma_ast             = { workspace = true }
+swc_experimental_ecma_ast_compat      = { workspace = true }
 swc_experimental_ecma_parser          = { workspace = true }
 swc_experimental_ecma_semantic        = { workspace = true }
 swc_experimental_ecma_transforms_base = { workspace = true }

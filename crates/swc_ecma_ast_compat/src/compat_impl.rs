@@ -378,7 +378,11 @@ pub(crate) trait CompatImpl {
         block_stmt: AstBox<'a, experimental::BlockStmt<'a>>,
     ) -> legacy::BlockStmt {
         let block_stmt = AstBox::into_inner(block_stmt);
-        let ctxt = SyntaxContext::from_u32(block_stmt.scope_id().raw());
+        let ctxt = block_stmt
+            .scope_id
+            .get()
+            .unwrap_or_else(|| self.semantic().top_level_scope_id());
+        let ctxt = SyntaxContext::from_u32(ctxt.raw());
         legacy::BlockStmt {
             span: compat_span(block_stmt.span),
             stmts: self.compat_vec(block_stmt.stmts, Self::compat_stmt),
@@ -755,9 +759,14 @@ pub(crate) trait CompatImpl {
 
     fn compat_ident(&mut self, ident: AstBox<'_, experimental::Ident>) -> legacy::Ident {
         let ident = AstBox::into_inner(ident);
+        let ctxt = ident
+            .symbol_id
+            .get()
+            .map(|_| self.semantic().node_scope(&ident))
+            .unwrap_or_else(|| self.semantic().unresolved_scope_id());
         legacy::Ident {
             span: compat_span(ident.span),
-            ctxt: SyntaxContext::from_u32(self.semantic().node_scope(&ident).raw()),
+            ctxt: SyntaxContext::from_u32(ctxt.raw()),
             sym: self.compat_utf8_ref(ident.sym),
             optional: ident.optional,
         }
