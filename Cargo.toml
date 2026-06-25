@@ -58,7 +58,7 @@ swc_experimental_ecma_visit           = { version = "0.11.0", path = "crates/swc
 
 # Dev
 colored      = "3.1.1"
-criterion    = { package = "codspeed-criterion-compat", version = "4.7.0" }
+criterion    = { package = "codspeed-criterion-compat", version = "5.0.0" }
 jwalk        = "0.8.1"
 mimalloc     = "0.1.52"
 pico-args    = "0.5.0"
