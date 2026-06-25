@@ -103,7 +103,7 @@ pub struct UpdateExpr<'a> {
     pub span: Span,
     pub op: UpdateOp,
     pub prefix: bool,
-    pub arg: Expr<'a>,
+    pub arg: SimpleAssignTarget<'a>,
 }
 
 #[ast]

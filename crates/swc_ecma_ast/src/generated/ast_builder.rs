@@ -1379,7 +1379,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         op: UpdateOp,
         prefix: bool,
-        arg: Expr<'a>,
+        arg: SimpleAssignTarget<'a>,
     ) -> ForHead<'a> {
         ForHead::Pat(
             self.allocator
@@ -1841,7 +1841,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         op: UpdateOp,
         prefix: bool,
-        arg: Expr<'a>,
+        arg: SimpleAssignTarget<'a>,
     ) -> VarDeclOrExpr<'a> {
         VarDeclOrExpr::Expr(
             self.allocator
@@ -2367,7 +2367,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         op: UpdateOp,
         prefix: bool,
-        arg: Expr<'a>,
+        arg: SimpleAssignTarget<'a>,
     ) -> Expr<'a> {
         Expr::Update(self.box_update_expr(span, op, prefix, arg))
     }
@@ -2718,7 +2718,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         op: UpdateOp,
         prefix: bool,
-        arg: Expr<'a>,
+        arg: SimpleAssignTarget<'a>,
     ) -> UpdateExpr<'a> {
         UpdateExpr {
             span,
@@ -2733,7 +2733,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         op: UpdateOp,
         prefix: bool,
-        arg: Expr<'a>,
+        arg: SimpleAssignTarget<'a>,
     ) -> Box<'a, UpdateExpr<'a>> {
         self.allocator
             .boxed(self.update_expr(span, op, prefix, arg))
@@ -3127,7 +3127,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         op: UpdateOp,
         prefix: bool,
-        arg: Expr<'a>,
+        arg: SimpleAssignTarget<'a>,
     ) -> Callee<'a> {
         Callee::Expr(
             self.allocator
@@ -3542,7 +3542,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         op: UpdateOp,
         prefix: bool,
-        arg: Expr<'a>,
+        arg: SimpleAssignTarget<'a>,
     ) -> BlockStmtOrExpr<'a> {
         BlockStmtOrExpr::Expr(
             self.allocator
@@ -4776,7 +4776,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         op: UpdateOp,
         prefix: bool,
-        arg: Expr<'a>,
+        arg: SimpleAssignTarget<'a>,
     ) -> Pat<'a> {
         Pat::Expr(
             self.allocator
@@ -5452,7 +5452,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         op: UpdateOp,
         prefix: bool,
-        arg: Expr<'a>,
+        arg: SimpleAssignTarget<'a>,
     ) -> JSXExpr<'a> {
         JSXExpr::Expr(
             self.allocator

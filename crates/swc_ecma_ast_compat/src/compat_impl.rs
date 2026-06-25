@@ -446,7 +446,7 @@ pub(crate) trait CompatImpl {
                             experimental::UpdateOp::MinusMinus => legacy::UpdateOp::MinusMinus,
                         },
                         prefix: u.prefix,
-                        arg: self.compat_expr(u.arg),
+                        arg: self.compat_simple_assign_target(u.arg).into(),
                     })
                 }
                 experimental::Expr::Bin(b) => {
@@ -1495,98 +1495,104 @@ pub(crate) trait CompatImpl {
         }
     }
 
+    fn compat_simple_assign_target<'a>(
+        &mut self,
+        t: experimental::SimpleAssignTarget<'a>,
+    ) -> legacy::SimpleAssignTarget {
+        match t {
+            experimental::SimpleAssignTarget::Ident(b) => {
+                let b = AstBox::into_inner(b);
+                legacy::SimpleAssignTarget::Ident(legacy::BindingIdent {
+                    id: self.compat_ident(b.id),
+                    type_ann: None,
+                })
+            }
+            experimental::SimpleAssignTarget::Member(m) => {
+                let m = AstBox::into_inner(m);
+                legacy::SimpleAssignTarget::Member(legacy::MemberExpr {
+                    span: compat_span(m.span),
+                    obj: self.compat_expr(m.obj),
+                    prop: self.compat_member_prop(m.prop),
+                })
+            }
+            experimental::SimpleAssignTarget::SuperProp(su) => {
+                let su = AstBox::into_inner(su);
+                legacy::SimpleAssignTarget::SuperProp(legacy::SuperPropExpr {
+                    span: compat_span(su.span),
+                    obj: legacy::Super {
+                        span: compat_span(su.obj.span),
+                    },
+                    prop: match su.prop {
+                        experimental::SuperProp::Ident(i) => {
+                            let i = AstBox::into_inner(i);
+                            legacy::SuperProp::Ident(legacy::IdentName {
+                                span: compat_span(i.span),
+                                sym: self.compat_utf8_ref(i.sym),
+                            })
+                        }
+                        experimental::SuperProp::Computed(c) => {
+                            let c = AstBox::into_inner(c);
+                            legacy::SuperProp::Computed(legacy::ComputedPropName {
+                                span: compat_span(c.span),
+                                expr: self.compat_expr(c.expr),
+                            })
+                        }
+                    },
+                })
+            }
+            experimental::SimpleAssignTarget::Paren(p) => {
+                let p = AstBox::into_inner(p);
+                legacy::SimpleAssignTarget::Paren(legacy::ParenExpr {
+                    span: compat_span(p.span),
+                    expr: self.compat_expr(p.expr),
+                })
+            }
+            experimental::SimpleAssignTarget::OptChain(o) => {
+                let o = AstBox::into_inner(o);
+                legacy::SimpleAssignTarget::OptChain(legacy::OptChainExpr {
+                    span: compat_span(o.span),
+                    optional: o.optional,
+                    base: alloc_box!(
+                        self,
+                        match o.base {
+                            experimental::OptChainBase::Member(m) => {
+                                let m = AstBox::into_inner(m);
+                                legacy::OptChainBase::Member(legacy::MemberExpr {
+                                    span: compat_span(m.span),
+                                    obj: self.compat_expr(m.obj),
+                                    prop: self.compat_member_prop(m.prop),
+                                })
+                            }
+                            experimental::OptChainBase::Call(c) => {
+                                let c = AstBox::into_inner(c);
+                                legacy::OptChainBase::Call(legacy::OptCall {
+                                    span: compat_span(c.span),
+                                    ctxt: Default::default(),
+                                    callee: self.compat_expr(c.callee),
+                                    args: self.compat_vec(c.args, Self::compat_expr_or_spread),
+                                    type_args: None,
+                                })
+                            }
+                        }
+                    ),
+                })
+            }
+            experimental::SimpleAssignTarget::Invalid(_) => {
+                legacy::SimpleAssignTarget::Invalid(legacy::Invalid {
+                    span: Default::default(),
+                })
+            }
+        }
+    }
+
     fn compat_assign_target<'a>(
         &mut self,
         t: experimental::AssignTarget<'a>,
     ) -> legacy::AssignTarget {
         match t {
-            experimental::AssignTarget::Simple(s) => {
-                legacy::AssignTarget::Simple(match AstBox::into_inner(s) {
-                    experimental::SimpleAssignTarget::Ident(b) => {
-                        let b = AstBox::into_inner(b);
-                        legacy::SimpleAssignTarget::Ident(legacy::BindingIdent {
-                            id: self.compat_ident(b.id),
-                            type_ann: None,
-                        })
-                    }
-                    experimental::SimpleAssignTarget::Member(m) => {
-                        let m = AstBox::into_inner(m);
-                        legacy::SimpleAssignTarget::Member(legacy::MemberExpr {
-                            span: compat_span(m.span),
-                            obj: self.compat_expr(m.obj),
-                            prop: self.compat_member_prop(m.prop),
-                        })
-                    }
-                    experimental::SimpleAssignTarget::SuperProp(su) => {
-                        let su = AstBox::into_inner(su);
-                        legacy::SimpleAssignTarget::SuperProp(legacy::SuperPropExpr {
-                            span: compat_span(su.span),
-                            obj: legacy::Super {
-                                span: compat_span(su.obj.span),
-                            },
-                            prop: match su.prop {
-                                experimental::SuperProp::Ident(i) => {
-                                    let i = AstBox::into_inner(i);
-                                    legacy::SuperProp::Ident(legacy::IdentName {
-                                        span: compat_span(i.span),
-                                        sym: self.compat_utf8_ref(i.sym),
-                                    })
-                                }
-                                experimental::SuperProp::Computed(c) => {
-                                    let c = AstBox::into_inner(c);
-                                    legacy::SuperProp::Computed(legacy::ComputedPropName {
-                                        span: compat_span(c.span),
-                                        expr: self.compat_expr(c.expr),
-                                    })
-                                }
-                            },
-                        })
-                    }
-                    experimental::SimpleAssignTarget::Paren(p) => {
-                        let p = AstBox::into_inner(p);
-                        legacy::SimpleAssignTarget::Paren(legacy::ParenExpr {
-                            span: compat_span(p.span),
-                            expr: self.compat_expr(p.expr),
-                        })
-                    }
-                    experimental::SimpleAssignTarget::OptChain(o) => {
-                        let o = AstBox::into_inner(o);
-                        legacy::SimpleAssignTarget::OptChain(legacy::OptChainExpr {
-                            span: compat_span(o.span),
-                            optional: o.optional,
-                            base: alloc_box!(
-                                self,
-                                match o.base {
-                                    experimental::OptChainBase::Member(m) => {
-                                        let m = AstBox::into_inner(m);
-                                        legacy::OptChainBase::Member(legacy::MemberExpr {
-                                            span: compat_span(m.span),
-                                            obj: self.compat_expr(m.obj),
-                                            prop: self.compat_member_prop(m.prop),
-                                        })
-                                    }
-                                    experimental::OptChainBase::Call(c) => {
-                                        let c = AstBox::into_inner(c);
-                                        legacy::OptChainBase::Call(legacy::OptCall {
-                                            span: compat_span(c.span),
-                                            ctxt: Default::default(),
-                                            callee: self.compat_expr(c.callee),
-                                            args: self
-                                                .compat_vec(c.args, Self::compat_expr_or_spread),
-                                            type_args: None,
-                                        })
-                                    }
-                                }
-                            ),
-                        })
-                    }
-                    experimental::SimpleAssignTarget::Invalid(_) => {
-                        legacy::SimpleAssignTarget::Invalid(legacy::Invalid {
-                            span: Default::default(),
-                        })
-                    }
-                })
-            }
+            experimental::AssignTarget::Simple(s) => legacy::AssignTarget::Simple(
+                self.compat_simple_assign_target(AstBox::into_inner(s)),
+            ),
             experimental::AssignTarget::Pat(p) => {
                 legacy::AssignTarget::Pat(match AstBox::into_inner(p) {
                     experimental::AssignTargetPat::Array(a) => {

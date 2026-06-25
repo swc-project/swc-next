@@ -192,6 +192,21 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         self.finish_assignment_expr(start, cond)
     }
 
+    fn reparse_expr_as_update_arg(&mut self, arg: Expr<'a>) -> SimpleAssignTarget<'a> {
+        if !arg.is_valid_simple_assignment_target(self.ctx().contains(Context::Strict)) {
+            self.emit_err(arg.span(), SyntaxError::TS2406);
+            return self.ast.simple_assign_target_invalid();
+        }
+
+        match SimpleAssignTarget::try_from_expr(arg, self.ast.allocator) {
+            Ok(arg) => arg,
+            Err(arg) => {
+                self.emit_err(arg.span(), SyntaxError::TS2406);
+                self.ast.simple_assign_target_invalid()
+            }
+        }
+    }
+
     pub(super) fn parse_unary_expr(&mut self) -> PResult<Expr<'a>> {
         trace_cur!(self, parse_unary_expr);
 
@@ -240,7 +255,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
                 let arg = self.parse_unary_expr()?;
                 let span = Span::new(start, arg.span_hi());
-                self.check_assign_target(&arg, false);
+                let arg = self.reparse_expr_as_update_arg(arg);
 
                 return Ok(self.ast.expr_update_expr(span, op, true, arg));
             } else if cur == Token::Delete
@@ -312,12 +327,11 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 UpdateOp::MinusMinus
             };
 
-            self.check_assign_target(&expr, false);
+            let start = expr.span_lo();
+            let arg = self.reparse_expr_as_update_arg(expr);
             self.bump();
 
-            return Ok(self
-                .ast
-                .expr_update_expr(self.span(expr.span_lo()), op, false, expr));
+            return Ok(self.ast.expr_update_expr(self.span(start), op, false, arg));
         }
         Ok(expr)
     }
