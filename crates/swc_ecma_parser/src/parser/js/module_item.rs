@@ -73,7 +73,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                     let possibly_orig_token = self.input().cur();
                     let possibly_orig = self
                         .parse_ident_name()
-                        .map(|(span, sym)| self.ast.ident(span, sym, false))?;
+                        .map(|(span, sym)| self.ast.ident(span, sym))?;
                     if possibly_orig_token == Token::As {
                         // `export { type as }`
                         if !self.input().cur().is_word() {
@@ -92,14 +92,14 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                         let maybe_as_token = self.input().cur();
                         let maybe_as = self
                             .parse_ident_name()
-                            .map(|(span, sym)| self.ast.ident(span, sym, false))?;
+                            .map(|(span, sym)| self.ast.ident(span, sym))?;
                         if maybe_as_token == Token::As {
                             if self.input().cur().is_word() {
                                 // `export { type as as as }`
                                 // `export { type as as foo }`
                                 let exported = self
                                     .parse_ident_name()
-                                    .map(|(span, sym)| self.ast.ident(span, sym, false))?;
+                                    .map(|(span, sym)| self.ast.ident(span, sym))?;
 
                                 if type_only {
                                     self.emit_err(orig_ident.span(), SyntaxError::TS2207);
@@ -190,7 +190,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                     let possibly_orig_token = self.input().cur();
                     let possibly_orig_name = self
                         .parse_ident_name()
-                        .map(|(span, sym)| self.ast.ident(span, sym, false))?;
+                        .map(|(span, sym)| self.ast.ident(span, sym))?;
 
                     let possibly_orig_name_str = possibly_orig_name.sym.as_str();
                     if possibly_orig_token == Token::As {
@@ -484,7 +484,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                             .is_some_and(|peek| matches!(peek, Token::Asterisk | Token::LBrace)))))
             {
                 let sym = Atom::new_const("default");
-                export_default = Some(self.ast.ident(self.input().prev_span(), sym, false));
+                export_default = Some(self.ast.ident(self.input().prev_span(), sym));
             } else {
                 let expr = self.allow_in_expr(Self::parse_assignment_expr)?;
                 self.expect_general_semi()?;
@@ -806,7 +806,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                                 type_only = true;
                                 local = p
                                     .parse_ident_name()
-                                    .map(|(span, sym)| p.ast.ident(span, sym, false))?;
+                                    .map(|(span, sym)| p.ast.ident(span, sym))?;
                             }
                         }
                     }

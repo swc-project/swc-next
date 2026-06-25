@@ -1989,7 +1989,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             }
 
             let sym = Atom::new_const("await");
-            return Ok(self.ast.expr_ident(span, sym, false));
+            return Ok(self.ast.expr_ident(span, sym));
         }
 
         // This has been checked if start_of_await_token == true,
@@ -2429,7 +2429,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         if let Some(async_span) = async_span {
             // It's a call expression
             let sym = Atom::new_const("async");
-            let callee = self.ast.callee_expr_ident(async_span, sym, false);
+            let callee = self.ast.callee_expr_ident(async_span, sym);
             return Ok(self.ast.expr_call_expr(
                 self.span(async_span.start),
                 callee,
@@ -2604,7 +2604,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             if self.ctx().contains(Context::InClassField) && word.as_str() == "arguments" {
                 self.emit_err(self.input().prev_span(), SyntaxError::ArgumentsInClassField)
             };
-            let id = self.ast.ident(self.span(start), word, false);
+            let id = self.ast.ident(self.span(start), word);
             if !can_be_arrow {
                 return Ok(Expr::Ident(self.boxed(id)));
             }
@@ -2612,7 +2612,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         } else if self.is_ident_ref() {
             let cur = self.input().cur();
             let word = self.input_mut().expect_word_token_and_bump();
-            let id = self.ast.ident(self.span(start), word, false);
+            let id = self.ast.ident(self.span(start), word);
             if !can_be_arrow {
                 return Ok(Expr::Ident(self.boxed(id)));
             }

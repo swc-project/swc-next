@@ -1501,7 +1501,6 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
             let mut ident = p.parse_ident_name().map(Ident::from)?;
             if p.input_mut().eat(Token::QuestionMark) {
-                ident.optional = true;
                 ident.span.end = p.input().prev_span().end;
             }
             expect!(p, Token::Colon);

@@ -759,7 +759,7 @@ pub(crate) trait CompatImpl {
             span: compat_span(ident.span),
             ctxt: SyntaxContext::from_u32(self.semantic().node_scope(&ident).raw()),
             sym: self.compat_utf8_ref(ident.sym),
-            optional: ident.optional,
+            optional: false,
         }
     }
 

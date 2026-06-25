@@ -13,7 +13,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             ModuleExportName::Str(self.boxed(lit))
         } else if cur.is_word() {
             let (span, sym) = self.parse_ident_name()?;
-            ModuleExportName::Ident(self.ast.box_ident(span, sym, false))
+            ModuleExportName::Ident(self.ast.box_ident(span, sym))
         } else {
             unexpected!(self, "identifier or string");
         };
@@ -96,7 +96,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 self.emit_strict_mode_err(span, SyntaxError::EvalAndArgumentsInStrict);
             }
 
-            let ident = self.ast.ident(span, word, false);
+            let ident = self.ast.ident(span, word);
             return Ok(ident);
         }
 
@@ -123,7 +123,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         if cur == Token::This && self.input().syntax().typescript() {
             let start = token_and_span.span.start;
             let sym = Atom::new_const("this");
-            let ident = self.ast.ident(self.span(start), sym, false);
+            let ident = self.ast.ident(self.span(start), sym);
             Ok(Some(ident))
         } else if cur.is_word() && !cur.is_reserved(self.ctx()) {
             self.parse_binding_ident(disallow_let).map(Some)
@@ -158,7 +158,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 SyntaxError::InvalidIdentInStrict(word_str.to_string()),
             );
 
-            return Ok(self.ast.ident(span, word, false));
+            return Ok(self.ast.ident(span, word));
         } else if t == Token::Yield
             || t == Token::Let
             || t == Token::Static
@@ -176,7 +176,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 SyntaxError::InvalidIdentInStrict(word_str.to_string()),
             );
 
-            return Ok(self.ast.ident(span, word, false));
+            return Ok(self.ast.ident(span, word));
         };
 
         let word;
@@ -209,7 +209,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 self.emit_err(span, SyntaxError::ArgumentsInClassField)
             }
 
-            return Ok(self.ast.ident(self.span(start), word, false));
+            return Ok(self.ast.ident(self.span(start), word));
         } else if t == Token::Yield && incl_yield {
             word = self.atom_from_span(span)
         } else if t == Token::Null || t == Token::True || t == Token::False || t.is_keyword() {
@@ -218,6 +218,6 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             unreachable!()
         }
         self.bump();
-        Ok(self.ast.ident(self.span(start), word, false))
+        Ok(self.ast.ident(self.span(start), word))
     }
 }

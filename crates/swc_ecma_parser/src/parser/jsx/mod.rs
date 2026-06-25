@@ -113,7 +113,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         trace_cur!(self, parse_jsx_element_name);
         let start = self.input().cur_pos();
         let mut node = match self.parse_jsx_tag_name()? {
-            JSXAttrName::Ident(i) => self.ast.jsx_element_name_ident(i.span(), i.sym, false),
+            JSXAttrName::Ident(i) => self.ast.jsx_element_name_ident(i.span(), i.sym),
             JSXAttrName::JSXNamespacedName(i) => JSXElementName::JSXNamespacedName(i),
             #[cfg(swc_ast_unknown)]
             _ => unreachable!(),

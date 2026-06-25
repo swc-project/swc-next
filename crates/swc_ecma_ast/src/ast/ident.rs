@@ -13,7 +13,6 @@ use swc_experimental_ast_macros::ast;
 pub struct Ident<'a> {
     pub span: Span,
     pub sym: Atom<'a>,
-    pub optional: bool,
     pub symbol_id: Cell<Option<SymbolId>>,
 }
 

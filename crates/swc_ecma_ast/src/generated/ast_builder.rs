@@ -635,13 +635,8 @@ impl<'a> AstBuilder<'a> {
             .boxed(self.export_namespace_specifier(span, name))
     }
     #[inline]
-    pub fn module_export_name_ident(
-        &self,
-        span: Span,
-        sym: Atom<'a>,
-        optional: bool,
-    ) -> ModuleExportName<'a> {
-        ModuleExportName::Ident(self.box_ident(span, sym, optional))
+    pub fn module_export_name_ident(&self, span: Span, sym: Atom<'a>) -> ModuleExportName<'a> {
+        ModuleExportName::Ident(self.box_ident(span, sym))
     }
     #[inline]
     pub fn module_export_name_str(
@@ -1504,18 +1499,10 @@ impl<'a> AstBuilder<'a> {
         )
     }
     #[inline]
-    pub fn for_head_pat_expr_ident(
-        &self,
-        span: Span,
-        sym: Atom<'a>,
-        optional: bool,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::Ident(self.box_ident(span, sym, optional))),
-            )),
-        )
+    pub fn for_head_pat_expr_ident(&self, span: Span, sym: Atom<'a>) -> ForHead<'a> {
+        ForHead::Pat(self.allocator.boxed(Pat::Expr(
+            self.allocator.boxed(Expr::Ident(self.box_ident(span, sym))),
+        )))
     }
     #[inline]
     pub fn for_head_pat_expr_lit_str(
@@ -1960,16 +1947,8 @@ impl<'a> AstBuilder<'a> {
         )
     }
     #[inline]
-    pub fn var_decl_or_expr_expr_ident(
-        &self,
-        span: Span,
-        sym: Atom<'a>,
-        optional: bool,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Ident(self.box_ident(span, sym, optional))),
-        )
+    pub fn var_decl_or_expr_expr_ident(&self, span: Span, sym: Atom<'a>) -> VarDeclOrExpr<'a> {
+        VarDeclOrExpr::Expr(self.allocator.boxed(Expr::Ident(self.box_ident(span, sym))))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_lit_str(
@@ -2458,8 +2437,8 @@ impl<'a> AstBuilder<'a> {
         Expr::Seq(self.box_seq_expr(span, exprs))
     }
     #[inline]
-    pub fn expr_ident(&self, span: Span, sym: Atom<'a>, optional: bool) -> Expr<'a> {
-        Expr::Ident(self.box_ident(span, sym, optional))
+    pub fn expr_ident(&self, span: Span, sym: Atom<'a>) -> Expr<'a> {
+        Expr::Ident(self.box_ident(span, sym))
     }
     #[inline]
     pub fn expr_lit_str(&self, span: Span, value: Wtf8Atom<'a>, raw: Option<Atom<'a>>) -> Expr<'a> {
@@ -2648,15 +2627,10 @@ impl<'a> AstBuilder<'a> {
         PropOrSpread::Spread(self.box_spread_element(dot3_token, expr))
     }
     #[inline]
-    pub fn prop_or_spread_prop_ident(
-        &self,
-        span: Span,
-        sym: Atom<'a>,
-        optional: bool,
-    ) -> PropOrSpread<'a> {
+    pub fn prop_or_spread_prop_ident(&self, span: Span, sym: Atom<'a>) -> PropOrSpread<'a> {
         PropOrSpread::Prop(
             self.allocator
-                .boxed(Prop::Shorthand(self.box_ident(span, sym, optional))),
+                .boxed(Prop::Shorthand(self.box_ident(span, sym))),
         )
     }
     #[inline]
@@ -3255,11 +3229,8 @@ impl<'a> AstBuilder<'a> {
         )
     }
     #[inline]
-    pub fn callee_expr_ident(&self, span: Span, sym: Atom<'a>, optional: bool) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::Ident(self.box_ident(span, sym, optional))),
-        )
+    pub fn callee_expr_ident(&self, span: Span, sym: Atom<'a>) -> Callee<'a> {
+        Callee::Expr(self.allocator.boxed(Expr::Ident(self.box_ident(span, sym))))
     }
     #[inline]
     pub fn callee_expr_lit_str(
@@ -3677,16 +3648,8 @@ impl<'a> AstBuilder<'a> {
         )
     }
     #[inline]
-    pub fn block_stmt_or_expr_expr_ident(
-        &self,
-        span: Span,
-        sym: Atom<'a>,
-        optional: bool,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Ident(self.box_ident(span, sym, optional))),
-        )
+    pub fn block_stmt_or_expr_expr_ident(&self, span: Span, sym: Atom<'a>) -> BlockStmtOrExpr<'a> {
+        BlockStmtOrExpr::Expr(self.allocator.boxed(Expr::Ident(self.box_ident(span, sym))))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_lit_str(
@@ -4558,8 +4521,8 @@ impl<'a> AstBuilder<'a> {
             .boxed(self.auto_accessor(span, key, value, is_static, decorators))
     }
     #[inline]
-    pub fn prop_ident(&self, span: Span, sym: Atom<'a>, optional: bool) -> Prop<'a> {
-        Prop::Shorthand(self.box_ident(span, sym, optional))
+    pub fn prop_ident(&self, span: Span, sym: Atom<'a>) -> Prop<'a> {
+        Prop::Shorthand(self.box_ident(span, sym))
     }
     #[inline]
     pub fn prop_key_value_prop(&self, key: PropName<'a>, value: Expr<'a>) -> Prop<'a> {
@@ -4910,11 +4873,8 @@ impl<'a> AstBuilder<'a> {
         )
     }
     #[inline]
-    pub fn pat_expr_ident(&self, span: Span, sym: Atom<'a>, optional: bool) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::Ident(self.box_ident(span, sym, optional))),
-        )
+    pub fn pat_expr_ident(&self, span: Span, sym: Atom<'a>) -> Pat<'a> {
+        Pat::Expr(self.allocator.boxed(Expr::Ident(self.box_ident(span, sym))))
     }
     #[inline]
     pub fn pat_expr_lit_str(
@@ -5251,17 +5211,16 @@ impl<'a> AstBuilder<'a> {
         self.allocator.boxed(self.assign_pat_prop(span, key, value))
     }
     #[inline]
-    pub fn ident(&self, span: Span, sym: Atom<'a>, optional: bool) -> Ident<'a> {
+    pub fn ident(&self, span: Span, sym: Atom<'a>) -> Ident<'a> {
         Ident {
             span,
             sym,
-            optional,
             symbol_id: Default::default(),
         }
     }
     #[inline]
-    pub fn box_ident(&self, span: Span, sym: Atom<'a>, optional: bool) -> Box<'a, Ident<'a>> {
-        self.allocator.boxed(self.ident(span, sym, optional))
+    pub fn box_ident(&self, span: Span, sym: Atom<'a>) -> Box<'a, Ident<'a>> {
+        self.allocator.boxed(self.ident(span, sym))
     }
     #[inline]
     pub fn ident_name(&self, span: Span, sym: Atom<'a>) -> IdentName<'a> {
@@ -5379,8 +5338,8 @@ impl<'a> AstBuilder<'a> {
         JSXObject::JSXMemberExpr(self.box_jsx_member_expr(span, obj, prop))
     }
     #[inline]
-    pub fn jsx_object_ident(&self, span: Span, sym: Atom<'a>, optional: bool) -> JSXObject<'a> {
-        JSXObject::Ident(self.box_ident(span, sym, optional))
+    pub fn jsx_object_ident(&self, span: Span, sym: Atom<'a>) -> JSXObject<'a> {
+        JSXObject::Ident(self.box_ident(span, sym))
     }
     #[inline]
     pub fn jsx_member_expr(
@@ -5595,11 +5554,8 @@ impl<'a> AstBuilder<'a> {
         )
     }
     #[inline]
-    pub fn jsx_expr_expr_ident(&self, span: Span, sym: Atom<'a>, optional: bool) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::Ident(self.box_ident(span, sym, optional))),
-        )
+    pub fn jsx_expr_expr_ident(&self, span: Span, sym: Atom<'a>) -> JSXExpr<'a> {
+        JSXExpr::Expr(self.allocator.boxed(Expr::Ident(self.box_ident(span, sym))))
     }
     #[inline]
     pub fn jsx_expr_expr_lit_str(
@@ -5834,13 +5790,8 @@ impl<'a> AstBuilder<'a> {
         self.allocator.boxed(self.jsx_spread_child(span, expr))
     }
     #[inline]
-    pub fn jsx_element_name_ident(
-        &self,
-        span: Span,
-        sym: Atom<'a>,
-        optional: bool,
-    ) -> JSXElementName<'a> {
-        JSXElementName::Ident(self.box_ident(span, sym, optional))
+    pub fn jsx_element_name_ident(&self, span: Span, sym: Atom<'a>) -> JSXElementName<'a> {
+        JSXElementName::Ident(self.box_ident(span, sym))
     }
     #[inline]
     pub fn jsx_element_name_jsx_member_expr(

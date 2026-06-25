@@ -73,7 +73,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             None
         };
 
-        let key_ident = self.ast.box_ident(key.span(), key.sym, false);
+        let key_ident = self.ast.box_ident(key.span(), key.sym);
         let key_ident = self.ast.box_binding_ident(key_ident);
         Ok(self
             .ast
@@ -256,16 +256,14 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 self.emit_err(ident_span, SyntaxError::ReservedWordInObjShorthandOrPat);
             }
 
-            let ident = self.ast.box_ident(ident_span, ident_sym, false);
+            let ident = self.ast.box_ident(ident_span, ident_sym);
             if self.input_mut().eat(Token::Eq) {
                 let value = self.allow_in_expr(Self::parse_assignment_expr)?;
                 let span = self.span(start);
                 return Ok(self.ast.prop_or_spread_prop_assign_prop(span, ident, value));
             }
 
-            return Ok(self
-                .ast
-                .prop_or_spread_prop_ident(ident_span, ident_sym, false));
+            return Ok(self.ast.prop_or_spread_prop_ident(ident_span, ident_sym));
         }
 
         // get a(){}

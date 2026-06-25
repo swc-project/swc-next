@@ -1379,7 +1379,6 @@ impl<'a, 'src> CloneIn<'a> for Ident<'src> {
         Ident {
             span: self.span.clone_in(allocator),
             sym: self.sym.clone_in(allocator),
-            optional: self.optional.clone_in(allocator),
             symbol_id: self.symbol_id.clone_in(allocator),
         }
     }
