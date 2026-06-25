@@ -219,7 +219,6 @@ pub struct ArrowExpr<'a> {
     pub params: Vec<'a, Pat<'a>>,
     pub body: BlockStmtOrExpr<'a>,
     pub is_async: bool,
-    pub is_generator: bool,
     // type_params: Option<Box<TsTypeParamDecl>>,
     // return_type: Option<Box<TsTypeAnn>>,
 }

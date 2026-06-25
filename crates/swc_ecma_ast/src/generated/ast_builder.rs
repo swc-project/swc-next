@@ -1634,12 +1634,11 @@ impl<'a> AstBuilder<'a> {
         params: Vec<'a, Pat<'a>>,
         body: BlockStmtOrExpr<'a>,
         is_async: bool,
-        is_generator: bool,
     ) -> ForHead<'a> {
         ForHead::Pat(
             self.allocator
                 .boxed(Pat::Expr(self.allocator.boxed(Expr::Arrow(
-                    self.box_arrow_expr(span, params, body, is_async, is_generator),
+                    self.box_arrow_expr(span, params, body, is_async),
                 )))),
         )
     }
@@ -2071,15 +2070,10 @@ impl<'a> AstBuilder<'a> {
         params: Vec<'a, Pat<'a>>,
         body: BlockStmtOrExpr<'a>,
         is_async: bool,
-        is_generator: bool,
     ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(self.allocator.boxed(Expr::Arrow(self.box_arrow_expr(
-            span,
-            params,
-            body,
-            is_async,
-            is_generator,
-        ))))
+        VarDeclOrExpr::Expr(self.allocator.boxed(Expr::Arrow(
+            self.box_arrow_expr(span, params, body, is_async),
+        )))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_class_expr(
@@ -2523,9 +2517,8 @@ impl<'a> AstBuilder<'a> {
         params: Vec<'a, Pat<'a>>,
         body: BlockStmtOrExpr<'a>,
         is_async: bool,
-        is_generator: bool,
     ) -> Expr<'a> {
-        Expr::Arrow(self.box_arrow_expr(span, params, body, is_async, is_generator))
+        Expr::Arrow(self.box_arrow_expr(span, params, body, is_async))
     }
     #[inline]
     pub fn expr_class_expr(
@@ -2981,14 +2974,12 @@ impl<'a> AstBuilder<'a> {
         params: Vec<'a, Pat<'a>>,
         body: BlockStmtOrExpr<'a>,
         is_async: bool,
-        is_generator: bool,
     ) -> ArrowExpr<'a> {
         ArrowExpr {
             span,
             params,
             body,
             is_async,
-            is_generator,
         }
     }
     #[inline]
@@ -2998,10 +2989,9 @@ impl<'a> AstBuilder<'a> {
         params: Vec<'a, Pat<'a>>,
         body: BlockStmtOrExpr<'a>,
         is_async: bool,
-        is_generator: bool,
     ) -> Box<'a, ArrowExpr<'a>> {
         self.allocator
-            .boxed(self.arrow_expr(span, params, body, is_async, is_generator))
+            .boxed(self.arrow_expr(span, params, body, is_async))
     }
     #[inline]
     pub fn yield_expr(&self, span: Span, arg: Option<Expr<'a>>, delegate: bool) -> YieldExpr<'a> {
@@ -3365,15 +3355,10 @@ impl<'a> AstBuilder<'a> {
         params: Vec<'a, Pat<'a>>,
         body: BlockStmtOrExpr<'a>,
         is_async: bool,
-        is_generator: bool,
     ) -> Callee<'a> {
-        Callee::Expr(self.allocator.boxed(Expr::Arrow(self.box_arrow_expr(
-            span,
-            params,
-            body,
-            is_async,
-            is_generator,
-        ))))
+        Callee::Expr(self.allocator.boxed(Expr::Arrow(
+            self.box_arrow_expr(span, params, body, is_async),
+        )))
     }
     #[inline]
     pub fn callee_expr_class_expr(
@@ -3802,15 +3787,10 @@ impl<'a> AstBuilder<'a> {
         params: Vec<'a, Pat<'a>>,
         body: BlockStmtOrExpr<'a>,
         is_async: bool,
-        is_generator: bool,
     ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(self.allocator.boxed(Expr::Arrow(self.box_arrow_expr(
-            span,
-            params,
-            body,
-            is_async,
-            is_generator,
-        ))))
+        BlockStmtOrExpr::Expr(self.allocator.boxed(Expr::Arrow(
+            self.box_arrow_expr(span, params, body, is_async),
+        )))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_class_expr(
@@ -5020,15 +5000,10 @@ impl<'a> AstBuilder<'a> {
         params: Vec<'a, Pat<'a>>,
         body: BlockStmtOrExpr<'a>,
         is_async: bool,
-        is_generator: bool,
     ) -> Pat<'a> {
-        Pat::Expr(self.allocator.boxed(Expr::Arrow(self.box_arrow_expr(
-            span,
-            params,
-            body,
-            is_async,
-            is_generator,
-        ))))
+        Pat::Expr(self.allocator.boxed(Expr::Arrow(
+            self.box_arrow_expr(span, params, body, is_async),
+        )))
     }
     #[inline]
     pub fn pat_expr_class_expr(
@@ -5725,15 +5700,10 @@ impl<'a> AstBuilder<'a> {
         params: Vec<'a, Pat<'a>>,
         body: BlockStmtOrExpr<'a>,
         is_async: bool,
-        is_generator: bool,
     ) -> JSXExpr<'a> {
-        JSXExpr::Expr(self.allocator.boxed(Expr::Arrow(self.box_arrow_expr(
-            span,
-            params,
-            body,
-            is_async,
-            is_generator,
-        ))))
+        JSXExpr::Expr(self.allocator.boxed(Expr::Arrow(
+            self.box_arrow_expr(span, params, body, is_async),
+        )))
     }
     #[inline]
     pub fn jsx_expr_expr_class_expr(

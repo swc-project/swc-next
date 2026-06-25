@@ -2933,7 +2933,6 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
         self.do_inside_of_context(Context::InAsync, |p| {
             p.do_outside_of_context(Context::InGenerator, |p| {
-                let is_generator = false;
                 let is_async = true;
                 let body = p.parse_fn_block_or_expr_body(
                     true,
@@ -2945,7 +2944,6 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                     span: p.span(start),
                     body,
                     is_async,
-                    is_generator,
                     type_params: Some(type_params),
                     params,
                     return_type,

@@ -650,7 +650,7 @@ pub(crate) trait CompatImpl {
                             }
                         ),
                         is_async: a.is_async,
-                        is_generator: a.is_generator,
+                        is_generator: false,
                         type_params: None,
                         return_type: None,
                     })

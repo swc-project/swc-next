@@ -817,7 +817,6 @@ impl<'a, 'src> CloneIn<'a> for ArrowExpr<'src> {
             params: self.params.clone_in(allocator),
             body: self.body.clone_in(allocator),
             is_async: self.is_async.clone_in(allocator),
-            is_generator: self.is_generator.clone_in(allocator),
         }
     }
 }

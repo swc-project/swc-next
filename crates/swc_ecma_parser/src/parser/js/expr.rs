@@ -2244,9 +2244,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 )?;
                 let span = self.span(start);
 
-                let arrow = self
-                    .ast
-                    .expr_arrow_expr(span, params, body, is_async, false);
+                let arrow = self.ast.expr_arrow_expr(span, params, body, is_async);
                 let expr = self.ast.expr_or_spread(None, arrow);
                 items.push(AssignTargetOrSpread::ExprOrSpread(expr));
             }
@@ -2380,13 +2378,9 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 params.is_simple_parameter_list(),
             )?;
 
-            let arrow_expr = self.ast.arrow_expr(
-                self.span(expr_start),
-                params,
-                body,
-                async_span.is_some(),
-                false,
-            );
+            let arrow_expr =
+                self.ast
+                    .arrow_expr(self.span(expr_start), params, body, async_span.is_some());
             if arrow_expr.body.is_block_stmt() && self.input().cur().is_bin_op() {
                 // ) is required
                 self.emit_err(self.input().cur_span(), SyntaxError::TS1005);
@@ -2564,9 +2558,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                             params.is_simple_parameter_list(),
                         )?;
 
-                        return Ok(p
-                            .ast
-                            .expr_arrow_expr(p.span(start), params, body, true, false));
+                        return Ok(p.ast.expr_arrow_expr(p.span(start), params, body, true));
                     }
                 } else if cur == Token::Arrow && !p.input().had_line_break_before_cur() {
                     if p.ctx().contains(Context::Strict) && id.is_reserved_in_strict_bind() {
@@ -2587,9 +2579,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                         params.is_simple_parameter_list(),
                     )?;
 
-                    return Ok(p
-                        .ast
-                        .expr_arrow_expr(p.span(start), params, body, false, false));
+                    return Ok(p.ast.expr_arrow_expr(p.span(start), params, body, false));
                 }
 
                 Ok(Expr::Ident(p.boxed(id)))
