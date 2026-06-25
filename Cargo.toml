@@ -40,10 +40,10 @@ swc_core = { version = "69.0.0", features = [
 
 # Ast tool
 convert_case = "0.11.0"
-phf          = "0.13.1"
+phf          = "0.14.0"
 prettyplease = "0.2.37"
 proc-macro2  = "1.0.106"
-quote        = "1.0.45"
+quote        = "1.0.46"
 syn          = { version = "2.0.118", default-features = false }
 
 # Workspace
@@ -65,8 +65,8 @@ pico-args    = "0.5.0"
 saphyr       = "0.0.6"
 tracy-client = { version = "=0.18.1", features = ["enable", "sampling", "demangle", "system-tracing"] }
 
-oxc           = { version = "0.136.0", features = ["ast_visit", "semantic"] }
-oxc_allocator = "0.136.0"
+oxc           = { version = "0.137.0", features = ["ast_visit", "semantic"] }
+oxc_allocator = "0.137.0"
 
 [profile.bench]
 codegen-units = 1
