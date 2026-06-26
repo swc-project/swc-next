@@ -312,13 +312,7 @@ export function decode(buffer, source) {
     }
   }
 
-  const root = node(nodeCount);
-  return {
-    type: "Program",
-    span: root.span,
-    body: root.body,
-    shebang: root.shebang,
-  };
+  return node(nodeCount);
 }
 
 export default decode;

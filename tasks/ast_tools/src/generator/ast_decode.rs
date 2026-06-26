@@ -2,7 +2,7 @@ use std::fs;
 
 use crate::{
     output::RawOutput,
-    schema::{AstEnum, AstStruct, AstStructField, AstType, Schema, TypeId},
+    schema::{AstStruct, AstStructField, AstType, Schema, TypeId},
     util::should_skip_field,
 };
 
@@ -11,10 +11,8 @@ pub fn ast_decode(schema: &Schema) -> RawOutput {
     let mut cases = String::new();
 
     for ty in schema.types.iter() {
-        match ty {
-            AstType::Struct(ast) => cases.push_str(&generate_decode_for_struct(ast, schema)),
-            AstType::Enum(ast) => cases.push_str(&generate_decode_for_unit_variants(ast, schema)),
-            _ => {}
+        if let AstType::Struct(ast) = ty {
+            cases.push_str(&generate_decode_for_struct(ast, schema));
         }
     }
 
@@ -110,13 +108,7 @@ export function decode(buffer, source) {{
     }}
   }}
 
-  const root = node(nodeCount);
-  return {{
-    type: "Program",
-    span: root.span,
-    body: root.body,
-    shebang: root.shebang,
-  }};
+  return node(nodeCount);
 }}
 
 export default decode;
@@ -127,21 +119,6 @@ export default decode;
         path: "napi/parser/src-js/decode.js".to_string(),
         content: content.into_bytes(),
     }
-}
-
-fn generate_decode_for_unit_variants(ast: &AstEnum, _schema: &Schema) -> String {
-    let mut cases = String::new();
-    for variant in ast.variants.iter() {
-        if variant.type_id.is_some() {
-            continue;
-        }
-
-        let kind = format!("{}{}", ast.name, variant.name);
-        cases.push_str(&format!(
-            "      case NK.{kind}: return {{ type: \"{kind}\" }};\n"
-        ));
-    }
-    cases
 }
 
 fn generate_decode_for_struct(ast: &AstStruct, schema: &Schema) -> String {

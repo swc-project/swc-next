@@ -1,4 +1,4 @@
-use std::fs;
+use std::{collections::BTreeMap, fs};
 
 use indexmap::IndexSet;
 use oxc_index::IndexVec;
@@ -17,6 +17,7 @@ struct Parser {
     /// Mapping all type names to their type ids
     type_names: IndexSet<String>,
     top_level_type_count: usize,
+    primitive_enum_variants: BTreeMap<String, Vec<String>>,
     /// Types exclude top level structs and enums
     extra_types: IndexVec<TypeId, AstType>,
 }
@@ -40,6 +41,7 @@ pub fn parse_files(file_paths: &[&str]) -> Schema {
     // Collect declared enums and structs ahead of time and create their types
     let mut type_names = IndexSet::new();
     let mut prototypes = Vec::new();
+    let mut primitive_enum_variants = BTreeMap::new();
 
     for source in file_paths {
         let content =
@@ -64,6 +66,13 @@ pub fn parse_files(file_paths: &[&str]) -> Schema {
                 Item::Enum(item) => {
                     // Filter enums with #[ast]
                     if !has_ast_attr(&item.attrs) {
+                        primitive_enum_variants.insert(
+                            item.ident.to_string(),
+                            item.variants
+                                .into_iter()
+                                .map(|variant| variant.ident.to_string())
+                                .collect(),
+                        );
                         continue;
                     }
 
@@ -80,6 +89,7 @@ pub fn parse_files(file_paths: &[&str]) -> Schema {
     let mut parser = Parser {
         top_level_type_count: type_names.len(),
         type_names,
+        primitive_enum_variants,
         extra_types: IndexVec::default(),
     };
 
@@ -129,6 +139,7 @@ impl Parser {
             AstType::Primitive(AstPrimitive {
                 type_id: TypeId::DUMMY,
                 name,
+                variants: self.primitive_enum_variants.get(name).cloned(),
             })
         };
 

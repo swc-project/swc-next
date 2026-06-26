@@ -103,4 +103,5 @@ pub struct AstNode {
 pub struct AstPrimitive {
     pub type_id: TypeId,
     pub name: &'static str,
+    pub variants: Option<Vec<String>>,
 }
