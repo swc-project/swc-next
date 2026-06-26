@@ -2412,6 +2412,7 @@ version = "0.11.0"
 dependencies = [
  "num-bigint",
  "oxc_index",
+ "rustc-hash",
  "swc_experimental_allocator",
  "swc_experimental_ast_macros",
  "unicode-id-start",

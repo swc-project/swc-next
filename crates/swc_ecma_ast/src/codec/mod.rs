@@ -6,6 +6,7 @@ pub mod ast_encode;
 pub mod ast_measure;
 pub mod encode;
 pub mod measure;
+pub mod utf8_to_utf16;
 
 const HEADER_SIZE: usize = mem::size_of::<Header>();
 const NODE_SIZE: usize = mem::size_of::<PackedNode>();

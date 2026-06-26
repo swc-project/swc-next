@@ -2,7 +2,6 @@
 const NONE = 0xffffffff;
 const NODE_SIZE = 32;
 const HEADER_SIZE = 12;
-const TEXT_DECODER = new TextDecoder("utf-8", { ignoreBOM: true });
 const NK = {
   Unknown: 0,
   ArrayLit: 1,
@@ -130,46 +129,7 @@ const BINARY_OP = ["EqEq", "NotEq", "EqEqEq", "NotEqEq", "Lt", "LtEq", "Gt", "Gt
 const META_PROP_KIND = ["NewTarget", "ImportMeta"];
 const METHOD_KIND = ["Method", "Getter", "Setter"];
 
-function decodeWtf8(u8, start, len) {
-  if (len === 0) return "";
-  const end = start + len;
-  let hasSurrogate = false;
-  for (let i = start; i < end; i++) {
-    if (u8[i] === 0xed) {
-      hasSurrogate = true;
-      break;
-    }
-  }
-  if (!hasSurrogate) return TEXT_DECODER.decode(u8.subarray(start, end));
-
-  let out = "";
-  for (let i = start; i < end; ) {
-    const c = u8[i];
-    if (c < 0x80) {
-      out += String.fromCharCode(c);
-      i++;
-    } else if (c < 0xe0) {
-      out += String.fromCharCode(((c & 0x1f) << 6) | (u8[i + 1] & 0x3f));
-      i += 2;
-    } else if (c < 0xf0) {
-      out += String.fromCharCode(
-        ((c & 0x0f) << 12) | ((u8[i + 1] & 0x3f) << 6) | (u8[i + 2] & 0x3f),
-      );
-      i += 3;
-    } else {
-      out += String.fromCodePoint(
-        ((c & 0x07) << 18) |
-          ((u8[i + 1] & 0x3f) << 12) |
-          ((u8[i + 2] & 0x3f) << 6) |
-          (u8[i + 3] & 0x3f),
-      );
-      i += 4;
-    }
-  }
-  return out;
-}
-
-export function decode(buffer) {
+export function decode(buffer, source) {
   const u8 = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
   const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
   const u32 = offset => dv.getUint32(offset, true);
@@ -179,10 +139,20 @@ export function decode(buffer) {
   const nodesOff = HEADER_SIZE;
   const extraOff = nodesOff + nodeCount * NODE_SIZE;
   const stringPoolOff = extraOff + extraCount * 4;
+  const sourceLen = source.length;
 
-  function stringAt(start, len) {
+  function stringAt(start, end) {
     if (start === NONE) return null;
-    return decodeWtf8(u8, stringPoolOff + start, len);
+    if (start === end) return "";
+    if (start < sourceLen) return source.slice(start, end);
+
+    start -= sourceLen;
+    end -= sourceLen;
+    let out = "";
+    for (let i = start; i < end; i++) {
+      out += String.fromCharCode(dv.getUint16(stringPoolOff + i * 2, true));
+    }
+    return out;
   }
 
   function extraAt(index) {

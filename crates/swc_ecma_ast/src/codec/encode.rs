@@ -1,10 +1,12 @@
 use crate::{
-    Program,
-    codec::{AstEncode, Header, NONE, PackedNode},
+    Program, Span,
+    codec::{AstEncode, Header, NONE, PackedNode, utf8_to_utf16::PositionMap},
 };
 use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
 
-pub struct Encoder {
+pub struct Encoder<'a> {
+    source: &'a str,
+    pos_map: PositionMap,
     start_node_ptr: *mut PackedNode,
     node_ptr: *mut PackedNode,
     start_extra_ptr: *mut u32,
@@ -14,8 +16,8 @@ pub struct Encoder {
     scratch: Vec<u32>,
 }
 
-impl Encoder {
-    pub fn new(header: Header, buf: &mut [u8]) -> Option<Self> {
+impl<'a> Encoder<'a> {
+    pub fn new(header: Header, source: &'a str, buf: &mut [u8]) -> Option<Self> {
         let size = header.size();
         if buf.len() < size {
             return None;
@@ -46,6 +48,8 @@ impl Encoder {
         }
 
         Some(Self {
+            source,
+            pos_map: PositionMap::new(source),
             start_node_ptr: node_ptr,
             node_ptr,
             start_extra_ptr: extra_ptr,
@@ -61,7 +65,7 @@ impl Encoder {
     }
 }
 
-impl Encoder {
+impl Encoder<'_> {
     pub(super) fn packed_node(&mut self, node: PackedNode) -> u32 {
         unsafe {
             // SAFETY: `new` positions `node_ptr` at the current slot in the
@@ -110,9 +114,24 @@ impl Encoder {
     }
 }
 
-impl Encoder {
+impl Encoder<'_> {
+    pub(super) fn span(&self, span: Span) -> (u32, u32) {
+        (
+            self.pos_map.convert(span.start.saturating_sub(1)),
+            self.pos_map.convert(span.end.saturating_sub(1)),
+        )
+    }
+
+    pub(super) fn opt_span(&self, span: Option<Span>) -> (u32, u32) {
+        match span {
+            Some(span) => self.span(span),
+            None => (NONE, 0),
+        }
+    }
+
     pub(super) fn utf8(&mut self, atom: Atom) -> (u32, u32) {
-        self.bytes(atom.as_str().as_bytes())
+        let s = atom.as_str();
+        self.bytes(s.as_bytes(), s.encode_utf16())
     }
 
     pub(super) fn opt_utf8(&mut self, atom: Option<Atom>) -> (u32, u32) {
@@ -123,7 +142,8 @@ impl Encoder {
     }
 
     pub(super) fn wtf8(&mut self, atom: Wtf8Atom) -> (u32, u32) {
-        self.bytes(atom.as_wtf8().as_bytes())
+        let wtf8 = atom.as_wtf8();
+        self.bytes(wtf8.as_bytes(), wtf8.to_ill_formed_utf16())
     }
 
     pub(super) fn opt_wtf8(&mut self, atom: Option<Wtf8Atom>) -> (u32, u32) {
@@ -133,28 +153,47 @@ impl Encoder {
         }
     }
 
-    fn bytes(&mut self, bytes: &[u8]) -> (u32, u32) {
-        let start = unsafe {
+    fn bytes<I>(&mut self, bytes: &[u8], utf16: I) -> (u32, u32)
+    where
+        I: IntoIterator<Item = u16>,
+    {
+        let h_start = self.source.as_ptr() as usize;
+        let h_end = h_start + self.source.len();
+        let n_start = bytes.as_ptr() as usize;
+        let n_end = n_start + bytes.len();
+
+        if h_start <= n_start && n_end <= h_end {
+            let offset = (n_start - h_start) as u32;
+            return (
+                self.pos_map.convert(offset),
+                self.pos_map.convert(offset + bytes.len() as u32),
+            );
+        }
+
+        let pool_start = unsafe {
             // SAFETY: Both pointers are derived from the same string pool, and
             // `string_pool_ptr` always points at the next byte to write.
             self.string_pool_ptr.offset_from(self.start_string_pool_ptr) as u32
-        };
-        let len = bytes.len() as u32;
+        } / 2;
+        let start = self.pos_map.source_len() + pool_start;
+        let mut len = 0;
 
-        unsafe {
-            // SAFETY: `new` positions `string_pool_ptr` at the current byte in
-            // the string pool reserved by the caller-provided header. Source
-            // and destination are disjoint because `bytes` comes from the AST
-            // while the destination is the caller-provided output buffer.
-            bytes
-                .as_ptr()
-                .copy_to_nonoverlapping(self.string_pool_ptr, bytes.len());
-            // SAFETY: The header protocol reserves enough string-pool bytes for
-            // all calls to this method. Advancing by the copied length stays
-            // within or one-past that string pool.
-            self.string_pool_ptr = self.string_pool_ptr.add(bytes.len());
+        for code_unit in utf16 {
+            let bytes = code_unit.to_le_bytes();
+            unsafe {
+                // SAFETY: `new` positions `string_pool_ptr` at the current byte in
+                // the string pool reserved by the caller-provided header.
+                bytes
+                    .as_ptr()
+                    .copy_to_nonoverlapping(self.string_pool_ptr, bytes.len());
+                // SAFETY: The header protocol reserves enough string-pool bytes for
+                // all calls to this method. Advancing by the copied length stays
+                // within or one-past that string pool.
+                self.string_pool_ptr = self.string_pool_ptr.add(bytes.len());
+            }
+            len += 1;
         }
 
-        (start, len)
+        (start, start + len)
     }
 }

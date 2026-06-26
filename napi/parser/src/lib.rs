@@ -18,9 +18,9 @@ pub fn parse_sync<'a>(source: String, _options: Option<ParseOptions>) -> Buffer 
     );
     let program = parser.parse_program().unwrap();
 
-    let header = Header::measure(&program);
+    let header = Header::measure(&program, &source);
     let mut buf = vec![0; header.size()];
-    let mut encoder = Encoder::new(header, &mut buf).unwrap();
+    let mut encoder = Encoder::new(header, &source, &mut buf).unwrap();
     encoder.encode(&program);
     Buffer::from(buf)
 }

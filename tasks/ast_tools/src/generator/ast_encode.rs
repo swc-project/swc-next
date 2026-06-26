@@ -152,6 +152,7 @@ fn generate_encode_for_struct(ast: &AstStruct, schema: &Schema) -> TokenStream {
                 #(#pre_stmts)*
                 #(#field_stmts)*
                 let flags = #flags_expr;
+                let (span_lo, span_hi) = encoder.span(self.span());
                 encoder.packed_node(PackedNode {
                     kind: NodeKind::#node_kind,
                     flags,
@@ -225,13 +226,16 @@ fn option_field_exprs(
             &field_name.to_string(),
             quote!(encoder.opt_wtf8(self.#field_name)),
         ),
-        AstType::Primitive(ast) if ast.name == "Span" => EncodedField {
-            stmts: TokenStream::new(),
-            exprs: vec![
-                quote!(self.#field_name.map_or(NONE, |span| span.start)),
-                quote!(self.#field_name.map_or(0, |span| span.end)),
-            ],
-        },
+        AstType::Primitive(ast) if ast.name == "Span" => {
+            let start = format_ident!("__{}_start", field_name);
+            let end = format_ident!("__{}_end", field_name);
+            EncodedField {
+                stmts: quote! {
+                    let (#start, #end) = encoder.opt_span(self.#field_name);
+                },
+                exprs: vec![quote!(#start), quote!(#end)],
+            }
+        }
         AstType::Struct(_) | AstType::Enum(_) | AstType::Box(_) => encoded_expr(quote! {
             match &self.#field_name {
                 Some(it) => it.encode(encoder),

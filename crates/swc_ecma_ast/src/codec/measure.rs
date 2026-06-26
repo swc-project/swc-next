@@ -6,11 +6,11 @@ use crate::{
 };
 
 impl Header {
-    pub fn measure(ast: &Program) -> Self {
+    pub fn measure(ast: &Program, source: &str) -> Self {
         let mut header = Header {
             extra_count: 0,
             node_count: 0,
-            string_pool_size: 0,
+            string_pool_size: source.len() as u32,
         };
         ast.measure(&mut header);
         header
@@ -22,15 +22,9 @@ impl Header {
         self.node_count += 1;
     }
 
-    pub(super) fn utf8(&mut self, atom: Atom) {
-        let len = atom.len() as u32;
-        self.string_pool_size += len;
-    }
+    pub(super) fn utf8(&mut self, _atom: Atom) {}
 
-    pub(super) fn wtf8(&mut self, atom: Wtf8Atom) {
-        let len = atom.as_wtf8().len() as u32;
-        self.string_pool_size += len;
-    }
+    pub(super) fn wtf8(&mut self, _atom: Wtf8Atom) {}
 
     pub(super) fn nodes<M: AstMeasure>(&mut self, nodes: &[M]) {
         self.extra_count += nodes.len() as u32;

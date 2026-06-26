@@ -14,6 +14,7 @@ shared_string_allocator = []
 [dependencies]
 num-bigint       = { workspace = true }
 oxc_index        = { workspace = true }
+rustc-hash       = { workspace = true }
 unicode-id-start = { workspace = true }
 
 swc_experimental_allocator  = { workspace = true }

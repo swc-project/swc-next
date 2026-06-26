@@ -7,6 +7,7 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "pnpm build:rs && pnpm build:js",
+    "build:release": "pnpm build:rs:release && pnpm build:js",
     "build:js": "rslib build",
     "build:rs": "napi build --esm --platform --js binding.js --dts binding.d.ts --output-dir src-js",
     "build:rs:release": "pnpm build:rs --release",
