@@ -7,4 +7,5 @@ export function parseSync(source: string, options?: ParseOptions) {
 }
 
 export { type ParseOptions } from "./binding";
+export { Visitor } from "./visit";
 export * from "./node";
