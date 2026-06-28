@@ -138,6 +138,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         ctx.set(Context::InDeclare, in_declare);
         input.set_ctx(ctx);
 
+        let start_pos = input.start_pos();
         let mut p = Self {
             ast: AstBuilder { allocator },
             state: State::new_in(allocator),
@@ -150,7 +151,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         // This is a workaround to make comments work when there are only comments in a
         // source file.
         if p.input.cur.token == Token::Eof {
-            p.input.cur.span = Span::default();
+            p.input.cur.span = Span::new(start_pos, start_pos);
         }
 
         p

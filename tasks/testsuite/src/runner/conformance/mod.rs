@@ -116,39 +116,43 @@ pub fn compat_experimental_program<'a>(
     AstCompat::new(&semantic).compat_program(program)
 }
 
-pub fn format_node_count_mismatch(
+pub fn format_node_span_mismatch(
     title: &str,
     legacy_nodes: &NodeSpans,
     experimental_nodes: &NodeSpans,
 ) -> Option<String> {
     let mut mismatches = Vec::new();
     for kind in legacy_nodes.keys().chain(experimental_nodes.keys()) {
-        let legacy_spans = legacy_nodes.get(kind);
-        let experimental_spans = experimental_nodes.get(kind);
-        let legacy_count = legacy_spans.map_or(0, Vec::len);
-        let experimental_count = experimental_spans.map_or(0, Vec::len);
-        if legacy_count != experimental_count {
-            mismatches.push((*kind, legacy_count, experimental_count));
+        let legacy_spans = legacy_nodes
+            .get(kind)
+            .map(Vec::as_slice)
+            .unwrap_or_default();
+        let experimental_spans = experimental_nodes
+            .get(kind)
+            .map(Vec::as_slice)
+            .unwrap_or_default();
+        if legacy_spans != experimental_spans {
+            mismatches.push(*kind);
         }
     }
-    mismatches.sort_by(|a, b| a.0.cmp(b.0));
-    mismatches.dedup_by(|a, b| a.0 == b.0);
+    mismatches.sort_unstable();
+    mismatches.dedup();
 
     if mismatches.is_empty() {
         return None;
     }
 
     let mut error = title.to_string();
-    for (kind, legacy_count, experimental_count) in mismatches.iter().take(30) {
+    for kind in mismatches.iter().take(30) {
         let legacy_sample = span_sample(legacy_nodes.get(kind));
         let experimental_sample = span_sample(experimental_nodes.get(kind));
         error.push_str(&format!(
-            "\n  {kind}: swc_core={legacy_count} {legacy_sample}, swc_experimental={experimental_count} {experimental_sample}"
+            "\n  {kind}: swc_core {legacy_sample}, swc_experimental {experimental_sample}"
         ));
     }
     if mismatches.len() > 30 {
         error.push_str(&format!(
-            "\n  ... and {} more NodeKind mismatches",
+            "\n  ... and {} more NodeKind span mismatches",
             mismatches.len() - 30
         ));
     }

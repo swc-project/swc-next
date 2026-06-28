@@ -9,7 +9,7 @@ use crate::{
         ParseResult,
         conformance::{
             LegacyParseResult, collect_legacy_node_spans, compat_experimental_program,
-            format_node_count_mismatch, parse_legacy,
+            format_node_span_mismatch, parse_legacy,
         },
         parse,
     },
@@ -54,7 +54,7 @@ impl ParserConformanceRunner {
 
             let legacy_nodes = collect_legacy_node_spans(&legacy_root);
             let experimental_nodes = collect_legacy_node_spans(&experimental_root);
-            if let Some(error) = format_node_count_mismatch(
+            if let Some(error) = format_node_span_mismatch(
                 "Parser node conformance mismatch",
                 &legacy_nodes,
                 &experimental_nodes,
