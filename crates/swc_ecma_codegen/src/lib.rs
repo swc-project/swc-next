@@ -15,14 +15,8 @@ pub struct Codegen {
     options: CodegenOptions,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct CodegenOptions {}
-
-impl Default for CodegenOptions {
-    fn default() -> Self {
-        Self {}
-    }
-}
 
 impl Codegen {
     pub fn new(options: CodegenOptions) -> Self {
@@ -33,6 +27,6 @@ impl Codegen {
         let compat = swc_experimental_ecma_ast_compat::UnsafeArenaAstCompat::new(semantic);
         compat
             .compat_program(program)
-            .with_ref(|program| swc_core::ecma::codegen::to_code(program))
+            .with_ref(swc_core::ecma::codegen::to_code)
     }
 }
