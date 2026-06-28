@@ -31,6 +31,7 @@ unicode-id-start = "1.4.0"
 # SWC
 swc_core = { version = "71.0.3", features = [
     "ecma_ast",
+    "ecma_codegen",
     "__ecma",
     "__visit",
     "__common",
