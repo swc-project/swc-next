@@ -5,3 +5,9 @@ export interface ParseOptions {
 }
 
 export declare function parseSync(source: string, options?: ParseOptions | undefined | null): Buffer
+
+export interface PrintOptions {
+
+}
+
+export declare function printSync(buf: Buffer, options?: PrintOptions | undefined | null): string

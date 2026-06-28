@@ -24,3 +24,12 @@ pub fn parse_sync<'a>(source: String, _options: Option<ParseOptions>) -> Buffer 
     encoder.encode(&program);
     Buffer::from(buf)
 }
+
+#[napi(object)]
+pub struct PrintOptions {}
+
+#[napi]
+pub fn print_sync(buf: Buffer, _options: Option<PrintOptions>) -> String {
+    let _buf = buf.as_ref();
+    todo!()
+}
