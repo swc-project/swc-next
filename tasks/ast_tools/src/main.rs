@@ -1,9 +1,11 @@
 use crate::{
     derive::ast_clone_in::ast_clone_in,
     generator::{
-        ast_builder::ast_builder, ast_encode::ast_encode, ast_measure::ast_measure,
-        ast_property::ast_property, ast_visitor::ast_visitor, js::decode::ast_decode,
-        js::node_type::ast_node_type, js::visitor::js_ast_visitor,
+        ast_builder::ast_builder, ast_decode::ast_decode as rust_ast_decode,
+        ast_encode::ast_encode, ast_measure::ast_measure, ast_property::ast_property,
+        ast_visitor::ast_visitor, js::decode::ast_decode, js::encode::ast_encode as js_ast_encode,
+        js::measure::ast_measure as js_ast_measure, js::node_type::ast_node_type,
+        js::visitor::js_ast_visitor,
     },
     parse::parse_files,
 };
@@ -61,8 +63,17 @@ fn main() {
     let ast_measure = ast_measure(&schema);
     ast_measure.write_to_file().unwrap();
 
+    let rust_ast_decode = rust_ast_decode(&schema);
+    rust_ast_decode.write_to_file().unwrap();
+
     let ast_decode = ast_decode(&schema);
     ast_decode.write_to_file().unwrap();
+
+    let js_ast_encode = js_ast_encode(&schema);
+    js_ast_encode.write_to_file().unwrap();
+
+    let js_ast_measure = js_ast_measure(&schema);
+    js_ast_measure.write_to_file().unwrap();
 
     let ast_node_type = ast_node_type(&schema);
     ast_node_type.write_to_file().unwrap();

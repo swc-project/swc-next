@@ -1,9 +1,14 @@
 use std::mem;
 
-use crate::Encoder;
+use crate::{Encoder, codec::decode::Decoder};
 
-pub mod ast_encode;
-pub mod ast_measure;
+pub mod generated {
+    pub mod decode;
+    pub mod encode;
+    pub mod measure;
+}
+
+pub mod decode;
 pub mod encode;
 pub mod measure;
 pub mod utf8_to_utf16;
@@ -15,6 +20,10 @@ const NONE: u32 = u32::MAX;
 
 pub(crate) trait AstEncode {
     fn encode(&self, encoder: &mut Encoder) -> u32;
+}
+
+pub(crate) trait AstDecode<'a>: Sized {
+    fn decode(decoder: &Decoder<'a, '_>, id: u32) -> Self;
 }
 
 pub(crate) trait AstMeasure {

@@ -12,11 +12,13 @@ version               = "0.1.0"
 crate-type = ["cdylib"]
 
 [dependencies]
-napi                         = { workspace = true }
-napi-derive                  = { workspace = true }
-swc_experimental_allocator   = { workspace = true }
-swc_experimental_ecma_ast    = { workspace = true }
-swc_experimental_ecma_parser = { workspace = true }
+napi                           = { workspace = true }
+napi-derive                    = { workspace = true }
+swc_experimental_allocator     = { workspace = true }
+swc_experimental_ecma_ast      = { workspace = true }
+swc_experimental_ecma_codegen  = { workspace = true }
+swc_experimental_ecma_parser   = { workspace = true }
+swc_experimental_ecma_semantic = { workspace = true }
 
 [build-dependencies]
 napi-build = { workspace = true }

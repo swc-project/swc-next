@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "rootDir": "src-js",
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "DOM"],
     "module": "Preserve",
     "moduleResolution": "Bundler",
     "noEmit": true,

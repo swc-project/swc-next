@@ -45,7 +45,7 @@ pub fn ast_measure(schema: &Schema) -> RawOutput {
     };
 
     RustOutput {
-        path: format!("crates/{AST_CRATE_PATH}/src/codec/ast_measure.rs"),
+        path: format!("crates/{AST_CRATE_PATH}/src/codec/generated/measure.rs"),
         tokens: output,
     }
     .into()

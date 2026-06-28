@@ -1,6 +1,8 @@
 use convert_case::{Case, Casing};
 
 pub(crate) mod decode;
+pub(crate) mod encode;
+pub(crate) mod measure;
 pub(crate) mod node_type;
 pub(crate) mod visitor;
 

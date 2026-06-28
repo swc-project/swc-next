@@ -46,7 +46,7 @@ pub fn ast_encode(schema: &Schema) -> RawOutput {
     };
 
     RustOutput {
-        path: format!("crates/{AST_CRATE_PATH}/src/codec/ast_encode.rs"),
+        path: format!("crates/{AST_CRATE_PATH}/src/codec/generated/encode.rs"),
         tokens: output,
     }
     .into()

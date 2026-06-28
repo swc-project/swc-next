@@ -5,8 +5,10 @@ import {
   ParseOptions,
   PrintOptions,
 } from "./binding";
-import { decode } from "./decode";
-import { encode } from "./encode";
+import { Encoder } from "./encode";
+import { decode } from "./generated/decode";
+import { Measurement } from "./measure";
+import { headerSize } from "./protocol";
 
 export function parseSync(source: string, options?: ParseOptions) {
   const buffer = __parseSync(source, options);
@@ -14,7 +16,10 @@ export function parseSync(source: string, options?: ParseOptions) {
 }
 
 export function printSync(ast: Program, options?: PrintOptions) {
-  const buffer = encode(ast);
+  const header = new Measurement(ast).measure();
+  const buffer = Buffer.alloc(headerSize(header));
+  const encoder = new Encoder(header, buffer);
+  encoder.encode(ast);
   return __printSync(buffer, options);
 }
 
