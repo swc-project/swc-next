@@ -1,0 +1,2714 @@
+Test Summary: 
+Passed: 46522/46743 (99.53%)
+Failed: 218/46743 (0.47%)
+Panicked: 0/46743 (0.00%)
+Ignored: 3/46743 (0.01%)
+Failed: fixtures/test262/test/built-ins/Array/fromAsync/non-iterable-input-element-access-err.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -2,7 +2,7 @@
+     const input = {
+         length: 1,
+         get 0 () {
+-            throw new Test262Error;
++            throw new Test262Error();
+         }
+     };
+     const outputPromise = Array.fromAsync(input);
+
+Failed: fixtures/test262/test/built-ins/Array/fromAsync/non-iterable-input-with-thenable-async-mapped-callback-err.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -10,7 +10,7 @@
+         0: inputThenable
+     };
+     const outputPromise = Array.fromAsync(input, async (v)=>{
+-        throw new Test262Error;
++        throw new Test262Error();
+     });
+     assert.throwsAsync(Test262Error, ()=>outputPromise);
+ });
+
+Failed: fixtures/test262/test/built-ins/Array/fromAsync/non-iterable-input-with-thenable-element-rejects.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -5,7 +5,7 @@
+     ];
+     const inputThenable = {
+         then (resolve, reject) {
+-            reject(new Test262Error);
++            reject(new Test262Error());
+         }
+     };
+     const input = {
+
+Failed: fixtures/test262/test/built-ins/Array/fromAsync/non-iterable-input-with-thenable-sync-mapped-callback-err.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -4,7 +4,7 @@
+         0: 0
+     };
+     const outputPromise = Array.fromAsync(input, (v)=>{
+-        throw new Test262Error;
++        throw new Test262Error();
+     });
+     assert.throwsAsync(Test262Error, ()=>outputPromise);
+ });
+
+Failed: fixtures/test262/test/built-ins/Array/fromAsync/non-iterable-sync-mapped-callback-err.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -10,7 +10,7 @@
+         0: inputThenable
+     };
+     const outputPromise = Array.fromAsync(input, (v)=>{
+-        throw new Test262Error;
++        throw new Test262Error();
+     });
+     await assert.throwsAsync(Test262Error, ()=>outputPromise);
+ });
+
+Failed: fixtures/test262/test/built-ins/Array/fromAsync/non-iterable-with-thenable-then-method-err.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,7 +1,7 @@
+ asyncTest(async function() {
+     const inputThenable = {
+         then (resolve, reject) {
+-            throw new Test262Error;
++            throw new Test262Error();
+         }
+     };
+     const input = {
+
+Failed: fixtures/test262/test/built-ins/Array/fromAsync/sync-iterable-iteration-err.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ asyncTest(async function() {
+     function* generateInput() {
+-        throw new Test262Error;
++        throw new Test262Error();
+     }
+     const input = generateInput();
+     const outputPromise = Array.fromAsync(input);
+
+Failed: fixtures/test262/test/built-ins/Array/fromAsync/sync-iterable-with-rejecting-thenable-rejects.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,7 +1,7 @@
+ asyncTest(async function() {
+     const inputThenable = {
+         then (resolve, reject) {
+-            reject(new Test262Error);
++            reject(new Test262Error());
+         }
+     };
+     const input = [
+
+Failed: fixtures/test262/test/built-ins/Array/fromAsync/sync-iterable-with-thenable-async-mapped-callback-err.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -3,7 +3,7 @@
+         Promise.resolve(0)
+     ].values();
+     const outputPromise = Array.fromAsync(input, async (v)=>{
+-        throw new Test262Error;
++        throw new Test262Error();
+     });
+     await assert.throwsAsync(Test262Error, ()=>outputPromise);
+ });
+
+Failed: fixtures/test262/test/built-ins/Array/fromAsync/sync-iterable-with-thenable-sync-mapped-callback-err.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -3,7 +3,7 @@
+         Promise.resolve(0)
+     ].values();
+     const outputPromise = Array.fromAsync(input, (v)=>{
+-        throw new Test262Error;
++        throw new Test262Error();
+     });
+     await assert.throwsAsync(Test262Error, ()=>outputPromise);
+ });
+
+Failed: fixtures/test262/test/built-ins/Array/prototype/flatMap/mapperfunction-throws.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -2,12 +2,12 @@
+     [
+         0
+     ].flatMap((x)=>{
+-        throw new Test262Error;
++        throw new Test262Error();
+     });
+ });
+ var callcount = 0;
+ [].flatMap(()=>{
+     callcount += 1;
+-    throw new Test262Error;
++    throw new Test262Error();
+ });
+ assert.sameValue(callcount, 0, "If _soucreLen_ is 0, _mapperFunction_ should not be called.");
+
+Failed: fixtures/test262/test/built-ins/Array/prototype/flatMap/this-value-ctor-object-species-bad-throws.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -91,7 +91,7 @@
+ arr.constructor = {
+     get [Symbol.species] () {
+         called++;
+-        throw new Test262Error;
++        throw new Test262Error();
+     }
+ };
+ assert.throws(Test262Error, function() {
+
+Failed: fixtures/test262/test/built-ins/Array/prototype/toString/non-callable-join-string-tag.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -39,28 +39,28 @@
+ assert.sameValue(Array.prototype.toString.call((function() {
+     return arguments;
+ })()), "[object Arguments]");
+-assert.sameValue(Array.prototype.toString.call(new Error), "[object Error]");
+-assert.sameValue(Array.prototype.toString.call(new Boolean), "[object Boolean]");
+-assert.sameValue(Array.prototype.toString.call(new Number), "[object Number]");
+-assert.sameValue(Array.prototype.toString.call(new String), "[object String]");
+-assert.sameValue(Array.prototype.toString.call(new Date), "[object Date]");
+-assert.sameValue(Array.prototype.toString.call(new RegExp), "[object RegExp]");
++assert.sameValue(Array.prototype.toString.call(new Error()), "[object Error]");
++assert.sameValue(Array.prototype.toString.call(new Boolean()), "[object Boolean]");
++assert.sameValue(Array.prototype.toString.call(new Number()), "[object Number]");
++assert.sameValue(Array.prototype.toString.call(new String()), "[object String]");
++assert.sameValue(Array.prototype.toString.call(new Date()), "[object Date]");
++assert.sameValue(Array.prototype.toString.call(new RegExp()), "[object RegExp]");
+ assert.sameValue(Array.prototype.toString.call(new Proxy(()=>{}, {})), "[object Function]");
+-assert.sameValue(Array.prototype.toString.call(new Proxy(new Date, {})), "[object Object]");
++assert.sameValue(Array.prototype.toString.call(new Proxy(new Date(), {})), "[object Object]");
+ assert.sameValue(Array.prototype.toString.call({
+     [Symbol.toStringTag]: "Foo"
+ }), "[object Foo]");
+-assert.sameValue(Array.prototype.toString.call(new Map), "[object Map]");
++assert.sameValue(Array.prototype.toString.call(new Map()), "[object Map]");
+ RegExp.prototype[Symbol.toStringTag] = "Foo";
+-assert.sameValue(Array.prototype.toString.call(new RegExp), "[object Foo]");
++assert.sameValue(Array.prototype.toString.call(new RegExp()), "[object Foo]");
+ Number.prototype[Symbol.toStringTag] = Object("Foo");
+-assert.sameValue(Array.prototype.toString.call(new Number), "[object Number]");
++assert.sameValue(Array.prototype.toString.call(new Number()), "[object Number]");
+ Object.defineProperty(JSON, Symbol.toStringTag, {
+     value: "Foo"
+ });
+ assert.sameValue(Array.prototype.toString.call(JSON), "[object Foo]");
+ assert(delete Set.prototype[Symbol.toStringTag]);
+-assert.sameValue(Array.prototype.toString.call(new Set), "[object Object]");
++assert.sameValue(Array.prototype.toString.call(new Set()), "[object Object]");
+ Object.defineProperty(Object.prototype, Symbol.toStringTag, {
+     get: ()=>{
+         throw new Test262Error();
+
+Failed: fixtures/test262/test/built-ins/AsyncGeneratorPrototype/throw/throw-suspendedYield-try-finally-return.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -14,7 +14,7 @@
+ it.next().then(function(ret) {
+     assert.sameValue(ret.value, 1, 'Initial yield');
+     assert.sameValue(ret.done, false, 'Initial yield');
+-    it.throw(new Err).then(function(ret) {
++    it.throw(new Err()).then(function(ret) {
+         assert.sameValue(ret.value, 'done', 'AsyncGeneratorResolve(generator, resultValue, true)');
+         assert.sameValue(ret.done, true, 'AsyncGeneratorResolve(generator, resultValue, true)');
+         it.next().then(function(ret) {
+
+Failed: fixtures/test262/test/built-ins/Error/prototype/constructor/S15.11.4.1_A1_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ var constr = Error.prototype.constructor;
+-var err = new constr;
++var err = new constr();
+ assert.notSameValue(err, undefined, 'The value of err is expected to not equal ``undefined``');
+ assert.sameValue(err.constructor, Error, 'The value of err.constructor is expected to equal the value of Error');
+ assert(Error.prototype.isPrototypeOf(err), 'Error.prototype.isPrototypeOf(err) must return true');
+
+Failed: fixtures/test262/test/built-ins/Error/prototype/toString/tostring-get-throws.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,14 +1,14 @@
+ assert.throws(Test262Error, function() {
+     Error.prototype.toString.call({
+         get name () {
+-            throw new Test262Error;
++            throw new Test262Error();
+         }
+     });
+ }, "name field getter should throw to cover abrupt completion return case in step 3");
+ assert.throws(Test262Error, function() {
+     Error.prototype.toString.call({
+         get message () {
+-            throw new Test262Error;
++            throw new Test262Error();
+         }
+     });
+ }, "message field getter should throw to cover abrupt completion return case in step 5");
+
+Failed: fixtures/test262/test/built-ins/Function/15.3.5.4_2-19gs.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,7 +1,7 @@
+ assert.throws(TypeError, function() {
+     var obj = new (function() {
+         gNonStrict();
+-    });
++    })();
+ });
+ function gNonStrict() {
+     return gNonStrict.caller;
+
+Failed: fixtures/test262/test/built-ins/Function/15.3.5.4_2-20gs.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -2,7 +2,7 @@
+     var obj = new (function() {
+         "use strict";
+         gNonStrict();
+-    });
++    })();
+ });
+ function gNonStrict() {
+     return gNonStrict.caller || gNonStrict.caller.throwTypeError;
+
+Failed: fixtures/test262/test/built-ins/Function/S10.1.1_A1_T3.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+ var x = new function f1() {
+     return 1;
+-};
++}();
+ assert.sameValue(typeof (x.constructor), "function", 'The value of `typeof(x.constructor)` is expected to be "function"');
+
+Failed: fixtures/test262/test/built-ins/Function/S15.3.2_A1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,3 +1,3 @@
+-var f = new Function;
++var f = new Function();
+ assert.sameValue(f.constructor, Function, 'The value of f.constructor is expected to equal the value of Function');
+ assert.notSameValue(f, undefined, 'The value of f is expected to not equal ``undefined``');
+
+Failed: fixtures/test262/test/built-ins/Function/S15.3.5_A1_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,2 +1,2 @@
+-var f = new Function;
++var f = new Function();
+ assert.sameValue(Object.prototype.toString.call(f), "[object Function]", 'Object.prototype.toString.call(new Function) must return "[object Function]"');
+
+Failed: fixtures/test262/test/built-ins/Function/S15.3.5_A3_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ var FACTORY = Function("var x =1; this.y=2;return \"OK\";");
+-var obj = new FACTORY;
++var obj = new FACTORY();
+ assert.sameValue(typeof obj, "object", 'The value of `typeof obj` is expected to be "object"');
+ assert.sameValue(obj.constructor, FACTORY, 'The value of obj.constructor is expected to equal the value of FACTORY');
+ assert.sameValue(obj.y, 2, 'The value of obj.y is expected to be 2');
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/S15.3.4_A5.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,3 +1,3 @@
+ assert.throws(TypeError, function() {
+-    new Function.prototype;
++    new Function.prototype();
+ }, '`new Function.prototype` throws a TypeError exception');
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/apply/S15.3.4.3_A1_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,7 +1,7 @@
+ var proto = Function();
+ function FACTORY() {}
+ FACTORY.prototype = proto;
+-var obj = new FACTORY;
++var obj = new FACTORY();
+ assert.sameValue(typeof obj.apply, "function", 'The value of `typeof obj.apply` is expected to be "function"');
+ try {
+     obj.apply();
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/apply/S15.3.4.3_A1_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ function FACTORY() {}
+ FACTORY.prototype = Function.prototype;
+-var obj = new FACTORY;
++var obj = new FACTORY();
+ assert.sameValue(typeof obj.apply, "function", 'The value of `typeof obj.apply` is expected to be "function"');
+ try {
+     obj.apply();
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/apply/S15.3.4.3_A3_T5.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ function FACTORY() {
+     Function("this.feat=\"in da haus\"").apply();
+ }
+-var obj = new FACTORY;
++var obj = new FACTORY();
+ assert.sameValue(this["feat"], "in da haus", 'The value of this["feat"] is expected to be "in da haus"');
+ assert.sameValue(typeof obj.feat, "undefined", 'The value of `typeof obj.feat` is expected to be "undefined"');
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/apply/S15.3.4.3_A3_T6.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -3,6 +3,6 @@
+         this.feat = "kamon beyba";
+     }).apply(null);
+ }
+-var obj = new FACTORY;
++var obj = new FACTORY();
+ assert.sameValue(this["feat"], "kamon beyba", 'The value of this["feat"] is expected to be "kamon beyba"');
+ assert.sameValue(typeof obj.feat, "undefined", 'The value of `typeof obj.feat` is expected to be "undefined"');
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/apply/S15.3.4.3_A8_T3.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ try {
+-    var obj = new Function.apply;
++    var obj = new Function.apply();
+     throw new Test262Error('#1: Function.prototype.apply can\'t be used as [[Construct]] caller');
+ } catch (e) {
+     assert(e instanceof TypeError, 'The result of evaluating (e instanceof TypeError) is expected to be true');
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/apply/S15.3.4.3_A8_T4.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ try {
+-    var obj = new (Function("this.p1=1").apply);
++    var obj = new (Function("this.p1=1").apply)();
+     throw new Test262Error('#1: Function.prototype.apply can\'t be used as [[Construct]] caller');
+ } catch (e) {
+     assert(e instanceof TypeError, 'The result of evaluating (e instanceof TypeError) is expected to be true');
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/apply/S15.3.4.3_A8_T6.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ try {
+-    var obj = new (Function("function f(){this.p1=1;};return f").apply());
++    var obj = new (Function("function f(){this.p1=1;};return f").apply())();
+ } catch (e) {
+     throw new Test262Error('#1: Function.prototype.apply can\'t be used as [[Construct]] caller');
+ }
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/apply/not-a-constructor.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ assert.sameValue(isConstructor(Function.prototype.apply), false, 'isConstructor(Function.prototype.apply) must return false');
+ assert.throws(TypeError, ()=>{
+-    new Function.prototype.apply;
++    new Function.prototype.apply();
+ });
+ assert.throws(TypeError, ()=>{
+     new Function.prototype.apply();
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/call/S15.3.4.4_A1_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,7 +1,7 @@
+ var proto = Function();
+ function FACTORY() {}
+ FACTORY.prototype = proto;
+-var obj = new FACTORY;
++var obj = new FACTORY();
+ assert.sameValue(typeof obj.call, "function", 'The value of `typeof obj.call` is expected to be "function"');
+ try {
+     obj.call();
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/call/S15.3.4.4_A1_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ function FACTORY() {}
+ FACTORY.prototype = Function.prototype;
+-var obj = new FACTORY;
++var obj = new FACTORY();
+ assert.sameValue(typeof obj.call, "function", 'The value of `typeof obj.call` is expected to be "function"');
+ try {
+     obj.call();
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/call/S15.3.4.4_A2_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var f = new Function;
++var f = new Function();
+ assert.sameValue(typeof f.call, "function", 'The value of `typeof f.call` is expected to be "function"');
+ assert.notSameValue(typeof f.call.length, "undefined", 'The value of typeof f.call.length is not "undefined"');
+ assert.sameValue(f.call.length, 1, 'The value of f.call.length is expected to be 1');
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/call/S15.3.4.4_A3_T5.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ function FACTORY() {
+     Function("this.feat=\"in da haus\"").call();
+ }
+-var obj = new FACTORY;
++var obj = new FACTORY();
+ assert.sameValue(this["feat"], "in da haus", 'The value of this["feat"] is expected to be "in da haus"');
+ assert.sameValue(typeof obj.feat, "undefined", 'The value of `typeof obj.feat` is expected to be "undefined"');
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/call/S15.3.4.4_A3_T6.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -3,6 +3,6 @@
+         this.feat = "kamon beyba";
+     }).call(null);
+ }
+-var obj = new FACTORY;
++var obj = new FACTORY();
+ assert.sameValue(this["feat"], "kamon beyba", 'The value of this["feat"] is expected to be "kamon beyba"');
+ assert.sameValue(typeof obj.feat, "undefined", 'The value of `typeof obj.feat` is expected to be "undefined"');
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/call/S15.3.4.4_A7_T3.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ try {
+-    var obj = new Function.call;
++    var obj = new Function.call();
+     throw new Test262Error('#1: Function.prototype.call can\'t be used as [[Construct]] caller');
+ } catch (e) {
+     assert(e instanceof TypeError, 'The result of evaluating (e instanceof TypeError) is expected to be true');
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/call/S15.3.4.4_A7_T4.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ try {
+-    var obj = new (Function("this.p1=1").call);
++    var obj = new (Function("this.p1=1").call)();
+     throw new Test262Error('#1: Function.prototype.call can\'t be used as [[Construct]] caller');
+ } catch (e) {
+     assert(e instanceof TypeError, 'The result of evaluating (e instanceof TypeError) is expected to be true');
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/call/S15.3.4.4_A7_T6.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ try {
+-    var obj = new (Function("function f(){this.p1=1;};return f").call());
++    var obj = new (Function("function f(){this.p1=1;};return f").call())();
+ } catch (e) {
+     throw new Test262Error('#1: Function.prototype.call can\'t be used as [[Construct]] caller');
+ }
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/call/not-a-constructor.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -3,9 +3,9 @@
+     new Function.prototype.call();
+ });
+ assert.throws(TypeError, ()=>{
+-    new Function.prototype.call;
++    new Function.prototype.call();
+ });
+ var call = Function.prototype.call;
+ assert.throws(TypeError, ()=>{
+-    new call;
++    new call();
+ }, '`new call()` throws TypeError');
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/toString/not-a-constructor.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -4,5 +4,5 @@
+ });
+ var toString = Function.prototype.toString;
+ assert.throws(TypeError, ()=>{
+-    new toString;
++    new toString();
+ });
+
+Failed: fixtures/test262/test/built-ins/Function/prototype/toString/private-method-class-expression.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -3,5 +3,5 @@
+     assert(expected) {
+         assertToStringOrNativeFunction(this.#f, expected);
+     }
+-});
++})();
+ c.assert("#f /* a */ ( /* b */ ) /* c */ { /* d */ }");
+
+Failed: fixtures/test262/test/built-ins/NativeErrors/EvalError/instance-proto.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1 +1 @@
+-assert.sameValue(Object.getPrototypeOf(new EvalError), EvalError.prototype);
++assert.sameValue(Object.getPrototypeOf(new EvalError()), EvalError.prototype);
+
+Failed: fixtures/test262/test/built-ins/NativeErrors/EvalError/is-error-object.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1 +1 @@
+-assert.sameValue(Object.prototype.toString.call(new EvalError), "[object Error]");
++assert.sameValue(Object.prototype.toString.call(new EvalError()), "[object Error]");
+
+Failed: fixtures/test262/test/built-ins/NativeErrors/EvalError/prototype.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-assert.sameValue(EvalError.prototype, Object.getPrototypeOf(new EvalError));
++assert.sameValue(EvalError.prototype, Object.getPrototypeOf(new EvalError()));
+ verifyProperty(EvalError, "prototype", {
+     writable: false,
+     enumerable: false,
+
+Failed: fixtures/test262/test/built-ins/NativeErrors/RangeError/instance-proto.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1 +1 @@
+-assert.sameValue(Object.getPrototypeOf(new RangeError), RangeError.prototype);
++assert.sameValue(Object.getPrototypeOf(new RangeError()), RangeError.prototype);
+
+Failed: fixtures/test262/test/built-ins/NativeErrors/RangeError/is-error-object.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1 +1 @@
+-assert.sameValue(Object.prototype.toString.call(new RangeError), "[object Error]");
++assert.sameValue(Object.prototype.toString.call(new RangeError()), "[object Error]");
+
+Failed: fixtures/test262/test/built-ins/NativeErrors/RangeError/prototype.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-assert.sameValue(RangeError.prototype, Object.getPrototypeOf(new RangeError));
++assert.sameValue(RangeError.prototype, Object.getPrototypeOf(new RangeError()));
+ verifyProperty(RangeError, "prototype", {
+     writable: false,
+     enumerable: false,
+
+Failed: fixtures/test262/test/built-ins/NativeErrors/ReferenceError/instance-proto.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1 +1 @@
+-assert.sameValue(Object.getPrototypeOf(new ReferenceError), ReferenceError.prototype);
++assert.sameValue(Object.getPrototypeOf(new ReferenceError()), ReferenceError.prototype);
+
+Failed: fixtures/test262/test/built-ins/NativeErrors/ReferenceError/is-error-object.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1 +1 @@
+-assert.sameValue(Object.prototype.toString.call(new ReferenceError), "[object Error]");
++assert.sameValue(Object.prototype.toString.call(new ReferenceError()), "[object Error]");
+
+Failed: fixtures/test262/test/built-ins/NativeErrors/ReferenceError/prototype.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-assert.sameValue(ReferenceError.prototype, Object.getPrototypeOf(new ReferenceError));
++assert.sameValue(ReferenceError.prototype, Object.getPrototypeOf(new ReferenceError()));
+ verifyProperty(ReferenceError, "prototype", {
+     writable: false,
+     enumerable: false,
+
+Failed: fixtures/test262/test/built-ins/NativeErrors/SyntaxError/instance-proto.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1 +1 @@
+-assert.sameValue(Object.getPrototypeOf(new SyntaxError), SyntaxError.prototype);
++assert.sameValue(Object.getPrototypeOf(new SyntaxError()), SyntaxError.prototype);
+
+Failed: fixtures/test262/test/built-ins/NativeErrors/SyntaxError/is-error-object.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1 +1 @@
+-assert.sameValue(Object.prototype.toString.call(new SyntaxError), "[object Error]");
++assert.sameValue(Object.prototype.toString.call(new SyntaxError()), "[object Error]");
+
+Failed: fixtures/test262/test/built-ins/NativeErrors/SyntaxError/prototype.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-assert.sameValue(SyntaxError.prototype, Object.getPrototypeOf(new SyntaxError));
++assert.sameValue(SyntaxError.prototype, Object.getPrototypeOf(new SyntaxError()));
+ verifyProperty(SyntaxError, "prototype", {
+     writable: false,
+     enumerable: false,
+
+Failed: fixtures/test262/test/built-ins/NativeErrors/TypeError/instance-proto.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1 +1 @@
+-assert.sameValue(Object.getPrototypeOf(new TypeError), TypeError.prototype);
++assert.sameValue(Object.getPrototypeOf(new TypeError()), TypeError.prototype);
+
+Failed: fixtures/test262/test/built-ins/NativeErrors/TypeError/is-error-object.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1 +1 @@
+-assert.sameValue(Object.prototype.toString.call(new TypeError), "[object Error]");
++assert.sameValue(Object.prototype.toString.call(new TypeError()), "[object Error]");
+
+Failed: fixtures/test262/test/built-ins/NativeErrors/TypeError/prototype.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-assert.sameValue(TypeError.prototype, Object.getPrototypeOf(new TypeError));
++assert.sameValue(TypeError.prototype, Object.getPrototypeOf(new TypeError()));
+ verifyProperty(TypeError, "prototype", {
+     writable: false,
+     enumerable: false,
+
+Failed: fixtures/test262/test/built-ins/NativeErrors/URIError/instance-proto.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1 +1 @@
+-assert.sameValue(Object.getPrototypeOf(new URIError), URIError.prototype);
++assert.sameValue(Object.getPrototypeOf(new URIError()), URIError.prototype);
+
+Failed: fixtures/test262/test/built-ins/NativeErrors/URIError/is-error-object.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1 +1 @@
+-assert.sameValue(Object.prototype.toString.call(new URIError), "[object Error]");
++assert.sameValue(Object.prototype.toString.call(new URIError()), "[object Error]");
+
+Failed: fixtures/test262/test/built-ins/NativeErrors/URIError/prototype.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-assert.sameValue(URIError.prototype, Object.getPrototypeOf(new URIError));
++assert.sameValue(URIError.prototype, Object.getPrototypeOf(new URIError()));
+ verifyProperty(URIError, "prototype", {
+     writable: false,
+     enumerable: false,
+
+Failed: fixtures/test262/test/built-ins/Number/S8.12.8_A4.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,7 +1,7 @@
+ try {
+     var __obj = {
+         valueOf: function() {
+-            return new Object;
++            return new Object();
+         },
+         toString: function() {
+             return new Object();
+
+Failed: fixtures/test262/test/built-ins/Object/prototype/S15.2.4_A4.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,3 +1,3 @@
+ assert.throws(TypeError, function() {
+-    new Object.prototype;
++    new Object.prototype();
+ }, '`new Object.prototype` throws a TypeError exception');
+
+Failed: fixtures/test262/test/built-ins/Object/prototype/constructor/S15.2.4.1_A1_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ var constr = Object.prototype.constructor;
+-var obj = new constr;
++var obj = new constr();
+ assert.notSameValue(obj, undefined, 'The value of obj is expected to not equal ``undefined``');
+ assert.sameValue(obj.constructor, Object, 'The value of obj.constructor is expected to equal the value of Object');
+ assert(!!Object.prototype.isPrototypeOf(obj), 'The value of !!Object.prototype.isPrototypeOf(obj) is expected to be true');
+
+Failed: fixtures/test262/test/built-ins/Object/prototype/hasOwnProperty/S15.2.4.5_A1_T3.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,7 +1,7 @@
+ var FACTORY = function() {
+     this.aproperty = 1;
+ };
+-var instance = new FACTORY;
++var instance = new FACTORY();
+ assert.sameValue(typeof Object.prototype.hasOwnProperty, "function", 'The value of `typeof Object.prototype.hasOwnProperty` is expected to be "function"');
+ assert.sameValue(typeof instance.hasOwnProperty, "function", 'The value of `typeof instance.hasOwnProperty` is expected to be "function"');
+ assert(!instance.hasOwnProperty("toString"), 'The value of !instance.hasOwnProperty("toString") is expected to be true');
+
+Failed: fixtures/test262/test/built-ins/Object/prototype/valueOf/S15.2.4.4_A1_T4.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+ assert.sameValue(typeof Object.prototype.valueOf, "function", 'The value of `typeof Object.prototype.valueOf` is expected to be "function"');
+-var obj = new Object;
++var obj = new Object();
+ assert.sameValue(typeof obj.valueOf, "function", 'The value of `typeof obj.valueOf` is expected to be "function"');
+ assert.sameValue(obj.valueOf(), obj, 'obj.valueOf() returns obj');
+
+Failed: fixtures/test262/test/built-ins/Promise/all/capability-executor-called-twice.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -30,7 +30,7 @@
+ }
+ Object.defineProperty(fn3, 'resolve', {
+     get () {
+-        throw new Test262Error;
++        throw new Test262Error();
+     }
+ });
+ assert.throws(TypeError, function() {
+@@ -47,7 +47,7 @@
+ }
+ Object.defineProperty(fn4, 'resolve', {
+     get () {
+-        throw new Test262Error;
++        throw new Test262Error();
+     }
+ });
+ assert.throws(TypeError, function() {
+@@ -64,7 +64,7 @@
+ }
+ Object.defineProperty(fn5, 'resolve', {
+     get () {
+-        throw new Test262Error;
++        throw new Test262Error();
+     }
+ });
+ assert.throws(TypeError, function() {
+
+Failed: fixtures/test262/test/built-ins/Promise/all/capability-executor-not-callable.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -4,7 +4,7 @@
+ }
+ Object.defineProperty(fn1, 'resolve', {
+     get () {
+-        throw new Test262Error;
++        throw new Test262Error();
+     }
+ });
+ assert.throws(TypeError, function() {
+@@ -19,7 +19,7 @@
+ }
+ Object.defineProperty(fn2, 'resolve', {
+     get () {
+-        throw new Test262Error;
++        throw new Test262Error();
+     }
+ });
+ assert.throws(TypeError, function() {
+@@ -34,7 +34,7 @@
+ }
+ Object.defineProperty(fn3, 'resolve', {
+     get () {
+-        throw new Test262Error;
++        throw new Test262Error();
+     }
+ });
+ assert.throws(TypeError, function() {
+@@ -49,7 +49,7 @@
+ }
+ Object.defineProperty(fn4, 'resolve', {
+     get () {
+-        throw new Test262Error;
++        throw new Test262Error();
+     }
+ });
+ assert.throws(TypeError, function() {
+@@ -64,7 +64,7 @@
+ }
+ Object.defineProperty(fn5, 'resolve', {
+     get () {
+-        throw new Test262Error;
++        throw new Test262Error();
+     }
+ });
+ assert.throws(TypeError, function() {
+@@ -79,7 +79,7 @@
+ }
+ Object.defineProperty(fn6, 'resolve', {
+     get () {
+-        throw new Test262Error;
++        throw new Test262Error();
+     }
+ });
+ assert.throws(TypeError, function() {
+
+Failed: fixtures/test262/test/built-ins/RegExp/S15.10.3.1_A1_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __re = new RegExp;
++var __re = new RegExp();
+ var __instance = RegExp(__re, function() {}());
+ __re.indicator = 1;
+ assert.sameValue(__instance.indicator, 1, 'The value of __instance.indicator is expected to be 1');
+
+Failed: fixtures/test262/test/built-ins/RegExp/S15.10.4.1_A1_T4.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __pattern = new RegExp;
++var __pattern = new RegExp();
+ var __re = new RegExp(__pattern, undefined);
+ assert.sameValue(__re.source, __pattern.source, 'The value of __re.source is expected to equal the value of __pattern.source');
+ assert.sameValue(__re.multiline, __pattern.multiline, 'The value of __re.multiline is expected to equal the value of __pattern.multiline');
+
+Failed: fixtures/test262/test/built-ins/RegExp/S15.10.4.1_A3_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __re = new RegExp;
++var __re = new RegExp();
+ assert.sameValue(__re.multiline, false, 'The value of __re.multiline is expected to be false');
+ assert.sameValue(__re.global, false, 'The value of __re.global is expected to be false');
+ assert.sameValue(__re.ignoreCase, false, 'The value of __re.ignoreCase is expected to be false');
+
+Failed: fixtures/test262/test/built-ins/RegExp/S15.10.4.1_A6_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,3 +1,3 @@
+-var __re = new RegExp;
++var __re = new RegExp();
+ __re.toString = Object.prototype.toString;
+ assert.sameValue(__re.toString(), "[object " + "RegExp" + "]", '__re.toString() must return "[object "+"RegExp"+"]"');
+
+Failed: fixtures/test262/test/built-ins/RegExp/S15.10.4.1_A7_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,3 +1,3 @@
+-var __re = new RegExp;
++var __re = new RegExp();
+ RegExp.prototype.indicator = 1;
+ assert.sameValue(__re.indicator, 1, 'The value of __re.indicator is expected to be 1');
+
+Failed: fixtures/test262/test/built-ins/RegExp/S15.10.7_A2_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ try {
+-    throw new Test262Error('#1.1: new new RegExp throw TypeError. Actual: ' + (new new RegExp));
++    throw new Test262Error('#1.1: new new RegExp throw TypeError. Actual: ' + (new new RegExp()()));
+ } catch (e) {
+     assert.sameValue(e instanceof TypeError, true, 'The result of evaluating (e instanceof TypeError) is expected to be true');
+ }
+
+Failed: fixtures/test262/test/built-ins/RegExp/S15.10.7_A3_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __re = new RegExp;
++var __re = new RegExp();
+ assert.sameValue(typeof __re, "object", 'The value of `typeof __re` is expected to be "object"');
+ assert.sameValue(__re.constructor, RegExp, 'The value of __re.constructor is expected to equal the value of RegExp');
+ assert.sameValue(__re instanceof RegExp, true, 'The result of evaluating (__re instanceof RegExp) is expected to be true');
+
+Failed: fixtures/test262/test/built-ins/RegExp/prototype/S15.10.6.1_A1_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+ var __FACTORY = RegExp.prototype.constructor;
+-var __instance = new __FACTORY;
++var __instance = new __FACTORY();
+ assert.sameValue(__instance instanceof RegExp, true, 'The result of evaluating (__instance instanceof RegExp) is expected to be true');
+ assert.sameValue(__instance.constructor, RegExp, 'The value of __instance.constructor is expected to equal the value of RegExp');
+
+Failed: fixtures/test262/test/built-ins/RegExp/prototype/exec/S15.10.6.2_A1_T14.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __executed = /AL|se/.exec(new Boolean);
++var __executed = /AL|se/.exec(new Boolean());
+ var __expected = [
+     "se"
+ ];
+
+Failed: fixtures/test262/test/built-ins/RegExp/prototype/exec/S15.10.6.2_A2_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __instance = new Object;
++var __instance = new Object();
+ __instance.exec = RegExp.prototype.exec;
+ try {
+     throw new Test262Error('#1.1: __instance = new Object; __instance.exec = RegExp.prototype.exec; __instance.exec("message to investigate"). Actual: ' + (__instance.exec("message to investigate")));
+
+Failed: fixtures/test262/test/built-ins/RegExp/prototype/exec/S15.10.6.2_A7.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var __FACTORY = RegExp.prototype.exec;
+ try {
+-    var __instance = new __FACTORY;
++    var __instance = new __FACTORY();
+     throw new Test262Error('#1.1: __FACTORY = RegExp.prototype.exec throw TypeError. Actual: ' + (__instance));
+ } catch (e) {
+     assert.sameValue(e instanceof TypeError, true, 'The result of evaluating (e instanceof TypeError) is expected to be true');
+
+Failed: fixtures/test262/test/built-ins/RegExp/prototype/test/S15.10.6.3_A1_T14.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,3 +1,3 @@
+-var __string = new Boolean;
++var __string = new Boolean();
+ var __re = /AL|se/;
+ assert.sameValue(__re.test(__string), __re.exec(__string) !== null, '__re.test(new Boolean) must return __re.exec(__string) !== null');
+
+Failed: fixtures/test262/test/built-ins/RegExp/prototype/test/S15.10.6.3_A2_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __instance = new Object;
++var __instance = new Object();
+ __instance.test = RegExp.prototype.test;
+ try {
+     throw new Test262Error('#1.1: __instance = new Object; __instance.test = RegExp.prototype.test; __instance.test("message to investigate"). Actual: ' + (__instance.test("message to investigate")));
+
+Failed: fixtures/test262/test/built-ins/RegExp/prototype/test/S15.10.6.3_A7.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var __FACTORY = RegExp.prototype.test;
+ try {
+-    var __instance = new __FACTORY;
++    var __instance = new __FACTORY();
+     throw new Test262Error('#1.1: __FACTORY = RegExp.prototype.test throw TypeError. Actual: ' + (__instance));
+ } catch (e) {
+     assert.sameValue(e instanceof TypeError, true, 'The result of evaluating (e instanceof TypeError) is expected to be true');
+
+Failed: fixtures/test262/test/built-ins/RegExp/prototype/toString/S15.10.6.4_A7.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var __FACTORY = RegExp.prototype.toString;
+ try {
+-    var __instance = new __FACTORY;
++    var __instance = new __FACTORY();
+     throw new Test262Error('#1.1: __FACTORY = RegExp.prototype.toString throw TypeError. Actual: ' + (__instance));
+ } catch (e) {
+     assert.sameValue(e instanceof TypeError, true, 'The result of evaluating (e instanceof TypeError) is expected to be true');
+
+Failed: fixtures/test262/test/built-ins/Set/prototype/difference/allows-set-like-class.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -14,7 +14,7 @@
+     *keys() {
+         throw new Test262Error("Set.prototype.difference should not call its argument's keys iterator when this.size ≤ arg.size");
+     }
+-};
++}();
+ const expected = [
+     1
+ ];
+
+Failed: fixtures/test262/test/built-ins/Set/prototype/intersection/allows-set-like-class.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -14,7 +14,7 @@
+     *keys() {
+         throw new Test262Error("Set.prototype.intersection should not call its argument's keys iterator when this.size ≤ arg.size");
+     }
+-};
++}();
+ const expected = [
+     2
+ ];
+
+Failed: fixtures/test262/test/built-ins/Set/prototype/isDisjointFrom/allows-set-like-class.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -13,5 +13,5 @@
+     *keys() {
+         throw new Test262Error("Set.prototype.isDisjointFrom should not call its argument's keys iterator when this.size ≤ arg.size");
+     }
+-};
++}();
+ assert.sameValue(s1.isDisjointFrom(s2), true);
+
+Failed: fixtures/test262/test/built-ins/Set/prototype/isSubsetOf/allows-set-like-class.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -14,5 +14,5 @@
+     *keys() {
+         throw new Test262Error("Set.prototype.isSubsetOf should not call its argument's keys iterator");
+     }
+-};
++}();
+ assert.sameValue(s1.isSubsetOf(s2), false);
+
+Failed: fixtures/test262/test/built-ins/Set/prototype/isSupersetOf/allows-set-like-class.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -12,5 +12,5 @@
+     *keys() {
+         yield 1;
+     }
+-};
++}();
+ assert.sameValue(s1.isSupersetOf(s2), true);
+
+Failed: fixtures/test262/test/built-ins/Set/prototype/symmetricDifference/allows-set-like-class.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -13,7 +13,7 @@
+         yield 2;
+         yield 3;
+     }
+-};
++}();
+ const expected = [
+     1,
+     3
+
+Failed: fixtures/test262/test/built-ins/Set/prototype/union/allows-set-like-class.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -13,7 +13,7 @@
+         yield 2;
+         yield 3;
+     }
+-};
++}();
+ const expected = [
+     1,
+     2,
+
+Failed: fixtures/test262/test/built-ins/String/S15.5.1.1_A1_T8.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -2,7 +2,7 @@
+ Array.prototype.toString = function() {
+     return "__ARRAY__";
+ };
+-var __str = String(new Array);
++var __str = String(new Array());
+ Array.prototype.toString = __old__Array__prototype__toString;
+ if (typeof __str !== "string") {
+     throw new Test262Error('#1: __str = String(new Array); typeof __str === "string". Actual: typeof __str ===' + typeof __str);
+
+Failed: fixtures/test262/test/built-ins/String/S15.5.2.1_A1_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __str = new String;
++var __str = new String();
+ if (typeof __str !== "object") {
+     throw new Test262Error('#1: __str = new String; typeof __str === "object". Actual: typeof __str ===' + typeof __str);
+ }
+
+Failed: fixtures/test262/test/built-ins/String/S15.5.2.1_A1_T10.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -3,7 +3,7 @@
+ __FACTORY.prototype.toString = function() {
+     return "tostr";
+ };
+-var __obj = new __FACTORY;
++var __obj = new __FACTORY();
+ var __str = new String(__obj);
+ if (typeof __str !== "object") {
+     throw new Test262Error('#1: __str = new String(__obj); typeof __str === "object". Actual: typeof __str ===' + typeof __str);
+
+Failed: fixtures/test262/test/built-ins/String/S15.5.5.1_A1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -2,7 +2,7 @@
+ if (__str__instance.length !== 6) {
+     throw new Test262Error('#1: var __str__instance = new String("ABC\\u0041\\u0042\\u0043"); __str__instance.length === 6, where __str__instance is new String("ABC\\u0041\\u0042\\u0043"). Actual: __str__instance.length ===' + __str__instance.length);
+ }
+-__str__instance = new String;
++__str__instance = new String();
+ if (__str__instance.length !== 0) {
+     throw new Test262Error('#2: __str__instance = new String; __str__instance.length === 0, where __str__instance is new String. Actual: __str__instance.length ===' + __str__instance.length);
+ }
+
+Failed: fixtures/test262/test/built-ins/String/S15.5.5_A1_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __str = new String;
++var __str = new String();
+ try {
+     __str();
+     throw new Test262Error('#1: __str = new String; __str() lead to throwing exception');
+
+Failed: fixtures/test262/test/built-ins/String/S15.5.5_A2_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var __str = new Object("");
+ try {
+-    new __str;
++    new __str();
+     throw new Test262Error('#1: __str = new Object(""); "new __str" lead to throwing exception');
+ } catch (e) {
+     if (!(e instanceof TypeError)) {
+
+Failed: fixtures/test262/test/built-ins/String/S15.5.5_A2_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ try {
+-    new new String;
++    new new String()();
+     throw new Test262Error('#1: "new new String" lead to throwing exception');
+ } catch (e) {
+     if (!(e instanceof TypeError)) {
+
+Failed: fixtures/test262/test/built-ins/String/prototype/charAt/S15.5.4.4_A1.1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -5,7 +5,7 @@
+ }
+ ;
+ __FACTORY.prototype.charAt = String.prototype.charAt;
+-var __instance = new __FACTORY;
++var __instance = new __FACTORY();
+ if (__instance.charAt(eval("1"), true, null, {}) !== "i") {
+     throw new Test262Error('#1: __instance.charAt(eval("1"),true,null,{})=== "i". Actual: ' + __instance.charAt(eval("1"), true, null, {}));
+ }
+
+Failed: fixtures/test262/test/built-ins/String/prototype/charAt/S15.5.4.4_A1_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __instance = new Boolean;
++var __instance = new Boolean();
+ __instance.charAt = String.prototype.charAt;
+ if (__instance.charAt(false) + __instance.charAt(true) + __instance.charAt(true + 1) !== "fal") {
+     throw new Test262Error('#1: __instance = new Boolean; __instance.charAt = String.prototype.charAt;  __instance = new Boolean; __instance.charAt = String.prototype.charAt; __instance.charAt(false)+__instance.charAt(true)+__instance.charAt(true+1) === "fal". Actual: ' + __instance.charAt(false) + __instance.charAt(true) + __instance.charAt(true + 1));
+
+Failed: fixtures/test262/test/built-ins/String/prototype/charAt/S15.5.4.4_A2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,7 +1,7 @@
+ function __FACTORY() {}
+ ;
+ __FACTORY.prototype.charAt = String.prototype.charAt;
+-var __instance = new __FACTORY;
++var __instance = new __FACTORY();
+ if (__instance.charAt(-1) !== "") {
+     throw new Test262Error('#1: __instance.charAt(-1) === "". Actual: __instance.charAt(-1) ===' + __instance.charAt(-1));
+ }
+
+Failed: fixtures/test262/test/built-ins/String/prototype/charAt/S15.5.4.4_A7.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var __FACTORY = String.prototype.charAt;
+ try {
+-    var __instance = new __FACTORY;
++    var __instance = new __FACTORY();
+     throw new Test262Error('#1: __FACTORY = String.prototype.charAt; "__instance = new __FACTORY" lead to throwing exception');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+
+Failed: fixtures/test262/test/built-ins/String/prototype/charCodeAt/S15.5.4.5_A1.1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -5,7 +5,7 @@
+ }
+ ;
+ __FACTORY.prototype.charCodeAt = String.prototype.charCodeAt;
+-var __instance = new __FACTORY;
++var __instance = new __FACTORY();
+ if (__instance.charCodeAt(eval("1"), true, null, {}) !== 0x69) {
+     throw new Test262Error('#1: __instance.charCodeAt(eval("1"),true,null,{})=== 0x69. Actual: __instance.charCodeAt(eval("1"),true,null,{})===' + __instance.charCodeAt(eval("1"), true, null, {}));
+ }
+
+Failed: fixtures/test262/test/built-ins/String/prototype/charCodeAt/S15.5.4.5_A1_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __instance = new Boolean;
++var __instance = new Boolean();
+ __instance.charCodeAt = String.prototype.charCodeAt;
+ if (__instance.charCodeAt(false) !== 0x66) {
+     throw new Test262Error('#1: __instance = new Boolean; __instance.charCodeAt = String.prototype.charCodeAt; __instance.charCodeAt(false)===0x66. Actual: ' + __instance.charCodeAt(false));
+
+Failed: fixtures/test262/test/built-ins/String/prototype/charCodeAt/S15.5.4.5_A2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ function __FACTORY() {}
+ ;
+ __FACTORY.prototype.charCodeAt = String.prototype.charCodeAt;
+-var __instance = new __FACTORY;
++var __instance = new __FACTORY();
+ assert.sameValue(__instance.charCodeAt(-1), NaN);
+
+Failed: fixtures/test262/test/built-ins/String/prototype/charCodeAt/S15.5.4.5_A7.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var __FACTORY = String.prototype.charCodeAt;
+ try {
+-    var __instance = new __FACTORY;
++    var __instance = new __FACTORY();
+     throw new Test262Error('#1: __FACTORY = String.prototype.charCodeAt; "__instance = new __FACTORY" lead to throwing exception');
+ } catch (e) {
+     if (e instanceof Test262Error) throw e;
+
+Failed: fixtures/test262/test/built-ins/String/prototype/concat/S15.5.4.6_A1_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __instance = new Boolean;
++var __instance = new Boolean();
+ __instance.concat = String.prototype.concat;
+ if (__instance.concat("\u0041", true, true + 1) !== "falseAtrue2") {
+     throw new Test262Error('#1: __instance = new Boolean; __instance.concat = String.prototype.concat;  __instance.concat("\\u0041",true,true+1) === "falseAtrue2". Actual: ' + __instance.concat("\u0041", true, true + 1));
+
+Failed: fixtures/test262/test/built-ins/String/prototype/concat/S15.5.4.6_A7.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var __FACTORY = String.prototype.concat;
+ try {
+-    var __instance = new __FACTORY;
++    var __instance = new __FACTORY();
+     throw new Test262Error('#1: __FACTORY = String.prototype.concat; "__instance = new __FACTORY" lead throwing exception');
+ } catch (e) {
+     if (e instanceof Test262Error) throw e;
+
+Failed: fixtures/test262/test/built-ins/String/prototype/indexOf/S15.5.4.7_A1_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __instance = new Boolean;
++var __instance = new Boolean();
+ __instance.indexOf = String.prototype.indexOf;
+ if (__instance.indexOf("A" !== "\u0041", function() {
+     return 0;
+
+Failed: fixtures/test262/test/built-ins/String/prototype/indexOf/S15.5.4.7_A4_T5.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -24,7 +24,7 @@
+ function __FACTORY(value) {
+     this.value = value;
+     this.toString = function() {
+-        return new Number;
++        return new Number();
+     };
+     this.valueOf = function() {
+         return this.value + "";
+
+Failed: fixtures/test262/test/built-ins/String/prototype/indexOf/S15.5.4.7_A7.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var __FACTORY = String.prototype.indexOf;
+ try {
+-    var __instance = new __FACTORY;
++    var __instance = new __FACTORY();
+     throw new Test262Error('#1: var __FACTORY = String.prototype.indexOf; "__instance = new __FACTORY" lead to throwing exception');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+
+Failed: fixtures/test262/test/built-ins/String/prototype/lastIndexOf/S15.5.4.8_A1_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __instance = new Boolean;
++var __instance = new Boolean();
+ __instance.lastIndexOf = String.prototype.lastIndexOf;
+ if (__instance.lastIndexOf("A" !== "\u0041", function() {
+     return 0;
+
+Failed: fixtures/test262/test/built-ins/String/prototype/lastIndexOf/S15.5.4.8_A4_T5.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -24,7 +24,7 @@
+ function __FACTORY(value) {
+     this.value = value;
+     this.toString = function() {
+-        return new Number;
++        return new Number();
+     };
+     this.valueOf = function() {
+         return this.value + "";
+
+Failed: fixtures/test262/test/built-ins/String/prototype/lastIndexOf/S15.5.4.8_A7.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+ var FACTORY = String.prototype.lastIndexOf;
+ assert.throws(TypeError, function() {
+-    new FACTORY;
++    new FACTORY();
+ });
+
+Failed: fixtures/test262/test/built-ins/String/prototype/localeCompare/S15.5.4.9_A7.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var __FACTORY = String.prototype.localeCompare;
+ try {
+-    var __instance = new __FACTORY;
++    var __instance = new __FACTORY();
+     throw new Test262Error('#1: __FACTORY = String.prototype.localeCompare; __instance = new __FACTORY lead to throwing exception');
+ } catch (e) {
+     if (e instanceof Test262Error) throw e;
+
+Failed: fixtures/test262/test/built-ins/String/prototype/match/S15.5.4.10_A7.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var __FACTORY = String.prototype.match;
+ try {
+-    var __instance = new __FACTORY;
++    var __instance = new __FACTORY();
+     throw new Test262Error('#1: __FACTORY = String.prototype.match; __FACTORY = String.prototype.match; __instance = new __FACTORY lead to throwing exception');
+ } catch (e) {
+     if (e instanceof Test262Error) throw e;
+
+Failed: fixtures/test262/test/built-ins/String/prototype/match/this-val-bool.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __instance = new Boolean;
++var __instance = new Boolean();
+ __instance.match = String.prototype.match;
+ if (__instance.match(function() {
+     return false;
+
+Failed: fixtures/test262/test/built-ins/String/prototype/replace/S15.5.4.11_A1_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __instance = new Boolean;
++var __instance = new Boolean();
+ __instance.replace = String.prototype.replace;
+ if (__instance.replace(function() {
+     return false;
+
+Failed: fixtures/test262/test/built-ins/String/prototype/replace/S15.5.4.11_A7.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var __FACTORY = String.prototype.replace;
+ try {
+-    var __instance = new __FACTORY;
++    var __instance = new __FACTORY();
+     throw new Test262Error('#1: __FACTORY = String.prototype.replace; "__instance = new __FACTORY" lead to throwing exception');
+ } catch (e) {
+     if (e instanceof Test262Error) throw e;
+
+Failed: fixtures/test262/test/built-ins/String/prototype/replaceAll/searchValue-get-flags-abrupt.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,7 +1,7 @@
+ var searchValue = {
+     [Symbol.match]: true,
+     get flags () {
+-        throw new Test262Error;
++        throw new Test262Error();
+     }
+ };
+ var poisoned = 0;
+
+Failed: fixtures/test262/test/built-ins/String/prototype/search/S15.5.4.12_A1_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __instance = new Boolean;
++var __instance = new Boolean();
+ __instance.search = String.prototype.search;
+ if (__instance.search(function() {
+     return false;
+
+Failed: fixtures/test262/test/built-ins/String/prototype/search/S15.5.4.12_A7.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var __FACTORY = String.prototype.search;
+ try {
+-    var __instance = new __FACTORY;
++    var __instance = new __FACTORY();
+     throw new Test262Error('#1: __FACTORY = String.prototype.search; "__instance = new __FACTORY" lead to throwing exception');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+
+Failed: fixtures/test262/test/built-ins/String/prototype/slice/S15.5.4.13_A1_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __instance = new Boolean;
++var __instance = new Boolean();
+ __instance.slice = String.prototype.slice;
+ if (__instance.slice(function() {
+     return true;
+
+Failed: fixtures/test262/test/built-ins/String/prototype/slice/S15.5.4.13_A7.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+ var FACTORY = String.prototype.slice;
+ assert.throws(TypeError, function() {
+-    new FACTORY;
++    new FACTORY();
+ });
+
+Failed: fixtures/test262/test/built-ins/String/prototype/split/argument-is-new-reg-exp-and-instance-is-string-hello.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ var __string = new String("hello");
+-var __re = new RegExp;
++var __re = new RegExp();
+ var __split = __string.split(__re);
+ var __expected = [
+     "h",
+
+Failed: fixtures/test262/test/built-ins/String/prototype/split/arguments-are-boolean-expression-function-call-and-null-and-instance-is-boolean.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __instance = new Boolean;
++var __instance = new Boolean();
+ __instance.split = String.prototype.split;
+ var __split = __instance.split("A" !== "\u0041", function() {
+     return 0;
+
+Failed: fixtures/test262/test/built-ins/String/prototype/split/arguments-are-new-reg-exp-and-0-and-instance-is-string-hello.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ var __string = new String("hello");
+-var __re = new RegExp;
++var __re = new RegExp();
+ var __split = __string.split(__re, 0);
+ var __expected = [];
+ assert.sameValue(__split.constructor, Array, 'The value of __split.constructor is expected to equal the value of Array');
+
+Failed: fixtures/test262/test/built-ins/String/prototype/split/arguments-are-new-reg-exp-and-1-and-instance-is-string-hello.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ var __string = new String("hello");
+-var __re = new RegExp;
++var __re = new RegExp();
+ var __split = __string.split(__re, 1);
+ var __expected = [
+     "h"
+
+Failed: fixtures/test262/test/built-ins/String/prototype/split/arguments-are-new-reg-exp-and-2-and-instance-is-string-hello.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ var __string = new String("hello");
+-var __re = new RegExp;
++var __re = new RegExp();
+ var __split = __string.split(__re, 2);
+ var __expected = [
+     "h",
+
+Failed: fixtures/test262/test/built-ins/String/prototype/split/arguments-are-new-reg-exp-and-3-and-instance-is-string-hello.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ var __string = new String("hello");
+-var __re = new RegExp;
++var __re = new RegExp();
+ var __split = __string.split(__re, 3);
+ var __expected = [
+     "h",
+
+Failed: fixtures/test262/test/built-ins/String/prototype/split/arguments-are-new-reg-exp-and-4-and-instance-is-string-hello.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ var __string = new String("hello");
+-var __re = new RegExp;
++var __re = new RegExp();
+ var __split = __string.split(__re, 4);
+ var __expected = [
+     "h",
+
+Failed: fixtures/test262/test/built-ins/String/prototype/split/arguments-are-new-reg-exp-and-hi-and-instance-is-string-hello.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ var __string = new String("hello");
+-var __re = new RegExp;
++var __re = new RegExp();
+ var __split = __string.split(__re, "hi");
+ var __expected = [];
+ assert.sameValue(__split.constructor, Array, 'The value of __split.constructor is expected to equal the value of Array');
+
+Failed: fixtures/test262/test/built-ins/String/prototype/split/arguments-are-new-reg-exp-and-undefined-and-instance-is-string-hello.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ var __string = new String("hello");
+-var __re = new RegExp;
++var __re = new RegExp();
+ var __split = __string.split(__re, undefined);
+ var __expected = [
+     "h",
+
+Failed: fixtures/test262/test/built-ins/String/prototype/split/arguments-are-new-reg-exp-and-void-0-and-instance-is-string-hello.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ var __string = new String("hello");
+-var __re = new RegExp;
++var __re = new RegExp();
+ var __split = __string.split(__re, void 0);
+ var __expected = [
+     "h",
+
+Failed: fixtures/test262/test/built-ins/String/prototype/split/call-split-new-reg-exp.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ var __string = new String("one-1 two-2 three-3");
+-var __split = __string.split(new RegExp);
++var __split = __string.split(new RegExp());
+ assert.sameValue(__split.constructor, Array, 'The value of __split.constructor is expected to equal the value of Array');
+ assert.sameValue(__split.length, __string.length, 'The value of __split.length is expected to equal the value of __string.length');
+ for(var i = 0; i < __string.length; i++){
+
+Failed: fixtures/test262/test/built-ins/String/prototype/split/checking-if-creating-the-string-prototype-split-object-fails.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var __FACTORY = String.prototype.split;
+ try {
+-    var __instance = new __FACTORY;
++    var __instance = new __FACTORY();
+     Test262Error.thrower('#1: __FACTORY = String.prototype.split; "__instance = new __FACTORY" lead to throwing exception');
+ } catch (e) {
+     if (e instanceof Test262Error) {
+
+Failed: fixtures/test262/test/built-ins/String/prototype/split/instance-is-boolean.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __instance = new Boolean;
++var __instance = new Boolean();
+ __instance.split = String.prototype.split;
+ var __split = __instance.split();
+ assert.sameValue(__split.constructor, Array, 'The value of __split.constructor is expected to equal the value of Array');
+
+Failed: fixtures/test262/test/built-ins/String/prototype/split/instance-is-new-string.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __string = new String;
++var __string = new String();
+ var __split = __string.split();
+ assert.sameValue(__split.constructor, Array, 'The value of __split.constructor is expected to equal the value of Array');
+ assert.sameValue(__split.length, 1, 'The value of __split.length is 1');
+
+Failed: fixtures/test262/test/built-ins/String/prototype/substring/S15.5.4.15_A1_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __instance = new Boolean;
++var __instance = new Boolean();
+ __instance.substring = String.prototype.substring;
+ if (__instance.substring(function() {
+     return true;
+
+Failed: fixtures/test262/test/built-ins/String/prototype/substring/S15.5.4.15_A7.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var __FACTORY = String.prototype.substring;
+ try {
+-    var __instance = new __FACTORY;
++    var __instance = new __FACTORY();
+     throw new Test262Error('#1: __FACTORY = String.prototype.substring; "__instance = new __FACTORY" lead to throwing exception');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+
+Failed: fixtures/test262/test/built-ins/String/prototype/toLocaleLowerCase/S15.5.4.17_A1_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __instance = new Boolean;
++var __instance = new Boolean();
+ __instance.toLocaleLowerCase = String.prototype.toLocaleLowerCase;
+ if (__instance.toLocaleLowerCase() !== "false") {
+     throw new Test262Error('#1: __instance = new Boolean; __instance.toLocaleLowerCase = String.prototype.toLocaleLowerCase;  __instance.toLocaleLowerCase() === "false". Actual: ' + __instance.toLocaleLowerCase());
+
+Failed: fixtures/test262/test/built-ins/String/prototype/toLocaleLowerCase/S15.5.4.17_A7.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var __FACTORY = String.prototype.toLocaleLowerCase;
+ try {
+-    var __instance = new __FACTORY;
++    var __instance = new __FACTORY();
+     throw new Test262Error('#1: var __FACTORY = String.prototype.toLocaleLowerCase; "__instance = new __FACTORY" lead to throwing exception');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+
+Failed: fixtures/test262/test/built-ins/String/prototype/toLocaleUpperCase/S15.5.4.19_A1_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __instance = new Boolean;
++var __instance = new Boolean();
+ __instance.toLocaleUpperCase = String.prototype.toLocaleUpperCase;
+ if (__instance.toLocaleUpperCase() !== "FALSE") {
+     throw new Test262Error('#1: __instance = new Boolean; __instance.toLocaleUpperCase = String.prototype.toLocaleUpperCase;  __instance.toLocaleUpperCase() === "FALSE". Actual: ' + __instance.toLocaleUpperCase());
+
+Failed: fixtures/test262/test/built-ins/String/prototype/toLocaleUpperCase/S15.5.4.19_A7.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var __FACTORY = String.prototype.toLocaleUpperCase;
+ try {
+-    var __instance = new __FACTORY;
++    var __instance = new __FACTORY();
+     throw new Test262Error('#1: __FACTORY = String.prototype.toLocaleUpperCase; "__instance = new __FACTORY" lead to throwing exception');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+
+Failed: fixtures/test262/test/built-ins/String/prototype/toLowerCase/S15.5.4.16_A1_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __instance = new Boolean;
++var __instance = new Boolean();
+ __instance.toLowerCase = String.prototype.toLowerCase;
+ if (__instance.toLowerCase() !== "false") {
+     throw new Test262Error('#1: __instance = new Boolean; __instance.toLowerCase = String.prototype.toLowerCase;  __instance.toLowerCase() === "false". Actual: ' + __instance.toLowerCase());
+
+Failed: fixtures/test262/test/built-ins/String/prototype/toLowerCase/S15.5.4.16_A7.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var __FACTORY = String.prototype.toLowerCase;
+ try {
+-    var __instance = new __FACTORY;
++    var __instance = new __FACTORY();
+     throw new Test262Error('#1: var __FACTORY = String.prototype.toLowerCase; "__instance = new __FACTORY" lead to throwing exception');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+
+Failed: fixtures/test262/test/built-ins/String/prototype/toUpperCase/S15.5.4.18_A1_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __instance = new Boolean;
++var __instance = new Boolean();
+ __instance.toUpperCase = String.prototype.toUpperCase;
+ if (__instance.toUpperCase() !== "FALSE") {
+     throw new Test262Error('#1: __instance = new Boolean; __instance.toUpperCase = String.prototype.toUpperCase;  __instance.toUpperCase() === "FALSE". Actual: ' + __instance.toUpperCase());
+
+Failed: fixtures/test262/test/built-ins/String/prototype/toUpperCase/S15.5.4.18_A7.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var __FACTORY = String.prototype.toUpperCase;
+ try {
+-    var __instance = new __FACTORY;
++    var __instance = new __FACTORY();
+     throw new Test262Error('#1: var __FACTORY = String.prototype.toUpperCase; "__instance = new __FACTORY" lead to throwing exception');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+
+Failed: fixtures/test262/test/built-ins/global/S15.1_A1_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+ var global = this;
+ assert.throws(TypeError, function() {
+-    new global;
++    new global();
+ });
+
+Failed: fixtures/test262/test/language/expressions/arrow-function/throw-new.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,3 +1,3 @@
+ assert.throws(TypeError, function() {
+-    new (()=>{});
++    new (()=>{})();
+ });
+
+Failed: fixtures/test262/test/language/expressions/class/private-getter-brand-check-multiple-evaluations-of-class-eval-indirect.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -8,7 +8,7 @@
+ }
+ )`;
+ let createAndInstantiateClass = function(_eval) {
+-    return new (_eval(classStringExpression));
++    return new (_eval(classStringExpression))();
+ };
+ let c1 = createAndInstantiateClass(eval);
+ let c2 = createAndInstantiateClass(eval);
+
+Failed: fixtures/test262/test/language/expressions/class/private-getter-brand-check-multiple-evaluations-of-class-eval.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -8,7 +8,7 @@
+ }
+ )`;
+ let createAndInstantiateClass = function() {
+-    return new (eval(classStringExpression));
++    return new (eval(classStringExpression))();
+ };
+ let c1 = createAndInstantiateClass();
+ let c2 = createAndInstantiateClass();
+
+Failed: fixtures/test262/test/language/expressions/class/private-getter-brand-check-multiple-evaluations-of-class-realm.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -12,7 +12,7 @@
+ }
+ )`;
+ let createAndInstantiateClass = function(_eval) {
+-    return new (_eval(classStringExpression));
++    return new (_eval(classStringExpression))();
+ };
+ let c1 = createAndInstantiateClass(eval1);
+ let c2 = createAndInstantiateClass(eval2);
+
+Failed: fixtures/test262/test/language/expressions/class/private-method-brand-check-multiple-evaluations-of-class-eval-indirect.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -8,7 +8,7 @@
+ }
+ )`;
+ let createAndInstantiateClass = function(_eval) {
+-    return new (_eval(classStringExpression));
++    return new (_eval(classStringExpression))();
+ };
+ let c1 = createAndInstantiateClass(eval);
+ let c2 = createAndInstantiateClass(eval);
+
+Failed: fixtures/test262/test/language/expressions/class/private-method-brand-check-multiple-evaluations-of-class-eval.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -8,7 +8,7 @@
+ }
+ )`;
+ let createAndInstantiateClass = function() {
+-    return new (eval(classStringExpression));
++    return new (eval(classStringExpression))();
+ };
+ let c1 = createAndInstantiateClass();
+ let c2 = createAndInstantiateClass();
+
+Failed: fixtures/test262/test/language/expressions/class/private-method-brand-check-multiple-evaluations-of-class-realm.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -12,7 +12,7 @@
+ }
+ )`;
+ let createAndInstantiateClass = function(_eval) {
+-    return new (_eval(classStringExpression));
++    return new (_eval(classStringExpression))();
+ };
+ let c1 = createAndInstantiateClass(eval1);
+ let c2 = createAndInstantiateClass(eval2);
+
+Failed: fixtures/test262/test/language/expressions/class/private-setter-brand-check-multiple-evaluations-of-class-eval-indirect.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -8,7 +8,7 @@
+ }
+ )`;
+ let createAndInstantiateClass = function(_eval) {
+-    return new (_eval(classStringExpression));
++    return new (_eval(classStringExpression))();
+ };
+ let c1 = createAndInstantiateClass(eval);
+ let c2 = createAndInstantiateClass(eval);
+
+Failed: fixtures/test262/test/language/expressions/class/private-setter-brand-check-multiple-evaluations-of-class-eval.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -8,7 +8,7 @@
+ }
+ )`;
+ let createAndInstantiateClass = function() {
+-    return new (eval(classStringExpression));
++    return new (eval(classStringExpression))();
+ };
+ let c1 = createAndInstantiateClass();
+ let c2 = createAndInstantiateClass();
+
+Failed: fixtures/test262/test/language/expressions/class/private-setter-brand-check-multiple-evaluations-of-class-realm.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -12,7 +12,7 @@
+ }
+ )`;
+ let createAndInstantiateClass = function(_eval) {
+-    return new (_eval(classStringExpression));
++    return new (_eval(classStringExpression))();
+ };
+ let c1 = createAndInstantiateClass(eval1);
+ let c2 = createAndInstantiateClass(eval2);
+
+Failed: fixtures/test262/test/language/expressions/class/static-init-await-reference.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -6,7 +6,7 @@
+             constructor(x = fromParam = await){
+                 fromBody = await;
+             }
+-        });
++        })();
+     }
+ }
+ assert.sameValue(fromParam, 0, 'from parameter');
+
+Failed: fixtures/test262/test/language/expressions/delete/super-property-uninitialized-this.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -8,4 +8,4 @@
+         delete super[(super(), 0)];
+     }
+ }
+-assert.throws(ReferenceError, ()=>new Derived);
++assert.throws(ReferenceError, ()=>new Derived());
+
+Failed: fixtures/test262/test/language/expressions/dynamic-import/syntax/valid/new-covered-expression-is-valid.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,7 +1,7 @@
+ assert.throws(TypeError, ()=>{
+-    new (import(''));
++    new (import(''))();
+ });
+ assert.throws(TypeError, ()=>{
+-    new (function() {}, import(''));
++    new (function() {}, import(''))();
+ });
+-assert.sameValue(typeof new (import(''), function() {}), 'object');
++assert.sameValue(typeof new (import(''), function() {})(), 'object');
+
+Failed: fixtures/test262/test/language/expressions/in/S8.12.6_A2_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -9,7 +9,7 @@
+ }
+ ;
+ Robin.prototype = __proto;
+-var __my__robin = new Robin;
++var __my__robin = new Robin();
+ if (!("phylum" in __my__robin)) {
+     throw new Test262Error('#2: var __proto={phylum:"avis"}; function Robin(){this.name="robin"}; Robin.prototype=__proto; var __my__robin = new Robin; "phylum" in __my__robin');
+ }
+
+Failed: fixtures/test262/test/language/expressions/instanceof/S11.8.6_A4_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -4,6 +4,6 @@
+ if (Boolean(false) instanceof Boolean) {
+     throw new Test262Error('#2: Boolean(false) is not instanceof Boolean');
+ }
+-if (new Boolean instanceof Boolean !== true) {
++if (new Boolean() instanceof Boolean !== true) {
+     throw new Test262Error('#3: new Boolean instanceof Boolean');
+ }
+
+Failed: fixtures/test262/test/language/expressions/instanceof/S11.8.6_A4_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -4,6 +4,6 @@
+ if (Number(0) instanceof Number) {
+     throw new Test262Error('#2: Number(0) is not instanceof Number');
+ }
+-if (new Number instanceof Number !== true) {
++if (new Number() instanceof Number !== true) {
+     throw new Test262Error('#3: new Number instanceof Number');
+ }
+
+Failed: fixtures/test262/test/language/expressions/instanceof/S11.8.6_A4_T3.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -4,6 +4,6 @@
+ if (String("") instanceof String) {
+     throw new Test262Error('#2: String("") is not instanceof String');
+ }
+-if (new String instanceof String !== true) {
++if (new String() instanceof String !== true) {
+     throw new Test262Error('#3: new String instanceof String');
+ }
+
+Failed: fixtures/test262/test/language/expressions/instanceof/S11.8.6_A5_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __err = new Error;
++var __err = new Error();
+ if (!(__err instanceof Error)) {
+     throw new Test262Error('#1: TypeError is subclass of Error from instanceof operator point of view');
+ }
+
+Failed: fixtures/test262/test/language/expressions/instanceof/S11.8.6_A5_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __t__err = new TypeError;
++var __t__err = new TypeError();
+ if (!(__t__err instanceof Error)) {
+     throw new Test262Error('#1: TypeError is subclass of Error from instanceof operator point of view');
+ }
+
+Failed: fixtures/test262/test/language/expressions/instanceof/S11.8.6_A6_T4.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ var MyFunct = function() {};
+-var __my__funct = new MyFunct;
++var __my__funct = new MyFunct();
+ if (!(__my__funct instanceof MyFunct)) {
+     throw new Test262Error('#1 Only Function objects implement [[HasInstance]] and consequently can be proper ShiftExpression for The instanceof operator');
+ }
+
+Failed: fixtures/test262/test/language/expressions/instanceof/S11.8.6_A7_T3.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,4 +1,4 @@
+-var __func = new Function;
++var __func = new Function();
+ if (!(__func instanceof Function)) {
+     throw new Test262Error('#1: If instanceof returns true then GetValue(RelationalExpression) was constructed with ShiftExpression');
+ }
+
+Failed: fixtures/test262/test/language/expressions/instanceof/S15.3.5.3_A2_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ var FACTORY;
+-FACTORY = new Function;
++FACTORY = new Function();
+ FACTORY.prototype = undefined;
+ var obj;
+ obj = {};
+
+Failed: fixtures/test262/test/language/expressions/instanceof/S15.3.5.3_A2_T5.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -2,7 +2,7 @@
+ FACTORY = Function("this.prop=1;");
+ FACTORY.prototype.name = "fairy";
+ var instance;
+-instance = new FACTORY;
++instance = new FACTORY();
+ FACTORY.prototype = void 0;
+ try {
+     instance instanceof FACTORY;
+
+Failed: fixtures/test262/test/language/expressions/instanceof/S15.3.5.3_A2_T6.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ var FACTORY;
+-FACTORY = new Function;
++FACTORY = new Function();
+ FACTORY.prototype = "error";
+ try {
+     (function() {}) instanceof FACTORY;
+
+Failed: fixtures/test262/test/language/expressions/instanceof/S15.3.5.3_A3_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -2,7 +2,7 @@
+ FACTORY = Function("this.name=\"root\"");
+ FACTORY.prototype.type = 1;
+ var instance;
+-instance = new FACTORY;
++instance = new FACTORY();
+ if (!(instance instanceof FACTORY)) {
+     throw new Test262Error('#1: If O and V refer to the same object or if they refer to objects joined to each other (13.1.2), return true');
+ }
+
+Failed: fixtures/test262/test/language/expressions/new.target/unary-expr.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -6,22 +6,22 @@
+ })();
+ new function() {
+     assert.sameValue(typeof new.target, 'function');
+-};
++}();
+ new function() {
+     assert.sameValue(+(new.target), NaN);
+-};
++}();
+ (function() {
+     assert.sameValue(-(new.target), NaN);
+ })();
+ new function() {
+     assert.sameValue(~new.target, -1);
+-};
++}();
+ (function() {
+     assert.sameValue(!new.target, true);
+ })();
+ new function() {
+     assert.sameValue(delete void typeof +-~!(new.target), true);
+-};
++}();
+ asyncTest(async function() {
+     assert.sameValue(await new.target, undefined);
+ });
+
+Failed: fixtures/test262/test/language/expressions/new.target/value-via-new.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -2,7 +2,7 @@
+ function f() {
+     newTarget = new.target;
+ }
+-new f;
++new f();
+ assert.sameValue(newTarget, f, 'Invoked without Arguments');
+ newTarget = null;
+ new f();
+
+Failed: fixtures/test262/test/language/expressions/new/S11.2.2_A2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ try {
+-    new x;
+-    throw new Test262Error('#1.1: new x throw ReferenceError. Actual: ' + (new x));
++    new x();
++    throw new Test262Error('#1.1: new x throw ReferenceError. Actual: ' + (new x()));
+ } catch (e) {
+     if ((e instanceof ReferenceError) !== true) {
+         throw new Test262Error('#1.2: new x throw ReferenceError. Actual: ' + (e));
+
+Failed: fixtures/test262/test/language/expressions/new/S11.2.2_A3_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ try {
+-    new true;
++    new true();
+     throw new Test262Error('#1: new true throw TypeError');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+@@ -8,7 +8,7 @@
+ }
+ try {
+     var x = true;
+-    new x;
++    new x();
+     throw new Test262Error('#2: var x = true; new x throw TypeError');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+
+Failed: fixtures/test262/test/language/expressions/new/S11.2.2_A3_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ try {
+-    new 1;
++    new 1();
+     throw new Test262Error('#1: new 1 throw TypeError');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+@@ -8,7 +8,7 @@
+ }
+ try {
+     var x = 1;
+-    new x;
++    new x();
+     throw new Test262Error('#2: var x = 1; new x throw TypeError');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+
+Failed: fixtures/test262/test/language/expressions/new/S11.2.2_A3_T3.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ try {
+-    new 1;
++    new 1();
+     throw new Test262Error('#1: new "1" throw TypeError');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+@@ -8,7 +8,7 @@
+ }
+ try {
+     var x = "1";
+-    new x;
++    new x();
+     throw new Test262Error('#2: var x = "1"; new x throw TypeError');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+
+Failed: fixtures/test262/test/language/expressions/new/S11.2.2_A3_T4.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ try {
+-    new undefined;
++    new undefined();
+     throw new Test262Error('#1: new undefined throw TypeError');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+@@ -8,7 +8,7 @@
+ }
+ try {
+     var x = undefined;
+-    new x;
++    new x();
+     throw new Test262Error('#2: var x = undefined; new x throw TypeError');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+
+Failed: fixtures/test262/test/language/expressions/new/S11.2.2_A3_T5.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ try {
+-    new null;
++    new null();
+     throw new Test262Error('#1: new null throw TypeError');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+@@ -8,7 +8,7 @@
+ }
+ try {
+     var x = null;
+-    new x;
++    new x();
+     throw new Test262Error('#2: var x = null; new x throw TypeError');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+
+Failed: fixtures/test262/test/language/expressions/new/S11.2.2_A4_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ try {
+-    new new Boolean(true);
++    new new Boolean(true)();
+     throw new Test262Error('#1: new new Boolean(true) throw TypeError');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+@@ -8,7 +8,7 @@
+ }
+ try {
+     var x = new Boolean(true);
+-    new x;
++    new x();
+     throw new Test262Error('#2: var x = new Boolean(true); new x throw TypeError');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+
+Failed: fixtures/test262/test/language/expressions/new/S11.2.2_A4_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ try {
+-    new new Number(1);
++    new new Number(1)();
+     throw new Test262Error('#1: new new Number(1) throw TypeError');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+@@ -8,7 +8,7 @@
+ }
+ try {
+     var x = new Number(1);
+-    new x;
++    new x();
+     throw new Test262Error('#2: var x = new Number(1); new x throw TypeError');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+
+Failed: fixtures/test262/test/language/expressions/new/S11.2.2_A4_T3.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ try {
+-    new new String("1");
++    new new String("1")();
+     throw new Test262Error('#1: new new String("1") throw TypeError');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+@@ -8,7 +8,7 @@
+ }
+ try {
+     var x = new String("1");
+-    new x;
++    new x();
+     throw new Test262Error('#2: var x = new String("1"); new x throw TypeError');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+
+Failed: fixtures/test262/test/language/expressions/new/S11.2.2_A4_T4.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ try {
+-    new this;
++    new this();
+     throw new Test262Error('#1: new this throw TypeError');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+
+Failed: fixtures/test262/test/language/expressions/new/S11.2.2_A4_T5.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ try {
+-    new Math;
++    new Math();
+     throw new Test262Error('#1: new Math throw TypeError');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+@@ -7,7 +7,7 @@
+     }
+ }
+ try {
+-    new new Math();
++    new new Math()();
+     throw new Test262Error('#2: new new Math() throw TypeError');
+ } catch (e) {
+     if ((e instanceof TypeError) !== true) {
+
+Failed: fixtures/test262/test/language/expressions/new/non-ctor-err-realm.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -4,5 +4,5 @@
+     new otherParseInt(0);
+ }, 'production including Arguments');
+ assert.throws(TypeError, function() {
+-    new otherParseInt;
++    new otherParseInt();
+ }, 'production eliding Arguments');
+
+Failed: fixtures/test262/test/language/expressions/property-accessors/S8.12.3_A1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,7 +1,7 @@
+ function FooObj() {}
+ ;
+ FooObj.prototype.propFoo = "some";
+-var __obj = new FooObj;
++var __obj = new FooObj();
+ if (__obj.propFoo !== "some") {
+     throw new Test262Error('#1: function FooObj(){}; FooObj.prototype.propFoo="some"; var __obj= new FooObj; __obj.propFoo === "some". Actual: ' + (__obj.propFoo));
+ }
+
+Failed: fixtures/test262/test/language/expressions/super/prop-expr-uninitialized-this-getvalue.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -8,4 +8,4 @@
+         return super[super()];
+     }
+ }
+-assert.throws(ReferenceError, ()=>new Derived);
++assert.throws(ReferenceError, ()=>new Derived());
+
+Failed: fixtures/test262/test/language/expressions/super/prop-expr-uninitialized-this-putvalue-compound-assign.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -8,4 +8,4 @@
+         super[super()] += 0;
+     }
+ }
+-assert.throws(ReferenceError, ()=>new Derived);
++assert.throws(ReferenceError, ()=>new Derived());
+
+Failed: fixtures/test262/test/language/expressions/super/prop-expr-uninitialized-this-putvalue-increment.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -8,4 +8,4 @@
+         super[super()]++;
+     }
+ }
+-assert.throws(ReferenceError, ()=>new Derived);
++assert.throws(ReferenceError, ()=>new Derived());
+
+Failed: fixtures/test262/test/language/expressions/super/prop-expr-uninitialized-this-putvalue.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -8,4 +8,4 @@
+         super[super()] = 0;
+     }
+ }
+-assert.throws(ReferenceError, ()=>new Derived);
++assert.throws(ReferenceError, ()=>new Derived());
+
+Failed: fixtures/test262/test/language/expressions/tagged-template/constructor-invocation.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -7,7 +7,7 @@
+ };
+ var arg = null;
+ var instance, templateObject;
+-instance = new tag`first template`;
++instance = new tag`first template`();
+ assert(instance instanceof Constructor);
+ assert.sameValue(templateObject[0], 'first template');
+ assert.sameValue(arg, undefined);
+
+Failed: fixtures/test262/test/language/function-code/10.4.3-1-25-s.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ var obj = new (function() {
+     return this;
+-});
++})();
+ assert.notSameValue(obj, this, 'obj');
+ assert.notSameValue((typeof obj), "undefined", '(typeof obj)');
+
+Failed: fixtures/test262/test/language/function-code/10.4.3-1-25gs.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var obj = new (function() {
+     return this;
+-});
++})();
+ if ((obj === this) || (typeof obj === "undefined")) {
+     throw "'this' had incorrect value!";
+ }
+
+Failed: fixtures/test262/test/language/function-code/10.4.3-1-26-s.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,6 +1,6 @@
+ var obj = new (function() {
+     "use strict";
+     return this;
+-});
++})();
+ assert.notSameValue(obj, this, 'obj');
+ assert.notSameValue((typeof obj), "undefined", '(typeof obj)');
+
+Failed: fixtures/test262/test/language/function-code/10.4.3-1-26gs.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,7 +1,7 @@
+ var obj = new (function() {
+     "use strict";
+     return this;
+-});
++})();
+ if ((obj === this) || (typeof obj === "undefined")) {
+     throw "'this' had incorrect value!";
+ }
+
+Failed: fixtures/test262/test/language/module-code/top-level-await/new-await-parens.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,7 +1,7 @@
+-assert.sameValue((new (await Number)).valueOf(), 0);
+-assert.sameValue((new (await String)).valueOf(), '');
+-assert.sameValue((new (await Boolean)).valueOf(), false);
+-assert.sameValue((new (await Array)).length, 0);
+-assert.sameValue((new (await Map)).size, 0);
+-assert.sameValue((new (await Set)).size, 0);
++assert.sameValue((new (await Number)()).valueOf(), 0);
++assert.sameValue((new (await String)()).valueOf(), '');
++assert.sameValue((new (await Boolean)()).valueOf(), false);
++assert.sameValue((new (await Array)()).length, 0);
++assert.sameValue((new (await Map)()).size, 0);
++assert.sameValue((new (await Set)()).size, 0);
+ $DONE();
+
+Failed: fixtures/test262/test/language/module-code/top-level-await/new-await-script-code.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,3 +1,3 @@
+ class await {
+ }
+-assert.sameValue(new await instanceof await, true);
++assert.sameValue(new await() instanceof await, true);
+
+Failed: fixtures/test262/test/language/statements/class/arguments/default-constructor.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -7,7 +7,7 @@
+ }
+ class Derived extends Base {
+ }
+-new Derived;
++new Derived();
+ assert.sameValue(args.length, 0, "The value of `args.length` is `0`");
+ new Derived(0, 1, 2);
+ assert.sameValue(args.length, 3, "The value of `args.length` is `3`");
+
+Failed: fixtures/test262/test/language/statements/class/definition/methods-restricted-properties.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -4,7 +4,7 @@
+     set accessor(x) {}
+ }
+ ;
+-var instance = new Class;
++var instance = new Class();
+ var accessor = Object.getOwnPropertyDescriptor(Class.prototype, "accessor");
+ assert.sameValue(instance.method.hasOwnProperty('caller'), false, 'No "caller" own property (method)');
+ assert.sameValue(instance.method.hasOwnProperty('arguments'), false, 'No "arguments" own property (method)');
+
+Failed: fixtures/test262/test/language/statements/class/name-binding/const.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -12,7 +12,7 @@
+         constructor(){
+             C = 42;
+         }
+-    });
++    })();
+ });
+ assert.throws(TypeError, function() {
+     class C {
+@@ -44,7 +44,7 @@
+         get x() {
+             C = 42;
+         }
+-    })).x;
++    })()).x;
+ });
+ assert.throws(TypeError, function() {
+     class C {
+@@ -60,5 +60,5 @@
+         set x(_) {
+             C = 42;
+         }
+-    })).x = 15;
++    })()).x = 15;
+ });
+
+Failed: fixtures/test262/test/language/statements/class/strict-mode/arguments-callee.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -6,5 +6,5 @@
+     Object.getPrototypeOf(D).arguments;
+ });
+ assert.throws(TypeError, function() {
+-    new D;
++    new D();
+ });
+
+Failed: fixtures/test262/test/language/statements/class/super/in-constructor.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -9,5 +9,5 @@
+         assert.sameValue(super.x, 42, "The value of `super.x` is `42`");
+     }
+ }
+-new C;
++new C();
+ assert.sameValue(calls, 1, "The value of `calls` is `1`");
+
+Failed: fixtures/test262/test/language/statements/for-in/S12.6.4_A6.1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -8,7 +8,7 @@
+     feat: 2,
+     hint: "protohint"
+ };
+-var __instance = new FACTORY;
++var __instance = new FACTORY();
+ __accum = "";
+ for(var key in __instance){
+     __accum += (key + __instance[key]);
+
+Failed: fixtures/test262/test/language/statements/for-in/S12.6.4_A6.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -8,7 +8,7 @@
+     feat: 2,
+     hint: "protohint"
+ };
+-var __instance = new FACTORY;
++var __instance = new FACTORY();
+ __accum = "";
+ for(key in __instance){
+     __accum += (key + __instance[key]);
+
+Failed: fixtures/test262/test/language/statements/function/S13.2.2_A16_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -3,7 +3,7 @@
+ }
+ var __obj = new function __func() {
+     this.prop = 1;
+-};
++}();
+ if (__obj.prop !== 1) {
+     throw new Test262Error('#2: __obj.prop === 1. Actual: __obj.prop ===' + __obj.prop);
+ }
+
+Failed: fixtures/test262/test/language/statements/with/S12.10_A3.3_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -13,7 +13,7 @@
+         return value;
+     }
+ }
+-var obj = new __FACTORY;
++var obj = new __FACTORY();
+ if (p1 !== 1) {
+     throw new Test262Error('#1: p1 === 1. Actual:  p1 ===' + p1);
+ }
+
+Failed: fixtures/test262/test/language/statements/with/S12.10_A3.3_T3.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -13,7 +13,7 @@
+         p1 = 'x1';
+     }
+ }
+-var obj = new __FACTORY;
++var obj = new __FACTORY();
+ if (p1 !== 1) {
+     throw new Test262Error('#1: p1 === 1. Actual:  p1 ===' + p1);
+ }
+
+Failed: fixtures/test262/test/language/statements/with/S12.10_A3.8_T1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -11,7 +11,7 @@
+     var __FACTORY = function() {
+         p1 = 'x1';
+     };
+-    var obj = new __FACTORY;
++    var obj = new __FACTORY();
+ }
+ if (p1 !== 1) {
+     throw new Test262Error('#1: p1 === 1. Actual:  p1 ===' + p1);
+
+Failed: fixtures/test262/test/language/statements/with/S12.10_A3.8_T2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -12,7 +12,7 @@
+         p1 = 'x1';
+         return value;
+     };
+-    var obj = new __FACTORY;
++    var obj = new __FACTORY();
+ }
+ if (p1 !== 1) {
+     throw new Test262Error('#1: p1 === 1. Actual:  p1 ===' + p1);
+
+Failed: fixtures/test262/test/language/statements/with/S12.10_A3.8_T3.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -12,7 +12,7 @@
+         return value;
+         p1 = 'x1';
+     };
+-    var obj = new __FACTORY;
++    var obj = new __FACTORY();
+ }
+ if (p1 !== 1) {
+     throw new Test262Error('#1: p1 === 1. Actual:  p1 ===' + p1);
+
+Failed: fixtures/test262/test/language/statements/with/S12.10_A3.8_T4.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -13,7 +13,7 @@
+             p1 = 'x1';
+             throw value;
+         };
+-        var obj = new __FACTORY;
++        var obj = new __FACTORY();
+     }
+ } catch (e) {
+     result = p1;
+
+Failed: fixtures/test262/test/language/statements/with/S12.10_A3.8_T5.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -13,7 +13,7 @@
+             throw value;
+             p1 = 'x1';
+         };
+-        var obj = new __FACTORY;
++        var obj = new __FACTORY();
+     }
+ } catch (e) {
+     result = p1;
+
+Failed: fixtures/test262/test/language/types/object/S8.6.2_A1.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -6,7 +6,7 @@
+ var protoObj = {};
+ function FooObj() {}
+ ;
+-var obj__ = new FooObj;
++var obj__ = new FooObj();
+ if (!Object.prototype.isPrototypeOf(obj__)) {
+     throw new Test262Error('#2.1: protoObj={}; function FooObj(){}; var obj__= new FooObj; Object.prototype.isPrototypeOf(obj__) === true. Actual: ' + (Object.prototype.isPrototypeOf(obj__)));
+ }
+@@ -24,7 +24,7 @@
+     throw new Test262Error('#2.4: protoObj={}; function FooObj(){}; var obj__= new FooObj; FooObj.prototype=protoObj; protoObj.isPrototypeOf(obj__) === false. Actual: ' + (protoObj.isPrototypeOf(obj__)));
+ }
+ ;
+-var __foo = new FooObj;
++var __foo = new FooObj();
+ if (!Object.prototype.isPrototypeOf(__foo)) {
+     throw new Test262Error('#3.1: protoObj={}; function FooObj(){}; var obj__= new FooObj; FooObj.prototype=protoObj; var __foo=new FooObj; Object.prototype.isPrototypeOf(__foo) === true. Actual: ' + (Object.prototype.isPrototypeOf(__foo)));
+ }
+
+Failed: fixtures/test262/test/language/types/object/S8.6.2_A2.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,12 +1,12 @@
+ function FooObj() {}
+ ;
+ FooObj.prototype.prop = "some";
+-var foo = new FooObj;
++var foo = new FooObj();
+ if (foo.prop !== "some") {
+     throw new Test262Error('#1: function FooObj(){}; FooObj.prototype.prop="some"; var foo= new FooObj; foo.prop === "some". Actual: ' + (foo.prop));
+ }
+ foo.prop = true;
+-var foo__ = new FooObj;
++var foo__ = new FooObj();
+ if (foo__.prop !== "some") {
+     throw new Test262Error('#2: function FooObj(){}; FooObj.prototype.prop="some"; var foo= new FooObj; foo.prop=true; var foo__ = new FooObj; foo__.prop === "some". Actual: ' + (foo__.prop));
+ }
+
+Failed: fixtures/test262/test/language/types/object/S8.6.2_A6.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,8 +1,8 @@
+-var objInstance = new Object;
++var objInstance = new Object();
+ if (objInstance.constructor !== Object) {
+     throw new Test262Error('#1: var objInstance=new Object; objInstance.constructor === Object. Actual: ' + (objInstance.constructor));
+ }
+-var numInstance = new Number;
++var numInstance = new Number();
+ if (numInstance.constructor !== Number) {
+     throw new Test262Error('#2: var numInstance=new Number; numInstance.constructor === Number. Actual: ' + (numInstance.constructor));
+ }
+
+Failed: fixtures/test262/test/language/types/object/S8.6.2_A7.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,3 +1,3 @@
+ assert.throws(TypeError, function() {
+-    var objMath = new Math;
++    var objMath = new Math();
+ });
+
+Failed: fixtures/test262/test/language/types/string/S8.4_A9_T3.js - Codegen conformance mismatch
+--- swc_core
++++ swc_experimental
+@@ -1,5 +1,5 @@
+ var str = "";
+-var strObj = new String;
++var strObj = new String();
+ if (str.constructor !== strObj.constructor) {
+     throw new Test262Error('#1: "".constructor === new String.constructor');
+ }
+

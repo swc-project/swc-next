@@ -1,3 +1,7 @@
+//! This module contains utilities for running conformance tests
+//!  between the legacy `swc_core` and the new `swc_experimental_`.
+
+pub mod codegen;
 pub mod parser;
 pub mod semantic;
 pub mod transform_remove_paren;

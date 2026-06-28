@@ -8,6 +8,7 @@ pub mod misc;
 pub mod test262;
 pub mod test262_parser;
 
+#[derive(Clone, Copy)]
 pub enum IsModule {
     Module,
     Script,

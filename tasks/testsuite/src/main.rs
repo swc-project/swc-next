@@ -12,8 +12,10 @@ use crate::{
         test262_parser::{self},
     },
     runner::{
+        codegen::CodegenRunner,
         conformance::{
-            parser::ParserConformanceRunner, semantic::SemanticConformanceRunner,
+            codegen::CodegenConformanceRunner, parser::ParserConformanceRunner,
+            semantic::SemanticConformanceRunner,
             transform_remove_paren::RemoveParenConformanceRunner,
         },
         parser::ParserRunner,
@@ -39,8 +41,10 @@ pub struct AppArgs {
 
 const PARSER_RUNNER: &str = "parser";
 const SEMANTIC_RUNNER: &str = "semantic";
+const CODEGEN_RUNNER: &str = "codegen";
 const PARSER_CONFORMANCE_RUNNER: &str = "parser_conformance";
 const SEMANTIC_CONFORMANCE_RUNNER: &str = "semantic_conformance";
+const CODEGEN_CONFORMANCE_RUNNER: &str = "codegen_conformance";
 const REMOVE_PAREN_RUNNER: &str = "remove_paren";
 const REMOVE_PAREN_CONFORMANCE_RUNNER: &str = "remove_paren_conformance";
 
@@ -93,27 +97,14 @@ fn test_normal(args: &AppArgs) {
         results.extend(SemanticRunner::run(args, &test262_parser_cases));
     }
 
-    if args.runners.contains(SEMANTIC_CONFORMANCE_RUNNER) {
-        results.extend(SemanticConformanceRunner::run(args, &misc_cases));
-        results.extend(SemanticConformanceRunner::run(args, &test262_parser_cases));
-    }
-
-    if args.runners.contains(PARSER_CONFORMANCE_RUNNER) {
-        results.extend(ParserConformanceRunner::run(args, &misc_cases));
-        results.extend(ParserConformanceRunner::run(args, &test262_parser_cases));
+    if args.runners.is_empty() || args.runners.contains(CODEGEN_RUNNER) {
+        results.extend(CodegenRunner::run(args, &misc_cases));
+        results.extend(CodegenRunner::run(args, &test262_parser_cases));
     }
 
     if args.runners.is_empty() || args.runners.contains(REMOVE_PAREN_RUNNER) {
         results.extend(RemoveParenRunner::run(args, &misc_cases));
         results.extend(RemoveParenRunner::run(args, &test262_parser_cases));
-    }
-
-    if args.runners.contains(REMOVE_PAREN_CONFORMANCE_RUNNER) {
-        results.extend(RemoveParenConformanceRunner::run(args, &misc_cases));
-        results.extend(RemoveParenConformanceRunner::run(
-            args,
-            &test262_parser_cases,
-        ));
     }
 
     // Collect results
@@ -236,10 +227,28 @@ fn test_test262_snapshots(args: &AppArgs) {
         .unwrap();
     }
 
+    if args.runners.is_empty() || args.runners.contains(CODEGEN_RUNNER) {
+        let results = CodegenRunner::run(args, &cases);
+        fs::write(
+            snapshot_dir.join("codegen_test262.snap"),
+            to_snapshot(&results),
+        )
+        .unwrap();
+    }
+
     if args.runners.is_empty() || args.runners.contains(SEMANTIC_CONFORMANCE_RUNNER) {
         let results = SemanticConformanceRunner::run(args, &cases);
         fs::write(
             snapshot_dir.join("semantic_conformance_test262.snap"),
+            to_snapshot(&results),
+        )
+        .unwrap();
+    }
+
+    if args.runners.is_empty() || args.runners.contains(CODEGEN_CONFORMANCE_RUNNER) {
+        let results = CodegenConformanceRunner::run(args, &cases);
+        fs::write(
+            snapshot_dir.join("codegen_conformance_test262.snap"),
             to_snapshot(&results),
         )
         .unwrap();

@@ -10,11 +10,13 @@ jwalk     = { workspace = true }
 pico-args = { workspace = true }
 rayon     = { workspace = true }
 saphyr    = { workspace = true }
+similar   = { workspace = true }
 swc_core  = { workspace = true, features = ["__ecma_transforms", "ecma_parser_unstable"] }
 
 swc_experimental_allocator            = { workspace = true }
 swc_experimental_ecma_ast             = { workspace = true }
 swc_experimental_ecma_ast_compat      = { workspace = true }
+swc_experimental_ecma_codegen         = { workspace = true }
 swc_experimental_ecma_parser          = { workspace = true }
 swc_experimental_ecma_semantic        = { workspace = true }
 swc_experimental_ecma_transforms_base = { workspace = true }
