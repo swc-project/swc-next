@@ -53,9 +53,9 @@ const NK = {
   Ident: 47,
   IdentName: 48,
   IfStmt: 49,
-  Import: 50,
-  ImportDecl: 51,
-  ImportDefaultSpecifier: 52,
+  ImportDecl: 50,
+  ImportDefaultSpecifier: 51,
+  ImportExpr: 52,
   ImportNamedSpecifier: 53,
   ImportStarAsSpecifier: 54,
   Invalid: 55,
@@ -194,14 +194,14 @@ export function decode(buffer, source) {
       case NK.Module: return { type: "Module", span: { start, end }, body: nodeArray(f0, f1), shebang: stringAt(f2, f3) };
       case NK.Script: return { type: "Script", span: { start, end }, body: nodeArray(f0, f1), shebang: stringAt(f2, f3) };
       case NK.ImportDecl: return { type: "ImportDecl", span: { start, end }, specifiers: nodeArray(f0, f1), src: node(f2), typeOnly: !!(flags & (1 << 0)), with: maybeNode(f3), phase: IMPORT_PHASE[(flags >> 1) & 3] };
-      case NK.ImportNamedSpecifier: return { type: "ImportNamedSpecifier", span: { start, end }, local: node(f0), imported: maybeNode(f1), isTypeOnly: !!(flags & (1 << 0)) };
+      case NK.ImportNamedSpecifier: return { type: "ImportNamedSpecifier", span: { start, end }, local: node(f0), imported: node(f1), isTypeOnly: !!(flags & (1 << 0)) };
       case NK.ImportDefaultSpecifier: return { type: "ImportDefaultSpecifier", span: { start, end }, local: node(f0) };
       case NK.ImportStarAsSpecifier: return { type: "ImportStarAsSpecifier", span: { start, end }, local: node(f0) };
       case NK.ExportDecl: return { type: "ExportDecl", span: { start, end }, decl: node(f0) };
       case NK.NamedExport: return { type: "NamedExport", span: { start, end }, specifiers: nodeArray(f0, f1), src: maybeNode(f2), typeOnly: !!(flags & (1 << 0)), with: maybeNode(f3) };
       case NK.ExportNamespaceSpecifier: return { type: "ExportNamespaceSpecifier", span: { start, end }, name: node(f0) };
       case NK.ExportDefaultSpecifier: return { type: "ExportDefaultSpecifier", exported: node(f0) };
-      case NK.ExportNamedSpecifier: return { type: "ExportNamedSpecifier", span: { start, end }, orig: node(f0), exported: maybeNode(f1), isTypeOnly: !!(flags & (1 << 0)) };
+      case NK.ExportNamedSpecifier: return { type: "ExportNamedSpecifier", span: { start, end }, orig: node(f0), exported: node(f1), isTypeOnly: !!(flags & (1 << 0)) };
       case NK.ExportDefaultDecl: return { type: "ExportDefaultDecl", span: { start, end }, decl: node(f0) };
       case NK.ExportDefaultExpr: return { type: "ExportDefaultExpr", span: { start, end }, expr: node(f0) };
       case NK.ExportAll: return { type: "ExportAll", span: { start, end }, src: node(f0), typeOnly: !!(flags & (1 << 0)), with: maybeNode(f1) };
@@ -243,10 +243,11 @@ export function decode(buffer, source) {
       case NK.MemberExpr: return { type: "MemberExpr", span: { start, end }, obj: node(f0), prop: node(f1) };
       case NK.SuperPropExpr: return { type: "SuperPropExpr", span: { start, end }, obj: node(f0), prop: node(f1) };
       case NK.CondExpr: return { type: "CondExpr", span: { start, end }, test: node(f0), cons: node(f1), alt: node(f2) };
+      case NK.ImportExpr: return { type: "ImportExpr", span: { start, end }, source: node(f0), options: maybeNode(f1), phase: IMPORT_PHASE[(flags >> 0) & 3] };
       case NK.CallExpr: return { type: "CallExpr", span: { start, end }, callee: node(f0), args: nodeArray(f1, f2) };
-      case NK.NewExpr: return { type: "NewExpr", span: { start, end }, callee: node(f0), args: f1 === NONE ? null : nodeArray(f1, f2) };
+      case NK.NewExpr: return { type: "NewExpr", span: { start, end }, callee: node(f0), args: nodeArray(f1, f2) };
       case NK.SeqExpr: return { type: "SeqExpr", span: { start, end }, exprs: nodeArray(f0, f1) };
-      case NK.ArrowExpr: return { type: "ArrowExpr", span: { start, end }, params: nodeArray(f0, f1), body: node(f2), isAsync: !!(flags & (1 << 0)), isGenerator: !!(flags & (1 << 1)) };
+      case NK.ArrowExpr: return { type: "ArrowExpr", span: { start, end }, params: nodeArray(f0, f1), body: node(f2), isAsync: !!(flags & (1 << 0)) };
       case NK.YieldExpr: return { type: "YieldExpr", span: { start, end }, arg: maybeNode(f0), delegate: !!(flags & (1 << 0)) };
       case NK.MetaPropExpr: return { type: "MetaPropExpr", span: { start, end }, kind: META_PROP_KIND[(flags >> 0) & 1] };
       case NK.AwaitExpr: return { type: "AwaitExpr", span: { start, end }, arg: node(f0) };
@@ -255,12 +256,11 @@ export function decode(buffer, source) {
       case NK.TplElement: return { type: "TplElement", span: { start, end }, tail: !!(flags & (1 << 0)), cooked: stringAt(f0, f1), raw: stringAt(f2, f3) };
       case NK.ParenExpr: return { type: "ParenExpr", span: { start, end }, expr: node(f0) };
       case NK.Super: return { type: "Super", span: { start, end } };
-      case NK.Import: return { type: "Import", span: { start, end }, phase: IMPORT_PHASE[(flags >> 0) & 3] };
       case NK.ExprOrSpread: return { type: "ExprOrSpread", spread: f0 === NONE ? null : { start: f0, end: f1 }, expr: node(f2) };
       case NK.OptChainExpr: return { type: "OptChainExpr", span: { start, end }, optional: !!(flags & (1 << 0)), base: node(f0) };
       case NK.OptCall: return { type: "OptCall", span: { start, end }, callee: node(f0), args: nodeArray(f1, f2) };
       case NK.Invalid: return { type: "Invalid" };
-      case NK.Function: return { type: "Function", span: { start, end }, params: nodeArray(f0, f1), decorators: nodeArray(f2, f3), body: maybeNode(f4), isGenerator: !!(flags & (1 << 0)), isAsync: !!(flags & (1 << 1)) };
+      case NK.Function: return { type: "Function", span: { start, end }, params: nodeArray(f0, f1), decorators: nodeArray(f2, f3), body: node(f4), isGenerator: !!(flags & (1 << 0)), isAsync: !!(flags & (1 << 1)) };
       case NK.Param: return { type: "Param", span: { start, end }, decorators: nodeArray(f0, f1), pat: node(f2) };
       case NK.Class: return { type: "Class", span: { start, end }, decorators: nodeArray(f0, f1), body: nodeArray(f2, f3), superClass: maybeNode(f4), isAbstract: !!(flags & (1 << 0)) };
       case NK.ClassProp: return { type: "ClassProp", span: { start, end }, key: node(f0), value: maybeNode(f1), isStatic: !!(flags & (1 << 0)), decorators: nodeArray(f2, f3) };
@@ -283,7 +283,7 @@ export function decode(buffer, source) {
       case NK.RestPat: return { type: "RestPat", span: { start, end }, dot3Token: { start, end }, arg: node(f0) };
       case NK.KeyValuePatProp: return { type: "KeyValuePatProp", key: node(f0), value: node(f1) };
       case NK.AssignPatProp: return { type: "AssignPatProp", span: { start, end }, key: node(f0), value: maybeNode(f1) };
-      case NK.Ident: return { type: "Ident", span: { start, end }, sym: stringAt(f0, f1), optional: !!(flags & (1 << 0)) };
+      case NK.Ident: return { type: "Ident", span: { start, end }, sym: stringAt(f0, f1) };
       case NK.IdentName: return { type: "IdentName", span: { start, end }, sym: stringAt(f0, f1) };
       case NK.PrivateName: return { type: "PrivateName", span: { start, end }, name: stringAt(f0, f1) };
       case NK.BindingIdent: return { type: "BindingIdent", id: node(f0) };

@@ -633,10 +633,6 @@ pub trait Visit<'a> {
         node.visit_children_with(self);
     }
     #[inline]
-    fn visit_opt_module_export_name(&mut self, node: &Option<ModuleExportName<'a>>) {
-        node.visit_children_with(self);
-    }
-    #[inline]
     fn visit_opt_expr(&mut self, node: &Option<Expr<'a>>) {
         node.visit_children_with(self);
     }
@@ -2576,18 +2572,6 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Box<'a, Str<'a>>> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<ModuleExportName<'a>> {
-    #[inline]
-    fn visit_with(&self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_opt_module_export_name(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(&self, visitor: &mut V) {
-        if let Some(node) = self {
-            node.visit_with(visitor);
-        }
-    }
-}
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Expr<'a>> {
     #[inline]
     fn visit_with(&self, visitor: &mut V) {
@@ -3527,10 +3511,6 @@ pub trait VisitMut<'a> {
     }
     #[inline]
     fn visit_mut_opt_str(&mut self, node: &mut Option<Box<'a, Str<'a>>>) {
-        node.visit_mut_children_with(self);
-    }
-    #[inline]
-    fn visit_mut_opt_module_export_name(&mut self, node: &mut Option<ModuleExportName<'a>>) {
         node.visit_mut_children_with(self);
     }
     #[inline]
@@ -5471,18 +5451,6 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Box<'a, Str<'a
     #[inline]
     fn visit_mut_with(&mut self, visitor: &mut V) {
         <V as VisitMut<'a>>::visit_mut_opt_str(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(&mut self, visitor: &mut V) {
-        if let Some(node) = self {
-            node.visit_mut_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<ModuleExportName<'a>> {
-    #[inline]
-    fn visit_mut_with(&mut self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_opt_module_export_name(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(&mut self, visitor: &mut V) {

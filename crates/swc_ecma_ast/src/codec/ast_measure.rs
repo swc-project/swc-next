@@ -406,6 +406,7 @@ impl<'a> AstMeasure for Expr<'a> {
             Self::Member(it) => it.measure(header),
             Self::SuperProp(it) => it.measure(header),
             Self::Cond(it) => it.measure(header),
+            Self::Import(it) => it.measure(header),
             Self::Call(it) => it.measure(header),
             Self::New(it) => it.measure(header),
             Self::Seq(it) => it.measure(header),
@@ -540,6 +541,13 @@ impl<'a> AstMeasure for CondExpr<'a> {
         self.alt.measure(header);
     }
 }
+impl<'a> AstMeasure for ImportExpr<'a> {
+    fn measure(&self, header: &mut Header) {
+        header.node();
+        self.source.measure(header);
+        self.options.measure(header);
+    }
+}
 impl<'a> AstMeasure for CallExpr<'a> {
     fn measure(&self, header: &mut Header) {
         header.node();
@@ -551,9 +559,7 @@ impl<'a> AstMeasure for NewExpr<'a> {
     fn measure(&self, header: &mut Header) {
         header.node();
         self.callee.measure(header);
-        if let Some(it) = &self.args {
-            header.nodes(it);
-        }
+        header.nodes(&self.args);
     }
 }
 impl<'a> AstMeasure for SeqExpr<'a> {
@@ -617,17 +623,11 @@ impl<'a> AstMeasure for Callee<'a> {
     fn measure(&self, header: &mut Header) {
         match self {
             Self::Super(it) => it.measure(header),
-            Self::Import(it) => it.measure(header),
             Self::Expr(it) => it.measure(header),
         }
     }
 }
 impl AstMeasure for Super {
-    fn measure(&self, header: &mut Header) {
-        header.node();
-    }
-}
-impl AstMeasure for Import {
     fn measure(&self, header: &mut Header) {
         header.node();
     }

@@ -128,10 +128,7 @@ impl<'a> AstEncode for ImportSpecifier<'a> {
 impl<'a> AstEncode for ImportNamedSpecifier<'a> {
     fn encode(&self, encoder: &mut Encoder) -> u32 {
         let field0 = self.local.encode(encoder);
-        let field1 = match &self.imported {
-            Some(it) => it.encode(encoder),
-            None => NONE,
-        };
+        let field1 = self.imported.encode(encoder);
         let flags = if self.is_type_only { 1u16 << 0u16 } else { 0 };
         let (span_lo, span_hi) = encoder.span(self.span());
         encoder.packed_node(PackedNode {
@@ -268,10 +265,7 @@ impl<'a> AstEncode for ExportDefaultSpecifier<'a> {
 impl<'a> AstEncode for ExportNamedSpecifier<'a> {
     fn encode(&self, encoder: &mut Encoder) -> u32 {
         let field0 = self.orig.encode(encoder);
-        let field1 = match &self.exported {
-            Some(it) => it.encode(encoder),
-            None => NONE,
-        };
+        let field1 = self.exported.encode(encoder);
         let flags = if self.is_type_only { 1u16 << 0u16 } else { 0 };
         let (span_lo, span_hi) = encoder.span(self.span());
         encoder.packed_node(PackedNode {
@@ -873,6 +867,7 @@ impl<'a> AstEncode for Expr<'a> {
             Self::Member(it) => it.encode(encoder),
             Self::SuperProp(it) => it.encode(encoder),
             Self::Cond(it) => it.encode(encoder),
+            Self::Import(it) => it.encode(encoder),
             Self::Call(it) => it.encode(encoder),
             Self::New(it) => it.encode(encoder),
             Self::Seq(it) => it.encode(encoder),
@@ -1143,6 +1138,26 @@ impl<'a> AstEncode for CondExpr<'a> {
         })
     }
 }
+impl<'a> AstEncode for ImportExpr<'a> {
+    fn encode(&self, encoder: &mut Encoder) -> u32 {
+        let field0 = self.source.encode(encoder);
+        let field1 = match &self.options {
+            Some(it) => it.encode(encoder),
+            None => NONE,
+        };
+        let flags = (self.phase as u16) << 0u16;
+        let (span_lo, span_hi) = encoder.span(self.span());
+        encoder.packed_node(PackedNode {
+            kind: NodeKind::ImportExpr,
+            flags,
+            span_lo: self.span_lo(),
+            span_hi: self.span_hi(),
+            field0,
+            field1,
+            ..Default::default()
+        })
+    }
+}
 impl<'a> AstEncode for CallExpr<'a> {
     fn encode(&self, encoder: &mut Encoder) -> u32 {
         let (__args_start, __args_len) = encoder.nodes(&self.args);
@@ -1165,10 +1180,7 @@ impl<'a> AstEncode for CallExpr<'a> {
 }
 impl<'a> AstEncode for NewExpr<'a> {
     fn encode(&self, encoder: &mut Encoder) -> u32 {
-        let (__args_start, __args_len) = match &self.args {
-            Some(it) => encoder.nodes(it),
-            None => (NONE, 0),
-        };
+        let (__args_start, __args_len) = encoder.nodes(&self.args);
         let field0 = self.callee.encode(encoder);
         let field1 = __args_start;
         let field2 = __args_len;
@@ -1210,8 +1222,7 @@ impl<'a> AstEncode for ArrowExpr<'a> {
         let field0 = __params_start;
         let field1 = __params_len;
         let field2 = self.body.encode(encoder);
-        let flags = if self.is_async { 1u16 << 0u16 } else { 0 }
-            | if self.is_generator { 1u16 << 1u16 } else { 0 };
+        let flags = if self.is_async { 1u16 << 0u16 } else { 0 };
         let (span_lo, span_hi) = encoder.span(self.span());
         encoder.packed_node(PackedNode {
             kind: NodeKind::ArrowExpr,
@@ -1353,7 +1364,6 @@ impl<'a> AstEncode for Callee<'a> {
     fn encode(&self, encoder: &mut Encoder) -> u32 {
         match self {
             Self::Super(it) => it.encode(encoder),
-            Self::Import(it) => it.encode(encoder),
             Self::Expr(it) => it.encode(encoder),
         }
     }
@@ -1364,19 +1374,6 @@ impl AstEncode for Super {
         let (span_lo, span_hi) = encoder.span(self.span());
         encoder.packed_node(PackedNode {
             kind: NodeKind::Super,
-            flags,
-            span_lo: self.span_lo(),
-            span_hi: self.span_hi(),
-            ..Default::default()
-        })
-    }
-}
-impl AstEncode for Import {
-    fn encode(&self, encoder: &mut Encoder) -> u32 {
-        let flags = (self.phase as u16) << 0u16;
-        let (span_lo, span_hi) = encoder.span(self.span());
-        encoder.packed_node(PackedNode {
-            kind: NodeKind::Import,
             flags,
             span_lo: self.span_lo(),
             span_hi: self.span_hi(),
@@ -1505,10 +1502,7 @@ impl<'a> AstEncode for Function<'a> {
         let field1 = __params_len;
         let field2 = __decorators_start;
         let field3 = __decorators_len;
-        let field4 = match &self.body {
-            Some(it) => it.encode(encoder),
-            None => NONE,
-        };
+        let field4 = self.body.encode(encoder);
         let flags = if self.is_generator { 1u16 << 0u16 } else { 0 }
             | if self.is_async { 1u16 << 1u16 } else { 0 };
         let (span_lo, span_hi) = encoder.span(self.span());
@@ -2035,7 +2029,7 @@ impl<'a> AstEncode for Ident<'a> {
         let (__sym_start, __sym_len) = encoder.utf8(self.sym);
         let field0 = __sym_start;
         let field1 = __sym_len;
-        let flags = if self.optional { 1u16 << 0u16 } else { 0 };
+        let flags = 0;
         let (span_lo, span_hi) = encoder.span(self.span());
         encoder.packed_node(PackedNode {
             kind: NodeKind::Ident,

@@ -40,7 +40,7 @@ export interface ImportNamedSpecifier {
   type: "ImportNamedSpecifier";
   span: Span;
   local: Ident;
-  imported: ModuleExportName | null;
+  imported: ModuleExportName;
   isTypeOnly: boolean;
 }
 
@@ -90,7 +90,7 @@ export interface ExportNamedSpecifier {
   type: "ExportNamedSpecifier";
   span: Span;
   orig: ModuleExportName;
-  exported: ModuleExportName | null;
+  exported: ModuleExportName;
   isTypeOnly: boolean;
 }
 
@@ -297,7 +297,7 @@ export interface UsingDecl {
   decls: VarDeclarator[];
 }
 
-export type Expr = ThisExpr | ArrayLit | ObjectLit | FnExpr | UnaryExpr | UpdateExpr | BinExpr | AssignExpr | MemberExpr | SuperPropExpr | CondExpr | CallExpr | NewExpr | SeqExpr | Ident | Lit | Tpl | TaggedTpl | ArrowExpr | ClassExpr | YieldExpr | MetaPropExpr | AwaitExpr | ParenExpr | JSXMemberExpr | JSXNamespacedName | JSXEmptyExpr | JSXElement | JSXFragment | PrivateName | OptChainExpr | Invalid;
+export type Expr = ThisExpr | ArrayLit | ObjectLit | FnExpr | UnaryExpr | UpdateExpr | BinExpr | AssignExpr | MemberExpr | SuperPropExpr | CondExpr | ImportExpr | CallExpr | NewExpr | SeqExpr | Ident | Lit | Tpl | TaggedTpl | ArrowExpr | ClassExpr | YieldExpr | MetaPropExpr | AwaitExpr | ParenExpr | JSXMemberExpr | JSXNamespacedName | JSXEmptyExpr | JSXElement | JSXFragment | PrivateName | OptChainExpr | Invalid;
 
 export interface ThisExpr {
   type: "ThisExpr";
@@ -336,7 +336,7 @@ export interface UpdateExpr {
   span: Span;
   op: UpdateOp;
   prefix: boolean;
-  arg: Expr;
+  arg: SimpleAssignTarget;
 }
 
 export interface BinExpr {
@@ -393,6 +393,14 @@ export interface CondExpr {
   alt: Expr;
 }
 
+export interface ImportExpr {
+  type: "ImportExpr";
+  span: Span;
+  source: Expr;
+  options: Expr | null;
+  phase: ImportPhase;
+}
+
 export interface CallExpr {
   type: "CallExpr";
   span: Span;
@@ -404,7 +412,7 @@ export interface NewExpr {
   type: "NewExpr";
   span: Span;
   callee: Expr;
-  args: ExprOrSpread[] | null;
+  args: ExprOrSpread[];
 }
 
 export interface SeqExpr {
@@ -419,7 +427,6 @@ export interface ArrowExpr {
   params: Pat[];
   body: BlockStmtOrExpr;
   isAsync: boolean;
-  isGenerator: boolean;
 }
 
 export interface YieldExpr {
@@ -469,17 +476,11 @@ export interface ParenExpr {
   expr: Expr;
 }
 
-export type Callee = Super | Import | Expr;
+export type Callee = Super | Expr;
 
 export interface Super {
   type: "Super";
   span: Span;
-}
-
-export interface Import {
-  type: "Import";
-  span: Span;
-  phase: ImportPhase;
 }
 
 export interface ExprOrSpread {
@@ -521,7 +522,7 @@ export interface Function {
   span: Span;
   params: Param[];
   decorators: Decorator[];
-  body: BlockStmt | null;
+  body: BlockStmt;
   isGenerator: boolean;
   isAsync: boolean;
 }
@@ -707,7 +708,6 @@ export interface Ident {
   type: "Ident";
   span: Span;
   sym: string;
-  optional: boolean;
 }
 
 export interface IdentName {

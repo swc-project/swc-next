@@ -77,7 +77,7 @@ export class Visitor {
 
   visitImportNamedSpecifier(n: ast.ImportNamedSpecifier): void {
     this.visitIdent(n.local);
-    this.visitOptModuleExportName(n.imported);
+    this.visitModuleExportName(n.imported);
   }
 
   visitImportDefaultSpecifier(n: ast.ImportDefaultSpecifier): void {
@@ -123,7 +123,7 @@ export class Visitor {
 
   visitExportNamedSpecifier(n: ast.ExportNamedSpecifier): void {
     this.visitModuleExportName(n.orig);
-    this.visitOptModuleExportName(n.exported);
+    this.visitModuleExportName(n.exported);
   }
 
   visitExportDefaultDecl(n: ast.ExportDefaultDecl): void {
@@ -290,6 +290,7 @@ export class Visitor {
       case "MemberExpr": return this.visitPat(n);
       case "SuperPropExpr": return this.visitPat(n);
       case "CondExpr": return this.visitPat(n);
+      case "ImportExpr": return this.visitPat(n);
       case "CallExpr": return this.visitPat(n);
       case "NewExpr": return this.visitPat(n);
       case "SeqExpr": return this.visitPat(n);
@@ -333,6 +334,7 @@ export class Visitor {
       case "MemberExpr": return this.visitExpr(n);
       case "SuperPropExpr": return this.visitExpr(n);
       case "CondExpr": return this.visitExpr(n);
+      case "ImportExpr": return this.visitExpr(n);
       case "CallExpr": return this.visitExpr(n);
       case "NewExpr": return this.visitExpr(n);
       case "SeqExpr": return this.visitExpr(n);
@@ -407,6 +409,7 @@ export class Visitor {
       case "MemberExpr": return this.visitMemberExpr(n);
       case "SuperPropExpr": return this.visitSuperPropExpr(n);
       case "CondExpr": return this.visitCondExpr(n);
+      case "ImportExpr": return this.visitImportExpr(n);
       case "CallExpr": return this.visitCallExpr(n);
       case "NewExpr": return this.visitNewExpr(n);
       case "SeqExpr": return this.visitSeqExpr(n);
@@ -468,7 +471,7 @@ export class Visitor {
   }
 
   visitUpdateExpr(n: ast.UpdateExpr): void {
-    this.visitExpr(n.arg);
+    this.visitSimpleAssignTarget(n.arg);
   }
 
   visitBinExpr(n: ast.BinExpr): void {
@@ -522,6 +525,11 @@ export class Visitor {
     this.visitExpr(n.alt);
   }
 
+  visitImportExpr(n: ast.ImportExpr): void {
+    this.visitExpr(n.source);
+    this.visitOptExpr(n.options);
+  }
+
   visitCallExpr(n: ast.CallExpr): void {
     this.visitCallee(n.callee);
     this.visitExprOrSpreads(n.args);
@@ -529,7 +537,7 @@ export class Visitor {
 
   visitNewExpr(n: ast.NewExpr): void {
     this.visitExpr(n.callee);
-    this.visitOptExprOrSpreads(n.args);
+    this.visitExprOrSpreads(n.args);
   }
 
   visitSeqExpr(n: ast.SeqExpr): void {
@@ -572,7 +580,6 @@ export class Visitor {
   visitCallee(n: ast.Callee): void {
     switch (n.type) {
       case "Super": return this.visitSuper(n);
-      case "Import": return this.visitImport(n);
       case "ThisExpr": return this.visitExpr(n);
       case "ArrayLit": return this.visitExpr(n);
       case "ObjectLit": return this.visitExpr(n);
@@ -584,6 +591,7 @@ export class Visitor {
       case "MemberExpr": return this.visitExpr(n);
       case "SuperPropExpr": return this.visitExpr(n);
       case "CondExpr": return this.visitExpr(n);
+      case "ImportExpr": return this.visitExpr(n);
       case "CallExpr": return this.visitExpr(n);
       case "NewExpr": return this.visitExpr(n);
       case "SeqExpr": return this.visitExpr(n);
@@ -616,9 +624,6 @@ export class Visitor {
   visitSuper(n: ast.Super): void {
   }
 
-  visitImport(n: ast.Import): void {
-  }
-
   visitExprOrSpread(n: ast.ExprOrSpread): void {
     this.visitExpr(n.expr);
   }
@@ -637,6 +642,7 @@ export class Visitor {
       case "MemberExpr": return this.visitExpr(n);
       case "SuperPropExpr": return this.visitExpr(n);
       case "CondExpr": return this.visitExpr(n);
+      case "ImportExpr": return this.visitExpr(n);
       case "CallExpr": return this.visitExpr(n);
       case "NewExpr": return this.visitExpr(n);
       case "SeqExpr": return this.visitExpr(n);
@@ -721,7 +727,7 @@ export class Visitor {
   visitFunction(n: ast.Function): void {
     this.visitParams(n.params);
     this.visitDecorators(n.decorators);
-    this.visitOptBlockStmt(n.body);
+    this.visitBlockStmt(n.body);
   }
 
   visitParam(n: ast.Param): void {
@@ -878,6 +884,7 @@ export class Visitor {
       case "MemberExpr": return this.visitExpr(n);
       case "SuperPropExpr": return this.visitExpr(n);
       case "CondExpr": return this.visitExpr(n);
+      case "ImportExpr": return this.visitExpr(n);
       case "CallExpr": return this.visitExpr(n);
       case "NewExpr": return this.visitExpr(n);
       case "SeqExpr": return this.visitExpr(n);
@@ -1022,6 +1029,7 @@ export class Visitor {
       case "MemberExpr": return this.visitExpr(n);
       case "SuperPropExpr": return this.visitExpr(n);
       case "CondExpr": return this.visitExpr(n);
+      case "ImportExpr": return this.visitExpr(n);
       case "CallExpr": return this.visitExpr(n);
       case "NewExpr": return this.visitExpr(n);
       case "SeqExpr": return this.visitExpr(n);
@@ -1155,12 +1163,6 @@ export class Visitor {
     }
   }
 
-  visitOptModuleExportName(n: ast.ModuleExportName | null): void {
-    if (n !== null) {
-      this.visitModuleExportName(n);
-    }
-  }
-
   visitExportSpecifiers(n: ast.ExportSpecifier[]): void {
     for (const item of n) {
       this.visitExportSpecifier(item);
@@ -1248,12 +1250,6 @@ export class Visitor {
   visitExprOrSpreads(n: ast.ExprOrSpread[]): void {
     for (const item of n) {
       this.visitExprOrSpread(item);
-    }
-  }
-
-  visitOptExprOrSpreads(n: ast.ExprOrSpread[] | null): void {
-    if (n !== null) {
-      this.visitExprOrSpreads(n);
     }
   }
 
