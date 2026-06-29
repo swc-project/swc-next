@@ -47,13 +47,13 @@ pub struct ExprStmt<'a> {
 }
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EmptyStmt {
     pub span: Span,
 }
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DebuggerStmt {
     pub span: Span,
 }

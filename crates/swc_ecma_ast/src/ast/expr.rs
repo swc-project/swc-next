@@ -55,7 +55,7 @@ pub enum Expr<'a> {
 }
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ThisExpr {
     pub span: Span,
 }
@@ -242,7 +242,7 @@ pub struct YieldExpr<'a> {
 }
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MetaPropExpr {
     pub span: Span,
     pub kind: MetaPropKind,
@@ -282,7 +282,7 @@ pub struct TaggedTpl<'a> {
 }
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TplElement<'a> {
     pub span: Span,
     pub tail: bool,
@@ -305,7 +305,7 @@ pub enum Callee<'a> {
 }
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Super {
     pub span: Span,
 }
@@ -405,7 +405,7 @@ pub struct OptCall<'a> {
 }
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Invalid {}
 
 impl<'a> Expr<'a> {

@@ -16,7 +16,7 @@ pub enum Lit<'a> {
 }
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Str<'a> {
     pub span: Span,
     pub value: Wtf8Atom<'a>,
@@ -24,20 +24,20 @@ pub struct Str<'a> {
 }
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Bool {
     pub span: Span,
     pub value: bool,
 }
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Null {
     pub span: Span,
 }
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Number<'a> {
     pub span: Span,
     pub value: f64,
@@ -45,7 +45,7 @@ pub struct Number<'a> {
 }
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BigInt<'a> {
     pub span: Span,
     pub value: Atom<'a>,
@@ -59,7 +59,7 @@ impl BigInt<'_> {
 }
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Regex<'a> {
     pub span: Span,
     pub exp: Atom<'a>,

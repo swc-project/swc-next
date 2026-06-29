@@ -9,7 +9,7 @@ use swc_experimental_allocator::boxed::Box;
 use swc_experimental_ast_macros::ast;
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Ident<'a> {
     pub span: Span,
     pub sym: Atom<'a>,
@@ -17,14 +17,14 @@ pub struct Ident<'a> {
 }
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IdentName<'a> {
     pub span: Span,
     pub sym: Atom<'a>,
 }
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PrivateName<'a> {
     pub span: Span,
     pub name: Atom<'a>,

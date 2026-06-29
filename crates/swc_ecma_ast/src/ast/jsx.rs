@@ -30,7 +30,7 @@ pub struct JSXNamespacedName<'a> {
 }
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct JSXEmptyExpr {
     pub span: Span,
 }
@@ -113,7 +113,7 @@ pub enum JSXAttrValue<'a> {
 }
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct JSXText<'a> {
     pub span: Span,
     pub value: Atom<'a>,
@@ -149,13 +149,13 @@ pub struct JSXFragment<'a> {
 }
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct JSXOpeningFragment {
     pub span: Span,
 }
 
 #[ast]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct JSXClosingFragment {
     pub span: Span,
 }
