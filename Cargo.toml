@@ -23,7 +23,7 @@ oxc_index        = { version = "5.0.0", features = ["nonmax"] }
 rayon            = "1.12.0"
 rustc-hash       = "2.1.2"
 seq-macro        = "0.3.6"
-similar          = "2.7.0"
+similar          = "3.1.1"
 smartstring      = "1.0.1"
 stacker          = "0.1.24"
 tracing          = "0.1.44"
