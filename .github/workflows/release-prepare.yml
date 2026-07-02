@@ -1,0 +1,100 @@
+name: Release Prepare
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump type
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-prepare
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    env:
+      BUMP: ${{ inputs.bump }}
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v2
+        with:
+          app-id: ${{ vars.BOT_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1v1
+
+      - name: Install release tools
+        uses: taiki-e/install-action@25435dc8dd3baed7417e0c96d3fe89013a5b2e09 # v2
+        with:
+          tool: git-cliff
+
+      - name: Install cargo-workspaces
+        run: cargo install cargo-workspaces --locked
+
+      - name: Configure git
+        env:
+          APP_ID: ${{ vars.BOT_ID }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        run: |
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${APP_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
+
+      - name: Create release branch
+        id: branch
+        run: |
+          branch="chore/release-$(date -u +%Y%m%d%H%M%S)"
+          git switch -c "$branch"
+          echo "name=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release changelog
+        id: changelog
+        run: |
+          git-cliff --bump "$BUMP" --unreleased --output "$RUNNER_TEMP/release-changelog.md"
+          version="$(sed -nE 's/^## \[([^]]+)\].*/\1/p' "$RUNNER_TEMP/release-changelog.md" | head -n 1)"
+          if [ -z "$version" ] || [ "$version" = "unreleased" ]; then
+            echo "Failed to extract release version from changelog." >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Bump workspace versions
+        run: |
+          cargo ws version "$BUMP" \
+            --force "swc*" \
+            --allow-branch "chore/release-*" \
+            --no-git-push \
+            --yes
+
+      - name: Push release branch
+        run: git push origin "${{ steps.branch.outputs.name }}"
+
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BRANCH_NAME: ${{ steps.branch.outputs.name }}
+        run: |
+          gh pr create \
+            --base "${{ github.ref_name }}" \
+            --head "$BRANCH_NAME" \
+            --title "chore: release v${{ steps.changelog.outputs.version }}" \
+            --body-file "$RUNNER_TEMP/release-changelog.md"
