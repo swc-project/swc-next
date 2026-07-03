@@ -78,12 +78,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Bump workspace versions
-        run: |
-          cargo ws version "$BUMP" \
-            --force "swc*" \
-            --allow-branch "chore/release-*" \
-            --no-git-push \
-            --yes
+        run: cargo ws version "$BUMP" --force "swc*" --allow-branch "chore/release-*" --no-git-push --yes
 
       - name: Push release branch
         run: git push origin "${{ steps.branch.outputs.name }}"
