@@ -12,10 +12,6 @@ permissions:
   contents: read
   id-token: write
 
-concurrency:
-  group: release-publish
-  cancel-in-progress: false
-
 jobs:
   publish:
     name: Publish crates
