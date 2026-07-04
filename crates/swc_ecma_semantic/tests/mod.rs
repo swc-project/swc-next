@@ -23,7 +23,7 @@ impl<'a> Visit<'a> for ScopeDisplayVisitor<'_, '_> {
 }
 
 #[test]
-fn main() {
+fn snapshot() {
     insta::glob!("fixtures/**/*.{js,jsx,ts,tsx}", |path| {
         let source_text = fs::read_to_string(path).unwrap();
 

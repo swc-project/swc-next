@@ -74,14 +74,17 @@ jobs:
       - name: Clone test fixtures
         shell: bash
         run: chmod +x ./scripts/clone_fixtures.sh && ./scripts/clone_fixtures.sh
+
       - name: Run testsuite
         run: cargo run -p testsuite
+
       - name: Run test262
         shell: bash
         if: ${{ matrix.os != 'windows-latest' }} # Skip windows snapshot because of difference error spans
         run: |
           cargo run -p testsuite -- --test262
           git diff --quiet -- . || (git diff --name-status -- . && exit 1)
+
       - name: Run tests
         shell: bash
         run: cargo test --all
