@@ -6,9 +6,7 @@ use rayon::ThreadPoolBuilder;
 
 use crate::{
     cases::{
-        Case,
-        misc::MiscCase,
-        test262,
+        Case, test262,
         test262_parser::{self},
     },
     runner::{
@@ -84,26 +82,21 @@ fn test_normal(args: &AppArgs) {
 
     let mut results = Vec::new();
 
-    let misc_cases = filter(args, MiscCase::read());
     let test262_parser_cases = filter(args, test262_parser::Test262ParserCase::read());
 
     if args.runners.is_empty() || args.runners.contains(PARSER_RUNNER) {
-        results.extend(ParserRunner::run(args, &misc_cases));
         results.extend(ParserRunner::run(args, &test262_parser_cases));
     }
 
     if args.runners.is_empty() || args.runners.contains(SEMANTIC_RUNNER) {
-        results.extend(SemanticRunner::run(args, &misc_cases));
         results.extend(SemanticRunner::run(args, &test262_parser_cases));
     }
 
     if args.runners.is_empty() || args.runners.contains(CODEGEN_RUNNER) {
-        results.extend(CodegenRunner::run(args, &misc_cases));
         results.extend(CodegenRunner::run(args, &test262_parser_cases));
     }
 
     if args.runners.is_empty() || args.runners.contains(REMOVE_PAREN_RUNNER) {
-        results.extend(RemoveParenRunner::run(args, &misc_cases));
         results.extend(RemoveParenRunner::run(args, &test262_parser_cases));
     }
 
