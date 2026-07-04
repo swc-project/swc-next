@@ -3,8 +3,8 @@
 
 pub mod codegen;
 pub mod parser;
+pub mod remove_paren;
 pub mod semantic;
-pub mod transform_remove_paren;
 
 use std::collections::HashMap;
 
