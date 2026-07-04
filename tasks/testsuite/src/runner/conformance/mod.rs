@@ -23,7 +23,7 @@ use swc_core::{
     },
 };
 use swc_experimental_ecma_ast as experimental_ast;
-use swc_experimental_ecma_ast_compat::AstCompat;
+use swc_experimental_ecma_ast_compat::OwnedConvert;
 use swc_experimental_ecma_parser::Syntax;
 use swc_experimental_ecma_semantic::resolver::resolver;
 
@@ -117,7 +117,7 @@ pub fn compat_experimental_program<'a>(
     program: experimental_ast::Program<'a>,
 ) -> legacy_ast::Program {
     let semantic = resolver(&program);
-    AstCompat::new(&semantic).compat_program(program)
+    OwnedConvert::new(&semantic).compat_program(program)
 }
 
 pub fn format_node_span_mismatch(

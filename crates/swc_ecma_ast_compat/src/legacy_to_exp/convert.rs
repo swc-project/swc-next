@@ -20,7 +20,7 @@ macro_rules! alloc_box {
     }};
 }
 
-pub(crate) trait CompatImpl {
+pub(crate) trait AstConvert {
     fn semantic(&self) -> &Semantic;
 
     fn alloc_box<T>(&self, value: T) -> Box<T>;

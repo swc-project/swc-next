@@ -6,7 +6,49 @@ use swc_experimental_allocator::vec::Vec as ArenaVec;
 use swc_experimental_ecma_ast::{self as experimental};
 use swc_experimental_ecma_semantic::resolver::Semantic;
 
-use crate::compat_impl::CompatImpl;
+use crate::legacy_to_exp::convert::AstConvert;
+
+/// Converts the experimental AST into legacy SWC AST nodes allocated inside a
+/// bump arena owned by the returned wrapper.
+pub struct ArenaConvert<'ast> {
+    semantic: &'ast Semantic,
+}
+
+impl<'ast> ArenaConvert<'ast> {
+    pub fn new(semantic: &'ast Semantic) -> Self {
+        Self { semantic }
+    }
+
+    pub fn compat_program(&self, root: experimental::Program) -> ArenaConvertAst<legacy::Program> {
+        let allocator = Bump::new();
+        let value = ArenaConvertImpl {
+            semantic: self.semantic,
+            allocator: &allocator,
+        }
+        .compat_program_inner(root);
+        ArenaConvertAst::new(allocator, value)
+    }
+
+    pub fn compat_module(&self, module: experimental::Module) -> ArenaConvertAst<legacy::Module> {
+        let allocator = Bump::new();
+        let value = ArenaConvertImpl {
+            semantic: self.semantic,
+            allocator: &allocator,
+        }
+        .compat_module_inner(module);
+        ArenaConvertAst::new(allocator, value)
+    }
+
+    pub fn compat_script(&self, script: experimental::Script) -> ArenaConvertAst<legacy::Script> {
+        let allocator = Bump::new();
+        let value = ArenaConvertImpl {
+            semantic: self.semantic,
+            allocator: &allocator,
+        }
+        .compat_script_inner(script);
+        ArenaConvertAst::new(allocator, value)
+    }
+}
 
 /// Owns a bump allocator together with a legacy AST whose `Box` / `Vec`
 /// storage has been unsafely rebound to allocations inside that arena.
@@ -15,12 +57,12 @@ use crate::compat_impl::CompatImpl;
 /// allocator, which releases all AST storage at once. Immutable access is
 /// exposed through callback helpers to keep the safe API scoped to the owner.
 #[must_use]
-pub struct UnsafeConverted<T> {
+pub struct ArenaConvertAst<T> {
     allocator: Bump,
     inner: ManuallyDrop<T>,
 }
 
-impl<T> UnsafeConverted<T> {
+impl<T> ArenaConvertAst<T> {
     fn new(allocator: Bump, value: T) -> Self {
         Self {
             allocator,
@@ -68,54 +110,12 @@ impl<T> UnsafeConverted<T> {
     }
 }
 
-/// Converts the experimental AST into legacy SWC AST nodes allocated inside a
-/// bump arena owned by the returned wrapper.
-pub struct UnsafeArenaAstCompat<'ast> {
-    semantic: &'ast Semantic,
-}
-
-struct UnsafeArenaCompatSession<'ast, 'alloc> {
+struct ArenaConvertImpl<'ast, 'alloc> {
     semantic: &'ast Semantic,
     allocator: &'alloc Bump,
 }
 
-impl<'ast> UnsafeArenaAstCompat<'ast> {
-    pub fn new(semantic: &'ast Semantic) -> Self {
-        Self { semantic }
-    }
-
-    pub fn compat_program(&self, root: experimental::Program) -> UnsafeConverted<legacy::Program> {
-        let allocator = Bump::new();
-        let value = UnsafeArenaCompatSession {
-            semantic: self.semantic,
-            allocator: &allocator,
-        }
-        .compat_program_inner(root);
-        UnsafeConverted::new(allocator, value)
-    }
-
-    pub fn compat_module(&self, module: experimental::Module) -> UnsafeConverted<legacy::Module> {
-        let allocator = Bump::new();
-        let value = UnsafeArenaCompatSession {
-            semantic: self.semantic,
-            allocator: &allocator,
-        }
-        .compat_module_inner(module);
-        UnsafeConverted::new(allocator, value)
-    }
-
-    pub fn compat_script(&self, script: experimental::Script) -> UnsafeConverted<legacy::Script> {
-        let allocator = Bump::new();
-        let value = UnsafeArenaCompatSession {
-            semantic: self.semantic,
-            allocator: &allocator,
-        }
-        .compat_script_inner(script);
-        UnsafeConverted::new(allocator, value)
-    }
-}
-
-impl CompatImpl for UnsafeArenaCompatSession<'_, '_> {
+impl AstConvert for ArenaConvertImpl<'_, '_> {
     fn semantic(&self) -> &Semantic {
         self.semantic
     }

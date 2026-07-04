@@ -24,8 +24,8 @@ impl Codegen {
     }
 
     pub fn build(self, program: Program, semantic: &Semantic) -> String {
-        let compat = swc_experimental_ecma_ast_compat::UnsafeArenaAstCompat::new(semantic);
-        compat
+        let convert = swc_experimental_ecma_ast_compat::ArenaConvert::new(semantic);
+        convert
             .compat_program(program)
             .with_ref(swc_core::ecma::codegen::to_code)
     }

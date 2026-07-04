@@ -3,19 +3,19 @@ use swc_experimental_allocator::vec::Vec as ArenaVec;
 use swc_experimental_ecma_ast::{self as experimental};
 use swc_experimental_ecma_semantic::resolver::Semantic;
 
-use crate::compat_impl::CompatImpl;
+use crate::legacy_to_exp::convert::AstConvert;
 
-pub struct AstCompat<'a> {
+pub struct OwnedConvert<'a> {
     semantic: &'a Semantic,
 }
 
-impl<'a> AstCompat<'a> {
+impl<'a> OwnedConvert<'a> {
     pub fn new(semantic: &'a Semantic) -> Self {
         Self { semantic }
     }
 }
 
-impl CompatImpl for AstCompat<'_> {
+impl AstConvert for OwnedConvert<'_> {
     fn semantic(&self) -> &Semantic {
         self.semantic
     }
@@ -37,7 +37,7 @@ impl CompatImpl for AstCompat<'_> {
     }
 }
 
-impl AstCompat<'_> {
+impl OwnedConvert<'_> {
     pub fn compat_program(&mut self, root: experimental::Program) -> legacy::Program {
         self.compat_program_inner(root)
     }

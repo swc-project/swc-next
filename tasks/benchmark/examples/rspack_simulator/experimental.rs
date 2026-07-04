@@ -6,7 +6,7 @@ use swc_experimental_ecma_ast::{
     GetSpan, ImportDecl, NamedExport, Program, ReturnStmt, Span, ThrowStmt, UpdateExpr, VarDecl,
     Visit, VisitWith, YieldExpr,
 };
-use swc_experimental_ecma_ast_compat::{AstCompat, UnsafeArenaAstCompat};
+use swc_experimental_ecma_ast_compat::{ArenaConvert, OwnedConvert};
 use swc_experimental_ecma_parser::{
     Lexer, Parser, StringSource, Syntax,
     unstable::{Capturing, Token, TokenAndSpan},
@@ -76,11 +76,11 @@ fn run_scan_dependencies(root: &Program<'_>) {
 fn run_compat_and_scan(root: Program<'_>, semantic: &Semantic, compat: CompatMode) {
     match compat {
         CompatMode::Safe => {
-            let program = AstCompat::new(semantic).compat_program(root);
+            let program = OwnedConvert::new(semantic).compat_program(root);
             run_scan_dependencies_legacy(&program);
         }
         CompatMode::Unsafe => {
-            let program = UnsafeArenaAstCompat::new(semantic).compat_program(root);
+            let program = ArenaConvert::new(semantic).compat_program(root);
             program.with_ref(run_scan_dependencies_legacy);
         }
     }

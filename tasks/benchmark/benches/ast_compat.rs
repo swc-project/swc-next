@@ -46,7 +46,7 @@ fn bench_new(b: &mut Bencher, src: &'static str) {
         let semantic = resolver(&program);
         match program {
             Program::Module(module) => {
-                swc_experimental_ecma_ast_compat::AstCompat::new(&semantic)
+                swc_experimental_ecma_ast_compat::OwnedConvert::new(&semantic)
                     .compat_module(AstBox::into_inner(module));
             }
             Program::Script(_) => unreachable!(),
@@ -74,7 +74,7 @@ fn bench_new_unsafe(b: &mut Bencher, src: &'static str) {
         let semantic = resolver(&program);
         match program {
             Program::Module(module) => std::hint::black_box(
-                swc_experimental_ecma_ast_compat::UnsafeArenaAstCompat::new(&semantic)
+                swc_experimental_ecma_ast_compat::ArenaConvert::new(&semantic)
                     .compat_module(AstBox::into_inner(module)),
             ),
             Program::Script(_) => unreachable!(),
