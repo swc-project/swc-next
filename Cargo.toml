@@ -67,6 +67,7 @@ mimalloc      = "0.1.52"
 oxc           = { version = "0.137.0", features = ["ast_visit", "semantic"] }
 oxc_allocator = "0.137.0"
 pico-args     = "0.5.0"
+rstest        = "0.26.1"
 saphyr        = "0.0.6"
 tracy-client  = { version = "=0.18.1", features = ["enable", "sampling", "demangle", "system-tracing"] }
 

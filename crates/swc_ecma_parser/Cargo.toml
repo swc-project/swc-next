@@ -23,3 +23,6 @@ tracing     = { workspace = true }
 
 swc_experimental_allocator = { workspace = true }
 swc_experimental_ecma_ast  = { workspace = true }
+
+[dev-dependencies]
+rstest = { workspace = true }
