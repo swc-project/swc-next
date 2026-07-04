@@ -14,8 +14,8 @@ pub struct NodeSpan {
 }
 
 pub fn ast_compare(ast1: &ast::Program, ast2: &ast::Program) -> Option<String> {
-    let nodes1 = collect_node_spans(&ast1);
-    let nodes2 = collect_node_spans(&ast2);
+    let nodes1 = collect_node_spans(ast1);
+    let nodes2 = collect_node_spans(ast2);
 
     let mut mismatches = Vec::new();
     for kind in nodes1.keys().chain(nodes2.keys()) {
