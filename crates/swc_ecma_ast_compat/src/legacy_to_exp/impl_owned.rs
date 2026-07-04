@@ -24,7 +24,7 @@ impl AstConvert for OwnedConvert<'_> {
         Box::new(value)
     }
 
-    fn compat_vec<T, U, F: Fn(&mut Self, T) -> U>(
+    fn convert_vec<T, U, F: Fn(&mut Self, T) -> U>(
         &mut self,
         items: ArenaVec<'_, T>,
         transformer: F,
@@ -38,15 +38,15 @@ impl AstConvert for OwnedConvert<'_> {
 }
 
 impl OwnedConvert<'_> {
-    pub fn compat_program(&mut self, root: experimental::Program) -> legacy::Program {
-        self.compat_program_inner(root)
+    pub fn convert_program(&mut self, root: experimental::Program) -> legacy::Program {
+        self.convert_program_inner(root)
     }
 
-    pub fn compat_module(&mut self, module: experimental::Module) -> legacy::Module {
-        self.compat_module_inner(module)
+    pub fn convert_module(&mut self, module: experimental::Module) -> legacy::Module {
+        self.convert_module_inner(module)
     }
 
-    pub fn compat_script(&mut self, script: experimental::Script) -> legacy::Script {
-        self.compat_script_inner(script)
+    pub fn convert_script(&mut self, script: experimental::Script) -> legacy::Script {
+        self.convert_script_inner(script)
     }
 }

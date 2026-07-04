@@ -76,11 +76,11 @@ fn run_scan_dependencies(root: &Program<'_>) {
 fn run_compat_and_scan(root: Program<'_>, semantic: &Semantic, compat: CompatMode) {
     match compat {
         CompatMode::Safe => {
-            let program = OwnedConvert::new(semantic).compat_program(root);
+            let program = OwnedConvert::new(semantic).convert_program(root);
             run_scan_dependencies_legacy(&program);
         }
         CompatMode::Unsafe => {
-            let program = ArenaConvert::new(semantic).compat_program(root);
+            let program = ArenaConvert::new(semantic).convert_program(root);
             program.with_ref(run_scan_dependencies_legacy);
         }
     }

@@ -19,33 +19,33 @@ impl<'ast> ArenaConvert<'ast> {
         Self { semantic }
     }
 
-    pub fn compat_program(&self, root: experimental::Program) -> ArenaConvertAst<legacy::Program> {
+    pub fn convert_program(&self, root: experimental::Program) -> ArenaConvertAst<legacy::Program> {
         let allocator = Bump::new();
         let value = ArenaConvertImpl {
             semantic: self.semantic,
             allocator: &allocator,
         }
-        .compat_program_inner(root);
+        .convert_program_inner(root);
         ArenaConvertAst::new(allocator, value)
     }
 
-    pub fn compat_module(&self, module: experimental::Module) -> ArenaConvertAst<legacy::Module> {
+    pub fn convert_module(&self, module: experimental::Module) -> ArenaConvertAst<legacy::Module> {
         let allocator = Bump::new();
         let value = ArenaConvertImpl {
             semantic: self.semantic,
             allocator: &allocator,
         }
-        .compat_module_inner(module);
+        .convert_module_inner(module);
         ArenaConvertAst::new(allocator, value)
     }
 
-    pub fn compat_script(&self, script: experimental::Script) -> ArenaConvertAst<legacy::Script> {
+    pub fn convert_script(&self, script: experimental::Script) -> ArenaConvertAst<legacy::Script> {
         let allocator = Bump::new();
         let value = ArenaConvertImpl {
             semantic: self.semantic,
             allocator: &allocator,
         }
-        .compat_script_inner(script);
+        .convert_script_inner(script);
         ArenaConvertAst::new(allocator, value)
     }
 }
@@ -130,7 +130,7 @@ impl AstConvert for ArenaConvertImpl<'_, '_> {
         unsafe { Box::from_raw(ptr) }
     }
 
-    fn compat_vec<T, U, F: Fn(&mut Self, T) -> U>(
+    fn convert_vec<T, U, F: Fn(&mut Self, T) -> U>(
         &mut self,
         items: ArenaVec<'_, T>,
         transformer: F,

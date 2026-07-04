@@ -26,7 +26,7 @@ impl Codegen {
     pub fn build(self, program: Program, semantic: &Semantic) -> String {
         let convert = swc_experimental_ecma_ast_compat::ArenaConvert::new(semantic);
         convert
-            .compat_program(program)
+            .convert_program(program)
             .with_ref(swc_core::ecma::codegen::to_code)
     }
 }

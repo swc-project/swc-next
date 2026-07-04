@@ -113,11 +113,11 @@ pub fn collect_legacy_node_spans(program: &legacy_ast::Program) -> NodeSpans {
     collector.nodes
 }
 
-pub fn compat_experimental_program<'a>(
+pub fn convert_experimental_program<'a>(
     program: experimental_ast::Program<'a>,
 ) -> legacy_ast::Program {
     let semantic = resolver(&program);
-    OwnedConvert::new(&semantic).compat_program(program)
+    OwnedConvert::new(&semantic).convert_program(program)
 }
 
 pub fn format_node_span_mismatch(

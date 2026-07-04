@@ -13,7 +13,7 @@ use crate::{
     runner::{
         ParseResult,
         conformance::{
-            LegacyParseResult, collect_legacy_node_spans, compat_experimental_program,
+            LegacyParseResult, collect_legacy_node_spans, convert_experimental_program,
             format_node_span_mismatch, parse_legacy,
         },
         parse,
@@ -58,7 +58,7 @@ impl RemoveParenConformanceRunner {
 
             remove_paren::remove_paren(&mut experimental_root, &allocator, None);
             legacy_root.visit_mut_with(&mut legacy_paren_remover(None));
-            let experimental_root = compat_experimental_program(experimental_root);
+            let experimental_root = convert_experimental_program(experimental_root);
 
             let legacy_nodes = collect_legacy_node_spans(&legacy_root);
             let experimental_nodes = collect_legacy_node_spans(&experimental_root);
