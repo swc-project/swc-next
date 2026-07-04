@@ -9,21 +9,21 @@ use crate::{
         Case, test262,
         test262_parser::{self},
     },
+    conformance::{
+        codegen::CodegenConformanceRunner, parser::ParserConformanceRunner,
+        remove_paren::RemoveParenConformanceRunner, semantic::SemanticConformanceRunner,
+    },
     runner::{
-        codegen::CodegenRunner,
-        conformance::{
-            codegen::CodegenConformanceRunner, parser::ParserConformanceRunner,
-            remove_paren::RemoveParenConformanceRunner, semantic::SemanticConformanceRunner,
-        },
-        parser::ParserRunner,
-        remove_paren::RemoveParenRunner,
+        codegen::CodegenRunner, parser::ParserRunner, remove_paren::RemoveParenRunner,
         semantic::SemanticRunner,
     },
     suite::TestResult,
     util::crate_root,
 };
 
+pub(crate) mod ast_compare;
 pub(crate) mod cases;
+pub(crate) mod conformance;
 pub(crate) mod legacy;
 pub(crate) mod runner;
 pub(crate) mod suite;

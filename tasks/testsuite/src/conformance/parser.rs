@@ -4,15 +4,11 @@ use swc_experimental_allocator::Allocator;
 
 use crate::{
     AppArgs,
+    ast_compare::ast_compare,
     cases::Case,
+    conformance::convert_experimental_program,
     legacy,
-    runner::{
-        ParseResult,
-        conformance::{
-            collect_node_spans, convert_experimental_program, format_node_span_mismatch,
-        },
-        parse,
-    },
+    runner::{ParseResult, parse},
     suite::TestResult,
 };
 
@@ -46,14 +42,7 @@ impl ParserConformanceRunner {
                 _ => return None,
             };
             let experimental_root = convert_experimental_program(experimental_root);
-
-            let legacy_nodes = collect_node_spans(&legacy_root);
-            let experimental_nodes = collect_node_spans(&experimental_root);
-            if let Some(error) = format_node_span_mismatch(
-                "Parser node conformance mismatch",
-                &legacy_nodes,
-                &experimental_nodes,
-            ) {
+            if let Some(error) = ast_compare(&legacy_root, &experimental_root) {
                 return Some(TestResult::Failed {
                     path: case.relative_path().to_owned(),
                     error,
