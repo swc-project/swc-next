@@ -10,11 +10,11 @@ use swc_experimental_ecma_transforms_base::remove_paren;
 use crate::{
     AppArgs,
     cases::Case,
+    legacy,
     runner::{
         ParseResult,
         conformance::{
-            LegacyParseResult, collect_legacy_node_spans, convert_experimental_program,
-            format_node_span_mismatch, parse_legacy,
+            collect_node_spans, convert_experimental_program, format_node_span_mismatch,
         },
         parse,
     },
@@ -46,8 +46,8 @@ impl RemoveParenConformanceRunner {
                 ParseResult::Succ(ret) => ret,
                 _ => return None,
             };
-            let mut legacy_root = match parse_legacy(case) {
-                LegacyParseResult::Succ(ret) => ret,
+            let mut legacy_root = match legacy::parse(case) {
+                legacy::ParseResult::Succ(ret) => ret,
                 _ => return None,
             };
 
@@ -55,8 +55,8 @@ impl RemoveParenConformanceRunner {
             legacy_root.visit_mut_with(&mut legacy_paren_remover(None));
             let experimental_root = convert_experimental_program(experimental_root);
 
-            let legacy_nodes = collect_legacy_node_spans(&legacy_root);
-            let experimental_nodes = collect_legacy_node_spans(&experimental_root);
+            let legacy_nodes = collect_node_spans(&legacy_root);
+            let experimental_nodes = collect_node_spans(&experimental_root);
             if let Some(error) = format_node_span_mismatch(
                 "Remove paren node conformance mismatch",
                 &legacy_nodes,

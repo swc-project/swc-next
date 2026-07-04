@@ -5,11 +5,11 @@ use swc_experimental_allocator::Allocator;
 use crate::{
     AppArgs,
     cases::Case,
+    legacy,
     runner::{
         ParseResult,
         conformance::{
-            LegacyParseResult, collect_legacy_node_spans, convert_experimental_program,
-            format_node_span_mismatch, parse_legacy,
+            collect_node_spans, convert_experimental_program, format_node_span_mismatch,
         },
         parse,
     },
@@ -41,14 +41,14 @@ impl ParserConformanceRunner {
                 ParseResult::Succ(ret) => ret,
                 _ => return None,
             };
-            let legacy_root = match parse_legacy(case) {
-                LegacyParseResult::Succ(ret) => ret,
+            let legacy_root = match legacy::parse(case) {
+                legacy::ParseResult::Succ(ret) => ret,
                 _ => return None,
             };
             let experimental_root = convert_experimental_program(experimental_root);
 
-            let legacy_nodes = collect_legacy_node_spans(&legacy_root);
-            let experimental_nodes = collect_legacy_node_spans(&experimental_root);
+            let legacy_nodes = collect_node_spans(&legacy_root);
+            let experimental_nodes = collect_node_spans(&experimental_root);
             if let Some(error) = format_node_span_mismatch(
                 "Parser node conformance mismatch",
                 &legacy_nodes,

@@ -6,31 +6,20 @@ pub mod parser;
 pub mod semantic;
 pub mod transform_remove_paren;
 
-use std::{
-    collections::HashMap,
-    panic::{AssertUnwindSafe, catch_unwind},
-};
+use std::collections::HashMap;
 
 use swc_core::{
-    common::{BytePos, GLOBALS, Globals, Spanned},
+    common::Spanned,
     ecma::{
         ast as legacy_ast,
-        parser::{
-            EsSyntax as LegacyEsSyntax, Parser as LegacyParser, StringInput,
-            Syntax as LegacySyntax, lexer::Lexer,
-        },
         visit::{Visit as LegacyVisit, VisitWith as LegacyVisitWith},
     },
 };
 use swc_experimental_ecma_ast as experimental_ast;
 use swc_experimental_ecma_ast_compat::OwnedConvert;
-use swc_experimental_ecma_parser::Syntax;
 use swc_experimental_ecma_semantic::resolver::resolver;
 
-use crate::cases::{Case, IsModule};
-
-pub type NodeKind = &'static str;
-pub type NodeSpans = HashMap<NodeKind, Vec<NodeSpan>>;
+pub type NodeSpans = HashMap<&'static str, Vec<NodeSpan>>;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct NodeSpan {
@@ -38,75 +27,7 @@ pub struct NodeSpan {
     end: u32,
 }
 
-pub enum LegacyParseResult {
-    Succ(legacy_ast::Program),
-    Fail,
-    Panic,
-    Ignore,
-}
-
-pub fn parse_legacy<C: Case>(case: &C) -> LegacyParseResult {
-    GLOBALS.set(&Globals::new(), || parse_legacy_with_current_globals(case))
-}
-
-pub fn parse_legacy_with_current_globals<C: Case>(case: &C) -> LegacyParseResult {
-    let input = StringInput::new(
-        case.code(),
-        BytePos(1),
-        BytePos(case.code().len() as u32 + 1),
-    );
-    let lexer = Lexer::new(
-        legacy_syntax(case.syntax()),
-        Default::default(),
-        input,
-        None,
-    );
-    let mut parser = LegacyParser::new_from(lexer);
-
-    let ret = match case.is_module() {
-        IsModule::Script => catch_unwind(AssertUnwindSafe(|| {
-            parser.parse_script().map(legacy_ast::Program::Script)
-        })),
-        IsModule::Module => catch_unwind(AssertUnwindSafe(|| {
-            parser.parse_module().map(legacy_ast::Program::Module)
-        })),
-        IsModule::Unknown => catch_unwind(AssertUnwindSafe(|| parser.parse_program())),
-        IsModule::Skip => {
-            return LegacyParseResult::Ignore;
-        }
-    };
-
-    match ret {
-        Ok(Ok(root)) => {
-            if parser.take_errors().is_empty() {
-                LegacyParseResult::Succ(root)
-            } else {
-                LegacyParseResult::Fail
-            }
-        }
-        Ok(Err(_)) => LegacyParseResult::Fail,
-        Err(_) => LegacyParseResult::Panic,
-    }
-}
-
-pub fn legacy_syntax(syntax: Syntax) -> LegacySyntax {
-    match syntax {
-        Syntax::Es(es) => LegacySyntax::Es(LegacyEsSyntax {
-            jsx: es.jsx,
-            fn_bind: es.fn_bind,
-            decorators: es.decorators,
-            decorators_before_export: es.decorators_before_export,
-            export_default_from: es.export_default_from,
-            import_attributes: es.import_attributes,
-            allow_super_outside_method: es.allow_super_outside_method,
-            allow_return_outside_function: es.allow_return_outside_function,
-            auto_accessors: es.auto_accessors,
-            explicit_resource_management: es.explicit_resource_management,
-        }),
-    }
-}
-
-pub fn collect_legacy_node_spans(program: &legacy_ast::Program) -> NodeSpans {
+pub fn collect_node_spans(program: &legacy_ast::Program) -> NodeSpans {
     let mut collector = LegacyNodeSpansCollector::default();
     LegacyVisitWith::visit_with(program, &mut collector);
     for spans in collector.nodes.values_mut() {
@@ -185,23 +106,9 @@ fn span_sample(spans: Option<&Vec<NodeSpan>>) -> String {
     ret
 }
 
-fn legacy_node_span<T: Spanned>(node: &T) -> NodeSpan {
-    let span = node.span();
-    NodeSpan {
-        start: span.lo.0,
-        end: span.hi.0,
-    }
-}
-
 #[derive(Default)]
 struct LegacyNodeSpansCollector {
     nodes: NodeSpans,
-}
-
-impl LegacyNodeSpansCollector {
-    fn push(&mut self, kind: NodeKind, span: NodeSpan) {
-        self.nodes.entry(kind).or_default().push(span);
-    }
 }
 
 macro_rules! node_span_collector_methods {
@@ -209,7 +116,10 @@ macro_rules! node_span_collector_methods {
         impl LegacyVisit for LegacyNodeSpansCollector {
             $(
                 fn $method(&mut self, node: &legacy_ast::$legacy_ty) {
-                    self.push($kind, legacy_node_span(node));
+                    self.nodes.entry($kind).or_default().push(NodeSpan {
+                        start: node.span().lo.0,
+                        end: node.span().hi.0,
+                    });
                     LegacyVisitWith::visit_children_with(node, self);
                 }
             )*

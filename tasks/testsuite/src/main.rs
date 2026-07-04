@@ -24,10 +24,11 @@ use crate::{
     util::crate_root,
 };
 
-mod cases;
-mod runner;
-mod suite;
-mod util;
+pub(crate) mod cases;
+pub(crate) mod legacy;
+pub(crate) mod runner;
+pub(crate) mod suite;
+pub(crate) mod util;
 
 pub struct AppArgs {
     pub debug: bool,
