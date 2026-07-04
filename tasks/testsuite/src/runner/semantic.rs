@@ -17,12 +17,7 @@ pub struct SemanticRunner;
 
 impl SemanticRunner {
     pub fn run<C: Case>(args: &AppArgs, cases: &[C]) -> Vec<TestResult> {
-        #[cfg(not(miri))]
         let iter = cases.par_iter();
-
-        #[cfg(miri)]
-        let iter = cases.iter();
-
         iter.filter_map(|case| {
             if args.debug {
                 println!("[{}] {:?}", "Debug".green(), case.relative_path());

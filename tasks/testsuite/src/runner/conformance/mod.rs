@@ -109,7 +109,9 @@ pub fn legacy_syntax(syntax: Syntax) -> LegacySyntax {
 pub fn collect_legacy_node_spans(program: &legacy_ast::Program) -> NodeSpans {
     let mut collector = LegacyNodeSpansCollector::default();
     LegacyVisitWith::visit_with(program, &mut collector);
-    sort_node_spans(&mut collector.nodes);
+    for spans in collector.nodes.values_mut() {
+        spans.sort_unstable();
+    }
     collector.nodes
 }
 
@@ -162,12 +164,6 @@ pub fn format_node_span_mismatch(
     }
 
     Some(error)
-}
-
-fn sort_node_spans(nodes: &mut NodeSpans) {
-    for spans in nodes.values_mut() {
-        spans.sort_unstable();
-    }
 }
 
 fn span_sample(spans: Option<&Vec<NodeSpan>>) -> String {
