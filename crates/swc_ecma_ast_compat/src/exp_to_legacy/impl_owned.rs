@@ -3,7 +3,7 @@ use swc_experimental_allocator::vec::Vec as ArenaVec;
 use swc_experimental_ecma_ast::{self as experimental};
 use swc_experimental_ecma_semantic::resolver::Semantic;
 
-use crate::legacy_to_exp::convert::AstConvert;
+use crate::exp_to_legacy::convert::AstConvert;
 
 pub struct OwnedConvert<'a> {
     semantic: &'a Semantic,

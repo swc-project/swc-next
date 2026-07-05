@@ -6,7 +6,7 @@ use swc_experimental_allocator::vec::Vec as ArenaVec;
 use swc_experimental_ecma_ast::{self as experimental};
 use swc_experimental_ecma_semantic::resolver::Semantic;
 
-use crate::legacy_to_exp::convert::AstConvert;
+use crate::exp_to_legacy::convert::AstConvert;
 
 /// Converts the experimental AST into legacy SWC AST nodes allocated inside a
 /// bump arena owned by the returned wrapper.

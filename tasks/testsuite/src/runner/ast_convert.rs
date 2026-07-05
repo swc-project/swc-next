@@ -5,7 +5,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use swc_experimental_allocator::Allocator;
 use swc_experimental_ecma_ast::Program;
 use swc_experimental_ecma_ast_compat::{
-    OwnedConvert, exp_to_legacy::AstConvert as LegacyToExperimentalConvert,
+    OwnedConvert, legacy_to_exp::AstConvert as LegacyToExperimentalConvert,
 };
 use swc_experimental_ecma_semantic::resolver::resolver;
 
