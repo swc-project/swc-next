@@ -438,11 +438,12 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         if self.input().is(Token::LParen) {
             // This is parsed using production MemberExpression,
             // which is left-recursive.
-            let start = callee.span_lo();
+            let callee_span = callee.span();
+            let start = callee_span.start;
             if callee.is_ident_ref_to("import") {
                 let args = self.parse_args(true)?;
                 let import_expr =
-                    self.import_expr_from_args(start, args, ImportPhase::Evaluation)?;
+                    self.import_expr_from_args(start, callee_span, args, ImportPhase::Evaluation)?;
                 return self.parse_subscripts_expr::<false>(import_expr, false);
             }
 
@@ -1545,6 +1546,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
     fn import_expr_from_args(
         &mut self,
         start: u32,
+        import_span: Span,
         mut args: Vec<'a, ExprOrSpread<'a>>,
         phase: ImportPhase,
     ) -> PResult<Expr<'a>> {
@@ -1568,7 +1570,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
         Ok(self
             .ast
-            .expr_import_expr(self.span(start), source, options, phase))
+            .expr_import_expr(self.span(start), import_span, source, options, phase))
     }
 
     fn import_expr_arg_to_expr(&mut self, arg: ExprOrSpread<'a>) -> PResult<Expr<'a>> {
@@ -1608,8 +1610,9 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
     fn parse_dynamic_import_call(&mut self, start: u32, phase: ImportPhase) -> PResult<Expr<'a>> {
         if self.input().is(Token::LParen) {
+            let import_span = self.span(start);
             let args = self.parse_args(true)?;
-            let expr = self.import_expr_from_args(start, args, phase)?;
+            let expr = self.import_expr_from_args(start, import_span, args, phase)?;
             return self.parse_subscripts_expr::<false>(expr, false);
         }
 

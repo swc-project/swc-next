@@ -783,6 +783,7 @@ impl<'a, 'src> CloneIn<'a> for ImportExpr<'src> {
     fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
         ImportExpr {
             span: self.span.clone_in(allocator),
+            import_span: self.import_span.clone_in(allocator),
             source: self.source.clone_in(allocator),
             options: self.options.clone_in(allocator),
             phase: self.phase.clone_in(allocator),

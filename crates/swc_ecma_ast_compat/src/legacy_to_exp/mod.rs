@@ -441,6 +441,7 @@ impl<'a> AstConvert<'a> {
 
                 self.ast.expr_import_expr(
                     convert_span(call.span),
+                    convert_span(import.span),
                     source,
                     options,
                     convert_import_phase(import.phase),

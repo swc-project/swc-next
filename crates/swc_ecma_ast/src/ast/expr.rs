@@ -190,6 +190,7 @@ pub struct CondExpr<'a> {
 #[derive(Debug)]
 pub struct ImportExpr<'a> {
     pub span: Span,
+    pub import_span: Span,
     pub source: Expr<'a>,
     pub options: Option<Expr<'a>>,
     pub phase: ImportPhase,

@@ -579,22 +579,11 @@ pub(crate) trait AstConvert {
                             expr: self.convert_expr(options),
                         });
                     }
-                    let callee_len = match i.phase {
-                        experimental::ImportPhase::Evaluation => "import".len(),
-                        experimental::ImportPhase::Source => "import.source".len(),
-                        experimental::ImportPhase::Defer => "import.defer".len(),
-                    } as u32;
-
                     legacy::Expr::Call(legacy::CallExpr {
                         span: convert_span(i.span),
                         ctxt: Default::default(),
                         callee: legacy::Callee::Import(legacy::Import {
-                            // The experimental AST does not retain a separate span for the
-                            // `import` callee.
-                            span: convert_span(experimental::Span {
-                                start: i.span.start,
-                                end: i.span.end.min(i.span.start.saturating_add(callee_len)),
-                            }),
+                            span: convert_span(i.import_span),
                             phase: match i.phase {
                                 experimental::ImportPhase::Evaluation => {
                                     legacy::ImportPhase::Evaluation
