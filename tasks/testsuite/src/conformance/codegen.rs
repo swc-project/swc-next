@@ -7,7 +7,7 @@ use crate::{
     AppArgs,
     cases::Case,
     runner::{
-        ParseResult,
+        ParseResult, allocator_buffer,
         codegen::{format_code_diff, generate_code},
         parse,
     },
@@ -38,7 +38,8 @@ impl CodegenConformanceRunner {
                 return None;
             }
 
-            let allocator = Allocator::new();
+            let mut buffer = allocator_buffer(case.code().len());
+            let allocator = Allocator::new(&mut buffer);
             let experimental_root = match parse(&allocator, case) {
                 ParseResult::Succ(ret) => ret,
                 _ => return None,

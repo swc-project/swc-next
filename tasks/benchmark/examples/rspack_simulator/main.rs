@@ -21,7 +21,7 @@ pub fn main() {
         register_demangler!();
     }
 
-    let source = include_str!("../../files/typescript.js");
+    let source = include_str!("../../files/underscore-1.5.2.js");
     let target = env::var("TARGET").unwrap();
     if target == "legacy" {
         legacy::run(source);

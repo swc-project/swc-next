@@ -8,7 +8,7 @@ use crate::{
     cases::Case,
     conformance::convert_experimental_program,
     legacy,
-    runner::{ParseResult, parse},
+    runner::{ParseResult, allocator_buffer, parse},
     suite::TestResult,
 };
 
@@ -32,7 +32,8 @@ impl ParserConformanceRunner {
                 return None;
             }
 
-            let allocator = Allocator::new();
+            let mut buffer = allocator_buffer(case.code().len());
+            let allocator = Allocator::new(&mut buffer);
             let experimental_root = match parse(&allocator, case) {
                 ParseResult::Succ(ret) => ret,
                 _ => return None,

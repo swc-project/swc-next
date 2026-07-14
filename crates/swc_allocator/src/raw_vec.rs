@@ -15,9 +15,8 @@
 #![allow(dead_code)]
 #![allow(unused_unsafe)]
 
-use core::cmp;
-use core::mem;
 use core::ptr::{self, NonNull};
+use core::{cmp, mem};
 use std::alloc::{Layout, handle_alloc_error};
 
 use crate::Allocator;
@@ -65,7 +64,7 @@ pub struct RawVec<'a, T> {
     ptr: NonNull<T>,
     len: u32,
     cap: u32,
-    a: &'a Allocator,
+    a: &'a Allocator<'a>,
 }
 
 impl<'a, T> RawVec<'a, T> {
@@ -112,7 +111,6 @@ impl<'a, T> RawVec<'a, T> {
             let align = mem::align_of::<T>();
             let layout = Layout::from_size_align(alloc_size, align).unwrap();
             let ptr = a
-                .arena
                 .try_alloc_layout(layout)
                 .unwrap_or_else(|_| handle_alloc_error(layout));
             if zeroed {
@@ -225,7 +223,7 @@ impl<'a, T> RawVec<'a, T> {
     }
 
     /// Returns a shared reference to the allocator backing this RawVec.
-    pub fn bump(&self) -> &'a Allocator {
+    pub fn bump(&self) -> &'a Allocator<'a> {
         self.a
     }
 
@@ -592,7 +590,6 @@ impl<'a, T> RawVec<'a, T> {
                 }
                 None => self
                     .a
-                    .arena
                     .try_alloc_layout(new_layout)
                     .map_err(|_| CollectionAllocErr::AllocErr),
             };
@@ -615,27 +612,33 @@ impl<'a, T> RawVec<'a, T> {
     ) -> Result<NonNull<u8>, CollectionAllocErr> {
         let new_layout =
             Layout::from_size_align(new_size, old_layout.align()).map_err(|_| CapacityOverflow)?;
-        let new_ptr = self
-            .a
-            .arena
-            .try_alloc_layout(new_layout)
-            .map_err(|_| CollectionAllocErr::AllocErr)?;
-        unsafe {
-            ptr::copy_nonoverlapping(
-                self.ptr.cast::<u8>().as_ptr(),
-                new_ptr.as_ptr(),
-                cmp::min(old_layout.size(), new_size),
-            );
+        let allocation = if new_size < old_layout.size() {
+            unsafe {
+                self.a
+                    .shrink_layout(self.ptr.cast(), old_layout, new_layout)
+            }
+        } else {
+            unsafe {
+                self.a
+                    .grow_layout(self.ptr.cast(), old_layout, new_layout, false)
+            }
         }
-        Ok(new_ptr)
+        .map_err(|_| CollectionAllocErr::AllocErr)?;
+        Ok(allocation.cast())
     }
 
     fn try_grow_in_place(
         &self,
-        _old_layout: Layout,
-        _new_size: usize,
+        old_layout: Layout,
+        new_size: usize,
     ) -> Result<(), CollectionAllocErr> {
-        Err(CollectionAllocErr::AllocErr)
+        let new_layout =
+            Layout::from_size_align(new_size, old_layout.align()).map_err(|_| CapacityOverflow)?;
+        unsafe {
+            self.a
+                .try_grow_in_place(self.ptr.cast(), old_layout, new_layout)
+        }
+        .map_err(|_| CollectionAllocErr::AllocErr)
     }
 }
 
@@ -650,7 +653,7 @@ impl<'a, T> RawVec<'a, T> {
         if elem_size != 0
             && let Some(layout) = self.current_layout()
         {
-            let _ = layout;
+            unsafe { self.a.deallocate_layout(self.ptr.cast(), layout) };
         }
     }
 }
@@ -689,7 +692,8 @@ mod tests {
 
     #[test]
     fn reserve_does_not_overallocate() {
-        let bump = Allocator::new();
+        let mut buffer = [std::mem::MaybeUninit::uninit(); 4096];
+        let bump = Allocator::new(&mut buffer);
         {
             let mut v: RawVec<u32> = RawVec::new_in(&bump);
             // First `reserve` allocates like `reserve_exact`
@@ -722,7 +726,8 @@ mod tests {
 
     #[test]
     fn try_reserve_reports_capacity_overflow_above_u32_max() {
-        let bump = Allocator::new();
+        let mut buffer = [std::mem::MaybeUninit::uninit(); 1];
+        let bump = Allocator::new(&mut buffer);
         let mut v: RawVec<u8> = RawVec::new_in(&bump);
 
         assert_eq!(
@@ -738,7 +743,8 @@ mod tests {
     #[test]
     #[should_panic(expected = "capacity overflow")]
     fn with_capacity_panics_above_u32_max() {
-        let bump = Allocator::new();
+        let mut buffer = [std::mem::MaybeUninit::uninit(); 1];
+        let bump = Allocator::new(&mut buffer);
         let _ = RawVec::<u8>::with_capacity_in(u32::MAX as usize + 1, &bump);
     }
 }

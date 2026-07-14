@@ -1,7 +1,10 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
+use std::time::{Duration, Instant};
+
+use benchmark::allocator_buffer;
+use criterion::{Criterion, criterion_group, criterion_main};
 use swc_experimental_allocator::Allocator;
 use swc_experimental_ecma_parser::{Parser, StringSource};
 use swc_experimental_ecma_transforms_base::remove_paren::remove_paren;
@@ -11,9 +14,11 @@ fn bench_transform(c: &mut Criterion) {
     let mut group = c.benchmark_group("semantic");
     for (name, source) in bench_cases {
         group.bench_function(format!("{name}/transform/remove_paren"), |b| {
-            let allocator = Allocator::new();
-            b.iter_batched(
-                || {
+            let mut buffer = allocator_buffer(source.len());
+            let mut allocator = Allocator::new(&mut buffer);
+            b.iter_custom(|iterations| {
+                let mut elapsed = Duration::ZERO;
+                for _ in 0..iterations {
                     let input = StringSource::new(source);
                     let mut parser = Parser::new(
                         &allocator,
@@ -21,13 +26,14 @@ fn bench_transform(c: &mut Criterion) {
                         input,
                         None,
                     );
-                    parser.parse_module().unwrap()
-                },
-                |mut module| {
+                    let mut module = parser.parse_module().unwrap();
+                    let start = Instant::now();
                     remove_paren(&mut module, &allocator, None);
-                },
-                BatchSize::PerIteration,
-            );
+                    elapsed += start.elapsed();
+                    allocator.reset();
+                }
+                elapsed
+            });
         });
     }
 }

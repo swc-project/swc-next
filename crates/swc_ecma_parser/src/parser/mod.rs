@@ -121,7 +121,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
 impl<'a> Parser<'a, Lexer<'a, '_>> {
     pub fn new(
-        allocator: &'a Allocator,
+        allocator: &'a Allocator<'a>,
         syntax: Syntax,
         input: StringSource<'a>,
         comments: Option<&'a mut Comments<'a>>,
@@ -132,7 +132,7 @@ impl<'a> Parser<'a, Lexer<'a, '_>> {
 }
 
 impl<'a, I: Tokens<'a>> Parser<'a, I> {
-    pub fn new_from(allocator: &'a Allocator, mut input: I) -> Self {
+    pub fn new_from(allocator: &'a Allocator<'a>, mut input: I) -> Self {
         let in_declare = input.syntax().dts();
         let mut ctx = input.ctx() | Context::TopLevel;
         ctx.set(Context::InDeclare, in_declare);

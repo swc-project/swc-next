@@ -1,3 +1,4 @@
+use benchmark::allocator_buffer;
 use rustc_hash::FxHashSet;
 use swc_core::atoms::Atom as LegacyAtom;
 use swc_experimental_allocator::{Allocator, atom::Atom, vec::Vec as ArenaVec};
@@ -21,7 +22,8 @@ pub enum CompatMode {
 }
 
 pub fn run(src: &'static str, compat: Option<CompatMode>) {
-    let allocator = Allocator::new();
+    let mut buffer = allocator_buffer(src.len());
+    let allocator = Allocator::new(&mut buffer);
     let (mut program, tokens) = run_parse(&allocator, src);
     run_remove_paren(&mut program, &allocator);
     let semantic = run_resolver(&program);
@@ -34,7 +36,7 @@ pub fn run(src: &'static str, compat: Option<CompatMode>) {
 
 #[inline(never)]
 fn run_parse<'a>(
-    allocator: &'a Allocator,
+    allocator: &'a Allocator<'a>,
     src: &'a str,
 ) -> (Program<'a>, ArenaVec<'a, TokenAndSpan>) {
     let (program, tokens) = {

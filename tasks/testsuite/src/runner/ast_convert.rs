@@ -13,7 +13,7 @@ use crate::{
     AppArgs,
     ast_compare::ast_compare,
     cases::Case,
-    runner::{ParseResult, parse},
+    runner::{ParseResult, allocator_buffer, parse},
     suite::TestResult,
 };
 
@@ -37,7 +37,8 @@ impl AstConvertRunner {
                 return None;
             }
 
-            let allocator = Allocator::new();
+            let mut buffer = allocator_buffer(case.code().len());
+            let allocator = Allocator::new(&mut buffer);
             let experimental_root = match parse(&allocator, case) {
                 ParseResult::Succ(ret) => ret,
                 ParseResult::Panic => {
@@ -51,7 +52,8 @@ impl AstConvertRunner {
             let ret = catch_unwind(AssertUnwindSafe(|| {
                 let legacy_root = convert_experimental_to_legacy(experimental_root);
 
-                let roundtrip_allocator = Allocator::new();
+                let mut roundtrip_buffer = allocator_buffer(case.code().len());
+                let roundtrip_allocator = Allocator::new(&mut roundtrip_buffer);
                 let roundtrip_root = LegacyToExperimentalConvert::new(&roundtrip_allocator)
                     .convert_program(legacy_root.clone());
                 let roundtrip_legacy_root = convert_experimental_to_legacy(roundtrip_root);

@@ -1,5 +1,6 @@
 use std::{env, fs::read_to_string};
 
+use benchmark::allocator_buffer;
 use swc_experimental_allocator::Allocator;
 use swc_experimental_ecma_ast::{Ident, Visit};
 use swc_experimental_ecma_parser::{EsSyntax, Parser, StringSource, Syntax};
@@ -11,7 +12,8 @@ fn main() {
         .map(|p| read_to_string(p).unwrap())
         .unwrap_or(include_str!("../files/typescript.js").to_owned());
     let syntax = Syntax::Es(EsSyntax::default());
-    let allocator = Allocator::new();
+    let mut buffer = allocator_buffer(source.len());
+    let allocator = Allocator::new(&mut buffer);
     let input = StringSource::new(&source);
 
     let mut parser = Parser::new(&allocator, syntax, input, None);

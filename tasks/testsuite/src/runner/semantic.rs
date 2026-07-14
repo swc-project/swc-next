@@ -9,7 +9,7 @@ use swc_experimental_ecma_semantic::resolver::resolver;
 use crate::{
     AppArgs,
     cases::Case,
-    runner::{ParseResult, parse},
+    runner::{ParseResult, allocator_buffer, parse},
     suite::TestResult,
 };
 
@@ -29,7 +29,8 @@ impl SemanticRunner {
                 });
             }
 
-            let allocator = Allocator::new();
+            let mut buffer = allocator_buffer(case.code().len());
+            let allocator = Allocator::new(&mut buffer);
             let root = match parse(&allocator, case) {
                 ParseResult::Succ(ret) => ret,
                 _ => return None,

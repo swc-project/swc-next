@@ -99,7 +99,7 @@ impl<'a> crate::input::Tokens<'a> for Lexer<'a, '_> {
     }
 
     #[inline]
-    fn allocator(&self) -> &'a Allocator {
+    fn allocator(&self) -> &'a Allocator<'a> {
         self.allocator
     }
 

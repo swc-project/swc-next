@@ -9,7 +9,7 @@ use crate::{DUMMY_SP, Span};
 pub struct Comments<'a> {
     pub leading: ArenaHashMap<'a, u32, Vec<'a, Comment<'a>>>,
     pub trailing: ArenaHashMap<'a, u32, Vec<'a, Comment<'a>>>,
-    allocator: &'a Allocator,
+    allocator: &'a Allocator<'a>,
 }
 
 impl<'a> CloneIn<'a> for Comments<'_> {

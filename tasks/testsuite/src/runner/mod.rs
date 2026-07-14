@@ -4,7 +4,10 @@ pub mod parser;
 pub mod remove_paren;
 pub mod semantic;
 
-use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::{
+    mem::MaybeUninit,
+    panic::{AssertUnwindSafe, catch_unwind},
+};
 
 use swc_experimental_allocator::Allocator;
 use swc_experimental_ecma_ast::Program;
@@ -19,12 +22,17 @@ pub enum ParseResult<'a> {
     Ignore,
 }
 
-pub fn parse<'a, C: Case>(allocator: &'a Allocator, case: &'a C) -> ParseResult<'a> {
+pub fn allocator_buffer(source_len: usize) -> Box<[MaybeUninit<u8>]> {
+    let len = source_len.saturating_mul(16).max(64 * 1024);
+    Box::<[u8]>::new_uninit_slice(len)
+}
+
+pub fn parse<'a, C: Case>(allocator: &'a Allocator<'a>, case: &'a C) -> ParseResult<'a> {
     parse_code(allocator, case.code(), case.syntax(), case.is_module())
 }
 
 pub fn parse_code<'a>(
-    allocator: &'a Allocator,
+    allocator: &'a Allocator<'a>,
     code: &'a str,
     syntax: Syntax,
     is_module: IsModule,

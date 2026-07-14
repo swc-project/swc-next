@@ -42,7 +42,9 @@ fn parse_case(path: &Path) -> bool {
     let code = fs::read_to_string(path).unwrap();
     let ext = path.extension().unwrap().to_string_lossy();
 
-    let allocator = Allocator::new();
+    let len = code.len().saturating_mul(16).max(64 * 1024);
+    let mut buffer = Box::<[u8]>::new_uninit_slice(len);
+    let allocator = Allocator::new(&mut buffer);
     let input = StringSource::new(&code);
     let mut parser = Parser::new(&allocator, syntax(path, &code), input, None);
 

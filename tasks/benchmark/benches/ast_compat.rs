@@ -1,6 +1,7 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
+use benchmark::allocator_buffer;
 use criterion::{Bencher, Criterion, criterion_group, criterion_main};
 use swc_core::common::{BytePos, GLOBALS, Globals, Mark};
 use swc_experimental_allocator::{Allocator, boxed::Box as AstBox};
@@ -31,8 +32,9 @@ fn bench_new(b: &mut Bencher, src: &'static str) {
     use swc_experimental_ecma_parser::StringSource;
     use swc_experimental_ecma_semantic::resolver::resolver;
 
+    let mut buffer = allocator_buffer(src.len());
+    let mut allocator = Allocator::new(&mut buffer);
     b.iter(|| {
-        let allocator = Allocator::new();
         let input = StringSource::new(src);
         let mut parser = Parser::new(
             &allocator,
@@ -50,7 +52,8 @@ fn bench_new(b: &mut Bencher, src: &'static str) {
                     .convert_module(AstBox::into_inner(module));
             }
             Program::Script(_) => unreachable!(),
-        }
+        };
+        allocator.reset();
     });
 }
 
@@ -59,8 +62,9 @@ fn bench_new_unsafe(b: &mut Bencher, src: &'static str) {
     use swc_experimental_ecma_parser::StringSource;
     use swc_experimental_ecma_semantic::resolver::resolver;
 
+    let mut buffer = allocator_buffer(src.len());
+    let mut allocator = Allocator::new(&mut buffer);
     b.iter(|| {
-        let allocator = Allocator::new();
         let input = StringSource::new(src);
         let mut parser = Parser::new(
             &allocator,
@@ -73,12 +77,15 @@ fn bench_new_unsafe(b: &mut Bencher, src: &'static str) {
 
         let semantic = resolver(&program);
         match program {
-            Program::Module(module) => std::hint::black_box(
-                swc_experimental_ecma_ast_compat::ArenaConvert::new(&semantic)
-                    .convert_module(AstBox::into_inner(module)),
-            ),
+            Program::Module(module) => {
+                let _ = std::hint::black_box(
+                    swc_experimental_ecma_ast_compat::ArenaConvert::new(&semantic)
+                        .convert_module(AstBox::into_inner(module)),
+                );
+            }
             Program::Script(_) => unreachable!(),
-        }
+        };
+        allocator.reset();
     });
 }
 

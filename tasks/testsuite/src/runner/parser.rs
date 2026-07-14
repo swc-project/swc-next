@@ -5,7 +5,7 @@ use swc_experimental_allocator::Allocator;
 use crate::{
     AppArgs,
     cases::Case,
-    runner::{ParseResult, parse},
+    runner::{ParseResult, allocator_buffer, parse},
     suite::TestResult,
 };
 
@@ -25,7 +25,8 @@ impl ParserRunner {
                 };
             }
 
-            let allocator = Allocator::new();
+            let mut buffer = allocator_buffer(case.code().len());
+            let allocator = Allocator::new(&mut buffer);
             match (case.should_fail(), parse(&allocator, case)) {
                 (false, ParseResult::Succ(_)) => TestResult::Passed {
                     path: case.relative_path().to_owned(),

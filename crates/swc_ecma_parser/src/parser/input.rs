@@ -21,7 +21,7 @@ pub trait Tokens<'a> {
     fn ctx_mut(&mut self) -> &mut Context;
     fn syntax(&self) -> SyntaxFlags;
     fn target(&self) -> EsVersion;
-    fn allocator(&self) -> &'a Allocator;
+    fn allocator(&self) -> &'a Allocator<'a>;
 
     fn checkpoint_save(&self) -> Self::Checkpoint;
     fn checkpoint_load(&mut self, checkpoint: Self::Checkpoint);

@@ -3,6 +3,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use std::hint::black_box;
 
+use benchmark::allocator_buffer;
 use criterion::{Criterion, criterion_group, criterion_main};
 use swc_experimental_allocator::Allocator;
 use swc_experimental_ecma_ast::Program;
@@ -14,7 +15,8 @@ fn bench_semantic(c: &mut Criterion) {
     let mut group = c.benchmark_group("semantic");
     for (name, source) in bench_cases {
         group.bench_function(format!("{name}/semantic/legacy"), |b| {
-            let mut allocator = Allocator::new();
+            let mut buffer = allocator_buffer(source.len());
+            let mut allocator = Allocator::new(&mut buffer);
             b.iter(|| {
                 let semantic = {
                     let input = StringSource::new(source);

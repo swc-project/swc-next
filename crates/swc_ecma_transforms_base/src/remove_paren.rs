@@ -10,7 +10,7 @@ use swc_experimental_ecma_ast::{
 
 pub fn remove_paren<'ast, N: VisitMutWith<'ast, ParenRemover<'ast>>>(
     root: &mut N,
-    allocator: &'ast Allocator,
+    allocator: &'ast Allocator<'ast>,
     comments: Option<&mut Comments>,
 ) {
     let mut visitor = ParenRemover {
@@ -191,7 +191,7 @@ fn seq_expr_len(expr: &Expr) -> usize {
 fn ignore_return_value<'a>(
     expr: Expr<'a>,
     has_padding_value: &mut bool,
-    allocator: &'a Allocator,
+    allocator: &'a Allocator<'a>,
 ) -> Option<Expr<'a>> {
     match expr {
         Expr::Fn(..) | Expr::Arrow(..) | Expr::Lit(..) => {
@@ -237,7 +237,7 @@ fn ignore_return_value<'a>(
 
 fn ignore_padding_value<'a>(
     exprs: ArenaVec<'a, Expr<'a>>,
-    allocator: &'a Allocator,
+    allocator: &'a Allocator<'a>,
 ) -> ArenaVec<'a, Expr<'a>> {
     let len = exprs.len();
     if len <= 2 {

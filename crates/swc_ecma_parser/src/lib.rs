@@ -49,7 +49,7 @@ pub use parser::*;
 pub use syntax::{EsSyntax, Syntax, SyntaxFlags, TsSyntax};
 
 pub fn with_file_parser<'a, 'cmt, T>(
-    allocator: &'a Allocator,
+    allocator: &'a Allocator<'a>,
     src: &'a str,
     syntax: Syntax,
     target: EsVersion,
@@ -72,7 +72,7 @@ macro_rules! expose {
         /// This is an alias for [Parser], [Lexer] and [SourceFileInput], but
         /// instantiation of generics occur in `swc_ecma_parser` crate.
         pub fn $name<'a>(
-            allocator: &'a Allocator,
+            allocator: &'a Allocator<'a>,
             src: &'a str,
             syntax: Syntax,
             target: EsVersion,

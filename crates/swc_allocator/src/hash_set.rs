@@ -29,7 +29,7 @@ pub use hashbrown::hash_set::{
 
 use crate::{Allocator, hash_map::HashMap};
 
-type InnerHashSet<'alloc, T, S> = hashbrown::HashSet<T, S, &'alloc Allocator>;
+type InnerHashSet<'alloc, T, S> = hashbrown::HashSet<T, S, &'alloc Allocator<'alloc>>;
 
 /// A hash set without `Drop` that stores data in arena allocator.
 ///
@@ -97,7 +97,7 @@ impl<'alloc, T, S> HashSet<'alloc, T, S> {
     pub fn with_capacity_and_hasher_in(
         capacity: usize,
         hasher: S,
-        allocator: &'alloc Allocator,
+        allocator: &'alloc Allocator<'alloc>,
     ) -> Self {
         const { Self::ASSERT_T_IS_NOT_DROP };
 
@@ -118,7 +118,7 @@ impl<'alloc, T, S> HashSet<'alloc, T, S> {
     // TODO: Do that!
     #[allow(unfulfilled_lint_expectations)]
     #[expect(clippy::unused_self)]
-    pub fn allocator(&self) -> &'alloc Allocator {
+    pub fn allocator(&self) -> &'alloc Allocator<'alloc> {
         const { panic!("This method cannot be called") };
         unreachable!();
     }
@@ -195,7 +195,7 @@ impl<'alloc, T, S> DerefMut for HashSet<'alloc, T, S> {
 }
 
 impl<'alloc, T, S> IntoIterator for HashSet<'alloc, T, S> {
-    type IntoIter = IntoIter<T, &'alloc Allocator>;
+    type IntoIter = IntoIter<T, &'alloc Allocator<'alloc>>;
     type Item = T;
 
     /// Creates a consuming iterator, that is, one that moves each value out of the set

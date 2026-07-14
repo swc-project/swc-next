@@ -7,7 +7,7 @@ use swc_experimental_ecma_transforms_base::remove_paren;
 use crate::{
     AppArgs,
     cases::Case,
-    runner::{ParseResult, parse},
+    runner::{ParseResult, allocator_buffer, parse},
     suite::TestResult,
 };
 
@@ -27,7 +27,8 @@ impl RemoveParenRunner {
                 });
             }
 
-            let allocator = Allocator::new();
+            let mut buffer = allocator_buffer(case.code().len());
+            let allocator = Allocator::new(&mut buffer);
             let mut root = match parse(&allocator, case) {
                 ParseResult::Succ(ret) => ret,
                 _ => return None,

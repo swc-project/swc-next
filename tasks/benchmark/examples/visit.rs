@@ -1,3 +1,4 @@
+use benchmark::allocator_buffer;
 use swc_core::common::BytePos;
 use swc_experimental_allocator::Allocator;
 
@@ -34,7 +35,8 @@ fn test_new(src: &str) -> usize {
     use swc_experimental_ecma_parser::{Parser, StringSource};
     use swc_experimental_ecma_visit::VisitWith;
 
-    let allocator = Allocator::new();
+    let mut buffer = allocator_buffer(src.len());
+    let allocator = Allocator::new(&mut buffer);
     let input = StringSource::new(src);
     let mut parser = Parser::new(
         &allocator,
@@ -63,7 +65,8 @@ fn test_new_mut(src: &str) -> usize {
     use swc_experimental_ecma_parser::{Parser, StringSource};
     use swc_experimental_ecma_visit::VisitMutWith;
 
-    let allocator = Allocator::new();
+    let mut buffer = allocator_buffer(src.len());
+    let allocator = Allocator::new(&mut buffer);
     let input = StringSource::new(src);
     let mut parser = Parser::new(
         &allocator,

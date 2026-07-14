@@ -29,7 +29,9 @@ fn snapshot() {
 
         let syntax = Syntax::Es(EsSyntax::default());
 
-        let bump = Allocator::new();
+        let len = source_text.len().saturating_mul(16).max(64 * 1024);
+        let mut buffer = Box::<[u8]>::new_uninit_slice(len);
+        let bump = Allocator::new(&mut buffer);
         let root =
             parse_file_as_program(&bump, &source_text, syntax, EsVersion::EsNext, None).unwrap();
         let semantic = resolver(&root);

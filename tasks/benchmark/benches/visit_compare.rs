@@ -1,6 +1,7 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
+use benchmark::allocator_buffer;
 use criterion::{Bencher, Criterion, criterion_group, criterion_main};
 use swc_experimental_allocator::Allocator;
 
@@ -41,7 +42,8 @@ fn bench_new(b: &mut Bencher, src: &'static str) {
     use swc_experimental_ecma_parser::{Parser, StringSource};
     use swc_experimental_ecma_visit::VisitWith;
 
-    let allocator = Allocator::new();
+    let mut buffer = allocator_buffer(src.len());
+    let allocator = Allocator::new(&mut buffer);
     let input = StringSource::new(src);
     let mut parser = Parser::new(
         &allocator,

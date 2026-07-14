@@ -713,7 +713,7 @@ impl<'bump, T: 'bump> Vec<'bump, T> {
     /// ```
     #[inline]
     #[must_use]
-    pub fn bump(&self) -> &'bump Allocator {
+    pub fn bump(&self) -> &'bump Allocator<'bump> {
         self.buf.bump()
     }
 

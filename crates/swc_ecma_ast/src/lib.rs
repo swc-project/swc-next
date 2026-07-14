@@ -91,5 +91,5 @@ const _: () = {
 };
 
 pub struct AstBuilder<'a> {
-    pub allocator: &'a Allocator,
+    pub allocator: &'a Allocator<'a>,
 }

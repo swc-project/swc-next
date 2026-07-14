@@ -33,7 +33,7 @@ pub use hashbrown::{
 
 use crate::Allocator;
 
-type InnerHashMap<'alloc, K, V, S> = hashbrown::HashMap<K, V, S, &'alloc Allocator>;
+type InnerHashMap<'alloc, K, V, S> = hashbrown::HashMap<K, V, S, &'alloc Allocator<'alloc>>;
 
 /// A hash map without `Drop` that stores data in arena allocator.
 ///
@@ -140,7 +140,7 @@ impl<'alloc, K, V, S> HashMap<'alloc, K, V, S> {
     pub fn with_capacity_and_hasher_in(
         capacity: usize,
         hasher: S,
-        allocator: &'alloc Allocator,
+        allocator: &'alloc Allocator<'alloc>,
     ) -> Self {
         const { Self::ASSERT_K_AND_V_ARE_NOT_DROP };
 
@@ -152,7 +152,7 @@ impl<'alloc, K, V, S> HashMap<'alloc, K, V, S> {
     ///
     /// The map cannot be used after calling this. The iterator element type is `K`.
     #[inline(always)]
-    pub fn into_keys(self) -> IntoKeys<K, V, &'alloc Allocator> {
+    pub fn into_keys(self) -> IntoKeys<K, V, &'alloc Allocator<'alloc>> {
         let inner = ManuallyDrop::into_inner(self.0);
         inner.into_keys()
     }
@@ -161,7 +161,7 @@ impl<'alloc, K, V, S> HashMap<'alloc, K, V, S> {
     ///
     /// The map cannot be used after calling this. The iterator element type is `V`.
     #[inline(always)]
-    pub fn into_values(self) -> IntoValues<K, V, &'alloc Allocator> {
+    pub fn into_values(self) -> IntoValues<K, V, &'alloc Allocator<'alloc>> {
         let inner = ManuallyDrop::into_inner(self.0);
         inner.into_values()
     }
@@ -179,7 +179,7 @@ impl<'alloc, K, V, S> HashMap<'alloc, K, V, S> {
     // TODO: Do that!
     #[allow(unfulfilled_lint_expectations)]
     #[expect(clippy::unused_self)]
-    pub fn allocator(&self) -> &'alloc Allocator {
+    pub fn allocator(&self) -> &'alloc Allocator<'alloc> {
         const { panic!("This method cannot be called") };
         unreachable!();
     }
@@ -214,7 +214,7 @@ impl<'alloc, K, V, S: Default> HashMap<'alloc, K, V, S> {
     #[inline]
     pub fn from_iter_in<I: IntoIterator<Item = (K, V)>>(
         iter: I,
-        allocator: &'alloc Allocator,
+        allocator: &'alloc Allocator<'alloc>,
     ) -> Self
     where
         K: Eq + Hash,
@@ -263,7 +263,7 @@ impl<'alloc, K, V, S> DerefMut for HashMap<'alloc, K, V, S> {
 }
 
 impl<'alloc, K, V, S> IntoIterator for HashMap<'alloc, K, V, S> {
-    type IntoIter = IntoIter<K, V, &'alloc Allocator>;
+    type IntoIter = IntoIter<K, V, &'alloc Allocator<'alloc>>;
     type Item = (K, V);
 
     /// Creates a consuming iterator, that is, one that moves each key-value pair out of the map

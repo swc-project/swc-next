@@ -2,15 +2,16 @@ use std::{alloc::Layout, ptr::NonNull};
 
 use allocator_api2::alloc::{AllocError, Allocator};
 
-unsafe impl Allocator for crate::Allocator {
+unsafe impl Allocator for crate::Allocator<'_> {
     #[inline]
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        Allocator::allocate(&&self.arena, layout)
+        let ptr = self.try_alloc_layout(layout)?;
+        Ok(NonNull::slice_from_raw_parts(ptr, layout.size()))
     }
 
     #[inline]
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-        unsafe { Allocator::deallocate(&&self.arena, ptr, layout) }
+        unsafe { self.deallocate_layout(ptr, layout) }
     }
 
     #[inline]
@@ -20,7 +21,7 @@ unsafe impl Allocator for crate::Allocator {
         old_layout: Layout,
         new_layout: Layout,
     ) -> Result<NonNull<[u8]>, AllocError> {
-        unsafe { Allocator::shrink(&&self.arena, ptr, old_layout, new_layout) }
+        unsafe { self.shrink_layout(ptr, old_layout, new_layout) }
     }
 
     #[inline]
@@ -30,7 +31,7 @@ unsafe impl Allocator for crate::Allocator {
         old_layout: Layout,
         new_layout: Layout,
     ) -> Result<NonNull<[u8]>, AllocError> {
-        unsafe { Allocator::grow(&&self.arena, ptr, old_layout, new_layout) }
+        unsafe { self.grow_layout(ptr, old_layout, new_layout, false) }
     }
 
     #[inline]
@@ -40,6 +41,6 @@ unsafe impl Allocator for crate::Allocator {
         old_layout: Layout,
         new_layout: Layout,
     ) -> Result<NonNull<[u8]>, AllocError> {
-        unsafe { Allocator::grow_zeroed(&&self.arena, ptr, old_layout, new_layout) }
+        unsafe { self.grow_layout(ptr, old_layout, new_layout, true) }
     }
 }

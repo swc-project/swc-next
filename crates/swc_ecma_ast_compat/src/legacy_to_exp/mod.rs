@@ -10,7 +10,7 @@ use swc_experimental_allocator::vec::Vec as ArenaVec;
 use swc_experimental_ecma_ast::{self as experimental, AstBuilder};
 
 pub struct AstConvert<'a> {
-    allocator: &'a Allocator,
+    allocator: &'a Allocator<'a>,
     ast: AstBuilder<'a>,
 }
 

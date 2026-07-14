@@ -112,7 +112,7 @@ impl<'a, I: Tokens<'a>> Tokens<'a> for Capturing<'a, I> {
         self.inner.set_next_regexp(start);
     }
 
-    fn allocator(&self) -> &'a Allocator {
+    fn allocator(&self) -> &'a Allocator<'a> {
         self.inner.allocator()
     }
 

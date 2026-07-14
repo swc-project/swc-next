@@ -10,7 +10,7 @@ use swc_experimental_ecma_semantic::resolver::resolver;
 use crate::{
     AppArgs,
     cases::Case,
-    runner::{ParseResult, parse, parse_code},
+    runner::{ParseResult, allocator_buffer, parse, parse_code},
     suite::TestResult,
 };
 
@@ -38,7 +38,8 @@ impl CodegenRunner {
                 return None;
             }
 
-            let allocator = Allocator::new();
+            let mut buffer = allocator_buffer(case.code().len());
+            let allocator = Allocator::new(&mut buffer);
             let root = match parse(&allocator, case) {
                 ParseResult::Succ(ret) => ret,
                 _ => return None,
@@ -53,7 +54,8 @@ impl CodegenRunner {
                 }
             };
 
-            let second_allocator = Allocator::new();
+            let mut second_buffer = allocator_buffer(first.len());
+            let second_allocator = Allocator::new(&mut second_buffer);
             let reparsed =
                 match parse_code(&second_allocator, &first, case.syntax(), case.is_module()) {
                     ParseResult::Succ(ret) => ret,

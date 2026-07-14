@@ -121,7 +121,7 @@ fn bigint_atom_from_digits<'a>(
     s: &'a str,
     radix: u32,
     has_underscore: bool,
-    allocator: &'a Allocator,
+    allocator: &'a Allocator<'a>,
 ) -> Option<Atom<'a>> {
     if radix == 10 && !has_underscore {
         return Some(Atom::from(s));
@@ -137,7 +137,7 @@ fn bigint_atom_from_digits<'a>(
 }
 
 pub struct Lexer<'a, 'cmt> {
-    allocator: &'a Allocator,
+    allocator: &'a Allocator<'a>,
     comments: Option<&'cmt mut Comments<'a>>,
     /// [Some] if comment comment parsing is enabled. Otherwise [None]
     comments_buffer: Option<CommentsBuffer<'a>>,
@@ -204,7 +204,7 @@ impl<'a, 'cmt> Lexer<'a, 'cmt> {
 
 impl<'a, 'cmt> Lexer<'a, 'cmt> {
     pub fn new(
-        allocator: &'a Allocator,
+        allocator: &'a Allocator<'a>,
         syntax: Syntax,
         target: EsVersion,
         input: StringSource<'a>,

@@ -2329,7 +2329,6 @@ name = "swc_experimental_allocator"
 version = "0.11.0"
 dependencies = [
  "allocator-api2",
- "bumpalo",
  "hashbrown 0.17.1",
  "rustc-hash",
 ]
