@@ -2,22 +2,23 @@ use std::{hash::BuildHasherDefault, ops::RangeFull};
 
 use indexmap::IndexMap;
 use rustc_hash::FxHasher;
-use swc_experimental_allocator::{Allocator, boxed::Box as AstBox, vec::Vec as ArenaVec};
 use swc_experimental_ecma_ast::{
-    AstBuilder, Class, ClassMember, Comments, Expr, GetSpan, IfStmt, SeqExpr, SimpleAssignTarget,
-    Span, Stmt, UnaryExpr, UnaryOp, VisitMut, VisitMutWith,
+    Ast, Class, ClassMember, Comments, Expr, GetSpan, IfStmt, SimpleAssignTarget, Span, Stmt,
+    UnaryOp, VisitMut, VisitMutWith,
 };
 
-pub fn remove_paren<'ast, N: VisitMutWith<'ast, ParenRemover<'ast>>>(
+pub fn remove_paren<'visit, 'ast: 'visit, N>(
     root: &mut N,
-    allocator: &'ast Allocator,
-    comments: Option<&mut Comments>,
-) {
+    ast: &'visit mut Ast<'ast>,
+    comments: Option<&mut Comments<'ast>>,
+) where
+    N: Copy + VisitMutWith<'ast, ParenRemover<'visit, 'ast>>,
+{
     let mut visitor = ParenRemover {
-        ast: AstBuilder { allocator },
+        ast,
         span_map: Default::default(),
     };
-    root.visit_mut_with(&mut visitor);
+    *root = (*root).visit_mut_with(&mut visitor);
     if let Some(c) = comments {
         for (to, from) in visitor.span_map.drain(RangeFull).rev() {
             c.move_leading(from.start, to.start);
@@ -26,8 +27,8 @@ pub fn remove_paren<'ast, N: VisitMutWith<'ast, ParenRemover<'ast>>>(
     }
 }
 
-pub struct ParenRemover<'a> {
-    ast: AstBuilder<'a>,
+pub struct ParenRemover<'visit, 'ast> {
+    ast: &'visit mut Ast<'ast>,
     /// A hash map to preserve original span.
     ///
     /// Key is span of inner expression, and value is span of the paren
@@ -35,164 +36,182 @@ pub struct ParenRemover<'a> {
     span_map: IndexMap<Span, Span, BuildHasherDefault<FxHasher>>,
 }
 
-impl<'a> ParenRemover<'a> {
-    fn invalid_expr(&self) -> Expr<'a> {
-        self.ast.expr_invalid()
-    }
-
-    fn unwrap_expr(&mut self, node: &mut Expr<'a>) {
+impl ParenRemover<'_, '_> {
+    fn unwrap_expr(&mut self, mut node: Expr) -> Expr {
         loop {
-            match node {
-                Expr::Seq(seq) if seq.exprs.len() == 1 => {
-                    *node = std::mem::replace(&mut seq.exprs[0], self.invalid_expr());
+            node = match node {
+                Expr::Seq(seq) if seq.exprs(self.ast).len() == 1 => {
+                    seq.exprs(self.ast).get_node(self.ast, 0).unwrap()
                 }
-                Expr::Paren(expr) => {
-                    let paren_span = expr.span();
-                    let inner_expr = std::mem::replace(&mut expr.expr, self.invalid_expr());
-                    let expr_span = inner_expr.span();
+                Expr::Paren(paren) => {
+                    let paren_span = paren.span(self.ast);
+                    let inner_expr = paren.expr(self.ast);
+                    let expr_span = inner_expr.span(self.ast);
                     self.span_map.insert(expr_span, paren_span);
-                    *node = inner_expr;
+                    inner_expr
                 }
-                _ => return,
-            }
+                _ => return node,
+            };
         }
     }
 
-    fn flatten_seq_expr(&mut self, node: &mut Expr<'a>) {
-        let replacement = match node {
-            Expr::Seq(seq) => {
-                let span = seq.span;
-                let exprs_len = seq.exprs.len();
-                let flattened_len = seq.exprs.iter().map(seq_expr_len).sum();
-                let exprs = std::mem::replace(&mut seq.exprs, ArenaVec::new_in(self.ast.allocator));
+    fn flatten_seq_expr(&mut self, node: Expr) -> Expr {
+        let Expr::Seq(seq) = node else {
+            return node;
+        };
 
-                let mut has_padding_value = false;
-                let mut new_exprs = ArenaVec::with_capacity_in(flattened_len, self.ast.allocator);
+        let span = seq.span(self.ast);
+        let exprs = collect_range(seq.exprs(self.ast), self.ast);
+        let exprs_len = exprs.len();
+        let flattened_len = exprs.iter().map(|expr| seq_expr_len(*expr, self.ast)).sum();
 
-                if flattened_len == exprs_len {
-                    for (idx, expr) in exprs.into_iter().enumerate() {
-                        if idx + 1 == exprs_len {
+        let mut has_padding_value = false;
+        let mut new_exprs = Vec::with_capacity(flattened_len);
+
+        if flattened_len == exprs_len {
+            for (idx, expr) in exprs.into_iter().enumerate() {
+                if idx + 1 == exprs_len {
+                    new_exprs.push(expr);
+                } else if let Some(expr) =
+                    ignore_return_value(expr, &mut has_padding_value, self.ast)
+                {
+                    new_exprs.push(expr);
+                }
+            }
+        } else {
+            for (idx, expr) in exprs.into_iter().enumerate() {
+                let is_last = idx + 1 == exprs_len;
+                match expr {
+                    Expr::Seq(seq) => {
+                        let seq_exprs = collect_range(seq.exprs(self.ast), self.ast);
+                        if !is_last {
+                            for expr in seq_exprs {
+                                if let Some(expr) =
+                                    ignore_return_value(expr, &mut has_padding_value, self.ast)
+                                {
+                                    new_exprs.push(expr);
+                                }
+                            }
+                        } else {
+                            let seq_exprs_len = seq_exprs.len();
+                            for (idx, expr) in seq_exprs.into_iter().enumerate() {
+                                if idx + 1 == seq_exprs_len {
+                                    new_exprs.push(expr);
+                                } else if let Some(expr) =
+                                    ignore_return_value(expr, &mut has_padding_value, self.ast)
+                                {
+                                    new_exprs.push(expr);
+                                }
+                            }
+                        }
+                    }
+                    expr => {
+                        if is_last {
                             new_exprs.push(expr);
                         } else if let Some(expr) =
-                            ignore_return_value(expr, &mut has_padding_value, self.ast.allocator)
+                            ignore_return_value(expr, &mut has_padding_value, self.ast)
                         {
                             new_exprs.push(expr);
                         }
                     }
-                } else {
-                    for (idx, expr) in exprs.into_iter().enumerate() {
-                        let is_last = idx + 1 == exprs_len;
-                        match expr {
-                            Expr::Seq(seq) => {
-                                let seq_exprs = AstBox::into_inner(seq).exprs;
-                                if !is_last {
-                                    new_exprs.extend(seq_exprs.into_iter().filter_map(|expr| {
-                                        ignore_return_value(
-                                            expr,
-                                            &mut has_padding_value,
-                                            self.ast.allocator,
-                                        )
-                                    }));
-                                } else {
-                                    let seq_exprs_len = seq_exprs.len();
-                                    for (idx, expr) in seq_exprs.into_iter().enumerate() {
-                                        if idx + 1 == seq_exprs_len {
-                                            new_exprs.push(expr);
-                                        } else if let Some(expr) = ignore_return_value(
-                                            expr,
-                                            &mut has_padding_value,
-                                            self.ast.allocator,
-                                        ) {
-                                            new_exprs.push(expr);
-                                        }
-                                    }
-                                }
-                            }
-                            expr => {
-                                if is_last {
-                                    new_exprs.push(expr);
-                                } else if let Some(expr) = ignore_return_value(
-                                    expr,
-                                    &mut has_padding_value,
-                                    self.ast.allocator,
-                                ) {
-                                    new_exprs.push(expr);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                match new_exprs.len() {
-                    0 => None,
-                    1 => new_exprs.pop(),
-                    _ => {
-                        let exprs = ignore_padding_value(new_exprs, self.ast.allocator);
-                        Some(Expr::Seq(self.ast.allocator.boxed(SeqExpr { span, exprs })))
-                    }
                 }
             }
-            _ => None,
-        };
+        }
 
-        if let Some(replacement) = replacement {
-            *node = replacement;
+        match new_exprs.len() {
+            0 => node,
+            1 => new_exprs.pop().unwrap(),
+            _ => {
+                let exprs = ignore_padding_value(new_exprs);
+                let exprs = self.ast.add_typed_sub_range(exprs);
+                Expr::Seq(self.ast.seq_expr(span, exprs))
+            }
         }
     }
 }
 
-impl<'a> VisitMut<'a> for ParenRemover<'a> {
-    fn visit_mut_class(&mut self, node: &mut Class<'a>) {
-        node.visit_mut_children_with(self);
-        node.body.retain(|m| !matches!(m, ClassMember::Empty(..)));
+impl<'ast> VisitMut<'ast> for ParenRemover<'_, 'ast> {
+    fn ast(&mut self) -> &mut Ast<'ast> {
+        self.ast
     }
 
-    fn visit_mut_if_stmt(&mut self, node: &mut IfStmt<'a>) {
-        node.visit_mut_children_with(self);
-        if will_eat_else_token(&node.cons) {
-            let span = node.cons.span();
-            let cons = std::mem::replace(&mut node.cons, self.ast.stmt_empty_stmt(span));
-            let mut stmts = ArenaVec::with_capacity_in(1, self.ast.allocator);
-            stmts.push(cons);
-            node.cons = self.ast.stmt_block_stmt(span, stmts);
+    fn visit_mut_class(&mut self, node: Class) -> Class {
+        let node = node.visit_mut_children_with(self);
+        let body = node.body(self.ast);
+        let old_len = body.len();
+        let members: Vec<_> = collect_range(body, self.ast)
+            .into_iter()
+            .filter(|member| !matches!(member, ClassMember::Empty(..)))
+            .collect();
+        if members.len() != old_len {
+            let body = self.ast.add_typed_sub_range(members);
+            node.set_body(self.ast, body);
         }
+        node
     }
 
-    fn visit_mut_expr(&mut self, node: &mut Expr<'a>) {
-        self.unwrap_expr(node);
-        node.visit_mut_children_with(self);
-        self.flatten_seq_expr(node);
+    fn visit_mut_if_stmt(&mut self, node: IfStmt) -> IfStmt {
+        let node = node.visit_mut_children_with(self);
+        let cons = node.cons(self.ast);
+        if will_eat_else_token(cons, self.ast) {
+            let span = cons.span(self.ast);
+            let stmts = self.ast.add_typed_sub_range([cons]);
+            let cons = self.ast.stmt_block_stmt(span, stmts);
+            node.set_cons(self.ast, cons);
+        }
+        node
     }
 
-    fn visit_mut_simple_assign_target(&mut self, node: &mut SimpleAssignTarget<'a>) {
-        node.visit_mut_children_with(self);
-        if let SimpleAssignTarget::Paren(expr) = node {
-            let paren_span = expr.span();
-            let inner_expr = std::mem::replace(&mut expr.expr, self.ast.expr_invalid());
-            let expr_span = inner_expr.span();
-            let target = SimpleAssignTarget::try_from_expr(inner_expr, self.ast.allocator).unwrap();
+    fn visit_mut_expr(&mut self, node: Expr) -> Expr {
+        let node = self.unwrap_expr(node);
+        let node = node.visit_mut_children_with(self);
+        self.flatten_seq_expr(node)
+    }
+
+    fn visit_mut_simple_assign_target(&mut self, node: SimpleAssignTarget) -> SimpleAssignTarget {
+        let node = node.visit_mut_children_with(self);
+        if let SimpleAssignTarget::Paren(paren) = node {
+            let paren_span = paren.span(self.ast);
+            let inner_expr = paren.expr(self.ast);
+            let expr_span = inner_expr.span(self.ast);
+            let target = SimpleAssignTarget::try_from_expr(self.ast, inner_expr).unwrap();
             self.span_map.insert(expr_span, paren_span);
-            *node = target;
+            target
+        } else {
+            node
         }
     }
 }
 
-fn seq_expr_len(expr: &Expr) -> usize {
+fn collect_range<'ast, T>(
+    range: swc_experimental_ecma_ast::TypedSubRange<T>,
+    ast: &Ast<'ast>,
+) -> Vec<T>
+where
+    T: swc_experimental_ecma_ast::ExtraDataCompact<'ast>,
+{
+    range
+        .iter()
+        .map(|id| ast.get_node_in_sub_range(id))
+        .collect()
+}
+
+fn seq_expr_len(expr: Expr, ast: &Ast<'_>) -> usize {
     match expr {
-        Expr::Paren(paren) => match &paren.expr {
-            Expr::Seq(seq) => seq.exprs.len(),
+        Expr::Paren(paren) => match paren.expr(ast) {
+            Expr::Seq(seq) => seq.exprs(ast).len(),
             _ => 1,
         },
-        Expr::Seq(seq) => seq.exprs.len(),
+        Expr::Seq(seq) => seq.exprs(ast).len(),
         _ => 1,
     }
 }
 
-fn ignore_return_value<'a>(
-    expr: Expr<'a>,
+fn ignore_return_value(
+    expr: Expr,
     has_padding_value: &mut bool,
-    allocator: &'a Allocator,
-) -> Option<Expr<'a>> {
+    ast: &mut Ast<'_>,
+) -> Option<Expr> {
     match expr {
         Expr::Fn(..) | Expr::Arrow(..) | Expr::Lit(..) => {
             if *has_padding_value {
@@ -203,69 +222,62 @@ fn ignore_return_value<'a>(
             }
         }
         Expr::Seq(seq) => {
-            let SeqExpr { span, exprs } = AstBox::into_inner(seq);
+            let span = seq.span(ast);
+            let exprs = collect_range(seq.exprs(ast), ast);
             let len = exprs.len();
-            let mut new_exprs = ArenaVec::with_capacity_in(len, allocator);
+            let mut new_exprs = Vec::with_capacity(len);
 
             for (idx, expr) in exprs.into_iter().enumerate() {
                 if idx + 1 == len {
                     new_exprs.push(expr);
-                } else if let Some(expr) = ignore_return_value(expr, has_padding_value, allocator) {
+                } else if let Some(expr) = ignore_return_value(expr, has_padding_value, ast) {
                     new_exprs.push(expr);
                 }
             }
 
             match new_exprs.len() {
                 0 | 1 => new_exprs.pop(),
-                _ => Some(Expr::Seq(allocator.boxed(SeqExpr {
-                    span,
-                    exprs: new_exprs,
-                }))),
+                _ => {
+                    let exprs = ast.add_typed_sub_range(new_exprs);
+                    Some(Expr::Seq(ast.seq_expr(span, exprs)))
+                }
             }
         }
-        Expr::Unary(unary) => {
-            let UnaryExpr { span, op, arg } = AstBox::into_inner(unary);
-            if op == UnaryOp::Void {
-                ignore_return_value(arg, has_padding_value, allocator)
-            } else {
-                Some(Expr::Unary(allocator.boxed(UnaryExpr { span, op, arg })))
-            }
+        Expr::Unary(unary) if unary.op(ast) == UnaryOp::Void => {
+            ignore_return_value(unary.arg(ast), has_padding_value, ast)
         }
         _ => Some(expr),
     }
 }
 
-fn ignore_padding_value<'a>(
-    exprs: ArenaVec<'a, Expr<'a>>,
-    allocator: &'a Allocator,
-) -> ArenaVec<'a, Expr<'a>> {
+fn ignore_padding_value(exprs: Vec<Expr>) -> Vec<Expr> {
     let len = exprs.len();
     if len <= 2 {
         return exprs;
     }
 
-    let mut new_exprs = ArenaVec::with_capacity_in(len, allocator);
-    for (idx, expr) in exprs.into_iter().enumerate() {
-        match &expr {
-            Expr::Fn(..) | Expr::Arrow(..) | Expr::Lit(..) if idx + 1 != len => {}
-            _ => new_exprs.push(expr),
-        }
-    }
-    new_exprs
+    exprs
+        .into_iter()
+        .enumerate()
+        .filter_map(|(idx, expr)| match expr {
+            Expr::Fn(..) | Expr::Arrow(..) | Expr::Lit(..) if idx + 1 != len => None,
+            _ => Some(expr),
+        })
+        .collect()
 }
 
-fn will_eat_else_token(s: &Stmt) -> bool {
-    match s {
-        Stmt::If(s) => match &s.alt {
-            Some(alt) => will_eat_else_token(alt),
+fn will_eat_else_token(stmt: Stmt, ast: &Ast<'_>) -> bool {
+    match stmt {
+        Stmt::If(if_stmt) => match if_stmt.alt(ast) {
+            Some(alt) => will_eat_else_token(alt, ast),
             None => true,
         },
         Stmt::Block(..) => false,
-        Stmt::Labeled(s) => will_eat_else_token(&s.body),
-        Stmt::While(s) => will_eat_else_token(&s.body),
-        Stmt::For(s) => will_eat_else_token(&s.body),
-        Stmt::ForIn(s) => will_eat_else_token(&s.body),
-        Stmt::ForOf(s) => will_eat_else_token(&s.body),
+        Stmt::Labeled(stmt) => will_eat_else_token(stmt.body(ast), ast),
+        Stmt::While(stmt) => will_eat_else_token(stmt.body(ast), ast),
+        Stmt::For(stmt) => will_eat_else_token(stmt.body(ast), ast),
+        Stmt::ForIn(stmt) => will_eat_else_token(stmt.body(ast), ast),
+        Stmt::ForOf(stmt) => will_eat_else_token(stmt.body(ast), ast),
         _ => false,
     }
 }
