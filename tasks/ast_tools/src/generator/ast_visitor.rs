@@ -6,7 +6,7 @@ use crate::{
     AST_CRATE_PATH,
     output::{RawOutput, RustOutput, output_path},
     schema::{AstType, Schema, TypeId},
-    util::safe_ident,
+    util::{calculate_inline_layout, safe_ident},
 };
 
 pub fn ast_visitor(schema: &Schema) -> RawOutput {
@@ -62,9 +62,10 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 });
 
                 // VisitWith/VisitMutWith
-                // Use typed getter methods instead of directly accessing extra_data.
-                // This handles both inline and extra_data storage transparently.
-                let mut field_loads = TokenStream::new();
+                let uses_extra_data = calculate_inline_layout(ast, schema).is_none();
+                let mut getter_field_loads = TokenStream::new();
+                let mut extra_data_field_loads = TokenStream::new();
+                let mut field_values = Vec::new();
                 let mut visit_children = TokenStream::new();
                 let mut visit_mut_children = TokenStream::new();
 
@@ -79,9 +80,20 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     let setter_name = format_ident!("set_{}", &field.name);
                     let field_value = format_ident!("field_value_{field_index}");
 
-                    field_loads.extend(quote! {
+                    getter_field_loads.extend(quote! {
                         let #field_value = self.#getter_name(visitor.ast());
                     });
+                    extra_data_field_loads.extend(quote! {
+                        let offset = extra_data_start.wrapping_add(#field_index);
+                        debug_assert!(offset < extra_data.len());
+                        let #field_value: #field_ty_ident = unsafe {
+                            ExtraDataCompact::from_extra_data(
+                                *extra_data.get_unchecked(offset),
+                                ast,
+                            )
+                        };
+                    });
+                    field_values.push(field_value.clone());
                     visit_children.extend(quote! {
                         <#field_ty_ident as VisitWith<'a, V>>::visit_with(#field_value, visitor);
                     });
@@ -91,6 +103,30 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                         self.#setter_name(visitor.ast(), new_node);
                     });
                 }
+
+                // Keep inline-data access behind the typed getters. For extra-data nodes, decode
+                // all visitable fields in one block so the node's base offset and the extra-data
+                // slice are loaded once. The block also releases the immutable AST borrow before
+                // calling back into the mutable visitor.
+                let field_loads = if uses_extra_data && field_values.len() > 1 {
+                    quote! {
+                        let (#(#field_values,)*) = {
+                            let ast = visitor.ast();
+                            let extra_data_start = unsafe {
+                                ast.nodes
+                                    .get_unchecked(self.0.index())
+                                    .data
+                                    .extra_data_start
+                                    .index()
+                            };
+                            let extra_data = ast.extra_data.as_slice();
+                            #extra_data_field_loads
+                            (#(#field_values,)*)
+                        };
+                    }
+                } else {
+                    getter_field_loads
+                };
 
                 visit_with_impls.extend(quote! {
                     impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for #ty_ident {
