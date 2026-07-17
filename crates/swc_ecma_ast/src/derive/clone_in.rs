@@ -1,8 +1,6 @@
-use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
-
 use crate::{
-    AssignOp, Ast, BinaryOp, ImportPhase, MetaPropKind, MethodKind, ScopeId, Span, SymbolId,
-    TypedSubRange, UnaryOp, UpdateOp, VarDeclKind, node_id::ExtraDataCompact,
+    AssignOp, Ast, Atom, BinaryOp, ImportPhase, MetaPropKind, MethodKind, ScopeId, Span, SymbolId,
+    TypedSubRange, UnaryOp, UpdateOp, VarDeclKind, Wtf8Atom, node_id::ExtraDataCompact,
 };
 
 pub trait CloneIn<'a>: Sized {

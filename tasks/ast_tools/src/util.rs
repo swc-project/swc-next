@@ -144,8 +144,8 @@ pub fn map_field_type_to_extra_field(ast: &AstType, schema: &Schema) -> String {
                     }
                 }
                 AstType::Primitive(primitive) => match primitive.name {
-                    "Atom" => "optional_atom".to_owned(),
-                    "Wtf8Atom" => "optional_wtf8_atom".to_owned(),
+                    "Atom" => "atom".to_owned(),
+                    "Wtf8Atom" => "wtf8_atom".to_owned(),
                     "ScopeId" => "optional_scope_id".to_owned(),
                     "SymbolId" => "optional_symbol_id".to_owned(),
                     "Span" => "optional_span".to_owned(),

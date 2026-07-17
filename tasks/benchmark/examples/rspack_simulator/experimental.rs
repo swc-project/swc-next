@@ -267,7 +267,7 @@ impl<'ast> Visit<'ast> for InsertedSemicolons<'_, 'ast, '_> {
 
 struct JavascriptParser<'visit, 'ast> {
     ast: &'visit Ast<'ast>,
-    idents: Vec<swc_experimental_allocator::atom::Atom<'ast>>,
+    idents: Vec<swc_experimental_ecma_ast::Atom<'ast>>,
 }
 
 impl<'ast> Visit<'ast> for JavascriptParser<'_, 'ast> {

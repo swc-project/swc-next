@@ -1,6 +1,5 @@
 use oxc_index::{Idx, IndexVec};
 use rustc_hash::{FxHashMap, FxHashSet};
-use swc_experimental_allocator::atom::Atom;
 use swc_experimental_ecma_ast::*;
 use swc_experimental_ecma_visit::{Visit, VisitWith};
 // use swc_ecma_utils::{find_pat_ids, stack_size::maybe_grow_default};
@@ -322,7 +321,7 @@ impl<'visit, 'ast> Resolver<'visit, 'ast> {
         while let Some(cur) = scope {
             let cur_scope = &self.scopes[cur];
             if cur_scope.declared_symbols.contains_key(&sym) {
-                return match sym.as_str() {
+                return match sym.as_str(self.ast) {
                     // https://tc39.es/ecma262/multipage/global-object.html#sec-value-properties-of-the-global-object-infinity
                     // non configurable global value
                     "undefined" | "NaN" | "Infinity"

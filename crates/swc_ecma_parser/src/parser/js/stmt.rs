@@ -1,4 +1,3 @@
-use swc_experimental_allocator::atom::Atom;
 use swc_experimental_ecma_ast::*;
 
 use crate::{
@@ -695,7 +694,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             p.do_outside_of_context(Context::AllowUsingDecl, |p| {
                 let start = l.span_lo(p.ast);
                 let sym = l.sym(p.ast);
-                let atom = sym.as_str();
+                let atom = sym.as_str(p.ast);
 
                 let mut errors = Vec::new();
                 for lb in &p.state().labels {

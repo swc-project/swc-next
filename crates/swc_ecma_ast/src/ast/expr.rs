@@ -125,7 +125,7 @@ pub enum MemberProp {
 
 impl MemberProp {
     pub fn is_ident_with(self, ast: &Ast<'_>, sym: &str) -> bool {
-        matches!(self, MemberProp::Ident(i) if i.sym(ast) == sym)
+        matches!(self, MemberProp::Ident(i) if i.sym(ast).as_str(ast) == sym)
     }
 }
 
@@ -324,7 +324,7 @@ impl Expr {
         S: ?Sized + AsRef<str>,
     {
         match self {
-            Expr::Ident(i) => i.sym(ast) == ident.as_ref(),
+            Expr::Ident(i) => i.sym(ast).as_str(ast) == ident.as_ref(),
             _ => false,
         }
     }

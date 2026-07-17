@@ -1,5 +1,5 @@
 use either::Either;
-use swc_experimental_allocator::atom::Atom;
+use swc_experimental_allocator::atom::Atom as RawAtom;
 use swc_experimental_ecma_ast::*;
 
 use crate::{Context, PResult, Parser, error::SyntaxError, input::Tokens, lexer::Token};
@@ -22,7 +22,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
     /// Use this when spec says "IdentifierName".
     /// This allows idents like `catch`.
-    pub(crate) fn parse_ident_name(&mut self) -> PResult<(Span, Atom<'a>)> {
+    pub(crate) fn parse_ident_name(&mut self) -> PResult<(Span, RawAtom<'a>)> {
         let token_and_span = self.input().get_cur();
         let start = token_and_span.span.start;
         let cur = token_and_span.token;
@@ -38,7 +38,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
     pub(crate) fn parse_maybe_private_name(
         &mut self,
-    ) -> PResult<Either<PrivateName, (Span, Atom<'a>)>> {
+    ) -> PResult<Either<PrivateName, (Span, RawAtom<'a>)>> {
         let is_private = self.input().is(Token::Hash);
         if is_private {
             self.parse_private_name().map(Either::Left)
@@ -93,7 +93,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             let word = self.input_mut().expect_word_token_and_bump();
             let word = self.to_utf8_ref(word);
 
-            let word_str = word.as_str();
+            let word_str = word.as_str(self.ast);
             if "arguments" == word_str || "eval" == word_str {
                 self.emit_strict_mode_err(span, SyntaxError::EvalAndArgumentsInStrict);
             }
@@ -152,7 +152,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         if t == Token::Enum {
             let word = self.input_mut().expect_word_token_and_bump();
             let word = self.to_utf8_ref(word);
-            let word_str = word.as_str();
+            let word_str = word.as_str(self.ast);
             self.emit_err(
                 span,
                 SyntaxError::InvalidIdentInStrict(word_str.to_string()),
@@ -171,7 +171,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         {
             let word = self.input_mut().expect_word_token_and_bump();
             let word = self.to_utf8_ref(word);
-            let word_str = word.as_str();
+            let word_str = word.as_str(self.ast);
             self.emit_strict_mode_err(
                 span,
                 SyntaxError::InvalidIdentInStrict(word_str.to_string()),
@@ -206,7 +206,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         } else if t == Token::Ident {
             let word = self.input_mut().expect_word_token_and_bump();
             let word = self.to_utf8_ref(word);
-            let word_str = word.as_str();
+            let word_str = word.as_str(self.ast);
             if self.ctx().contains(Context::InClassField) && word_str == "arguments" {
                 self.emit_err(span, SyntaxError::ArgumentsInClassField)
             }
@@ -221,7 +221,6 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         }
         self.bump();
 
-        let word = self.to_utf8_ref(word);
         Ok(self.ast.ident(self.span(start), word))
     }
 }

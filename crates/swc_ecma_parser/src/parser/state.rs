@@ -1,7 +1,5 @@
-use swc_experimental_allocator::{
-    Allocator, CloneIn, atom::Atom, hash_map::HashMap as ArenaHashMap, vec::Vec,
-};
-use swc_experimental_ecma_ast::Span;
+use swc_experimental_allocator::{Allocator, CloneIn, hash_map::HashMap as ArenaHashMap, vec::Vec};
+use swc_experimental_ecma_ast::{Atom, Span};
 
 pub struct State<'a> {
     pub labels: Vec<'a, Atom<'a>>,

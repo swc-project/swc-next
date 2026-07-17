@@ -6,7 +6,6 @@
     clippy::let_and_return
 )]
 use crate::*;
-use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
 impl Program {
     #[inline]
     pub fn is_module(self) -> bool {

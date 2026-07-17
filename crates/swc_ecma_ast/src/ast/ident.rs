@@ -1,7 +1,6 @@
-use swc_experimental_allocator::atom::Atom;
 use swc_experimental_ast_macros::ast;
 
-use crate::{Ast, GetSpan};
+use crate::{Ast, Atom, GetSpan};
 
 #[ast]
 pub struct Ident {
@@ -37,7 +36,7 @@ pub trait EsReserved<'a> {
     #[inline]
     #[rustfmt::skip]
     fn is_reserved(&self, ast: &Ast<'a>) -> bool {
-        matches!(self.atom(ast).as_str(),
+        matches!(self.atom(ast).as_str(ast),
             | "break" | "case" | "catch" | "class" | "const" | "continue" | "debugger" | "default"
             | "delete" | "do" | "else" | "enum" | "export" | "extends" | "false" | "finally"
             | "for" | "function" | "if" | "import" | "in" | "instanceof" | "new" | "null"
@@ -49,7 +48,7 @@ pub trait EsReserved<'a> {
     #[inline]
     #[rustfmt::skip]
     fn is_reserved_in_strict_mode(&self, ast: &Ast<'a>, is_module: bool) -> bool {
-        match self.atom(ast).as_str() {
+        match self.atom(ast).as_str(ast) {
             "await" if is_module => true,
             "implements" | "interface" | "let" | "package" | "private" | "protected" | "public"
             | "static" | "yield" => true,
@@ -59,13 +58,13 @@ pub trait EsReserved<'a> {
 
     #[inline]
     fn is_reserved_in_strict_bind(&self, ast: &Ast<'a>) -> bool {
-        matches!(self.atom(ast).as_str(), "eval" | "arguments")
+        matches!(self.atom(ast).as_str(ast), "eval" | "arguments")
     }
 
     #[inline]
     #[rustfmt::skip]
     fn is_reserved_in_es3(&self, ast: &Ast<'a>) -> bool {
-        matches!(self.atom(ast).as_str(),
+        matches!(self.atom(ast).as_str(ast),
             | "abstract" | "boolean" | "byte" | "char" | "double" | "final" | "float" | "goto"
             | "int" | "long" | "native" | "short" | "synchronized" | "throws" | "transient"
             | "volatile"

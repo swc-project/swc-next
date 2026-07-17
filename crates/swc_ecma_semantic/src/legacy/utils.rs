@@ -1,5 +1,4 @@
-use swc_experimental_allocator::atom::Atom;
-use swc_experimental_ecma_ast::{Ast, Expr, Ident, PropName};
+use swc_experimental_ecma_ast::{Ast, Atom, Expr, Ident, PropName};
 use swc_experimental_ecma_visit::{Visit, VisitWith};
 
 pub struct DestructuringFinder<'found, 'visit, 'ast> {

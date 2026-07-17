@@ -1,6 +1,5 @@
 #![allow(unused, clippy::useless_conversion, clippy::identity_op)]
 use crate::*;
-use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
 impl<'a> Ast<'a> {
     #[inline]
     pub fn program_module(

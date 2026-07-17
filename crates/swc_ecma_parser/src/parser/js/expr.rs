@@ -849,6 +849,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         } else if cur == Token::BigInt {
             let raw = self.atom_from_span(token_and_span.span);
             let value = self.input_mut().expect_bigint_token_value();
+            let value = self.to_utf8_ref(value);
             self.bump();
 
             self.ast.lit_big_int(self.span(start), value, raw.into())

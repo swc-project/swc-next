@@ -1,11 +1,9 @@
 use swc_core::atoms::{Atom, Wtf8Atom};
 use swc_core::common::{BytePos, Span as SwcSpan, SyntaxContext};
 use swc_core::ecma::ast::{self as legacy};
-use swc_experimental_allocator::atom::{
-    Atom as ExperimentalAtom, Wtf8Atom as ExperimentalWtf8Atom,
-};
 use swc_experimental_ecma_ast::{
-    self as experimental, Ast, ExtraDataCompact, GetSpan, TypedSubRange,
+    self as experimental, Ast, Atom as ExperimentalAtom, ExtraDataCompact, GetSpan, TypedSubRange,
+    Wtf8Atom as ExperimentalWtf8Atom,
 };
 use swc_experimental_ecma_semantic::resolver::Semantic;
 
@@ -1653,7 +1651,7 @@ pub(crate) trait CompatImpl<'ast> {
     // ===============================================================================
 
     fn compat_utf8_ref(&mut self, atom: ExperimentalAtom<'ast>) -> Atom {
-        Atom::from(atom.as_str())
+        Atom::from(atom.as_str(self.ast()))
     }
 
     fn compat_opt_utf8_ref(&mut self, atom: Option<ExperimentalAtom<'ast>>) -> Option<Atom> {
@@ -1661,9 +1659,9 @@ pub(crate) trait CompatImpl<'ast> {
     }
 
     fn compat_wtf8_ref(&mut self, atom: ExperimentalWtf8Atom<'ast>) -> Wtf8Atom {
-        match atom.as_wtf8().as_str() {
+        match atom.as_wtf8(self.ast()).as_str() {
             Some(s) => Wtf8Atom::from(s),
-            None => Wtf8Atom::from(atom.as_wtf8().to_string_lossy().into_owned()),
+            None => Wtf8Atom::from(atom.as_wtf8(self.ast()).to_string_lossy().into_owned()),
         }
     }
 
@@ -1675,6 +1673,6 @@ pub(crate) trait CompatImpl<'ast> {
     }
 
     fn compat_big_int(&mut self, value: ExperimentalAtom<'ast>) -> legacy::BigIntValue {
-        legacy::BigIntValue::parse_bytes(value.as_bytes(), 10).unwrap()
+        legacy::BigIntValue::parse_bytes(value.as_bytes(self.ast()), 10).unwrap()
     }
 }

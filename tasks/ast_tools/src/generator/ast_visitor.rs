@@ -361,7 +361,6 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
 
     let output = quote! {
             #![allow(unused, clippy::useless_conversion, clippy::single_match)]
-            use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
             use crate::*;
 
             pub trait Visit<'a> {

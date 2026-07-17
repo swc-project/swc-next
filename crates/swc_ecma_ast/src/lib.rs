@@ -6,6 +6,7 @@ mod derive;
 mod node_id;
 mod semantic;
 mod span;
+mod strings;
 mod visit;
 
 mod generated {
@@ -19,11 +20,7 @@ mod generated {
 
 use oxc_index::Idx;
 use std::marker::PhantomData;
-use swc_experimental_allocator::{
-    Allocator,
-    atom::{Atom, Wtf8Atom},
-    vec::Vec as ArenaVec,
-};
+use swc_experimental_allocator::{Allocator, vec::Vec as ArenaVec};
 
 pub use ast::*;
 pub use comment::*;
@@ -35,8 +32,11 @@ pub use node_id::{
 };
 pub use semantic::{ScopeId, SymbolId};
 pub use span::{DUMMY_SP, Span};
+pub use strings::{Atom, Wtf8Atom};
 
 use crate::node_id::OptionalSubRange;
+use crate::span::OptionalSpan;
+use crate::strings::StringPool;
 
 /// AST context that stores everything about the flattening AST.
 pub struct Ast<'a> {
@@ -47,6 +47,9 @@ pub struct Ast<'a> {
 
     /// Flattening AST fields.
     extra_data: ArenaVec<'a, ExtraData<'a>>,
+
+    /// UTF-8 and WTF-8 strings share this interned byte pool.
+    strings: StringPool<'a>,
 }
 
 /// A single flattening AST node stored in [Ast::nodes].
@@ -74,8 +77,7 @@ pub union NodePayload {
 
 /// The extra data is used to represent the field of AST node.
 /// It's usally another Id to point to the data structures in [Ast],
-/// or it can be a compact value. Arena-backed atoms make the union 16 bytes;
-/// node handles and scalar fields keep their smaller representations.
+/// or it can be a compact value.
 ///
 /// # Safety:
 /// It is only access the by the property accesses of typed AST node, and the construction of typed AST is
@@ -86,16 +88,13 @@ pub union ExtraData<'a> {
     node: NodeId,
     optional_node: OptionalNodeId,
 
-    // Arena-backed atoms keep the allocator/atom representation used by the
-    // arena AST while nodes and edges are stored in flattening tables.
+    // Interned atoms are byte ranges into `Ast::strings`.
     atom: Atom<'a>,
     wtf8_atom: Wtf8Atom<'a>,
-    optional_atom: Option<Atom<'a>>,
-    optional_wtf8_atom: Option<Wtf8Atom<'a>>,
 
     // Primitives
     span: Span,
-    optional_span: Option<Span>,
+    optional_span: OptionalSpan,
     bool: bool,
     number: f64,
     sub_range: SubRange,
@@ -355,11 +354,11 @@ pub enum NodeKind {
 impl<'a> Ast<'a> {
     /// Create a flattening AST whose atom storage is backed by `allocator`.
     pub fn new(source_len: usize, allocator: &'a Allocator) -> Self {
-        let empirical_capacity = (source_len as f64 * 0.15) as usize;
         Self {
             allocator,
-            nodes: ArenaVec::with_capacity_in(empirical_capacity, allocator),
-            extra_data: ArenaVec::with_capacity_in(empirical_capacity * 2, allocator),
+            nodes: ArenaVec::with_capacity_in(0, allocator),
+            extra_data: ArenaVec::with_capacity_in(0 * 2, allocator),
+            strings: StringPool::with_capacity(source_len, 0, allocator),
         }
     }
 
@@ -411,8 +410,26 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
-    pub fn add_atom(&self, value: &str) -> Atom<'a> {
-        Atom::new_in(value, self.allocator)
+    pub fn add_atom(&mut self, value: &str) -> Atom<'a> {
+        self.strings.add_atom(value)
+    }
+
+    #[inline]
+    pub fn add_wtf8_atom(
+        &mut self,
+        value: &swc_experimental_allocator::wtf8::Wtf8,
+    ) -> Wtf8Atom<'a> {
+        self.strings.add_wtf8_atom(value)
+    }
+
+    #[inline]
+    pub fn atom(&self, atom: Atom<'_>) -> &str {
+        self.strings.atom(atom)
+    }
+
+    #[inline]
+    pub fn wtf8_atom(&self, atom: Wtf8Atom<'_>) -> &swc_experimental_allocator::wtf8::Wtf8 {
+        self.strings.wtf8_atom(atom)
     }
 
     #[inline]

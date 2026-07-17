@@ -14,9 +14,8 @@ use swc_core::{
     },
 };
 use swc_experimental_allocator::Allocator;
-use swc_experimental_allocator::atom::Atom as ExperimentalAtom;
 use swc_experimental_ecma_ast::{
-    Ast, BlockStmt, GetSpan, Ident, Program, ScopeId, Visit, VisitWith,
+    Ast, Atom as ExperimentalAtom, BlockStmt, GetSpan, Ident, Program, ScopeId, Visit, VisitWith,
 };
 use swc_experimental_ecma_semantic::resolver::{Semantic, resolver};
 
@@ -117,7 +116,7 @@ fn check_symbol_conformance<'a, C: Case>(
         experimental_collector
             .symbols
             .into_iter()
-            .map(|((sym, _), spans)| (sym.to_string(), spans)),
+            .map(|((sym, _), spans)| (sym.as_str(ast).to_string(), spans)),
     );
     let experimental_blocks = normalize_scope_groups(experimental_collector.blocks.into_values());
 

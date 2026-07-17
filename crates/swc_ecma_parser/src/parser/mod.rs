@@ -1,7 +1,7 @@
 #![allow(clippy::let_unit_value)]
 #![deny(non_snake_case)]
 
-use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
+use swc_experimental_allocator::atom::{Atom as RawAtom, Wtf8Atom as RawWtf8Atom};
 use swc_experimental_ecma_ast::*;
 
 use crate::{
@@ -109,18 +109,18 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
     }
 
     #[inline]
-    fn to_utf8_ref(&mut self, atom: Atom<'a>) -> Atom<'a> {
-        atom
+    fn to_utf8_ref(&mut self, atom: RawAtom<'a>) -> Atom<'a> {
+        self.ast.add_atom(atom.as_str())
     }
 
     #[inline]
-    fn to_wtf8_ref(&mut self, atom: Wtf8Atom<'a>) -> Wtf8Atom<'a> {
-        atom
+    fn to_wtf8_ref(&mut self, atom: RawWtf8Atom<'a>) -> Wtf8Atom<'a> {
+        self.ast.add_wtf8_atom(atom.as_wtf8())
     }
 
     #[inline]
-    fn atom_from_span(&self, span: Span) -> Atom<'a> {
-        Atom::from(self.input.iter.read_string(span))
+    fn atom_from_span(&mut self, span: Span) -> Atom<'a> {
+        self.ast.add_atom(self.input.iter.read_string(span))
     }
 }
 

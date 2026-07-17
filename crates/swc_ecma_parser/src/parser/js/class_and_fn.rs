@@ -189,7 +189,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
     fn parse_class_prop_name(&mut self) -> PResult<Key> {
         if self.input().is(Token::Hash) {
             let name = self.parse_private_name()?;
-            if name.name(self.ast).as_str() == "constructor" {
+            if name.name(self.ast).as_str(self.ast) == "constructor" {
                 self.emit_err(name.span(self.ast), SyntaxError::PrivateConstructor);
             }
             Ok(Key::Private(name))
@@ -1710,9 +1710,9 @@ fn has_use_strict(ast: &Ast, block: BlockStmt) -> Option<Span> {
 
 fn is_constructor(ast: &Ast, key: Key) -> bool {
     if let Key::Public(PropName::Ident(ident_name)) = key {
-        ident_name.sym(ast).as_str().eq("constructor")
+        ident_name.sym(ast).as_str(ast).eq("constructor")
     } else if let Key::Public(PropName::Str(s)) = key {
-        s.value(ast).as_ref().eq(Wtf8::from_str("constructor"))
+        s.value(ast).as_wtf8(ast).eq(Wtf8::from_str("constructor"))
     } else {
         false
     }

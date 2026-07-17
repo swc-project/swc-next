@@ -13,5 +13,5 @@ pub(crate) fn is_not_this(ast: &Ast, p: Param) -> bool {
         return true;
     };
 
-    ident.id(ast).sym(ast).as_str() != "this"
+    ident.id(ast).sym(ast).as_str(ast) != "this"
 }

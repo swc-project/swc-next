@@ -1,8 +1,6 @@
-use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
-
 use crate::{
-    AssignOp, BinaryOp, ImportPhase, MetaPropKind, MethodKind, ScopeId, Span, SymbolId, UnaryOp,
-    UpdateOp, VarDeclKind, Visit, VisitMut, VisitMutWith, VisitWith,
+    AssignOp, Atom, BinaryOp, ImportPhase, MetaPropKind, MethodKind, ScopeId, Span, SymbolId,
+    UnaryOp, UpdateOp, VarDeclKind, Visit, VisitMut, VisitMutWith, VisitWith, Wtf8Atom,
 };
 
 macro_rules! dummy_visit_mut_impl {

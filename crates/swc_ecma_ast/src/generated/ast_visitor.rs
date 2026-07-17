@@ -1,6 +1,5 @@
 #![allow(unused, clippy::useless_conversion, clippy::single_match)]
 use crate::*;
-use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
 pub trait Visit<'a> {
     fn ast(&self) -> &Ast<'a>;
     #[inline]

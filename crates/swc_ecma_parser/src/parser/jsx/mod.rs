@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-use swc_experimental_allocator::atom::Atom;
 use swc_experimental_ecma_ast::*;
 
 use super::{Parser, input::Tokens};
@@ -457,27 +456,27 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 fn get_qualified_jsx_name<'a>(ast: &'a Ast<'a>, name: JSXElementName) -> Cow<'a, str> {
     fn get_qualified_obj_name<'a>(ast: &'a Ast<'a>, obj: JSXObject) -> Cow<'a, str> {
         match obj {
-            JSXObject::Ident(i) => Cow::Owned(i.sym(ast).as_str().to_string()),
+            JSXObject::Ident(i) => Cow::Owned(i.sym(ast).as_str(ast).to_string()),
             JSXObject::JSXMemberExpr(member) => Cow::Owned(format!(
                 "{}.{}",
                 get_qualified_obj_name(ast, member.obj(ast)),
-                member.prop(ast).sym(ast).as_str()
+                member.prop(ast).sym(ast).as_str(ast)
             )),
             #[cfg(swc_ast_unknown)]
             _ => unreachable!(),
         }
     }
     match name {
-        JSXElementName::Ident(i) => Cow::Owned(i.sym(ast).as_str().to_string()),
+        JSXElementName::Ident(i) => Cow::Owned(i.sym(ast).as_str(ast).to_string()),
         JSXElementName::JSXNamespacedName(item) => Cow::Owned(format!(
             "{}:{}",
-            item.ns(ast).sym(ast).as_str(),
-            item.name(ast).sym(ast).as_str()
+            item.ns(ast).sym(ast).as_str(ast),
+            item.name(ast).sym(ast).as_str(ast)
         )),
         JSXElementName::JSXMemberExpr(item) => Cow::Owned(format!(
             "{}.{}",
             get_qualified_obj_name(ast, item.obj(ast)),
-            item.prop(ast).sym(ast).as_str()
+            item.prop(ast).sym(ast).as_str(ast)
         )),
         #[cfg(swc_ast_unknown)]
         _ => unreachable!(),

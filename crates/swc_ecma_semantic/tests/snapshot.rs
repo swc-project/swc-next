@@ -21,8 +21,8 @@ impl<'ast> Visit<'ast> for ScopeDisplayVisitor<'_, 'ast, '_> {
         let _ = writeln!(
             self.output,
             "{} ({:?}) -> {:?}",
-            sym,
-            sym,
+            sym.as_str(self.ast),
+            sym.as_str(self.ast),
             self.semantic.node_scope(node, self.ast),
         );
     }

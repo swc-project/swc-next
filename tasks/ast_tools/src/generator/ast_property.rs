@@ -26,7 +26,6 @@ pub fn ast_property(schema: &Schema) -> RawOutput {
 
     let output = quote! {
             #![allow(unused, clippy::useless_conversion, clippy::identity_op, clippy::erasing_op, clippy::let_and_return)]
-            use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
             use crate::*;
 
             #impls
