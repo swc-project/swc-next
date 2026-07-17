@@ -1,7 +1,10 @@
 use std::{cell::Cell, marker::PhantomData, ptr::NonNull, str};
 
 use swc_experimental_allocator::{
-    Allocator, hash_map::HashMap as ArenaHashMap, vec::Vec as ArenaVec, wtf8::Wtf8,
+    Allocator,
+    hash_map::{EntryRef, HashMap as ArenaHashMap},
+    vec::Vec as ArenaVec,
+    wtf8::Wtf8,
 };
 
 use crate::Ast;
@@ -169,20 +172,23 @@ impl<'a> StringPool<'a> {
         // SAFETY: StringPool is append-only and `not_sync` makes it !Sync, so
         // parser and lexer access it sequentially on one thread.
         let dedup = unsafe { &mut *self.dedup.as_ptr() };
-        if let Some(id) = dedup.get(text) {
-            return *id;
+        match dedup.entry_ref(text) {
+            EntryRef::Occupied(entry) => *entry.get(),
+            EntryRef::Vacant(entry) => {
+                // SAFETY: See the append-only invariant above.
+                let bytes = unsafe { &mut *self.bytes.as_ptr() };
+                let start = bytes.len() as u32;
+                bytes.extend_from_slice_copy(text);
+                let end = bytes.len() as u32;
+                let id = StringId { start, end };
+                let mut key = ArenaVec::with_capacity_in(text.len(), bytes.bump());
+                key.extend_from_slice_copy(text);
+                // SAFETY: `key` is byte-for-byte equal to the lookup slice,
+                // and ArenaVec hashes and compares through its slice contents.
+                unsafe { entry.insert_entry_with_key_unchecked(key, id) };
+                id
+            }
         }
-
-        // SAFETY: See the append-only invariant above.
-        let bytes = unsafe { &mut *self.bytes.as_ptr() };
-        let start = bytes.len() as u32;
-        bytes.extend_from_slice_copy(text);
-        let end = bytes.len() as u32;
-        let id = StringId { start, end };
-        let mut key = ArenaVec::with_capacity_in(text.len(), bytes.bump());
-        key.extend_from_slice_copy(text);
-        dedup.insert(key, id);
-        id
     }
 
     #[inline]
@@ -251,5 +257,19 @@ mod tests {
         assert_eq!(pool.wtf8_atom(wtf8).as_str(), Some("shared"));
         assert_eq!(unsafe { pool.dedup.as_ref() }.len(), 1);
         assert_eq!(&**unsafe { pool.bytes.as_ref() }, b"shared");
+    }
+
+    #[test]
+    fn dedup_survives_growth() {
+        let allocator = Allocator::default();
+        let pool = StringPool::with_capacity_in(0, 0, &allocator);
+        let first = pool.add_atom("first");
+
+        for index in 0..128 {
+            pool.add_atom(&format!("unique-string-{index}"));
+        }
+
+        assert_eq!(pool.add_atom("first"), first);
+        assert_eq!(unsafe { pool.dedup.as_ref() }.len(), 129);
     }
 }
