@@ -91,7 +91,7 @@ fn generate_inline_property_accessors(
             let cast_expr = generate_u32_to_field(field_ty, schema);
             field_getters.extend(quote! {
                 #[inline]
-                pub fn #getter_name<'a>(&self, ast: &crate::Ast<'a>) -> #ret_ty {
+                pub fn #getter_name<'a>(self, ast: &crate::Ast<'a>) -> #ret_ty {
                     let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
                     #cast_expr
                 }
@@ -102,7 +102,7 @@ fn generate_inline_property_accessors(
             let setter_name = format_ident!("set_{}", field_name);
             field_setters.extend(quote! {
                 #[inline]
-                pub fn #setter_name<'a>(&self, ast: &mut crate::Ast<'a>, #field_name: #ret_ty) {
+                pub fn #setter_name<'a>(self, ast: &mut crate::Ast<'a>, #field_name: #ret_ty) {
                     unsafe { ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data = #to_u32_expr };
                 }
             });
@@ -111,7 +111,7 @@ fn generate_inline_property_accessors(
             let read_expr = generate_inline_read(field_ty, schema, byte_offset, byte_size);
             field_getters.extend(quote! {
                 #[inline]
-                pub fn #getter_name<'a>(&self, ast: &crate::Ast<'a>) -> #ret_ty {
+                pub fn #getter_name<'a>(self, ast: &crate::Ast<'a>) -> #ret_ty {
                     #read_expr
                 }
             });
@@ -121,7 +121,7 @@ fn generate_inline_property_accessors(
                 generate_inline_write(field_ty, &field_name, byte_offset, byte_size, schema);
             field_setters.extend(quote! {
                 #[inline]
-                pub fn #setter_name<'a>(&self, ast: &mut crate::Ast<'a>, #field_name: #ret_ty) {
+                pub fn #setter_name<'a>(self, ast: &mut crate::Ast<'a>, #field_name: #ret_ty) {
                     #write_expr
                 }
             });
@@ -231,7 +231,7 @@ fn generate_extra_data_property_accessors(
         let getter_name = safe_ident(&field.name.to_case(Case::Snake));
         field_getters.extend(quote! {
             #[inline]
-            pub fn #getter_name<'a>(&self, ast: &crate::Ast<'a>) -> #field_ty {
+            pub fn #getter_name<'a>(self, ast: &crate::Ast<'a>) -> #field_ty {
                 let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.get_unchecked(self.0.index()).data.extra_data_start.index().wrapping_add(#offset)) };
 
                 debug_assert!(offset.index() < ast.extra_data.len());
@@ -247,7 +247,7 @@ fn generate_extra_data_property_accessors(
         let setter_name = format_ident!("set_{}", field_name);
         field_setters.extend(quote! {
             #[inline]
-            pub fn #setter_name<'a>(&self, ast: &mut crate::Ast<'a>, #field_name: #field_ty) {
+            pub fn #setter_name<'a>(self, ast: &mut crate::Ast<'a>, #field_name: #field_ty) {
                 let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.get_unchecked(self.0.index()).data.extra_data_start.index().wrapping_add(#offset)) };
 
                 debug_assert!(offset.index() < ast.extra_data.len());
@@ -270,7 +270,7 @@ fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
         let is_fn_name = format_ident!("is_{}", variant.name.to_case(Case::Snake));
         is_variant.extend(quote! {
             #[inline]
-            pub fn #is_fn_name(&self) -> bool {
+            pub fn #is_fn_name(self) -> bool {
                 matches!(self, Self::#variant_name(_))
             }
         });

@@ -157,7 +157,7 @@ pub enum VarDeclOrExpr {
 }
 
 impl Stmt {
-    pub fn is_use_strict(&self, ast: &Ast<'_>) -> bool {
+    pub fn is_use_strict(self, ast: &Ast<'_>) -> bool {
         match self {
             Stmt::Expr(expr) => match expr.expr(ast) {
                 Expr::Lit(Lit::Str(s)) => {
@@ -172,7 +172,7 @@ impl Stmt {
 
     /// Returns true if the statement does not prevent the directives below
     /// `self` from being directives.
-    pub fn can_precede_directive(&self, ast: &Ast<'_>) -> bool {
+    pub fn can_precede_directive(self, ast: &Ast<'_>) -> bool {
         match self {
             Stmt::Expr(expr) => matches!(expr.expr(ast), Expr::Lit(Lit::Str(_))),
             _ => false,

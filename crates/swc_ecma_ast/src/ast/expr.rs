@@ -124,7 +124,7 @@ pub enum MemberProp {
 }
 
 impl MemberProp {
-    pub fn is_ident_with(&self, ast: &Ast<'_>, sym: &str) -> bool {
+    pub fn is_ident_with(self, ast: &Ast<'_>, sym: &str) -> bool {
         matches!(self, MemberProp::Ident(i) if i.sym(ast) == sym)
     }
 }
@@ -319,7 +319,7 @@ pub struct OptCall {
 pub struct Invalid {}
 
 impl Expr {
-    pub fn is_ident_ref_to<S>(&self, ast: &Ast<'_>, ident: &S) -> bool
+    pub fn is_ident_ref_to<S>(self, ast: &Ast<'_>, ident: &S) -> bool
     where
         S: ?Sized + AsRef<str>,
     {
