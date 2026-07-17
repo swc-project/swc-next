@@ -960,7 +960,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             let mut new_raw = String::new();
 
             new_raw.push('"');
-            new_raw.push_str(raw.as_str());
+            new_raw.push_str(raw.as_str(self.ast));
             new_raw.push('"');
 
             let span = self.span(start);

@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, str};
+use std::{cell::Cell, marker::PhantomData, ptr::NonNull, str};
 
 use swc_experimental_allocator::{
     Allocator, hash_map::HashMap as ArenaHashMap, vec::Vec as ArenaVec, wtf8::Wtf8,
@@ -53,7 +53,7 @@ impl<'a> Atom<'a> {
     }
 
     #[inline]
-    pub fn new_in(value: &str, ast: &mut Ast<'a>) -> Self {
+    pub fn new_in(value: &str, ast: &Ast<'a>) -> Self {
         ast.add_atom(value)
     }
 
@@ -115,7 +115,7 @@ impl<'a> Wtf8Atom<'a> {
     }
 
     #[inline]
-    pub fn new_in(value: &Wtf8, ast: &mut Ast<'a>) -> Self {
+    pub fn new_in(value: &Wtf8, ast: &Ast<'a>) -> Self {
         ast.add_wtf8_atom(value)
     }
 
@@ -136,61 +136,73 @@ impl<'a> Wtf8Atom<'a> {
 }
 
 #[derive(Debug)]
-pub(crate) struct StringPool<'a> {
-    bytes: ArenaVec<'a, u8>,
-    dedup: ArenaHashMap<'a, ArenaVec<'a, u8>, StringId>,
+pub struct StringPool<'a> {
+    bytes: NonNull<ArenaVec<'a, u8>>,
+    dedup: NonNull<ArenaHashMap<'a, ArenaVec<'a, u8>, StringId>>,
+    not_sync: PhantomData<Cell<()>>,
 }
 
 impl<'a> StringPool<'a> {
     pub(crate) fn with_capacity_in(bytes: usize, entries: usize, allocator: &'a Allocator) -> Self {
         Self {
-            bytes: ArenaVec::with_capacity_in(bytes, allocator),
-            dedup: ArenaHashMap::with_capacity_in(entries, allocator),
+            bytes: NonNull::from(allocator.alloc(ArenaVec::with_capacity_in(bytes, allocator))),
+            dedup: NonNull::from(
+                allocator.alloc(ArenaHashMap::with_capacity_in(entries, allocator)),
+            ),
+            not_sync: PhantomData,
         }
     }
 
     #[inline]
     fn get(&self, id: StringId) -> &[u8] {
         debug_assert!(id.end >= id.start);
-        &self.bytes[id.start as usize..id.end as usize]
+        // SAFETY: Interning only appends. ArenaVec growth leaves its old
+        // allocation alive in the arena, so existing slices remain valid.
+        let bytes = unsafe { self.bytes.as_ref() };
+        &bytes[id.start as usize..id.end as usize]
     }
 
-    fn intern(&mut self, text: &[u8]) -> StringId {
+    fn intern(&self, text: &[u8]) -> StringId {
         if text.is_empty() {
             return StringId::EMPTY;
         }
-        if let Some(id) = self.dedup.get(text) {
+        // SAFETY: StringPool is append-only and `not_sync` makes it !Sync, so
+        // parser and lexer access it sequentially on one thread.
+        let dedup = unsafe { &mut *self.dedup.as_ptr() };
+        if let Some(id) = dedup.get(text) {
             return *id;
         }
 
-        let start = self.bytes.len() as u32;
-        self.bytes.extend_from_slice_copy(text);
-        let end = self.bytes.len() as u32;
+        // SAFETY: See the append-only invariant above.
+        let bytes = unsafe { &mut *self.bytes.as_ptr() };
+        let start = bytes.len() as u32;
+        bytes.extend_from_slice_copy(text);
+        let end = bytes.len() as u32;
         let id = StringId { start, end };
-        let mut key = ArenaVec::with_capacity_in(text.len(), self.bytes.bump());
+        let mut key = ArenaVec::with_capacity_in(text.len(), bytes.bump());
         key.extend_from_slice_copy(text);
-        self.dedup.insert(key, id);
+        dedup.insert(key, id);
         id
     }
 
     #[inline]
-    pub(crate) fn add_atom(&mut self, text: &str) -> Atom<'a> {
+    pub fn add_atom(&self, text: &str) -> Atom<'a> {
         Atom::from_id(self.intern(text.as_bytes()))
     }
 
     #[inline]
-    pub(crate) fn add_wtf8_atom(&mut self, text: &Wtf8) -> Wtf8Atom<'a> {
+    pub fn add_wtf8_atom(&self, text: &Wtf8) -> Wtf8Atom<'a> {
         Wtf8Atom::from_id(self.intern(text.as_bytes()))
     }
 
     #[inline]
-    pub(crate) fn atom(&self, atom: Atom<'_>) -> &str {
+    pub fn atom(&self, atom: Atom<'_>) -> &str {
         // Atom can only be constructed from UTF-8 input.
         unsafe { str::from_utf8_unchecked(self.get(atom.id())) }
     }
 
     #[inline]
-    pub(crate) fn wtf8_atom(&self, atom: Wtf8Atom<'_>) -> &Wtf8 {
+    pub fn wtf8_atom(&self, atom: Wtf8Atom<'_>) -> &Wtf8 {
         // Wtf8Atom can only be constructed from a validated Wtf8 value.
         unsafe { Wtf8::from_bytes_unchecked(self.get(atom.id())) }
     }
@@ -230,14 +242,14 @@ mod tests {
     #[test]
     fn utf8_and_wtf8_share_interned_storage() {
         let allocator = Allocator::default();
-        let mut pool = StringPool::with_capacity_in(0, 0, &allocator);
+        let pool = StringPool::with_capacity_in(0, 0, &allocator);
         let atom = pool.add_atom("shared");
         let wtf8 = pool.add_wtf8_atom(Wtf8::from_str("shared"));
 
         assert_eq!(atom.id(), wtf8.id());
         assert_eq!(pool.atom(atom), "shared");
         assert_eq!(pool.wtf8_atom(wtf8).as_str(), Some("shared"));
-        assert_eq!(pool.dedup.len(), 1);
-        assert_eq!(pool.bytes, b"shared");
+        assert_eq!(unsafe { pool.dedup.as_ref() }.len(), 1);
+        assert_eq!(&**unsafe { pool.bytes.as_ref() }, b"shared");
     }
 }

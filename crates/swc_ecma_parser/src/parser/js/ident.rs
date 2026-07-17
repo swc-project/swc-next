@@ -1,5 +1,4 @@
 use either::Either;
-use swc_experimental_allocator::atom::Atom as RawAtom;
 use swc_experimental_ecma_ast::*;
 
 use crate::{Context, PResult, Parser, error::SyntaxError, input::Tokens, lexer::Token};
@@ -22,7 +21,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
     /// Use this when spec says "IdentifierName".
     /// This allows idents like `catch`.
-    pub(crate) fn parse_ident_name(&mut self) -> PResult<(Span, RawAtom<'a>)> {
+    pub(crate) fn parse_ident_name(&mut self) -> PResult<(Span, Atom<'a>)> {
         let token_and_span = self.input().get_cur();
         let start = token_and_span.span.start;
         let cur = token_and_span.token;
@@ -38,7 +37,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
     pub(crate) fn parse_maybe_private_name(
         &mut self,
-    ) -> PResult<Either<PrivateName, (Span, RawAtom<'a>)>> {
+    ) -> PResult<Either<PrivateName, (Span, Atom<'a>)>> {
         let is_private = self.input().is(Token::Hash);
         if is_private {
             self.parse_private_name().map(Either::Left)

@@ -1,7 +1,7 @@
 use std::mem::take;
 
-use swc_experimental_allocator::{Allocator, atom::Atom, wtf8::CodePoint};
-use swc_experimental_ecma_ast::{EsVersion, Span};
+use swc_experimental_allocator::{Allocator, wtf8::CodePoint};
+use swc_experimental_ecma_ast::{Atom, EsVersion, Span};
 
 use super::{Context, Lexer};
 use crate::{
@@ -71,6 +71,10 @@ impl<'a> crate::input::Tokens<'a> for Lexer<'a, '_> {
 
     fn read_string(&self, span: Span) -> &'a str {
         unsafe { self.input.slice(span.start, span.end) }
+    }
+
+    fn atom_from_span(&self, span: Span) -> Atom<'a> {
+        self.strings.add_atom(self.read_string(span))
     }
 
     #[inline]
@@ -279,15 +283,15 @@ impl<'a> crate::input::Tokens<'a> for Lexer<'a, '_> {
                 builder.push_str(&token.to_string());
                 builder.push_str(&v);
             } else if let Some(TokenValue::Word(value)) = self.state.token_value.take() {
-                builder.push_str(value.as_str());
+                builder.push_str(self.strings.atom(value));
                 builder.push_str(&v);
             } else {
                 builder.push_str(&token.to_string());
                 builder.push_str(&v);
             };
-            Atom::new_in(builder, self.allocator)
+            self.strings.add_atom(&builder)
         } else if token.is_known_ident() || token.is_keyword() {
-            Atom::new_in(token.to_string(), self.allocator)
+            self.strings.add_atom(&token.to_string())
         } else if let Some(TokenValue::Word(value)) = self.state.token_value.take() {
             value
         } else {
@@ -484,7 +488,7 @@ impl<'a> Lexer<'a, '_> {
                 self.input_slice_to_cur(chunk_start)
             };
             value.push_str(s);
-            Atom::new_in(value, self.allocator)
+            self.strings.add_atom(&value)
         };
 
         self.state.set_token_value(TokenValue::JsxText(value));

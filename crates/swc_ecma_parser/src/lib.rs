@@ -55,13 +55,7 @@ pub fn with_file_parser<'p, 'a, 'cmt, T>(
     comments: Option<&'cmt mut Comments<'a>>,
     op: impl FnOnce(&mut Parser<'p, 'a, self::Lexer<'a, 'cmt>>) -> T,
 ) -> T {
-    let lexer = self::Lexer::new(
-        ast.allocator(),
-        syntax,
-        target,
-        StringSource::new(src),
-        comments,
-    );
+    let lexer = self::Lexer::new(ast, syntax, target, StringSource::new(src), comments);
     let mut p = Parser::new_from(ast, lexer);
     op(&mut p)
 }

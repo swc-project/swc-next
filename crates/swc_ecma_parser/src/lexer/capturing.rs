@@ -215,4 +215,8 @@ impl<'a, I: Tokens<'a>> Tokens<'a> for Capturing<'a, I> {
     fn read_string(&self, span: Span) -> &'a str {
         self.inner.read_string(span)
     }
+
+    fn atom_from_span(&self, span: Span) -> swc_experimental_ecma_ast::Atom<'a> {
+        self.inner.atom_from_span(span)
+    }
 }

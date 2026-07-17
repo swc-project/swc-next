@@ -32,11 +32,10 @@ pub use node_id::{
 };
 pub use semantic::{ScopeId, SymbolId};
 pub use span::{DUMMY_SP, Span};
-pub use strings::{Atom, Wtf8Atom};
+pub use strings::{Atom, StringPool, Wtf8Atom};
 
 use crate::node_id::OptionalSubRange;
 use crate::span::OptionalSpan;
-use crate::strings::StringPool;
 
 /// AST context that stores everything about the flattening AST.
 pub struct Ast<'a> {
@@ -49,7 +48,7 @@ pub struct Ast<'a> {
     extra_data: ArenaVec<'a, ExtraData<'a>>,
 
     /// UTF-8 and WTF-8 strings share this interned byte pool.
-    strings: StringPool<'a>,
+    strings: &'a StringPool<'a>,
 }
 
 /// A single flattening AST node stored in [Ast::nodes].
@@ -358,7 +357,7 @@ impl<'a> Ast<'a> {
             allocator,
             nodes: ArenaVec::with_capacity_in(0, allocator),
             extra_data: ArenaVec::with_capacity_in(0, allocator),
-            strings: StringPool::with_capacity_in(source_len, 0, allocator),
+            strings: allocator.alloc(StringPool::with_capacity_in(source_len, 0, allocator)),
         }
     }
 
@@ -410,15 +409,12 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
-    pub fn add_atom(&mut self, value: &str) -> Atom<'a> {
+    pub fn add_atom(&self, value: &str) -> Atom<'a> {
         self.strings.add_atom(value)
     }
 
     #[inline]
-    pub fn add_wtf8_atom(
-        &mut self,
-        value: &swc_experimental_allocator::wtf8::Wtf8,
-    ) -> Wtf8Atom<'a> {
+    pub fn add_wtf8_atom(&self, value: &swc_experimental_allocator::wtf8::Wtf8) -> Wtf8Atom<'a> {
         self.strings.add_wtf8_atom(value)
     }
 
@@ -435,6 +431,12 @@ impl<'a> Ast<'a> {
     #[inline]
     pub fn empty_atom(&self) -> Atom<'a> {
         Atom::empty()
+    }
+
+    #[doc(hidden)]
+    #[inline]
+    pub fn string_pool(&self) -> &'a StringPool<'a> {
+        self.strings
     }
 
     #[inline]

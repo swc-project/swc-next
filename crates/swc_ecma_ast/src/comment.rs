@@ -1,10 +1,8 @@
 use std::fmt;
 
-use swc_experimental_allocator::{
-    Allocator, CloneIn, atom::Atom, hash_map::HashMap as ArenaHashMap, vec::Vec,
-};
+use swc_experimental_allocator::{Allocator, CloneIn, hash_map::HashMap as ArenaHashMap, vec::Vec};
 
-use crate::{DUMMY_SP, Span};
+use crate::{Ast, Atom, DUMMY_SP, Span};
 
 pub struct Comments<'a> {
     pub leading: ArenaHashMap<'a, u32, Vec<'a, Comment<'a>>>,
@@ -132,15 +130,15 @@ impl<'a> Comments<'a> {
         self.trailing.get(&pos).cloned()
     }
 
-    pub fn add_pure_comment(&mut self, pos: u32) {
+    pub fn add_pure_comment(&mut self, pos: u32, ast: &Ast<'a>) {
         assert_ne!(pos, 0, "cannot add pure comment to zero position");
 
+        let text = ast.add_atom("#__PURE__");
         let allocator = self.allocator;
         let leading = self
             .leading
             .entry(pos)
             .or_insert_with(|| Vec::new_in(allocator));
-        let text = Atom::new_const("#__PURE__");
 
         if !leading.iter().any(|c| c.text == text) {
             leading.push(Comment {
@@ -177,11 +175,11 @@ impl<'a> Comments<'a> {
     ///
     /// If `flag` is `PURE`, this method will look for `@__PURE__` and
     /// `#__PURE__`.
-    pub fn has_flag(&self, lo: u32, flag: &str) -> bool {
+    pub fn has_flag(&self, lo: u32, flag: &str, ast: &Ast<'a>) -> bool {
         self.with_leading(lo, |comments| {
             for c in comments {
                 if c.kind == CommentKind::Block {
-                    for line in c.text.lines() {
+                    for line in c.text.as_str(ast).lines() {
                         let line = line.trim_start_matches(['*', ' ']);
                         let line = line.trim();
 
@@ -230,7 +228,7 @@ fn move_comments<'a>(
 pub struct Comment<'a> {
     pub kind: CommentKind,
     pub span: Span,
-    /// [`Atom::new_bad`][] is perfectly fine for this value.
+    /// Interned comment text stored in the owning [`Ast`].
     pub text: Atom<'a>,
 }
 

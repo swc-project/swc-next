@@ -1,7 +1,6 @@
 #![allow(clippy::let_unit_value)]
 #![deny(non_snake_case)]
 
-use swc_experimental_allocator::atom::{Atom as RawAtom, Wtf8Atom as RawWtf8Atom};
 use swc_experimental_ecma_ast::*;
 
 use crate::{
@@ -109,13 +108,13 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
     }
 
     #[inline]
-    fn to_utf8_ref(&mut self, atom: RawAtom<'a>) -> Atom<'a> {
-        self.ast.add_atom(atom.as_str())
+    fn to_utf8_ref(&mut self, atom: Atom<'a>) -> Atom<'a> {
+        atom
     }
 
     #[inline]
-    fn to_wtf8_ref(&mut self, atom: RawWtf8Atom<'a>) -> Wtf8Atom<'a> {
-        self.ast.add_wtf8_atom(atom.as_wtf8())
+    fn to_wtf8_ref(&mut self, atom: Wtf8Atom<'a>) -> Wtf8Atom<'a> {
+        atom
     }
 
     #[inline]
@@ -131,7 +130,7 @@ impl<'p, 'a, 'cmt> Parser<'p, 'a, Lexer<'a, 'cmt>> {
         input: StringSource<'a>,
         comments: Option<&'cmt mut Comments<'a>>,
     ) -> Self {
-        let lexer = Lexer::new(ast.allocator(), syntax, Default::default(), input, comments);
+        let lexer = Lexer::new(ast, syntax, Default::default(), input, comments);
         Self::new_from(ast, lexer)
     }
 }

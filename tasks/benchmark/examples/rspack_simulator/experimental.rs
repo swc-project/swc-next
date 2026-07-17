@@ -40,7 +40,7 @@ fn run_parse<'a>(
     let mut ast = Ast::new(src.len(), allocator);
     let (program, tokens) = {
         let parser_lexer = Lexer::new(
-            allocator,
+            &ast,
             Syntax::Es(Default::default()),
             Default::default(),
             StringSource::new(src),

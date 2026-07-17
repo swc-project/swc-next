@@ -8,12 +8,12 @@ use rustc_hash::FxHashMap;
 use smartstring::{LazyCompact, SmartString};
 use swc_experimental_allocator::{
     Allocator,
-    atom::{Atom, Wtf8Atom},
     wtf8::{CodePoint, Wtf8Buf},
 };
 use swc_experimental_ecma_ast::{
-    Comment, CommentKind, Comments, EsVersion, Span, is_valid_ascii_continue, is_valid_ascii_start,
-    is_valid_non_ascii_continue, is_valid_non_ascii_start,
+    Ast, Atom, Comment, CommentKind, Comments, EsVersion, Span, StringPool, Wtf8Atom,
+    is_valid_ascii_continue, is_valid_ascii_start, is_valid_non_ascii_continue,
+    is_valid_non_ascii_start,
 };
 
 use self::table::{BYTE_HANDLERS, ByteHandler};
@@ -121,23 +121,24 @@ fn bigint_atom_from_digits<'a>(
     s: &'a str,
     radix: u32,
     has_underscore: bool,
-    allocator: &'a Allocator,
+    strings: &'a StringPool<'a>,
 ) -> Option<Atom<'a>> {
     if radix == 10 && !has_underscore {
-        return Some(Atom::from(s));
+        return Some(strings.add_atom(s));
     }
 
     let s = remove_underscore(s, has_underscore);
     if radix == 10 {
-        return Some(Atom::new_in(s.as_ref(), allocator));
+        return Some(strings.add_atom(s.as_ref()));
     }
 
     let value = NumBigInt::parse_bytes(s.as_bytes(), radix)?;
-    Some(Atom::new_in(&value.to_string(), allocator))
+    Some(strings.add_atom(&value.to_string()))
 }
 
 pub struct Lexer<'a, 'cmt> {
     allocator: &'a Allocator,
+    strings: &'a StringPool<'a>,
     comments: Option<&'cmt mut Comments<'a>>,
     /// [Some] if comment comment parsing is enabled. Otherwise [None]
     comments_buffer: Option<CommentsBuffer<'a>>,
@@ -193,29 +194,33 @@ impl<'a, 'cmt> Lexer<'a, 'cmt> {
 
     #[inline(always)]
     fn atom_from_slice(&self, start: u32, end: u32) -> Atom<'a> {
-        Atom::from(unsafe { self.input.slice(start, end) })
+        self.strings
+            .add_atom(unsafe { self.input.slice(start, end) })
     }
 
     #[inline(always)]
     fn wtf8_atom_from_slice(&self, start: u32, end: u32) -> Wtf8Atom<'a> {
-        Wtf8Atom::from(unsafe { self.input.slice(start, end) })
+        self.strings
+            .add_wtf8_atom(unsafe { self.input.slice(start, end) }.into())
     }
 }
 
 impl<'a, 'cmt> Lexer<'a, 'cmt> {
     pub fn new(
-        allocator: &'a Allocator,
+        ast: &Ast<'a>,
         syntax: Syntax,
         target: EsVersion,
         input: StringSource<'a>,
         comments: Option<&'cmt mut Comments<'a>>,
     ) -> Self {
+        let allocator = ast.allocator();
         let start_pos = input.cur_pos();
         let comments_buffer = comments
             .is_some()
             .then(|| CommentsBuffer::new_in(allocator));
         Lexer {
             allocator,
+            strings: ast.string_pool(),
             comments,
             comments_buffer,
             ctx: Default::default(),
@@ -426,7 +431,7 @@ impl<'a> Lexer<'a, '_> {
         macro_rules! finish_cooked {
             () => {{
                 if cooked_needs_alloc {
-                    cooked.map(|atom| Wtf8Atom::new_in(atom, self.allocator))
+                    cooked.map(|atom| self.strings.add_wtf8_atom(&atom))
                 } else {
                     Ok(self.wtf8_atom_from_slice(cooked_start, self.cur_pos()))
                 }
@@ -686,7 +691,11 @@ impl<'a> Lexer<'a, '_> {
 
                 if self.comments_buffer().is_some() {
                     let s = unsafe { self.input_slice(slice_start, end) };
-                    let cmt = Comment::new(CommentKind::Line, Span::new(start, end), Atom::from(s));
+                    let cmt = Comment::new(
+                        CommentKind::Line,
+                        Span::new(start, end),
+                        self.strings.add_atom(s),
+                    );
 
                     if is_for_next {
                         self.comments_buffer.as_mut().unwrap().push_pending(cmt);
@@ -713,7 +722,11 @@ impl<'a> Lexer<'a, '_> {
                 // Safety: We know that the start and the end are valid
                 self.input_slice_to_cur(slice_start)
             };
-            let cmt = Comment::new(CommentKind::Line, Span::new(start, end), Atom::from(s));
+            let cmt = Comment::new(
+                CommentKind::Line,
+                Span::new(start, end),
+                self.strings.add_atom(s),
+            );
 
             if is_for_next {
                 self.comments_buffer.as_mut().unwrap().push_pending(cmt);
@@ -796,11 +809,8 @@ impl<'a> Lexer<'a, '_> {
                                 };
                                 let cmt = Comment::new(
                                     CommentKind::Block,
-                                    Span::new(
-                                        start,
-                                        slice_start + pos_offset as u32,
-                                    ),
-                                    Atom::from(s),
+                                    Span::new(start, slice_start + pos_offset as u32),
+                                    self.strings.add_atom(s),
                                 );
 
                                 if is_for_next {
@@ -1018,7 +1028,7 @@ impl<'a> Lexer<'a, '_> {
             // legacy octal number is not allowed in bigint.
             if (!START_WITH_ZERO || lazy_integer.end - lazy_integer.start == 1) && self.eat(b'n') {
                 let bigint_value =
-                    bigint_atom_from_digits(s, 10, lazy_integer.has_underscore, self.allocator)
+                    bigint_atom_from_digits(s, 10, lazy_integer.has_underscore, self.strings)
                         .unwrap();
                 return Ok(Either::Right(bigint_value));
             }
@@ -1173,7 +1183,7 @@ impl<'a> Lexer<'a, '_> {
             }
 
             let Some(bigint_value) =
-                bigint_atom_from_digits(s, RADIX as _, has_underscore, self.allocator)
+                bigint_atom_from_digits(s, RADIX as _, has_underscore, self.strings)
             else {
                 // just a fallback in case there is anything we did not catch
                 return Err(Error::new(
@@ -1213,7 +1223,6 @@ impl<'a> Lexer<'a, '_> {
             // move the pending to the leading or trailing
             comments_buffer.pending_to_comment(kind, last);
 
-            // now fill the user's passed in comments
             for comment in comments_buffer.take_comments() {
                 match comment.kind {
                     BufferedCommentKind::Leading => {
@@ -1382,7 +1391,7 @@ impl<'a> Lexer<'a, '_> {
                 self.input_slice_to_cur(chunk_start)
             };
             out.push_str(s);
-            Wtf8Atom::new_in(out, self.allocator)
+            self.strings.add_wtf8_atom(&out)
         };
 
         // it might be at the end of the file when
@@ -1746,19 +1755,20 @@ impl<'a> Lexer<'a, '_> {
             }
         }?;
 
-        if !flags.as_str().is_empty() {
-            let mut flags_count = flags.as_str().chars().fold(
-                FxHashMap::<char, usize>::default(),
-                |mut map, flag| {
-                    let key = match flag {
-                        // https://tc39.es/ecma262/#sec-isvalidregularexpressionliteral
-                        'd' | 'g' | 'i' | 'm' | 's' | 'u' | 'v' | 'y' => flag,
-                        _ => '\u{0000}', // special marker for unknown flags
-                    };
-                    map.entry(key).and_modify(|count| *count += 1).or_insert(1);
-                    map
-                },
-            );
+        let flags = self.strings.atom(flags);
+        if !flags.is_empty() {
+            let mut flags_count =
+                flags
+                    .chars()
+                    .fold(FxHashMap::<char, usize>::default(), |mut map, flag| {
+                        let key = match flag {
+                            // https://tc39.es/ecma262/#sec-isvalidregularexpressionliteral
+                            'd' | 'g' | 'i' | 'm' | 's' | 'u' | 'v' | 'y' => flag,
+                            _ => '\u{0000}', // special marker for unknown flags
+                        };
+                        map.entry(key).and_modify(|count| *count += 1).or_insert(1);
+                        map
+                    });
 
             if flags_count.remove(&'\u{0000}').is_some() {
                 let span = self.span(start);
@@ -1914,7 +1924,7 @@ impl<'a> Lexer<'a, '_> {
             };
 
             buf.push_str(s);
-            Atom::new_in(buf, self.allocator)
+            self.strings.add_atom(&buf)
         };
 
         Ok((value, has_escape))
@@ -2179,7 +2189,7 @@ impl<'a> Lexer<'a, '_> {
                             self.input_slice(slice_start, value_end)
                         };
                         buf.push_str(s);
-                        Wtf8Atom::new_in(buf, self.allocator)
+                        self.strings.add_wtf8_atom(&buf)
                     } else {
                         self.wtf8_atom_from_slice(slice_start, value_end)
                     };
@@ -2229,7 +2239,7 @@ impl<'a> Lexer<'a, '_> {
 
         let start = self.cur_pos();
         let (s, has_escape) = self.read_keyword_as_str_with()?;
-        if let Some(word) = convert(s.as_str()) {
+        if let Some(word) = convert(self.strings.atom(s)) {
             // Note: ctx is store in lexer because of this error.
             // 'await' and 'yield' may have semantic of reserved word, which means lexer
             // should know context or parser should handle this error. Our approach to this
@@ -2238,7 +2248,7 @@ impl<'a> Lexer<'a, '_> {
                 self.error(
                     start,
                     SyntaxError::EscapeInReservedWord {
-                        word: s.to_string(),
+                        word: self.strings.atom(s).to_string(),
                     },
                 )
             } else {

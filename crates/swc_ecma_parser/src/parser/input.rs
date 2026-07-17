@@ -1,8 +1,5 @@
-use swc_experimental_allocator::{
-    Allocator,
-    atom::{Atom, Wtf8Atom},
-};
-use swc_experimental_ecma_ast::{EsVersion, Span};
+use swc_experimental_allocator::Allocator;
+use swc_experimental_ecma_ast::{Atom, EsVersion, Span, Wtf8Atom};
 
 use crate::{
     Context,
@@ -27,6 +24,7 @@ pub trait Tokens<'a> {
     fn checkpoint_load(&mut self, checkpoint: Self::Checkpoint);
 
     fn read_string(&self, span: Span) -> &'a str;
+    fn atom_from_span(&self, span: Span) -> Atom<'a>;
 
     fn start_pos(&self) -> u32 {
         0

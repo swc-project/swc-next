@@ -1,7 +1,6 @@
 use std::fmt::Display;
 
-use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
-use swc_experimental_ecma_ast::{AssignOp, Span};
+use swc_experimental_ecma_ast::{AssignOp, Atom, Span, Wtf8Atom};
 
 use super::LexResult;
 use crate::{
@@ -368,7 +367,7 @@ impl<'a> Token {
     #[inline(always)]
     pub fn take_word<I: Tokens<'a>>(self, buffer: &Buffer<'a, I>) -> Atom<'a> {
         let span = buffer.cur.span;
-        Atom::from(buffer.iter.read_string(span))
+        buffer.iter.atom_from_span(span)
     }
 
     #[inline(always)]

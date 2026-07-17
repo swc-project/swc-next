@@ -1574,7 +1574,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             self.mark_found_module_item();
 
             let (_, sym) = self.parse_ident_name()?;
-            match sym.as_str() {
+            match sym.as_str(self.ast) {
                 "meta" => {
                     let span = self.span(start);
                     if !self.ctx().contains(Context::CanBeModule) {
@@ -2725,7 +2725,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             Ok(self.ast.expr_private_name(self.span(start), sym))
         } else if cur == Token::Ident {
             let word = self.input_mut().expect_word_token_and_bump();
-            if self.ctx().contains(Context::InClassField) && word.as_str() == "arguments" {
+            if self.ctx().contains(Context::InClassField) && word.as_str(self.ast) == "arguments" {
                 self.emit_err(self.input().prev_span(), SyntaxError::ArgumentsInClassField)
             };
 
