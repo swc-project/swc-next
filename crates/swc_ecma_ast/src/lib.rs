@@ -3,6 +3,7 @@ mod ast;
 mod comment;
 mod common;
 mod derive;
+mod multi_index_vec;
 mod node_id;
 mod semantic;
 mod span;
@@ -34,6 +35,7 @@ pub use semantic::{ScopeId, SymbolId};
 pub use span::{DUMMY_SP, Span};
 pub use strings::{Atom, StringPool, Wtf8Atom};
 
+use crate::multi_index_vec::multi_index_vec;
 use crate::node_id::OptionalSubRange;
 use crate::span::OptionalSpan;
 
@@ -42,7 +44,7 @@ pub struct Ast<'a> {
     allocator: &'a Allocator,
 
     /// Flattening AST nodes.
-    pub(crate) nodes: ArenaVec<'a, NodeData>,
+    pub(crate) nodes: NodeData<'a>,
 
     /// Flattening AST fields.
     extra_data: ArenaVec<'a, ExtraData<'a>>,
@@ -51,12 +53,13 @@ pub struct Ast<'a> {
     strings: &'a StringPool<'a>,
 }
 
-/// A single flattening AST node stored in [Ast::nodes].
-#[derive(Clone, Copy)]
-pub struct NodeData {
-    span: Span,
-    kind: NodeKind,
-    data: NodePayload,
+multi_index_vec! {
+    /// Arena-backed structure-of-arrays storage for flattening AST nodes.
+    pub struct NodeData<'a, NodeId> {
+        pub(crate) span => span_mut => span_unchecked => span_mut_unchecked: Span,
+        pub(crate) kind => kind_mut => kind_unchecked => kind_mut_unchecked: NodeKind,
+        pub(crate) data => data_mut => data_unchecked => data_mut_unchecked: NodePayload,
+    }
 }
 
 /// Compact payload for a node. It is either the start index of
@@ -355,7 +358,7 @@ impl<'a> Ast<'a> {
     pub fn new(source_len: usize, allocator: &'a Allocator) -> Self {
         Self {
             allocator,
-            nodes: ArenaVec::with_capacity_in(0, allocator),
+            nodes: NodeData::new_in(allocator),
             extra_data: ArenaVec::with_capacity_in(0, allocator),
             strings: allocator.alloc(StringPool::with_capacity_in(source_len, 0, allocator)),
         }
@@ -363,10 +366,7 @@ impl<'a> Ast<'a> {
 
     #[inline]
     pub(crate) fn add_node(&mut self, span: Span, kind: NodeKind, data: NodePayload) -> NodeId {
-        let index = self.nodes.len();
-        assert!(index <= NodeId::MAX, "node index exceeds NodeId range");
-        self.nodes.push(NodeData { span, kind, data });
-        NodeId::from_usize_unchecked(index)
+        self.nodes.push(span, kind, data)
     }
 
     #[inline]

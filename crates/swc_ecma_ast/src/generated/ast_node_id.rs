@@ -12,7 +12,7 @@ impl NodeIdTrait for Program {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::Module => Program::Module({ Module::from_node_id(id, ast) }),
             NodeKind::Script => Program::Script({ Script::from_node_id(id, ast) }),
             _ => unreachable!(),
@@ -30,7 +30,7 @@ impl NodeIdTrait for Module {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::Module);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::Module);
         Self(node_id)
     }
     #[inline]
@@ -45,7 +45,7 @@ impl NodeIdTrait for Script {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::Script);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::Script);
         Self(node_id)
     }
     #[inline]
@@ -63,7 +63,7 @@ impl NodeIdTrait for ModuleItem {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::BlockStmt => {
                 ModuleItem::Stmt(Stmt::Block({ BlockStmt::from_node_id(id, ast) }))
             }
@@ -160,7 +160,7 @@ impl NodeIdTrait for ModuleDecl {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::ExportAll => ModuleDecl::ExportAll({ ExportAll::from_node_id(id, ast) }),
             NodeKind::ExportDecl => ModuleDecl::ExportDecl({ ExportDecl::from_node_id(id, ast) }),
             NodeKind::ExportDefaultDecl => {
@@ -188,7 +188,7 @@ impl NodeIdTrait for ImportDecl {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ImportDecl);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ImportDecl);
         Self(node_id)
     }
     #[inline]
@@ -207,7 +207,7 @@ impl NodeIdTrait for ImportSpecifier {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::ImportDefaultSpecifier => {
                 ImportSpecifier::Default({ ImportDefaultSpecifier::from_node_id(id, ast) })
             }
@@ -232,7 +232,7 @@ impl NodeIdTrait for ImportNamedSpecifier {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ImportNamedSpecifier);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ImportNamedSpecifier);
         Self(node_id)
     }
     #[inline]
@@ -247,7 +247,7 @@ impl NodeIdTrait for ImportDefaultSpecifier {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ImportDefaultSpecifier);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ImportDefaultSpecifier);
         Self(node_id)
     }
     #[inline]
@@ -262,7 +262,7 @@ impl NodeIdTrait for ImportStarAsSpecifier {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ImportStarAsSpecifier);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ImportStarAsSpecifier);
         Self(node_id)
     }
     #[inline]
@@ -277,7 +277,7 @@ impl NodeIdTrait for ExportDecl {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ExportDecl);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ExportDecl);
         Self(node_id)
     }
     #[inline]
@@ -292,7 +292,7 @@ impl NodeIdTrait for NamedExport {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::NamedExport);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::NamedExport);
         Self(node_id)
     }
     #[inline]
@@ -311,7 +311,7 @@ impl NodeIdTrait for ExportSpecifier {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::ExportDefaultSpecifier => {
                 ExportSpecifier::Default({ ExportDefaultSpecifier::from_node_id(id, ast) })
             }
@@ -336,7 +336,7 @@ impl NodeIdTrait for ExportNamespaceSpecifier {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ExportNamespaceSpecifier);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ExportNamespaceSpecifier);
         Self(node_id)
     }
     #[inline]
@@ -354,7 +354,7 @@ impl NodeIdTrait for ModuleExportName {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::Ident => ModuleExportName::Ident({ Ident::from_node_id(id, ast) }),
             NodeKind::Str => ModuleExportName::Str({ Str::from_node_id(id, ast) }),
             _ => unreachable!(),
@@ -372,7 +372,7 @@ impl NodeIdTrait for ExportDefaultSpecifier {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ExportDefaultSpecifier);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ExportDefaultSpecifier);
         Self(node_id)
     }
     #[inline]
@@ -387,7 +387,7 @@ impl NodeIdTrait for ExportNamedSpecifier {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ExportNamedSpecifier);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ExportNamedSpecifier);
         Self(node_id)
     }
     #[inline]
@@ -402,7 +402,7 @@ impl NodeIdTrait for ExportDefaultDecl {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ExportDefaultDecl);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ExportDefaultDecl);
         Self(node_id)
     }
     #[inline]
@@ -420,7 +420,7 @@ impl NodeIdTrait for DefaultDecl {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::ClassExpr => DefaultDecl::Class({ ClassExpr::from_node_id(id, ast) }),
             NodeKind::FnExpr => DefaultDecl::Fn({ FnExpr::from_node_id(id, ast) }),
             _ => unreachable!(),
@@ -438,7 +438,7 @@ impl NodeIdTrait for ExportDefaultExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ExportDefaultExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ExportDefaultExpr);
         Self(node_id)
     }
     #[inline]
@@ -453,7 +453,7 @@ impl NodeIdTrait for ExportAll {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ExportAll);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ExportAll);
         Self(node_id)
     }
     #[inline]
@@ -468,7 +468,7 @@ impl NodeIdTrait for BlockStmt {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::BlockStmt);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::BlockStmt);
         Self(node_id)
     }
     #[inline]
@@ -503,7 +503,7 @@ impl NodeIdTrait for Stmt {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::BlockStmt => Stmt::Block({ BlockStmt::from_node_id(id, ast) }),
             NodeKind::BreakStmt => Stmt::Break({ BreakStmt::from_node_id(id, ast) }),
             NodeKind::ClassDecl => Stmt::Decl(Decl::Class({ ClassDecl::from_node_id(id, ast) })),
@@ -541,7 +541,7 @@ impl NodeIdTrait for ExprStmt {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ExprStmt);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ExprStmt);
         Self(node_id)
     }
     #[inline]
@@ -556,7 +556,7 @@ impl NodeIdTrait for EmptyStmt {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::EmptyStmt);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::EmptyStmt);
         Self(node_id)
     }
     #[inline]
@@ -571,7 +571,7 @@ impl NodeIdTrait for DebuggerStmt {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::DebuggerStmt);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::DebuggerStmt);
         Self(node_id)
     }
     #[inline]
@@ -586,7 +586,7 @@ impl NodeIdTrait for WithStmt {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::WithStmt);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::WithStmt);
         Self(node_id)
     }
     #[inline]
@@ -601,7 +601,7 @@ impl NodeIdTrait for ReturnStmt {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ReturnStmt);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ReturnStmt);
         Self(node_id)
     }
     #[inline]
@@ -616,7 +616,7 @@ impl NodeIdTrait for LabeledStmt {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::LabeledStmt);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::LabeledStmt);
         Self(node_id)
     }
     #[inline]
@@ -631,7 +631,7 @@ impl NodeIdTrait for BreakStmt {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::BreakStmt);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::BreakStmt);
         Self(node_id)
     }
     #[inline]
@@ -646,7 +646,7 @@ impl NodeIdTrait for ContinueStmt {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ContinueStmt);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ContinueStmt);
         Self(node_id)
     }
     #[inline]
@@ -661,7 +661,7 @@ impl NodeIdTrait for IfStmt {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::IfStmt);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::IfStmt);
         Self(node_id)
     }
     #[inline]
@@ -676,7 +676,7 @@ impl NodeIdTrait for SwitchStmt {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::SwitchStmt);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::SwitchStmt);
         Self(node_id)
     }
     #[inline]
@@ -691,7 +691,7 @@ impl NodeIdTrait for ThrowStmt {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ThrowStmt);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ThrowStmt);
         Self(node_id)
     }
     #[inline]
@@ -706,7 +706,7 @@ impl NodeIdTrait for TryStmt {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::TryStmt);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::TryStmt);
         Self(node_id)
     }
     #[inline]
@@ -721,7 +721,7 @@ impl NodeIdTrait for WhileStmt {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::WhileStmt);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::WhileStmt);
         Self(node_id)
     }
     #[inline]
@@ -736,7 +736,7 @@ impl NodeIdTrait for DoWhileStmt {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::DoWhileStmt);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::DoWhileStmt);
         Self(node_id)
     }
     #[inline]
@@ -751,7 +751,7 @@ impl NodeIdTrait for ForStmt {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ForStmt);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ForStmt);
         Self(node_id)
     }
     #[inline]
@@ -766,7 +766,7 @@ impl NodeIdTrait for ForInStmt {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ForInStmt);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ForInStmt);
         Self(node_id)
     }
     #[inline]
@@ -781,7 +781,7 @@ impl NodeIdTrait for ForOfStmt {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ForOfStmt);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ForOfStmt);
         Self(node_id)
     }
     #[inline]
@@ -796,7 +796,7 @@ impl NodeIdTrait for SwitchCase {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::SwitchCase);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::SwitchCase);
         Self(node_id)
     }
     #[inline]
@@ -811,7 +811,7 @@ impl NodeIdTrait for CatchClause {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::CatchClause);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::CatchClause);
         Self(node_id)
     }
     #[inline]
@@ -830,7 +830,7 @@ impl NodeIdTrait for ForHead {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::ArrayLit => {
                 ForHead::Pat(Pat::Expr(Expr::Array({ ArrayLit::from_node_id(id, ast) })))
             }
@@ -968,7 +968,7 @@ impl NodeIdTrait for VarDeclOrExpr {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::ArrayLit => {
                 VarDeclOrExpr::Expr(Expr::Array({ ArrayLit::from_node_id(id, ast) }))
             }
@@ -1092,7 +1092,7 @@ impl NodeIdTrait for Decl {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::ClassDecl => Decl::Class({ ClassDecl::from_node_id(id, ast) }),
             NodeKind::FnDecl => Decl::Fn({ FnDecl::from_node_id(id, ast) }),
             NodeKind::UsingDecl => Decl::Using({ UsingDecl::from_node_id(id, ast) }),
@@ -1112,7 +1112,7 @@ impl NodeIdTrait for FnDecl {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::FnDecl);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::FnDecl);
         Self(node_id)
     }
     #[inline]
@@ -1127,7 +1127,7 @@ impl NodeIdTrait for ClassDecl {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ClassDecl);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ClassDecl);
         Self(node_id)
     }
     #[inline]
@@ -1142,7 +1142,7 @@ impl NodeIdTrait for VarDecl {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::VarDecl);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::VarDecl);
         Self(node_id)
     }
     #[inline]
@@ -1157,7 +1157,7 @@ impl NodeIdTrait for VarDeclarator {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::VarDeclarator);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::VarDeclarator);
         Self(node_id)
     }
     #[inline]
@@ -1172,7 +1172,7 @@ impl NodeIdTrait for UsingDecl {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::UsingDecl);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::UsingDecl);
         Self(node_id)
     }
     #[inline]
@@ -1221,7 +1221,7 @@ impl NodeIdTrait for Expr {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::ArrayLit => Expr::Array({ ArrayLit::from_node_id(id, ast) }),
             NodeKind::ArrowExpr => Expr::Arrow({ ArrowExpr::from_node_id(id, ast) }),
             NodeKind::AssignExpr => Expr::Assign({ AssignExpr::from_node_id(id, ast) }),
@@ -1277,7 +1277,7 @@ impl NodeIdTrait for ThisExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ThisExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ThisExpr);
         Self(node_id)
     }
     #[inline]
@@ -1292,7 +1292,7 @@ impl NodeIdTrait for ArrayLit {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ArrayLit);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ArrayLit);
         Self(node_id)
     }
     #[inline]
@@ -1307,7 +1307,7 @@ impl NodeIdTrait for ObjectLit {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ObjectLit);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ObjectLit);
         Self(node_id)
     }
     #[inline]
@@ -1325,7 +1325,7 @@ impl NodeIdTrait for PropOrSpread {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::AssignProp => {
                 PropOrSpread::Prop(Prop::Assign({ AssignProp::from_node_id(id, ast) }))
             }
@@ -1362,7 +1362,7 @@ impl NodeIdTrait for SpreadElement {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::SpreadElement);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::SpreadElement);
         Self(node_id)
     }
     #[inline]
@@ -1377,7 +1377,7 @@ impl NodeIdTrait for UnaryExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::UnaryExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::UnaryExpr);
         Self(node_id)
     }
     #[inline]
@@ -1392,7 +1392,7 @@ impl NodeIdTrait for UpdateExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::UpdateExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::UpdateExpr);
         Self(node_id)
     }
     #[inline]
@@ -1407,7 +1407,7 @@ impl NodeIdTrait for BinExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::BinExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::BinExpr);
         Self(node_id)
     }
     #[inline]
@@ -1422,7 +1422,7 @@ impl NodeIdTrait for FnExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::FnExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::FnExpr);
         Self(node_id)
     }
     #[inline]
@@ -1437,7 +1437,7 @@ impl NodeIdTrait for ClassExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ClassExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ClassExpr);
         Self(node_id)
     }
     #[inline]
@@ -1452,7 +1452,7 @@ impl NodeIdTrait for AssignExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::AssignExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::AssignExpr);
         Self(node_id)
     }
     #[inline]
@@ -1467,7 +1467,7 @@ impl NodeIdTrait for MemberExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::MemberExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::MemberExpr);
         Self(node_id)
     }
     #[inline]
@@ -1486,7 +1486,7 @@ impl NodeIdTrait for MemberProp {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::ComputedPropName => {
                 MemberProp::Computed({ ComputedPropName::from_node_id(id, ast) })
             }
@@ -1509,7 +1509,7 @@ impl NodeIdTrait for SuperPropExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::SuperPropExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::SuperPropExpr);
         Self(node_id)
     }
     #[inline]
@@ -1527,7 +1527,7 @@ impl NodeIdTrait for SuperProp {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::ComputedPropName => {
                 SuperProp::Computed({ ComputedPropName::from_node_id(id, ast) })
             }
@@ -1547,7 +1547,7 @@ impl NodeIdTrait for CondExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::CondExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::CondExpr);
         Self(node_id)
     }
     #[inline]
@@ -1562,7 +1562,7 @@ impl NodeIdTrait for ImportExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ImportExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ImportExpr);
         Self(node_id)
     }
     #[inline]
@@ -1577,7 +1577,7 @@ impl NodeIdTrait for CallExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::CallExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::CallExpr);
         Self(node_id)
     }
     #[inline]
@@ -1592,7 +1592,7 @@ impl NodeIdTrait for NewExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::NewExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::NewExpr);
         Self(node_id)
     }
     #[inline]
@@ -1607,7 +1607,7 @@ impl NodeIdTrait for SeqExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::SeqExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::SeqExpr);
         Self(node_id)
     }
     #[inline]
@@ -1622,7 +1622,7 @@ impl NodeIdTrait for ArrowExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ArrowExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ArrowExpr);
         Self(node_id)
     }
     #[inline]
@@ -1637,7 +1637,7 @@ impl NodeIdTrait for YieldExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::YieldExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::YieldExpr);
         Self(node_id)
     }
     #[inline]
@@ -1652,7 +1652,7 @@ impl NodeIdTrait for MetaPropExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::MetaPropExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::MetaPropExpr);
         Self(node_id)
     }
     #[inline]
@@ -1667,7 +1667,7 @@ impl NodeIdTrait for AwaitExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::AwaitExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::AwaitExpr);
         Self(node_id)
     }
     #[inline]
@@ -1682,7 +1682,7 @@ impl NodeIdTrait for Tpl {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::Tpl);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::Tpl);
         Self(node_id)
     }
     #[inline]
@@ -1697,7 +1697,7 @@ impl NodeIdTrait for TaggedTpl {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::TaggedTpl);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::TaggedTpl);
         Self(node_id)
     }
     #[inline]
@@ -1712,7 +1712,7 @@ impl NodeIdTrait for TplElement {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::TplElement);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::TplElement);
         Self(node_id)
     }
     #[inline]
@@ -1727,7 +1727,7 @@ impl NodeIdTrait for ParenExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ParenExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ParenExpr);
         Self(node_id)
     }
     #[inline]
@@ -1745,7 +1745,7 @@ impl NodeIdTrait for Callee {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::ArrayLit => Callee::Expr(Expr::Array({ ArrayLit::from_node_id(id, ast) })),
             NodeKind::ArrowExpr => Callee::Expr(Expr::Arrow({ ArrowExpr::from_node_id(id, ast) })),
             NodeKind::AssignExpr => {
@@ -1834,7 +1834,7 @@ impl NodeIdTrait for Super {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::Super);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::Super);
         Self(node_id)
     }
     #[inline]
@@ -1849,7 +1849,7 @@ impl NodeIdTrait for ExprOrSpread {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ExprOrSpread);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ExprOrSpread);
         Self(node_id)
     }
     #[inline]
@@ -1867,7 +1867,7 @@ impl NodeIdTrait for BlockStmtOrExpr {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::ArrayLit => {
                 BlockStmtOrExpr::Expr(Expr::Array({ ArrayLit::from_node_id(id, ast) }))
             }
@@ -1995,7 +1995,7 @@ impl NodeIdTrait for AssignTarget {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::ArrayPat => {
                 AssignTarget::Pat(AssignTargetPat::Array({ ArrayPat::from_node_id(id, ast) }))
             }
@@ -2039,7 +2039,7 @@ impl NodeIdTrait for AssignTargetPat {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::ArrayPat => AssignTargetPat::Array({ ArrayPat::from_node_id(id, ast) }),
             NodeKind::Invalid => AssignTargetPat::Invalid({ Invalid::from_node_id(id, ast) }),
             NodeKind::ObjectPat => AssignTargetPat::Object({ ObjectPat::from_node_id(id, ast) }),
@@ -2065,7 +2065,7 @@ impl NodeIdTrait for SimpleAssignTarget {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::BindingIdent => {
                 SimpleAssignTarget::Ident({ BindingIdent::from_node_id(id, ast) })
             }
@@ -2095,7 +2095,7 @@ impl NodeIdTrait for OptChainExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::OptChainExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::OptChainExpr);
         Self(node_id)
     }
     #[inline]
@@ -2113,7 +2113,7 @@ impl NodeIdTrait for OptChainBase {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::MemberExpr => OptChainBase::Member({ MemberExpr::from_node_id(id, ast) }),
             NodeKind::OptCall => OptChainBase::Call({ OptCall::from_node_id(id, ast) }),
             _ => unreachable!(),
@@ -2131,7 +2131,7 @@ impl NodeIdTrait for OptCall {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::OptCall);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::OptCall);
         Self(node_id)
     }
     #[inline]
@@ -2146,7 +2146,7 @@ impl NodeIdTrait for Invalid {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::Invalid);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::Invalid);
         Self(node_id)
     }
     #[inline]
@@ -2161,7 +2161,7 @@ impl NodeIdTrait for Function {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::Function);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::Function);
         Self(node_id)
     }
     #[inline]
@@ -2176,7 +2176,7 @@ impl NodeIdTrait for Param {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::Param);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::Param);
         Self(node_id)
     }
     #[inline]
@@ -2193,7 +2193,7 @@ impl NodeIdTrait for ParamOrTsParamProp {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::Param => ParamOrTsParamProp::Param({ Param::from_node_id(id, ast) }),
             _ => unreachable!(),
         }
@@ -2210,7 +2210,7 @@ impl NodeIdTrait for Class {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::Class);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::Class);
         Self(node_id)
     }
     #[inline]
@@ -2234,7 +2234,7 @@ impl NodeIdTrait for ClassMember {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::AutoAccessor => {
                 ClassMember::AutoAccessor({ AutoAccessor::from_node_id(id, ast) })
             }
@@ -2268,7 +2268,7 @@ impl NodeIdTrait for ClassProp {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ClassProp);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ClassProp);
         Self(node_id)
     }
     #[inline]
@@ -2283,7 +2283,7 @@ impl NodeIdTrait for PrivateProp {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::PrivateProp);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::PrivateProp);
         Self(node_id)
     }
     #[inline]
@@ -2298,7 +2298,7 @@ impl NodeIdTrait for ClassMethod {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ClassMethod);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ClassMethod);
         Self(node_id)
     }
     #[inline]
@@ -2313,7 +2313,7 @@ impl NodeIdTrait for PrivateMethod {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::PrivateMethod);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::PrivateMethod);
         Self(node_id)
     }
     #[inline]
@@ -2328,7 +2328,7 @@ impl NodeIdTrait for Constructor {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::Constructor);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::Constructor);
         Self(node_id)
     }
     #[inline]
@@ -2343,7 +2343,7 @@ impl NodeIdTrait for Decorator {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::Decorator);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::Decorator);
         Self(node_id)
     }
     #[inline]
@@ -2358,7 +2358,7 @@ impl NodeIdTrait for StaticBlock {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::StaticBlock);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::StaticBlock);
         Self(node_id)
     }
     #[inline]
@@ -2376,7 +2376,7 @@ impl NodeIdTrait for Key {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::BigInt => Key::Public(PropName::BigInt({ BigInt::from_node_id(id, ast) })),
             NodeKind::ComputedPropName => Key::Public(PropName::Computed({
                 ComputedPropName::from_node_id(id, ast)
@@ -2402,7 +2402,7 @@ impl NodeIdTrait for AutoAccessor {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::AutoAccessor);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::AutoAccessor);
         Self(node_id)
     }
     #[inline]
@@ -2424,7 +2424,7 @@ impl NodeIdTrait for Prop {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::AssignProp => Prop::Assign({ AssignProp::from_node_id(id, ast) }),
             NodeKind::GetterProp => Prop::Getter({ GetterProp::from_node_id(id, ast) }),
             NodeKind::Ident => Prop::Shorthand({ Ident::from_node_id(id, ast) }),
@@ -2446,7 +2446,7 @@ impl NodeIdTrait for KeyValueProp {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::KeyValueProp);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::KeyValueProp);
         Self(node_id)
     }
     #[inline]
@@ -2461,7 +2461,7 @@ impl NodeIdTrait for AssignProp {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::AssignProp);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::AssignProp);
         Self(node_id)
     }
     #[inline]
@@ -2476,7 +2476,7 @@ impl NodeIdTrait for GetterProp {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::GetterProp);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::GetterProp);
         Self(node_id)
     }
     #[inline]
@@ -2491,7 +2491,7 @@ impl NodeIdTrait for SetterProp {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::SetterProp);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::SetterProp);
         Self(node_id)
     }
     #[inline]
@@ -2506,7 +2506,7 @@ impl NodeIdTrait for MethodProp {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::MethodProp);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::MethodProp);
         Self(node_id)
     }
     #[inline]
@@ -2527,7 +2527,7 @@ impl NodeIdTrait for PropName {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::BigInt => PropName::BigInt({ BigInt::from_node_id(id, ast) }),
             NodeKind::ComputedPropName => {
                 PropName::Computed({ ComputedPropName::from_node_id(id, ast) })
@@ -2550,7 +2550,7 @@ impl NodeIdTrait for ComputedPropName {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ComputedPropName);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ComputedPropName);
         Self(node_id)
     }
     #[inline]
@@ -2573,7 +2573,7 @@ impl NodeIdTrait for Pat {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::ArrayLit => Pat::Expr(Expr::Array({ ArrayLit::from_node_id(id, ast) })),
             NodeKind::ArrayPat => Pat::Array({ ArrayPat::from_node_id(id, ast) }),
             NodeKind::ArrowExpr => Pat::Expr(Expr::Arrow({ ArrowExpr::from_node_id(id, ast) })),
@@ -2652,7 +2652,7 @@ impl NodeIdTrait for ArrayPat {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ArrayPat);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ArrayPat);
         Self(node_id)
     }
     #[inline]
@@ -2667,7 +2667,7 @@ impl NodeIdTrait for ObjectPat {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::ObjectPat);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::ObjectPat);
         Self(node_id)
     }
     #[inline]
@@ -2682,7 +2682,7 @@ impl NodeIdTrait for AssignPat {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::AssignPat);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::AssignPat);
         Self(node_id)
     }
     #[inline]
@@ -2697,7 +2697,7 @@ impl NodeIdTrait for RestPat {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::RestPat);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::RestPat);
         Self(node_id)
     }
     #[inline]
@@ -2716,7 +2716,7 @@ impl NodeIdTrait for ObjectPatProp {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::AssignPatProp => {
                 ObjectPatProp::Assign({ AssignPatProp::from_node_id(id, ast) })
             }
@@ -2739,7 +2739,7 @@ impl NodeIdTrait for KeyValuePatProp {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::KeyValuePatProp);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::KeyValuePatProp);
         Self(node_id)
     }
     #[inline]
@@ -2754,7 +2754,7 @@ impl NodeIdTrait for AssignPatProp {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::AssignPatProp);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::AssignPatProp);
         Self(node_id)
     }
     #[inline]
@@ -2769,7 +2769,7 @@ impl NodeIdTrait for Ident {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::Ident);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::Ident);
         Self(node_id)
     }
     #[inline]
@@ -2784,7 +2784,7 @@ impl NodeIdTrait for IdentName {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::IdentName);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::IdentName);
         Self(node_id)
     }
     #[inline]
@@ -2799,7 +2799,7 @@ impl NodeIdTrait for PrivateName {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::PrivateName);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::PrivateName);
         Self(node_id)
     }
     #[inline]
@@ -2814,7 +2814,7 @@ impl NodeIdTrait for BindingIdent {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::BindingIdent);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::BindingIdent);
         Self(node_id)
     }
     #[inline]
@@ -2836,7 +2836,7 @@ impl NodeIdTrait for Lit {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::BigInt => Lit::BigInt({ BigInt::from_node_id(id, ast) }),
             NodeKind::Bool => Lit::Bool({ Bool::from_node_id(id, ast) }),
             NodeKind::Null => Lit::Null({ Null::from_node_id(id, ast) }),
@@ -2858,7 +2858,7 @@ impl NodeIdTrait for Str {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::Str);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::Str);
         Self(node_id)
     }
     #[inline]
@@ -2873,7 +2873,7 @@ impl NodeIdTrait for Bool {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::Bool);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::Bool);
         Self(node_id)
     }
     #[inline]
@@ -2888,7 +2888,7 @@ impl NodeIdTrait for Null {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::Null);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::Null);
         Self(node_id)
     }
     #[inline]
@@ -2903,7 +2903,7 @@ impl NodeIdTrait for Number {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::Number);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::Number);
         Self(node_id)
     }
     #[inline]
@@ -2918,7 +2918,7 @@ impl NodeIdTrait for BigInt {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::BigInt);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::BigInt);
         Self(node_id)
     }
     #[inline]
@@ -2933,7 +2933,7 @@ impl NodeIdTrait for Regex {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::Regex);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::Regex);
         Self(node_id)
     }
     #[inline]
@@ -2951,7 +2951,7 @@ impl NodeIdTrait for JSXObject {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::Ident => JSXObject::Ident({ Ident::from_node_id(id, ast) }),
             NodeKind::JSXMemberExpr => {
                 JSXObject::JSXMemberExpr({ JSXMemberExpr::from_node_id(id, ast) })
@@ -2971,7 +2971,7 @@ impl NodeIdTrait for JSXMemberExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::JSXMemberExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::JSXMemberExpr);
         Self(node_id)
     }
     #[inline]
@@ -2986,7 +2986,7 @@ impl NodeIdTrait for JSXNamespacedName {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::JSXNamespacedName);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::JSXNamespacedName);
         Self(node_id)
     }
     #[inline]
@@ -3001,7 +3001,7 @@ impl NodeIdTrait for JSXEmptyExpr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::JSXEmptyExpr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::JSXEmptyExpr);
         Self(node_id)
     }
     #[inline]
@@ -3016,7 +3016,7 @@ impl NodeIdTrait for JSXExprContainer {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::JSXExprContainer);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::JSXExprContainer);
         Self(node_id)
     }
     #[inline]
@@ -3034,7 +3034,7 @@ impl NodeIdTrait for JSXExpr {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::ArrayLit => JSXExpr::Expr(Expr::Array({ ArrayLit::from_node_id(id, ast) })),
             NodeKind::ArrowExpr => JSXExpr::Expr(Expr::Arrow({ ArrowExpr::from_node_id(id, ast) })),
             NodeKind::AssignExpr => {
@@ -3124,7 +3124,7 @@ impl NodeIdTrait for JSXSpreadChild {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::JSXSpreadChild);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::JSXSpreadChild);
         Self(node_id)
     }
     #[inline]
@@ -3143,7 +3143,7 @@ impl NodeIdTrait for JSXElementName {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::Ident => JSXElementName::Ident({ Ident::from_node_id(id, ast) }),
             NodeKind::JSXMemberExpr => {
                 JSXElementName::JSXMemberExpr({ JSXMemberExpr::from_node_id(id, ast) })
@@ -3166,7 +3166,7 @@ impl NodeIdTrait for JSXOpeningElement {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::JSXOpeningElement);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::JSXOpeningElement);
         Self(node_id)
     }
     #[inline]
@@ -3184,7 +3184,7 @@ impl NodeIdTrait for JSXAttrOrSpread {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::JSXAttr => JSXAttrOrSpread::JSXAttr({ JSXAttr::from_node_id(id, ast) }),
             NodeKind::SpreadElement => {
                 JSXAttrOrSpread::SpreadElement({ SpreadElement::from_node_id(id, ast) })
@@ -3204,7 +3204,7 @@ impl NodeIdTrait for JSXClosingElement {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::JSXClosingElement);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::JSXClosingElement);
         Self(node_id)
     }
     #[inline]
@@ -3219,7 +3219,7 @@ impl NodeIdTrait for JSXAttr {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::JSXAttr);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::JSXAttr);
         Self(node_id)
     }
     #[inline]
@@ -3237,7 +3237,7 @@ impl NodeIdTrait for JSXAttrName {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::IdentName => JSXAttrName::Ident({ IdentName::from_node_id(id, ast) }),
             NodeKind::JSXNamespacedName => {
                 JSXAttrName::JSXNamespacedName({ JSXNamespacedName::from_node_id(id, ast) })
@@ -3262,7 +3262,7 @@ impl NodeIdTrait for JSXAttrValue {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::JSXElement => JSXAttrValue::JSXElement({ JSXElement::from_node_id(id, ast) }),
             NodeKind::JSXExprContainer => {
                 JSXAttrValue::JSXExprContainer({ JSXExprContainer::from_node_id(id, ast) })
@@ -3286,7 +3286,7 @@ impl NodeIdTrait for JSXText {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::JSXText);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::JSXText);
         Self(node_id)
     }
     #[inline]
@@ -3301,7 +3301,7 @@ impl NodeIdTrait for JSXElement {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::JSXElement);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::JSXElement);
         Self(node_id)
     }
     #[inline]
@@ -3322,7 +3322,7 @@ impl NodeIdTrait for JSXElementChild {
     }
     #[inline]
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-        match ast.nodes[id.index()].kind {
+        match ast.nodes.kind(id) {
             NodeKind::JSXElement => {
                 JSXElementChild::JSXElement({ JSXElement::from_node_id(id, ast) })
             }
@@ -3351,7 +3351,7 @@ impl NodeIdTrait for JSXFragment {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::JSXFragment);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::JSXFragment);
         Self(node_id)
     }
     #[inline]
@@ -3366,7 +3366,7 @@ impl NodeIdTrait for JSXOpeningFragment {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::JSXOpeningFragment);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::JSXOpeningFragment);
         Self(node_id)
     }
     #[inline]
@@ -3381,7 +3381,7 @@ impl NodeIdTrait for JSXClosingFragment {
     }
     #[inline]
     fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-        assert!(ast.nodes[node_id.index()].kind == NodeKind::JSXClosingFragment);
+        assert!(*ast.nodes.kind(node_id) == NodeKind::JSXClosingFragment);
         Self(node_id)
     }
     #[inline]

@@ -1,5 +1,5 @@
 use bumpalo::Bump;
-use std::cell::Cell;
+use std::{alloc::Layout, cell::Cell, ptr::NonNull};
 
 mod allocator_api;
 pub mod boxed;
@@ -152,6 +152,12 @@ impl Allocator {
     pub fn alloc_wtf8(&self, s: &wtf8::Wtf8) -> &wtf8::Wtf8 {
         let bytes = self.arena.alloc_slice_copy(s.as_bytes());
         unsafe { wtf8::Wtf8::from_bytes_unchecked(bytes) }
+    }
+
+    /// Allocates uninitialized storage with the requested layout.
+    #[doc(hidden)]
+    pub fn alloc_layout(&self, layout: Layout) -> NonNull<u8> {
+        self.arena.alloc_layout(layout)
     }
 
     pub fn boxed<T>(&self, value: T) -> boxed::Box<'_, T> {

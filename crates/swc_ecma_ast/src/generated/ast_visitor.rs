@@ -1053,13 +1053,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportDecl {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1, field_value_3) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -1110,13 +1105,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportNamedSpecifier {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -1176,13 +1166,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for NamedExport {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1, field_value_3) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -1268,13 +1253,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportNamedSpecifier {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -1336,13 +1316,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportAll {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_2) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -1437,13 +1412,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for WithStmt {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -1481,13 +1451,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for LabeledStmt {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -1536,13 +1501,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for IfStmt {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1, field_value_2) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -1575,13 +1535,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SwitchStmt {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -1619,13 +1574,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TryStmt {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1, field_value_2) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -1658,13 +1608,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for WhileStmt {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -1691,13 +1636,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for DoWhileStmt {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -1724,13 +1664,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForStmt {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1, field_value_2, field_value_3) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -1769,13 +1704,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForInStmt {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1, field_value_2) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -1808,13 +1738,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForOfStmt {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_1, field_value_2, field_value_3) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(1usize);
             debug_assert!(offset < extra_data.len());
@@ -1847,13 +1772,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SwitchCase {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -1880,13 +1800,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for CatchClause {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -1955,13 +1870,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FnDecl {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_2) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -1988,13 +1898,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassDecl {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_2) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -2032,13 +1937,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for VarDeclarator {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -2201,13 +2101,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BinExpr {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_1, field_value_2) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(1usize);
             debug_assert!(offset < extra_data.len());
@@ -2234,13 +2129,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FnExpr {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -2267,13 +2157,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassExpr {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -2300,13 +2185,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignExpr {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_1, field_value_2) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(1usize);
             debug_assert!(offset < extra_data.len());
@@ -2333,13 +2213,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for MemberExpr {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -2380,13 +2255,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SuperPropExpr {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -2426,13 +2296,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for CondExpr {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1, field_value_2) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -2465,13 +2330,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportExpr {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_1, field_value_2) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(1usize);
             debug_assert!(offset < extra_data.len());
@@ -2498,13 +2358,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for CallExpr {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -2531,13 +2386,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for NewExpr {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -2575,13 +2425,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ArrowExpr {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -2638,13 +2483,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Tpl {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -2671,13 +2511,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TaggedTpl {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -2836,13 +2671,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for OptCall {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -2877,13 +2707,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Function {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1, field_value_2) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -2916,13 +2741,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Param {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -2961,13 +2781,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Class {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1, field_value_2) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -3019,13 +2834,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassProp {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1, field_value_3) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -3058,13 +2868,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PrivateProp {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1, field_value_3) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -3097,13 +2902,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassMethod {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -3130,13 +2930,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PrivateMethod {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -3163,13 +2958,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Constructor {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1, field_value_2) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -3237,13 +3027,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AutoAccessor {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1, field_value_3) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -3293,13 +3078,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for KeyValueProp {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -3326,13 +3106,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignProp {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -3359,13 +3134,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for GetterProp {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -3392,13 +3162,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SetterProp {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -3425,13 +3190,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for MethodProp {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -3525,13 +3285,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignPat {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -3583,13 +3338,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for KeyValuePatProp {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -3616,13 +3366,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignPatProp {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -3762,13 +3507,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXMemberExpr {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -3795,13 +3535,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXNamespacedName {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -3887,13 +3622,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXOpeningElement {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -3944,13 +3674,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXAttr {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -4017,13 +3742,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXElement {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1, field_value_2) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());
@@ -4076,13 +3796,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXFragment {
     fn visit_children_with(self, visitor: &mut V) {
         let (field_value_0, field_value_1, field_value_2) = {
             let ast = visitor.ast();
-            let extra_data_start = unsafe {
-                ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
-                    .extra_data_start
-                    .index()
-            };
+            let extra_data_start =
+                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
             let extra_data = ast.extra_data.as_slice();
             let offset = extra_data_start.wrapping_add(0usize);
             debug_assert!(offset < extra_data.len());

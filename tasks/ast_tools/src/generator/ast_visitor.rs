@@ -114,8 +114,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                             let ast = visitor.ast();
                             let extra_data_start = unsafe {
                                 ast.nodes
-                                    .get_unchecked(self.0.index())
-                                    .data
+                                    .data_unchecked(self.0)
                                     .extra_data_start
                                     .index()
                             };

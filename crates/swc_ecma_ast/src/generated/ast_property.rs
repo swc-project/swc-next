@@ -36,8 +36,7 @@ impl Module {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -56,8 +55,7 @@ impl Module {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -76,8 +74,7 @@ impl Module {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -95,8 +92,7 @@ impl Module {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -116,8 +112,7 @@ impl Script {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -136,8 +131,7 @@ impl Script {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -156,8 +150,7 @@ impl Script {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -175,8 +168,7 @@ impl Script {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -288,8 +280,7 @@ impl ImportDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -308,8 +299,7 @@ impl ImportDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -328,8 +318,7 @@ impl ImportDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -348,8 +337,7 @@ impl ImportDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -368,8 +356,7 @@ impl ImportDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(4usize),
@@ -392,8 +379,7 @@ impl ImportDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -411,8 +397,7 @@ impl ImportDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -430,8 +415,7 @@ impl ImportDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -449,8 +433,7 @@ impl ImportDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -468,8 +451,7 @@ impl ImportDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(4usize),
@@ -524,8 +506,7 @@ impl ImportNamedSpecifier {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -544,8 +525,7 @@ impl ImportNamedSpecifier {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -564,8 +544,7 @@ impl ImportNamedSpecifier {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -584,8 +563,7 @@ impl ImportNamedSpecifier {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -603,8 +581,7 @@ impl ImportNamedSpecifier {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -622,8 +599,7 @@ impl ImportNamedSpecifier {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -640,28 +616,26 @@ impl ImportNamedSpecifier {
 impl ImportDefaultSpecifier {
     #[inline]
     pub fn local<'a>(self, ast: &crate::Ast<'a>) -> Ident {
-        let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+        let raw = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
         unsafe { Ident::from_node_id_unchecked(crate::NodeId::from_raw_unchecked(raw), ast) }
     }
     #[inline]
     pub fn set_local<'a>(self, ast: &mut crate::Ast<'a>, local: Ident) {
         unsafe {
-            ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data =
-                local.node_id().index() as u32
+            ast.nodes.data_mut_unchecked(self.0).inline_data = local.node_id().index() as u32
         };
     }
 }
 impl ImportStarAsSpecifier {
     #[inline]
     pub fn local<'a>(self, ast: &crate::Ast<'a>) -> Ident {
-        let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+        let raw = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
         unsafe { Ident::from_node_id_unchecked(crate::NodeId::from_raw_unchecked(raw), ast) }
     }
     #[inline]
     pub fn set_local<'a>(self, ast: &mut crate::Ast<'a>, local: Ident) {
         unsafe {
-            ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data =
-                local.node_id().index() as u32
+            ast.nodes.data_mut_unchecked(self.0).inline_data = local.node_id().index() as u32
         };
     }
 }
@@ -671,8 +645,7 @@ impl ExportDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -691,8 +664,7 @@ impl ExportDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -712,8 +684,7 @@ impl NamedExport {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -732,8 +703,7 @@ impl NamedExport {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -752,8 +722,7 @@ impl NamedExport {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -772,8 +741,7 @@ impl NamedExport {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -796,8 +764,7 @@ impl NamedExport {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -815,8 +782,7 @@ impl NamedExport {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -834,8 +800,7 @@ impl NamedExport {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -853,8 +818,7 @@ impl NamedExport {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -909,8 +873,7 @@ impl ExportNamespaceSpecifier {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -929,8 +892,7 @@ impl ExportNamespaceSpecifier {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -971,14 +933,13 @@ impl ModuleExportName {
 impl ExportDefaultSpecifier {
     #[inline]
     pub fn exported<'a>(self, ast: &crate::Ast<'a>) -> Ident {
-        let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+        let raw = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
         unsafe { Ident::from_node_id_unchecked(crate::NodeId::from_raw_unchecked(raw), ast) }
     }
     #[inline]
     pub fn set_exported<'a>(self, ast: &mut crate::Ast<'a>, exported: Ident) {
         unsafe {
-            ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data =
-                exported.node_id().index() as u32
+            ast.nodes.data_mut_unchecked(self.0).inline_data = exported.node_id().index() as u32
         };
     }
 }
@@ -988,8 +949,7 @@ impl ExportNamedSpecifier {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1008,8 +968,7 @@ impl ExportNamedSpecifier {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -1028,8 +987,7 @@ impl ExportNamedSpecifier {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -1048,8 +1006,7 @@ impl ExportNamedSpecifier {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1067,8 +1024,7 @@ impl ExportNamedSpecifier {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -1086,8 +1042,7 @@ impl ExportNamedSpecifier {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -1107,8 +1062,7 @@ impl ExportDefaultDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1127,8 +1081,7 @@ impl ExportDefaultDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1172,8 +1125,7 @@ impl ExportDefaultExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1192,8 +1144,7 @@ impl ExportDefaultExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1213,8 +1164,7 @@ impl ExportAll {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1233,8 +1183,7 @@ impl ExportAll {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -1253,8 +1202,7 @@ impl ExportAll {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -1273,8 +1221,7 @@ impl ExportAll {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1292,8 +1239,7 @@ impl ExportAll {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -1311,8 +1257,7 @@ impl ExportAll {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -1332,8 +1277,7 @@ impl BlockStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1352,8 +1296,7 @@ impl BlockStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -1372,8 +1315,7 @@ impl BlockStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1391,8 +1333,7 @@ impl BlockStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -1623,8 +1564,7 @@ impl ExprStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1643,8 +1583,7 @@ impl ExprStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1666,8 +1605,7 @@ impl WithStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1686,8 +1624,7 @@ impl WithStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -1706,8 +1643,7 @@ impl WithStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1725,8 +1661,7 @@ impl WithStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -1746,8 +1681,7 @@ impl ReturnStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1766,8 +1700,7 @@ impl ReturnStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1787,8 +1720,7 @@ impl LabeledStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1807,8 +1739,7 @@ impl LabeledStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -1827,8 +1758,7 @@ impl LabeledStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1846,8 +1776,7 @@ impl LabeledStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -1864,14 +1793,14 @@ impl LabeledStmt {
 impl BreakStmt {
     #[inline]
     pub fn label<'a>(self, ast: &crate::Ast<'a>) -> Option<Ident> {
-        let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+        let raw = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
         let opt = crate::OptionalNodeId::from_raw(raw);
         opt.map(|id| unsafe { Ident::from_node_id_unchecked(id, ast) })
     }
     #[inline]
     pub fn set_label<'a>(self, ast: &mut crate::Ast<'a>, label: Option<Ident>) {
         unsafe {
-            ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data =
+            ast.nodes.data_mut_unchecked(self.0).inline_data =
                 crate::OptionalNodeId::from(label.map(|n| n.node_id())).into_raw()
         };
     }
@@ -1879,14 +1808,14 @@ impl BreakStmt {
 impl ContinueStmt {
     #[inline]
     pub fn label<'a>(self, ast: &crate::Ast<'a>) -> Option<Ident> {
-        let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+        let raw = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
         let opt = crate::OptionalNodeId::from_raw(raw);
         opt.map(|id| unsafe { Ident::from_node_id_unchecked(id, ast) })
     }
     #[inline]
     pub fn set_label<'a>(self, ast: &mut crate::Ast<'a>, label: Option<Ident>) {
         unsafe {
-            ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data =
+            ast.nodes.data_mut_unchecked(self.0).inline_data =
                 crate::OptionalNodeId::from(label.map(|n| n.node_id())).into_raw()
         };
     }
@@ -1897,8 +1826,7 @@ impl IfStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1917,8 +1845,7 @@ impl IfStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -1937,8 +1864,7 @@ impl IfStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -1957,8 +1883,7 @@ impl IfStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -1976,8 +1901,7 @@ impl IfStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -1995,8 +1919,7 @@ impl IfStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -2016,8 +1939,7 @@ impl SwitchStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2036,8 +1958,7 @@ impl SwitchStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -2056,8 +1977,7 @@ impl SwitchStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2075,8 +1995,7 @@ impl SwitchStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -2096,8 +2015,7 @@ impl ThrowStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2116,8 +2034,7 @@ impl ThrowStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2137,8 +2054,7 @@ impl TryStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2157,8 +2073,7 @@ impl TryStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -2177,8 +2092,7 @@ impl TryStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -2197,8 +2111,7 @@ impl TryStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2216,8 +2129,7 @@ impl TryStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -2235,8 +2147,7 @@ impl TryStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -2256,8 +2167,7 @@ impl WhileStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2276,8 +2186,7 @@ impl WhileStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -2296,8 +2205,7 @@ impl WhileStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2315,8 +2223,7 @@ impl WhileStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -2336,8 +2243,7 @@ impl DoWhileStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2356,8 +2262,7 @@ impl DoWhileStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -2376,8 +2281,7 @@ impl DoWhileStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2395,8 +2299,7 @@ impl DoWhileStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -2416,8 +2319,7 @@ impl ForStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2436,8 +2338,7 @@ impl ForStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -2456,8 +2357,7 @@ impl ForStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -2476,8 +2376,7 @@ impl ForStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -2496,8 +2395,7 @@ impl ForStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2515,8 +2413,7 @@ impl ForStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -2534,8 +2431,7 @@ impl ForStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -2553,8 +2449,7 @@ impl ForStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -2574,8 +2469,7 @@ impl ForInStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2594,8 +2488,7 @@ impl ForInStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -2614,8 +2507,7 @@ impl ForInStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -2634,8 +2526,7 @@ impl ForInStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2653,8 +2544,7 @@ impl ForInStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -2672,8 +2562,7 @@ impl ForInStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -2693,8 +2582,7 @@ impl ForOfStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2713,8 +2601,7 @@ impl ForOfStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -2733,8 +2620,7 @@ impl ForOfStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -2753,8 +2639,7 @@ impl ForOfStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -2773,8 +2658,7 @@ impl ForOfStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2792,8 +2676,7 @@ impl ForOfStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -2811,8 +2694,7 @@ impl ForOfStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -2830,8 +2712,7 @@ impl ForOfStmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -2851,8 +2732,7 @@ impl SwitchCase {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2871,8 +2751,7 @@ impl SwitchCase {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -2891,8 +2770,7 @@ impl SwitchCase {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2910,8 +2788,7 @@ impl SwitchCase {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -2931,8 +2808,7 @@ impl CatchClause {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2951,8 +2827,7 @@ impl CatchClause {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -2971,8 +2846,7 @@ impl CatchClause {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -2990,8 +2864,7 @@ impl CatchClause {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -3116,8 +2989,7 @@ impl FnDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -3136,8 +3008,7 @@ impl FnDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -3156,8 +3027,7 @@ impl FnDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -3176,8 +3046,7 @@ impl FnDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -3195,8 +3064,7 @@ impl FnDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -3214,8 +3082,7 @@ impl FnDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -3235,8 +3102,7 @@ impl ClassDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -3255,8 +3121,7 @@ impl ClassDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -3275,8 +3140,7 @@ impl ClassDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -3295,8 +3159,7 @@ impl ClassDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -3314,8 +3177,7 @@ impl ClassDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -3333,8 +3195,7 @@ impl ClassDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -3354,8 +3215,7 @@ impl VarDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -3374,8 +3234,7 @@ impl VarDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -3394,8 +3253,7 @@ impl VarDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -3414,8 +3272,7 @@ impl VarDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -3433,8 +3290,7 @@ impl VarDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -3452,8 +3308,7 @@ impl VarDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -3473,8 +3328,7 @@ impl VarDeclarator {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -3493,8 +3347,7 @@ impl VarDeclarator {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -3513,8 +3366,7 @@ impl VarDeclarator {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -3532,8 +3384,7 @@ impl VarDeclarator {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -3553,8 +3404,7 @@ impl UsingDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -3573,8 +3423,7 @@ impl UsingDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -3593,8 +3442,7 @@ impl UsingDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -3612,8 +3460,7 @@ impl UsingDecl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -3999,8 +3846,7 @@ impl ArrayLit {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4023,8 +3869,7 @@ impl ArrayLit {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4044,8 +3889,7 @@ impl ObjectLit {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4064,8 +3908,7 @@ impl ObjectLit {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4109,8 +3952,7 @@ impl SpreadElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4129,8 +3971,7 @@ impl SpreadElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -4149,8 +3990,7 @@ impl SpreadElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4168,8 +4008,7 @@ impl SpreadElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -4189,8 +4028,7 @@ impl UnaryExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4209,8 +4047,7 @@ impl UnaryExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -4229,8 +4066,7 @@ impl UnaryExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4248,8 +4084,7 @@ impl UnaryExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -4269,8 +4104,7 @@ impl UpdateExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4289,8 +4123,7 @@ impl UpdateExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -4309,8 +4142,7 @@ impl UpdateExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -4329,8 +4161,7 @@ impl UpdateExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4348,8 +4179,7 @@ impl UpdateExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -4367,8 +4197,7 @@ impl UpdateExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -4388,8 +4217,7 @@ impl BinExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4408,8 +4236,7 @@ impl BinExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -4428,8 +4255,7 @@ impl BinExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -4448,8 +4274,7 @@ impl BinExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4467,8 +4292,7 @@ impl BinExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -4486,8 +4310,7 @@ impl BinExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -4507,8 +4330,7 @@ impl FnExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4527,8 +4349,7 @@ impl FnExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -4547,8 +4368,7 @@ impl FnExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4566,8 +4386,7 @@ impl FnExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -4587,8 +4406,7 @@ impl ClassExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4607,8 +4425,7 @@ impl ClassExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -4627,8 +4444,7 @@ impl ClassExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4646,8 +4462,7 @@ impl ClassExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -4667,8 +4482,7 @@ impl AssignExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4687,8 +4501,7 @@ impl AssignExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -4707,8 +4520,7 @@ impl AssignExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -4727,8 +4539,7 @@ impl AssignExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4746,8 +4557,7 @@ impl AssignExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -4765,8 +4575,7 @@ impl AssignExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -4786,8 +4595,7 @@ impl MemberExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4806,8 +4614,7 @@ impl MemberExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -4826,8 +4633,7 @@ impl MemberExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4845,8 +4651,7 @@ impl MemberExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -4901,8 +4706,7 @@ impl SuperPropExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4921,8 +4725,7 @@ impl SuperPropExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -4941,8 +4744,7 @@ impl SuperPropExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -4960,8 +4762,7 @@ impl SuperPropExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -5005,8 +4806,7 @@ impl CondExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5025,8 +4825,7 @@ impl CondExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -5045,8 +4844,7 @@ impl CondExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -5065,8 +4863,7 @@ impl CondExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5084,8 +4881,7 @@ impl CondExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -5103,8 +4899,7 @@ impl CondExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -5124,8 +4919,7 @@ impl ImportExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5144,8 +4938,7 @@ impl ImportExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -5164,8 +4957,7 @@ impl ImportExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -5184,8 +4976,7 @@ impl ImportExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -5204,8 +4995,7 @@ impl ImportExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5223,8 +5013,7 @@ impl ImportExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -5242,8 +5031,7 @@ impl ImportExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -5261,8 +5049,7 @@ impl ImportExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -5282,8 +5069,7 @@ impl CallExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5302,8 +5088,7 @@ impl CallExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -5322,8 +5107,7 @@ impl CallExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5341,8 +5125,7 @@ impl CallExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -5362,8 +5145,7 @@ impl NewExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5382,8 +5164,7 @@ impl NewExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -5402,8 +5183,7 @@ impl NewExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5421,8 +5201,7 @@ impl NewExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -5442,8 +5221,7 @@ impl SeqExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5462,8 +5240,7 @@ impl SeqExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5483,8 +5260,7 @@ impl ArrowExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5503,8 +5279,7 @@ impl ArrowExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -5523,8 +5298,7 @@ impl ArrowExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -5543,8 +5317,7 @@ impl ArrowExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5562,8 +5335,7 @@ impl ArrowExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -5581,8 +5353,7 @@ impl ArrowExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -5602,8 +5373,7 @@ impl YieldExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5622,8 +5392,7 @@ impl YieldExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -5642,8 +5411,7 @@ impl YieldExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5661,8 +5429,7 @@ impl YieldExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -5679,12 +5446,12 @@ impl YieldExpr {
 impl MetaPropExpr {
     #[inline]
     pub fn kind<'a>(self, ast: &crate::Ast<'a>) -> MetaPropKind {
-        let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+        let raw = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
         unsafe { std::mem::transmute::<u8, MetaPropKind>(raw as u8) }
     }
     #[inline]
     pub fn set_kind<'a>(self, ast: &mut crate::Ast<'a>, kind: MetaPropKind) {
-        unsafe { ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data = kind as u32 };
+        unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = kind as u32 };
     }
 }
 impl AwaitExpr {
@@ -5693,8 +5460,7 @@ impl AwaitExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5713,8 +5479,7 @@ impl AwaitExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5734,8 +5499,7 @@ impl Tpl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5754,8 +5518,7 @@ impl Tpl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -5774,8 +5537,7 @@ impl Tpl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5793,8 +5555,7 @@ impl Tpl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -5814,8 +5575,7 @@ impl TaggedTpl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5834,8 +5594,7 @@ impl TaggedTpl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -5854,8 +5613,7 @@ impl TaggedTpl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5873,8 +5631,7 @@ impl TaggedTpl {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -5894,8 +5651,7 @@ impl TplElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5914,8 +5670,7 @@ impl TplElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -5934,8 +5689,7 @@ impl TplElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -5954,8 +5708,7 @@ impl TplElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -5973,8 +5726,7 @@ impl TplElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -5992,8 +5744,7 @@ impl TplElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -6013,8 +5764,7 @@ impl ParenExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -6033,8 +5783,7 @@ impl ParenExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -6079,8 +5828,7 @@ impl ExprOrSpread {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -6099,8 +5847,7 @@ impl ExprOrSpread {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -6119,8 +5866,7 @@ impl ExprOrSpread {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -6138,8 +5884,7 @@ impl ExprOrSpread {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -6310,8 +6055,7 @@ impl OptChainExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -6330,8 +6074,7 @@ impl OptChainExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -6350,8 +6093,7 @@ impl OptChainExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -6369,8 +6111,7 @@ impl OptChainExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -6414,8 +6155,7 @@ impl OptCall {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -6434,8 +6174,7 @@ impl OptCall {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -6454,8 +6193,7 @@ impl OptCall {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -6473,8 +6211,7 @@ impl OptCall {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -6495,8 +6232,7 @@ impl Function {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -6515,8 +6251,7 @@ impl Function {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -6535,8 +6270,7 @@ impl Function {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -6555,8 +6289,7 @@ impl Function {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -6575,8 +6308,7 @@ impl Function {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(4usize),
@@ -6595,8 +6327,7 @@ impl Function {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -6618,8 +6349,7 @@ impl Function {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -6637,8 +6367,7 @@ impl Function {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -6656,8 +6385,7 @@ impl Function {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -6675,8 +6403,7 @@ impl Function {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(4usize),
@@ -6696,8 +6423,7 @@ impl Param {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -6716,8 +6442,7 @@ impl Param {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -6740,8 +6465,7 @@ impl Param {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -6759,8 +6483,7 @@ impl Param {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -6793,8 +6516,7 @@ impl Class {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -6813,8 +6535,7 @@ impl Class {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -6833,8 +6554,7 @@ impl Class {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -6853,8 +6573,7 @@ impl Class {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -6877,8 +6596,7 @@ impl Class {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -6896,8 +6614,7 @@ impl Class {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -6915,8 +6632,7 @@ impl Class {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -6934,8 +6650,7 @@ impl Class {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -7045,8 +6760,7 @@ impl ClassProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -7065,8 +6779,7 @@ impl ClassProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -7085,8 +6798,7 @@ impl ClassProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -7105,8 +6817,7 @@ impl ClassProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -7125,8 +6836,7 @@ impl ClassProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -7144,8 +6854,7 @@ impl ClassProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -7163,8 +6872,7 @@ impl ClassProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -7186,8 +6894,7 @@ impl ClassProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -7207,8 +6914,7 @@ impl PrivateProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -7227,8 +6933,7 @@ impl PrivateProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -7247,8 +6952,7 @@ impl PrivateProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -7267,8 +6971,7 @@ impl PrivateProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -7287,8 +6990,7 @@ impl PrivateProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -7306,8 +7008,7 @@ impl PrivateProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -7325,8 +7026,7 @@ impl PrivateProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -7348,8 +7048,7 @@ impl PrivateProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -7369,8 +7068,7 @@ impl ClassMethod {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -7389,8 +7087,7 @@ impl ClassMethod {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -7409,8 +7106,7 @@ impl ClassMethod {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -7429,8 +7125,7 @@ impl ClassMethod {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -7449,8 +7144,7 @@ impl ClassMethod {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -7468,8 +7162,7 @@ impl ClassMethod {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -7487,8 +7180,7 @@ impl ClassMethod {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -7506,8 +7198,7 @@ impl ClassMethod {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -7527,8 +7218,7 @@ impl PrivateMethod {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -7547,8 +7237,7 @@ impl PrivateMethod {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -7567,8 +7256,7 @@ impl PrivateMethod {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -7587,8 +7275,7 @@ impl PrivateMethod {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -7607,8 +7294,7 @@ impl PrivateMethod {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -7626,8 +7312,7 @@ impl PrivateMethod {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -7645,8 +7330,7 @@ impl PrivateMethod {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -7664,8 +7348,7 @@ impl PrivateMethod {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -7685,8 +7368,7 @@ impl Constructor {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -7705,8 +7387,7 @@ impl Constructor {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -7725,8 +7406,7 @@ impl Constructor {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -7745,8 +7425,7 @@ impl Constructor {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -7768,8 +7447,7 @@ impl Constructor {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -7787,8 +7465,7 @@ impl Constructor {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -7808,8 +7485,7 @@ impl Decorator {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -7828,8 +7504,7 @@ impl Decorator {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -7846,15 +7521,12 @@ impl Decorator {
 impl StaticBlock {
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> BlockStmt {
-        let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+        let raw = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
         unsafe { BlockStmt::from_node_id_unchecked(crate::NodeId::from_raw_unchecked(raw), ast) }
     }
     #[inline]
     pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: BlockStmt) {
-        unsafe {
-            ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data =
-                body.node_id().index() as u32
-        };
+        unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = body.node_id().index() as u32 };
     }
 }
 impl Key {
@@ -7887,8 +7559,7 @@ impl AutoAccessor {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -7907,8 +7578,7 @@ impl AutoAccessor {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -7927,8 +7597,7 @@ impl AutoAccessor {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -7947,8 +7616,7 @@ impl AutoAccessor {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -7967,8 +7635,7 @@ impl AutoAccessor {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -7986,8 +7653,7 @@ impl AutoAccessor {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -8005,8 +7671,7 @@ impl AutoAccessor {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -8028,8 +7693,7 @@ impl AutoAccessor {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(3usize),
@@ -8117,8 +7781,7 @@ impl KeyValueProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8137,8 +7800,7 @@ impl KeyValueProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -8157,8 +7819,7 @@ impl KeyValueProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8176,8 +7837,7 @@ impl KeyValueProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -8197,8 +7857,7 @@ impl AssignProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8217,8 +7876,7 @@ impl AssignProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -8237,8 +7895,7 @@ impl AssignProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8256,8 +7913,7 @@ impl AssignProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -8277,8 +7933,7 @@ impl GetterProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8297,8 +7952,7 @@ impl GetterProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -8317,8 +7971,7 @@ impl GetterProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8336,8 +7989,7 @@ impl GetterProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -8357,8 +8009,7 @@ impl SetterProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8377,8 +8028,7 @@ impl SetterProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -8397,8 +8047,7 @@ impl SetterProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8416,8 +8065,7 @@ impl SetterProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -8437,8 +8085,7 @@ impl MethodProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8457,8 +8104,7 @@ impl MethodProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -8477,8 +8123,7 @@ impl MethodProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8496,8 +8141,7 @@ impl MethodProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -8574,8 +8218,7 @@ impl ComputedPropName {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8594,8 +8237,7 @@ impl ComputedPropName {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8694,8 +8336,7 @@ impl ArrayPat {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8714,8 +8355,7 @@ impl ArrayPat {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -8734,8 +8374,7 @@ impl ArrayPat {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8753,8 +8392,7 @@ impl ArrayPat {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -8774,8 +8412,7 @@ impl ObjectPat {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8794,8 +8431,7 @@ impl ObjectPat {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -8814,8 +8450,7 @@ impl ObjectPat {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8833,8 +8468,7 @@ impl ObjectPat {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -8854,8 +8488,7 @@ impl AssignPat {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8874,8 +8507,7 @@ impl AssignPat {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -8894,8 +8526,7 @@ impl AssignPat {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8913,8 +8544,7 @@ impl AssignPat {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -8934,8 +8564,7 @@ impl RestPat {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8954,8 +8583,7 @@ impl RestPat {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -8974,8 +8602,7 @@ impl RestPat {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -8993,8 +8620,7 @@ impl RestPat {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -9049,8 +8675,7 @@ impl KeyValuePatProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9069,8 +8694,7 @@ impl KeyValuePatProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -9089,8 +8713,7 @@ impl KeyValuePatProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9108,8 +8731,7 @@ impl KeyValuePatProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -9129,8 +8751,7 @@ impl AssignPatProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9149,8 +8770,7 @@ impl AssignPatProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -9169,8 +8789,7 @@ impl AssignPatProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9188,8 +8807,7 @@ impl AssignPatProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -9209,8 +8827,7 @@ impl Ident {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9229,8 +8846,7 @@ impl Ident {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -9249,8 +8865,7 @@ impl Ident {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9268,8 +8883,7 @@ impl Ident {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -9289,8 +8903,7 @@ impl IdentName {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9309,8 +8922,7 @@ impl IdentName {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9330,8 +8942,7 @@ impl PrivateName {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9350,8 +8961,7 @@ impl PrivateName {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9368,15 +8978,12 @@ impl PrivateName {
 impl BindingIdent {
     #[inline]
     pub fn id<'a>(self, ast: &crate::Ast<'a>) -> Ident {
-        let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+        let raw = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
         unsafe { Ident::from_node_id_unchecked(crate::NodeId::from_raw_unchecked(raw), ast) }
     }
     #[inline]
     pub fn set_id<'a>(self, ast: &mut crate::Ast<'a>, id: Ident) {
-        unsafe {
-            ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data =
-                id.node_id().index() as u32
-        };
+        unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = id.node_id().index() as u32 };
     }
 }
 impl Lit {
@@ -9453,8 +9060,7 @@ impl Str {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9473,8 +9079,7 @@ impl Str {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -9493,8 +9098,7 @@ impl Str {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9512,8 +9116,7 @@ impl Str {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -9530,12 +9133,12 @@ impl Str {
 impl Bool {
     #[inline]
     pub fn value<'a>(self, ast: &crate::Ast<'a>) -> bool {
-        let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+        let raw = unsafe { ast.nodes.data_unchecked(self.0).inline_data };
         raw != 0
     }
     #[inline]
     pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: bool) {
-        unsafe { ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data = value as u32 };
+        unsafe { ast.nodes.data_mut_unchecked(self.0).inline_data = value as u32 };
     }
 }
 impl Null {}
@@ -9545,8 +9148,7 @@ impl Number {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9565,8 +9167,7 @@ impl Number {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -9585,8 +9186,7 @@ impl Number {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9604,8 +9204,7 @@ impl Number {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -9625,8 +9224,7 @@ impl BigInt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9645,8 +9243,7 @@ impl BigInt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -9665,8 +9262,7 @@ impl BigInt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9684,8 +9280,7 @@ impl BigInt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -9705,8 +9300,7 @@ impl Regex {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9725,8 +9319,7 @@ impl Regex {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -9745,8 +9338,7 @@ impl Regex {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9764,8 +9356,7 @@ impl Regex {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -9809,8 +9400,7 @@ impl JSXMemberExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9829,8 +9419,7 @@ impl JSXMemberExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -9849,8 +9438,7 @@ impl JSXMemberExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9868,8 +9456,7 @@ impl JSXMemberExpr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -9889,8 +9476,7 @@ impl JSXNamespacedName {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9909,8 +9495,7 @@ impl JSXNamespacedName {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -9929,8 +9514,7 @@ impl JSXNamespacedName {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9948,8 +9532,7 @@ impl JSXNamespacedName {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -9970,8 +9553,7 @@ impl JSXExprContainer {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -9990,8 +9572,7 @@ impl JSXExprContainer {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -10035,8 +9616,7 @@ impl JSXSpreadChild {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -10055,8 +9635,7 @@ impl JSXSpreadChild {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -10111,8 +9690,7 @@ impl JSXOpeningElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -10131,8 +9709,7 @@ impl JSXOpeningElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -10151,8 +9728,7 @@ impl JSXOpeningElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -10171,8 +9747,7 @@ impl JSXOpeningElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -10190,8 +9765,7 @@ impl JSXOpeningElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -10209,8 +9783,7 @@ impl JSXOpeningElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -10254,8 +9827,7 @@ impl JSXClosingElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -10274,8 +9846,7 @@ impl JSXClosingElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -10295,8 +9866,7 @@ impl JSXAttr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -10315,8 +9885,7 @@ impl JSXAttr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -10335,8 +9904,7 @@ impl JSXAttr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -10354,8 +9922,7 @@ impl JSXAttr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -10445,8 +10012,7 @@ impl JSXText {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -10465,8 +10031,7 @@ impl JSXText {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -10485,8 +10050,7 @@ impl JSXText {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -10504,8 +10068,7 @@ impl JSXText {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -10525,8 +10088,7 @@ impl JSXElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -10545,8 +10107,7 @@ impl JSXElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -10565,8 +10126,7 @@ impl JSXElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -10585,8 +10145,7 @@ impl JSXElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -10608,8 +10167,7 @@ impl JSXElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -10627,8 +10185,7 @@ impl JSXElement {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -10705,8 +10262,7 @@ impl JSXFragment {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -10725,8 +10281,7 @@ impl JSXFragment {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -10745,8 +10300,7 @@ impl JSXFragment {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
@@ -10765,8 +10319,7 @@ impl JSXFragment {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(0usize),
@@ -10788,8 +10341,7 @@ impl JSXFragment {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(1usize),
@@ -10807,8 +10359,7 @@ impl JSXFragment {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ast.nodes
-                    .get_unchecked(self.0.index())
-                    .data
+                    .data_unchecked(self.0)
                     .extra_data_start
                     .index()
                     .wrapping_add(2usize),
