@@ -357,8 +357,8 @@ impl<'a> Ast<'a> {
         Self {
             allocator,
             nodes: ArenaVec::with_capacity_in(0, allocator),
-            extra_data: ArenaVec::with_capacity_in(0 * 2, allocator),
-            strings: StringPool::with_capacity(source_len, 0, allocator),
+            extra_data: ArenaVec::with_capacity_in(0, allocator),
+            strings: StringPool::with_capacity_in(source_len, 0, allocator),
         }
     }
 

@@ -142,7 +142,7 @@ pub(crate) struct StringPool<'a> {
 }
 
 impl<'a> StringPool<'a> {
-    pub(crate) fn with_capacity(bytes: usize, entries: usize, allocator: &'a Allocator) -> Self {
+    pub(crate) fn with_capacity_in(bytes: usize, entries: usize, allocator: &'a Allocator) -> Self {
         Self {
             bytes: ArenaVec::with_capacity_in(bytes, allocator),
             dedup: ArenaHashMap::with_capacity_in(entries, allocator),
@@ -230,7 +230,7 @@ mod tests {
     #[test]
     fn utf8_and_wtf8_share_interned_storage() {
         let allocator = Allocator::default();
-        let mut pool = StringPool::with_capacity(0, 0, &allocator);
+        let mut pool = StringPool::with_capacity_in(0, 0, &allocator);
         let atom = pool.add_atom("shared");
         let wtf8 = pool.add_wtf8_atom(Wtf8::from_str("shared"));
 
