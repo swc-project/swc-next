@@ -1,7 +1,9 @@
+mod assert_layout;
 mod ast;
 mod comment;
 mod common;
 mod derive;
+mod node_id;
 mod semantic;
 mod span;
 mod visit;
@@ -9,87 +11,417 @@ mod visit;
 mod generated {
     mod ast_builder;
     mod ast_clone_in;
+    pub(crate) mod ast_extra_compact;
+    mod ast_node_id;
     mod ast_property;
     pub(crate) mod ast_visitor;
 }
 
+use oxc_index::Idx;
+use std::marker::PhantomData;
+use swc_experimental_allocator::{
+    Allocator,
+    atom::{Atom, Wtf8Atom},
+    vec::Vec as ArenaVec,
+};
+
 pub use ast::*;
 pub use comment::*;
 pub use common::*;
+pub use derive::*;
 pub use generated::ast_visitor::*;
+pub use node_id::{
+    ExtraDataCompact, ExtraDataId, NodeId, NodeIdTrait, OptionalNodeId, SubRange, TypedSubRange,
+};
 pub use semantic::{ScopeId, SymbolId};
-pub use span::{DUMMY_SP, GetSpan, SetSpan, Span};
-use swc_experimental_allocator::Allocator;
+pub use span::{DUMMY_SP, Span};
 
-#[cfg(target_pointer_width = "64")]
-const _: () = {
-    use std::mem::size_of;
+use crate::node_id::OptionalSubRange;
 
-    use ast::*;
+/// AST context that stores everything about the flattening AST.
+pub struct Ast<'a> {
+    allocator: &'a Allocator,
 
-    macro_rules! assert_size {
-        ($ty:ty, $size:expr) => {
-            assert!(size_of::<$ty>() == $size);
-        };
+    /// Flattening AST nodes.
+    pub(crate) nodes: ArenaVec<'a, NodeData>,
+
+    /// Flattening AST fields.
+    extra_data: ArenaVec<'a, ExtraData<'a>>,
+}
+
+/// A single flattening AST node stored in [Ast::nodes].
+#[derive(Clone, Copy)]
+pub struct NodeData {
+    span: Span,
+    kind: NodeKind,
+    data: NodePayload,
+}
+
+/// Compact payload for a node. It is either the start index of
+/// [Ast::extra_data] or up to four bytes of inline field data.
+///
+/// We use union here to eliminate the tag cost of enum.
+///
+/// # Safety:
+/// It is only access the by the property accesses of typed AST node, and the construction of typed AST is
+/// another safety guarantee.
+#[derive(Clone, Copy)]
+pub union NodePayload {
+    empty: (),
+    extra_data_start: ExtraDataId,
+    inline_data: u32,
+}
+
+/// The extra data is used to represent the field of AST node.
+/// It's usally another Id to point to the data structures in [Ast],
+/// or it can be a compact value. Arena-backed atoms make the union 16 bytes;
+/// node handles and scalar fields keep their smaller representations.
+///
+/// # Safety:
+/// It is only access the by the property accesses of typed AST node, and the construction of typed AST is
+/// another safety guarantee.
+#[derive(Clone, Copy)]
+pub union ExtraData<'a> {
+    // Ids
+    node: NodeId,
+    optional_node: OptionalNodeId,
+
+    // Arena-backed atoms keep the allocator/atom representation used by the
+    // arena AST while nodes and edges are stored in flattening tables.
+    atom: Atom<'a>,
+    wtf8_atom: Wtf8Atom<'a>,
+    optional_atom: Option<Atom<'a>>,
+    optional_wtf8_atom: Option<Wtf8Atom<'a>>,
+
+    // Primitives
+    span: Span,
+    optional_span: Option<Span>,
+    bool: bool,
+    number: f64,
+    sub_range: SubRange,
+    optional_sub_range: OptionalSubRange,
+    optional_scope_id: Option<ScopeId>,
+    optional_symbol_id: Option<SymbolId>,
+
+    // Typed enums
+    program: Program,
+    module_decl: ModuleDecl,
+    expr: Expr,
+    stmt: Stmt,
+    decl: Decl,
+    pat: Pat,
+    default_decl: DefaultDecl,
+    opt_chain_base: OptChainBase,
+    module_export_name: ModuleExportName,
+    for_head: ForHead,
+    member_prop: MemberProp,
+    super_prop: SuperProp,
+    callee: Callee,
+    block_stmt_or_expr: BlockStmtOrExpr,
+    prop_name: PropName,
+    key: Key,
+    jsx_object: JSXObject,
+    jsx_element_name: JSXElementName,
+    jsx_attr_name: JSXAttrName,
+    jsx_expr: JSXExpr,
+    var_decl_or_expr: VarDeclOrExpr,
+    import_specifier: ImportSpecifier,
+    export_specifier: ExportSpecifier,
+    prop_or_spread: PropOrSpread,
+    assign_target_pat: AssignTargetPat,
+    simple_assign_target: SimpleAssignTarget,
+    param_or_ts_param_prop: ParamOrTsParamProp,
+    class_member: ClassMember,
+    prop: Prop,
+    object_pat_prop: ObjectPatProp,
+    lit: Lit,
+    jsx_attr_or_spread: JSXAttrOrSpread,
+    jsx_attr_value: JSXAttrValue,
+    jsx_element_child: JSXElementChild,
+
+    optional_expr: Option<Expr>,
+    optional_pat: Option<Pat>,
+    optional_stmt: Option<Stmt>,
+    optional_var_decl_or_expr: Option<VarDeclOrExpr>,
+    optional_jsx_attr_value: Option<JSXAttrValue>,
+
+    /// Any other data (usually enum) that can be representated within 8 bytes
+    other: u64,
+}
+
+/// The NodeKind is one-to-one mapping to the typed AST node declared with struct keyword (not enum).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NodeKind {
+    // module.rs
+    Module,
+    Script,
+
+    // module_decl.rs
+    ImportDecl,
+    ExportDecl,
+    NamedExport,
+    ImportDefaultSpecifier,
+    ImportStarAsSpecifier,
+    ImportNamedSpecifier,
+    ExportNamespaceSpecifier,
+    ExportDefaultSpecifier,
+    ExportNamedSpecifier,
+    ExportDefaultDecl,
+    ExportDefaultExpr,
+    ExportAll,
+
+    // expr.rs
+    ThisExpr,
+    ArrayLit,
+    ObjectLit,
+    SpreadElement,
+    ExprOrSpread,
+    UnaryExpr,
+    BinExpr,
+    UpdateExpr,
+    FnExpr,
+    AssignExpr,
+    MemberExpr,
+    Super,
+    SuperPropExpr,
+    CondExpr,
+    CallExpr,
+    NewExpr,
+    SeqExpr,
+    Tpl,
+    TaggedTpl,
+    TplElement,
+    ArrowExpr,
+    ClassExpr,
+    YieldExpr,
+    MetaPropExpr,
+    AwaitExpr,
+    ParenExpr,
+    OptChainExpr,
+    OptCall,
+    ImportExpr,
+    Invalid,
+
+    // stmt.rs
+    BlockStmt,
+    EmptyStmt,
+    DebuggerStmt,
+    WithStmt,
+    ReturnStmt,
+    LabeledStmt,
+    BreakStmt,
+    ContinueStmt,
+    IfStmt,
+    SwitchStmt,
+    ThrowStmt,
+    TryStmt,
+    WhileStmt,
+    DoWhileStmt,
+    ForStmt,
+    ForInStmt,
+    ForOfStmt,
+    SwitchCase,
+    CatchClause,
+    ExprStmt,
+
+    // class.rs
+    Class,
+    ClassProp,
+    PrivateProp,
+    ClassMethod,
+    PrivateMethod,
+    Constructor,
+    Decorator,
+    StaticBlock,
+    AutoAccessor,
+
+    // prop.rs
+    KeyValueProp,
+    AssignProp,
+    GetterProp,
+    SetterProp,
+    MethodProp,
+    ComputedPropName,
+
+    // decl.rs
+    ClassDecl,
+    FnDecl,
+    VarDecl,
+    UsingDecl,
+    VarDeclarator,
+
+    // function.rs
+    Function,
+    Param,
+
+    // lit.rs
+    BigInt,
+    Str,
+    Bool,
+    Null,
+    Regex,
+    Number,
+
+    // pat.rs
+    ArrayPat,
+    ObjectPat,
+    AssignPat,
+    RestPat,
+    KeyValuePatProp,
+    AssignPatProp,
+
+    // ident.rs
+    Ident,
+    IdentName,
+    BindingIdent,
+    PrivateName,
+
+    // jsx.rs
+    JSXMemberExpr,
+    JSXNamespacedName,
+    JSXEmptyExpr,
+    JSXExprContainer,
+    JSXSpreadChild,
+    JSXElementName,
+    JSXOpeningElement,
+    JSXClosingElement,
+    JSXAttr,
+    JSXText,
+    JSXElement,
+    JSXFragment,
+    JSXOpeningFragment,
+    JSXClosingFragment,
+
+    // typescript.rs
+    TsTypeAnn,
+    TsTypeParamDecl,
+    TsTypeParam,
+    TsTypeParamInstantiation,
+    TsParamProp,
+    TsQualifiedName,
+    TsCallSignatureDecl,
+    TsConstructSignatureDecl,
+    TsPropertySignature,
+    TsGetterSignature,
+    TsSetterSignature,
+    TsMethodSignature,
+    TsIndexSignature,
+    TsKeywordType,
+    TsThisType,
+    TsFnType,
+    TsConstructorType,
+    TsTypeRef,
+    TsTypePredicate,
+    TsTypeQuery,
+    TsImportCallOptions,
+    TsImportType,
+    TsTypeLit,
+    TsArrayType,
+    TsTupleType,
+    TsTupleElement,
+    TsOptionalType,
+    TsRestType,
+    TsUnionType,
+    TsIntersectionType,
+    TsConditionalType,
+    TsInferType,
+    TsParenthesizedType,
+    TsTypeOperator,
+    TsIndexedAccessType,
+    TsMappedType,
+    TsLitType,
+    TsTplLitType,
+    TsInterfaceDecl,
+    TsInterfaceBody,
+    TsExprWithTypeArgs,
+    TsTypeAliasDecl,
+    TsEnumDecl,
+    TsEnumMember,
+    TsModuleDecl,
+    TsModuleBlock,
+    TsNamespaceDecl,
+    TsImportEqualsDecl,
+    TsExternalModuleRef,
+    TsExportAssginment,
+    TsNamespaceExportDecl,
+    TsAsExpr,
+    TsTypeAssertion,
+    TsNonNullExpr,
+    TsSatisfiesExpr,
+    TsConstAssertion,
+    TsInstantiation,
+}
+
+impl<'a> Ast<'a> {
+    /// Create a flattening AST whose atom storage is backed by `allocator`.
+    pub fn new(source_len: usize, allocator: &'a Allocator) -> Self {
+        let empirical_capacity = (source_len as f64 * 0.15) as usize;
+        Self {
+            allocator,
+            nodes: ArenaVec::with_capacity_in(empirical_capacity, allocator),
+            extra_data: ArenaVec::with_capacity_in(empirical_capacity * 2, allocator),
+        }
     }
 
-    assert_size!(Program<'_>, 16);
-    assert_size!(ModuleItem<'_>, 16);
+    #[inline]
+    pub(crate) fn add_node(&mut self, span: Span, kind: NodeKind, data: NodePayload) -> NodeId {
+        let index = self.nodes.len();
+        assert!(index <= NodeId::MAX, "node index exceeds NodeId range");
+        self.nodes.push(NodeData { span, kind, data });
+        NodeId::from_usize_unchecked(index)
+    }
 
-    assert_size!(ClassMember<'_>, 16);
-    assert_size!(MethodKind, 1);
-    assert_size!(Key<'_>, 16);
+    #[inline]
+    fn add_extra(&mut self, extra: ExtraData<'a>) -> ExtraDataId {
+        let id = self.next_extra_data_id();
+        self.extra_data.push(extra);
+        id
+    }
 
-    assert_size!(Decl<'_>, 16);
-    assert_size!(VarDeclKind, 1);
+    #[inline]
+    fn next_extra_data_id(&self) -> ExtraDataId {
+        let index = self.extra_data.len();
+        assert!(
+            index <= ExtraDataId::MAX,
+            "extra data index exceeds ExtraDataId range"
+        );
+        ExtraDataId::from_usize_unchecked(index)
+    }
 
-    assert_size!(ParamOrTsParamProp<'_>, 8);
+    #[inline]
+    pub fn add_typed_sub_range<N: ExtraDataCompact<'a>, I: IntoIterator<Item = N>>(
+        &mut self,
+        iter: I,
+    ) -> TypedSubRange<N> {
+        let start = self.next_extra_data_id();
+        self.extra_data
+            .extend(iter.into_iter().map(|n| n.to_extra_data()));
+        TypedSubRange {
+            inner: SubRange {
+                start,
+                end: self.next_extra_data_id(),
+            },
+            _phantom: PhantomData,
+        }
+    }
 
-    assert_size!(BinaryOp, 1);
-    assert_size!(AssignOp, 1);
-    assert_size!(UpdateOp, 1);
-    assert_size!(UnaryOp, 1);
+    #[inline]
+    pub fn allocator(&self) -> &'a Allocator {
+        self.allocator
+    }
 
-    assert_size!(Prop<'_>, 16);
-    assert_size!(PropName<'_>, 16);
+    #[inline]
+    pub fn add_atom(&self, value: &str) -> Atom<'a> {
+        Atom::new_in(value, self.allocator)
+    }
 
-    assert_size!(Lit<'_>, 16);
+    #[inline]
+    pub fn empty_atom(&self) -> Atom<'a> {
+        Atom::empty()
+    }
 
-    assert_size!(JSXObject<'_>, 16);
-    assert_size!(JSXExpr<'_>, 16);
-    assert_size!(JSXElementName<'_>, 16);
-    assert_size!(JSXAttrOrSpread<'_>, 16);
-    assert_size!(JSXAttrName<'_>, 16);
-    assert_size!(JSXAttrValue<'_>, 16);
-    assert_size!(JSXElementChild<'_>, 16);
-
-    assert_size!(ModuleDecl<'_>, 16);
-    assert_size!(ImportPhase, 1);
-    assert_size!(ImportSpecifier<'_>, 16);
-    assert_size!(ExportSpecifier<'_>, 16);
-    assert_size!(ModuleExportName<'_>, 16);
-    assert_size!(DefaultDecl<'_>, 16);
-
-    assert_size!(Expr<'_>, 16);
-    assert_size!(PropOrSpread<'_>, 16);
-    assert_size!(MemberProp<'_>, 16);
-    assert_size!(SuperProp<'_>, 16);
-    assert_size!(MetaPropKind, 1);
-    assert_size!(Callee<'_>, 16);
-    assert_size!(BlockStmtOrExpr<'_>, 16);
-    assert_size!(AssignTarget<'_>, 16);
-    assert_size!(AssignTargetPat<'_>, 16);
-    assert_size!(SimpleAssignTarget<'_>, 16);
-    assert_size!(OptChainBase<'_>, 16);
-
-    assert_size!(Pat<'_>, 16);
-    assert_size!(ObjectPatProp<'_>, 16);
-
-    assert_size!(Stmt<'_>, 16);
-    assert_size!(ForHead<'_>, 16);
-    assert_size!(VarDeclOrExpr<'_>, 16);
-};
-
-pub struct AstBuilder<'a> {
-    pub allocator: &'a Allocator,
+    #[inline]
+    pub fn node_count(&self) -> usize {
+        self.nodes.len()
+    }
 }

@@ -2,8 +2,6 @@ use std::num::NonZeroU32;
 
 use oxc_index::Idx;
 
-use crate::{BlockStmt, Ident};
-
 oxc_index::define_nonmax_u32_index_type! {
     pub struct SymbolId;
 }
@@ -26,17 +24,5 @@ impl Idx for ScopeId {
 impl ScopeId {
     pub fn raw(self) -> u32 {
         self.0.get()
-    }
-}
-
-impl Ident<'_> {
-    pub fn symbol_id(&self) -> SymbolId {
-        self.symbol_id.get().unwrap()
-    }
-}
-
-impl BlockStmt<'_> {
-    pub fn scope_id(&self) -> ScopeId {
-        self.scope_id.get().unwrap()
     }
 }

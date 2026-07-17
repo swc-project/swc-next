@@ -1,33 +1,33 @@
-use crate::Span;
-use swc_experimental_allocator::boxed::Box;
-use swc_experimental_allocator::vec::Vec;
+use std::mem;
+
 use swc_experimental_ast_macros::ast;
 
-use crate::ast::{ClassExpr, Decl, Expr, FnExpr, Ident, ObjectLit, Str};
+use crate::{
+    Ast, ExtraData, GetSpan,
+    ast::{ClassExpr, FnExpr, Ident, Str},
+    node_id::ExtraDataCompact,
+};
 
 #[ast]
-#[derive(Debug)]
-pub enum ModuleDecl<'a> {
-    Import(Box<'a, ImportDecl<'a>>),
-    ExportDecl(Box<'a, ExportDecl<'a>>),
-    ExportNamed(Box<'a, NamedExport<'a>>),
-    ExportDefaultDecl(Box<'a, ExportDefaultDecl<'a>>),
-    ExportDefaultExpr(Box<'a, ExportDefaultExpr<'a>>),
-    ExportAll(Box<'a, ExportAll<'a>>),
+pub enum ModuleDecl {
+    Import(ImportDecl),
+    ExportDecl(ExportDecl),
+    ExportNamed(NamedExport),
+    ExportDefaultDecl(ExportDefaultDecl),
+    ExportDefaultExpr(ExportDefaultExpr),
+    ExportAll(ExportAll),
     // TsImportEquals(TsImportEqualsDecl),
     // TsExportAssignment(TsExportAssignment),
     // TsNamespaceExport(TsNamespaceExportDecl),
 }
 
 #[ast]
-#[derive(Debug)]
-pub struct ImportDecl<'a> {
-    pub span: Span,
-    pub specifiers: Vec<'a, ImportSpecifier<'a>>,
-    pub src: Box<'a, Str<'a>>,
-    pub type_only: bool,
-    pub with: Option<Box<'a, ObjectLit<'a>>>,
-    pub phase: ImportPhase,
+pub struct ImportDecl {
+    specifiers: Vec<ImportSpecifier>,
+    src: Str,
+    type_only: bool,
+    with: Option<ObjectLit>,
+    phase: ImportPhase,
 }
 
 #[repr(u8)]
@@ -39,146 +39,131 @@ pub enum ImportPhase {
     Defer,
 }
 
-#[ast]
-#[derive(Debug)]
-pub enum ImportSpecifier<'a> {
-    Named(Box<'a, ImportNamedSpecifier<'a>>),
-    Default(Box<'a, ImportDefaultSpecifier<'a>>),
-    Namespace(Box<'a, ImportStarAsSpecifier<'a>>),
+impl<'a> ExtraDataCompact<'a> for ImportPhase {
+    fn to_extra_data(self) -> ExtraData<'a> {
+        ExtraData { other: self as u64 }
+    }
+
+    unsafe fn from_extra_data(data: ExtraData<'a>, _ast: &Ast<'a>) -> Self {
+        unsafe { mem::transmute(data.other as u8) }
+    }
 }
 
 #[ast]
-#[derive(Debug)]
-pub struct ImportNamedSpecifier<'a> {
-    pub span: Span,
-    pub local: Box<'a, Ident<'a>>,
-    pub imported: ModuleExportName<'a>,
-    pub is_type_only: bool,
+pub enum ImportSpecifier {
+    Named(ImportNamedSpecifier),
+    Default(ImportDefaultSpecifier),
+    Namespace(ImportStarAsSpecifier),
 }
 
-impl ImportNamedSpecifier<'_> {
+#[ast]
+pub struct ImportNamedSpecifier {
+    local: Ident,
+    imported: ModuleExportName,
+    is_type_only: bool,
+}
+
+#[ast]
+pub struct ImportDefaultSpecifier {
+    local: Ident,
+}
+
+#[ast]
+pub struct ImportStarAsSpecifier {
+    local: Ident,
+}
+
+#[ast]
+pub struct ExportDecl {
+    decl: Decl,
+}
+
+#[ast]
+pub struct NamedExport {
+    specifiers: Vec<ExportSpecifier>,
+    src: Option<Str>,
+    type_only: bool,
+    with: Option<ObjectLit>,
+}
+
+#[ast]
+pub enum ExportSpecifier {
+    Namespace(ExportNamespaceSpecifier),
+    Default(ExportDefaultSpecifier),
+    Named(ExportNamedSpecifier),
+}
+
+#[ast]
+pub struct ExportNamespaceSpecifier {
+    name: ModuleExportName,
+}
+
+#[ast]
+pub enum ModuleExportName {
+    Ident(Ident),
+    Str(Str),
+}
+
+#[ast]
+pub struct ExportDefaultSpecifier {
+    exported: Ident,
+}
+
+#[ast]
+pub struct ExportNamedSpecifier {
+    orig: ModuleExportName,
+    exported: ModuleExportName,
+    is_type_only: bool,
+}
+
+#[ast]
+pub struct ExportDefaultDecl {
+    decl: DefaultDecl,
+}
+
+#[ast]
+pub enum DefaultDecl {
+    Class(ClassExpr),
+    Fn(FnExpr),
+    // TsInterfaceDecl(TsInterfaceDecl),
+}
+
+#[ast]
+pub struct ExportDefaultExpr {
+    expr: Expr,
+}
+
+#[ast]
+pub struct ExportAll {
+    src: Str,
+    type_only: bool,
+    with: Option<ObjectLit>,
+}
+
+impl ImportNamedSpecifier {
     #[inline]
-    pub fn is_shorthand(&self) -> bool {
-        match &self.imported {
+    pub fn is_shorthand(self, ast: &Ast<'_>) -> bool {
+        match self.imported(ast) {
             ModuleExportName::Ident(imported) => {
-                imported.span == self.local.span && imported.sym.as_str() == self.local.sym.as_str()
+                let local = self.local(ast);
+                imported.span(ast) == local.span(ast) && imported.sym(ast) == local.sym(ast)
             }
             ModuleExportName::Str(_) => false,
         }
     }
 }
 
-#[ast]
-#[derive(Debug)]
-pub struct ImportDefaultSpecifier<'a> {
-    pub span: Span,
-    pub local: Box<'a, Ident<'a>>,
-}
-
-#[ast]
-#[derive(Debug)]
-pub struct ImportStarAsSpecifier<'a> {
-    pub span: Span,
-    pub local: Box<'a, Ident<'a>>,
-}
-
-#[ast]
-#[derive(Debug)]
-pub struct ExportDecl<'a> {
-    pub span: Span,
-    pub decl: Decl<'a>,
-}
-
-#[ast]
-#[derive(Debug)]
-pub struct NamedExport<'a> {
-    pub span: Span,
-    pub specifiers: Vec<'a, ExportSpecifier<'a>>,
-    pub src: Option<Box<'a, Str<'a>>>,
-    pub type_only: bool,
-    pub with: Option<Box<'a, ObjectLit<'a>>>,
-}
-
-#[ast]
-#[derive(Debug)]
-pub enum ExportSpecifier<'a> {
-    Namespace(Box<'a, ExportNamespaceSpecifier<'a>>),
-    Default(Box<'a, ExportDefaultSpecifier<'a>>),
-    Named(Box<'a, ExportNamedSpecifier<'a>>),
-}
-
-#[ast]
-#[derive(Debug)]
-pub struct ExportNamespaceSpecifier<'a> {
-    pub span: Span,
-    pub name: ModuleExportName<'a>,
-}
-
-#[ast]
-#[derive(Debug)]
-pub enum ModuleExportName<'a> {
-    Ident(Box<'a, Ident<'a>>),
-    Str(Box<'a, Str<'a>>),
-}
-
-#[ast]
-#[derive(Debug)]
-pub struct ExportDefaultSpecifier<'a> {
-    #[span]
-    pub exported: Box<'a, Ident<'a>>,
-}
-
-#[ast]
-#[derive(Debug)]
-pub struct ExportNamedSpecifier<'a> {
-    pub span: Span,
-    pub orig: ModuleExportName<'a>,
-    pub exported: ModuleExportName<'a>,
-    pub is_type_only: bool,
-}
-
-impl ExportNamedSpecifier<'_> {
+impl ExportNamedSpecifier {
     #[inline]
-    pub fn is_shorthand(&self) -> bool {
-        match (&self.orig, &self.exported) {
+    pub fn is_shorthand(self, ast: &Ast<'_>) -> bool {
+        match (self.orig(ast), self.exported(ast)) {
             (ModuleExportName::Ident(orig), ModuleExportName::Ident(exported)) => {
-                orig.span == exported.span && orig.sym.as_str() == exported.sym.as_str()
+                orig.span(ast) == exported.span(ast) && orig.sym(ast) == exported.sym(ast)
             }
             (ModuleExportName::Str(orig), ModuleExportName::Str(exported)) => {
-                orig.span == exported.span && orig.value == exported.value
+                orig.span(ast) == exported.span(ast) && orig.value(ast) == exported.value(ast)
             }
             _ => false,
         }
     }
-}
-
-#[ast]
-#[derive(Debug)]
-pub struct ExportDefaultDecl<'a> {
-    pub span: Span,
-    pub decl: DefaultDecl<'a>,
-}
-
-#[ast]
-#[derive(Debug)]
-pub enum DefaultDecl<'a> {
-    Class(Box<'a, ClassExpr<'a>>),
-    Fn(Box<'a, FnExpr<'a>>),
-    // TsInterfaceDecl(TsInterfaceDecl),
-}
-
-#[ast]
-#[derive(Debug)]
-pub struct ExportDefaultExpr<'a> {
-    pub span: Span,
-    pub expr: Expr<'a>,
-}
-
-#[ast]
-#[derive(Debug)]
-pub struct ExportAll<'a> {
-    pub span: Span,
-    pub src: Box<'a, Str<'a>>,
-    pub type_only: bool,
-    pub with: Option<Box<'a, ObjectLit<'a>>>,
 }

@@ -1,46 +1,40 @@
-use crate::Span;
-use swc_experimental_allocator::boxed::Box;
-use swc_experimental_allocator::vec::Vec;
+use std::mem;
+
 use swc_experimental_ast_macros::ast;
 
-use crate::{BlockStmt, EmptyStmt, Expr, Function, ParamOrTsParamProp, PrivateName, PropName};
+use crate::{Ast, ExtraData, ast::*, node_id::ExtraDataCompact};
 
 #[ast]
-#[derive(Debug)]
-pub struct Class<'a> {
-    pub span: Span,
-    pub decorators: Vec<'a, Decorator<'a>>,
-    pub body: Vec<'a, ClassMember<'a>>,
-    pub super_class: Option<Expr<'a>>,
-    pub is_abstract: bool,
+pub struct Class {
+    decorators: Vec<Decorator>,
+    body: Vec<ClassMember>,
+    super_class: Option<Expr>,
+    is_abstract: bool,
     // type_params: Option<Box<TsTypeParamDecl>>,
     // super_type_params: Option<Box<TsTypeParamInstantiation>>,
     // implements: Vec<TsExprWithTypeArgs>,
 }
 
 #[ast]
-#[derive(Debug)]
-pub enum ClassMember<'a> {
-    Constructor(Box<'a, Constructor<'a>>),
-    Method(Box<'a, ClassMethod<'a>>),
-    PrivateMethod(Box<'a, PrivateMethod<'a>>),
-    ClassProp(Box<'a, ClassProp<'a>>),
-    PrivateProp(Box<'a, PrivateProp<'a>>),
-    Empty(Box<'a, EmptyStmt>),
-    StaticBlock(Box<'a, StaticBlock<'a>>),
-    AutoAccessor(Box<'a, AutoAccessor<'a>>),
+pub enum ClassMember {
+    Constructor(Constructor),
+    Method(ClassMethod),
+    PrivateMethod(PrivateMethod),
+    ClassProp(ClassProp),
+    PrivateProp(PrivateProp),
+    Empty(EmptyStmt),
+    StaticBlock(StaticBlock),
+    AutoAccessor(AutoAccessor),
     // TsIndexSignature(TsIndexSignature),
 }
 
 #[ast]
-#[derive(Debug)]
-pub struct ClassProp<'a> {
-    pub span: Span,
-    pub key: PropName<'a>,
-    pub value: Option<Expr<'a>>,
+pub struct ClassProp {
+    key: PropName,
+    value: Option<Expr>,
     // type_ann: Option<Box<TsTypeAnn>>,
-    pub is_static: bool,
-    pub decorators: Vec<'a, Decorator<'a>>,
+    is_static: bool,
+    decorators: Vec<Decorator>,
     // accessibility: Option<Accessibility>,
     // is_abstract: bool,
     // is_optional: bool,
@@ -51,14 +45,12 @@ pub struct ClassProp<'a> {
 }
 
 #[ast]
-#[derive(Debug)]
-pub struct PrivateProp<'a> {
-    pub span: Span,
-    pub key: Box<'a, PrivateName<'a>>,
-    pub value: Option<Expr<'a>>,
+pub struct PrivateProp {
+    key: PrivateName,
+    value: Option<Expr>,
     // type_ann: Option<TsTypeAnn>,
-    pub is_static: bool,
-    pub decorators: Vec<'a, Decorator<'a>>,
+    is_static: bool,
+    decorators: Vec<Decorator>,
     // accessibility: Option<Accessibility>,
     // is_optional: bool,
     // is_override: bool,
@@ -67,13 +59,11 @@ pub struct PrivateProp<'a> {
 }
 
 #[ast]
-#[derive(Debug)]
-pub struct ClassMethod<'a> {
-    pub span: Span,
-    pub key: PropName<'a>,
-    pub function: Box<'a, Function<'a>>,
-    pub kind: MethodKind,
-    pub is_static: bool,
+pub struct ClassMethod {
+    key: PropName,
+    function: Function,
+    kind: MethodKind,
+    is_static: bool,
     // accessibility: Option<Accessibility>,
     // is_abstract: bool,
     // is_optional: bool,
@@ -81,13 +71,11 @@ pub struct ClassMethod<'a> {
 }
 
 #[ast]
-#[derive(Debug)]
-pub struct PrivateMethod<'a> {
-    pub span: Span,
-    pub key: Box<'a, PrivateName<'a>>,
-    pub function: Box<'a, Function<'a>>,
-    pub kind: MethodKind,
-    pub is_static: bool,
+pub struct PrivateMethod {
+    key: PrivateName,
+    function: Function,
+    kind: MethodKind,
+    is_static: bool,
     // accessibility: Option<Accessibility>,
     // is_abstract: bool,
     // is_optional: bool,
@@ -95,21 +83,17 @@ pub struct PrivateMethod<'a> {
 }
 
 #[ast]
-#[derive(Debug)]
-pub struct Constructor<'a> {
-    pub span: Span,
-    pub key: PropName<'a>,
-    pub params: Vec<'a, ParamOrTsParamProp<'a>>,
-    pub body: Option<Box<'a, BlockStmt<'a>>>,
+pub struct Constructor {
+    key: PropName,
+    params: Vec<ParamOrTsParamProp>,
+    body: Option<BlockStmt>,
     // accessibility: Option<Accessibility>,
     // is_optional: bool,
 }
 
 #[ast]
-#[derive(Debug)]
-pub struct Decorator<'a> {
-    pub span: Span,
-    pub expr: Expr<'a>,
+pub struct Decorator {
+    expr: Expr,
 }
 
 #[repr(u8)]
@@ -120,29 +104,34 @@ pub enum MethodKind {
     Setter,
 }
 
-#[ast]
-#[derive(Debug)]
-pub struct StaticBlock<'a> {
-    pub span: Span,
-    pub body: Box<'a, BlockStmt<'a>>,
+impl<'a> ExtraDataCompact<'a> for MethodKind {
+    fn to_extra_data(self) -> ExtraData<'a> {
+        ExtraData { other: self as u64 }
+    }
+
+    unsafe fn from_extra_data(data: ExtraData<'a>, _ast: &Ast<'a>) -> Self {
+        unsafe { mem::transmute(data.other as u8) }
+    }
 }
 
 #[ast]
-#[derive(Debug)]
-pub enum Key<'a> {
-    Private(Box<'a, PrivateName<'a>>),
-    Public(Box<'a, PropName<'a>>),
+pub struct StaticBlock {
+    body: BlockStmt,
 }
 
 #[ast]
-#[derive(Debug)]
-pub struct AutoAccessor<'a> {
-    pub span: Span,
-    pub key: Key<'a>,
-    pub value: Option<Expr<'a>>,
+pub enum Key {
+    Private(PrivateName),
+    Public(PropName),
+}
+
+#[ast]
+pub struct AutoAccessor {
+    key: Key,
+    value: Option<Expr>,
     // type_ann: Option<TsTypeAnn>,
-    pub is_static: bool,
-    pub decorators: Vec<'a, Decorator<'a>>,
+    is_static: bool,
+    decorators: Vec<Decorator>,
     // accessibility: Option<Accessibility>,
     // is_abstract: bool,
     // is_override: bool,

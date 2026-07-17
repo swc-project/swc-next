@@ -1,73 +1,50 @@
-use crate::Span;
-use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
-use swc_experimental_allocator::boxed::Box;
 use swc_experimental_ast_macros::ast;
 
 #[ast]
-#[derive(Debug)]
-pub enum Lit<'a> {
-    Str(Box<'a, Str<'a>>),
-    Bool(Box<'a, Bool>),
-    Null(Box<'a, Null>),
-    Num(Box<'a, Number<'a>>),
-    BigInt(Box<'a, BigInt<'a>>),
-    Regex(Box<'a, Regex<'a>>),
+pub enum Lit {
+    Str(Str),
+    Bool(Bool),
+    Null(Null),
+    Num(Number),
+    BigInt(BigInt),
+    Regex(Regex),
     // JSXText(JSXText),
 }
 
 #[ast]
-#[derive(Debug, Clone)]
-pub struct Str<'a> {
-    pub span: Span,
-    pub value: Wtf8Atom<'a>,
-    pub raw: Option<Atom<'a>>,
+pub struct Str {
+    value: Wtf8Atom,
+    raw: Option<Atom>,
 }
 
 #[ast]
-#[derive(Debug, Clone)]
 pub struct Bool {
-    pub span: Span,
-    pub value: bool,
+    value: bool,
 }
 
 #[ast]
-#[derive(Debug, Clone)]
-pub struct Null {
-    pub span: Span,
+pub struct Null {}
+
+#[ast]
+pub struct Number {
+    value: f64,
+    raw: Option<Atom>,
 }
 
 #[ast]
-#[derive(Debug, Clone)]
-pub struct Number<'a> {
-    pub span: Span,
-    pub value: f64,
-    pub raw: Option<Atom<'a>>,
+pub struct BigInt {
+    value: Atom,
+    raw: Option<Atom>,
 }
 
 #[ast]
-#[derive(Debug, Clone)]
-pub struct BigInt<'a> {
-    pub span: Span,
-    pub value: Atom<'a>,
-    pub raw: Option<Atom<'a>>,
+pub struct Regex {
+    exp: Atom,
+    flags: Atom,
 }
 
-impl BigInt<'_> {
-    pub fn to_bigint(&self) -> num_bigint::BigInt {
-        num_bigint::BigInt::parse_bytes(self.value.as_bytes(), 10).unwrap()
+impl BigInt {
+    pub fn to_bigint(self, ast: &crate::Ast<'_>) -> num_bigint::BigInt {
+        num_bigint::BigInt::parse_bytes(self.value(ast).as_bytes(), 10).unwrap()
     }
 }
-
-#[ast]
-#[derive(Debug, Clone)]
-pub struct Regex<'a> {
-    pub span: Span,
-    pub exp: Atom<'a>,
-    pub flags: Atom<'a>,
-}
-
-// #[ast]
-// pub struct JSXText {
-//     value: Utf8Ref,
-//     raw: Utf8Ref,
-// }

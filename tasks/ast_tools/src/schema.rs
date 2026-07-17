@@ -1,4 +1,8 @@
+use std::collections::{HashMap, HashSet};
+
 use oxc_index::IndexVec;
+use proc_macro2::TokenStream;
+use quote::{ToTokens, format_ident, quote};
 
 oxc_index::define_index_type! {
     pub struct TypeId = u32;
@@ -10,13 +14,15 @@ impl TypeId {
 
 pub struct Schema {
     pub types: IndexVec<TypeId, AstType>,
+    /// Mapping of enum names to their #[repr(uN)] sizes in bytes
+    /// e.g., "UnaryOp" -> 1 for #[repr(u8)]
+    pub repr_sizes: HashMap<String, usize>,
 }
 
 #[derive(Debug)]
 pub enum AstType {
     Struct(AstStruct),
     Enum(AstEnum),
-    Box(AstBox),
     Vec(AstVec),
     Option(AstOption),
     Primitive(AstPrimitive),
@@ -27,10 +33,31 @@ impl AstType {
         match self {
             AstType::Struct(ast) => &ast.name,
             AstType::Enum(ast) => &ast.name,
-            AstType::Box(ast) => &ast.name,
             AstType::Vec(ast) => &ast.name,
             AstType::Option(ast) => &ast.name,
             AstType::Primitive(ast) => ast.name,
+        }
+    }
+
+    pub fn repr_ident<'a>(&'a self, schema: &'a Schema) -> TokenStream {
+        match self {
+            AstType::Struct(ast) => format_ident!("{}", &ast.name).into_token_stream(),
+            AstType::Enum(ast) => format_ident!("{}", &ast.name).into_token_stream(),
+            AstType::Vec(ast) => {
+                let name = format_ident!("TypedSubRange");
+                let inner_name = schema.types[ast.inner_type_id].repr_ident(schema);
+                quote!( #name<#inner_name> )
+            }
+            AstType::Option(ast) => {
+                let name = format_ident!("Option");
+                let inner_name = schema.types[ast.inner_type_id].repr_ident(schema);
+                quote!( #name<#inner_name> )
+            }
+            AstType::Primitive(ast) => match ast.name {
+                "Atom" => quote!(Atom<'a>),
+                "Wtf8Atom" => quote!(Wtf8Atom<'a>),
+                _ => format_ident!("{}", &ast.name).into_token_stream(),
+            },
         }
     }
 }
@@ -39,43 +66,28 @@ impl AstType {
 pub struct AstStruct {
     pub type_id: TypeId,
     pub name: String,
-    pub skip_span: bool,
     pub fields: Vec<AstStructField>,
+    pub _attrs: AstAttrs,
 }
 
 #[derive(Debug)]
 pub struct AstStructField {
     pub type_id: TypeId,
     pub name: String,
-    pub span_kind: Option<SpanKind>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SpanKind {
-    Full,
-    Lo,
-    Hi,
 }
 
 #[derive(Debug)]
 pub struct AstEnum {
     pub type_id: TypeId,
     pub name: String,
-    pub skip_span: bool,
     pub variants: Vec<AstEnumVariant>,
+    pub _attrs: AstAttrs,
 }
 
 #[derive(Debug)]
 pub struct AstEnumVariant {
     pub type_id: Option<TypeId>,
     pub name: String,
-}
-
-#[derive(Debug)]
-pub struct AstBox {
-    pub type_id: TypeId,
-    pub name: String,
-    pub inner_type_id: TypeId,
 }
 
 #[derive(Debug)]
@@ -103,4 +115,11 @@ pub struct AstNode {
 pub struct AstPrimitive {
     pub type_id: TypeId,
     pub name: &'static str,
+}
+
+#[derive(Debug)]
+#[allow(unused)]
+pub struct AstAttrs {
+    pub ast_attrs: HashSet<String>,
+    pub generate_derives: HashSet<String>,
 }

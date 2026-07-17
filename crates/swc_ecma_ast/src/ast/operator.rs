@@ -1,3 +1,7 @@
+use std::mem;
+
+use crate::{Ast, ExtraData, node_id::ExtraDataCompact};
+
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash, Default)]
 pub enum BinaryOp {
@@ -61,6 +65,16 @@ pub enum BinaryOp {
     NullishCoalescing,
 }
 
+impl<'a> ExtraDataCompact<'a> for BinaryOp {
+    fn to_extra_data(self) -> ExtraData<'a> {
+        ExtraData { other: self as u64 }
+    }
+
+    unsafe fn from_extra_data(data: ExtraData<'a>, _ast: &Ast<'a>) -> Self {
+        unsafe { mem::transmute(data.other as u8) }
+    }
+}
+
 impl BinaryOp {
     pub fn precedence(self) -> u8 {
         match self {
@@ -101,7 +115,7 @@ impl BinaryOp {
 }
 
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash, Default)]
+#[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash, Default)]
 pub enum AssignOp {
     /// `=`
     #[default]
@@ -142,8 +156,18 @@ pub enum AssignOp {
     NullishAssign,
 }
 
+impl<'a> ExtraDataCompact<'a> for AssignOp {
+    fn to_extra_data(self) -> ExtraData<'a> {
+        ExtraData { other: self as u64 }
+    }
+
+    unsafe fn from_extra_data(data: ExtraData<'a>, _ast: &Ast<'a>) -> Self {
+        unsafe { mem::transmute(data.other as u8) }
+    }
+}
+
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash, Default)]
+#[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash, Default)]
 pub enum UpdateOp {
     /// `++`
     #[default]
@@ -152,8 +176,18 @@ pub enum UpdateOp {
     MinusMinus,
 }
 
+impl<'a> ExtraDataCompact<'a> for UpdateOp {
+    fn to_extra_data(self) -> ExtraData<'a> {
+        ExtraData { other: self as u64 }
+    }
+
+    unsafe fn from_extra_data(data: ExtraData<'a>, _ast: &Ast<'a>) -> Self {
+        unsafe { mem::transmute(data.other as u8) }
+    }
+}
+
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash, Default)]
+#[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash, Default)]
 pub enum UnaryOp {
     /// `-`
     Minus,
@@ -170,4 +204,14 @@ pub enum UnaryOp {
     Void,
     /// `delete`
     Delete,
+}
+
+impl<'a> ExtraDataCompact<'a> for UnaryOp {
+    fn to_extra_data(self) -> ExtraData<'a> {
+        ExtraData { other: self as u64 }
+    }
+
+    unsafe fn from_extra_data(data: ExtraData<'a>, _ast: &Ast<'a>) -> Self {
+        unsafe { mem::transmute(data.other as u8) }
+    }
 }

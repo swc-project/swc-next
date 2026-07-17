@@ -1,79 +1,59 @@
-use swc_experimental_allocator::boxed::Box;
-use swc_experimental_allocator::vec::Vec;
 use swc_experimental_ast_macros::ast;
 
-use crate::{
-    Span,
-    ast::{BindingIdent, Expr, Invalid, PropName},
-};
+use crate::ast::{BindingIdent, Expr, Invalid};
 
 #[ast]
-#[derive(Debug)]
-pub enum Pat<'a> {
-    Ident(Box<'a, BindingIdent<'a>>),
-    Array(Box<'a, ArrayPat<'a>>),
-    Rest(Box<'a, RestPat<'a>>),
-    Object(Box<'a, ObjectPat<'a>>),
-    Assign(Box<'a, AssignPat<'a>>),
-    Invalid(Box<'a, Invalid>),
-    Expr(Box<'a, Expr<'a>>),
+pub enum Pat {
+    Ident(BindingIdent),
+    Array(ArrayPat),
+    Rest(RestPat),
+    Object(ObjectPat),
+    Assign(AssignPat),
+    Invalid(Invalid),
+    Expr(Expr),
 }
 
 #[ast]
-#[derive(Debug)]
-pub struct ArrayPat<'a> {
-    pub span: Span,
-    pub elems: Vec<'a, Option<Pat<'a>>>,
-    pub optional: bool,
+pub struct ArrayPat {
+    elems: Vec<Option<Pat>>,
+    optional: bool,
     // type_ann: Option<TsTypeAnn>,
 }
 
 #[ast]
-#[derive(Debug)]
-pub struct ObjectPat<'a> {
-    pub span: Span,
-    pub props: Vec<'a, ObjectPatProp<'a>>,
+pub struct ObjectPat {
+    pub props: Vec<ObjectPatProp>,
     pub optional: bool,
     // pub type_ann: Option<Box<TsTypeAnn>>,
 }
 
 #[ast]
-#[derive(Debug)]
-pub struct AssignPat<'a> {
-    pub span: Span,
-    pub left: Pat<'a>,
-    pub right: Expr<'a>,
+pub struct AssignPat {
+    pub left: Pat,
+    pub right: Expr,
 }
 
 #[ast]
-#[derive(Debug)]
-pub struct RestPat<'a> {
-    pub span: Span,
-    pub dot3_token: Span,
-    pub arg: Pat<'a>,
+pub struct RestPat {
+    dot3_token: Span,
+    arg: Pat,
     // type_ann: Option<Box<TsTypeAnn>>,
 }
 
 #[ast]
-#[derive(Debug)]
-pub enum ObjectPatProp<'a> {
-    KeyValue(Box<'a, KeyValuePatProp<'a>>),
-    Assign(Box<'a, AssignPatProp<'a>>),
-    Rest(Box<'a, RestPat<'a>>),
+pub enum ObjectPatProp {
+    KeyValue(KeyValuePatProp),
+    Assign(AssignPatProp),
+    Rest(RestPat),
 }
 
 #[ast]
-#[derive(Debug)]
-pub struct KeyValuePatProp<'a> {
-    #[span(lo)]
-    pub key: PropName<'a>,
-    #[span(hi)]
-    pub value: Pat<'a>,
+pub struct KeyValuePatProp {
+    pub key: PropName,
+    pub value: Pat,
 }
 #[ast]
-#[derive(Debug)]
-pub struct AssignPatProp<'a> {
-    pub span: Span,
-    pub key: Box<'a, BindingIdent<'a>>,
-    pub value: Option<Expr<'a>>,
+pub struct AssignPatProp {
+    pub key: BindingIdent,
+    pub value: Option<Expr>,
 }

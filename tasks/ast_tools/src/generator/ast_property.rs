@@ -1,38 +1,35 @@
 use convert_case::{Case, Casing};
 use proc_macro2::TokenStream;
-use quote::{ToTokens, format_ident, quote};
+use quote::{format_ident, quote};
 
 use crate::{
     AST_CRATE_PATH,
     output::{RawOutput, RustOutput, output_path},
-    schema::{AstEnum, AstStruct, AstStructField, AstType, Schema, SpanKind, TypeId},
+    schema::{AstEnum, AstStruct, AstType, Schema},
+    util::{
+        INLINE_DATA_U32_SIZE, InlineLayout, calculate_inline_layout, generate_field_to_u32,
+        generate_u32_to_field, safe_ident,
+    },
 };
 
 pub fn ast_property(schema: &Schema) -> RawOutput {
     let mut impls = TokenStream::new();
     for ty in schema.types.iter() {
         match ty {
-            AstType::Struct(ast_struct) if !ast_struct.skip_span => {
-                impls.extend(generate_span_for_struct(ast_struct, schema));
+            AstType::Struct(ast_struct) => {
+                impls.extend(generate_property_for_struct(ast_struct, schema))
             }
-            AstType::Enum(ast_enum) => {
-                impls.extend(generate_property_for_enum(ast_enum, schema));
-                if !ast_enum.skip_span {
-                    impls.extend(generate_span_for_enum(ast_enum, schema));
-                }
-            }
-            _ => {}
-        }
+            AstType::Enum(ast_enum) => impls.extend(generate_property_for_enum(ast_enum, schema)),
+            _ => continue,
+        };
     }
 
     let output = quote! {
-        #![allow(unused, clippy::useless_conversion, clippy::identity_op)]
-        use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
-        use swc_experimental_allocator::boxed::Box;
-        use crate::*;
-        use crate::span::{DUMMY_SP, GetSpan, SetSpan};
+            #![allow(unused, clippy::useless_conversion, clippy::identity_op, clippy::erasing_op, clippy::let_and_return)]
+            use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
+            use crate::*;
 
-        #impls
+            #impls
     };
 
     RustOutput {
@@ -42,48 +39,247 @@ pub fn ast_property(schema: &Schema) -> RawOutput {
     .into()
 }
 
+fn generate_property_for_struct(ast: &AstStruct, schema: &Schema) -> TokenStream {
+    let name = format_ident!("{}", ast.name);
+
+    let mut field_getters = TokenStream::new();
+    let mut field_setters = TokenStream::new();
+
+    // Check if this struct uses inline storage
+    if let Some(layout) = calculate_inline_layout(ast, schema) {
+        generate_inline_property_accessors(
+            ast,
+            schema,
+            &mut field_getters,
+            &mut field_setters,
+            &layout,
+        );
+    } else {
+        generate_extra_data_property_accessors(ast, schema, &mut field_getters, &mut field_setters);
+    }
+
+    quote! {
+        impl #name {
+            #field_getters
+            #field_setters
+        }
+    }
+}
+
+/// Generate getters/setters for inline storage
+/// Layout (4 bytes total):
+/// - Bytes 0-3: NodePayload.inline_data (u32)
+fn generate_inline_property_accessors(
+    ast: &AstStruct,
+    schema: &Schema,
+    field_getters: &mut TokenStream,
+    field_setters: &mut TokenStream,
+    layout: &InlineLayout,
+) {
+    for &(field_idx, byte_offset, byte_size) in &layout.fields {
+        let field = &ast.fields[field_idx];
+        let field_name = format_ident!("{}", field.name);
+        let field_ty = &schema.types[field.type_id];
+        let getter_name = safe_ident(&field.name.to_case(Case::Snake));
+        let ret_ty = field_ty.repr_ident(schema);
+
+        // Optimization: single field at offset 0 (1-4 bytes) can directly use u32
+        let is_direct_u32 = byte_offset == 0 && byte_size <= INLINE_DATA_U32_SIZE;
+
+        if is_direct_u32 {
+            // Generate optimized getter (direct u32 read)
+            let cast_expr = generate_u32_to_field(field_ty, schema);
+            field_getters.extend(quote! {
+                #[inline]
+                pub fn #getter_name<'a>(&self, ast: &crate::Ast<'a>) -> #ret_ty {
+                    let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+                    #cast_expr
+                }
+            });
+
+            // Generate optimized setter (direct u32 write)
+            let to_u32_expr = generate_field_to_u32(field_ty, &field_name, schema);
+            let setter_name = format_ident!("set_{}", field_name);
+            field_setters.extend(quote! {
+                #[inline]
+                pub fn #setter_name<'a>(&self, ast: &mut crate::Ast<'a>, #field_name: #ret_ty) {
+                    unsafe { ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data = #to_u32_expr };
+                }
+            });
+        } else {
+            // General case: use byte packing/unpacking
+            let read_expr = generate_inline_read(field_ty, schema, byte_offset, byte_size);
+            field_getters.extend(quote! {
+                #[inline]
+                pub fn #getter_name<'a>(&self, ast: &crate::Ast<'a>) -> #ret_ty {
+                    #read_expr
+                }
+            });
+
+            let setter_name = format_ident!("set_{}", field_name);
+            let write_expr =
+                generate_inline_write(field_ty, &field_name, byte_offset, byte_size, schema);
+            field_setters.extend(quote! {
+                #[inline]
+                pub fn #setter_name<'a>(&self, ast: &mut crate::Ast<'a>, #field_name: #ret_ty) {
+                    #write_expr
+                }
+            });
+        }
+    }
+}
+
+/// Generate read expression for a field from inline storage using bit operations
+fn generate_inline_read(
+    field_ty: &AstType,
+    schema: &Schema,
+    byte_offset: usize,
+    byte_size: usize,
+) -> TokenStream {
+    // Extract raw u32 value using bit operations
+    let extract_expr = generate_extract_bits(byte_offset, byte_size);
+    // Then, cast to the appropriate type
+    let cast_expr = generate_u32_to_field(field_ty, schema);
+
+    quote! {
+        #extract_expr
+        #cast_expr
+    }
+}
+
+/// Generate code to extract a field value as u32 using bit operations
+fn generate_extract_bits(byte_offset: usize, byte_size: usize) -> TokenStream {
+    let bit_offset = byte_offset * 8;
+    let bit_size = byte_size * 8;
+    debug_assert!(byte_offset + byte_size <= INLINE_DATA_U32_SIZE);
+
+    // Create mask for the field
+    let mask: u32 = if bit_size >= 32 {
+        u32::MAX
+    } else {
+        (1u32 << bit_size) - 1
+    };
+
+    if byte_offset == 0 {
+        quote! {
+            let raw = (unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data }) & #mask;
+        }
+    } else {
+        quote! {
+            let raw = ((unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data }) >> #bit_offset) & #mask;
+        }
+    }
+}
+
+/// Generate write expression for a field to inline storage using bit operations
+fn generate_inline_write(
+    field_ty: &AstType,
+    field_name: &syn::Ident,
+    byte_offset: usize,
+    byte_size: usize,
+    schema: &Schema,
+) -> TokenStream {
+    // First, convert the value to u32
+    let to_u32 = generate_field_to_u32(field_ty, field_name, schema);
+    // Then, insert using bit operations
+    let insert_expr = generate_insert_bits(byte_offset, byte_size);
+
+    quote! {
+        let field_val: u32 = #to_u32;
+        #insert_expr
+    }
+}
+
+/// Generate code to insert a field value using bit operations (read-modify-write)
+fn generate_insert_bits(byte_offset: usize, byte_size: usize) -> TokenStream {
+    let bit_offset = byte_offset * 8;
+    let bit_size = byte_size * 8;
+    debug_assert!(byte_offset + byte_size <= INLINE_DATA_U32_SIZE);
+
+    // Create mask for the field
+    let mask: u32 = if bit_size >= 32 {
+        u32::MAX
+    } else {
+        (1u32 << bit_size) - 1
+    };
+
+    let clear_mask = !(mask << bit_offset);
+    if byte_offset == 0 {
+        quote! {
+            let old = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+            unsafe { ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data = (old & #clear_mask) | (field_val & #mask) };
+        }
+    } else {
+        quote! {
+            let old = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+            unsafe { ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data = (old & #clear_mask) | ((field_val & #mask) << #bit_offset) };
+        }
+    }
+}
+
+/// Generate getters/setters for extra_data storage (original implementation)
+fn generate_extra_data_property_accessors(
+    ast: &AstStruct,
+    schema: &Schema,
+    field_getters: &mut TokenStream,
+    field_setters: &mut TokenStream,
+) {
+    for (offset, field) in ast.fields.iter().enumerate() {
+        let field_name = format_ident!("{}", field.name);
+        let field_ty = &schema.types[field.type_id].repr_ident(schema);
+
+        let getter_name = safe_ident(&field.name.to_case(Case::Snake));
+        field_getters.extend(quote! {
+            #[inline]
+            pub fn #getter_name<'a>(&self, ast: &crate::Ast<'a>) -> #field_ty {
+                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.get_unchecked(self.0.index()).data.extra_data_start.index().wrapping_add(#offset)) };
+
+                debug_assert!(offset.index() < ast.extra_data.len());
+                unsafe {
+                    ExtraDataCompact::from_extra_data(
+                        *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                        ast,
+                    )
+                }
+            }
+        });
+
+        let setter_name = format_ident!("set_{}", field_name);
+        field_setters.extend(quote! {
+            #[inline]
+            pub fn #setter_name<'a>(&self, ast: &mut crate::Ast<'a>, #field_name: #field_ty) {
+                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.get_unchecked(self.0.index()).data.extra_data_start.index().wrapping_add(#offset)) };
+
+                debug_assert!(offset.index() < ast.extra_data.len());
+                unsafe {
+                    *ast.extra_data.as_mut_slice().get_unchecked_mut(offset.index()) = #field_name.to_extra_data();
+                };
+            }
+        });
+    }
+}
+
 fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
     let name = format_ident!("{}", ast.name);
-    let impl_generics = if type_has_lifetime(ast.type_id, schema) {
-        quote!(<'a>)
-    } else {
-        TokenStream::new()
-    };
-    let type_generics = impl_generics.clone();
 
     let mut is_variant = TokenStream::new();
     let mut as_variant = TokenStream::new();
-    let mut as_mut_variant = TokenStream::new();
 
     for variant in ast.variants.iter() {
         let variant_name = format_ident!("{}", variant.name);
         let is_fn_name = format_ident!("is_{}", variant.name.to_case(Case::Snake));
         is_variant.extend(quote! {
             #[inline]
-            pub const fn #is_fn_name(&self) -> bool {
-                matches!(self, Self::#variant_name { .. })
+            pub fn #is_fn_name(&self) -> bool {
+                matches!(self, Self::#variant_name(_))
             }
         });
-
-        let Some(payload_ty_id) = variant.type_id else {
-            continue;
-        };
 
         let as_fn_name = format_ident!("as_{}", variant.name.to_case(Case::Snake));
-        let as_mut_fn_name = format_ident!("as_mut_{}", variant.name.to_case(Case::Snake));
-        let payload_ty = type_ref(payload_ty_id, schema);
+        let struct_name = format_ident!("{}", schema.types[variant.type_id.unwrap()].name());
         as_variant.extend(quote! {
             #[inline]
-            pub fn #as_fn_name(&self) -> Option<&#payload_ty> {
-                match self {
-                    Self::#variant_name(it) => Some(it),
-                    _ => None,
-                }
-            }
-        });
-        as_mut_variant.extend(quote! {
-            #[inline]
-            pub fn #as_mut_fn_name(&mut self) -> Option<&mut #payload_ty> {
+            pub fn #as_fn_name(self) -> Option<#struct_name> {
                 match self {
                     Self::#variant_name(it) => Some(it),
                     _ => None,
@@ -93,346 +289,9 @@ fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
     }
 
     quote! {
-        impl #impl_generics #name #type_generics {
+        impl #name {
             #is_variant
             #as_variant
-            #as_mut_variant
         }
-    }
-}
-
-fn generate_span_for_struct(ast: &AstStruct, schema: &Schema) -> TokenStream {
-    let name = format_ident!("{}", ast.name);
-    let impl_generics = if type_has_lifetime(ast.type_id, schema) {
-        quote!(<'a>)
-    } else {
-        TokenStream::new()
-    };
-    let type_generics = impl_generics.clone();
-
-    let span_spec = struct_span_spec(ast, schema);
-    let get_span = generate_struct_get_span(&span_spec, schema);
-    let set_span = generate_struct_set_span(&span_spec, schema);
-
-    quote! {
-        impl #impl_generics GetSpan for #name #type_generics {
-            #[inline]
-            fn span(&self) -> Span {
-                #get_span
-            }
-        }
-
-        impl #impl_generics SetSpan for #name #type_generics {
-            #[inline]
-            fn set_span(&mut self, span: Span) {
-                #set_span
-            }
-        }
-    }
-}
-
-fn generate_span_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
-    let name = format_ident!("{}", ast.name);
-    let impl_generics = if type_has_lifetime(ast.type_id, schema) {
-        quote!(<'a>)
-    } else {
-        TokenStream::new()
-    };
-    let type_generics = impl_generics.clone();
-
-    let mut get_arms = TokenStream::new();
-    let mut set_arms = TokenStream::new();
-    for variant in ast.variants.iter() {
-        let variant_name = format_ident!("{}", variant.name);
-
-        if variant.type_id.is_some() {
-            get_arms.extend(quote! {
-                Self::#variant_name(it) => it.span(),
-            });
-            set_arms.extend(quote! {
-                Self::#variant_name(it) => it.set_span(span),
-            });
-        } else {
-            get_arms.extend(quote! {
-                Self::#variant_name => DUMMY_SP,
-            });
-            set_arms.extend(quote! {
-                Self::#variant_name => {}
-            });
-        }
-    }
-
-    quote! {
-        impl #impl_generics GetSpan for #name #type_generics {
-            #[inline]
-            fn span(&self) -> Span {
-                match self {
-                    #get_arms
-                }
-            }
-        }
-
-        impl #impl_generics SetSpan for #name #type_generics {
-            #[inline]
-            fn set_span(&mut self, span: Span) {
-                match self {
-                    #set_arms
-                }
-            }
-        }
-    }
-}
-
-fn type_ref(type_id: TypeId, schema: &Schema) -> TokenStream {
-    match &schema.types[type_id] {
-        AstType::Struct(ast) => named_type_ref(&ast.name, type_has_lifetime(type_id, schema)),
-        AstType::Enum(ast) => named_type_ref(&ast.name, type_has_lifetime(type_id, schema)),
-        AstType::Box(ast) => {
-            let inner_ty = type_ref(ast.inner_type_id, schema);
-            quote!(Box<'a, #inner_ty>)
-        }
-        AstType::Vec(ast) => {
-            let inner_ty = type_ref(ast.inner_type_id, schema);
-            quote!(Vec<'a, #inner_ty>)
-        }
-        AstType::Option(ast) => {
-            let inner_ty = type_ref(ast.inner_type_id, schema);
-            quote!(Option<#inner_ty>)
-        }
-        AstType::Primitive(ast) => primitive_type_ref(ast.name),
-    }
-}
-
-fn primitive_type_ref(name: &str) -> TokenStream {
-    match name {
-        "Utf8Ref" | "Atom" => quote!(Atom<'a>),
-        "Wtf8Ref" | "Wtf8Atom" => quote!(Wtf8Atom<'a>),
-        "OptionalUtf8Ref" => quote!(Option<Atom<'a>>),
-        "OptionalWtf8Ref" => quote!(Option<Wtf8Atom<'a>>),
-        "swc_experimental_num_bigint::BigInt" => quote!(swc_experimental_num_bigint::BigInt<'a>),
-        "ScopeId" => quote!(ScopeId),
-        "SymbolId" => quote!(SymbolId),
-        _ => format_ident!("{}", name).into_token_stream(),
-    }
-}
-
-fn named_type_ref(name: &str, has_lifetime: bool) -> TokenStream {
-    let ident = format_ident!("{}", name);
-    if has_lifetime {
-        quote!(#ident<'a>)
-    } else {
-        ident.into_token_stream()
-    }
-}
-
-fn type_has_lifetime(type_id: TypeId, schema: &Schema) -> bool {
-    match &schema.types[type_id] {
-        AstType::Struct(ast) => ast
-            .fields
-            .iter()
-            .any(|field| field_type_needs_lifetime(field.type_id, schema)),
-        AstType::Enum(ast) => ast.variants.iter().any(|variant| variant.type_id.is_some()),
-        AstType::Box(_) => true,
-        AstType::Vec(_) => true,
-        AstType::Option(ast) => field_type_needs_lifetime(ast.inner_type_id, schema),
-        AstType::Primitive(ast) => primitive_type_needs_lifetime(ast.name),
-    }
-}
-
-fn field_type_needs_lifetime(type_id: TypeId, schema: &Schema) -> bool {
-    match &schema.types[type_id] {
-        AstType::Struct(_) => true,
-        AstType::Enum(_) => type_has_lifetime(type_id, schema),
-        AstType::Box(_) => true,
-        AstType::Vec(_) => true,
-        AstType::Option(ast) => field_type_needs_lifetime(ast.inner_type_id, schema),
-        AstType::Primitive(ast) => primitive_type_needs_lifetime(ast.name),
-    }
-}
-
-fn primitive_type_needs_lifetime(name: &str) -> bool {
-    matches!(
-        name,
-        "Utf8Ref"
-            | "Atom"
-            | "Wtf8Ref"
-            | "Wtf8Atom"
-            | "OptionalUtf8Ref"
-            | "OptionalWtf8Ref"
-            | "swc_experimental_num_bigint::BigInt"
-    )
-}
-
-fn is_span_type(type_id: TypeId, schema: &Schema) -> bool {
-    matches!(&schema.types[type_id], AstType::Primitive(ast) if ast.name == "Span")
-}
-
-enum StructSpanSpec<'a> {
-    Field(&'a AstStructField),
-    Range {
-        lo: &'a AstStructField,
-        hi: &'a AstStructField,
-    },
-    None,
-}
-
-fn struct_span_spec<'a>(ast: &'a AstStruct, schema: &Schema) -> StructSpanSpec<'a> {
-    let full_fields = ast
-        .fields
-        .iter()
-        .filter(|field| field.span_kind == Some(SpanKind::Full))
-        .collect::<Vec<_>>();
-    let lo_fields = ast
-        .fields
-        .iter()
-        .filter(|field| field.span_kind == Some(SpanKind::Lo))
-        .collect::<Vec<_>>();
-    let hi_fields = ast
-        .fields
-        .iter()
-        .filter(|field| field.span_kind == Some(SpanKind::Hi))
-        .collect::<Vec<_>>();
-
-    assert!(
-        full_fields.len() <= 1,
-        "{} has multiple #[span] fields",
-        ast.name
-    );
-    assert!(
-        lo_fields.len() <= 1,
-        "{} has multiple #[span(lo)] fields",
-        ast.name
-    );
-    assert!(
-        hi_fields.len() <= 1,
-        "{} has multiple #[span(hi)] fields",
-        ast.name
-    );
-    assert!(
-        full_fields.is_empty() || (lo_fields.is_empty() && hi_fields.is_empty()),
-        "{} mixes #[span] with #[span(lo)] / #[span(hi)]",
-        ast.name
-    );
-
-    if let Some(field) = full_fields.first() {
-        return StructSpanSpec::Field(field);
-    }
-
-    if !lo_fields.is_empty() || !hi_fields.is_empty() {
-        assert!(
-            !lo_fields.is_empty() && !hi_fields.is_empty(),
-            "{} must have both #[span(lo)] and #[span(hi)]",
-            ast.name
-        );
-        return StructSpanSpec::Range {
-            lo: lo_fields[0],
-            hi: hi_fields[0],
-        };
-    }
-
-    ast.fields
-        .iter()
-        .find(|field| field.name == "span" && is_span_type(field.type_id, schema))
-        .map_or(StructSpanSpec::None, StructSpanSpec::Field)
-}
-
-fn generate_struct_get_span(span_spec: &StructSpanSpec<'_>, schema: &Schema) -> TokenStream {
-    match span_spec {
-        StructSpanSpec::Field(field) => field_span_expr(field, schema),
-        StructSpanSpec::Range { lo, hi } => {
-            let lo_expr = field_span_endpoint_expr(lo, SpanKind::Lo, schema);
-            let hi_expr = field_span_endpoint_expr(hi, SpanKind::Hi, schema);
-            quote!(Span::new(#lo_expr, #hi_expr))
-        }
-        StructSpanSpec::None => quote!(DUMMY_SP),
-    }
-}
-
-fn generate_struct_set_span(span_spec: &StructSpanSpec<'_>, schema: &Schema) -> TokenStream {
-    match span_spec {
-        StructSpanSpec::Field(field) => field_set_span_stmt(field, schema),
-        StructSpanSpec::Range { lo, hi } => {
-            let lo_stmt = field_set_span_endpoint_stmt(lo, SpanKind::Lo, schema);
-            let hi_stmt = field_set_span_endpoint_stmt(hi, SpanKind::Hi, schema);
-            quote! {
-                #lo_stmt
-                #hi_stmt
-            }
-        }
-        StructSpanSpec::None => TokenStream::new(),
-    }
-}
-
-fn field_span_expr(field: &AstStructField, schema: &Schema) -> TokenStream {
-    let field_name = format_ident!("{}", field.name);
-    if is_span_type(field.type_id, schema) {
-        quote!(self.#field_name)
-    } else {
-        quote!(self.#field_name.span())
-    }
-}
-
-fn field_set_span_stmt(field: &AstStructField, schema: &Schema) -> TokenStream {
-    let field_name = format_ident!("{}", field.name);
-    if is_span_type(field.type_id, schema) {
-        quote!(self.#field_name = span;)
-    } else {
-        quote!(self.#field_name.set_span(span);)
-    }
-}
-
-fn field_span_endpoint_expr(
-    field: &AstStructField,
-    span_kind: SpanKind,
-    schema: &Schema,
-) -> TokenStream {
-    let field_name = format_ident!("{}", field.name);
-    match span_kind {
-        SpanKind::Lo => {
-            if is_span_type(field.type_id, schema) {
-                quote!(self.#field_name.start)
-            } else {
-                quote!(self.#field_name.span_lo())
-            }
-        }
-        SpanKind::Hi => {
-            if is_span_type(field.type_id, schema) {
-                quote!(self.#field_name.end)
-            } else {
-                quote!(self.#field_name.span_hi())
-            }
-        }
-        SpanKind::Full => unreachable!("full span is not an endpoint"),
-    }
-}
-
-fn field_set_span_endpoint_stmt(
-    field: &AstStructField,
-    span_kind: SpanKind,
-    schema: &Schema,
-) -> TokenStream {
-    let field_name = format_ident!("{}", field.name);
-    match span_kind {
-        SpanKind::Lo => {
-            if is_span_type(field.type_id, schema) {
-                quote!(self.#field_name.start = span.start;)
-            } else {
-                quote! {
-                    let current = self.#field_name.span();
-                    self.#field_name.set_span(Span::new(span.start, current.end));
-                }
-            }
-        }
-        SpanKind::Hi => {
-            if is_span_type(field.type_id, schema) {
-                quote!(self.#field_name.end = span.end;)
-            } else {
-                quote! {
-                    let current = self.#field_name.span();
-                    self.#field_name.set_span(Span::new(current.start, span.end));
-                }
-            }
-        }
-        SpanKind::Full => unreachable!("full span is not an endpoint"),
     }
 }

@@ -1,71 +1,43 @@
-use std::cell::Cell;
-
-use crate::Allocator;
-use crate::Span;
-use crate::semantic::SymbolId;
-use crate::span::{GetSpan, SetSpan};
 use swc_experimental_allocator::atom::Atom;
-use swc_experimental_allocator::boxed::Box;
 use swc_experimental_ast_macros::ast;
 
+use crate::{Ast, GetSpan};
+
 #[ast]
-#[derive(Debug, Clone)]
-pub struct Ident<'a> {
-    pub span: Span,
-    pub sym: Atom<'a>,
-    pub symbol_id: Cell<Option<SymbolId>>,
+pub struct Ident {
+    sym: Atom,
+    symbol_id: Cell<Option<SymbolId>>,
 }
 
 #[ast]
-#[derive(Debug, Clone)]
-pub struct IdentName<'a> {
-    pub span: Span,
-    pub sym: Atom<'a>,
+pub struct IdentName {
+    sym: Atom,
 }
 
 #[ast]
-#[derive(Debug, Clone)]
-pub struct PrivateName<'a> {
-    pub span: Span,
-    pub name: Atom<'a>,
+pub struct PrivateName {
+    name: Atom,
 }
 
-#[ast(skip_span)]
-#[derive(Debug)]
-pub struct BindingIdent<'a> {
-    pub id: Box<'a, Ident<'a>>,
+#[ast]
+pub struct BindingIdent {
+    id: Ident,
     // pub type_ann: Option<Box<TsTypeAnn>>,
 }
 
-impl GetSpan for BindingIdent<'_> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.id.span()
+impl Ident {
+    pub fn into_binding(self, ast: &mut Ast<'_>) -> BindingIdent {
+        ast.binding_ident(self.span(ast), self)
     }
 }
 
-impl SetSpan for BindingIdent<'_> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.id.set_span(span);
-    }
-}
-
-impl<'a> Ident<'a> {
-    pub fn into_binding(self, allocator: &'a Allocator) -> BindingIdent<'a> {
-        BindingIdent {
-            id: allocator.boxed(self),
-        }
-    }
-}
-
-pub trait EsReserved {
-    fn as_str(&self) -> &str;
+pub trait EsReserved<'a> {
+    fn atom(&self, ast: &Ast<'a>) -> Atom<'a>;
 
     #[inline]
     #[rustfmt::skip]
-    fn is_reserved(&self) -> bool {
-        matches!(self.as_str(),
+    fn is_reserved(&self, ast: &Ast<'a>) -> bool {
+        matches!(self.atom(ast).as_str(),
             | "break" | "case" | "catch" | "class" | "const" | "continue" | "debugger" | "default"
             | "delete" | "do" | "else" | "enum" | "export" | "extends" | "false" | "finally"
             | "for" | "function" | "if" | "import" | "in" | "instanceof" | "new" | "null"
@@ -76,8 +48,8 @@ pub trait EsReserved {
 
     #[inline]
     #[rustfmt::skip]
-    fn is_reserved_in_strict_mode(&self, is_module: bool) -> bool {
-        match self.as_str() {
+    fn is_reserved_in_strict_mode(&self, ast: &Ast<'a>, is_module: bool) -> bool {
+        match self.atom(ast).as_str() {
             "await" if is_module => true,
             "implements" | "interface" | "let" | "package" | "private" | "protected" | "public"
             | "static" | "yield" => true,
@@ -86,14 +58,14 @@ pub trait EsReserved {
     }
 
     #[inline]
-    fn is_reserved_in_strict_bind(&self) -> bool {
-        matches!(self.as_str(), "eval" | "arguments")
+    fn is_reserved_in_strict_bind(&self, ast: &Ast<'a>) -> bool {
+        matches!(self.atom(ast).as_str(), "eval" | "arguments")
     }
 
     #[inline]
     #[rustfmt::skip]
-    fn is_reserved_in_es3(&self) -> bool {
-        matches!(self.as_str(),
+    fn is_reserved_in_es3(&self, ast: &Ast<'a>) -> bool {
+        matches!(self.atom(ast).as_str(),
             | "abstract" | "boolean" | "byte" | "char" | "double" | "final" | "float" | "goto"
             | "int" | "long" | "native" | "short" | "synchronized" | "throws" | "transient"
             | "volatile"
@@ -101,34 +73,34 @@ pub trait EsReserved {
     }
 
     #[inline]
-    fn is_reserved_in_any(&self) -> bool {
-        self.is_reserved()
-            || self.is_reserved_in_strict_mode(false)
-            || self.is_reserved_in_strict_bind()
-            || self.is_reserved_in_es3()
+    fn is_reserved_in_any(&self, ast: &Ast<'a>) -> bool {
+        self.is_reserved(ast)
+            || self.is_reserved_in_strict_mode(ast, false)
+            || self.is_reserved_in_strict_bind(ast)
+            || self.is_reserved_in_es3(ast)
     }
 }
 
-impl EsReserved for Atom<'_> {
-    fn as_str(&self) -> &str {
-        self.as_str()
+impl<'a> EsReserved<'a> for Atom<'a> {
+    fn atom(&self, _ast: &Ast<'a>) -> Atom<'a> {
+        *self
     }
 }
 
-impl EsReserved for IdentName<'_> {
-    fn as_str(&self) -> &str {
-        self.sym.as_str()
+impl<'a> EsReserved<'a> for IdentName {
+    fn atom(&self, ast: &Ast<'a>) -> Atom<'a> {
+        self.sym(ast)
     }
 }
 
-impl EsReserved for Ident<'_> {
-    fn as_str(&self) -> &str {
-        self.sym.as_str()
+impl<'a> EsReserved<'a> for Ident {
+    fn atom(&self, ast: &Ast<'a>) -> Atom<'a> {
+        self.sym(ast)
     }
 }
 
-impl EsReserved for BindingIdent<'_> {
-    fn as_str(&self) -> &str {
-        self.id.sym.as_str()
+impl<'a> EsReserved<'a> for BindingIdent {
+    fn atom(&self, ast: &Ast<'a>) -> Atom<'a> {
+        self.id(ast).sym(ast)
     }
 }

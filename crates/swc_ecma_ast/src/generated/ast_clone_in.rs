@@ -1,1707 +1,1601 @@
-#![allow(unused)]
-use crate::ast::*;
-use swc_experimental_allocator::{Allocator, CloneIn};
-impl<'a, 'src> CloneIn<'a> for Program<'src> {
-    type Cloned = Program<'a>;
+#![allow(unused, clippy::manual_map)]
+use crate::{Ast, CloneIn, GetSpan, NodeKind};
+use crate::{ast::*, node_id::*};
+impl<'a> CloneIn<'a> for Program {
+    type Cloned = Program;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Module(it) => Program::Module(it.clone_in(allocator)),
-            Self::Script(it) => Program::Script(it.clone_in(allocator)),
+            Self::Module(it) => Self::Module(it.clone_in(ast)),
+            Self::Script(it) => Self::Script(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for Module<'src> {
-    type Cloned = Module<'a>;
+impl<'a> CloneIn<'a> for Module {
+    type Cloned = Module;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        Module {
-            span: self.span.clone_in(allocator),
-            body: self.body.clone_in(allocator),
-            shebang: self.shebang.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        let shebang = self.shebang(ast).clone_in(ast);
+        ast.module(span, body, shebang)
     }
 }
-impl<'a, 'src> CloneIn<'a> for Script<'src> {
-    type Cloned = Script<'a>;
+impl<'a> CloneIn<'a> for Script {
+    type Cloned = Script;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        Script {
-            span: self.span.clone_in(allocator),
-            body: self.body.clone_in(allocator),
-            shebang: self.shebang.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        let shebang = self.shebang(ast).clone_in(ast);
+        ast.script(span, body, shebang)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ModuleItem<'src> {
-    type Cloned = ModuleItem<'a>;
+impl<'a> CloneIn<'a> for ModuleItem {
+    type Cloned = ModuleItem;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::ModuleDecl(it) => ModuleItem::ModuleDecl(it.clone_in(allocator)),
-            Self::Stmt(it) => ModuleItem::Stmt(it.clone_in(allocator)),
+            Self::ModuleDecl(it) => Self::ModuleDecl(it.clone_in(ast)),
+            Self::Stmt(it) => Self::Stmt(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for ModuleDecl<'src> {
-    type Cloned = ModuleDecl<'a>;
+impl<'a> CloneIn<'a> for ModuleDecl {
+    type Cloned = ModuleDecl;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Import(it) => ModuleDecl::Import(it.clone_in(allocator)),
-            Self::ExportDecl(it) => ModuleDecl::ExportDecl(it.clone_in(allocator)),
-            Self::ExportNamed(it) => ModuleDecl::ExportNamed(it.clone_in(allocator)),
-            Self::ExportDefaultDecl(it) => ModuleDecl::ExportDefaultDecl(it.clone_in(allocator)),
-            Self::ExportDefaultExpr(it) => ModuleDecl::ExportDefaultExpr(it.clone_in(allocator)),
-            Self::ExportAll(it) => ModuleDecl::ExportAll(it.clone_in(allocator)),
+            Self::Import(it) => Self::Import(it.clone_in(ast)),
+            Self::ExportDecl(it) => Self::ExportDecl(it.clone_in(ast)),
+            Self::ExportNamed(it) => Self::ExportNamed(it.clone_in(ast)),
+            Self::ExportDefaultDecl(it) => Self::ExportDefaultDecl(it.clone_in(ast)),
+            Self::ExportDefaultExpr(it) => Self::ExportDefaultExpr(it.clone_in(ast)),
+            Self::ExportAll(it) => Self::ExportAll(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for ImportDecl<'src> {
-    type Cloned = ImportDecl<'a>;
+impl<'a> CloneIn<'a> for ImportDecl {
+    type Cloned = ImportDecl;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ImportDecl {
-            span: self.span.clone_in(allocator),
-            specifiers: self.specifiers.clone_in(allocator),
-            src: self.src.clone_in(allocator),
-            type_only: self.type_only.clone_in(allocator),
-            with: self.with.clone_in(allocator),
-            phase: self.phase.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let specifiers = self.specifiers(ast).clone_in(ast);
+        let src = self.src(ast).clone_in(ast);
+        let type_only = self.type_only(ast).clone_in(ast);
+        let with = self.with(ast).clone_in(ast);
+        let phase = self.phase(ast).clone_in(ast);
+        ast.import_decl(span, specifiers, src, type_only, with, phase)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ImportSpecifier<'src> {
-    type Cloned = ImportSpecifier<'a>;
+impl<'a> CloneIn<'a> for ImportSpecifier {
+    type Cloned = ImportSpecifier;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Named(it) => ImportSpecifier::Named(it.clone_in(allocator)),
-            Self::Default(it) => ImportSpecifier::Default(it.clone_in(allocator)),
-            Self::Namespace(it) => ImportSpecifier::Namespace(it.clone_in(allocator)),
+            Self::Named(it) => Self::Named(it.clone_in(ast)),
+            Self::Default(it) => Self::Default(it.clone_in(ast)),
+            Self::Namespace(it) => Self::Namespace(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for ImportNamedSpecifier<'src> {
-    type Cloned = ImportNamedSpecifier<'a>;
+impl<'a> CloneIn<'a> for ImportNamedSpecifier {
+    type Cloned = ImportNamedSpecifier;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ImportNamedSpecifier {
-            span: self.span.clone_in(allocator),
-            local: self.local.clone_in(allocator),
-            imported: self.imported.clone_in(allocator),
-            is_type_only: self.is_type_only.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let local = self.local(ast).clone_in(ast);
+        let imported = self.imported(ast).clone_in(ast);
+        let is_type_only = self.is_type_only(ast).clone_in(ast);
+        ast.import_named_specifier(span, local, imported, is_type_only)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ImportDefaultSpecifier<'src> {
-    type Cloned = ImportDefaultSpecifier<'a>;
+impl<'a> CloneIn<'a> for ImportDefaultSpecifier {
+    type Cloned = ImportDefaultSpecifier;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ImportDefaultSpecifier {
-            span: self.span.clone_in(allocator),
-            local: self.local.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let local = self.local(ast).clone_in(ast);
+        ast.import_default_specifier(span, local)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ImportStarAsSpecifier<'src> {
-    type Cloned = ImportStarAsSpecifier<'a>;
+impl<'a> CloneIn<'a> for ImportStarAsSpecifier {
+    type Cloned = ImportStarAsSpecifier;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ImportStarAsSpecifier {
-            span: self.span.clone_in(allocator),
-            local: self.local.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let local = self.local(ast).clone_in(ast);
+        ast.import_star_as_specifier(span, local)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ExportDecl<'src> {
-    type Cloned = ExportDecl<'a>;
+impl<'a> CloneIn<'a> for ExportDecl {
+    type Cloned = ExportDecl;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ExportDecl {
-            span: self.span.clone_in(allocator),
-            decl: self.decl.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let decl = self.decl(ast).clone_in(ast);
+        ast.export_decl(span, decl)
     }
 }
-impl<'a, 'src> CloneIn<'a> for NamedExport<'src> {
-    type Cloned = NamedExport<'a>;
+impl<'a> CloneIn<'a> for NamedExport {
+    type Cloned = NamedExport;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        NamedExport {
-            span: self.span.clone_in(allocator),
-            specifiers: self.specifiers.clone_in(allocator),
-            src: self.src.clone_in(allocator),
-            type_only: self.type_only.clone_in(allocator),
-            with: self.with.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let specifiers = self.specifiers(ast).clone_in(ast);
+        let src = self.src(ast).clone_in(ast);
+        let type_only = self.type_only(ast).clone_in(ast);
+        let with = self.with(ast).clone_in(ast);
+        ast.named_export(span, specifiers, src, type_only, with)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ExportSpecifier<'src> {
-    type Cloned = ExportSpecifier<'a>;
+impl<'a> CloneIn<'a> for ExportSpecifier {
+    type Cloned = ExportSpecifier;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Namespace(it) => ExportSpecifier::Namespace(it.clone_in(allocator)),
-            Self::Default(it) => ExportSpecifier::Default(it.clone_in(allocator)),
-            Self::Named(it) => ExportSpecifier::Named(it.clone_in(allocator)),
+            Self::Namespace(it) => Self::Namespace(it.clone_in(ast)),
+            Self::Default(it) => Self::Default(it.clone_in(ast)),
+            Self::Named(it) => Self::Named(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for ExportNamespaceSpecifier<'src> {
-    type Cloned = ExportNamespaceSpecifier<'a>;
+impl<'a> CloneIn<'a> for ExportNamespaceSpecifier {
+    type Cloned = ExportNamespaceSpecifier;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ExportNamespaceSpecifier {
-            span: self.span.clone_in(allocator),
-            name: self.name.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let name = self.name(ast).clone_in(ast);
+        ast.export_namespace_specifier(span, name)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ModuleExportName<'src> {
-    type Cloned = ModuleExportName<'a>;
+impl<'a> CloneIn<'a> for ModuleExportName {
+    type Cloned = ModuleExportName;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Ident(it) => ModuleExportName::Ident(it.clone_in(allocator)),
-            Self::Str(it) => ModuleExportName::Str(it.clone_in(allocator)),
+            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
+            Self::Str(it) => Self::Str(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for ExportDefaultSpecifier<'src> {
-    type Cloned = ExportDefaultSpecifier<'a>;
+impl<'a> CloneIn<'a> for ExportDefaultSpecifier {
+    type Cloned = ExportDefaultSpecifier;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ExportDefaultSpecifier {
-            exported: self.exported.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let exported = self.exported(ast).clone_in(ast);
+        ast.export_default_specifier(span, exported)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ExportNamedSpecifier<'src> {
-    type Cloned = ExportNamedSpecifier<'a>;
+impl<'a> CloneIn<'a> for ExportNamedSpecifier {
+    type Cloned = ExportNamedSpecifier;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ExportNamedSpecifier {
-            span: self.span.clone_in(allocator),
-            orig: self.orig.clone_in(allocator),
-            exported: self.exported.clone_in(allocator),
-            is_type_only: self.is_type_only.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let orig = self.orig(ast).clone_in(ast);
+        let exported = self.exported(ast).clone_in(ast);
+        let is_type_only = self.is_type_only(ast).clone_in(ast);
+        ast.export_named_specifier(span, orig, exported, is_type_only)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ExportDefaultDecl<'src> {
-    type Cloned = ExportDefaultDecl<'a>;
+impl<'a> CloneIn<'a> for ExportDefaultDecl {
+    type Cloned = ExportDefaultDecl;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ExportDefaultDecl {
-            span: self.span.clone_in(allocator),
-            decl: self.decl.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let decl = self.decl(ast).clone_in(ast);
+        ast.export_default_decl(span, decl)
     }
 }
-impl<'a, 'src> CloneIn<'a> for DefaultDecl<'src> {
-    type Cloned = DefaultDecl<'a>;
+impl<'a> CloneIn<'a> for DefaultDecl {
+    type Cloned = DefaultDecl;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Class(it) => DefaultDecl::Class(it.clone_in(allocator)),
-            Self::Fn(it) => DefaultDecl::Fn(it.clone_in(allocator)),
+            Self::Class(it) => Self::Class(it.clone_in(ast)),
+            Self::Fn(it) => Self::Fn(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for ExportDefaultExpr<'src> {
-    type Cloned = ExportDefaultExpr<'a>;
+impl<'a> CloneIn<'a> for ExportDefaultExpr {
+    type Cloned = ExportDefaultExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ExportDefaultExpr {
-            span: self.span.clone_in(allocator),
-            expr: self.expr.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let expr = self.expr(ast).clone_in(ast);
+        ast.export_default_expr(span, expr)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ExportAll<'src> {
-    type Cloned = ExportAll<'a>;
+impl<'a> CloneIn<'a> for ExportAll {
+    type Cloned = ExportAll;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ExportAll {
-            span: self.span.clone_in(allocator),
-            src: self.src.clone_in(allocator),
-            type_only: self.type_only.clone_in(allocator),
-            with: self.with.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let src = self.src(ast).clone_in(ast);
+        let type_only = self.type_only(ast).clone_in(ast);
+        let with = self.with(ast).clone_in(ast);
+        ast.export_all(span, src, type_only, with)
     }
 }
-impl<'a, 'src> CloneIn<'a> for BlockStmt<'src> {
-    type Cloned = BlockStmt<'a>;
+impl<'a> CloneIn<'a> for BlockStmt {
+    type Cloned = BlockStmt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        BlockStmt {
-            span: self.span.clone_in(allocator),
-            stmts: self.stmts.clone_in(allocator),
-            scope_id: self.scope_id.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let stmts = self.stmts(ast).clone_in(ast);
+        ast.block_stmt(span, stmts)
     }
 }
-impl<'a, 'src> CloneIn<'a> for Stmt<'src> {
-    type Cloned = Stmt<'a>;
+impl<'a> CloneIn<'a> for Stmt {
+    type Cloned = Stmt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Block(it) => Stmt::Block(it.clone_in(allocator)),
-            Self::Empty(it) => Stmt::Empty(it.clone_in(allocator)),
-            Self::Debugger(it) => Stmt::Debugger(it.clone_in(allocator)),
-            Self::With(it) => Stmt::With(it.clone_in(allocator)),
-            Self::Return(it) => Stmt::Return(it.clone_in(allocator)),
-            Self::Labeled(it) => Stmt::Labeled(it.clone_in(allocator)),
-            Self::Break(it) => Stmt::Break(it.clone_in(allocator)),
-            Self::Continue(it) => Stmt::Continue(it.clone_in(allocator)),
-            Self::If(it) => Stmt::If(it.clone_in(allocator)),
-            Self::Switch(it) => Stmt::Switch(it.clone_in(allocator)),
-            Self::Throw(it) => Stmt::Throw(it.clone_in(allocator)),
-            Self::Try(it) => Stmt::Try(it.clone_in(allocator)),
-            Self::While(it) => Stmt::While(it.clone_in(allocator)),
-            Self::DoWhile(it) => Stmt::DoWhile(it.clone_in(allocator)),
-            Self::For(it) => Stmt::For(it.clone_in(allocator)),
-            Self::ForIn(it) => Stmt::ForIn(it.clone_in(allocator)),
-            Self::ForOf(it) => Stmt::ForOf(it.clone_in(allocator)),
-            Self::Decl(it) => Stmt::Decl(it.clone_in(allocator)),
-            Self::Expr(it) => Stmt::Expr(it.clone_in(allocator)),
+            Self::Block(it) => Self::Block(it.clone_in(ast)),
+            Self::Empty(it) => Self::Empty(it.clone_in(ast)),
+            Self::Debugger(it) => Self::Debugger(it.clone_in(ast)),
+            Self::With(it) => Self::With(it.clone_in(ast)),
+            Self::Return(it) => Self::Return(it.clone_in(ast)),
+            Self::Labeled(it) => Self::Labeled(it.clone_in(ast)),
+            Self::Break(it) => Self::Break(it.clone_in(ast)),
+            Self::Continue(it) => Self::Continue(it.clone_in(ast)),
+            Self::If(it) => Self::If(it.clone_in(ast)),
+            Self::Switch(it) => Self::Switch(it.clone_in(ast)),
+            Self::Throw(it) => Self::Throw(it.clone_in(ast)),
+            Self::Try(it) => Self::Try(it.clone_in(ast)),
+            Self::While(it) => Self::While(it.clone_in(ast)),
+            Self::DoWhile(it) => Self::DoWhile(it.clone_in(ast)),
+            Self::For(it) => Self::For(it.clone_in(ast)),
+            Self::ForIn(it) => Self::ForIn(it.clone_in(ast)),
+            Self::ForOf(it) => Self::ForOf(it.clone_in(ast)),
+            Self::Decl(it) => Self::Decl(it.clone_in(ast)),
+            Self::Expr(it) => Self::Expr(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for ExprStmt<'src> {
-    type Cloned = ExprStmt<'a>;
+impl<'a> CloneIn<'a> for ExprStmt {
+    type Cloned = ExprStmt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ExprStmt {
-            span: self.span.clone_in(allocator),
-            expr: self.expr.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let expr = self.expr(ast).clone_in(ast);
+        ast.expr_stmt(span, expr)
     }
 }
 impl<'a> CloneIn<'a> for EmptyStmt {
     type Cloned = EmptyStmt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        EmptyStmt {
-            span: self.span.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        ast.empty_stmt(span)
     }
 }
 impl<'a> CloneIn<'a> for DebuggerStmt {
     type Cloned = DebuggerStmt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        DebuggerStmt {
-            span: self.span.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        ast.debugger_stmt(span)
     }
 }
-impl<'a, 'src> CloneIn<'a> for WithStmt<'src> {
-    type Cloned = WithStmt<'a>;
+impl<'a> CloneIn<'a> for WithStmt {
+    type Cloned = WithStmt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        WithStmt {
-            span: self.span.clone_in(allocator),
-            obj: self.obj.clone_in(allocator),
-            body: self.body.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let obj = self.obj(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        ast.with_stmt(span, obj, body)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ReturnStmt<'src> {
-    type Cloned = ReturnStmt<'a>;
+impl<'a> CloneIn<'a> for ReturnStmt {
+    type Cloned = ReturnStmt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ReturnStmt {
-            span: self.span.clone_in(allocator),
-            arg: self.arg.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let arg = self.arg(ast).clone_in(ast);
+        ast.return_stmt(span, arg)
     }
 }
-impl<'a, 'src> CloneIn<'a> for LabeledStmt<'src> {
-    type Cloned = LabeledStmt<'a>;
+impl<'a> CloneIn<'a> for LabeledStmt {
+    type Cloned = LabeledStmt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        LabeledStmt {
-            span: self.span.clone_in(allocator),
-            label: self.label.clone_in(allocator),
-            body: self.body.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let label = self.label(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        ast.labeled_stmt(span, label, body)
     }
 }
-impl<'a, 'src> CloneIn<'a> for BreakStmt<'src> {
-    type Cloned = BreakStmt<'a>;
+impl<'a> CloneIn<'a> for BreakStmt {
+    type Cloned = BreakStmt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        BreakStmt {
-            span: self.span.clone_in(allocator),
-            label: self.label.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let label = self.label(ast).clone_in(ast);
+        ast.break_stmt(span, label)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ContinueStmt<'src> {
-    type Cloned = ContinueStmt<'a>;
+impl<'a> CloneIn<'a> for ContinueStmt {
+    type Cloned = ContinueStmt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ContinueStmt {
-            span: self.span.clone_in(allocator),
-            label: self.label.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let label = self.label(ast).clone_in(ast);
+        ast.continue_stmt(span, label)
     }
 }
-impl<'a, 'src> CloneIn<'a> for IfStmt<'src> {
-    type Cloned = IfStmt<'a>;
+impl<'a> CloneIn<'a> for IfStmt {
+    type Cloned = IfStmt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        IfStmt {
-            span: self.span.clone_in(allocator),
-            test: self.test.clone_in(allocator),
-            cons: self.cons.clone_in(allocator),
-            alt: self.alt.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let test = self.test(ast).clone_in(ast);
+        let cons = self.cons(ast).clone_in(ast);
+        let alt = self.alt(ast).clone_in(ast);
+        ast.if_stmt(span, test, cons, alt)
     }
 }
-impl<'a, 'src> CloneIn<'a> for SwitchStmt<'src> {
-    type Cloned = SwitchStmt<'a>;
+impl<'a> CloneIn<'a> for SwitchStmt {
+    type Cloned = SwitchStmt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        SwitchStmt {
-            span: self.span.clone_in(allocator),
-            discriminant: self.discriminant.clone_in(allocator),
-            cases: self.cases.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let discriminant = self.discriminant(ast).clone_in(ast);
+        let cases = self.cases(ast).clone_in(ast);
+        ast.switch_stmt(span, discriminant, cases)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ThrowStmt<'src> {
-    type Cloned = ThrowStmt<'a>;
+impl<'a> CloneIn<'a> for ThrowStmt {
+    type Cloned = ThrowStmt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ThrowStmt {
-            span: self.span.clone_in(allocator),
-            arg: self.arg.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let arg = self.arg(ast).clone_in(ast);
+        ast.throw_stmt(span, arg)
     }
 }
-impl<'a, 'src> CloneIn<'a> for TryStmt<'src> {
-    type Cloned = TryStmt<'a>;
+impl<'a> CloneIn<'a> for TryStmt {
+    type Cloned = TryStmt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        TryStmt {
-            span: self.span.clone_in(allocator),
-            block: self.block.clone_in(allocator),
-            handler: self.handler.clone_in(allocator),
-            finalizer: self.finalizer.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let block = self.block(ast).clone_in(ast);
+        let handler = self.handler(ast).clone_in(ast);
+        let finalizer = self.finalizer(ast).clone_in(ast);
+        ast.try_stmt(span, block, handler, finalizer)
     }
 }
-impl<'a, 'src> CloneIn<'a> for WhileStmt<'src> {
-    type Cloned = WhileStmt<'a>;
+impl<'a> CloneIn<'a> for WhileStmt {
+    type Cloned = WhileStmt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        WhileStmt {
-            span: self.span.clone_in(allocator),
-            test: self.test.clone_in(allocator),
-            body: self.body.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let test = self.test(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        ast.while_stmt(span, test, body)
     }
 }
-impl<'a, 'src> CloneIn<'a> for DoWhileStmt<'src> {
-    type Cloned = DoWhileStmt<'a>;
+impl<'a> CloneIn<'a> for DoWhileStmt {
+    type Cloned = DoWhileStmt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        DoWhileStmt {
-            span: self.span.clone_in(allocator),
-            test: self.test.clone_in(allocator),
-            body: self.body.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let test = self.test(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        ast.do_while_stmt(span, test, body)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ForStmt<'src> {
-    type Cloned = ForStmt<'a>;
+impl<'a> CloneIn<'a> for ForStmt {
+    type Cloned = ForStmt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ForStmt {
-            span: self.span.clone_in(allocator),
-            init: self.init.clone_in(allocator),
-            test: self.test.clone_in(allocator),
-            update: self.update.clone_in(allocator),
-            body: self.body.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let init = self.init(ast).clone_in(ast);
+        let test = self.test(ast).clone_in(ast);
+        let update = self.update(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        ast.for_stmt(span, init, test, update, body)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ForInStmt<'src> {
-    type Cloned = ForInStmt<'a>;
+impl<'a> CloneIn<'a> for ForInStmt {
+    type Cloned = ForInStmt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ForInStmt {
-            span: self.span.clone_in(allocator),
-            left: self.left.clone_in(allocator),
-            right: self.right.clone_in(allocator),
-            body: self.body.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let left = self.left(ast).clone_in(ast);
+        let right = self.right(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        ast.for_in_stmt(span, left, right, body)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ForOfStmt<'src> {
-    type Cloned = ForOfStmt<'a>;
+impl<'a> CloneIn<'a> for ForOfStmt {
+    type Cloned = ForOfStmt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ForOfStmt {
-            span: self.span.clone_in(allocator),
-            is_await: self.is_await.clone_in(allocator),
-            left: self.left.clone_in(allocator),
-            right: self.right.clone_in(allocator),
-            body: self.body.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let is_await = self.is_await(ast).clone_in(ast);
+        let left = self.left(ast).clone_in(ast);
+        let right = self.right(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        ast.for_of_stmt(span, is_await, left, right, body)
     }
 }
-impl<'a, 'src> CloneIn<'a> for SwitchCase<'src> {
-    type Cloned = SwitchCase<'a>;
+impl<'a> CloneIn<'a> for SwitchCase {
+    type Cloned = SwitchCase;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        SwitchCase {
-            span: self.span.clone_in(allocator),
-            test: self.test.clone_in(allocator),
-            cons: self.cons.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let test = self.test(ast).clone_in(ast);
+        let cons = self.cons(ast).clone_in(ast);
+        ast.switch_case(span, test, cons)
     }
 }
-impl<'a, 'src> CloneIn<'a> for CatchClause<'src> {
-    type Cloned = CatchClause<'a>;
+impl<'a> CloneIn<'a> for CatchClause {
+    type Cloned = CatchClause;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        CatchClause {
-            span: self.span.clone_in(allocator),
-            param: self.param.clone_in(allocator),
-            body: self.body.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let param = self.param(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        ast.catch_clause(span, param, body)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ForHead<'src> {
-    type Cloned = ForHead<'a>;
+impl<'a> CloneIn<'a> for ForHead {
+    type Cloned = ForHead;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::VarDecl(it) => ForHead::VarDecl(it.clone_in(allocator)),
-            Self::UsingDecl(it) => ForHead::UsingDecl(it.clone_in(allocator)),
-            Self::Pat(it) => ForHead::Pat(it.clone_in(allocator)),
+            Self::VarDecl(it) => Self::VarDecl(it.clone_in(ast)),
+            Self::UsingDecl(it) => Self::UsingDecl(it.clone_in(ast)),
+            Self::Pat(it) => Self::Pat(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for VarDeclOrExpr<'src> {
-    type Cloned = VarDeclOrExpr<'a>;
+impl<'a> CloneIn<'a> for VarDeclOrExpr {
+    type Cloned = VarDeclOrExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::VarDecl(it) => VarDeclOrExpr::VarDecl(it.clone_in(allocator)),
-            Self::Expr(it) => VarDeclOrExpr::Expr(it.clone_in(allocator)),
+            Self::VarDecl(it) => Self::VarDecl(it.clone_in(ast)),
+            Self::Expr(it) => Self::Expr(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for Decl<'src> {
-    type Cloned = Decl<'a>;
+impl<'a> CloneIn<'a> for Decl {
+    type Cloned = Decl;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Class(it) => Decl::Class(it.clone_in(allocator)),
-            Self::Fn(it) => Decl::Fn(it.clone_in(allocator)),
-            Self::Var(it) => Decl::Var(it.clone_in(allocator)),
-            Self::Using(it) => Decl::Using(it.clone_in(allocator)),
+            Self::Class(it) => Self::Class(it.clone_in(ast)),
+            Self::Fn(it) => Self::Fn(it.clone_in(ast)),
+            Self::Var(it) => Self::Var(it.clone_in(ast)),
+            Self::Using(it) => Self::Using(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for FnDecl<'src> {
-    type Cloned = FnDecl<'a>;
+impl<'a> CloneIn<'a> for FnDecl {
+    type Cloned = FnDecl;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        FnDecl {
-            ident: self.ident.clone_in(allocator),
-            declare: self.declare.clone_in(allocator),
-            function: self.function.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let ident = self.ident(ast).clone_in(ast);
+        let declare = self.declare(ast).clone_in(ast);
+        let function = self.function(ast).clone_in(ast);
+        ast.fn_decl(span, ident, declare, function)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ClassDecl<'src> {
-    type Cloned = ClassDecl<'a>;
+impl<'a> CloneIn<'a> for ClassDecl {
+    type Cloned = ClassDecl;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ClassDecl {
-            ident: self.ident.clone_in(allocator),
-            declare: self.declare.clone_in(allocator),
-            class: self.class.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let ident = self.ident(ast).clone_in(ast);
+        let declare = self.declare(ast).clone_in(ast);
+        let class = self.class(ast).clone_in(ast);
+        ast.class_decl(span, ident, declare, class)
     }
 }
-impl<'a, 'src> CloneIn<'a> for VarDecl<'src> {
-    type Cloned = VarDecl<'a>;
+impl<'a> CloneIn<'a> for VarDecl {
+    type Cloned = VarDecl;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        VarDecl {
-            span: self.span.clone_in(allocator),
-            kind: self.kind.clone_in(allocator),
-            declare: self.declare.clone_in(allocator),
-            decls: self.decls.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let kind = self.kind(ast).clone_in(ast);
+        let declare = self.declare(ast).clone_in(ast);
+        let decls = self.decls(ast).clone_in(ast);
+        ast.var_decl(span, kind, declare, decls)
     }
 }
-impl<'a, 'src> CloneIn<'a> for VarDeclarator<'src> {
-    type Cloned = VarDeclarator<'a>;
+impl<'a> CloneIn<'a> for VarDeclarator {
+    type Cloned = VarDeclarator;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        VarDeclarator {
-            span: self.span.clone_in(allocator),
-            name: self.name.clone_in(allocator),
-            init: self.init.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let name = self.name(ast).clone_in(ast);
+        let init = self.init(ast).clone_in(ast);
+        ast.var_declarator(span, name, init)
     }
 }
-impl<'a, 'src> CloneIn<'a> for UsingDecl<'src> {
-    type Cloned = UsingDecl<'a>;
+impl<'a> CloneIn<'a> for UsingDecl {
+    type Cloned = UsingDecl;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        UsingDecl {
-            span: self.span.clone_in(allocator),
-            is_await: self.is_await.clone_in(allocator),
-            decls: self.decls.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let is_await = self.is_await(ast).clone_in(ast);
+        let decls = self.decls(ast).clone_in(ast);
+        ast.using_decl(span, is_await, decls)
     }
 }
-impl<'a, 'src> CloneIn<'a> for Expr<'src> {
-    type Cloned = Expr<'a>;
+impl<'a> CloneIn<'a> for Expr {
+    type Cloned = Expr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::This(it) => Expr::This(it.clone_in(allocator)),
-            Self::Array(it) => Expr::Array(it.clone_in(allocator)),
-            Self::Object(it) => Expr::Object(it.clone_in(allocator)),
-            Self::Fn(it) => Expr::Fn(it.clone_in(allocator)),
-            Self::Unary(it) => Expr::Unary(it.clone_in(allocator)),
-            Self::Update(it) => Expr::Update(it.clone_in(allocator)),
-            Self::Bin(it) => Expr::Bin(it.clone_in(allocator)),
-            Self::Assign(it) => Expr::Assign(it.clone_in(allocator)),
-            Self::Member(it) => Expr::Member(it.clone_in(allocator)),
-            Self::SuperProp(it) => Expr::SuperProp(it.clone_in(allocator)),
-            Self::Cond(it) => Expr::Cond(it.clone_in(allocator)),
-            Self::Import(it) => Expr::Import(it.clone_in(allocator)),
-            Self::Call(it) => Expr::Call(it.clone_in(allocator)),
-            Self::New(it) => Expr::New(it.clone_in(allocator)),
-            Self::Seq(it) => Expr::Seq(it.clone_in(allocator)),
-            Self::Ident(it) => Expr::Ident(it.clone_in(allocator)),
-            Self::Lit(it) => Expr::Lit(it.clone_in(allocator)),
-            Self::Tpl(it) => Expr::Tpl(it.clone_in(allocator)),
-            Self::TaggedTpl(it) => Expr::TaggedTpl(it.clone_in(allocator)),
-            Self::Arrow(it) => Expr::Arrow(it.clone_in(allocator)),
-            Self::Class(it) => Expr::Class(it.clone_in(allocator)),
-            Self::Yield(it) => Expr::Yield(it.clone_in(allocator)),
-            Self::MetaProp(it) => Expr::MetaProp(it.clone_in(allocator)),
-            Self::Await(it) => Expr::Await(it.clone_in(allocator)),
-            Self::Paren(it) => Expr::Paren(it.clone_in(allocator)),
-            Self::JSXMember(it) => Expr::JSXMember(it.clone_in(allocator)),
-            Self::JSXNamespacedName(it) => Expr::JSXNamespacedName(it.clone_in(allocator)),
-            Self::JSXEmpty(it) => Expr::JSXEmpty(it.clone_in(allocator)),
-            Self::JSXElement(it) => Expr::JSXElement(it.clone_in(allocator)),
-            Self::JSXFragment(it) => Expr::JSXFragment(it.clone_in(allocator)),
-            Self::PrivateName(it) => Expr::PrivateName(it.clone_in(allocator)),
-            Self::OptChain(it) => Expr::OptChain(it.clone_in(allocator)),
-            Self::Invalid(it) => Expr::Invalid(it.clone_in(allocator)),
+            Self::This(it) => Self::This(it.clone_in(ast)),
+            Self::Array(it) => Self::Array(it.clone_in(ast)),
+            Self::Object(it) => Self::Object(it.clone_in(ast)),
+            Self::Fn(it) => Self::Fn(it.clone_in(ast)),
+            Self::Unary(it) => Self::Unary(it.clone_in(ast)),
+            Self::Update(it) => Self::Update(it.clone_in(ast)),
+            Self::Bin(it) => Self::Bin(it.clone_in(ast)),
+            Self::Assign(it) => Self::Assign(it.clone_in(ast)),
+            Self::Member(it) => Self::Member(it.clone_in(ast)),
+            Self::SuperProp(it) => Self::SuperProp(it.clone_in(ast)),
+            Self::Cond(it) => Self::Cond(it.clone_in(ast)),
+            Self::Import(it) => Self::Import(it.clone_in(ast)),
+            Self::Call(it) => Self::Call(it.clone_in(ast)),
+            Self::New(it) => Self::New(it.clone_in(ast)),
+            Self::Seq(it) => Self::Seq(it.clone_in(ast)),
+            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
+            Self::Lit(it) => Self::Lit(it.clone_in(ast)),
+            Self::Tpl(it) => Self::Tpl(it.clone_in(ast)),
+            Self::TaggedTpl(it) => Self::TaggedTpl(it.clone_in(ast)),
+            Self::Arrow(it) => Self::Arrow(it.clone_in(ast)),
+            Self::Class(it) => Self::Class(it.clone_in(ast)),
+            Self::Yield(it) => Self::Yield(it.clone_in(ast)),
+            Self::MetaProp(it) => Self::MetaProp(it.clone_in(ast)),
+            Self::Await(it) => Self::Await(it.clone_in(ast)),
+            Self::Paren(it) => Self::Paren(it.clone_in(ast)),
+            Self::JSXMember(it) => Self::JSXMember(it.clone_in(ast)),
+            Self::JSXNamespacedName(it) => Self::JSXNamespacedName(it.clone_in(ast)),
+            Self::JSXEmpty(it) => Self::JSXEmpty(it.clone_in(ast)),
+            Self::JSXElement(it) => Self::JSXElement(it.clone_in(ast)),
+            Self::JSXFragment(it) => Self::JSXFragment(it.clone_in(ast)),
+            Self::PrivateName(it) => Self::PrivateName(it.clone_in(ast)),
+            Self::OptChain(it) => Self::OptChain(it.clone_in(ast)),
+            Self::Invalid(it) => Self::Invalid(it.clone_in(ast)),
         }
     }
 }
 impl<'a> CloneIn<'a> for ThisExpr {
     type Cloned = ThisExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ThisExpr {
-            span: self.span.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        ast.this_expr(span)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ArrayLit<'src> {
-    type Cloned = ArrayLit<'a>;
+impl<'a> CloneIn<'a> for ArrayLit {
+    type Cloned = ArrayLit;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ArrayLit {
-            span: self.span.clone_in(allocator),
-            elems: self.elems.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let elems = self.elems(ast).clone_in(ast);
+        ast.array_lit(span, elems)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ObjectLit<'src> {
-    type Cloned = ObjectLit<'a>;
+impl<'a> CloneIn<'a> for ObjectLit {
+    type Cloned = ObjectLit;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ObjectLit {
-            span: self.span.clone_in(allocator),
-            props: self.props.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let props = self.props(ast).clone_in(ast);
+        ast.object_lit(span, props)
     }
 }
-impl<'a, 'src> CloneIn<'a> for PropOrSpread<'src> {
-    type Cloned = PropOrSpread<'a>;
+impl<'a> CloneIn<'a> for PropOrSpread {
+    type Cloned = PropOrSpread;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Spread(it) => PropOrSpread::Spread(it.clone_in(allocator)),
-            Self::Prop(it) => PropOrSpread::Prop(it.clone_in(allocator)),
+            Self::Spread(it) => Self::Spread(it.clone_in(ast)),
+            Self::Prop(it) => Self::Prop(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for SpreadElement<'src> {
-    type Cloned = SpreadElement<'a>;
+impl<'a> CloneIn<'a> for SpreadElement {
+    type Cloned = SpreadElement;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        SpreadElement {
-            dot3_token: self.dot3_token.clone_in(allocator),
-            expr: self.expr.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let dot_3_token = self.dot_3_token(ast).clone_in(ast);
+        let expr = self.expr(ast).clone_in(ast);
+        ast.spread_element(span, dot_3_token, expr)
     }
 }
-impl<'a, 'src> CloneIn<'a> for UnaryExpr<'src> {
-    type Cloned = UnaryExpr<'a>;
+impl<'a> CloneIn<'a> for UnaryExpr {
+    type Cloned = UnaryExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        UnaryExpr {
-            span: self.span.clone_in(allocator),
-            op: self.op.clone_in(allocator),
-            arg: self.arg.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let op = self.op(ast).clone_in(ast);
+        let arg = self.arg(ast).clone_in(ast);
+        ast.unary_expr(span, op, arg)
     }
 }
-impl<'a, 'src> CloneIn<'a> for UpdateExpr<'src> {
-    type Cloned = UpdateExpr<'a>;
+impl<'a> CloneIn<'a> for UpdateExpr {
+    type Cloned = UpdateExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        UpdateExpr {
-            span: self.span.clone_in(allocator),
-            op: self.op.clone_in(allocator),
-            prefix: self.prefix.clone_in(allocator),
-            arg: self.arg.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let op = self.op(ast).clone_in(ast);
+        let prefix = self.prefix(ast).clone_in(ast);
+        let arg = self.arg(ast).clone_in(ast);
+        ast.update_expr(span, op, prefix, arg)
     }
 }
-impl<'a, 'src> CloneIn<'a> for BinExpr<'src> {
-    type Cloned = BinExpr<'a>;
+impl<'a> CloneIn<'a> for BinExpr {
+    type Cloned = BinExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        BinExpr {
-            span: self.span.clone_in(allocator),
-            op: self.op.clone_in(allocator),
-            left: self.left.clone_in(allocator),
-            right: self.right.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let op = self.op(ast).clone_in(ast);
+        let left = self.left(ast).clone_in(ast);
+        let right = self.right(ast).clone_in(ast);
+        ast.bin_expr(span, op, left, right)
     }
 }
-impl<'a, 'src> CloneIn<'a> for FnExpr<'src> {
-    type Cloned = FnExpr<'a>;
+impl<'a> CloneIn<'a> for FnExpr {
+    type Cloned = FnExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        FnExpr {
-            ident: self.ident.clone_in(allocator),
-            function: self.function.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let ident = self.ident(ast).clone_in(ast);
+        let function = self.function(ast).clone_in(ast);
+        ast.fn_expr(span, ident, function)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ClassExpr<'src> {
-    type Cloned = ClassExpr<'a>;
+impl<'a> CloneIn<'a> for ClassExpr {
+    type Cloned = ClassExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ClassExpr {
-            ident: self.ident.clone_in(allocator),
-            class: self.class.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let ident = self.ident(ast).clone_in(ast);
+        let class = self.class(ast).clone_in(ast);
+        ast.class_expr(span, ident, class)
     }
 }
-impl<'a, 'src> CloneIn<'a> for AssignExpr<'src> {
-    type Cloned = AssignExpr<'a>;
+impl<'a> CloneIn<'a> for AssignExpr {
+    type Cloned = AssignExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        AssignExpr {
-            span: self.span.clone_in(allocator),
-            op: self.op.clone_in(allocator),
-            left: self.left.clone_in(allocator),
-            right: self.right.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let op = self.op(ast).clone_in(ast);
+        let left = self.left(ast).clone_in(ast);
+        let right = self.right(ast).clone_in(ast);
+        ast.assign_expr(span, op, left, right)
     }
 }
-impl<'a, 'src> CloneIn<'a> for MemberExpr<'src> {
-    type Cloned = MemberExpr<'a>;
+impl<'a> CloneIn<'a> for MemberExpr {
+    type Cloned = MemberExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        MemberExpr {
-            span: self.span.clone_in(allocator),
-            obj: self.obj.clone_in(allocator),
-            prop: self.prop.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let obj = self.obj(ast).clone_in(ast);
+        let prop = self.prop(ast).clone_in(ast);
+        ast.member_expr(span, obj, prop)
     }
 }
-impl<'a, 'src> CloneIn<'a> for MemberProp<'src> {
-    type Cloned = MemberProp<'a>;
+impl<'a> CloneIn<'a> for MemberProp {
+    type Cloned = MemberProp;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Ident(it) => MemberProp::Ident(it.clone_in(allocator)),
-            Self::PrivateName(it) => MemberProp::PrivateName(it.clone_in(allocator)),
-            Self::Computed(it) => MemberProp::Computed(it.clone_in(allocator)),
+            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
+            Self::PrivateName(it) => Self::PrivateName(it.clone_in(ast)),
+            Self::Computed(it) => Self::Computed(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for SuperPropExpr<'src> {
-    type Cloned = SuperPropExpr<'a>;
+impl<'a> CloneIn<'a> for SuperPropExpr {
+    type Cloned = SuperPropExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        SuperPropExpr {
-            span: self.span.clone_in(allocator),
-            obj: self.obj.clone_in(allocator),
-            prop: self.prop.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let obj = self.obj(ast).clone_in(ast);
+        let prop = self.prop(ast).clone_in(ast);
+        ast.super_prop_expr(span, obj, prop)
     }
 }
-impl<'a, 'src> CloneIn<'a> for SuperProp<'src> {
-    type Cloned = SuperProp<'a>;
+impl<'a> CloneIn<'a> for SuperProp {
+    type Cloned = SuperProp;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Ident(it) => SuperProp::Ident(it.clone_in(allocator)),
-            Self::Computed(it) => SuperProp::Computed(it.clone_in(allocator)),
+            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
+            Self::Computed(it) => Self::Computed(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for CondExpr<'src> {
-    type Cloned = CondExpr<'a>;
+impl<'a> CloneIn<'a> for CondExpr {
+    type Cloned = CondExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        CondExpr {
-            span: self.span.clone_in(allocator),
-            test: self.test.clone_in(allocator),
-            cons: self.cons.clone_in(allocator),
-            alt: self.alt.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let test = self.test(ast).clone_in(ast);
+        let cons = self.cons(ast).clone_in(ast);
+        let alt = self.alt(ast).clone_in(ast);
+        ast.cond_expr(span, test, cons, alt)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ImportExpr<'src> {
-    type Cloned = ImportExpr<'a>;
+impl<'a> CloneIn<'a> for ImportExpr {
+    type Cloned = ImportExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ImportExpr {
-            span: self.span.clone_in(allocator),
-            import_span: self.import_span.clone_in(allocator),
-            source: self.source.clone_in(allocator),
-            options: self.options.clone_in(allocator),
-            phase: self.phase.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let import_span = self.import_span(ast).clone_in(ast);
+        let source = self.source(ast).clone_in(ast);
+        let options = self.options(ast).clone_in(ast);
+        let phase = self.phase(ast).clone_in(ast);
+        ast.import_expr(span, import_span, source, options, phase)
     }
 }
-impl<'a, 'src> CloneIn<'a> for CallExpr<'src> {
-    type Cloned = CallExpr<'a>;
+impl<'a> CloneIn<'a> for CallExpr {
+    type Cloned = CallExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        CallExpr {
-            span: self.span.clone_in(allocator),
-            callee: self.callee.clone_in(allocator),
-            args: self.args.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let callee = self.callee(ast).clone_in(ast);
+        let args = self.args(ast).clone_in(ast);
+        ast.call_expr(span, callee, args)
     }
 }
-impl<'a, 'src> CloneIn<'a> for NewExpr<'src> {
-    type Cloned = NewExpr<'a>;
+impl<'a> CloneIn<'a> for NewExpr {
+    type Cloned = NewExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        NewExpr {
-            span: self.span.clone_in(allocator),
-            callee: self.callee.clone_in(allocator),
-            args: self.args.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let callee = self.callee(ast).clone_in(ast);
+        let args = self.args(ast).clone_in(ast);
+        ast.new_expr(span, callee, args)
     }
 }
-impl<'a, 'src> CloneIn<'a> for SeqExpr<'src> {
-    type Cloned = SeqExpr<'a>;
+impl<'a> CloneIn<'a> for SeqExpr {
+    type Cloned = SeqExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        SeqExpr {
-            span: self.span.clone_in(allocator),
-            exprs: self.exprs.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let exprs = self.exprs(ast).clone_in(ast);
+        ast.seq_expr(span, exprs)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ArrowExpr<'src> {
-    type Cloned = ArrowExpr<'a>;
+impl<'a> CloneIn<'a> for ArrowExpr {
+    type Cloned = ArrowExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ArrowExpr {
-            span: self.span.clone_in(allocator),
-            params: self.params.clone_in(allocator),
-            body: self.body.clone_in(allocator),
-            is_async: self.is_async.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let params = self.params(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        let is_async = self.is_async(ast).clone_in(ast);
+        ast.arrow_expr(span, params, body, is_async)
     }
 }
-impl<'a, 'src> CloneIn<'a> for YieldExpr<'src> {
-    type Cloned = YieldExpr<'a>;
+impl<'a> CloneIn<'a> for YieldExpr {
+    type Cloned = YieldExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        YieldExpr {
-            span: self.span.clone_in(allocator),
-            arg: self.arg.clone_in(allocator),
-            delegate: self.delegate.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let arg = self.arg(ast).clone_in(ast);
+        let delegate = self.delegate(ast).clone_in(ast);
+        ast.yield_expr(span, arg, delegate)
     }
 }
 impl<'a> CloneIn<'a> for MetaPropExpr {
     type Cloned = MetaPropExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        MetaPropExpr {
-            span: self.span.clone_in(allocator),
-            kind: self.kind.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let kind = self.kind(ast).clone_in(ast);
+        ast.meta_prop_expr(span, kind)
     }
 }
-impl<'a, 'src> CloneIn<'a> for AwaitExpr<'src> {
-    type Cloned = AwaitExpr<'a>;
+impl<'a> CloneIn<'a> for AwaitExpr {
+    type Cloned = AwaitExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        AwaitExpr {
-            span: self.span.clone_in(allocator),
-            arg: self.arg.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let arg = self.arg(ast).clone_in(ast);
+        ast.await_expr(span, arg)
     }
 }
-impl<'a, 'src> CloneIn<'a> for Tpl<'src> {
-    type Cloned = Tpl<'a>;
+impl<'a> CloneIn<'a> for Tpl {
+    type Cloned = Tpl;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        Tpl {
-            span: self.span.clone_in(allocator),
-            exprs: self.exprs.clone_in(allocator),
-            quasis: self.quasis.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let exprs = self.exprs(ast).clone_in(ast);
+        let quasis = self.quasis(ast).clone_in(ast);
+        ast.tpl(span, exprs, quasis)
     }
 }
-impl<'a, 'src> CloneIn<'a> for TaggedTpl<'src> {
-    type Cloned = TaggedTpl<'a>;
+impl<'a> CloneIn<'a> for TaggedTpl {
+    type Cloned = TaggedTpl;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        TaggedTpl {
-            span: self.span.clone_in(allocator),
-            tag: self.tag.clone_in(allocator),
-            tpl: self.tpl.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let tag = self.tag(ast).clone_in(ast);
+        let tpl = self.tpl(ast).clone_in(ast);
+        ast.tagged_tpl(span, tag, tpl)
     }
 }
-impl<'a, 'src> CloneIn<'a> for TplElement<'src> {
-    type Cloned = TplElement<'a>;
+impl<'a> CloneIn<'a> for TplElement {
+    type Cloned = TplElement;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        TplElement {
-            span: self.span.clone_in(allocator),
-            tail: self.tail.clone_in(allocator),
-            cooked: self.cooked.clone_in(allocator),
-            raw: self.raw.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let tail = self.tail(ast).clone_in(ast);
+        let cooked = self.cooked(ast).clone_in(ast);
+        let raw = self.raw(ast).clone_in(ast);
+        ast.tpl_element(span, tail, cooked, raw)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ParenExpr<'src> {
-    type Cloned = ParenExpr<'a>;
+impl<'a> CloneIn<'a> for ParenExpr {
+    type Cloned = ParenExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ParenExpr {
-            span: self.span.clone_in(allocator),
-            expr: self.expr.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let expr = self.expr(ast).clone_in(ast);
+        ast.paren_expr(span, expr)
     }
 }
-impl<'a, 'src> CloneIn<'a> for Callee<'src> {
-    type Cloned = Callee<'a>;
+impl<'a> CloneIn<'a> for Callee {
+    type Cloned = Callee;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Super(it) => Callee::Super(it.clone_in(allocator)),
-            Self::Expr(it) => Callee::Expr(it.clone_in(allocator)),
+            Self::Super(it) => Self::Super(it.clone_in(ast)),
+            Self::Expr(it) => Self::Expr(it.clone_in(ast)),
         }
     }
 }
 impl<'a> CloneIn<'a> for Super {
     type Cloned = Super;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        Super {
-            span: self.span.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        ast.super_(span)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ExprOrSpread<'src> {
-    type Cloned = ExprOrSpread<'a>;
+impl<'a> CloneIn<'a> for ExprOrSpread {
+    type Cloned = ExprOrSpread;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ExprOrSpread {
-            spread: self.spread.clone_in(allocator),
-            expr: self.expr.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let spread = self.spread(ast).clone_in(ast);
+        let expr = self.expr(ast).clone_in(ast);
+        ast.expr_or_spread(span, spread, expr)
     }
 }
-impl<'a, 'src> CloneIn<'a> for BlockStmtOrExpr<'src> {
-    type Cloned = BlockStmtOrExpr<'a>;
+impl<'a> CloneIn<'a> for BlockStmtOrExpr {
+    type Cloned = BlockStmtOrExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::BlockStmt(it) => BlockStmtOrExpr::BlockStmt(it.clone_in(allocator)),
-            Self::Expr(it) => BlockStmtOrExpr::Expr(it.clone_in(allocator)),
+            Self::BlockStmt(it) => Self::BlockStmt(it.clone_in(ast)),
+            Self::Expr(it) => Self::Expr(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for AssignTarget<'src> {
-    type Cloned = AssignTarget<'a>;
+impl<'a> CloneIn<'a> for AssignTarget {
+    type Cloned = AssignTarget;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Simple(it) => AssignTarget::Simple(it.clone_in(allocator)),
-            Self::Pat(it) => AssignTarget::Pat(it.clone_in(allocator)),
+            Self::Simple(it) => Self::Simple(it.clone_in(ast)),
+            Self::Pat(it) => Self::Pat(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for AssignTargetPat<'src> {
-    type Cloned = AssignTargetPat<'a>;
+impl<'a> CloneIn<'a> for AssignTargetPat {
+    type Cloned = AssignTargetPat;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Array(it) => AssignTargetPat::Array(it.clone_in(allocator)),
-            Self::Object(it) => AssignTargetPat::Object(it.clone_in(allocator)),
-            Self::Invalid(it) => AssignTargetPat::Invalid(it.clone_in(allocator)),
+            Self::Array(it) => Self::Array(it.clone_in(ast)),
+            Self::Object(it) => Self::Object(it.clone_in(ast)),
+            Self::Invalid(it) => Self::Invalid(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for SimpleAssignTarget<'src> {
-    type Cloned = SimpleAssignTarget<'a>;
+impl<'a> CloneIn<'a> for SimpleAssignTarget {
+    type Cloned = SimpleAssignTarget;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Ident(it) => SimpleAssignTarget::Ident(it.clone_in(allocator)),
-            Self::Member(it) => SimpleAssignTarget::Member(it.clone_in(allocator)),
-            Self::SuperProp(it) => SimpleAssignTarget::SuperProp(it.clone_in(allocator)),
-            Self::Paren(it) => SimpleAssignTarget::Paren(it.clone_in(allocator)),
-            Self::OptChain(it) => SimpleAssignTarget::OptChain(it.clone_in(allocator)),
-            Self::Invalid(it) => SimpleAssignTarget::Invalid(it.clone_in(allocator)),
+            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
+            Self::Member(it) => Self::Member(it.clone_in(ast)),
+            Self::SuperProp(it) => Self::SuperProp(it.clone_in(ast)),
+            Self::Paren(it) => Self::Paren(it.clone_in(ast)),
+            Self::OptChain(it) => Self::OptChain(it.clone_in(ast)),
+            Self::Invalid(it) => Self::Invalid(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for OptChainExpr<'src> {
-    type Cloned = OptChainExpr<'a>;
+impl<'a> CloneIn<'a> for OptChainExpr {
+    type Cloned = OptChainExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        OptChainExpr {
-            span: self.span.clone_in(allocator),
-            optional: self.optional.clone_in(allocator),
-            base: self.base.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let optional = self.optional(ast).clone_in(ast);
+        let base = self.base(ast).clone_in(ast);
+        ast.opt_chain_expr(span, optional, base)
     }
 }
-impl<'a, 'src> CloneIn<'a> for OptChainBase<'src> {
-    type Cloned = OptChainBase<'a>;
+impl<'a> CloneIn<'a> for OptChainBase {
+    type Cloned = OptChainBase;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Member(it) => OptChainBase::Member(it.clone_in(allocator)),
-            Self::Call(it) => OptChainBase::Call(it.clone_in(allocator)),
+            Self::Member(it) => Self::Member(it.clone_in(ast)),
+            Self::Call(it) => Self::Call(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for OptCall<'src> {
-    type Cloned = OptCall<'a>;
+impl<'a> CloneIn<'a> for OptCall {
+    type Cloned = OptCall;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        OptCall {
-            span: self.span.clone_in(allocator),
-            callee: self.callee.clone_in(allocator),
-            args: self.args.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let callee = self.callee(ast).clone_in(ast);
+        let args = self.args(ast).clone_in(ast);
+        ast.opt_call(span, callee, args)
     }
 }
 impl<'a> CloneIn<'a> for Invalid {
     type Cloned = Invalid;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        Invalid {}
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        ast.invalid(span)
     }
 }
-impl<'a, 'src> CloneIn<'a> for Function<'src> {
-    type Cloned = Function<'a>;
+impl<'a> CloneIn<'a> for Function {
+    type Cloned = Function;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        Function {
-            span: self.span.clone_in(allocator),
-            params: self.params.clone_in(allocator),
-            decorators: self.decorators.clone_in(allocator),
-            body: self.body.clone_in(allocator),
-            is_generator: self.is_generator.clone_in(allocator),
-            is_async: self.is_async.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let params = self.params(ast).clone_in(ast);
+        let decorators = self.decorators(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        let is_generator = self.is_generator(ast).clone_in(ast);
+        let is_async = self.is_async(ast).clone_in(ast);
+        ast.function(span, params, decorators, body, is_generator, is_async)
     }
 }
-impl<'a, 'src> CloneIn<'a> for Param<'src> {
-    type Cloned = Param<'a>;
+impl<'a> CloneIn<'a> for Param {
+    type Cloned = Param;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        Param {
-            span: self.span.clone_in(allocator),
-            decorators: self.decorators.clone_in(allocator),
-            pat: self.pat.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let decorators = self.decorators(ast).clone_in(ast);
+        let pat = self.pat(ast).clone_in(ast);
+        ast.param(span, decorators, pat)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ParamOrTsParamProp<'src> {
-    type Cloned = ParamOrTsParamProp<'a>;
+impl<'a> CloneIn<'a> for ParamOrTsParamProp {
+    type Cloned = ParamOrTsParamProp;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Param(it) => ParamOrTsParamProp::Param(it.clone_in(allocator)),
+            Self::Param(it) => Self::Param(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for Class<'src> {
-    type Cloned = Class<'a>;
+impl<'a> CloneIn<'a> for Class {
+    type Cloned = Class;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        Class {
-            span: self.span.clone_in(allocator),
-            decorators: self.decorators.clone_in(allocator),
-            body: self.body.clone_in(allocator),
-            super_class: self.super_class.clone_in(allocator),
-            is_abstract: self.is_abstract.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let decorators = self.decorators(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        let super_class = self.super_class(ast).clone_in(ast);
+        let is_abstract = self.is_abstract(ast).clone_in(ast);
+        ast.class(span, decorators, body, super_class, is_abstract)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ClassMember<'src> {
-    type Cloned = ClassMember<'a>;
+impl<'a> CloneIn<'a> for ClassMember {
+    type Cloned = ClassMember;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Constructor(it) => ClassMember::Constructor(it.clone_in(allocator)),
-            Self::Method(it) => ClassMember::Method(it.clone_in(allocator)),
-            Self::PrivateMethod(it) => ClassMember::PrivateMethod(it.clone_in(allocator)),
-            Self::ClassProp(it) => ClassMember::ClassProp(it.clone_in(allocator)),
-            Self::PrivateProp(it) => ClassMember::PrivateProp(it.clone_in(allocator)),
-            Self::Empty(it) => ClassMember::Empty(it.clone_in(allocator)),
-            Self::StaticBlock(it) => ClassMember::StaticBlock(it.clone_in(allocator)),
-            Self::AutoAccessor(it) => ClassMember::AutoAccessor(it.clone_in(allocator)),
+            Self::Constructor(it) => Self::Constructor(it.clone_in(ast)),
+            Self::Method(it) => Self::Method(it.clone_in(ast)),
+            Self::PrivateMethod(it) => Self::PrivateMethod(it.clone_in(ast)),
+            Self::ClassProp(it) => Self::ClassProp(it.clone_in(ast)),
+            Self::PrivateProp(it) => Self::PrivateProp(it.clone_in(ast)),
+            Self::Empty(it) => Self::Empty(it.clone_in(ast)),
+            Self::StaticBlock(it) => Self::StaticBlock(it.clone_in(ast)),
+            Self::AutoAccessor(it) => Self::AutoAccessor(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for ClassProp<'src> {
-    type Cloned = ClassProp<'a>;
+impl<'a> CloneIn<'a> for ClassProp {
+    type Cloned = ClassProp;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ClassProp {
-            span: self.span.clone_in(allocator),
-            key: self.key.clone_in(allocator),
-            value: self.value.clone_in(allocator),
-            is_static: self.is_static.clone_in(allocator),
-            decorators: self.decorators.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let key = self.key(ast).clone_in(ast);
+        let value = self.value(ast).clone_in(ast);
+        let is_static = self.is_static(ast).clone_in(ast);
+        let decorators = self.decorators(ast).clone_in(ast);
+        ast.class_prop(span, key, value, is_static, decorators)
     }
 }
-impl<'a, 'src> CloneIn<'a> for PrivateProp<'src> {
-    type Cloned = PrivateProp<'a>;
+impl<'a> CloneIn<'a> for PrivateProp {
+    type Cloned = PrivateProp;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        PrivateProp {
-            span: self.span.clone_in(allocator),
-            key: self.key.clone_in(allocator),
-            value: self.value.clone_in(allocator),
-            is_static: self.is_static.clone_in(allocator),
-            decorators: self.decorators.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let key = self.key(ast).clone_in(ast);
+        let value = self.value(ast).clone_in(ast);
+        let is_static = self.is_static(ast).clone_in(ast);
+        let decorators = self.decorators(ast).clone_in(ast);
+        ast.private_prop(span, key, value, is_static, decorators)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ClassMethod<'src> {
-    type Cloned = ClassMethod<'a>;
+impl<'a> CloneIn<'a> for ClassMethod {
+    type Cloned = ClassMethod;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ClassMethod {
-            span: self.span.clone_in(allocator),
-            key: self.key.clone_in(allocator),
-            function: self.function.clone_in(allocator),
-            kind: self.kind.clone_in(allocator),
-            is_static: self.is_static.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let key = self.key(ast).clone_in(ast);
+        let function = self.function(ast).clone_in(ast);
+        let kind = self.kind(ast).clone_in(ast);
+        let is_static = self.is_static(ast).clone_in(ast);
+        ast.class_method(span, key, function, kind, is_static)
     }
 }
-impl<'a, 'src> CloneIn<'a> for PrivateMethod<'src> {
-    type Cloned = PrivateMethod<'a>;
+impl<'a> CloneIn<'a> for PrivateMethod {
+    type Cloned = PrivateMethod;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        PrivateMethod {
-            span: self.span.clone_in(allocator),
-            key: self.key.clone_in(allocator),
-            function: self.function.clone_in(allocator),
-            kind: self.kind.clone_in(allocator),
-            is_static: self.is_static.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let key = self.key(ast).clone_in(ast);
+        let function = self.function(ast).clone_in(ast);
+        let kind = self.kind(ast).clone_in(ast);
+        let is_static = self.is_static(ast).clone_in(ast);
+        ast.private_method(span, key, function, kind, is_static)
     }
 }
-impl<'a, 'src> CloneIn<'a> for Constructor<'src> {
-    type Cloned = Constructor<'a>;
+impl<'a> CloneIn<'a> for Constructor {
+    type Cloned = Constructor;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        Constructor {
-            span: self.span.clone_in(allocator),
-            key: self.key.clone_in(allocator),
-            params: self.params.clone_in(allocator),
-            body: self.body.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let key = self.key(ast).clone_in(ast);
+        let params = self.params(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        ast.constructor(span, key, params, body)
     }
 }
-impl<'a, 'src> CloneIn<'a> for Decorator<'src> {
-    type Cloned = Decorator<'a>;
+impl<'a> CloneIn<'a> for Decorator {
+    type Cloned = Decorator;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        Decorator {
-            span: self.span.clone_in(allocator),
-            expr: self.expr.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let expr = self.expr(ast).clone_in(ast);
+        ast.decorator(span, expr)
     }
 }
-impl<'a, 'src> CloneIn<'a> for StaticBlock<'src> {
-    type Cloned = StaticBlock<'a>;
+impl<'a> CloneIn<'a> for StaticBlock {
+    type Cloned = StaticBlock;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        StaticBlock {
-            span: self.span.clone_in(allocator),
-            body: self.body.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let body = self.body(ast).clone_in(ast);
+        ast.static_block(span, body)
     }
 }
-impl<'a, 'src> CloneIn<'a> for Key<'src> {
-    type Cloned = Key<'a>;
+impl<'a> CloneIn<'a> for Key {
+    type Cloned = Key;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Private(it) => Key::Private(it.clone_in(allocator)),
-            Self::Public(it) => Key::Public(it.clone_in(allocator)),
+            Self::Private(it) => Self::Private(it.clone_in(ast)),
+            Self::Public(it) => Self::Public(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for AutoAccessor<'src> {
-    type Cloned = AutoAccessor<'a>;
+impl<'a> CloneIn<'a> for AutoAccessor {
+    type Cloned = AutoAccessor;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        AutoAccessor {
-            span: self.span.clone_in(allocator),
-            key: self.key.clone_in(allocator),
-            value: self.value.clone_in(allocator),
-            is_static: self.is_static.clone_in(allocator),
-            decorators: self.decorators.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let key = self.key(ast).clone_in(ast);
+        let value = self.value(ast).clone_in(ast);
+        let is_static = self.is_static(ast).clone_in(ast);
+        let decorators = self.decorators(ast).clone_in(ast);
+        ast.auto_accessor(span, key, value, is_static, decorators)
     }
 }
-impl<'a, 'src> CloneIn<'a> for Prop<'src> {
-    type Cloned = Prop<'a>;
+impl<'a> CloneIn<'a> for Prop {
+    type Cloned = Prop;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Shorthand(it) => Prop::Shorthand(it.clone_in(allocator)),
-            Self::KeyValue(it) => Prop::KeyValue(it.clone_in(allocator)),
-            Self::Assign(it) => Prop::Assign(it.clone_in(allocator)),
-            Self::Getter(it) => Prop::Getter(it.clone_in(allocator)),
-            Self::Setter(it) => Prop::Setter(it.clone_in(allocator)),
-            Self::Method(it) => Prop::Method(it.clone_in(allocator)),
+            Self::Shorthand(it) => Self::Shorthand(it.clone_in(ast)),
+            Self::KeyValue(it) => Self::KeyValue(it.clone_in(ast)),
+            Self::Assign(it) => Self::Assign(it.clone_in(ast)),
+            Self::Getter(it) => Self::Getter(it.clone_in(ast)),
+            Self::Setter(it) => Self::Setter(it.clone_in(ast)),
+            Self::Method(it) => Self::Method(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for KeyValueProp<'src> {
-    type Cloned = KeyValueProp<'a>;
+impl<'a> CloneIn<'a> for KeyValueProp {
+    type Cloned = KeyValueProp;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        KeyValueProp {
-            key: self.key.clone_in(allocator),
-            value: self.value.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let key = self.key(ast).clone_in(ast);
+        let value = self.value(ast).clone_in(ast);
+        ast.key_value_prop(span, key, value)
     }
 }
-impl<'a, 'src> CloneIn<'a> for AssignProp<'src> {
-    type Cloned = AssignProp<'a>;
+impl<'a> CloneIn<'a> for AssignProp {
+    type Cloned = AssignProp;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        AssignProp {
-            span: self.span.clone_in(allocator),
-            key: self.key.clone_in(allocator),
-            value: self.value.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let key = self.key(ast).clone_in(ast);
+        let value = self.value(ast).clone_in(ast);
+        ast.assign_prop(span, key, value)
     }
 }
-impl<'a, 'src> CloneIn<'a> for GetterProp<'src> {
-    type Cloned = GetterProp<'a>;
+impl<'a> CloneIn<'a> for GetterProp {
+    type Cloned = GetterProp;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        GetterProp {
-            span: self.span.clone_in(allocator),
-            key: self.key.clone_in(allocator),
-            function: self.function.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let key = self.key(ast).clone_in(ast);
+        let function = self.function(ast).clone_in(ast);
+        ast.getter_prop(span, key, function)
     }
 }
-impl<'a, 'src> CloneIn<'a> for SetterProp<'src> {
-    type Cloned = SetterProp<'a>;
+impl<'a> CloneIn<'a> for SetterProp {
+    type Cloned = SetterProp;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        SetterProp {
-            span: self.span.clone_in(allocator),
-            key: self.key.clone_in(allocator),
-            function: self.function.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let key = self.key(ast).clone_in(ast);
+        let function = self.function(ast).clone_in(ast);
+        ast.setter_prop(span, key, function)
     }
 }
-impl<'a, 'src> CloneIn<'a> for MethodProp<'src> {
-    type Cloned = MethodProp<'a>;
+impl<'a> CloneIn<'a> for MethodProp {
+    type Cloned = MethodProp;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        MethodProp {
-            key: self.key.clone_in(allocator),
-            function: self.function.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let key = self.key(ast).clone_in(ast);
+        let function = self.function(ast).clone_in(ast);
+        ast.method_prop(span, key, function)
     }
 }
-impl<'a, 'src> CloneIn<'a> for PropName<'src> {
-    type Cloned = PropName<'a>;
+impl<'a> CloneIn<'a> for PropName {
+    type Cloned = PropName;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Ident(it) => PropName::Ident(it.clone_in(allocator)),
-            Self::Str(it) => PropName::Str(it.clone_in(allocator)),
-            Self::Num(it) => PropName::Num(it.clone_in(allocator)),
-            Self::Computed(it) => PropName::Computed(it.clone_in(allocator)),
-            Self::BigInt(it) => PropName::BigInt(it.clone_in(allocator)),
+            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
+            Self::Str(it) => Self::Str(it.clone_in(ast)),
+            Self::Num(it) => Self::Num(it.clone_in(ast)),
+            Self::Computed(it) => Self::Computed(it.clone_in(ast)),
+            Self::BigInt(it) => Self::BigInt(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for ComputedPropName<'src> {
-    type Cloned = ComputedPropName<'a>;
+impl<'a> CloneIn<'a> for ComputedPropName {
+    type Cloned = ComputedPropName;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ComputedPropName {
-            span: self.span.clone_in(allocator),
-            expr: self.expr.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let expr = self.expr(ast).clone_in(ast);
+        ast.computed_prop_name(span, expr)
     }
 }
-impl<'a, 'src> CloneIn<'a> for Pat<'src> {
-    type Cloned = Pat<'a>;
+impl<'a> CloneIn<'a> for Pat {
+    type Cloned = Pat;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Ident(it) => Pat::Ident(it.clone_in(allocator)),
-            Self::Array(it) => Pat::Array(it.clone_in(allocator)),
-            Self::Rest(it) => Pat::Rest(it.clone_in(allocator)),
-            Self::Object(it) => Pat::Object(it.clone_in(allocator)),
-            Self::Assign(it) => Pat::Assign(it.clone_in(allocator)),
-            Self::Invalid(it) => Pat::Invalid(it.clone_in(allocator)),
-            Self::Expr(it) => Pat::Expr(it.clone_in(allocator)),
+            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
+            Self::Array(it) => Self::Array(it.clone_in(ast)),
+            Self::Rest(it) => Self::Rest(it.clone_in(ast)),
+            Self::Object(it) => Self::Object(it.clone_in(ast)),
+            Self::Assign(it) => Self::Assign(it.clone_in(ast)),
+            Self::Invalid(it) => Self::Invalid(it.clone_in(ast)),
+            Self::Expr(it) => Self::Expr(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for ArrayPat<'src> {
-    type Cloned = ArrayPat<'a>;
+impl<'a> CloneIn<'a> for ArrayPat {
+    type Cloned = ArrayPat;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ArrayPat {
-            span: self.span.clone_in(allocator),
-            elems: self.elems.clone_in(allocator),
-            optional: self.optional.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let elems = self.elems(ast).clone_in(ast);
+        let optional = self.optional(ast).clone_in(ast);
+        ast.array_pat(span, elems, optional)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ObjectPat<'src> {
-    type Cloned = ObjectPat<'a>;
+impl<'a> CloneIn<'a> for ObjectPat {
+    type Cloned = ObjectPat;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        ObjectPat {
-            span: self.span.clone_in(allocator),
-            props: self.props.clone_in(allocator),
-            optional: self.optional.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let props = self.props(ast).clone_in(ast);
+        let optional = self.optional(ast).clone_in(ast);
+        ast.object_pat(span, props, optional)
     }
 }
-impl<'a, 'src> CloneIn<'a> for AssignPat<'src> {
-    type Cloned = AssignPat<'a>;
+impl<'a> CloneIn<'a> for AssignPat {
+    type Cloned = AssignPat;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        AssignPat {
-            span: self.span.clone_in(allocator),
-            left: self.left.clone_in(allocator),
-            right: self.right.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let left = self.left(ast).clone_in(ast);
+        let right = self.right(ast).clone_in(ast);
+        ast.assign_pat(span, left, right)
     }
 }
-impl<'a, 'src> CloneIn<'a> for RestPat<'src> {
-    type Cloned = RestPat<'a>;
+impl<'a> CloneIn<'a> for RestPat {
+    type Cloned = RestPat;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        RestPat {
-            span: self.span.clone_in(allocator),
-            dot3_token: self.dot3_token.clone_in(allocator),
-            arg: self.arg.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let dot_3_token = self.dot_3_token(ast).clone_in(ast);
+        let arg = self.arg(ast).clone_in(ast);
+        ast.rest_pat(span, dot_3_token, arg)
     }
 }
-impl<'a, 'src> CloneIn<'a> for ObjectPatProp<'src> {
-    type Cloned = ObjectPatProp<'a>;
+impl<'a> CloneIn<'a> for ObjectPatProp {
+    type Cloned = ObjectPatProp;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::KeyValue(it) => ObjectPatProp::KeyValue(it.clone_in(allocator)),
-            Self::Assign(it) => ObjectPatProp::Assign(it.clone_in(allocator)),
-            Self::Rest(it) => ObjectPatProp::Rest(it.clone_in(allocator)),
+            Self::KeyValue(it) => Self::KeyValue(it.clone_in(ast)),
+            Self::Assign(it) => Self::Assign(it.clone_in(ast)),
+            Self::Rest(it) => Self::Rest(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for KeyValuePatProp<'src> {
-    type Cloned = KeyValuePatProp<'a>;
+impl<'a> CloneIn<'a> for KeyValuePatProp {
+    type Cloned = KeyValuePatProp;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        KeyValuePatProp {
-            key: self.key.clone_in(allocator),
-            value: self.value.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let key = self.key(ast).clone_in(ast);
+        let value = self.value(ast).clone_in(ast);
+        ast.key_value_pat_prop(span, key, value)
     }
 }
-impl<'a, 'src> CloneIn<'a> for AssignPatProp<'src> {
-    type Cloned = AssignPatProp<'a>;
+impl<'a> CloneIn<'a> for AssignPatProp {
+    type Cloned = AssignPatProp;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        AssignPatProp {
-            span: self.span.clone_in(allocator),
-            key: self.key.clone_in(allocator),
-            value: self.value.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let key = self.key(ast).clone_in(ast);
+        let value = self.value(ast).clone_in(ast);
+        ast.assign_pat_prop(span, key, value)
     }
 }
-impl<'a, 'src> CloneIn<'a> for Ident<'src> {
-    type Cloned = Ident<'a>;
+impl<'a> CloneIn<'a> for Ident {
+    type Cloned = Ident;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        Ident {
-            span: self.span.clone_in(allocator),
-            sym: self.sym.clone_in(allocator),
-            symbol_id: self.symbol_id.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let sym = self.sym(ast).clone_in(ast);
+        ast.ident(span, sym)
     }
 }
-impl<'a, 'src> CloneIn<'a> for IdentName<'src> {
-    type Cloned = IdentName<'a>;
+impl<'a> CloneIn<'a> for IdentName {
+    type Cloned = IdentName;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        IdentName {
-            span: self.span.clone_in(allocator),
-            sym: self.sym.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let sym = self.sym(ast).clone_in(ast);
+        ast.ident_name(span, sym)
     }
 }
-impl<'a, 'src> CloneIn<'a> for PrivateName<'src> {
-    type Cloned = PrivateName<'a>;
+impl<'a> CloneIn<'a> for PrivateName {
+    type Cloned = PrivateName;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        PrivateName {
-            span: self.span.clone_in(allocator),
-            name: self.name.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let name = self.name(ast).clone_in(ast);
+        ast.private_name(span, name)
     }
 }
-impl<'a, 'src> CloneIn<'a> for BindingIdent<'src> {
-    type Cloned = BindingIdent<'a>;
+impl<'a> CloneIn<'a> for BindingIdent {
+    type Cloned = BindingIdent;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        BindingIdent {
-            id: self.id.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let id = self.id(ast).clone_in(ast);
+        ast.binding_ident(span, id)
     }
 }
-impl<'a, 'src> CloneIn<'a> for Lit<'src> {
-    type Cloned = Lit<'a>;
+impl<'a> CloneIn<'a> for Lit {
+    type Cloned = Lit;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Str(it) => Lit::Str(it.clone_in(allocator)),
-            Self::Bool(it) => Lit::Bool(it.clone_in(allocator)),
-            Self::Null(it) => Lit::Null(it.clone_in(allocator)),
-            Self::Num(it) => Lit::Num(it.clone_in(allocator)),
-            Self::BigInt(it) => Lit::BigInt(it.clone_in(allocator)),
-            Self::Regex(it) => Lit::Regex(it.clone_in(allocator)),
+            Self::Str(it) => Self::Str(it.clone_in(ast)),
+            Self::Bool(it) => Self::Bool(it.clone_in(ast)),
+            Self::Null(it) => Self::Null(it.clone_in(ast)),
+            Self::Num(it) => Self::Num(it.clone_in(ast)),
+            Self::BigInt(it) => Self::BigInt(it.clone_in(ast)),
+            Self::Regex(it) => Self::Regex(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for Str<'src> {
-    type Cloned = Str<'a>;
+impl<'a> CloneIn<'a> for Str {
+    type Cloned = Str;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        Str {
-            span: self.span.clone_in(allocator),
-            value: self.value.clone_in(allocator),
-            raw: self.raw.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let value = self.value(ast).clone_in(ast);
+        let raw = self.raw(ast).clone_in(ast);
+        ast.str(span, value, raw)
     }
 }
 impl<'a> CloneIn<'a> for Bool {
     type Cloned = Bool;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        Bool {
-            span: self.span.clone_in(allocator),
-            value: self.value.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let value = self.value(ast).clone_in(ast);
+        ast.bool(span, value)
     }
 }
 impl<'a> CloneIn<'a> for Null {
     type Cloned = Null;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        Null {
-            span: self.span.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        ast.null(span)
     }
 }
-impl<'a, 'src> CloneIn<'a> for Number<'src> {
-    type Cloned = Number<'a>;
+impl<'a> CloneIn<'a> for Number {
+    type Cloned = Number;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        Number {
-            span: self.span.clone_in(allocator),
-            value: self.value.clone_in(allocator),
-            raw: self.raw.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let value = self.value(ast).clone_in(ast);
+        let raw = self.raw(ast).clone_in(ast);
+        ast.number(span, value, raw)
     }
 }
-impl<'a, 'src> CloneIn<'a> for BigInt<'src> {
-    type Cloned = BigInt<'a>;
+impl<'a> CloneIn<'a> for BigInt {
+    type Cloned = BigInt;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        BigInt {
-            span: self.span.clone_in(allocator),
-            value: self.value.clone_in(allocator),
-            raw: self.raw.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let value = self.value(ast).clone_in(ast);
+        let raw = self.raw(ast).clone_in(ast);
+        ast.big_int(span, value, raw)
     }
 }
-impl<'a, 'src> CloneIn<'a> for Regex<'src> {
-    type Cloned = Regex<'a>;
+impl<'a> CloneIn<'a> for Regex {
+    type Cloned = Regex;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        Regex {
-            span: self.span.clone_in(allocator),
-            exp: self.exp.clone_in(allocator),
-            flags: self.flags.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let exp = self.exp(ast).clone_in(ast);
+        let flags = self.flags(ast).clone_in(ast);
+        ast.regex(span, exp, flags)
     }
 }
-impl<'a, 'src> CloneIn<'a> for JSXObject<'src> {
-    type Cloned = JSXObject<'a>;
+impl<'a> CloneIn<'a> for JSXObject {
+    type Cloned = JSXObject;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::JSXMemberExpr(it) => JSXObject::JSXMemberExpr(it.clone_in(allocator)),
-            Self::Ident(it) => JSXObject::Ident(it.clone_in(allocator)),
+            Self::JSXMemberExpr(it) => Self::JSXMemberExpr(it.clone_in(ast)),
+            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for JSXMemberExpr<'src> {
-    type Cloned = JSXMemberExpr<'a>;
+impl<'a> CloneIn<'a> for JSXMemberExpr {
+    type Cloned = JSXMemberExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        JSXMemberExpr {
-            span: self.span.clone_in(allocator),
-            obj: self.obj.clone_in(allocator),
-            prop: self.prop.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let obj = self.obj(ast).clone_in(ast);
+        let prop = self.prop(ast).clone_in(ast);
+        ast.jsx_member_expr(span, obj, prop)
     }
 }
-impl<'a, 'src> CloneIn<'a> for JSXNamespacedName<'src> {
-    type Cloned = JSXNamespacedName<'a>;
+impl<'a> CloneIn<'a> for JSXNamespacedName {
+    type Cloned = JSXNamespacedName;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        JSXNamespacedName {
-            span: self.span.clone_in(allocator),
-            ns: self.ns.clone_in(allocator),
-            name: self.name.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let ns = self.ns(ast).clone_in(ast);
+        let name = self.name(ast).clone_in(ast);
+        ast.jsx_namespaced_name(span, ns, name)
     }
 }
 impl<'a> CloneIn<'a> for JSXEmptyExpr {
     type Cloned = JSXEmptyExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        JSXEmptyExpr {
-            span: self.span.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        ast.jsx_empty_expr(span)
     }
 }
-impl<'a, 'src> CloneIn<'a> for JSXExprContainer<'src> {
-    type Cloned = JSXExprContainer<'a>;
+impl<'a> CloneIn<'a> for JSXExprContainer {
+    type Cloned = JSXExprContainer;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        JSXExprContainer {
-            span: self.span.clone_in(allocator),
-            expr: self.expr.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let expr = self.expr(ast).clone_in(ast);
+        ast.jsx_expr_container(span, expr)
     }
 }
-impl<'a, 'src> CloneIn<'a> for JSXExpr<'src> {
-    type Cloned = JSXExpr<'a>;
+impl<'a> CloneIn<'a> for JSXExpr {
+    type Cloned = JSXExpr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::JSXEmptyExpr(it) => JSXExpr::JSXEmptyExpr(it.clone_in(allocator)),
-            Self::Expr(it) => JSXExpr::Expr(it.clone_in(allocator)),
+            Self::JSXEmptyExpr(it) => Self::JSXEmptyExpr(it.clone_in(ast)),
+            Self::Expr(it) => Self::Expr(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for JSXSpreadChild<'src> {
-    type Cloned = JSXSpreadChild<'a>;
+impl<'a> CloneIn<'a> for JSXSpreadChild {
+    type Cloned = JSXSpreadChild;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        JSXSpreadChild {
-            span: self.span.clone_in(allocator),
-            expr: self.expr.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let expr = self.expr(ast).clone_in(ast);
+        ast.jsx_spread_child(span, expr)
     }
 }
-impl<'a, 'src> CloneIn<'a> for JSXElementName<'src> {
-    type Cloned = JSXElementName<'a>;
+impl<'a> CloneIn<'a> for JSXElementName {
+    type Cloned = JSXElementName;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Ident(it) => JSXElementName::Ident(it.clone_in(allocator)),
-            Self::JSXMemberExpr(it) => JSXElementName::JSXMemberExpr(it.clone_in(allocator)),
-            Self::JSXNamespacedName(it) => {
-                JSXElementName::JSXNamespacedName(it.clone_in(allocator))
-            }
+            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
+            Self::JSXMemberExpr(it) => Self::JSXMemberExpr(it.clone_in(ast)),
+            Self::JSXNamespacedName(it) => Self::JSXNamespacedName(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for JSXOpeningElement<'src> {
-    type Cloned = JSXOpeningElement<'a>;
+impl<'a> CloneIn<'a> for JSXOpeningElement {
+    type Cloned = JSXOpeningElement;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        JSXOpeningElement {
-            span: self.span.clone_in(allocator),
-            name: self.name.clone_in(allocator),
-            attrs: self.attrs.clone_in(allocator),
-            self_closing: self.self_closing.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let name = self.name(ast).clone_in(ast);
+        let attrs = self.attrs(ast).clone_in(ast);
+        let self_closing = self.self_closing(ast).clone_in(ast);
+        ast.jsx_opening_element(span, name, attrs, self_closing)
     }
 }
-impl<'a, 'src> CloneIn<'a> for JSXAttrOrSpread<'src> {
-    type Cloned = JSXAttrOrSpread<'a>;
+impl<'a> CloneIn<'a> for JSXAttrOrSpread {
+    type Cloned = JSXAttrOrSpread;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::JSXAttr(it) => JSXAttrOrSpread::JSXAttr(it.clone_in(allocator)),
-            Self::SpreadElement(it) => JSXAttrOrSpread::SpreadElement(it.clone_in(allocator)),
+            Self::JSXAttr(it) => Self::JSXAttr(it.clone_in(ast)),
+            Self::SpreadElement(it) => Self::SpreadElement(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for JSXClosingElement<'src> {
-    type Cloned = JSXClosingElement<'a>;
+impl<'a> CloneIn<'a> for JSXClosingElement {
+    type Cloned = JSXClosingElement;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        JSXClosingElement {
-            span: self.span.clone_in(allocator),
-            name: self.name.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let name = self.name(ast).clone_in(ast);
+        ast.jsx_closing_element(span, name)
     }
 }
-impl<'a, 'src> CloneIn<'a> for JSXAttr<'src> {
-    type Cloned = JSXAttr<'a>;
+impl<'a> CloneIn<'a> for JSXAttr {
+    type Cloned = JSXAttr;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        JSXAttr {
-            span: self.span.clone_in(allocator),
-            name: self.name.clone_in(allocator),
-            value: self.value.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let name = self.name(ast).clone_in(ast);
+        let value = self.value(ast).clone_in(ast);
+        ast.jsx_attr(span, name, value)
     }
 }
-impl<'a, 'src> CloneIn<'a> for JSXAttrName<'src> {
-    type Cloned = JSXAttrName<'a>;
+impl<'a> CloneIn<'a> for JSXAttrName {
+    type Cloned = JSXAttrName;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Ident(it) => JSXAttrName::Ident(it.clone_in(allocator)),
-            Self::JSXNamespacedName(it) => JSXAttrName::JSXNamespacedName(it.clone_in(allocator)),
+            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
+            Self::JSXNamespacedName(it) => Self::JSXNamespacedName(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for JSXAttrValue<'src> {
-    type Cloned = JSXAttrValue<'a>;
+impl<'a> CloneIn<'a> for JSXAttrValue {
+    type Cloned = JSXAttrValue;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::Str(it) => JSXAttrValue::Str(it.clone_in(allocator)),
-            Self::JSXExprContainer(it) => JSXAttrValue::JSXExprContainer(it.clone_in(allocator)),
-            Self::JSXElement(it) => JSXAttrValue::JSXElement(it.clone_in(allocator)),
-            Self::JSXFragment(it) => JSXAttrValue::JSXFragment(it.clone_in(allocator)),
+            Self::Str(it) => Self::Str(it.clone_in(ast)),
+            Self::JSXExprContainer(it) => Self::JSXExprContainer(it.clone_in(ast)),
+            Self::JSXElement(it) => Self::JSXElement(it.clone_in(ast)),
+            Self::JSXFragment(it) => Self::JSXFragment(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for JSXText<'src> {
-    type Cloned = JSXText<'a>;
+impl<'a> CloneIn<'a> for JSXText {
+    type Cloned = JSXText;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        JSXText {
-            span: self.span.clone_in(allocator),
-            value: self.value.clone_in(allocator),
-            raw: self.raw.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let value = self.value(ast).clone_in(ast);
+        let raw = self.raw(ast).clone_in(ast);
+        ast.jsx_text(span, value, raw)
     }
 }
-impl<'a, 'src> CloneIn<'a> for JSXElement<'src> {
-    type Cloned = JSXElement<'a>;
+impl<'a> CloneIn<'a> for JSXElement {
+    type Cloned = JSXElement;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        JSXElement {
-            span: self.span.clone_in(allocator),
-            opening: self.opening.clone_in(allocator),
-            children: self.children.clone_in(allocator),
-            closing: self.closing.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let opening = self.opening(ast).clone_in(ast);
+        let children = self.children(ast).clone_in(ast);
+        let closing = self.closing(ast).clone_in(ast);
+        ast.jsx_element(span, opening, children, closing)
     }
 }
-impl<'a, 'src> CloneIn<'a> for JSXElementChild<'src> {
-    type Cloned = JSXElementChild<'a>;
+impl<'a> CloneIn<'a> for JSXElementChild {
+    type Cloned = JSXElementChild;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         match self {
-            Self::JSXText(it) => JSXElementChild::JSXText(it.clone_in(allocator)),
-            Self::JSXExprContainer(it) => JSXElementChild::JSXExprContainer(it.clone_in(allocator)),
-            Self::JSXSpreadChild(it) => JSXElementChild::JSXSpreadChild(it.clone_in(allocator)),
-            Self::JSXElement(it) => JSXElementChild::JSXElement(it.clone_in(allocator)),
-            Self::JSXFragment(it) => JSXElementChild::JSXFragment(it.clone_in(allocator)),
+            Self::JSXText(it) => Self::JSXText(it.clone_in(ast)),
+            Self::JSXExprContainer(it) => Self::JSXExprContainer(it.clone_in(ast)),
+            Self::JSXSpreadChild(it) => Self::JSXSpreadChild(it.clone_in(ast)),
+            Self::JSXElement(it) => Self::JSXElement(it.clone_in(ast)),
+            Self::JSXFragment(it) => Self::JSXFragment(it.clone_in(ast)),
         }
     }
 }
-impl<'a, 'src> CloneIn<'a> for JSXFragment<'src> {
-    type Cloned = JSXFragment<'a>;
+impl<'a> CloneIn<'a> for JSXFragment {
+    type Cloned = JSXFragment;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        JSXFragment {
-            span: self.span.clone_in(allocator),
-            opening: self.opening.clone_in(allocator),
-            children: self.children.clone_in(allocator),
-            closing: self.closing.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let opening = self.opening(ast).clone_in(ast);
+        let children = self.children(ast).clone_in(ast);
+        let closing = self.closing(ast).clone_in(ast);
+        ast.jsx_fragment(span, opening, children, closing)
     }
 }
 impl<'a> CloneIn<'a> for JSXOpeningFragment {
     type Cloned = JSXOpeningFragment;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        JSXOpeningFragment {
-            span: self.span.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        ast.jsx_opening_fragment(span)
     }
 }
 impl<'a> CloneIn<'a> for JSXClosingFragment {
     type Cloned = JSXClosingFragment;
     #[inline]
-    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
-        JSXClosingFragment {
-            span: self.span.clone_in(allocator),
-        }
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        ast.jsx_closing_fragment(span)
     }
 }

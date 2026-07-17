@@ -1,5203 +1,10827 @@
-#![allow(unused, clippy::useless_conversion, clippy::identity_op)]
-use crate::span::{DUMMY_SP, GetSpan, SetSpan};
+#![allow(
+    unused,
+    clippy::useless_conversion,
+    clippy::identity_op,
+    clippy::erasing_op,
+    clippy::let_and_return
+)]
 use crate::*;
 use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
-use swc_experimental_allocator::boxed::Box;
-impl<'a> Program<'a> {
+impl Program {
     #[inline]
-    pub const fn is_module(&self) -> bool {
-        matches!(self, Self::Module { .. })
+    pub fn is_module(&self) -> bool {
+        matches!(self, Self::Module(_))
     }
     #[inline]
-    pub const fn is_script(&self) -> bool {
-        matches!(self, Self::Script { .. })
+    pub fn is_script(&self) -> bool {
+        matches!(self, Self::Script(_))
     }
     #[inline]
-    pub fn as_module(&self) -> Option<&Module<'a>> {
+    pub fn as_module(self) -> Option<Module> {
         match self {
             Self::Module(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_script(&self) -> Option<&Script<'a>> {
-        match self {
-            Self::Script(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_module(&mut self) -> Option<&mut Module<'a>> {
-        match self {
-            Self::Module(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_script(&mut self) -> Option<&mut Script<'a>> {
+    pub fn as_script(self) -> Option<Script> {
         match self {
             Self::Script(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for Program<'a> {
+impl Module {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Module(it) => it.span(),
-            Self::Script(it) => it.span(),
+    pub fn body<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<ModuleItem> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for Program<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Module(it) => it.set_span(span),
-            Self::Script(it) => it.set_span(span),
+    pub fn shebang<'a>(&self, ast: &crate::Ast<'a>) -> Option<Atom<'a>> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for Module<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn set_body<'a>(&self, ast: &mut crate::Ast<'a>, body: TypedSubRange<ModuleItem>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_shebang<'a>(&self, ast: &mut crate::Ast<'a>, shebang: Option<Atom<'a>>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = shebang.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for Module<'a> {
+impl Script {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn body<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<Stmt> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn shebang<'a>(&self, ast: &crate::Ast<'a>) -> Option<Atom<'a>> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_body<'a>(&self, ast: &mut crate::Ast<'a>, body: TypedSubRange<Stmt>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_shebang<'a>(&self, ast: &mut crate::Ast<'a>, shebang: Option<Atom<'a>>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = shebang.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for Script<'a> {
+impl ModuleItem {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for Script<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> ModuleItem<'a> {
-    #[inline]
-    pub const fn is_module_decl(&self) -> bool {
-        matches!(self, Self::ModuleDecl { .. })
+    pub fn is_module_decl(&self) -> bool {
+        matches!(self, Self::ModuleDecl(_))
     }
     #[inline]
-    pub const fn is_stmt(&self) -> bool {
-        matches!(self, Self::Stmt { .. })
+    pub fn is_stmt(&self) -> bool {
+        matches!(self, Self::Stmt(_))
     }
     #[inline]
-    pub fn as_module_decl(&self) -> Option<&ModuleDecl<'a>> {
+    pub fn as_module_decl(self) -> Option<ModuleDecl> {
         match self {
             Self::ModuleDecl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_stmt(&self) -> Option<&Stmt<'a>> {
-        match self {
-            Self::Stmt(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_module_decl(&mut self) -> Option<&mut ModuleDecl<'a>> {
-        match self {
-            Self::ModuleDecl(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_stmt(&mut self) -> Option<&mut Stmt<'a>> {
+    pub fn as_stmt(self) -> Option<Stmt> {
         match self {
             Self::Stmt(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for ModuleItem<'a> {
+impl ModuleDecl {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::ModuleDecl(it) => it.span(),
-            Self::Stmt(it) => it.span(),
-        }
-    }
-}
-impl<'a> SetSpan for ModuleItem<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::ModuleDecl(it) => it.set_span(span),
-            Self::Stmt(it) => it.set_span(span),
-        }
-    }
-}
-impl<'a> ModuleDecl<'a> {
-    #[inline]
-    pub const fn is_import(&self) -> bool {
-        matches!(self, Self::Import { .. })
+    pub fn is_import(&self) -> bool {
+        matches!(self, Self::Import(_))
     }
     #[inline]
-    pub const fn is_export_decl(&self) -> bool {
-        matches!(self, Self::ExportDecl { .. })
+    pub fn is_export_decl(&self) -> bool {
+        matches!(self, Self::ExportDecl(_))
     }
     #[inline]
-    pub const fn is_export_named(&self) -> bool {
-        matches!(self, Self::ExportNamed { .. })
+    pub fn is_export_named(&self) -> bool {
+        matches!(self, Self::ExportNamed(_))
     }
     #[inline]
-    pub const fn is_export_default_decl(&self) -> bool {
-        matches!(self, Self::ExportDefaultDecl { .. })
+    pub fn is_export_default_decl(&self) -> bool {
+        matches!(self, Self::ExportDefaultDecl(_))
     }
     #[inline]
-    pub const fn is_export_default_expr(&self) -> bool {
-        matches!(self, Self::ExportDefaultExpr { .. })
+    pub fn is_export_default_expr(&self) -> bool {
+        matches!(self, Self::ExportDefaultExpr(_))
     }
     #[inline]
-    pub const fn is_export_all(&self) -> bool {
-        matches!(self, Self::ExportAll { .. })
+    pub fn is_export_all(&self) -> bool {
+        matches!(self, Self::ExportAll(_))
     }
     #[inline]
-    pub fn as_import(&self) -> Option<&ImportDecl<'a>> {
+    pub fn as_import(self) -> Option<ImportDecl> {
         match self {
             Self::Import(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_export_decl(&self) -> Option<&ExportDecl<'a>> {
+    pub fn as_export_decl(self) -> Option<ExportDecl> {
         match self {
             Self::ExportDecl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_export_named(&self) -> Option<&NamedExport<'a>> {
+    pub fn as_export_named(self) -> Option<NamedExport> {
         match self {
             Self::ExportNamed(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_export_default_decl(&self) -> Option<&ExportDefaultDecl<'a>> {
+    pub fn as_export_default_decl(self) -> Option<ExportDefaultDecl> {
         match self {
             Self::ExportDefaultDecl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_export_default_expr(&self) -> Option<&ExportDefaultExpr<'a>> {
+    pub fn as_export_default_expr(self) -> Option<ExportDefaultExpr> {
         match self {
             Self::ExportDefaultExpr(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_export_all(&self) -> Option<&ExportAll<'a>> {
-        match self {
-            Self::ExportAll(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_import(&mut self) -> Option<&mut ImportDecl<'a>> {
-        match self {
-            Self::Import(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_export_decl(&mut self) -> Option<&mut ExportDecl<'a>> {
-        match self {
-            Self::ExportDecl(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_export_named(&mut self) -> Option<&mut NamedExport<'a>> {
-        match self {
-            Self::ExportNamed(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_export_default_decl(&mut self) -> Option<&mut ExportDefaultDecl<'a>> {
-        match self {
-            Self::ExportDefaultDecl(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_export_default_expr(&mut self) -> Option<&mut ExportDefaultExpr<'a>> {
-        match self {
-            Self::ExportDefaultExpr(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_export_all(&mut self) -> Option<&mut ExportAll<'a>> {
+    pub fn as_export_all(self) -> Option<ExportAll> {
         match self {
             Self::ExportAll(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for ModuleDecl<'a> {
+impl ImportDecl {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Import(it) => it.span(),
-            Self::ExportDecl(it) => it.span(),
-            Self::ExportNamed(it) => it.span(),
-            Self::ExportDefaultDecl(it) => it.span(),
-            Self::ExportDefaultExpr(it) => it.span(),
-            Self::ExportAll(it) => it.span(),
+    pub fn specifiers<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<ImportSpecifier> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for ModuleDecl<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Import(it) => it.set_span(span),
-            Self::ExportDecl(it) => it.set_span(span),
-            Self::ExportNamed(it) => it.set_span(span),
-            Self::ExportDefaultDecl(it) => it.set_span(span),
-            Self::ExportDefaultExpr(it) => it.set_span(span),
-            Self::ExportAll(it) => it.set_span(span),
+    pub fn src<'a>(&self, ast: &crate::Ast<'a>) -> Str {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for ImportDecl<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn type_only<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn with<'a>(&self, ast: &crate::Ast<'a>) -> Option<ObjectLit> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn phase<'a>(&self, ast: &crate::Ast<'a>) -> ImportPhase {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_specifiers<'a>(
+        &self,
+        ast: &mut crate::Ast<'a>,
+        specifiers: TypedSubRange<ImportSpecifier>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = specifiers.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_src<'a>(&self, ast: &mut crate::Ast<'a>, src: Str) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = src.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_only<'a>(&self, ast: &mut crate::Ast<'a>, type_only: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = type_only.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_with<'a>(&self, ast: &mut crate::Ast<'a>, with: Option<ObjectLit>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = with.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_phase<'a>(&self, ast: &mut crate::Ast<'a>, phase: ImportPhase) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = phase.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for ImportDecl<'a> {
+impl ImportSpecifier {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> ImportSpecifier<'a> {
-    #[inline]
-    pub const fn is_named(&self) -> bool {
-        matches!(self, Self::Named { .. })
+    pub fn is_named(&self) -> bool {
+        matches!(self, Self::Named(_))
     }
     #[inline]
-    pub const fn is_default(&self) -> bool {
-        matches!(self, Self::Default { .. })
+    pub fn is_default(&self) -> bool {
+        matches!(self, Self::Default(_))
     }
     #[inline]
-    pub const fn is_namespace(&self) -> bool {
-        matches!(self, Self::Namespace { .. })
+    pub fn is_namespace(&self) -> bool {
+        matches!(self, Self::Namespace(_))
     }
     #[inline]
-    pub fn as_named(&self) -> Option<&ImportNamedSpecifier<'a>> {
+    pub fn as_named(self) -> Option<ImportNamedSpecifier> {
         match self {
             Self::Named(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_default(&self) -> Option<&ImportDefaultSpecifier<'a>> {
+    pub fn as_default(self) -> Option<ImportDefaultSpecifier> {
         match self {
             Self::Default(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_namespace(&self) -> Option<&ImportStarAsSpecifier<'a>> {
+    pub fn as_namespace(self) -> Option<ImportStarAsSpecifier> {
+        match self {
+            Self::Namespace(it) => Some(it),
+            _ => None,
+        }
+    }
+}
+impl ImportNamedSpecifier {
+    #[inline]
+    pub fn local<'a>(&self, ast: &crate::Ast<'a>) -> Ident {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn imported<'a>(&self, ast: &crate::Ast<'a>) -> ModuleExportName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_type_only<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_local<'a>(&self, ast: &mut crate::Ast<'a>, local: Ident) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = local.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_imported<'a>(&self, ast: &mut crate::Ast<'a>, imported: ModuleExportName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = imported.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_type_only<'a>(&self, ast: &mut crate::Ast<'a>, is_type_only: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = is_type_only.to_extra_data();
+        };
+    }
+}
+impl ImportDefaultSpecifier {
+    #[inline]
+    pub fn local<'a>(&self, ast: &crate::Ast<'a>) -> Ident {
+        let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+        unsafe { Ident::from_node_id_unchecked(crate::NodeId::from_raw_unchecked(raw), ast) }
+    }
+    #[inline]
+    pub fn set_local<'a>(&self, ast: &mut crate::Ast<'a>, local: Ident) {
+        unsafe {
+            ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data =
+                local.node_id().index() as u32
+        };
+    }
+}
+impl ImportStarAsSpecifier {
+    #[inline]
+    pub fn local<'a>(&self, ast: &crate::Ast<'a>) -> Ident {
+        let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+        unsafe { Ident::from_node_id_unchecked(crate::NodeId::from_raw_unchecked(raw), ast) }
+    }
+    #[inline]
+    pub fn set_local<'a>(&self, ast: &mut crate::Ast<'a>, local: Ident) {
+        unsafe {
+            ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data =
+                local.node_id().index() as u32
+        };
+    }
+}
+impl ExportDecl {
+    #[inline]
+    pub fn decl<'a>(&self, ast: &crate::Ast<'a>) -> Decl {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_decl<'a>(&self, ast: &mut crate::Ast<'a>, decl: Decl) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = decl.to_extra_data();
+        };
+    }
+}
+impl NamedExport {
+    #[inline]
+    pub fn specifiers<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<ExportSpecifier> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn src<'a>(&self, ast: &crate::Ast<'a>) -> Option<Str> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn type_only<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn with<'a>(&self, ast: &crate::Ast<'a>) -> Option<ObjectLit> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_specifiers<'a>(
+        &self,
+        ast: &mut crate::Ast<'a>,
+        specifiers: TypedSubRange<ExportSpecifier>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = specifiers.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_src<'a>(&self, ast: &mut crate::Ast<'a>, src: Option<Str>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = src.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_only<'a>(&self, ast: &mut crate::Ast<'a>, type_only: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = type_only.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_with<'a>(&self, ast: &mut crate::Ast<'a>, with: Option<ObjectLit>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = with.to_extra_data();
+        };
+    }
+}
+impl ExportSpecifier {
+    #[inline]
+    pub fn is_namespace(&self) -> bool {
+        matches!(self, Self::Namespace(_))
+    }
+    #[inline]
+    pub fn is_default(&self) -> bool {
+        matches!(self, Self::Default(_))
+    }
+    #[inline]
+    pub fn is_named(&self) -> bool {
+        matches!(self, Self::Named(_))
+    }
+    #[inline]
+    pub fn as_namespace(self) -> Option<ExportNamespaceSpecifier> {
         match self {
             Self::Namespace(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_mut_named(&mut self) -> Option<&mut ImportNamedSpecifier<'a>> {
-        match self {
-            Self::Named(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_default(&mut self) -> Option<&mut ImportDefaultSpecifier<'a>> {
+    pub fn as_default(self) -> Option<ExportDefaultSpecifier> {
         match self {
             Self::Default(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_mut_namespace(&mut self) -> Option<&mut ImportStarAsSpecifier<'a>> {
-        match self {
-            Self::Namespace(it) => Some(it),
-            _ => None,
-        }
-    }
-}
-impl<'a> GetSpan for ImportSpecifier<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Named(it) => it.span(),
-            Self::Default(it) => it.span(),
-            Self::Namespace(it) => it.span(),
-        }
-    }
-}
-impl<'a> SetSpan for ImportSpecifier<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Named(it) => it.set_span(span),
-            Self::Default(it) => it.set_span(span),
-            Self::Namespace(it) => it.set_span(span),
-        }
-    }
-}
-impl<'a> GetSpan for ImportNamedSpecifier<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for ImportNamedSpecifier<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for ImportDefaultSpecifier<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for ImportDefaultSpecifier<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for ImportStarAsSpecifier<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for ImportStarAsSpecifier<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for ExportDecl<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for ExportDecl<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for NamedExport<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for NamedExport<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> ExportSpecifier<'a> {
-    #[inline]
-    pub const fn is_namespace(&self) -> bool {
-        matches!(self, Self::Namespace { .. })
-    }
-    #[inline]
-    pub const fn is_default(&self) -> bool {
-        matches!(self, Self::Default { .. })
-    }
-    #[inline]
-    pub const fn is_named(&self) -> bool {
-        matches!(self, Self::Named { .. })
-    }
-    #[inline]
-    pub fn as_namespace(&self) -> Option<&ExportNamespaceSpecifier<'a>> {
-        match self {
-            Self::Namespace(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_default(&self) -> Option<&ExportDefaultSpecifier<'a>> {
-        match self {
-            Self::Default(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_named(&self) -> Option<&ExportNamedSpecifier<'a>> {
-        match self {
-            Self::Named(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_namespace(&mut self) -> Option<&mut ExportNamespaceSpecifier<'a>> {
-        match self {
-            Self::Namespace(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_default(&mut self) -> Option<&mut ExportDefaultSpecifier<'a>> {
-        match self {
-            Self::Default(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_named(&mut self) -> Option<&mut ExportNamedSpecifier<'a>> {
+    pub fn as_named(self) -> Option<ExportNamedSpecifier> {
         match self {
             Self::Named(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for ExportSpecifier<'a> {
+impl ExportNamespaceSpecifier {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Namespace(it) => it.span(),
-            Self::Default(it) => it.span(),
-            Self::Named(it) => it.span(),
+    pub fn name<'a>(&self, ast: &crate::Ast<'a>) -> ModuleExportName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for ExportSpecifier<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Namespace(it) => it.set_span(span),
-            Self::Default(it) => it.set_span(span),
-            Self::Named(it) => it.set_span(span),
-        }
+    pub fn set_name<'a>(&self, ast: &mut crate::Ast<'a>, name: ModuleExportName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = name.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for ExportNamespaceSpecifier<'a> {
+impl ModuleExportName {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for ExportNamespaceSpecifier<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> ModuleExportName<'a> {
-    #[inline]
-    pub const fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident { .. })
+    pub fn is_ident(&self) -> bool {
+        matches!(self, Self::Ident(_))
     }
     #[inline]
-    pub const fn is_str(&self) -> bool {
-        matches!(self, Self::Str { .. })
+    pub fn is_str(&self) -> bool {
+        matches!(self, Self::Str(_))
     }
     #[inline]
-    pub fn as_ident(&self) -> Option<&Ident<'a>> {
+    pub fn as_ident(self) -> Option<Ident> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_str(&self) -> Option<&Str<'a>> {
-        match self {
-            Self::Str(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_ident(&mut self) -> Option<&mut Ident<'a>> {
-        match self {
-            Self::Ident(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_str(&mut self) -> Option<&mut Str<'a>> {
+    pub fn as_str(self) -> Option<Str> {
         match self {
             Self::Str(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for ModuleExportName<'a> {
+impl ExportDefaultSpecifier {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Ident(it) => it.span(),
-            Self::Str(it) => it.span(),
+    pub fn exported<'a>(&self, ast: &crate::Ast<'a>) -> Ident {
+        let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+        unsafe { Ident::from_node_id_unchecked(crate::NodeId::from_raw_unchecked(raw), ast) }
+    }
+    #[inline]
+    pub fn set_exported<'a>(&self, ast: &mut crate::Ast<'a>, exported: Ident) {
+        unsafe {
+            ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data =
+                exported.node_id().index() as u32
+        };
+    }
+}
+impl ExportNamedSpecifier {
+    #[inline]
+    pub fn orig<'a>(&self, ast: &crate::Ast<'a>) -> ModuleExportName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for ModuleExportName<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Ident(it) => it.set_span(span),
-            Self::Str(it) => it.set_span(span),
+    pub fn exported<'a>(&self, ast: &crate::Ast<'a>) -> ModuleExportName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for ExportDefaultSpecifier<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        self.exported.span()
+    pub fn is_type_only<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_orig<'a>(&self, ast: &mut crate::Ast<'a>, orig: ModuleExportName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = orig.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_exported<'a>(&self, ast: &mut crate::Ast<'a>, exported: ModuleExportName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = exported.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_type_only<'a>(&self, ast: &mut crate::Ast<'a>, is_type_only: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = is_type_only.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for ExportDefaultSpecifier<'a> {
+impl ExportDefaultDecl {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.exported.set_span(span);
+    pub fn decl<'a>(&self, ast: &crate::Ast<'a>) -> DefaultDecl {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_decl<'a>(&self, ast: &mut crate::Ast<'a>, decl: DefaultDecl) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = decl.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for ExportNamedSpecifier<'a> {
+impl DefaultDecl {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for ExportNamedSpecifier<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for ExportDefaultDecl<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for ExportDefaultDecl<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> DefaultDecl<'a> {
-    #[inline]
-    pub const fn is_class(&self) -> bool {
-        matches!(self, Self::Class { .. })
+    pub fn is_class(&self) -> bool {
+        matches!(self, Self::Class(_))
     }
     #[inline]
-    pub const fn is_fn(&self) -> bool {
-        matches!(self, Self::Fn { .. })
+    pub fn is_fn(&self) -> bool {
+        matches!(self, Self::Fn(_))
     }
     #[inline]
-    pub fn as_class(&self) -> Option<&ClassExpr<'a>> {
+    pub fn as_class(self) -> Option<ClassExpr> {
         match self {
             Self::Class(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_fn(&self) -> Option<&FnExpr<'a>> {
-        match self {
-            Self::Fn(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_class(&mut self) -> Option<&mut ClassExpr<'a>> {
-        match self {
-            Self::Class(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_fn(&mut self) -> Option<&mut FnExpr<'a>> {
+    pub fn as_fn(self) -> Option<FnExpr> {
         match self {
             Self::Fn(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for DefaultDecl<'a> {
+impl ExportDefaultExpr {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Class(it) => it.span(),
-            Self::Fn(it) => it.span(),
+    pub fn expr<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for DefaultDecl<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Class(it) => it.set_span(span),
-            Self::Fn(it) => it.set_span(span),
+    pub fn set_expr<'a>(&self, ast: &mut crate::Ast<'a>, expr: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = expr.to_extra_data();
+        };
+    }
+}
+impl ExportAll {
+    #[inline]
+    pub fn src<'a>(&self, ast: &crate::Ast<'a>) -> Str {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for ExportDefaultExpr<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn type_only<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn with<'a>(&self, ast: &crate::Ast<'a>) -> Option<ObjectLit> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_src<'a>(&self, ast: &mut crate::Ast<'a>, src: Str) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = src.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_type_only<'a>(&self, ast: &mut crate::Ast<'a>, type_only: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = type_only.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_with<'a>(&self, ast: &mut crate::Ast<'a>, with: Option<ObjectLit>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = with.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for ExportDefaultExpr<'a> {
+impl BlockStmt {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn stmts<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<Stmt> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn scope_id<'a>(&self, ast: &crate::Ast<'a>) -> Option<ScopeId> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_stmts<'a>(&self, ast: &mut crate::Ast<'a>, stmts: TypedSubRange<Stmt>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = stmts.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_scope_id<'a>(&self, ast: &mut crate::Ast<'a>, scope_id: Option<ScopeId>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = scope_id.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for ExportAll<'a> {
+impl Stmt {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for ExportAll<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for BlockStmt<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for BlockStmt<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> Stmt<'a> {
-    #[inline]
-    pub const fn is_block(&self) -> bool {
-        matches!(self, Self::Block { .. })
+    pub fn is_block(&self) -> bool {
+        matches!(self, Self::Block(_))
     }
     #[inline]
-    pub const fn is_empty(&self) -> bool {
-        matches!(self, Self::Empty { .. })
+    pub fn is_empty(&self) -> bool {
+        matches!(self, Self::Empty(_))
     }
     #[inline]
-    pub const fn is_debugger(&self) -> bool {
-        matches!(self, Self::Debugger { .. })
+    pub fn is_debugger(&self) -> bool {
+        matches!(self, Self::Debugger(_))
     }
     #[inline]
-    pub const fn is_with(&self) -> bool {
-        matches!(self, Self::With { .. })
+    pub fn is_with(&self) -> bool {
+        matches!(self, Self::With(_))
     }
     #[inline]
-    pub const fn is_return(&self) -> bool {
-        matches!(self, Self::Return { .. })
+    pub fn is_return(&self) -> bool {
+        matches!(self, Self::Return(_))
     }
     #[inline]
-    pub const fn is_labeled(&self) -> bool {
-        matches!(self, Self::Labeled { .. })
+    pub fn is_labeled(&self) -> bool {
+        matches!(self, Self::Labeled(_))
     }
     #[inline]
-    pub const fn is_break(&self) -> bool {
-        matches!(self, Self::Break { .. })
+    pub fn is_break(&self) -> bool {
+        matches!(self, Self::Break(_))
     }
     #[inline]
-    pub const fn is_continue(&self) -> bool {
-        matches!(self, Self::Continue { .. })
+    pub fn is_continue(&self) -> bool {
+        matches!(self, Self::Continue(_))
     }
     #[inline]
-    pub const fn is_if(&self) -> bool {
-        matches!(self, Self::If { .. })
+    pub fn is_if(&self) -> bool {
+        matches!(self, Self::If(_))
     }
     #[inline]
-    pub const fn is_switch(&self) -> bool {
-        matches!(self, Self::Switch { .. })
+    pub fn is_switch(&self) -> bool {
+        matches!(self, Self::Switch(_))
     }
     #[inline]
-    pub const fn is_throw(&self) -> bool {
-        matches!(self, Self::Throw { .. })
+    pub fn is_throw(&self) -> bool {
+        matches!(self, Self::Throw(_))
     }
     #[inline]
-    pub const fn is_try(&self) -> bool {
-        matches!(self, Self::Try { .. })
+    pub fn is_try(&self) -> bool {
+        matches!(self, Self::Try(_))
     }
     #[inline]
-    pub const fn is_while(&self) -> bool {
-        matches!(self, Self::While { .. })
+    pub fn is_while(&self) -> bool {
+        matches!(self, Self::While(_))
     }
     #[inline]
-    pub const fn is_do_while(&self) -> bool {
-        matches!(self, Self::DoWhile { .. })
+    pub fn is_do_while(&self) -> bool {
+        matches!(self, Self::DoWhile(_))
     }
     #[inline]
-    pub const fn is_for(&self) -> bool {
-        matches!(self, Self::For { .. })
+    pub fn is_for(&self) -> bool {
+        matches!(self, Self::For(_))
     }
     #[inline]
-    pub const fn is_for_in(&self) -> bool {
-        matches!(self, Self::ForIn { .. })
+    pub fn is_for_in(&self) -> bool {
+        matches!(self, Self::ForIn(_))
     }
     #[inline]
-    pub const fn is_for_of(&self) -> bool {
-        matches!(self, Self::ForOf { .. })
+    pub fn is_for_of(&self) -> bool {
+        matches!(self, Self::ForOf(_))
     }
     #[inline]
-    pub const fn is_decl(&self) -> bool {
-        matches!(self, Self::Decl { .. })
+    pub fn is_decl(&self) -> bool {
+        matches!(self, Self::Decl(_))
     }
     #[inline]
-    pub const fn is_expr(&self) -> bool {
-        matches!(self, Self::Expr { .. })
+    pub fn is_expr(&self) -> bool {
+        matches!(self, Self::Expr(_))
     }
     #[inline]
-    pub fn as_block(&self) -> Option<&BlockStmt<'a>> {
+    pub fn as_block(self) -> Option<BlockStmt> {
         match self {
             Self::Block(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_empty(&self) -> Option<&EmptyStmt> {
+    pub fn as_empty(self) -> Option<EmptyStmt> {
         match self {
             Self::Empty(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_debugger(&self) -> Option<&DebuggerStmt> {
+    pub fn as_debugger(self) -> Option<DebuggerStmt> {
         match self {
             Self::Debugger(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_with(&self) -> Option<&WithStmt<'a>> {
+    pub fn as_with(self) -> Option<WithStmt> {
         match self {
             Self::With(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_return(&self) -> Option<&ReturnStmt<'a>> {
+    pub fn as_return(self) -> Option<ReturnStmt> {
         match self {
             Self::Return(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_labeled(&self) -> Option<&LabeledStmt<'a>> {
+    pub fn as_labeled(self) -> Option<LabeledStmt> {
         match self {
             Self::Labeled(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_break(&self) -> Option<&BreakStmt<'a>> {
+    pub fn as_break(self) -> Option<BreakStmt> {
         match self {
             Self::Break(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_continue(&self) -> Option<&ContinueStmt<'a>> {
+    pub fn as_continue(self) -> Option<ContinueStmt> {
         match self {
             Self::Continue(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_if(&self) -> Option<&IfStmt<'a>> {
+    pub fn as_if(self) -> Option<IfStmt> {
         match self {
             Self::If(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_switch(&self) -> Option<&SwitchStmt<'a>> {
+    pub fn as_switch(self) -> Option<SwitchStmt> {
         match self {
             Self::Switch(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_throw(&self) -> Option<&ThrowStmt<'a>> {
+    pub fn as_throw(self) -> Option<ThrowStmt> {
         match self {
             Self::Throw(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_try(&self) -> Option<&TryStmt<'a>> {
+    pub fn as_try(self) -> Option<TryStmt> {
         match self {
             Self::Try(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_while(&self) -> Option<&WhileStmt<'a>> {
+    pub fn as_while(self) -> Option<WhileStmt> {
         match self {
             Self::While(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_do_while(&self) -> Option<&DoWhileStmt<'a>> {
+    pub fn as_do_while(self) -> Option<DoWhileStmt> {
         match self {
             Self::DoWhile(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_for(&self) -> Option<&ForStmt<'a>> {
+    pub fn as_for(self) -> Option<ForStmt> {
         match self {
             Self::For(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_for_in(&self) -> Option<&ForInStmt<'a>> {
+    pub fn as_for_in(self) -> Option<ForInStmt> {
         match self {
             Self::ForIn(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_for_of(&self) -> Option<&ForOfStmt<'a>> {
+    pub fn as_for_of(self) -> Option<ForOfStmt> {
         match self {
             Self::ForOf(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_decl(&self) -> Option<&Decl<'a>> {
+    pub fn as_decl(self) -> Option<Decl> {
         match self {
             Self::Decl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_expr(&self) -> Option<&ExprStmt<'a>> {
-        match self {
-            Self::Expr(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_block(&mut self) -> Option<&mut BlockStmt<'a>> {
-        match self {
-            Self::Block(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_empty(&mut self) -> Option<&mut EmptyStmt> {
-        match self {
-            Self::Empty(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_debugger(&mut self) -> Option<&mut DebuggerStmt> {
-        match self {
-            Self::Debugger(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_with(&mut self) -> Option<&mut WithStmt<'a>> {
-        match self {
-            Self::With(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_return(&mut self) -> Option<&mut ReturnStmt<'a>> {
-        match self {
-            Self::Return(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_labeled(&mut self) -> Option<&mut LabeledStmt<'a>> {
-        match self {
-            Self::Labeled(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_break(&mut self) -> Option<&mut BreakStmt<'a>> {
-        match self {
-            Self::Break(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_continue(&mut self) -> Option<&mut ContinueStmt<'a>> {
-        match self {
-            Self::Continue(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_if(&mut self) -> Option<&mut IfStmt<'a>> {
-        match self {
-            Self::If(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_switch(&mut self) -> Option<&mut SwitchStmt<'a>> {
-        match self {
-            Self::Switch(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_throw(&mut self) -> Option<&mut ThrowStmt<'a>> {
-        match self {
-            Self::Throw(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_try(&mut self) -> Option<&mut TryStmt<'a>> {
-        match self {
-            Self::Try(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_while(&mut self) -> Option<&mut WhileStmt<'a>> {
-        match self {
-            Self::While(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_do_while(&mut self) -> Option<&mut DoWhileStmt<'a>> {
-        match self {
-            Self::DoWhile(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_for(&mut self) -> Option<&mut ForStmt<'a>> {
-        match self {
-            Self::For(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_for_in(&mut self) -> Option<&mut ForInStmt<'a>> {
-        match self {
-            Self::ForIn(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_for_of(&mut self) -> Option<&mut ForOfStmt<'a>> {
-        match self {
-            Self::ForOf(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_decl(&mut self) -> Option<&mut Decl<'a>> {
-        match self {
-            Self::Decl(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_expr(&mut self) -> Option<&mut ExprStmt<'a>> {
+    pub fn as_expr(self) -> Option<ExprStmt> {
         match self {
             Self::Expr(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for Stmt<'a> {
+impl ExprStmt {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Block(it) => it.span(),
-            Self::Empty(it) => it.span(),
-            Self::Debugger(it) => it.span(),
-            Self::With(it) => it.span(),
-            Self::Return(it) => it.span(),
-            Self::Labeled(it) => it.span(),
-            Self::Break(it) => it.span(),
-            Self::Continue(it) => it.span(),
-            Self::If(it) => it.span(),
-            Self::Switch(it) => it.span(),
-            Self::Throw(it) => it.span(),
-            Self::Try(it) => it.span(),
-            Self::While(it) => it.span(),
-            Self::DoWhile(it) => it.span(),
-            Self::For(it) => it.span(),
-            Self::ForIn(it) => it.span(),
-            Self::ForOf(it) => it.span(),
-            Self::Decl(it) => it.span(),
-            Self::Expr(it) => it.span(),
+    pub fn expr<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for Stmt<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Block(it) => it.set_span(span),
-            Self::Empty(it) => it.set_span(span),
-            Self::Debugger(it) => it.set_span(span),
-            Self::With(it) => it.set_span(span),
-            Self::Return(it) => it.set_span(span),
-            Self::Labeled(it) => it.set_span(span),
-            Self::Break(it) => it.set_span(span),
-            Self::Continue(it) => it.set_span(span),
-            Self::If(it) => it.set_span(span),
-            Self::Switch(it) => it.set_span(span),
-            Self::Throw(it) => it.set_span(span),
-            Self::Try(it) => it.set_span(span),
-            Self::While(it) => it.set_span(span),
-            Self::DoWhile(it) => it.set_span(span),
-            Self::For(it) => it.set_span(span),
-            Self::ForIn(it) => it.set_span(span),
-            Self::ForOf(it) => it.set_span(span),
-            Self::Decl(it) => it.set_span(span),
-            Self::Expr(it) => it.set_span(span),
+    pub fn set_expr<'a>(&self, ast: &mut crate::Ast<'a>, expr: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = expr.to_extra_data();
+        };
+    }
+}
+impl EmptyStmt {}
+impl DebuggerStmt {}
+impl WithStmt {
+    #[inline]
+    pub fn obj<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for ExprStmt<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn body<'a>(&self, ast: &crate::Ast<'a>) -> Stmt {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_obj<'a>(&self, ast: &mut crate::Ast<'a>, obj: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = obj.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_body<'a>(&self, ast: &mut crate::Ast<'a>, body: Stmt) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for ExprStmt<'a> {
+impl ReturnStmt {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn arg<'a>(&self, ast: &crate::Ast<'a>) -> Option<Expr> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_arg<'a>(&self, ast: &mut crate::Ast<'a>, arg: Option<Expr>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = arg.to_extra_data();
+        };
     }
 }
-impl GetSpan for EmptyStmt {
+impl LabeledStmt {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn label<'a>(&self, ast: &crate::Ast<'a>) -> Ident {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn body<'a>(&self, ast: &crate::Ast<'a>) -> Stmt {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_label<'a>(&self, ast: &mut crate::Ast<'a>, label: Ident) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = label.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_body<'a>(&self, ast: &mut crate::Ast<'a>, body: Stmt) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+        };
     }
 }
-impl SetSpan for EmptyStmt {
+impl BreakStmt {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn label<'a>(&self, ast: &crate::Ast<'a>) -> Option<Ident> {
+        let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+        let opt = crate::OptionalNodeId::from_raw(raw);
+        opt.map(|id| unsafe { Ident::from_node_id_unchecked(id, ast) })
+    }
+    #[inline]
+    pub fn set_label<'a>(&self, ast: &mut crate::Ast<'a>, label: Option<Ident>) {
+        unsafe {
+            ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data =
+                crate::OptionalNodeId::from(label.map(|n| n.node_id())).into_raw()
+        };
     }
 }
-impl GetSpan for DebuggerStmt {
+impl ContinueStmt {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn label<'a>(&self, ast: &crate::Ast<'a>) -> Option<Ident> {
+        let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+        let opt = crate::OptionalNodeId::from_raw(raw);
+        opt.map(|id| unsafe { Ident::from_node_id_unchecked(id, ast) })
+    }
+    #[inline]
+    pub fn set_label<'a>(&self, ast: &mut crate::Ast<'a>, label: Option<Ident>) {
+        unsafe {
+            ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data =
+                crate::OptionalNodeId::from(label.map(|n| n.node_id())).into_raw()
+        };
     }
 }
-impl SetSpan for DebuggerStmt {
+impl IfStmt {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn test<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn cons<'a>(&self, ast: &crate::Ast<'a>) -> Stmt {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn alt<'a>(&self, ast: &crate::Ast<'a>) -> Option<Stmt> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_test<'a>(&self, ast: &mut crate::Ast<'a>, test: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = test.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_cons<'a>(&self, ast: &mut crate::Ast<'a>, cons: Stmt) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = cons.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_alt<'a>(&self, ast: &mut crate::Ast<'a>, alt: Option<Stmt>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = alt.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for WithStmt<'a> {
+impl SwitchStmt {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn discriminant<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn cases<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<SwitchCase> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_discriminant<'a>(&self, ast: &mut crate::Ast<'a>, discriminant: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = discriminant.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_cases<'a>(&self, ast: &mut crate::Ast<'a>, cases: TypedSubRange<SwitchCase>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = cases.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for WithStmt<'a> {
+impl ThrowStmt {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn arg<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_arg<'a>(&self, ast: &mut crate::Ast<'a>, arg: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = arg.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for ReturnStmt<'a> {
+impl TryStmt {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn block<'a>(&self, ast: &crate::Ast<'a>) -> BlockStmt {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn handler<'a>(&self, ast: &crate::Ast<'a>) -> Option<CatchClause> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn finalizer<'a>(&self, ast: &crate::Ast<'a>) -> Option<BlockStmt> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_block<'a>(&self, ast: &mut crate::Ast<'a>, block: BlockStmt) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = block.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_handler<'a>(&self, ast: &mut crate::Ast<'a>, handler: Option<CatchClause>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = handler.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_finalizer<'a>(&self, ast: &mut crate::Ast<'a>, finalizer: Option<BlockStmt>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = finalizer.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for ReturnStmt<'a> {
+impl WhileStmt {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn test<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn body<'a>(&self, ast: &crate::Ast<'a>) -> Stmt {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_test<'a>(&self, ast: &mut crate::Ast<'a>, test: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = test.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_body<'a>(&self, ast: &mut crate::Ast<'a>, body: Stmt) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for LabeledStmt<'a> {
+impl DoWhileStmt {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn test<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn body<'a>(&self, ast: &crate::Ast<'a>) -> Stmt {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_test<'a>(&self, ast: &mut crate::Ast<'a>, test: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = test.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_body<'a>(&self, ast: &mut crate::Ast<'a>, body: Stmt) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for LabeledStmt<'a> {
+impl ForStmt {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn init<'a>(&self, ast: &crate::Ast<'a>) -> Option<VarDeclOrExpr> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn test<'a>(&self, ast: &crate::Ast<'a>) -> Option<Expr> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn update<'a>(&self, ast: &crate::Ast<'a>) -> Option<Expr> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn body<'a>(&self, ast: &crate::Ast<'a>) -> Stmt {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_init<'a>(&self, ast: &mut crate::Ast<'a>, init: Option<VarDeclOrExpr>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = init.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_test<'a>(&self, ast: &mut crate::Ast<'a>, test: Option<Expr>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = test.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_update<'a>(&self, ast: &mut crate::Ast<'a>, update: Option<Expr>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = update.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_body<'a>(&self, ast: &mut crate::Ast<'a>, body: Stmt) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for BreakStmt<'a> {
+impl ForInStmt {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn left<'a>(&self, ast: &crate::Ast<'a>) -> ForHead {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn right<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn body<'a>(&self, ast: &crate::Ast<'a>) -> Stmt {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_left<'a>(&self, ast: &mut crate::Ast<'a>, left: ForHead) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = left.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_right<'a>(&self, ast: &mut crate::Ast<'a>, right: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = right.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_body<'a>(&self, ast: &mut crate::Ast<'a>, body: Stmt) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for BreakStmt<'a> {
+impl ForOfStmt {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn is_await<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn left<'a>(&self, ast: &crate::Ast<'a>) -> ForHead {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn right<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn body<'a>(&self, ast: &crate::Ast<'a>) -> Stmt {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_is_await<'a>(&self, ast: &mut crate::Ast<'a>, is_await: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = is_await.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_left<'a>(&self, ast: &mut crate::Ast<'a>, left: ForHead) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = left.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_right<'a>(&self, ast: &mut crate::Ast<'a>, right: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = right.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_body<'a>(&self, ast: &mut crate::Ast<'a>, body: Stmt) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for ContinueStmt<'a> {
+impl SwitchCase {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn test<'a>(&self, ast: &crate::Ast<'a>) -> Option<Expr> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn cons<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<Stmt> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_test<'a>(&self, ast: &mut crate::Ast<'a>, test: Option<Expr>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = test.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_cons<'a>(&self, ast: &mut crate::Ast<'a>, cons: TypedSubRange<Stmt>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = cons.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for ContinueStmt<'a> {
+impl CatchClause {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn param<'a>(&self, ast: &crate::Ast<'a>) -> Option<Pat> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn body<'a>(&self, ast: &crate::Ast<'a>) -> BlockStmt {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_param<'a>(&self, ast: &mut crate::Ast<'a>, param: Option<Pat>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = param.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_body<'a>(&self, ast: &mut crate::Ast<'a>, body: BlockStmt) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for IfStmt<'a> {
+impl ForHead {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for IfStmt<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for SwitchStmt<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for SwitchStmt<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for ThrowStmt<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for ThrowStmt<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for TryStmt<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for TryStmt<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for WhileStmt<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for WhileStmt<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for DoWhileStmt<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for DoWhileStmt<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for ForStmt<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for ForStmt<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for ForInStmt<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for ForInStmt<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for ForOfStmt<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for ForOfStmt<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for SwitchCase<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for SwitchCase<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for CatchClause<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for CatchClause<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> ForHead<'a> {
-    #[inline]
-    pub const fn is_var_decl(&self) -> bool {
-        matches!(self, Self::VarDecl { .. })
+    pub fn is_var_decl(&self) -> bool {
+        matches!(self, Self::VarDecl(_))
     }
     #[inline]
-    pub const fn is_using_decl(&self) -> bool {
-        matches!(self, Self::UsingDecl { .. })
+    pub fn is_using_decl(&self) -> bool {
+        matches!(self, Self::UsingDecl(_))
     }
     #[inline]
-    pub const fn is_pat(&self) -> bool {
-        matches!(self, Self::Pat { .. })
+    pub fn is_pat(&self) -> bool {
+        matches!(self, Self::Pat(_))
     }
     #[inline]
-    pub fn as_var_decl(&self) -> Option<&VarDecl<'a>> {
+    pub fn as_var_decl(self) -> Option<VarDecl> {
         match self {
             Self::VarDecl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_using_decl(&self) -> Option<&UsingDecl<'a>> {
+    pub fn as_using_decl(self) -> Option<UsingDecl> {
         match self {
             Self::UsingDecl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_pat(&self) -> Option<&Pat<'a>> {
-        match self {
-            Self::Pat(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_var_decl(&mut self) -> Option<&mut VarDecl<'a>> {
-        match self {
-            Self::VarDecl(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_using_decl(&mut self) -> Option<&mut UsingDecl<'a>> {
-        match self {
-            Self::UsingDecl(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_pat(&mut self) -> Option<&mut Pat<'a>> {
+    pub fn as_pat(self) -> Option<Pat> {
         match self {
             Self::Pat(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for ForHead<'a> {
+impl VarDeclOrExpr {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::VarDecl(it) => it.span(),
-            Self::UsingDecl(it) => it.span(),
-            Self::Pat(it) => it.span(),
-        }
-    }
-}
-impl<'a> SetSpan for ForHead<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::VarDecl(it) => it.set_span(span),
-            Self::UsingDecl(it) => it.set_span(span),
-            Self::Pat(it) => it.set_span(span),
-        }
-    }
-}
-impl<'a> VarDeclOrExpr<'a> {
-    #[inline]
-    pub const fn is_var_decl(&self) -> bool {
-        matches!(self, Self::VarDecl { .. })
+    pub fn is_var_decl(&self) -> bool {
+        matches!(self, Self::VarDecl(_))
     }
     #[inline]
-    pub const fn is_expr(&self) -> bool {
-        matches!(self, Self::Expr { .. })
+    pub fn is_expr(&self) -> bool {
+        matches!(self, Self::Expr(_))
     }
     #[inline]
-    pub fn as_var_decl(&self) -> Option<&VarDecl<'a>> {
+    pub fn as_var_decl(self) -> Option<VarDecl> {
         match self {
             Self::VarDecl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_expr(&self) -> Option<&Expr<'a>> {
-        match self {
-            Self::Expr(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_var_decl(&mut self) -> Option<&mut VarDecl<'a>> {
-        match self {
-            Self::VarDecl(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_expr(&mut self) -> Option<&mut Expr<'a>> {
+    pub fn as_expr(self) -> Option<Expr> {
         match self {
             Self::Expr(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for VarDeclOrExpr<'a> {
+impl Decl {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::VarDecl(it) => it.span(),
-            Self::Expr(it) => it.span(),
-        }
-    }
-}
-impl<'a> SetSpan for VarDeclOrExpr<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::VarDecl(it) => it.set_span(span),
-            Self::Expr(it) => it.set_span(span),
-        }
-    }
-}
-impl<'a> Decl<'a> {
-    #[inline]
-    pub const fn is_class(&self) -> bool {
-        matches!(self, Self::Class { .. })
+    pub fn is_class(&self) -> bool {
+        matches!(self, Self::Class(_))
     }
     #[inline]
-    pub const fn is_fn(&self) -> bool {
-        matches!(self, Self::Fn { .. })
+    pub fn is_fn(&self) -> bool {
+        matches!(self, Self::Fn(_))
     }
     #[inline]
-    pub const fn is_var(&self) -> bool {
-        matches!(self, Self::Var { .. })
+    pub fn is_var(&self) -> bool {
+        matches!(self, Self::Var(_))
     }
     #[inline]
-    pub const fn is_using(&self) -> bool {
-        matches!(self, Self::Using { .. })
+    pub fn is_using(&self) -> bool {
+        matches!(self, Self::Using(_))
     }
     #[inline]
-    pub fn as_class(&self) -> Option<&ClassDecl<'a>> {
+    pub fn as_class(self) -> Option<ClassDecl> {
         match self {
             Self::Class(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_fn(&self) -> Option<&FnDecl<'a>> {
+    pub fn as_fn(self) -> Option<FnDecl> {
         match self {
             Self::Fn(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_var(&self) -> Option<&VarDecl<'a>> {
+    pub fn as_var(self) -> Option<VarDecl> {
         match self {
             Self::Var(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_using(&self) -> Option<&UsingDecl<'a>> {
-        match self {
-            Self::Using(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_class(&mut self) -> Option<&mut ClassDecl<'a>> {
-        match self {
-            Self::Class(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_fn(&mut self) -> Option<&mut FnDecl<'a>> {
-        match self {
-            Self::Fn(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_var(&mut self) -> Option<&mut VarDecl<'a>> {
-        match self {
-            Self::Var(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_using(&mut self) -> Option<&mut UsingDecl<'a>> {
+    pub fn as_using(self) -> Option<UsingDecl> {
         match self {
             Self::Using(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for Decl<'a> {
+impl FnDecl {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Class(it) => it.span(),
-            Self::Fn(it) => it.span(),
-            Self::Var(it) => it.span(),
-            Self::Using(it) => it.span(),
+    pub fn ident<'a>(&self, ast: &crate::Ast<'a>) -> Ident {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for Decl<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Class(it) => it.set_span(span),
-            Self::Fn(it) => it.set_span(span),
-            Self::Var(it) => it.set_span(span),
-            Self::Using(it) => it.set_span(span),
+    pub fn declare<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for FnDecl<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        self.function.span()
+    pub fn function<'a>(&self, ast: &crate::Ast<'a>) -> Function {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_ident<'a>(&self, ast: &mut crate::Ast<'a>, ident: Ident) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = ident.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_declare<'a>(&self, ast: &mut crate::Ast<'a>, declare: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = declare.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_function<'a>(&self, ast: &mut crate::Ast<'a>, function: Function) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = function.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for FnDecl<'a> {
+impl ClassDecl {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.function.set_span(span);
+    pub fn ident<'a>(&self, ast: &crate::Ast<'a>) -> Ident {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn declare<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn class<'a>(&self, ast: &crate::Ast<'a>) -> Class {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_ident<'a>(&self, ast: &mut crate::Ast<'a>, ident: Ident) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = ident.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_declare<'a>(&self, ast: &mut crate::Ast<'a>, declare: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = declare.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_class<'a>(&self, ast: &mut crate::Ast<'a>, class: Class) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = class.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for ClassDecl<'a> {
+impl VarDecl {
     #[inline]
-    fn span(&self) -> Span {
-        self.class.span()
+    pub fn kind<'a>(&self, ast: &crate::Ast<'a>) -> VarDeclKind {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn declare<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn decls<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<VarDeclarator> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_kind<'a>(&self, ast: &mut crate::Ast<'a>, kind: VarDeclKind) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = kind.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_declare<'a>(&self, ast: &mut crate::Ast<'a>, declare: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = declare.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_decls<'a>(&self, ast: &mut crate::Ast<'a>, decls: TypedSubRange<VarDeclarator>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = decls.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for ClassDecl<'a> {
+impl VarDeclarator {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.class.set_span(span);
+    pub fn name<'a>(&self, ast: &crate::Ast<'a>) -> Pat {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn init<'a>(&self, ast: &crate::Ast<'a>) -> Option<Expr> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_name<'a>(&self, ast: &mut crate::Ast<'a>, name: Pat) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = name.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_init<'a>(&self, ast: &mut crate::Ast<'a>, init: Option<Expr>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = init.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for VarDecl<'a> {
+impl UsingDecl {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn is_await<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn decls<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<VarDeclarator> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_is_await<'a>(&self, ast: &mut crate::Ast<'a>, is_await: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = is_await.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_decls<'a>(&self, ast: &mut crate::Ast<'a>, decls: TypedSubRange<VarDeclarator>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = decls.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for VarDecl<'a> {
+impl Expr {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for VarDeclarator<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for VarDeclarator<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for UsingDecl<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for UsingDecl<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> Expr<'a> {
-    #[inline]
-    pub const fn is_this(&self) -> bool {
-        matches!(self, Self::This { .. })
+    pub fn is_this(&self) -> bool {
+        matches!(self, Self::This(_))
     }
     #[inline]
-    pub const fn is_array(&self) -> bool {
-        matches!(self, Self::Array { .. })
+    pub fn is_array(&self) -> bool {
+        matches!(self, Self::Array(_))
     }
     #[inline]
-    pub const fn is_object(&self) -> bool {
-        matches!(self, Self::Object { .. })
+    pub fn is_object(&self) -> bool {
+        matches!(self, Self::Object(_))
     }
     #[inline]
-    pub const fn is_fn(&self) -> bool {
-        matches!(self, Self::Fn { .. })
+    pub fn is_fn(&self) -> bool {
+        matches!(self, Self::Fn(_))
     }
     #[inline]
-    pub const fn is_unary(&self) -> bool {
-        matches!(self, Self::Unary { .. })
+    pub fn is_unary(&self) -> bool {
+        matches!(self, Self::Unary(_))
     }
     #[inline]
-    pub const fn is_update(&self) -> bool {
-        matches!(self, Self::Update { .. })
+    pub fn is_update(&self) -> bool {
+        matches!(self, Self::Update(_))
     }
     #[inline]
-    pub const fn is_bin(&self) -> bool {
-        matches!(self, Self::Bin { .. })
+    pub fn is_bin(&self) -> bool {
+        matches!(self, Self::Bin(_))
     }
     #[inline]
-    pub const fn is_assign(&self) -> bool {
-        matches!(self, Self::Assign { .. })
+    pub fn is_assign(&self) -> bool {
+        matches!(self, Self::Assign(_))
     }
     #[inline]
-    pub const fn is_member(&self) -> bool {
-        matches!(self, Self::Member { .. })
+    pub fn is_member(&self) -> bool {
+        matches!(self, Self::Member(_))
     }
     #[inline]
-    pub const fn is_super_prop(&self) -> bool {
-        matches!(self, Self::SuperProp { .. })
+    pub fn is_super_prop(&self) -> bool {
+        matches!(self, Self::SuperProp(_))
     }
     #[inline]
-    pub const fn is_cond(&self) -> bool {
-        matches!(self, Self::Cond { .. })
+    pub fn is_cond(&self) -> bool {
+        matches!(self, Self::Cond(_))
     }
     #[inline]
-    pub const fn is_import(&self) -> bool {
-        matches!(self, Self::Import { .. })
+    pub fn is_import(&self) -> bool {
+        matches!(self, Self::Import(_))
     }
     #[inline]
-    pub const fn is_call(&self) -> bool {
-        matches!(self, Self::Call { .. })
+    pub fn is_call(&self) -> bool {
+        matches!(self, Self::Call(_))
     }
     #[inline]
-    pub const fn is_new(&self) -> bool {
-        matches!(self, Self::New { .. })
+    pub fn is_new(&self) -> bool {
+        matches!(self, Self::New(_))
     }
     #[inline]
-    pub const fn is_seq(&self) -> bool {
-        matches!(self, Self::Seq { .. })
+    pub fn is_seq(&self) -> bool {
+        matches!(self, Self::Seq(_))
     }
     #[inline]
-    pub const fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident { .. })
+    pub fn is_ident(&self) -> bool {
+        matches!(self, Self::Ident(_))
     }
     #[inline]
-    pub const fn is_lit(&self) -> bool {
-        matches!(self, Self::Lit { .. })
+    pub fn is_lit(&self) -> bool {
+        matches!(self, Self::Lit(_))
     }
     #[inline]
-    pub const fn is_tpl(&self) -> bool {
-        matches!(self, Self::Tpl { .. })
+    pub fn is_tpl(&self) -> bool {
+        matches!(self, Self::Tpl(_))
     }
     #[inline]
-    pub const fn is_tagged_tpl(&self) -> bool {
-        matches!(self, Self::TaggedTpl { .. })
+    pub fn is_tagged_tpl(&self) -> bool {
+        matches!(self, Self::TaggedTpl(_))
     }
     #[inline]
-    pub const fn is_arrow(&self) -> bool {
-        matches!(self, Self::Arrow { .. })
+    pub fn is_arrow(&self) -> bool {
+        matches!(self, Self::Arrow(_))
     }
     #[inline]
-    pub const fn is_class(&self) -> bool {
-        matches!(self, Self::Class { .. })
+    pub fn is_class(&self) -> bool {
+        matches!(self, Self::Class(_))
     }
     #[inline]
-    pub const fn is_yield(&self) -> bool {
-        matches!(self, Self::Yield { .. })
+    pub fn is_yield(&self) -> bool {
+        matches!(self, Self::Yield(_))
     }
     #[inline]
-    pub const fn is_meta_prop(&self) -> bool {
-        matches!(self, Self::MetaProp { .. })
+    pub fn is_meta_prop(&self) -> bool {
+        matches!(self, Self::MetaProp(_))
     }
     #[inline]
-    pub const fn is_await(&self) -> bool {
-        matches!(self, Self::Await { .. })
+    pub fn is_await(&self) -> bool {
+        matches!(self, Self::Await(_))
     }
     #[inline]
-    pub const fn is_paren(&self) -> bool {
-        matches!(self, Self::Paren { .. })
+    pub fn is_paren(&self) -> bool {
+        matches!(self, Self::Paren(_))
     }
     #[inline]
-    pub const fn is_jsx_member(&self) -> bool {
-        matches!(self, Self::JSXMember { .. })
+    pub fn is_jsx_member(&self) -> bool {
+        matches!(self, Self::JSXMember(_))
     }
     #[inline]
-    pub const fn is_jsx_namespaced_name(&self) -> bool {
-        matches!(self, Self::JSXNamespacedName { .. })
+    pub fn is_jsx_namespaced_name(&self) -> bool {
+        matches!(self, Self::JSXNamespacedName(_))
     }
     #[inline]
-    pub const fn is_jsx_empty(&self) -> bool {
-        matches!(self, Self::JSXEmpty { .. })
+    pub fn is_jsx_empty(&self) -> bool {
+        matches!(self, Self::JSXEmpty(_))
     }
     #[inline]
-    pub const fn is_jsx_element(&self) -> bool {
-        matches!(self, Self::JSXElement { .. })
+    pub fn is_jsx_element(&self) -> bool {
+        matches!(self, Self::JSXElement(_))
     }
     #[inline]
-    pub const fn is_jsx_fragment(&self) -> bool {
-        matches!(self, Self::JSXFragment { .. })
+    pub fn is_jsx_fragment(&self) -> bool {
+        matches!(self, Self::JSXFragment(_))
     }
     #[inline]
-    pub const fn is_private_name(&self) -> bool {
-        matches!(self, Self::PrivateName { .. })
+    pub fn is_private_name(&self) -> bool {
+        matches!(self, Self::PrivateName(_))
     }
     #[inline]
-    pub const fn is_opt_chain(&self) -> bool {
-        matches!(self, Self::OptChain { .. })
+    pub fn is_opt_chain(&self) -> bool {
+        matches!(self, Self::OptChain(_))
     }
     #[inline]
-    pub const fn is_invalid(&self) -> bool {
-        matches!(self, Self::Invalid { .. })
+    pub fn is_invalid(&self) -> bool {
+        matches!(self, Self::Invalid(_))
     }
     #[inline]
-    pub fn as_this(&self) -> Option<&ThisExpr> {
+    pub fn as_this(self) -> Option<ThisExpr> {
         match self {
             Self::This(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_array(&self) -> Option<&ArrayLit<'a>> {
+    pub fn as_array(self) -> Option<ArrayLit> {
         match self {
             Self::Array(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_object(&self) -> Option<&ObjectLit<'a>> {
+    pub fn as_object(self) -> Option<ObjectLit> {
         match self {
             Self::Object(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_fn(&self) -> Option<&FnExpr<'a>> {
+    pub fn as_fn(self) -> Option<FnExpr> {
         match self {
             Self::Fn(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_unary(&self) -> Option<&UnaryExpr<'a>> {
+    pub fn as_unary(self) -> Option<UnaryExpr> {
         match self {
             Self::Unary(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_update(&self) -> Option<&UpdateExpr<'a>> {
+    pub fn as_update(self) -> Option<UpdateExpr> {
         match self {
             Self::Update(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_bin(&self) -> Option<&BinExpr<'a>> {
+    pub fn as_bin(self) -> Option<BinExpr> {
         match self {
             Self::Bin(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_assign(&self) -> Option<&AssignExpr<'a>> {
+    pub fn as_assign(self) -> Option<AssignExpr> {
         match self {
             Self::Assign(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_member(&self) -> Option<&MemberExpr<'a>> {
+    pub fn as_member(self) -> Option<MemberExpr> {
         match self {
             Self::Member(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_super_prop(&self) -> Option<&SuperPropExpr<'a>> {
+    pub fn as_super_prop(self) -> Option<SuperPropExpr> {
         match self {
             Self::SuperProp(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_cond(&self) -> Option<&CondExpr<'a>> {
+    pub fn as_cond(self) -> Option<CondExpr> {
         match self {
             Self::Cond(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_import(&self) -> Option<&ImportExpr<'a>> {
+    pub fn as_import(self) -> Option<ImportExpr> {
         match self {
             Self::Import(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_call(&self) -> Option<&CallExpr<'a>> {
+    pub fn as_call(self) -> Option<CallExpr> {
         match self {
             Self::Call(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_new(&self) -> Option<&NewExpr<'a>> {
+    pub fn as_new(self) -> Option<NewExpr> {
         match self {
             Self::New(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_seq(&self) -> Option<&SeqExpr<'a>> {
+    pub fn as_seq(self) -> Option<SeqExpr> {
         match self {
             Self::Seq(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_ident(&self) -> Option<&Ident<'a>> {
+    pub fn as_ident(self) -> Option<Ident> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_lit(&self) -> Option<&Lit<'a>> {
+    pub fn as_lit(self) -> Option<Lit> {
         match self {
             Self::Lit(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_tpl(&self) -> Option<&Tpl<'a>> {
+    pub fn as_tpl(self) -> Option<Tpl> {
         match self {
             Self::Tpl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_tagged_tpl(&self) -> Option<&TaggedTpl<'a>> {
+    pub fn as_tagged_tpl(self) -> Option<TaggedTpl> {
         match self {
             Self::TaggedTpl(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_arrow(&self) -> Option<&ArrowExpr<'a>> {
+    pub fn as_arrow(self) -> Option<ArrowExpr> {
         match self {
             Self::Arrow(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_class(&self) -> Option<&ClassExpr<'a>> {
+    pub fn as_class(self) -> Option<ClassExpr> {
         match self {
             Self::Class(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_yield(&self) -> Option<&YieldExpr<'a>> {
+    pub fn as_yield(self) -> Option<YieldExpr> {
         match self {
             Self::Yield(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_meta_prop(&self) -> Option<&MetaPropExpr> {
+    pub fn as_meta_prop(self) -> Option<MetaPropExpr> {
         match self {
             Self::MetaProp(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_await(&self) -> Option<&AwaitExpr<'a>> {
+    pub fn as_await(self) -> Option<AwaitExpr> {
         match self {
             Self::Await(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_paren(&self) -> Option<&ParenExpr<'a>> {
+    pub fn as_paren(self) -> Option<ParenExpr> {
         match self {
             Self::Paren(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_member(&self) -> Option<&JSXMemberExpr<'a>> {
+    pub fn as_jsx_member(self) -> Option<JSXMemberExpr> {
         match self {
             Self::JSXMember(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_namespaced_name(&self) -> Option<&JSXNamespacedName<'a>> {
+    pub fn as_jsx_namespaced_name(self) -> Option<JSXNamespacedName> {
         match self {
             Self::JSXNamespacedName(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_empty(&self) -> Option<&JSXEmptyExpr> {
+    pub fn as_jsx_empty(self) -> Option<JSXEmptyExpr> {
         match self {
             Self::JSXEmpty(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_element(&self) -> Option<&JSXElement<'a>> {
+    pub fn as_jsx_element(self) -> Option<JSXElement> {
         match self {
             Self::JSXElement(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_fragment(&self) -> Option<&JSXFragment<'a>> {
+    pub fn as_jsx_fragment(self) -> Option<JSXFragment> {
         match self {
             Self::JSXFragment(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_private_name(&self) -> Option<&PrivateName<'a>> {
+    pub fn as_private_name(self) -> Option<PrivateName> {
         match self {
             Self::PrivateName(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_opt_chain(&self) -> Option<&OptChainExpr<'a>> {
+    pub fn as_opt_chain(self) -> Option<OptChainExpr> {
         match self {
             Self::OptChain(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_invalid(&self) -> Option<&Invalid> {
-        match self {
-            Self::Invalid(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_this(&mut self) -> Option<&mut ThisExpr> {
-        match self {
-            Self::This(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_array(&mut self) -> Option<&mut ArrayLit<'a>> {
-        match self {
-            Self::Array(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_object(&mut self) -> Option<&mut ObjectLit<'a>> {
-        match self {
-            Self::Object(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_fn(&mut self) -> Option<&mut FnExpr<'a>> {
-        match self {
-            Self::Fn(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_unary(&mut self) -> Option<&mut UnaryExpr<'a>> {
-        match self {
-            Self::Unary(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_update(&mut self) -> Option<&mut UpdateExpr<'a>> {
-        match self {
-            Self::Update(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_bin(&mut self) -> Option<&mut BinExpr<'a>> {
-        match self {
-            Self::Bin(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_assign(&mut self) -> Option<&mut AssignExpr<'a>> {
-        match self {
-            Self::Assign(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_member(&mut self) -> Option<&mut MemberExpr<'a>> {
-        match self {
-            Self::Member(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_super_prop(&mut self) -> Option<&mut SuperPropExpr<'a>> {
-        match self {
-            Self::SuperProp(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_cond(&mut self) -> Option<&mut CondExpr<'a>> {
-        match self {
-            Self::Cond(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_import(&mut self) -> Option<&mut ImportExpr<'a>> {
-        match self {
-            Self::Import(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_call(&mut self) -> Option<&mut CallExpr<'a>> {
-        match self {
-            Self::Call(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_new(&mut self) -> Option<&mut NewExpr<'a>> {
-        match self {
-            Self::New(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_seq(&mut self) -> Option<&mut SeqExpr<'a>> {
-        match self {
-            Self::Seq(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_ident(&mut self) -> Option<&mut Ident<'a>> {
-        match self {
-            Self::Ident(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_lit(&mut self) -> Option<&mut Lit<'a>> {
-        match self {
-            Self::Lit(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_tpl(&mut self) -> Option<&mut Tpl<'a>> {
-        match self {
-            Self::Tpl(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_tagged_tpl(&mut self) -> Option<&mut TaggedTpl<'a>> {
-        match self {
-            Self::TaggedTpl(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_arrow(&mut self) -> Option<&mut ArrowExpr<'a>> {
-        match self {
-            Self::Arrow(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_class(&mut self) -> Option<&mut ClassExpr<'a>> {
-        match self {
-            Self::Class(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_yield(&mut self) -> Option<&mut YieldExpr<'a>> {
-        match self {
-            Self::Yield(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_meta_prop(&mut self) -> Option<&mut MetaPropExpr> {
-        match self {
-            Self::MetaProp(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_await(&mut self) -> Option<&mut AwaitExpr<'a>> {
-        match self {
-            Self::Await(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_paren(&mut self) -> Option<&mut ParenExpr<'a>> {
-        match self {
-            Self::Paren(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_jsx_member(&mut self) -> Option<&mut JSXMemberExpr<'a>> {
-        match self {
-            Self::JSXMember(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_jsx_namespaced_name(&mut self) -> Option<&mut JSXNamespacedName<'a>> {
-        match self {
-            Self::JSXNamespacedName(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_jsx_empty(&mut self) -> Option<&mut JSXEmptyExpr> {
-        match self {
-            Self::JSXEmpty(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_jsx_element(&mut self) -> Option<&mut JSXElement<'a>> {
-        match self {
-            Self::JSXElement(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_jsx_fragment(&mut self) -> Option<&mut JSXFragment<'a>> {
-        match self {
-            Self::JSXFragment(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_private_name(&mut self) -> Option<&mut PrivateName<'a>> {
-        match self {
-            Self::PrivateName(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_opt_chain(&mut self) -> Option<&mut OptChainExpr<'a>> {
-        match self {
-            Self::OptChain(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_invalid(&mut self) -> Option<&mut Invalid> {
+    pub fn as_invalid(self) -> Option<Invalid> {
         match self {
             Self::Invalid(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for Expr<'a> {
+impl ThisExpr {}
+impl ArrayLit {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::This(it) => it.span(),
-            Self::Array(it) => it.span(),
-            Self::Object(it) => it.span(),
-            Self::Fn(it) => it.span(),
-            Self::Unary(it) => it.span(),
-            Self::Update(it) => it.span(),
-            Self::Bin(it) => it.span(),
-            Self::Assign(it) => it.span(),
-            Self::Member(it) => it.span(),
-            Self::SuperProp(it) => it.span(),
-            Self::Cond(it) => it.span(),
-            Self::Import(it) => it.span(),
-            Self::Call(it) => it.span(),
-            Self::New(it) => it.span(),
-            Self::Seq(it) => it.span(),
-            Self::Ident(it) => it.span(),
-            Self::Lit(it) => it.span(),
-            Self::Tpl(it) => it.span(),
-            Self::TaggedTpl(it) => it.span(),
-            Self::Arrow(it) => it.span(),
-            Self::Class(it) => it.span(),
-            Self::Yield(it) => it.span(),
-            Self::MetaProp(it) => it.span(),
-            Self::Await(it) => it.span(),
-            Self::Paren(it) => it.span(),
-            Self::JSXMember(it) => it.span(),
-            Self::JSXNamespacedName(it) => it.span(),
-            Self::JSXEmpty(it) => it.span(),
-            Self::JSXElement(it) => it.span(),
-            Self::JSXFragment(it) => it.span(),
-            Self::PrivateName(it) => it.span(),
-            Self::OptChain(it) => it.span(),
-            Self::Invalid(it) => it.span(),
+    pub fn elems<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<Option<ExprOrSpread>> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for Expr<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::This(it) => it.set_span(span),
-            Self::Array(it) => it.set_span(span),
-            Self::Object(it) => it.set_span(span),
-            Self::Fn(it) => it.set_span(span),
-            Self::Unary(it) => it.set_span(span),
-            Self::Update(it) => it.set_span(span),
-            Self::Bin(it) => it.set_span(span),
-            Self::Assign(it) => it.set_span(span),
-            Self::Member(it) => it.set_span(span),
-            Self::SuperProp(it) => it.set_span(span),
-            Self::Cond(it) => it.set_span(span),
-            Self::Import(it) => it.set_span(span),
-            Self::Call(it) => it.set_span(span),
-            Self::New(it) => it.set_span(span),
-            Self::Seq(it) => it.set_span(span),
-            Self::Ident(it) => it.set_span(span),
-            Self::Lit(it) => it.set_span(span),
-            Self::Tpl(it) => it.set_span(span),
-            Self::TaggedTpl(it) => it.set_span(span),
-            Self::Arrow(it) => it.set_span(span),
-            Self::Class(it) => it.set_span(span),
-            Self::Yield(it) => it.set_span(span),
-            Self::MetaProp(it) => it.set_span(span),
-            Self::Await(it) => it.set_span(span),
-            Self::Paren(it) => it.set_span(span),
-            Self::JSXMember(it) => it.set_span(span),
-            Self::JSXNamespacedName(it) => it.set_span(span),
-            Self::JSXEmpty(it) => it.set_span(span),
-            Self::JSXElement(it) => it.set_span(span),
-            Self::JSXFragment(it) => it.set_span(span),
-            Self::PrivateName(it) => it.set_span(span),
-            Self::OptChain(it) => it.set_span(span),
-            Self::Invalid(it) => it.set_span(span),
+    pub fn set_elems<'a>(
+        &self,
+        ast: &mut crate::Ast<'a>,
+        elems: TypedSubRange<Option<ExprOrSpread>>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = elems.to_extra_data();
+        };
+    }
+}
+impl ObjectLit {
+    #[inline]
+    pub fn props<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<PropOrSpread> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl GetSpan for ThisExpr {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn set_props<'a>(&self, ast: &mut crate::Ast<'a>, props: TypedSubRange<PropOrSpread>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = props.to_extra_data();
+        };
     }
 }
-impl SetSpan for ThisExpr {
+impl PropOrSpread {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for ArrayLit<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for ArrayLit<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for ObjectLit<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for ObjectLit<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> PropOrSpread<'a> {
-    #[inline]
-    pub const fn is_spread(&self) -> bool {
-        matches!(self, Self::Spread { .. })
+    pub fn is_spread(&self) -> bool {
+        matches!(self, Self::Spread(_))
     }
     #[inline]
-    pub const fn is_prop(&self) -> bool {
-        matches!(self, Self::Prop { .. })
+    pub fn is_prop(&self) -> bool {
+        matches!(self, Self::Prop(_))
     }
     #[inline]
-    pub fn as_spread(&self) -> Option<&SpreadElement<'a>> {
+    pub fn as_spread(self) -> Option<SpreadElement> {
         match self {
             Self::Spread(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_prop(&self) -> Option<&Prop<'a>> {
-        match self {
-            Self::Prop(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_spread(&mut self) -> Option<&mut SpreadElement<'a>> {
-        match self {
-            Self::Spread(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_prop(&mut self) -> Option<&mut Prop<'a>> {
+    pub fn as_prop(self) -> Option<Prop> {
         match self {
             Self::Prop(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for PropOrSpread<'a> {
+impl SpreadElement {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Spread(it) => it.span(),
-            Self::Prop(it) => it.span(),
+    pub fn dot_3_token<'a>(&self, ast: &crate::Ast<'a>) -> Span {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for PropOrSpread<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Spread(it) => it.set_span(span),
-            Self::Prop(it) => it.set_span(span),
+    pub fn expr<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for SpreadElement<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        Span::new(self.dot3_token.start, self.expr.span_hi())
+    pub fn set_dot3_token<'a>(&self, ast: &mut crate::Ast<'a>, dot3_token: Span) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = dot3_token.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_expr<'a>(&self, ast: &mut crate::Ast<'a>, expr: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = expr.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for SpreadElement<'a> {
+impl UnaryExpr {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.dot3_token.start = span.start;
-        let current = self.expr.span();
-        self.expr.set_span(Span::new(current.start, span.end));
+    pub fn op<'a>(&self, ast: &crate::Ast<'a>) -> UnaryOp {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn arg<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_op<'a>(&self, ast: &mut crate::Ast<'a>, op: UnaryOp) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = op.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_arg<'a>(&self, ast: &mut crate::Ast<'a>, arg: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = arg.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for UnaryExpr<'a> {
+impl UpdateExpr {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn op<'a>(&self, ast: &crate::Ast<'a>) -> UpdateOp {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn prefix<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn arg<'a>(&self, ast: &crate::Ast<'a>) -> SimpleAssignTarget {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_op<'a>(&self, ast: &mut crate::Ast<'a>, op: UpdateOp) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = op.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_prefix<'a>(&self, ast: &mut crate::Ast<'a>, prefix: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = prefix.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_arg<'a>(&self, ast: &mut crate::Ast<'a>, arg: SimpleAssignTarget) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = arg.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for UnaryExpr<'a> {
+impl BinExpr {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn op<'a>(&self, ast: &crate::Ast<'a>) -> BinaryOp {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn left<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn right<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_op<'a>(&self, ast: &mut crate::Ast<'a>, op: BinaryOp) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = op.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_left<'a>(&self, ast: &mut crate::Ast<'a>, left: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = left.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_right<'a>(&self, ast: &mut crate::Ast<'a>, right: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = right.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for UpdateExpr<'a> {
+impl FnExpr {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn ident<'a>(&self, ast: &crate::Ast<'a>) -> Option<Ident> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn function<'a>(&self, ast: &crate::Ast<'a>) -> Function {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_ident<'a>(&self, ast: &mut crate::Ast<'a>, ident: Option<Ident>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = ident.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_function<'a>(&self, ast: &mut crate::Ast<'a>, function: Function) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = function.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for UpdateExpr<'a> {
+impl ClassExpr {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn ident<'a>(&self, ast: &crate::Ast<'a>) -> Option<Ident> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn class<'a>(&self, ast: &crate::Ast<'a>) -> Class {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_ident<'a>(&self, ast: &mut crate::Ast<'a>, ident: Option<Ident>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = ident.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_class<'a>(&self, ast: &mut crate::Ast<'a>, class: Class) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = class.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for BinExpr<'a> {
+impl AssignExpr {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn op<'a>(&self, ast: &crate::Ast<'a>) -> AssignOp {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn left<'a>(&self, ast: &crate::Ast<'a>) -> AssignTarget {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn right<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_op<'a>(&self, ast: &mut crate::Ast<'a>, op: AssignOp) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = op.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_left<'a>(&self, ast: &mut crate::Ast<'a>, left: AssignTarget) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = left.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_right<'a>(&self, ast: &mut crate::Ast<'a>, right: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = right.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for BinExpr<'a> {
+impl MemberExpr {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn obj<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn prop<'a>(&self, ast: &crate::Ast<'a>) -> MemberProp {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_obj<'a>(&self, ast: &mut crate::Ast<'a>, obj: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = obj.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_prop<'a>(&self, ast: &mut crate::Ast<'a>, prop: MemberProp) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = prop.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for FnExpr<'a> {
+impl MemberProp {
     #[inline]
-    fn span(&self) -> Span {
-        self.function.span()
-    }
-}
-impl<'a> SetSpan for FnExpr<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.function.set_span(span);
-    }
-}
-impl<'a> GetSpan for ClassExpr<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.class.span()
-    }
-}
-impl<'a> SetSpan for ClassExpr<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.class.set_span(span);
-    }
-}
-impl<'a> GetSpan for AssignExpr<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for AssignExpr<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for MemberExpr<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for MemberExpr<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> MemberProp<'a> {
-    #[inline]
-    pub const fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident { .. })
+    pub fn is_ident(&self) -> bool {
+        matches!(self, Self::Ident(_))
     }
     #[inline]
-    pub const fn is_private_name(&self) -> bool {
-        matches!(self, Self::PrivateName { .. })
+    pub fn is_private_name(&self) -> bool {
+        matches!(self, Self::PrivateName(_))
     }
     #[inline]
-    pub const fn is_computed(&self) -> bool {
-        matches!(self, Self::Computed { .. })
+    pub fn is_computed(&self) -> bool {
+        matches!(self, Self::Computed(_))
     }
     #[inline]
-    pub fn as_ident(&self) -> Option<&IdentName<'a>> {
+    pub fn as_ident(self) -> Option<IdentName> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_private_name(&self) -> Option<&PrivateName<'a>> {
+    pub fn as_private_name(self) -> Option<PrivateName> {
         match self {
             Self::PrivateName(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_computed(&self) -> Option<&ComputedPropName<'a>> {
+    pub fn as_computed(self) -> Option<ComputedPropName> {
         match self {
             Self::Computed(it) => Some(it),
             _ => None,
         }
     }
+}
+impl SuperPropExpr {
     #[inline]
-    pub fn as_mut_ident(&mut self) -> Option<&mut IdentName<'a>> {
+    pub fn obj<'a>(&self, ast: &crate::Ast<'a>) -> Super {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn prop<'a>(&self, ast: &crate::Ast<'a>) -> SuperProp {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_obj<'a>(&self, ast: &mut crate::Ast<'a>, obj: Super) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = obj.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_prop<'a>(&self, ast: &mut crate::Ast<'a>, prop: SuperProp) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = prop.to_extra_data();
+        };
+    }
+}
+impl SuperProp {
+    #[inline]
+    pub fn is_ident(&self) -> bool {
+        matches!(self, Self::Ident(_))
+    }
+    #[inline]
+    pub fn is_computed(&self) -> bool {
+        matches!(self, Self::Computed(_))
+    }
+    #[inline]
+    pub fn as_ident(self) -> Option<IdentName> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_mut_private_name(&mut self) -> Option<&mut PrivateName<'a>> {
-        match self {
-            Self::PrivateName(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_computed(&mut self) -> Option<&mut ComputedPropName<'a>> {
+    pub fn as_computed(self) -> Option<ComputedPropName> {
         match self {
             Self::Computed(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for MemberProp<'a> {
+impl CondExpr {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Ident(it) => it.span(),
-            Self::PrivateName(it) => it.span(),
-            Self::Computed(it) => it.span(),
-        }
-    }
-}
-impl<'a> SetSpan for MemberProp<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Ident(it) => it.set_span(span),
-            Self::PrivateName(it) => it.set_span(span),
-            Self::Computed(it) => it.set_span(span),
-        }
-    }
-}
-impl<'a> GetSpan for SuperPropExpr<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for SuperPropExpr<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> SuperProp<'a> {
-    #[inline]
-    pub const fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident { .. })
-    }
-    #[inline]
-    pub const fn is_computed(&self) -> bool {
-        matches!(self, Self::Computed { .. })
-    }
-    #[inline]
-    pub fn as_ident(&self) -> Option<&IdentName<'a>> {
-        match self {
-            Self::Ident(it) => Some(it),
-            _ => None,
+    pub fn test<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
     #[inline]
-    pub fn as_computed(&self) -> Option<&ComputedPropName<'a>> {
-        match self {
-            Self::Computed(it) => Some(it),
-            _ => None,
+    pub fn cons<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
     #[inline]
-    pub fn as_mut_ident(&mut self) -> Option<&mut IdentName<'a>> {
-        match self {
-            Self::Ident(it) => Some(it),
-            _ => None,
+    pub fn alt<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
     #[inline]
-    pub fn as_mut_computed(&mut self) -> Option<&mut ComputedPropName<'a>> {
-        match self {
-            Self::Computed(it) => Some(it),
-            _ => None,
+    pub fn set_test<'a>(&self, ast: &mut crate::Ast<'a>, test: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = test.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_cons<'a>(&self, ast: &mut crate::Ast<'a>, cons: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = cons.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_alt<'a>(&self, ast: &mut crate::Ast<'a>, alt: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = alt.to_extra_data();
+        };
+    }
+}
+impl ImportExpr {
+    #[inline]
+    pub fn import_span<'a>(&self, ast: &crate::Ast<'a>) -> Span {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for SuperProp<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Ident(it) => it.span(),
-            Self::Computed(it) => it.span(),
+    pub fn source<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for SuperProp<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Ident(it) => it.set_span(span),
-            Self::Computed(it) => it.set_span(span),
+    pub fn options<'a>(&self, ast: &crate::Ast<'a>) -> Option<Expr> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for CondExpr<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn phase<'a>(&self, ast: &crate::Ast<'a>) -> ImportPhase {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_import_span<'a>(&self, ast: &mut crate::Ast<'a>, import_span: Span) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = import_span.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_source<'a>(&self, ast: &mut crate::Ast<'a>, source: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = source.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_options<'a>(&self, ast: &mut crate::Ast<'a>, options: Option<Expr>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = options.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_phase<'a>(&self, ast: &mut crate::Ast<'a>, phase: ImportPhase) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = phase.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for CondExpr<'a> {
+impl CallExpr {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn callee<'a>(&self, ast: &crate::Ast<'a>) -> Callee {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn args<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<ExprOrSpread> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_callee<'a>(&self, ast: &mut crate::Ast<'a>, callee: Callee) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = callee.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_args<'a>(&self, ast: &mut crate::Ast<'a>, args: TypedSubRange<ExprOrSpread>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = args.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for ImportExpr<'a> {
+impl NewExpr {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn callee<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn args<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<ExprOrSpread> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_callee<'a>(&self, ast: &mut crate::Ast<'a>, callee: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = callee.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_args<'a>(&self, ast: &mut crate::Ast<'a>, args: TypedSubRange<ExprOrSpread>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = args.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for ImportExpr<'a> {
+impl SeqExpr {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn exprs<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<Expr> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_exprs<'a>(&self, ast: &mut crate::Ast<'a>, exprs: TypedSubRange<Expr>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = exprs.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for CallExpr<'a> {
+impl ArrowExpr {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn params<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<Pat> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn body<'a>(&self, ast: &crate::Ast<'a>) -> BlockStmtOrExpr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_async<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_params<'a>(&self, ast: &mut crate::Ast<'a>, params: TypedSubRange<Pat>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = params.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_body<'a>(&self, ast: &mut crate::Ast<'a>, body: BlockStmtOrExpr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_async<'a>(&self, ast: &mut crate::Ast<'a>, is_async: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = is_async.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for CallExpr<'a> {
+impl YieldExpr {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn arg<'a>(&self, ast: &crate::Ast<'a>) -> Option<Expr> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn delegate<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_arg<'a>(&self, ast: &mut crate::Ast<'a>, arg: Option<Expr>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = arg.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_delegate<'a>(&self, ast: &mut crate::Ast<'a>, delegate: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = delegate.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for NewExpr<'a> {
+impl MetaPropExpr {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn kind<'a>(&self, ast: &crate::Ast<'a>) -> MetaPropKind {
+        let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+        unsafe { std::mem::transmute::<u8, MetaPropKind>(raw as u8) }
+    }
+    #[inline]
+    pub fn set_kind<'a>(&self, ast: &mut crate::Ast<'a>, kind: MetaPropKind) {
+        unsafe { ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data = kind as u32 };
     }
 }
-impl<'a> SetSpan for NewExpr<'a> {
+impl AwaitExpr {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn arg<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_arg<'a>(&self, ast: &mut crate::Ast<'a>, arg: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = arg.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for SeqExpr<'a> {
+impl Tpl {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn exprs<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<Expr> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn quasis<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<TplElement> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_exprs<'a>(&self, ast: &mut crate::Ast<'a>, exprs: TypedSubRange<Expr>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = exprs.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_quasis<'a>(&self, ast: &mut crate::Ast<'a>, quasis: TypedSubRange<TplElement>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = quasis.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for SeqExpr<'a> {
+impl TaggedTpl {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn tag<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn tpl<'a>(&self, ast: &crate::Ast<'a>) -> Tpl {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_tag<'a>(&self, ast: &mut crate::Ast<'a>, tag: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = tag.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_tpl<'a>(&self, ast: &mut crate::Ast<'a>, tpl: Tpl) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = tpl.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for ArrowExpr<'a> {
+impl TplElement {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn tail<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn cooked<'a>(&self, ast: &crate::Ast<'a>) -> Option<Wtf8Atom<'a>> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn raw<'a>(&self, ast: &crate::Ast<'a>) -> Atom<'a> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_tail<'a>(&self, ast: &mut crate::Ast<'a>, tail: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = tail.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_cooked<'a>(&self, ast: &mut crate::Ast<'a>, cooked: Option<Wtf8Atom<'a>>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = cooked.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_raw<'a>(&self, ast: &mut crate::Ast<'a>, raw: Atom<'a>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = raw.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for ArrowExpr<'a> {
+impl ParenExpr {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn expr<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_expr<'a>(&self, ast: &mut crate::Ast<'a>, expr: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = expr.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for YieldExpr<'a> {
+impl Callee {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for YieldExpr<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl GetSpan for MetaPropExpr {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl SetSpan for MetaPropExpr {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for AwaitExpr<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for AwaitExpr<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for Tpl<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for Tpl<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for TaggedTpl<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for TaggedTpl<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for TplElement<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for TplElement<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for ParenExpr<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for ParenExpr<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> Callee<'a> {
-    #[inline]
-    pub const fn is_super(&self) -> bool {
-        matches!(self, Self::Super { .. })
+    pub fn is_super(&self) -> bool {
+        matches!(self, Self::Super(_))
     }
     #[inline]
-    pub const fn is_expr(&self) -> bool {
-        matches!(self, Self::Expr { .. })
+    pub fn is_expr(&self) -> bool {
+        matches!(self, Self::Expr(_))
     }
     #[inline]
-    pub fn as_super(&self) -> Option<&Super> {
+    pub fn as_super(self) -> Option<Super> {
         match self {
             Self::Super(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_expr(&self) -> Option<&Expr<'a>> {
-        match self {
-            Self::Expr(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_super(&mut self) -> Option<&mut Super> {
-        match self {
-            Self::Super(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_expr(&mut self) -> Option<&mut Expr<'a>> {
+    pub fn as_expr(self) -> Option<Expr> {
         match self {
             Self::Expr(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for Callee<'a> {
+impl Super {}
+impl ExprOrSpread {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Super(it) => it.span(),
-            Self::Expr(it) => it.span(),
+    pub fn spread<'a>(&self, ast: &crate::Ast<'a>) -> Option<Span> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for Callee<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Super(it) => it.set_span(span),
-            Self::Expr(it) => it.set_span(span),
+    pub fn expr<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl GetSpan for Super {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn set_spread<'a>(&self, ast: &mut crate::Ast<'a>, spread: Option<Span>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = spread.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_expr<'a>(&self, ast: &mut crate::Ast<'a>, expr: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = expr.to_extra_data();
+        };
     }
 }
-impl SetSpan for Super {
+impl BlockStmtOrExpr {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> BlockStmtOrExpr<'a> {
-    #[inline]
-    pub const fn is_block_stmt(&self) -> bool {
-        matches!(self, Self::BlockStmt { .. })
+    pub fn is_block_stmt(&self) -> bool {
+        matches!(self, Self::BlockStmt(_))
     }
     #[inline]
-    pub const fn is_expr(&self) -> bool {
-        matches!(self, Self::Expr { .. })
+    pub fn is_expr(&self) -> bool {
+        matches!(self, Self::Expr(_))
     }
     #[inline]
-    pub fn as_block_stmt(&self) -> Option<&BlockStmt<'a>> {
+    pub fn as_block_stmt(self) -> Option<BlockStmt> {
         match self {
             Self::BlockStmt(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_expr(&self) -> Option<&Expr<'a>> {
-        match self {
-            Self::Expr(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_block_stmt(&mut self) -> Option<&mut BlockStmt<'a>> {
-        match self {
-            Self::BlockStmt(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_expr(&mut self) -> Option<&mut Expr<'a>> {
+    pub fn as_expr(self) -> Option<Expr> {
         match self {
             Self::Expr(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for BlockStmtOrExpr<'a> {
+impl AssignTarget {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::BlockStmt(it) => it.span(),
-            Self::Expr(it) => it.span(),
-        }
-    }
-}
-impl<'a> SetSpan for BlockStmtOrExpr<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::BlockStmt(it) => it.set_span(span),
-            Self::Expr(it) => it.set_span(span),
-        }
-    }
-}
-impl<'a> AssignTarget<'a> {
-    #[inline]
-    pub const fn is_simple(&self) -> bool {
-        matches!(self, Self::Simple { .. })
+    pub fn is_simple(&self) -> bool {
+        matches!(self, Self::Simple(_))
     }
     #[inline]
-    pub const fn is_pat(&self) -> bool {
-        matches!(self, Self::Pat { .. })
+    pub fn is_pat(&self) -> bool {
+        matches!(self, Self::Pat(_))
     }
     #[inline]
-    pub fn as_simple(&self) -> Option<&SimpleAssignTarget<'a>> {
+    pub fn as_simple(self) -> Option<SimpleAssignTarget> {
         match self {
             Self::Simple(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_pat(&self) -> Option<&AssignTargetPat<'a>> {
-        match self {
-            Self::Pat(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_simple(&mut self) -> Option<&mut SimpleAssignTarget<'a>> {
-        match self {
-            Self::Simple(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_pat(&mut self) -> Option<&mut AssignTargetPat<'a>> {
+    pub fn as_pat(self) -> Option<AssignTargetPat> {
         match self {
             Self::Pat(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for AssignTarget<'a> {
+impl AssignTargetPat {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Simple(it) => it.span(),
-            Self::Pat(it) => it.span(),
-        }
-    }
-}
-impl<'a> SetSpan for AssignTarget<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Simple(it) => it.set_span(span),
-            Self::Pat(it) => it.set_span(span),
-        }
-    }
-}
-impl<'a> AssignTargetPat<'a> {
-    #[inline]
-    pub const fn is_array(&self) -> bool {
-        matches!(self, Self::Array { .. })
+    pub fn is_array(&self) -> bool {
+        matches!(self, Self::Array(_))
     }
     #[inline]
-    pub const fn is_object(&self) -> bool {
-        matches!(self, Self::Object { .. })
+    pub fn is_object(&self) -> bool {
+        matches!(self, Self::Object(_))
     }
     #[inline]
-    pub const fn is_invalid(&self) -> bool {
-        matches!(self, Self::Invalid { .. })
+    pub fn is_invalid(&self) -> bool {
+        matches!(self, Self::Invalid(_))
     }
     #[inline]
-    pub fn as_array(&self) -> Option<&ArrayPat<'a>> {
+    pub fn as_array(self) -> Option<ArrayPat> {
         match self {
             Self::Array(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_object(&self) -> Option<&ObjectPat<'a>> {
+    pub fn as_object(self) -> Option<ObjectPat> {
         match self {
             Self::Object(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_invalid(&self) -> Option<&Invalid> {
-        match self {
-            Self::Invalid(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_array(&mut self) -> Option<&mut ArrayPat<'a>> {
-        match self {
-            Self::Array(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_object(&mut self) -> Option<&mut ObjectPat<'a>> {
-        match self {
-            Self::Object(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_invalid(&mut self) -> Option<&mut Invalid> {
+    pub fn as_invalid(self) -> Option<Invalid> {
         match self {
             Self::Invalid(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for AssignTargetPat<'a> {
+impl SimpleAssignTarget {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Array(it) => it.span(),
-            Self::Object(it) => it.span(),
-            Self::Invalid(it) => it.span(),
-        }
-    }
-}
-impl<'a> SetSpan for AssignTargetPat<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Array(it) => it.set_span(span),
-            Self::Object(it) => it.set_span(span),
-            Self::Invalid(it) => it.set_span(span),
-        }
-    }
-}
-impl<'a> SimpleAssignTarget<'a> {
-    #[inline]
-    pub const fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident { .. })
+    pub fn is_ident(&self) -> bool {
+        matches!(self, Self::Ident(_))
     }
     #[inline]
-    pub const fn is_member(&self) -> bool {
-        matches!(self, Self::Member { .. })
+    pub fn is_member(&self) -> bool {
+        matches!(self, Self::Member(_))
     }
     #[inline]
-    pub const fn is_super_prop(&self) -> bool {
-        matches!(self, Self::SuperProp { .. })
+    pub fn is_super_prop(&self) -> bool {
+        matches!(self, Self::SuperProp(_))
     }
     #[inline]
-    pub const fn is_paren(&self) -> bool {
-        matches!(self, Self::Paren { .. })
+    pub fn is_paren(&self) -> bool {
+        matches!(self, Self::Paren(_))
     }
     #[inline]
-    pub const fn is_opt_chain(&self) -> bool {
-        matches!(self, Self::OptChain { .. })
+    pub fn is_opt_chain(&self) -> bool {
+        matches!(self, Self::OptChain(_))
     }
     #[inline]
-    pub const fn is_invalid(&self) -> bool {
-        matches!(self, Self::Invalid { .. })
+    pub fn is_invalid(&self) -> bool {
+        matches!(self, Self::Invalid(_))
     }
     #[inline]
-    pub fn as_ident(&self) -> Option<&BindingIdent<'a>> {
+    pub fn as_ident(self) -> Option<BindingIdent> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_member(&self) -> Option<&MemberExpr<'a>> {
+    pub fn as_member(self) -> Option<MemberExpr> {
         match self {
             Self::Member(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_super_prop(&self) -> Option<&SuperPropExpr<'a>> {
+    pub fn as_super_prop(self) -> Option<SuperPropExpr> {
         match self {
             Self::SuperProp(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_paren(&self) -> Option<&ParenExpr<'a>> {
+    pub fn as_paren(self) -> Option<ParenExpr> {
         match self {
             Self::Paren(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_opt_chain(&self) -> Option<&OptChainExpr<'a>> {
+    pub fn as_opt_chain(self) -> Option<OptChainExpr> {
         match self {
             Self::OptChain(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_invalid(&self) -> Option<&Invalid> {
-        match self {
-            Self::Invalid(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_ident(&mut self) -> Option<&mut BindingIdent<'a>> {
-        match self {
-            Self::Ident(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_member(&mut self) -> Option<&mut MemberExpr<'a>> {
-        match self {
-            Self::Member(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_super_prop(&mut self) -> Option<&mut SuperPropExpr<'a>> {
-        match self {
-            Self::SuperProp(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_paren(&mut self) -> Option<&mut ParenExpr<'a>> {
-        match self {
-            Self::Paren(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_opt_chain(&mut self) -> Option<&mut OptChainExpr<'a>> {
-        match self {
-            Self::OptChain(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_invalid(&mut self) -> Option<&mut Invalid> {
+    pub fn as_invalid(self) -> Option<Invalid> {
         match self {
             Self::Invalid(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for SimpleAssignTarget<'a> {
+impl OptChainExpr {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Ident(it) => it.span(),
-            Self::Member(it) => it.span(),
-            Self::SuperProp(it) => it.span(),
-            Self::Paren(it) => it.span(),
-            Self::OptChain(it) => it.span(),
-            Self::Invalid(it) => it.span(),
+    pub fn optional<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for SimpleAssignTarget<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Ident(it) => it.set_span(span),
-            Self::Member(it) => it.set_span(span),
-            Self::SuperProp(it) => it.set_span(span),
-            Self::Paren(it) => it.set_span(span),
-            Self::OptChain(it) => it.set_span(span),
-            Self::Invalid(it) => it.set_span(span),
+    pub fn base<'a>(&self, ast: &crate::Ast<'a>) -> OptChainBase {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for OptChainExpr<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn set_optional<'a>(&self, ast: &mut crate::Ast<'a>, optional: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = optional.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_base<'a>(&self, ast: &mut crate::Ast<'a>, base: OptChainBase) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = base.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for OptChainExpr<'a> {
+impl OptChainBase {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> OptChainBase<'a> {
-    #[inline]
-    pub const fn is_member(&self) -> bool {
-        matches!(self, Self::Member { .. })
+    pub fn is_member(&self) -> bool {
+        matches!(self, Self::Member(_))
     }
     #[inline]
-    pub const fn is_call(&self) -> bool {
-        matches!(self, Self::Call { .. })
+    pub fn is_call(&self) -> bool {
+        matches!(self, Self::Call(_))
     }
     #[inline]
-    pub fn as_member(&self) -> Option<&MemberExpr<'a>> {
+    pub fn as_member(self) -> Option<MemberExpr> {
         match self {
             Self::Member(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_call(&self) -> Option<&OptCall<'a>> {
-        match self {
-            Self::Call(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_member(&mut self) -> Option<&mut MemberExpr<'a>> {
-        match self {
-            Self::Member(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_call(&mut self) -> Option<&mut OptCall<'a>> {
+    pub fn as_call(self) -> Option<OptCall> {
         match self {
             Self::Call(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for OptChainBase<'a> {
+impl OptCall {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Member(it) => it.span(),
-            Self::Call(it) => it.span(),
+    pub fn callee<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for OptChainBase<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Member(it) => it.set_span(span),
-            Self::Call(it) => it.set_span(span),
+    pub fn args<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<ExprOrSpread> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for OptCall<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for OptCall<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl GetSpan for Invalid {
-    #[inline]
-    fn span(&self) -> Span {
-        DUMMY_SP
-    }
-}
-impl SetSpan for Invalid {
-    #[inline]
-    fn set_span(&mut self, span: Span) {}
-}
-impl<'a> GetSpan for Function<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for Function<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for Param<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for Param<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> ParamOrTsParamProp<'a> {
-    #[inline]
-    pub const fn is_param(&self) -> bool {
-        matches!(self, Self::Param { .. })
+    pub fn set_callee<'a>(&self, ast: &mut crate::Ast<'a>, callee: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = callee.to_extra_data();
+        };
     }
     #[inline]
-    pub fn as_param(&self) -> Option<&Param<'a>> {
+    pub fn set_args<'a>(&self, ast: &mut crate::Ast<'a>, args: TypedSubRange<ExprOrSpread>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = args.to_extra_data();
+        };
+    }
+}
+impl Invalid {}
+impl Function {
+    #[inline]
+    pub fn params<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<Param> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn decorators<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn body<'a>(&self, ast: &crate::Ast<'a>) -> BlockStmt {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_generator<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_async<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_params<'a>(&self, ast: &mut crate::Ast<'a>, params: TypedSubRange<Param>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = params.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_decorators<'a>(
+        &self,
+        ast: &mut crate::Ast<'a>,
+        decorators: TypedSubRange<Decorator>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = decorators.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_body<'a>(&self, ast: &mut crate::Ast<'a>, body: BlockStmt) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_generator<'a>(&self, ast: &mut crate::Ast<'a>, is_generator: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = is_generator.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_async<'a>(&self, ast: &mut crate::Ast<'a>, is_async: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(4usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = is_async.to_extra_data();
+        };
+    }
+}
+impl Param {
+    #[inline]
+    pub fn decorators<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn pat<'a>(&self, ast: &crate::Ast<'a>) -> Pat {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_decorators<'a>(
+        &self,
+        ast: &mut crate::Ast<'a>,
+        decorators: TypedSubRange<Decorator>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = decorators.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_pat<'a>(&self, ast: &mut crate::Ast<'a>, pat: Pat) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = pat.to_extra_data();
+        };
+    }
+}
+impl ParamOrTsParamProp {
+    #[inline]
+    pub fn is_param(&self) -> bool {
+        matches!(self, Self::Param(_))
+    }
+    #[inline]
+    pub fn as_param(self) -> Option<Param> {
         match self {
             Self::Param(it) => Some(it),
             _ => None,
         }
     }
+}
+impl Class {
     #[inline]
-    pub fn as_mut_param(&mut self) -> Option<&mut Param<'a>> {
-        match self {
-            Self::Param(it) => Some(it),
-            _ => None,
+    pub fn decorators<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for ParamOrTsParamProp<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Param(it) => it.span(),
+    pub fn body<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<ClassMember> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for ParamOrTsParamProp<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Param(it) => it.set_span(span),
+    pub fn super_class<'a>(&self, ast: &crate::Ast<'a>) -> Option<Expr> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for Class<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn is_abstract<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_decorators<'a>(
+        &self,
+        ast: &mut crate::Ast<'a>,
+        decorators: TypedSubRange<Decorator>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = decorators.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_body<'a>(&self, ast: &mut crate::Ast<'a>, body: TypedSubRange<ClassMember>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_super_class<'a>(&self, ast: &mut crate::Ast<'a>, super_class: Option<Expr>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = super_class.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_abstract<'a>(&self, ast: &mut crate::Ast<'a>, is_abstract: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = is_abstract.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for Class<'a> {
+impl ClassMember {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> ClassMember<'a> {
-    #[inline]
-    pub const fn is_constructor(&self) -> bool {
-        matches!(self, Self::Constructor { .. })
+    pub fn is_constructor(&self) -> bool {
+        matches!(self, Self::Constructor(_))
     }
     #[inline]
-    pub const fn is_method(&self) -> bool {
-        matches!(self, Self::Method { .. })
+    pub fn is_method(&self) -> bool {
+        matches!(self, Self::Method(_))
     }
     #[inline]
-    pub const fn is_private_method(&self) -> bool {
-        matches!(self, Self::PrivateMethod { .. })
+    pub fn is_private_method(&self) -> bool {
+        matches!(self, Self::PrivateMethod(_))
     }
     #[inline]
-    pub const fn is_class_prop(&self) -> bool {
-        matches!(self, Self::ClassProp { .. })
+    pub fn is_class_prop(&self) -> bool {
+        matches!(self, Self::ClassProp(_))
     }
     #[inline]
-    pub const fn is_private_prop(&self) -> bool {
-        matches!(self, Self::PrivateProp { .. })
+    pub fn is_private_prop(&self) -> bool {
+        matches!(self, Self::PrivateProp(_))
     }
     #[inline]
-    pub const fn is_empty(&self) -> bool {
-        matches!(self, Self::Empty { .. })
+    pub fn is_empty(&self) -> bool {
+        matches!(self, Self::Empty(_))
     }
     #[inline]
-    pub const fn is_static_block(&self) -> bool {
-        matches!(self, Self::StaticBlock { .. })
+    pub fn is_static_block(&self) -> bool {
+        matches!(self, Self::StaticBlock(_))
     }
     #[inline]
-    pub const fn is_auto_accessor(&self) -> bool {
-        matches!(self, Self::AutoAccessor { .. })
+    pub fn is_auto_accessor(&self) -> bool {
+        matches!(self, Self::AutoAccessor(_))
     }
     #[inline]
-    pub fn as_constructor(&self) -> Option<&Constructor<'a>> {
+    pub fn as_constructor(self) -> Option<Constructor> {
         match self {
             Self::Constructor(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_method(&self) -> Option<&ClassMethod<'a>> {
+    pub fn as_method(self) -> Option<ClassMethod> {
         match self {
             Self::Method(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_private_method(&self) -> Option<&PrivateMethod<'a>> {
+    pub fn as_private_method(self) -> Option<PrivateMethod> {
         match self {
             Self::PrivateMethod(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_class_prop(&self) -> Option<&ClassProp<'a>> {
+    pub fn as_class_prop(self) -> Option<ClassProp> {
         match self {
             Self::ClassProp(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_private_prop(&self) -> Option<&PrivateProp<'a>> {
+    pub fn as_private_prop(self) -> Option<PrivateProp> {
         match self {
             Self::PrivateProp(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_empty(&self) -> Option<&EmptyStmt> {
+    pub fn as_empty(self) -> Option<EmptyStmt> {
         match self {
             Self::Empty(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_static_block(&self) -> Option<&StaticBlock<'a>> {
+    pub fn as_static_block(self) -> Option<StaticBlock> {
         match self {
             Self::StaticBlock(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_auto_accessor(&self) -> Option<&AutoAccessor<'a>> {
-        match self {
-            Self::AutoAccessor(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_constructor(&mut self) -> Option<&mut Constructor<'a>> {
-        match self {
-            Self::Constructor(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_method(&mut self) -> Option<&mut ClassMethod<'a>> {
-        match self {
-            Self::Method(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_private_method(&mut self) -> Option<&mut PrivateMethod<'a>> {
-        match self {
-            Self::PrivateMethod(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_class_prop(&mut self) -> Option<&mut ClassProp<'a>> {
-        match self {
-            Self::ClassProp(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_private_prop(&mut self) -> Option<&mut PrivateProp<'a>> {
-        match self {
-            Self::PrivateProp(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_empty(&mut self) -> Option<&mut EmptyStmt> {
-        match self {
-            Self::Empty(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_static_block(&mut self) -> Option<&mut StaticBlock<'a>> {
-        match self {
-            Self::StaticBlock(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_auto_accessor(&mut self) -> Option<&mut AutoAccessor<'a>> {
+    pub fn as_auto_accessor(self) -> Option<AutoAccessor> {
         match self {
             Self::AutoAccessor(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for ClassMember<'a> {
+impl ClassProp {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Constructor(it) => it.span(),
-            Self::Method(it) => it.span(),
-            Self::PrivateMethod(it) => it.span(),
-            Self::ClassProp(it) => it.span(),
-            Self::PrivateProp(it) => it.span(),
-            Self::Empty(it) => it.span(),
-            Self::StaticBlock(it) => it.span(),
-            Self::AutoAccessor(it) => it.span(),
+    pub fn key<'a>(&self, ast: &crate::Ast<'a>) -> PropName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for ClassMember<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Constructor(it) => it.set_span(span),
-            Self::Method(it) => it.set_span(span),
-            Self::PrivateMethod(it) => it.set_span(span),
-            Self::ClassProp(it) => it.set_span(span),
-            Self::PrivateProp(it) => it.set_span(span),
-            Self::Empty(it) => it.set_span(span),
-            Self::StaticBlock(it) => it.set_span(span),
-            Self::AutoAccessor(it) => it.set_span(span),
+    pub fn value<'a>(&self, ast: &crate::Ast<'a>) -> Option<Expr> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for ClassProp<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn is_static<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn decorators<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_key<'a>(&self, ast: &mut crate::Ast<'a>, key: PropName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = key.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_value<'a>(&self, ast: &mut crate::Ast<'a>, value: Option<Expr>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = value.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_static<'a>(&self, ast: &mut crate::Ast<'a>, is_static: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = is_static.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_decorators<'a>(
+        &self,
+        ast: &mut crate::Ast<'a>,
+        decorators: TypedSubRange<Decorator>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = decorators.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for ClassProp<'a> {
+impl PrivateProp {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn key<'a>(&self, ast: &crate::Ast<'a>) -> PrivateName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn value<'a>(&self, ast: &crate::Ast<'a>) -> Option<Expr> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_static<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn decorators<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_key<'a>(&self, ast: &mut crate::Ast<'a>, key: PrivateName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = key.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_value<'a>(&self, ast: &mut crate::Ast<'a>, value: Option<Expr>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = value.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_static<'a>(&self, ast: &mut crate::Ast<'a>, is_static: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = is_static.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_decorators<'a>(
+        &self,
+        ast: &mut crate::Ast<'a>,
+        decorators: TypedSubRange<Decorator>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = decorators.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for PrivateProp<'a> {
+impl ClassMethod {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn key<'a>(&self, ast: &crate::Ast<'a>) -> PropName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn function<'a>(&self, ast: &crate::Ast<'a>) -> Function {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn kind<'a>(&self, ast: &crate::Ast<'a>) -> MethodKind {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_static<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_key<'a>(&self, ast: &mut crate::Ast<'a>, key: PropName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = key.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_function<'a>(&self, ast: &mut crate::Ast<'a>, function: Function) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = function.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_kind<'a>(&self, ast: &mut crate::Ast<'a>, kind: MethodKind) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = kind.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_static<'a>(&self, ast: &mut crate::Ast<'a>, is_static: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = is_static.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for PrivateProp<'a> {
+impl PrivateMethod {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn key<'a>(&self, ast: &crate::Ast<'a>) -> PrivateName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn function<'a>(&self, ast: &crate::Ast<'a>) -> Function {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn kind<'a>(&self, ast: &crate::Ast<'a>) -> MethodKind {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn is_static<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_key<'a>(&self, ast: &mut crate::Ast<'a>, key: PrivateName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = key.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_function<'a>(&self, ast: &mut crate::Ast<'a>, function: Function) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = function.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_kind<'a>(&self, ast: &mut crate::Ast<'a>, kind: MethodKind) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = kind.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_static<'a>(&self, ast: &mut crate::Ast<'a>, is_static: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = is_static.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for ClassMethod<'a> {
+impl Constructor {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn key<'a>(&self, ast: &crate::Ast<'a>) -> PropName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn params<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<ParamOrTsParamProp> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn body<'a>(&self, ast: &crate::Ast<'a>) -> Option<BlockStmt> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_key<'a>(&self, ast: &mut crate::Ast<'a>, key: PropName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = key.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_params<'a>(
+        &self,
+        ast: &mut crate::Ast<'a>,
+        params: TypedSubRange<ParamOrTsParamProp>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = params.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_body<'a>(&self, ast: &mut crate::Ast<'a>, body: Option<BlockStmt>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for ClassMethod<'a> {
+impl Decorator {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn expr<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_expr<'a>(&self, ast: &mut crate::Ast<'a>, expr: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = expr.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for PrivateMethod<'a> {
+impl StaticBlock {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn body<'a>(&self, ast: &crate::Ast<'a>) -> BlockStmt {
+        let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+        unsafe { BlockStmt::from_node_id_unchecked(crate::NodeId::from_raw_unchecked(raw), ast) }
+    }
+    #[inline]
+    pub fn set_body<'a>(&self, ast: &mut crate::Ast<'a>, body: BlockStmt) {
+        unsafe {
+            ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data =
+                body.node_id().index() as u32
+        };
     }
 }
-impl<'a> SetSpan for PrivateMethod<'a> {
+impl Key {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for Constructor<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for Constructor<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for Decorator<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for Decorator<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for StaticBlock<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for StaticBlock<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> Key<'a> {
-    #[inline]
-    pub const fn is_private(&self) -> bool {
-        matches!(self, Self::Private { .. })
+    pub fn is_private(&self) -> bool {
+        matches!(self, Self::Private(_))
     }
     #[inline]
-    pub const fn is_public(&self) -> bool {
-        matches!(self, Self::Public { .. })
+    pub fn is_public(&self) -> bool {
+        matches!(self, Self::Public(_))
     }
     #[inline]
-    pub fn as_private(&self) -> Option<&PrivateName<'a>> {
+    pub fn as_private(self) -> Option<PrivateName> {
         match self {
             Self::Private(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_public(&self) -> Option<&PropName<'a>> {
-        match self {
-            Self::Public(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_private(&mut self) -> Option<&mut PrivateName<'a>> {
-        match self {
-            Self::Private(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_public(&mut self) -> Option<&mut PropName<'a>> {
+    pub fn as_public(self) -> Option<PropName> {
         match self {
             Self::Public(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for Key<'a> {
+impl AutoAccessor {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Private(it) => it.span(),
-            Self::Public(it) => it.span(),
+    pub fn key<'a>(&self, ast: &crate::Ast<'a>) -> Key {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for Key<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Private(it) => it.set_span(span),
-            Self::Public(it) => it.set_span(span),
+    pub fn value<'a>(&self, ast: &crate::Ast<'a>) -> Option<Expr> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for AutoAccessor<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn is_static<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn decorators<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_key<'a>(&self, ast: &mut crate::Ast<'a>, key: Key) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = key.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_value<'a>(&self, ast: &mut crate::Ast<'a>, value: Option<Expr>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = value.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_is_static<'a>(&self, ast: &mut crate::Ast<'a>, is_static: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = is_static.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_decorators<'a>(
+        &self,
+        ast: &mut crate::Ast<'a>,
+        decorators: TypedSubRange<Decorator>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(3usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = decorators.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for AutoAccessor<'a> {
+impl Prop {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> Prop<'a> {
-    #[inline]
-    pub const fn is_shorthand(&self) -> bool {
-        matches!(self, Self::Shorthand { .. })
+    pub fn is_shorthand(&self) -> bool {
+        matches!(self, Self::Shorthand(_))
     }
     #[inline]
-    pub const fn is_key_value(&self) -> bool {
-        matches!(self, Self::KeyValue { .. })
+    pub fn is_key_value(&self) -> bool {
+        matches!(self, Self::KeyValue(_))
     }
     #[inline]
-    pub const fn is_assign(&self) -> bool {
-        matches!(self, Self::Assign { .. })
+    pub fn is_assign(&self) -> bool {
+        matches!(self, Self::Assign(_))
     }
     #[inline]
-    pub const fn is_getter(&self) -> bool {
-        matches!(self, Self::Getter { .. })
+    pub fn is_getter(&self) -> bool {
+        matches!(self, Self::Getter(_))
     }
     #[inline]
-    pub const fn is_setter(&self) -> bool {
-        matches!(self, Self::Setter { .. })
+    pub fn is_setter(&self) -> bool {
+        matches!(self, Self::Setter(_))
     }
     #[inline]
-    pub const fn is_method(&self) -> bool {
-        matches!(self, Self::Method { .. })
+    pub fn is_method(&self) -> bool {
+        matches!(self, Self::Method(_))
     }
     #[inline]
-    pub fn as_shorthand(&self) -> Option<&Ident<'a>> {
+    pub fn as_shorthand(self) -> Option<Ident> {
         match self {
             Self::Shorthand(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_key_value(&self) -> Option<&KeyValueProp<'a>> {
+    pub fn as_key_value(self) -> Option<KeyValueProp> {
         match self {
             Self::KeyValue(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_assign(&self) -> Option<&AssignProp<'a>> {
+    pub fn as_assign(self) -> Option<AssignProp> {
         match self {
             Self::Assign(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_getter(&self) -> Option<&GetterProp<'a>> {
+    pub fn as_getter(self) -> Option<GetterProp> {
         match self {
             Self::Getter(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_setter(&self) -> Option<&SetterProp<'a>> {
+    pub fn as_setter(self) -> Option<SetterProp> {
         match self {
             Self::Setter(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_method(&self) -> Option<&MethodProp<'a>> {
-        match self {
-            Self::Method(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_shorthand(&mut self) -> Option<&mut Ident<'a>> {
-        match self {
-            Self::Shorthand(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_key_value(&mut self) -> Option<&mut KeyValueProp<'a>> {
-        match self {
-            Self::KeyValue(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_assign(&mut self) -> Option<&mut AssignProp<'a>> {
-        match self {
-            Self::Assign(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_getter(&mut self) -> Option<&mut GetterProp<'a>> {
-        match self {
-            Self::Getter(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_setter(&mut self) -> Option<&mut SetterProp<'a>> {
-        match self {
-            Self::Setter(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_method(&mut self) -> Option<&mut MethodProp<'a>> {
+    pub fn as_method(self) -> Option<MethodProp> {
         match self {
             Self::Method(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for Prop<'a> {
+impl KeyValueProp {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Shorthand(it) => it.span(),
-            Self::KeyValue(it) => it.span(),
-            Self::Assign(it) => it.span(),
-            Self::Getter(it) => it.span(),
-            Self::Setter(it) => it.span(),
-            Self::Method(it) => it.span(),
+    pub fn key<'a>(&self, ast: &crate::Ast<'a>) -> PropName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for Prop<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Shorthand(it) => it.set_span(span),
-            Self::KeyValue(it) => it.set_span(span),
-            Self::Assign(it) => it.set_span(span),
-            Self::Getter(it) => it.set_span(span),
-            Self::Setter(it) => it.set_span(span),
-            Self::Method(it) => it.set_span(span),
+    pub fn value<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for KeyValueProp<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        Span::new(self.key.span_lo(), self.value.span_hi())
+    pub fn set_key<'a>(&self, ast: &mut crate::Ast<'a>, key: PropName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = key.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_value<'a>(&self, ast: &mut crate::Ast<'a>, value: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = value.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for KeyValueProp<'a> {
+impl AssignProp {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        let current = self.key.span();
-        self.key.set_span(Span::new(span.start, current.end));
-        let current = self.value.span();
-        self.value.set_span(Span::new(current.start, span.end));
+    pub fn key<'a>(&self, ast: &crate::Ast<'a>) -> Ident {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn value<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_key<'a>(&self, ast: &mut crate::Ast<'a>, key: Ident) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = key.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_value<'a>(&self, ast: &mut crate::Ast<'a>, value: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = value.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for AssignProp<'a> {
+impl GetterProp {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn key<'a>(&self, ast: &crate::Ast<'a>) -> PropName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn function<'a>(&self, ast: &crate::Ast<'a>) -> Function {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_key<'a>(&self, ast: &mut crate::Ast<'a>, key: PropName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = key.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_function<'a>(&self, ast: &mut crate::Ast<'a>, function: Function) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = function.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for AssignProp<'a> {
+impl SetterProp {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn key<'a>(&self, ast: &crate::Ast<'a>) -> PropName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn function<'a>(&self, ast: &crate::Ast<'a>) -> Function {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_key<'a>(&self, ast: &mut crate::Ast<'a>, key: PropName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = key.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_function<'a>(&self, ast: &mut crate::Ast<'a>, function: Function) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = function.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for GetterProp<'a> {
+impl MethodProp {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn key<'a>(&self, ast: &crate::Ast<'a>) -> PropName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn function<'a>(&self, ast: &crate::Ast<'a>) -> Function {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_key<'a>(&self, ast: &mut crate::Ast<'a>, key: PropName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = key.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_function<'a>(&self, ast: &mut crate::Ast<'a>, function: Function) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = function.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for GetterProp<'a> {
+impl PropName {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for SetterProp<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for SetterProp<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for MethodProp<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.function.span()
-    }
-}
-impl<'a> SetSpan for MethodProp<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.function.set_span(span);
-    }
-}
-impl<'a> PropName<'a> {
-    #[inline]
-    pub const fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident { .. })
+    pub fn is_ident(&self) -> bool {
+        matches!(self, Self::Ident(_))
     }
     #[inline]
-    pub const fn is_str(&self) -> bool {
-        matches!(self, Self::Str { .. })
+    pub fn is_str(&self) -> bool {
+        matches!(self, Self::Str(_))
     }
     #[inline]
-    pub const fn is_num(&self) -> bool {
-        matches!(self, Self::Num { .. })
+    pub fn is_num(&self) -> bool {
+        matches!(self, Self::Num(_))
     }
     #[inline]
-    pub const fn is_computed(&self) -> bool {
-        matches!(self, Self::Computed { .. })
+    pub fn is_computed(&self) -> bool {
+        matches!(self, Self::Computed(_))
     }
     #[inline]
-    pub const fn is_big_int(&self) -> bool {
-        matches!(self, Self::BigInt { .. })
+    pub fn is_big_int(&self) -> bool {
+        matches!(self, Self::BigInt(_))
     }
     #[inline]
-    pub fn as_ident(&self) -> Option<&IdentName<'a>> {
+    pub fn as_ident(self) -> Option<IdentName> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_str(&self) -> Option<&Str<'a>> {
+    pub fn as_str(self) -> Option<Str> {
         match self {
             Self::Str(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_num(&self) -> Option<&Number<'a>> {
+    pub fn as_num(self) -> Option<Number> {
         match self {
             Self::Num(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_computed(&self) -> Option<&ComputedPropName<'a>> {
+    pub fn as_computed(self) -> Option<ComputedPropName> {
         match self {
             Self::Computed(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_big_int(&self) -> Option<&BigInt<'a>> {
-        match self {
-            Self::BigInt(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_ident(&mut self) -> Option<&mut IdentName<'a>> {
-        match self {
-            Self::Ident(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_str(&mut self) -> Option<&mut Str<'a>> {
-        match self {
-            Self::Str(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_num(&mut self) -> Option<&mut Number<'a>> {
-        match self {
-            Self::Num(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_computed(&mut self) -> Option<&mut ComputedPropName<'a>> {
-        match self {
-            Self::Computed(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_big_int(&mut self) -> Option<&mut BigInt<'a>> {
+    pub fn as_big_int(self) -> Option<BigInt> {
         match self {
             Self::BigInt(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for PropName<'a> {
+impl ComputedPropName {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Ident(it) => it.span(),
-            Self::Str(it) => it.span(),
-            Self::Num(it) => it.span(),
-            Self::Computed(it) => it.span(),
-            Self::BigInt(it) => it.span(),
+    pub fn expr<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for PropName<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Ident(it) => it.set_span(span),
-            Self::Str(it) => it.set_span(span),
-            Self::Num(it) => it.set_span(span),
-            Self::Computed(it) => it.set_span(span),
-            Self::BigInt(it) => it.set_span(span),
-        }
+    pub fn set_expr<'a>(&self, ast: &mut crate::Ast<'a>, expr: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = expr.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for ComputedPropName<'a> {
+impl Pat {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for ComputedPropName<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> Pat<'a> {
-    #[inline]
-    pub const fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident { .. })
+    pub fn is_ident(&self) -> bool {
+        matches!(self, Self::Ident(_))
     }
     #[inline]
-    pub const fn is_array(&self) -> bool {
-        matches!(self, Self::Array { .. })
+    pub fn is_array(&self) -> bool {
+        matches!(self, Self::Array(_))
     }
     #[inline]
-    pub const fn is_rest(&self) -> bool {
-        matches!(self, Self::Rest { .. })
+    pub fn is_rest(&self) -> bool {
+        matches!(self, Self::Rest(_))
     }
     #[inline]
-    pub const fn is_object(&self) -> bool {
-        matches!(self, Self::Object { .. })
+    pub fn is_object(&self) -> bool {
+        matches!(self, Self::Object(_))
     }
     #[inline]
-    pub const fn is_assign(&self) -> bool {
-        matches!(self, Self::Assign { .. })
+    pub fn is_assign(&self) -> bool {
+        matches!(self, Self::Assign(_))
     }
     #[inline]
-    pub const fn is_invalid(&self) -> bool {
-        matches!(self, Self::Invalid { .. })
+    pub fn is_invalid(&self) -> bool {
+        matches!(self, Self::Invalid(_))
     }
     #[inline]
-    pub const fn is_expr(&self) -> bool {
-        matches!(self, Self::Expr { .. })
+    pub fn is_expr(&self) -> bool {
+        matches!(self, Self::Expr(_))
     }
     #[inline]
-    pub fn as_ident(&self) -> Option<&BindingIdent<'a>> {
+    pub fn as_ident(self) -> Option<BindingIdent> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_array(&self) -> Option<&ArrayPat<'a>> {
+    pub fn as_array(self) -> Option<ArrayPat> {
         match self {
             Self::Array(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_rest(&self) -> Option<&RestPat<'a>> {
+    pub fn as_rest(self) -> Option<RestPat> {
         match self {
             Self::Rest(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_object(&self) -> Option<&ObjectPat<'a>> {
+    pub fn as_object(self) -> Option<ObjectPat> {
         match self {
             Self::Object(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_assign(&self) -> Option<&AssignPat<'a>> {
+    pub fn as_assign(self) -> Option<AssignPat> {
         match self {
             Self::Assign(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_invalid(&self) -> Option<&Invalid> {
+    pub fn as_invalid(self) -> Option<Invalid> {
         match self {
             Self::Invalid(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_expr(&self) -> Option<&Expr<'a>> {
-        match self {
-            Self::Expr(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_ident(&mut self) -> Option<&mut BindingIdent<'a>> {
-        match self {
-            Self::Ident(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_array(&mut self) -> Option<&mut ArrayPat<'a>> {
-        match self {
-            Self::Array(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_rest(&mut self) -> Option<&mut RestPat<'a>> {
-        match self {
-            Self::Rest(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_object(&mut self) -> Option<&mut ObjectPat<'a>> {
-        match self {
-            Self::Object(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_assign(&mut self) -> Option<&mut AssignPat<'a>> {
-        match self {
-            Self::Assign(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_invalid(&mut self) -> Option<&mut Invalid> {
-        match self {
-            Self::Invalid(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_expr(&mut self) -> Option<&mut Expr<'a>> {
+    pub fn as_expr(self) -> Option<Expr> {
         match self {
             Self::Expr(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for Pat<'a> {
+impl ArrayPat {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Ident(it) => it.span(),
-            Self::Array(it) => it.span(),
-            Self::Rest(it) => it.span(),
-            Self::Object(it) => it.span(),
-            Self::Assign(it) => it.span(),
-            Self::Invalid(it) => it.span(),
-            Self::Expr(it) => it.span(),
+    pub fn elems<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<Option<Pat>> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for Pat<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Ident(it) => it.set_span(span),
-            Self::Array(it) => it.set_span(span),
-            Self::Rest(it) => it.set_span(span),
-            Self::Object(it) => it.set_span(span),
-            Self::Assign(it) => it.set_span(span),
-            Self::Invalid(it) => it.set_span(span),
-            Self::Expr(it) => it.set_span(span),
+    pub fn optional<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for ArrayPat<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn set_elems<'a>(&self, ast: &mut crate::Ast<'a>, elems: TypedSubRange<Option<Pat>>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = elems.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_optional<'a>(&self, ast: &mut crate::Ast<'a>, optional: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = optional.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for ArrayPat<'a> {
+impl ObjectPat {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn props<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<ObjectPatProp> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn optional<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_props<'a>(&self, ast: &mut crate::Ast<'a>, props: TypedSubRange<ObjectPatProp>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = props.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_optional<'a>(&self, ast: &mut crate::Ast<'a>, optional: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = optional.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for ObjectPat<'a> {
+impl AssignPat {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn left<'a>(&self, ast: &crate::Ast<'a>) -> Pat {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn right<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_left<'a>(&self, ast: &mut crate::Ast<'a>, left: Pat) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = left.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_right<'a>(&self, ast: &mut crate::Ast<'a>, right: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = right.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for ObjectPat<'a> {
+impl RestPat {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn dot_3_token<'a>(&self, ast: &crate::Ast<'a>) -> Span {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn arg<'a>(&self, ast: &crate::Ast<'a>) -> Pat {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_dot3_token<'a>(&self, ast: &mut crate::Ast<'a>, dot3_token: Span) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = dot3_token.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_arg<'a>(&self, ast: &mut crate::Ast<'a>, arg: Pat) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = arg.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for AssignPat<'a> {
+impl ObjectPatProp {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for AssignPat<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for RestPat<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for RestPat<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> ObjectPatProp<'a> {
-    #[inline]
-    pub const fn is_key_value(&self) -> bool {
-        matches!(self, Self::KeyValue { .. })
+    pub fn is_key_value(&self) -> bool {
+        matches!(self, Self::KeyValue(_))
     }
     #[inline]
-    pub const fn is_assign(&self) -> bool {
-        matches!(self, Self::Assign { .. })
+    pub fn is_assign(&self) -> bool {
+        matches!(self, Self::Assign(_))
     }
     #[inline]
-    pub const fn is_rest(&self) -> bool {
-        matches!(self, Self::Rest { .. })
+    pub fn is_rest(&self) -> bool {
+        matches!(self, Self::Rest(_))
     }
     #[inline]
-    pub fn as_key_value(&self) -> Option<&KeyValuePatProp<'a>> {
+    pub fn as_key_value(self) -> Option<KeyValuePatProp> {
         match self {
             Self::KeyValue(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_assign(&self) -> Option<&AssignPatProp<'a>> {
+    pub fn as_assign(self) -> Option<AssignPatProp> {
         match self {
             Self::Assign(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_rest(&self) -> Option<&RestPat<'a>> {
-        match self {
-            Self::Rest(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_key_value(&mut self) -> Option<&mut KeyValuePatProp<'a>> {
-        match self {
-            Self::KeyValue(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_assign(&mut self) -> Option<&mut AssignPatProp<'a>> {
-        match self {
-            Self::Assign(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_rest(&mut self) -> Option<&mut RestPat<'a>> {
+    pub fn as_rest(self) -> Option<RestPat> {
         match self {
             Self::Rest(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for ObjectPatProp<'a> {
+impl KeyValuePatProp {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::KeyValue(it) => it.span(),
-            Self::Assign(it) => it.span(),
-            Self::Rest(it) => it.span(),
+    pub fn key<'a>(&self, ast: &crate::Ast<'a>) -> PropName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for ObjectPatProp<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::KeyValue(it) => it.set_span(span),
-            Self::Assign(it) => it.set_span(span),
-            Self::Rest(it) => it.set_span(span),
+    pub fn value<'a>(&self, ast: &crate::Ast<'a>) -> Pat {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for KeyValuePatProp<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        Span::new(self.key.span_lo(), self.value.span_hi())
+    pub fn set_key<'a>(&self, ast: &mut crate::Ast<'a>, key: PropName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = key.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_value<'a>(&self, ast: &mut crate::Ast<'a>, value: Pat) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = value.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for KeyValuePatProp<'a> {
+impl AssignPatProp {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        let current = self.key.span();
-        self.key.set_span(Span::new(span.start, current.end));
-        let current = self.value.span();
-        self.value.set_span(Span::new(current.start, span.end));
+    pub fn key<'a>(&self, ast: &crate::Ast<'a>) -> BindingIdent {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn value<'a>(&self, ast: &crate::Ast<'a>) -> Option<Expr> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_key<'a>(&self, ast: &mut crate::Ast<'a>, key: BindingIdent) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = key.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_value<'a>(&self, ast: &mut crate::Ast<'a>, value: Option<Expr>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = value.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for AssignPatProp<'a> {
+impl Ident {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn sym<'a>(&self, ast: &crate::Ast<'a>) -> Atom<'a> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn symbol_id<'a>(&self, ast: &crate::Ast<'a>) -> Option<SymbolId> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_sym<'a>(&self, ast: &mut crate::Ast<'a>, sym: Atom<'a>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = sym.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_symbol_id<'a>(&self, ast: &mut crate::Ast<'a>, symbol_id: Option<SymbolId>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = symbol_id.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for AssignPatProp<'a> {
+impl IdentName {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn sym<'a>(&self, ast: &crate::Ast<'a>) -> Atom<'a> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_sym<'a>(&self, ast: &mut crate::Ast<'a>, sym: Atom<'a>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = sym.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for Ident<'a> {
+impl PrivateName {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn name<'a>(&self, ast: &crate::Ast<'a>) -> Atom<'a> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_name<'a>(&self, ast: &mut crate::Ast<'a>, name: Atom<'a>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = name.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for Ident<'a> {
+impl BindingIdent {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn id<'a>(&self, ast: &crate::Ast<'a>) -> Ident {
+        let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+        unsafe { Ident::from_node_id_unchecked(crate::NodeId::from_raw_unchecked(raw), ast) }
+    }
+    #[inline]
+    pub fn set_id<'a>(&self, ast: &mut crate::Ast<'a>, id: Ident) {
+        unsafe {
+            ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data =
+                id.node_id().index() as u32
+        };
     }
 }
-impl<'a> GetSpan for IdentName<'a> {
+impl Lit {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for IdentName<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for PrivateName<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for PrivateName<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> Lit<'a> {
-    #[inline]
-    pub const fn is_str(&self) -> bool {
-        matches!(self, Self::Str { .. })
+    pub fn is_str(&self) -> bool {
+        matches!(self, Self::Str(_))
     }
     #[inline]
-    pub const fn is_bool(&self) -> bool {
-        matches!(self, Self::Bool { .. })
+    pub fn is_bool(&self) -> bool {
+        matches!(self, Self::Bool(_))
     }
     #[inline]
-    pub const fn is_null(&self) -> bool {
-        matches!(self, Self::Null { .. })
+    pub fn is_null(&self) -> bool {
+        matches!(self, Self::Null(_))
     }
     #[inline]
-    pub const fn is_num(&self) -> bool {
-        matches!(self, Self::Num { .. })
+    pub fn is_num(&self) -> bool {
+        matches!(self, Self::Num(_))
     }
     #[inline]
-    pub const fn is_big_int(&self) -> bool {
-        matches!(self, Self::BigInt { .. })
+    pub fn is_big_int(&self) -> bool {
+        matches!(self, Self::BigInt(_))
     }
     #[inline]
-    pub const fn is_regex(&self) -> bool {
-        matches!(self, Self::Regex { .. })
+    pub fn is_regex(&self) -> bool {
+        matches!(self, Self::Regex(_))
     }
     #[inline]
-    pub fn as_str(&self) -> Option<&Str<'a>> {
+    pub fn as_str(self) -> Option<Str> {
         match self {
             Self::Str(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_bool(&self) -> Option<&Bool> {
+    pub fn as_bool(self) -> Option<Bool> {
         match self {
             Self::Bool(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_null(&self) -> Option<&Null> {
+    pub fn as_null(self) -> Option<Null> {
         match self {
             Self::Null(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_num(&self) -> Option<&Number<'a>> {
+    pub fn as_num(self) -> Option<Number> {
         match self {
             Self::Num(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_big_int(&self) -> Option<&BigInt<'a>> {
+    pub fn as_big_int(self) -> Option<BigInt> {
         match self {
             Self::BigInt(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_regex(&self) -> Option<&Regex<'a>> {
-        match self {
-            Self::Regex(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_str(&mut self) -> Option<&mut Str<'a>> {
-        match self {
-            Self::Str(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_bool(&mut self) -> Option<&mut Bool> {
-        match self {
-            Self::Bool(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_null(&mut self) -> Option<&mut Null> {
-        match self {
-            Self::Null(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_num(&mut self) -> Option<&mut Number<'a>> {
-        match self {
-            Self::Num(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_big_int(&mut self) -> Option<&mut BigInt<'a>> {
-        match self {
-            Self::BigInt(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_regex(&mut self) -> Option<&mut Regex<'a>> {
+    pub fn as_regex(self) -> Option<Regex> {
         match self {
             Self::Regex(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for Lit<'a> {
+impl Str {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Str(it) => it.span(),
-            Self::Bool(it) => it.span(),
-            Self::Null(it) => it.span(),
-            Self::Num(it) => it.span(),
-            Self::BigInt(it) => it.span(),
-            Self::Regex(it) => it.span(),
+    pub fn value<'a>(&self, ast: &crate::Ast<'a>) -> Wtf8Atom<'a> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for Lit<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Str(it) => it.set_span(span),
-            Self::Bool(it) => it.set_span(span),
-            Self::Null(it) => it.set_span(span),
-            Self::Num(it) => it.set_span(span),
-            Self::BigInt(it) => it.set_span(span),
-            Self::Regex(it) => it.set_span(span),
+    pub fn raw<'a>(&self, ast: &crate::Ast<'a>) -> Option<Atom<'a>> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for Str<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn set_value<'a>(&self, ast: &mut crate::Ast<'a>, value: Wtf8Atom<'a>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = value.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_raw<'a>(&self, ast: &mut crate::Ast<'a>, raw: Option<Atom<'a>>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = raw.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for Str<'a> {
+impl Bool {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn value<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let raw = unsafe { ast.nodes.get_unchecked(self.0.index()).data.inline_data };
+        raw != 0
+    }
+    #[inline]
+    pub fn set_value<'a>(&self, ast: &mut crate::Ast<'a>, value: bool) {
+        unsafe { ast.nodes.get_unchecked_mut(self.0.index()).data.inline_data = value as u32 };
     }
 }
-impl GetSpan for Bool {
+impl Null {}
+impl Number {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn value<'a>(&self, ast: &crate::Ast<'a>) -> f64 {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn raw<'a>(&self, ast: &crate::Ast<'a>) -> Option<Atom<'a>> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_value<'a>(&self, ast: &mut crate::Ast<'a>, value: f64) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = value.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_raw<'a>(&self, ast: &mut crate::Ast<'a>, raw: Option<Atom<'a>>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = raw.to_extra_data();
+        };
     }
 }
-impl SetSpan for Bool {
+impl BigInt {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn value<'a>(&self, ast: &crate::Ast<'a>) -> Atom<'a> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn raw<'a>(&self, ast: &crate::Ast<'a>) -> Option<Atom<'a>> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_value<'a>(&self, ast: &mut crate::Ast<'a>, value: Atom<'a>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = value.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_raw<'a>(&self, ast: &mut crate::Ast<'a>, raw: Option<Atom<'a>>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = raw.to_extra_data();
+        };
     }
 }
-impl GetSpan for Null {
+impl Regex {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn exp<'a>(&self, ast: &crate::Ast<'a>) -> Atom<'a> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn flags<'a>(&self, ast: &crate::Ast<'a>) -> Atom<'a> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_exp<'a>(&self, ast: &mut crate::Ast<'a>, exp: Atom<'a>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = exp.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_flags<'a>(&self, ast: &mut crate::Ast<'a>, flags: Atom<'a>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = flags.to_extra_data();
+        };
     }
 }
-impl SetSpan for Null {
+impl JSXObject {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for Number<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for Number<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for BigInt<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for BigInt<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for Regex<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for Regex<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> JSXObject<'a> {
-    #[inline]
-    pub const fn is_jsx_member_expr(&self) -> bool {
-        matches!(self, Self::JSXMemberExpr { .. })
+    pub fn is_jsx_member_expr(&self) -> bool {
+        matches!(self, Self::JSXMemberExpr(_))
     }
     #[inline]
-    pub const fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident { .. })
+    pub fn is_ident(&self) -> bool {
+        matches!(self, Self::Ident(_))
     }
     #[inline]
-    pub fn as_jsx_member_expr(&self) -> Option<&JSXMemberExpr<'a>> {
+    pub fn as_jsx_member_expr(self) -> Option<JSXMemberExpr> {
         match self {
             Self::JSXMemberExpr(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_ident(&self) -> Option<&Ident<'a>> {
-        match self {
-            Self::Ident(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_jsx_member_expr(&mut self) -> Option<&mut JSXMemberExpr<'a>> {
-        match self {
-            Self::JSXMemberExpr(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_ident(&mut self) -> Option<&mut Ident<'a>> {
+    pub fn as_ident(self) -> Option<Ident> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for JSXObject<'a> {
+impl JSXMemberExpr {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::JSXMemberExpr(it) => it.span(),
-            Self::Ident(it) => it.span(),
+    pub fn obj<'a>(&self, ast: &crate::Ast<'a>) -> JSXObject {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for JSXObject<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::JSXMemberExpr(it) => it.set_span(span),
-            Self::Ident(it) => it.set_span(span),
+    pub fn prop<'a>(&self, ast: &crate::Ast<'a>) -> IdentName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for JSXMemberExpr<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn set_obj<'a>(&self, ast: &mut crate::Ast<'a>, obj: JSXObject) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = obj.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_prop<'a>(&self, ast: &mut crate::Ast<'a>, prop: IdentName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = prop.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for JSXMemberExpr<'a> {
+impl JSXNamespacedName {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn ns<'a>(&self, ast: &crate::Ast<'a>) -> IdentName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn name<'a>(&self, ast: &crate::Ast<'a>) -> IdentName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_ns<'a>(&self, ast: &mut crate::Ast<'a>, ns: IdentName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = ns.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_name<'a>(&self, ast: &mut crate::Ast<'a>, name: IdentName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = name.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for JSXNamespacedName<'a> {
+impl JSXEmptyExpr {}
+impl JSXExprContainer {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn expr<'a>(&self, ast: &crate::Ast<'a>) -> JSXExpr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_expr<'a>(&self, ast: &mut crate::Ast<'a>, expr: JSXExpr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = expr.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for JSXNamespacedName<'a> {
+impl JSXExpr {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl GetSpan for JSXEmptyExpr {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl SetSpan for JSXEmptyExpr {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for JSXExprContainer<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for JSXExprContainer<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> JSXExpr<'a> {
-    #[inline]
-    pub const fn is_jsx_empty_expr(&self) -> bool {
-        matches!(self, Self::JSXEmptyExpr { .. })
+    pub fn is_jsx_empty_expr(&self) -> bool {
+        matches!(self, Self::JSXEmptyExpr(_))
     }
     #[inline]
-    pub const fn is_expr(&self) -> bool {
-        matches!(self, Self::Expr { .. })
+    pub fn is_expr(&self) -> bool {
+        matches!(self, Self::Expr(_))
     }
     #[inline]
-    pub fn as_jsx_empty_expr(&self) -> Option<&JSXEmptyExpr> {
+    pub fn as_jsx_empty_expr(self) -> Option<JSXEmptyExpr> {
         match self {
             Self::JSXEmptyExpr(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_expr(&self) -> Option<&Expr<'a>> {
-        match self {
-            Self::Expr(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_jsx_empty_expr(&mut self) -> Option<&mut JSXEmptyExpr> {
-        match self {
-            Self::JSXEmptyExpr(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_expr(&mut self) -> Option<&mut Expr<'a>> {
+    pub fn as_expr(self) -> Option<Expr> {
         match self {
             Self::Expr(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for JSXExpr<'a> {
+impl JSXSpreadChild {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::JSXEmptyExpr(it) => it.span(),
-            Self::Expr(it) => it.span(),
+    pub fn expr<'a>(&self, ast: &crate::Ast<'a>) -> Expr {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for JSXExpr<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::JSXEmptyExpr(it) => it.set_span(span),
-            Self::Expr(it) => it.set_span(span),
-        }
+    pub fn set_expr<'a>(&self, ast: &mut crate::Ast<'a>, expr: Expr) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = expr.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for JSXSpreadChild<'a> {
+impl JSXElementName {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for JSXSpreadChild<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> JSXElementName<'a> {
-    #[inline]
-    pub const fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident { .. })
+    pub fn is_ident(&self) -> bool {
+        matches!(self, Self::Ident(_))
     }
     #[inline]
-    pub const fn is_jsx_member_expr(&self) -> bool {
-        matches!(self, Self::JSXMemberExpr { .. })
+    pub fn is_jsx_member_expr(&self) -> bool {
+        matches!(self, Self::JSXMemberExpr(_))
     }
     #[inline]
-    pub const fn is_jsx_namespaced_name(&self) -> bool {
-        matches!(self, Self::JSXNamespacedName { .. })
+    pub fn is_jsx_namespaced_name(&self) -> bool {
+        matches!(self, Self::JSXNamespacedName(_))
     }
     #[inline]
-    pub fn as_ident(&self) -> Option<&Ident<'a>> {
+    pub fn as_ident(self) -> Option<Ident> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_member_expr(&self) -> Option<&JSXMemberExpr<'a>> {
+    pub fn as_jsx_member_expr(self) -> Option<JSXMemberExpr> {
         match self {
             Self::JSXMemberExpr(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_namespaced_name(&self) -> Option<&JSXNamespacedName<'a>> {
-        match self {
-            Self::JSXNamespacedName(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_ident(&mut self) -> Option<&mut Ident<'a>> {
-        match self {
-            Self::Ident(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_jsx_member_expr(&mut self) -> Option<&mut JSXMemberExpr<'a>> {
-        match self {
-            Self::JSXMemberExpr(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_jsx_namespaced_name(&mut self) -> Option<&mut JSXNamespacedName<'a>> {
+    pub fn as_jsx_namespaced_name(self) -> Option<JSXNamespacedName> {
         match self {
             Self::JSXNamespacedName(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for JSXElementName<'a> {
+impl JSXOpeningElement {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Ident(it) => it.span(),
-            Self::JSXMemberExpr(it) => it.span(),
-            Self::JSXNamespacedName(it) => it.span(),
+    pub fn name<'a>(&self, ast: &crate::Ast<'a>) -> JSXElementName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for JSXElementName<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Ident(it) => it.set_span(span),
-            Self::JSXMemberExpr(it) => it.set_span(span),
-            Self::JSXNamespacedName(it) => it.set_span(span),
+    pub fn attrs<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<JSXAttrOrSpread> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for JSXOpeningElement<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn self_closing<'a>(&self, ast: &crate::Ast<'a>) -> bool {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_name<'a>(&self, ast: &mut crate::Ast<'a>, name: JSXElementName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = name.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_attrs<'a>(&self, ast: &mut crate::Ast<'a>, attrs: TypedSubRange<JSXAttrOrSpread>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = attrs.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_self_closing<'a>(&self, ast: &mut crate::Ast<'a>, self_closing: bool) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = self_closing.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for JSXOpeningElement<'a> {
+impl JSXAttrOrSpread {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> JSXAttrOrSpread<'a> {
-    #[inline]
-    pub const fn is_jsx_attr(&self) -> bool {
-        matches!(self, Self::JSXAttr { .. })
+    pub fn is_jsx_attr(&self) -> bool {
+        matches!(self, Self::JSXAttr(_))
     }
     #[inline]
-    pub const fn is_spread_element(&self) -> bool {
-        matches!(self, Self::SpreadElement { .. })
+    pub fn is_spread_element(&self) -> bool {
+        matches!(self, Self::SpreadElement(_))
     }
     #[inline]
-    pub fn as_jsx_attr(&self) -> Option<&JSXAttr<'a>> {
+    pub fn as_jsx_attr(self) -> Option<JSXAttr> {
         match self {
             Self::JSXAttr(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_spread_element(&self) -> Option<&SpreadElement<'a>> {
-        match self {
-            Self::SpreadElement(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_jsx_attr(&mut self) -> Option<&mut JSXAttr<'a>> {
-        match self {
-            Self::JSXAttr(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_spread_element(&mut self) -> Option<&mut SpreadElement<'a>> {
+    pub fn as_spread_element(self) -> Option<SpreadElement> {
         match self {
             Self::SpreadElement(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for JSXAttrOrSpread<'a> {
+impl JSXClosingElement {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::JSXAttr(it) => it.span(),
-            Self::SpreadElement(it) => it.span(),
+    pub fn name<'a>(&self, ast: &crate::Ast<'a>) -> JSXElementName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for JSXAttrOrSpread<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::JSXAttr(it) => it.set_span(span),
-            Self::SpreadElement(it) => it.set_span(span),
+    pub fn set_name<'a>(&self, ast: &mut crate::Ast<'a>, name: JSXElementName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = name.to_extra_data();
+        };
+    }
+}
+impl JSXAttr {
+    #[inline]
+    pub fn name<'a>(&self, ast: &crate::Ast<'a>) -> JSXAttrName {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for JSXClosingElement<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn value<'a>(&self, ast: &crate::Ast<'a>) -> Option<JSXAttrValue> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_name<'a>(&self, ast: &mut crate::Ast<'a>, name: JSXAttrName) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = name.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_value<'a>(&self, ast: &mut crate::Ast<'a>, value: Option<JSXAttrValue>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = value.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for JSXClosingElement<'a> {
+impl JSXAttrName {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> GetSpan for JSXAttr<'a> {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for JSXAttr<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> JSXAttrName<'a> {
-    #[inline]
-    pub const fn is_ident(&self) -> bool {
-        matches!(self, Self::Ident { .. })
+    pub fn is_ident(&self) -> bool {
+        matches!(self, Self::Ident(_))
     }
     #[inline]
-    pub const fn is_jsx_namespaced_name(&self) -> bool {
-        matches!(self, Self::JSXNamespacedName { .. })
+    pub fn is_jsx_namespaced_name(&self) -> bool {
+        matches!(self, Self::JSXNamespacedName(_))
     }
     #[inline]
-    pub fn as_ident(&self) -> Option<&IdentName<'a>> {
+    pub fn as_ident(self) -> Option<IdentName> {
         match self {
             Self::Ident(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_namespaced_name(&self) -> Option<&JSXNamespacedName<'a>> {
-        match self {
-            Self::JSXNamespacedName(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_ident(&mut self) -> Option<&mut IdentName<'a>> {
-        match self {
-            Self::Ident(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_jsx_namespaced_name(&mut self) -> Option<&mut JSXNamespacedName<'a>> {
+    pub fn as_jsx_namespaced_name(self) -> Option<JSXNamespacedName> {
         match self {
             Self::JSXNamespacedName(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for JSXAttrName<'a> {
+impl JSXAttrValue {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Ident(it) => it.span(),
-            Self::JSXNamespacedName(it) => it.span(),
-        }
-    }
-}
-impl<'a> SetSpan for JSXAttrName<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Ident(it) => it.set_span(span),
-            Self::JSXNamespacedName(it) => it.set_span(span),
-        }
-    }
-}
-impl<'a> JSXAttrValue<'a> {
-    #[inline]
-    pub const fn is_str(&self) -> bool {
-        matches!(self, Self::Str { .. })
+    pub fn is_str(&self) -> bool {
+        matches!(self, Self::Str(_))
     }
     #[inline]
-    pub const fn is_jsx_expr_container(&self) -> bool {
-        matches!(self, Self::JSXExprContainer { .. })
+    pub fn is_jsx_expr_container(&self) -> bool {
+        matches!(self, Self::JSXExprContainer(_))
     }
     #[inline]
-    pub const fn is_jsx_element(&self) -> bool {
-        matches!(self, Self::JSXElement { .. })
+    pub fn is_jsx_element(&self) -> bool {
+        matches!(self, Self::JSXElement(_))
     }
     #[inline]
-    pub const fn is_jsx_fragment(&self) -> bool {
-        matches!(self, Self::JSXFragment { .. })
+    pub fn is_jsx_fragment(&self) -> bool {
+        matches!(self, Self::JSXFragment(_))
     }
     #[inline]
-    pub fn as_str(&self) -> Option<&Str<'a>> {
+    pub fn as_str(self) -> Option<Str> {
         match self {
             Self::Str(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_expr_container(&self) -> Option<&JSXExprContainer<'a>> {
+    pub fn as_jsx_expr_container(self) -> Option<JSXExprContainer> {
         match self {
             Self::JSXExprContainer(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_element(&self) -> Option<&JSXElement<'a>> {
+    pub fn as_jsx_element(self) -> Option<JSXElement> {
         match self {
             Self::JSXElement(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_fragment(&self) -> Option<&JSXFragment<'a>> {
-        match self {
-            Self::JSXFragment(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_str(&mut self) -> Option<&mut Str<'a>> {
-        match self {
-            Self::Str(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_jsx_expr_container(&mut self) -> Option<&mut JSXExprContainer<'a>> {
-        match self {
-            Self::JSXExprContainer(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_jsx_element(&mut self) -> Option<&mut JSXElement<'a>> {
-        match self {
-            Self::JSXElement(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_jsx_fragment(&mut self) -> Option<&mut JSXFragment<'a>> {
+    pub fn as_jsx_fragment(self) -> Option<JSXFragment> {
         match self {
             Self::JSXFragment(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for JSXAttrValue<'a> {
+impl JSXText {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::Str(it) => it.span(),
-            Self::JSXExprContainer(it) => it.span(),
-            Self::JSXElement(it) => it.span(),
-            Self::JSXFragment(it) => it.span(),
+    pub fn value<'a>(&self, ast: &crate::Ast<'a>) -> Atom<'a> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for JSXAttrValue<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::Str(it) => it.set_span(span),
-            Self::JSXExprContainer(it) => it.set_span(span),
-            Self::JSXElement(it) => it.set_span(span),
-            Self::JSXFragment(it) => it.set_span(span),
+    pub fn raw<'a>(&self, ast: &crate::Ast<'a>) -> Atom<'a> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for JSXText<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn set_value<'a>(&self, ast: &mut crate::Ast<'a>, value: Atom<'a>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = value.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_raw<'a>(&self, ast: &mut crate::Ast<'a>, raw: Atom<'a>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = raw.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for JSXText<'a> {
+impl JSXElement {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
+    pub fn opening<'a>(&self, ast: &crate::Ast<'a>) -> JSXOpeningElement {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn children<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<JSXElementChild> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn closing<'a>(&self, ast: &crate::Ast<'a>) -> Option<JSXClosingElement> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_opening<'a>(&self, ast: &mut crate::Ast<'a>, opening: JSXOpeningElement) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = opening.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_children<'a>(
+        &self,
+        ast: &mut crate::Ast<'a>,
+        children: TypedSubRange<JSXElementChild>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = children.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_closing<'a>(&self, ast: &mut crate::Ast<'a>, closing: Option<JSXClosingElement>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = closing.to_extra_data();
+        };
     }
 }
-impl<'a> GetSpan for JSXElement<'a> {
+impl JSXElementChild {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl<'a> SetSpan for JSXElement<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl<'a> JSXElementChild<'a> {
-    #[inline]
-    pub const fn is_jsx_text(&self) -> bool {
-        matches!(self, Self::JSXText { .. })
+    pub fn is_jsx_text(&self) -> bool {
+        matches!(self, Self::JSXText(_))
     }
     #[inline]
-    pub const fn is_jsx_expr_container(&self) -> bool {
-        matches!(self, Self::JSXExprContainer { .. })
+    pub fn is_jsx_expr_container(&self) -> bool {
+        matches!(self, Self::JSXExprContainer(_))
     }
     #[inline]
-    pub const fn is_jsx_spread_child(&self) -> bool {
-        matches!(self, Self::JSXSpreadChild { .. })
+    pub fn is_jsx_spread_child(&self) -> bool {
+        matches!(self, Self::JSXSpreadChild(_))
     }
     #[inline]
-    pub const fn is_jsx_element(&self) -> bool {
-        matches!(self, Self::JSXElement { .. })
+    pub fn is_jsx_element(&self) -> bool {
+        matches!(self, Self::JSXElement(_))
     }
     #[inline]
-    pub const fn is_jsx_fragment(&self) -> bool {
-        matches!(self, Self::JSXFragment { .. })
+    pub fn is_jsx_fragment(&self) -> bool {
+        matches!(self, Self::JSXFragment(_))
     }
     #[inline]
-    pub fn as_jsx_text(&self) -> Option<&JSXText<'a>> {
+    pub fn as_jsx_text(self) -> Option<JSXText> {
         match self {
             Self::JSXText(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_expr_container(&self) -> Option<&JSXExprContainer<'a>> {
+    pub fn as_jsx_expr_container(self) -> Option<JSXExprContainer> {
         match self {
             Self::JSXExprContainer(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_spread_child(&self) -> Option<&JSXSpreadChild<'a>> {
+    pub fn as_jsx_spread_child(self) -> Option<JSXSpreadChild> {
         match self {
             Self::JSXSpreadChild(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_element(&self) -> Option<&JSXElement<'a>> {
+    pub fn as_jsx_element(self) -> Option<JSXElement> {
         match self {
             Self::JSXElement(it) => Some(it),
             _ => None,
         }
     }
     #[inline]
-    pub fn as_jsx_fragment(&self) -> Option<&JSXFragment<'a>> {
-        match self {
-            Self::JSXFragment(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_jsx_text(&mut self) -> Option<&mut JSXText<'a>> {
-        match self {
-            Self::JSXText(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_jsx_expr_container(&mut self) -> Option<&mut JSXExprContainer<'a>> {
-        match self {
-            Self::JSXExprContainer(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_jsx_spread_child(&mut self) -> Option<&mut JSXSpreadChild<'a>> {
-        match self {
-            Self::JSXSpreadChild(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_jsx_element(&mut self) -> Option<&mut JSXElement<'a>> {
-        match self {
-            Self::JSXElement(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_mut_jsx_fragment(&mut self) -> Option<&mut JSXFragment<'a>> {
+    pub fn as_jsx_fragment(self) -> Option<JSXFragment> {
         match self {
             Self::JSXFragment(it) => Some(it),
             _ => None,
         }
     }
 }
-impl<'a> GetSpan for JSXElementChild<'a> {
+impl JSXFragment {
     #[inline]
-    fn span(&self) -> Span {
-        match self {
-            Self::JSXText(it) => it.span(),
-            Self::JSXExprContainer(it) => it.span(),
-            Self::JSXSpreadChild(it) => it.span(),
-            Self::JSXElement(it) => it.span(),
-            Self::JSXFragment(it) => it.span(),
+    pub fn opening<'a>(&self, ast: &crate::Ast<'a>) -> JSXOpeningFragment {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> SetSpan for JSXElementChild<'a> {
     #[inline]
-    fn set_span(&mut self, span: Span) {
-        match self {
-            Self::JSXText(it) => it.set_span(span),
-            Self::JSXExprContainer(it) => it.set_span(span),
-            Self::JSXSpreadChild(it) => it.set_span(span),
-            Self::JSXElement(it) => it.set_span(span),
-            Self::JSXFragment(it) => it.set_span(span),
+    pub fn children<'a>(&self, ast: &crate::Ast<'a>) -> TypedSubRange<JSXElementChild> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
         }
     }
-}
-impl<'a> GetSpan for JSXFragment<'a> {
     #[inline]
-    fn span(&self) -> Span {
-        self.span
+    pub fn closing<'a>(&self, ast: &crate::Ast<'a>) -> JSXClosingFragment {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_opening<'a>(&self, ast: &mut crate::Ast<'a>, opening: JSXOpeningFragment) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(0usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = opening.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_children<'a>(
+        &self,
+        ast: &mut crate::Ast<'a>,
+        children: TypedSubRange<JSXElementChild>,
+    ) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = children.to_extra_data();
+        };
+    }
+    #[inline]
+    pub fn set_closing<'a>(&self, ast: &mut crate::Ast<'a>, closing: JSXClosingFragment) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ast.nodes
+                    .get_unchecked(self.0.index())
+                    .data
+                    .extra_data_start
+                    .index()
+                    .wrapping_add(2usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = closing.to_extra_data();
+        };
     }
 }
-impl<'a> SetSpan for JSXFragment<'a> {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl GetSpan for JSXOpeningFragment {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl SetSpan for JSXOpeningFragment {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
-impl GetSpan for JSXClosingFragment {
-    #[inline]
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-impl SetSpan for JSXClosingFragment {
-    #[inline]
-    fn set_span(&mut self, span: Span) {
-        self.span = span;
-    }
-}
+impl JSXOpeningFragment {}
+impl JSXClosingFragment {}

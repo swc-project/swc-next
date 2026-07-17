@@ -1,22 +1,24 @@
-use std::fs;
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+};
 
 use indexmap::IndexSet;
 use oxc_index::IndexVec;
 use quote::ToTokens;
 use syn::{
     Attribute, Field, GenericArgument, Ident, Item, ItemEnum, ItemStruct, Meta, PathArguments,
-    Token, Type, Variant, punctuated::Punctuated,
+    Type, Variant, punctuated::Punctuated, token::Comma,
 };
 
 use crate::schema::{
-    AstBox, AstEnum, AstEnumVariant, AstOption, AstPrimitive, AstStruct, AstStructField, AstType,
-    AstVec, Schema, SpanKind, TypeId,
+    AstAttrs, AstEnum, AstEnumVariant, AstOption, AstPrimitive, AstStruct, AstStructField, AstType,
+    AstVec, Schema, TypeId,
 };
 
 struct Parser {
     /// Mapping all type names to their type ids
     type_names: IndexSet<String>,
-    top_level_type_count: usize,
     /// Types exclude top level structs and enums
     extra_types: IndexVec<TypeId, AstType>,
 }
@@ -25,11 +27,13 @@ pub fn parse_files(file_paths: &[&str]) -> Schema {
     struct PrototypeStruct {
         type_id: TypeId,
         item: ItemStruct,
+        attrs: AstAttrs,
     }
 
     struct PrototypeEnum {
         type_id: TypeId,
         item: ItemEnum,
+        attrs: AstAttrs,
     }
 
     enum PrototypeStructOrEnum {
@@ -40,6 +44,7 @@ pub fn parse_files(file_paths: &[&str]) -> Schema {
     // Collect declared enums and structs ahead of time and create their types
     let mut type_names = IndexSet::new();
     let mut prototypes = Vec::new();
+    let mut repr_sizes = HashMap::new();
 
     for source in file_paths {
         let content =
@@ -49,9 +54,9 @@ pub fn parse_files(file_paths: &[&str]) -> Schema {
             match item {
                 Item::Struct(item) => {
                     // Filter structs with #[ast]
-                    if !has_ast_attr(&item.attrs) {
+                    let Some(attrs) = parse_attrs(&item.attrs) else {
                         continue;
-                    }
+                    };
 
                     let name = item.ident.to_string();
                     let type_id = TypeId::from_usize(type_names.len());
@@ -59,18 +64,28 @@ pub fn parse_files(file_paths: &[&str]) -> Schema {
                     prototypes.push(PrototypeStructOrEnum::Struct(PrototypeStruct {
                         type_id,
                         item,
+                        attrs,
                     }));
                 }
                 Item::Enum(item) => {
-                    // Filter enums with #[ast]
-                    if !has_ast_attr(&item.attrs) {
-                        continue;
+                    // Collect #[repr(uN)] sizes for all enums (not just #[ast] enums)
+                    if let Some(size) = parse_repr_size(&item.attrs) {
+                        repr_sizes.insert(item.ident.to_string(), size);
                     }
+
+                    // Filter enums with #[ast]
+                    let Some(attrs) = parse_attrs(&item.attrs) else {
+                        continue;
+                    };
 
                     let name = item.ident.to_string();
                     let type_id = TypeId::from_usize(type_names.len());
                     type_names.insert(name);
-                    prototypes.push(PrototypeStructOrEnum::Enum(PrototypeEnum { type_id, item }));
+                    prototypes.push(PrototypeStructOrEnum::Enum(PrototypeEnum {
+                        type_id,
+                        item,
+                        attrs,
+                    }));
                 }
                 _ => continue,
             }
@@ -78,7 +93,6 @@ pub fn parse_files(file_paths: &[&str]) -> Schema {
     }
 
     let mut parser = Parser {
-        top_level_type_count: type_names.len(),
         type_names,
         extra_types: IndexVec::default(),
     };
@@ -88,16 +102,24 @@ pub fn parse_files(file_paths: &[&str]) -> Schema {
     for prototype in prototypes {
         match prototype {
             PrototypeStructOrEnum::Struct(prototype_struct) => {
-                types.push(parser.parse_struct(prototype_struct.type_id, prototype_struct.item));
+                types.push(parser.parse_struct(
+                    prototype_struct.type_id,
+                    prototype_struct.attrs,
+                    prototype_struct.item,
+                ));
             }
             PrototypeStructOrEnum::Enum(prototype_enum) => {
-                types.push(parser.parse_enum(prototype_enum.type_id, prototype_enum.item));
+                types.push(parser.parse_enum(
+                    prototype_enum.type_id,
+                    prototype_enum.attrs,
+                    prototype_enum.item,
+                ));
             }
         }
     }
 
     types.extend(parser.extra_types);
-    Schema { types }
+    Schema { types, repr_sizes }
 }
 
 impl Parser {
@@ -106,7 +128,6 @@ impl Parser {
         match &mut item {
             AstType::Struct(ast) => ast.type_id = type_id,
             AstType::Enum(ast) => ast.type_id = type_id,
-            AstType::Box(ast) => ast.type_id = type_id,
             AstType::Vec(ast) => ast.type_id = type_id,
             AstType::Option(ast) => ast.type_id = type_id,
             AstType::Primitive(ast) => ast.type_id = type_id,
@@ -153,12 +174,8 @@ impl Parser {
             "Span" => primitive("Span"),
             "ScopeId" => primitive("ScopeId"),
             "SymbolId" => primitive("SymbolId"),
-            "AtomRef" => primitive("AtomRef"),
             "Atom" => primitive("Atom"),
             "Wtf8Atom" => primitive("Wtf8Atom"),
-            "swc_experimental_num_bigint::BigInt" => {
-                primitive("swc_experimental_num_bigint::BigInt")
-            }
             "ImportPhase" => primitive("ImportPhase"),
             "VarDeclKind" => primitive("VarDeclKind"),
             "UnaryOp" => primitive("UnaryOp"),
@@ -173,18 +190,77 @@ impl Parser {
     }
 }
 
-fn has_ast_attr(attrs: &[Attribute]) -> bool {
-    attrs.iter().any(|attr| match &attr.meta {
-        Meta::Path(path) => path.is_ident("ast"),
-        Meta::List(meta_list) => meta_list.path.is_ident("ast"),
-        _ => false,
+/// Parse #[repr(uN)] attribute and return the size in bytes
+/// Handles whitespace and multiple repr arguments (e.g., `#[repr(C, u8)]`)
+fn parse_repr_size(attrs: &[Attribute]) -> Option<usize> {
+    for attr in attrs {
+        if let Meta::List(meta_list) = &attr.meta
+            && meta_list.path.is_ident("repr")
+        {
+            // Parse as comma-separated identifiers to handle `#[repr(C, u8)]`
+            if let Ok(args) =
+                meta_list.parse_args_with(Punctuated::<Ident, Comma>::parse_terminated)
+            {
+                for arg in args {
+                    match arg.to_string().as_str() {
+                        "u8" => return Some(1),
+                        "u16" => return Some(2),
+                        "u32" => return Some(4),
+                        "u64" => return Some(8),
+                        _ => continue,
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+fn parse_attrs(attrs: &[Attribute]) -> Option<AstAttrs> {
+    let mut has_ast_attr = false;
+    let mut ast_attrs = HashSet::new();
+    let mut generate_derives = HashSet::new();
+
+    // Find #[ast] and #[generate_derive]
+    for attr in attrs {
+        match &attr.meta {
+            Meta::Path(path) => {
+                if path.is_ident("ast") {
+                    has_ast_attr = true;
+                }
+            }
+            Meta::List(meta_list) => {
+                if meta_list.path.is_ident("ast") {
+                    has_ast_attr = true;
+                    let args = meta_list
+                        .parse_args_with(Punctuated::<Ident, Comma>::parse_terminated)
+                        .expect("Unable to parse `#[ast]`");
+                    ast_attrs.extend(args.into_iter().map(|arg| arg.to_string()));
+                }
+                if meta_list.path.is_ident("generate_derive") {
+                    let args = meta_list
+                        .parse_args_with(Punctuated::<Ident, Comma>::parse_terminated)
+                        .expect("Unable to parse `#[generate_derive]`");
+                    generate_derives.extend(args.into_iter().map(|arg| arg.to_string()));
+                }
+            }
+            _ => continue,
+        };
+    }
+
+    if !has_ast_attr {
+        return None;
+    }
+
+    Some(AstAttrs {
+        ast_attrs,
+        generate_derives,
     })
 }
 
 impl Parser {
-    fn parse_struct(&mut self, type_id: TypeId, item: ItemStruct) -> AstType {
+    fn parse_struct(&mut self, type_id: TypeId, attrs: AstAttrs, item: ItemStruct) -> AstType {
         let name = item.ident.to_string();
-        let skip_span = has_ast_option(&item.attrs, "skip_span");
         let fields = item
             .fields
             .into_iter()
@@ -193,27 +269,21 @@ impl Parser {
         AstType::Struct(AstStruct {
             type_id,
             name,
-            skip_span,
             fields,
+            _attrs: attrs,
         })
     }
 
     fn parse_struct_field(&mut self, field: Field) -> AstStructField {
         let name = field.ident.unwrap().to_string();
-        let span_kind = parse_span_attr(&field.attrs);
         let type_id = self
             .parse_type_name(&field.ty)
             .unwrap_or_else(|| panic!("Cannot parse type {}", field.ty.to_token_stream()));
-        AstStructField {
-            type_id,
-            name,
-            span_kind,
-        }
+        AstStructField { type_id, name }
     }
 
-    fn parse_enum(&mut self, type_id: TypeId, item: ItemEnum) -> AstType {
+    fn parse_enum(&mut self, type_id: TypeId, attrs: AstAttrs, item: ItemEnum) -> AstType {
         let name = item.ident.to_string();
-        let skip_span = has_ast_option(&item.attrs, "skip_span");
         let variants = item
             .variants
             .into_iter()
@@ -222,8 +292,8 @@ impl Parser {
         AstType::Enum(AstEnum {
             type_id,
             name,
-            skip_span,
             variants,
+            _attrs: attrs,
         })
     }
 
@@ -252,26 +322,14 @@ impl Parser {
             return None;
         };
 
-        if ty.qself.is_some() || ty.path.leading_colon.is_some() {
+        if ty.qself.is_some() || ty.path.leading_colon.is_some() || ty.path.segments.len() != 1 {
             return None;
         }
 
-        let segment = ty.path.segments.last().unwrap();
+        let segment = ty.path.segments.first().unwrap();
         let name = segment.ident.to_string();
         match &segment.arguments {
-            PathArguments::None => {
-                let name = if ty.path.segments.len() == 1 {
-                    name
-                } else {
-                    ty.path
-                        .segments
-                        .iter()
-                        .map(|segment| segment.ident.to_string())
-                        .collect::<Vec<_>>()
-                        .join("::")
-                };
-                Some(self.simple_type_id(&name))
-            }
+            PathArguments::None => Some(self.simple_type_id(&name)),
             PathArguments::Parenthesized(_) => None,
             PathArguments::AngleBracketed(angle) => {
                 let mut args = angle.args.iter();
@@ -283,16 +341,6 @@ impl Parser {
                 if let Some(arg) = arg {
                     self.parse_wrapped_type(&name, arg)
                 } else {
-                    let name = if ty.path.segments.len() == 1 {
-                        name
-                    } else {
-                        ty.path
-                            .segments
-                            .iter()
-                            .map(|segment| segment.ident.to_string())
-                            .collect::<Vec<_>>()
-                            .join("::")
-                    };
                     Some(self.simple_type_id(&name))
                 }
             }
@@ -306,27 +354,6 @@ impl Parser {
 
         let inner_type_id = self.parse_type_name(ty_arg)?;
         let type_id = match wrapper_name {
-            "Box" => {
-                if inner_type_id.index() < self.top_level_type_count {
-                    return Some(inner_type_id);
-                }
-
-                let name = format!(
-                    "{}<{}>",
-                    wrapper_name,
-                    self.type_names[inner_type_id.index()]
-                );
-                if let Some(type_id) = self.type_names.get_index_of(&name) {
-                    return Some(TypeId::from(type_id));
-                }
-
-                let ast_type = AstType::Box(AstBox {
-                    type_id: TypeId::DUMMY,
-                    name,
-                    inner_type_id,
-                });
-                self.create_new_type(ast_type)
-            }
             "Vec" => {
                 let name = format!(
                     "{}<{}>",
@@ -366,40 +393,4 @@ impl Parser {
         };
         Some(type_id)
     }
-}
-
-fn parse_span_attr(attrs: &[Attribute]) -> Option<SpanKind> {
-    attrs.iter().find_map(|attr| {
-        if !attr.path().is_ident("span") {
-            return None;
-        }
-
-        match &attr.meta {
-            Meta::Path(_) => Some(SpanKind::Full),
-            Meta::List(_) => match attr.parse_args::<Ident>() {
-                Ok(ident) if ident == "lo" => Some(SpanKind::Lo),
-                Ok(ident) if ident == "hi" => Some(SpanKind::Hi),
-                Ok(ident) => panic!("Unknown span attribute argument {ident}"),
-                Err(err) => panic!("Cannot parse span attribute: {err}"),
-            },
-            _ => panic!("Unsupported span attribute"),
-        }
-    })
-}
-
-fn has_ast_option(attrs: &[Attribute], option: &str) -> bool {
-    attrs.iter().any(|attr| {
-        if !attr.path().is_ident("ast") {
-            return false;
-        }
-
-        let Meta::List(_) = &attr.meta else {
-            return false;
-        };
-
-        let options = attr
-            .parse_args_with(Punctuated::<Ident, Token![,]>::parse_terminated)
-            .unwrap_or_else(|err| panic!("Cannot parse ast attribute: {err}"));
-        options.iter().any(|ident| ident == option)
-    })
 }

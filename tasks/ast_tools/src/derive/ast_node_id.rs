@@ -24,6 +24,7 @@ pub fn ast_node_id(schema: &Schema) -> RawOutput {
             #![allow(unused)]
             use crate::{Ast, NodeKind};
             use crate::{ast::*, node_id::*};
+            use oxc_index::Idx;
 
             #impls
     };
@@ -45,13 +46,13 @@ fn generate_node_id_for_struct(ast: &AstStruct, _schema: &Schema) -> TokenStream
             }
 
             #[inline]
-            fn from_node_id(node_id: NodeId, ast: &Ast) -> Self {
-                assert!(*ast.nodes.kind(node_id) == NodeKind::#name);
+            fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
+                assert!(ast.nodes[node_id.index()].kind == NodeKind::#name);
                 Self(node_id)
             }
 
             #[inline]
-            unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast) -> Self {
+            unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast<'_>) -> Self {
                 Self(node_id)
             }
         }
@@ -91,15 +92,15 @@ fn generate_node_id_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
             }
 
             #[inline]
-            fn from_node_id(id: NodeId, ast: &Ast) -> Self {
-                match ast.nodes.kind(id) {
+            fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
+                match ast.nodes[id.index()].kind {
                     #from_node_id_arms
                     _ => unreachable!(),
                 }
             }
 
             #[inline]
-            unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast) -> Self {
+            unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast<'_>) -> Self {
                 Self::from_node_id(id, ast)
             }
         }

@@ -1,6185 +1,4987 @@
 #![allow(unused, clippy::useless_conversion, clippy::identity_op)]
 use crate::*;
 use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
-use swc_experimental_allocator::boxed::Box;
-use swc_experimental_allocator::vec::Vec;
-impl<'a> AstBuilder<'a> {
+impl<'a> Ast<'a> {
     #[inline]
     pub fn program_module(
-        &self,
+        &mut self,
         span: Span,
-        body: Vec<'a, ModuleItem<'a>>,
+        body: TypedSubRange<ModuleItem>,
         shebang: Option<Atom<'a>>,
-    ) -> Program<'a> {
-        Program::Module(self.box_module(span, body, shebang))
+    ) -> Program {
+        Program::Module(self.module(span, body, shebang).into())
     }
     #[inline]
     pub fn program_script(
-        &self,
+        &mut self,
         span: Span,
-        body: Vec<'a, Stmt<'a>>,
+        body: TypedSubRange<Stmt>,
         shebang: Option<Atom<'a>>,
-    ) -> Program<'a> {
-        Program::Script(self.box_script(span, body, shebang))
+    ) -> Program {
+        Program::Script(self.script(span, body, shebang).into())
     }
     #[inline]
     pub fn module(
-        &self,
+        &mut self,
         span: Span,
-        body: Vec<'a, ModuleItem<'a>>,
+        body: TypedSubRange<ModuleItem>,
         shebang: Option<Atom<'a>>,
-    ) -> Module<'a> {
-        Module {
+    ) -> Module {
+        let _f0 = self.add_extra(body.to_extra_data());
+        let _f1 = self.add_extra(shebang.to_extra_data());
+        Module(self.add_node(
             span,
-            body,
-            shebang,
-        }
-    }
-    #[inline]
-    pub fn box_module(
-        &self,
-        span: Span,
-        body: Vec<'a, ModuleItem<'a>>,
-        shebang: Option<Atom<'a>>,
-    ) -> Box<'a, Module<'a>> {
-        self.allocator.boxed(self.module(span, body, shebang))
+            NodeKind::Module,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn script(
-        &self,
+        &mut self,
         span: Span,
-        body: Vec<'a, Stmt<'a>>,
+        body: TypedSubRange<Stmt>,
         shebang: Option<Atom<'a>>,
-    ) -> Script<'a> {
-        Script {
+    ) -> Script {
+        let _f0 = self.add_extra(body.to_extra_data());
+        let _f1 = self.add_extra(shebang.to_extra_data());
+        Script(self.add_node(
             span,
-            body,
-            shebang,
-        }
-    }
-    #[inline]
-    pub fn box_script(
-        &self,
-        span: Span,
-        body: Vec<'a, Stmt<'a>>,
-        shebang: Option<Atom<'a>>,
-    ) -> Box<'a, Script<'a>> {
-        self.allocator.boxed(self.script(span, body, shebang))
+            NodeKind::Script,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn module_item_module_decl_import_decl(
-        &self,
+        &mut self,
         span: Span,
-        specifiers: Vec<'a, ImportSpecifier<'a>>,
-        src: Box<'a, Str<'a>>,
+        specifiers: TypedSubRange<ImportSpecifier>,
+        src: Str,
         type_only: bool,
-        with: Option<Box<'a, ObjectLit<'a>>>,
+        with: Option<ObjectLit>,
         phase: ImportPhase,
-    ) -> ModuleItem<'a> {
-        ModuleItem::ModuleDecl(self.allocator.boxed(ModuleDecl::Import(
-            self.box_import_decl(span, specifiers, src, type_only, with, phase),
-        )))
+    ) -> ModuleItem {
+        ModuleItem::ModuleDecl(ModuleDecl::Import(
+            self.import_decl(span, specifiers, src, type_only, with, phase)
+                .into(),
+        ))
     }
     #[inline]
-    pub fn module_item_module_decl_export_decl(
-        &self,
-        span: Span,
-        decl: Decl<'a>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::ModuleDecl(
-            self.allocator
-                .boxed(ModuleDecl::ExportDecl(self.box_export_decl(span, decl))),
-        )
+    pub fn module_item_module_decl_export_decl(&mut self, span: Span, decl: Decl) -> ModuleItem {
+        ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(self.export_decl(span, decl).into()))
     }
     #[inline]
     pub fn module_item_module_decl_named_export(
-        &self,
+        &mut self,
         span: Span,
-        specifiers: Vec<'a, ExportSpecifier<'a>>,
-        src: Option<Box<'a, Str<'a>>>,
+        specifiers: TypedSubRange<ExportSpecifier>,
+        src: Option<Str>,
         type_only: bool,
-        with: Option<Box<'a, ObjectLit<'a>>>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::ModuleDecl(self.allocator.boxed(ModuleDecl::ExportNamed(
-            self.box_named_export(span, specifiers, src, type_only, with),
-        )))
+        with: Option<ObjectLit>,
+    ) -> ModuleItem {
+        ModuleItem::ModuleDecl(ModuleDecl::ExportNamed(
+            self.named_export(span, specifiers, src, type_only, with)
+                .into(),
+        ))
     }
     #[inline]
     pub fn module_item_module_decl_export_default_decl(
-        &self,
+        &mut self,
         span: Span,
-        decl: DefaultDecl<'a>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::ModuleDecl(self.allocator.boxed(ModuleDecl::ExportDefaultDecl(
-            self.box_export_default_decl(span, decl),
-        )))
+        decl: DefaultDecl,
+    ) -> ModuleItem {
+        ModuleItem::ModuleDecl(ModuleDecl::ExportDefaultDecl(
+            self.export_default_decl(span, decl).into(),
+        ))
     }
     #[inline]
     pub fn module_item_module_decl_export_default_expr(
-        &self,
+        &mut self,
         span: Span,
-        expr: Expr<'a>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::ModuleDecl(self.allocator.boxed(ModuleDecl::ExportDefaultExpr(
-            self.box_export_default_expr(span, expr),
-        )))
+        expr: Expr,
+    ) -> ModuleItem {
+        ModuleItem::ModuleDecl(ModuleDecl::ExportDefaultExpr(
+            self.export_default_expr(span, expr).into(),
+        ))
     }
     #[inline]
     pub fn module_item_module_decl_export_all(
-        &self,
+        &mut self,
         span: Span,
-        src: Box<'a, Str<'a>>,
+        src: Str,
         type_only: bool,
-        with: Option<Box<'a, ObjectLit<'a>>>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::ModuleDecl(self.allocator.boxed(ModuleDecl::ExportAll(
-            self.box_export_all(span, src, type_only, with),
-        )))
+        with: Option<ObjectLit>,
+    ) -> ModuleItem {
+        ModuleItem::ModuleDecl(ModuleDecl::ExportAll(
+            self.export_all(span, src, type_only, with).into(),
+        ))
     }
     #[inline]
     pub fn module_item_stmt_block_stmt(
-        &self,
+        &mut self,
         span: Span,
-        stmts: Vec<'a, Stmt<'a>>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::Stmt(
-            self.allocator
-                .boxed(Stmt::Block(self.box_block_stmt(span, stmts))),
-        )
+        stmts: TypedSubRange<Stmt>,
+    ) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::Block(self.block_stmt(span, stmts).into()))
     }
     #[inline]
-    pub fn module_item_stmt_empty_stmt(&self, span: Span) -> ModuleItem<'a> {
-        ModuleItem::Stmt(self.allocator.boxed(Stmt::Empty(self.box_empty_stmt(span))))
+    pub fn module_item_stmt_empty_stmt(&mut self, span: Span) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::Empty(self.empty_stmt(span).into()))
     }
     #[inline]
-    pub fn module_item_stmt_debugger_stmt(&self, span: Span) -> ModuleItem<'a> {
-        ModuleItem::Stmt(
-            self.allocator
-                .boxed(Stmt::Debugger(self.box_debugger_stmt(span))),
-        )
+    pub fn module_item_stmt_debugger_stmt(&mut self, span: Span) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::Debugger(self.debugger_stmt(span).into()))
     }
     #[inline]
-    pub fn module_item_stmt_with_stmt(
-        &self,
-        span: Span,
-        obj: Expr<'a>,
-        body: Stmt<'a>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::Stmt(
-            self.allocator
-                .boxed(Stmt::With(self.box_with_stmt(span, obj, body))),
-        )
+    pub fn module_item_stmt_with_stmt(&mut self, span: Span, obj: Expr, body: Stmt) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::With(self.with_stmt(span, obj, body).into()))
     }
     #[inline]
-    pub fn module_item_stmt_return_stmt(
-        &self,
-        span: Span,
-        arg: Option<Expr<'a>>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::Stmt(
-            self.allocator
-                .boxed(Stmt::Return(self.box_return_stmt(span, arg))),
-        )
+    pub fn module_item_stmt_return_stmt(&mut self, span: Span, arg: Option<Expr>) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::Return(self.return_stmt(span, arg).into()))
     }
     #[inline]
     pub fn module_item_stmt_labeled_stmt(
-        &self,
+        &mut self,
         span: Span,
-        label: Box<'a, Ident<'a>>,
-        body: Stmt<'a>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::Stmt(
-            self.allocator
-                .boxed(Stmt::Labeled(self.box_labeled_stmt(span, label, body))),
-        )
+        label: Ident,
+        body: Stmt,
+    ) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::Labeled(self.labeled_stmt(span, label, body).into()))
     }
     #[inline]
-    pub fn module_item_stmt_break_stmt(
-        &self,
-        span: Span,
-        label: Option<Box<'a, Ident<'a>>>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::Stmt(
-            self.allocator
-                .boxed(Stmt::Break(self.box_break_stmt(span, label))),
-        )
+    pub fn module_item_stmt_break_stmt(&mut self, span: Span, label: Option<Ident>) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::Break(self.break_stmt(span, label).into()))
     }
     #[inline]
     pub fn module_item_stmt_continue_stmt(
-        &self,
+        &mut self,
         span: Span,
-        label: Option<Box<'a, Ident<'a>>>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::Stmt(
-            self.allocator
-                .boxed(Stmt::Continue(self.box_continue_stmt(span, label))),
-        )
+        label: Option<Ident>,
+    ) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::Continue(self.continue_stmt(span, label).into()))
     }
     #[inline]
     pub fn module_item_stmt_if_stmt(
-        &self,
+        &mut self,
         span: Span,
-        test: Expr<'a>,
-        cons: Stmt<'a>,
-        alt: Option<Stmt<'a>>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::Stmt(
-            self.allocator
-                .boxed(Stmt::If(self.box_if_stmt(span, test, cons, alt))),
-        )
+        test: Expr,
+        cons: Stmt,
+        alt: Option<Stmt>,
+    ) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::If(self.if_stmt(span, test, cons, alt).into()))
     }
     #[inline]
     pub fn module_item_stmt_switch_stmt(
-        &self,
+        &mut self,
         span: Span,
-        discriminant: Expr<'a>,
-        cases: Vec<'a, SwitchCase<'a>>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::Stmt(self.allocator.boxed(Stmt::Switch(self.box_switch_stmt(
-            span,
-            discriminant,
-            cases,
-        ))))
+        discriminant: Expr,
+        cases: TypedSubRange<SwitchCase>,
+    ) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::Switch(
+            self.switch_stmt(span, discriminant, cases).into(),
+        ))
     }
     #[inline]
-    pub fn module_item_stmt_throw_stmt(&self, span: Span, arg: Expr<'a>) -> ModuleItem<'a> {
-        ModuleItem::Stmt(
-            self.allocator
-                .boxed(Stmt::Throw(self.box_throw_stmt(span, arg))),
-        )
+    pub fn module_item_stmt_throw_stmt(&mut self, span: Span, arg: Expr) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::Throw(self.throw_stmt(span, arg).into()))
     }
     #[inline]
     pub fn module_item_stmt_try_stmt(
-        &self,
+        &mut self,
         span: Span,
-        block: Box<'a, BlockStmt<'a>>,
-        handler: Option<Box<'a, CatchClause<'a>>>,
-        finalizer: Option<Box<'a, BlockStmt<'a>>>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::Stmt(self.allocator.boxed(Stmt::Try(
-            self.box_try_stmt(span, block, handler, finalizer),
-        )))
+        block: BlockStmt,
+        handler: Option<CatchClause>,
+        finalizer: Option<BlockStmt>,
+    ) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::Try(
+            self.try_stmt(span, block, handler, finalizer).into(),
+        ))
     }
     #[inline]
     pub fn module_item_stmt_while_stmt(
-        &self,
+        &mut self,
         span: Span,
-        test: Expr<'a>,
-        body: Stmt<'a>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::Stmt(
-            self.allocator
-                .boxed(Stmt::While(self.box_while_stmt(span, test, body))),
-        )
+        test: Expr,
+        body: Stmt,
+    ) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::While(self.while_stmt(span, test, body).into()))
     }
     #[inline]
     pub fn module_item_stmt_do_while_stmt(
-        &self,
+        &mut self,
         span: Span,
-        test: Expr<'a>,
-        body: Stmt<'a>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::Stmt(
-            self.allocator
-                .boxed(Stmt::DoWhile(self.box_do_while_stmt(span, test, body))),
-        )
+        test: Expr,
+        body: Stmt,
+    ) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::DoWhile(self.do_while_stmt(span, test, body).into()))
     }
     #[inline]
     pub fn module_item_stmt_for_stmt(
-        &self,
+        &mut self,
         span: Span,
-        init: Option<VarDeclOrExpr<'a>>,
-        test: Option<Expr<'a>>,
-        update: Option<Expr<'a>>,
-        body: Stmt<'a>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::Stmt(
-            self.allocator
-                .boxed(Stmt::For(self.box_for_stmt(span, init, test, update, body))),
-        )
+        init: Option<VarDeclOrExpr>,
+        test: Option<Expr>,
+        update: Option<Expr>,
+        body: Stmt,
+    ) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::For(
+            self.for_stmt(span, init, test, update, body).into(),
+        ))
     }
     #[inline]
     pub fn module_item_stmt_for_in_stmt(
-        &self,
+        &mut self,
         span: Span,
-        left: ForHead<'a>,
-        right: Expr<'a>,
-        body: Stmt<'a>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::Stmt(
-            self.allocator
-                .boxed(Stmt::ForIn(self.box_for_in_stmt(span, left, right, body))),
-        )
+        left: ForHead,
+        right: Expr,
+        body: Stmt,
+    ) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::ForIn(
+            self.for_in_stmt(span, left, right, body).into(),
+        ))
     }
     #[inline]
     pub fn module_item_stmt_for_of_stmt(
-        &self,
+        &mut self,
         span: Span,
         is_await: bool,
-        left: ForHead<'a>,
-        right: Expr<'a>,
-        body: Stmt<'a>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::Stmt(self.allocator.boxed(Stmt::ForOf(
-            self.box_for_of_stmt(span, is_await, left, right, body),
-        )))
+        left: ForHead,
+        right: Expr,
+        body: Stmt,
+    ) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::ForOf(
+            self.for_of_stmt(span, is_await, left, right, body).into(),
+        ))
     }
     #[inline]
     pub fn module_item_stmt_decl_class_decl(
-        &self,
-        ident: Box<'a, Ident<'a>>,
+        &mut self,
+        span: Span,
+        ident: Ident,
         declare: bool,
-        class: Box<'a, Class<'a>>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::Stmt(
-            self.allocator
-                .boxed(Stmt::Decl(self.allocator.boxed(Decl::Class(
-                    self.box_class_decl(ident, declare, class),
-                )))),
-        )
+        class: Class,
+    ) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::Decl(Decl::Class(
+            self.class_decl(span, ident, declare, class).into(),
+        )))
     }
     #[inline]
     pub fn module_item_stmt_decl_fn_decl(
-        &self,
-        ident: Box<'a, Ident<'a>>,
+        &mut self,
+        span: Span,
+        ident: Ident,
         declare: bool,
-        function: Box<'a, Function<'a>>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::Stmt(
-            self.allocator.boxed(Stmt::Decl(
-                self.allocator
-                    .boxed(Decl::Fn(self.box_fn_decl(ident, declare, function))),
-            )),
-        )
+        function: Function,
+    ) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::Decl(Decl::Fn(
+            self.fn_decl(span, ident, declare, function).into(),
+        )))
     }
     #[inline]
     pub fn module_item_stmt_decl_var_decl(
-        &self,
+        &mut self,
         span: Span,
         kind: VarDeclKind,
         declare: bool,
-        decls: Vec<'a, VarDeclarator<'a>>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::Stmt(
-            self.allocator
-                .boxed(Stmt::Decl(self.allocator.boxed(Decl::Var(
-                    self.box_var_decl(span, kind, declare, decls),
-                )))),
-        )
+        decls: TypedSubRange<VarDeclarator>,
+    ) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::Decl(Decl::Var(
+            self.var_decl(span, kind, declare, decls).into(),
+        )))
     }
     #[inline]
     pub fn module_item_stmt_decl_using_decl(
-        &self,
+        &mut self,
         span: Span,
         is_await: bool,
-        decls: Vec<'a, VarDeclarator<'a>>,
-    ) -> ModuleItem<'a> {
-        ModuleItem::Stmt(
-            self.allocator
-                .boxed(Stmt::Decl(self.allocator.boxed(Decl::Using(
-                    self.box_using_decl(span, is_await, decls),
-                )))),
-        )
+        decls: TypedSubRange<VarDeclarator>,
+    ) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::Decl(Decl::Using(
+            self.using_decl(span, is_await, decls).into(),
+        )))
     }
     #[inline]
-    pub fn module_item_stmt_expr_stmt(&self, span: Span, expr: Expr<'a>) -> ModuleItem<'a> {
-        ModuleItem::Stmt(
-            self.allocator
-                .boxed(Stmt::Expr(self.box_expr_stmt(span, expr))),
-        )
+    pub fn module_item_stmt_expr_stmt(&mut self, span: Span, expr: Expr) -> ModuleItem {
+        ModuleItem::Stmt(Stmt::Expr(self.expr_stmt(span, expr).into()))
     }
     #[inline]
     pub fn module_decl_import_decl(
-        &self,
+        &mut self,
         span: Span,
-        specifiers: Vec<'a, ImportSpecifier<'a>>,
-        src: Box<'a, Str<'a>>,
+        specifiers: TypedSubRange<ImportSpecifier>,
+        src: Str,
         type_only: bool,
-        with: Option<Box<'a, ObjectLit<'a>>>,
+        with: Option<ObjectLit>,
         phase: ImportPhase,
-    ) -> ModuleDecl<'a> {
-        ModuleDecl::Import(self.box_import_decl(span, specifiers, src, type_only, with, phase))
+    ) -> ModuleDecl {
+        ModuleDecl::Import(
+            self.import_decl(span, specifiers, src, type_only, with, phase)
+                .into(),
+        )
     }
     #[inline]
-    pub fn module_decl_export_decl(&self, span: Span, decl: Decl<'a>) -> ModuleDecl<'a> {
-        ModuleDecl::ExportDecl(self.box_export_decl(span, decl))
+    pub fn module_decl_export_decl(&mut self, span: Span, decl: Decl) -> ModuleDecl {
+        ModuleDecl::ExportDecl(self.export_decl(span, decl).into())
     }
     #[inline]
     pub fn module_decl_named_export(
-        &self,
+        &mut self,
         span: Span,
-        specifiers: Vec<'a, ExportSpecifier<'a>>,
-        src: Option<Box<'a, Str<'a>>>,
+        specifiers: TypedSubRange<ExportSpecifier>,
+        src: Option<Str>,
         type_only: bool,
-        with: Option<Box<'a, ObjectLit<'a>>>,
-    ) -> ModuleDecl<'a> {
-        ModuleDecl::ExportNamed(self.box_named_export(span, specifiers, src, type_only, with))
+        with: Option<ObjectLit>,
+    ) -> ModuleDecl {
+        ModuleDecl::ExportNamed(
+            self.named_export(span, specifiers, src, type_only, with)
+                .into(),
+        )
     }
     #[inline]
-    pub fn module_decl_export_default_decl(
-        &self,
-        span: Span,
-        decl: DefaultDecl<'a>,
-    ) -> ModuleDecl<'a> {
-        ModuleDecl::ExportDefaultDecl(self.box_export_default_decl(span, decl))
+    pub fn module_decl_export_default_decl(&mut self, span: Span, decl: DefaultDecl) -> ModuleDecl {
+        ModuleDecl::ExportDefaultDecl(self.export_default_decl(span, decl).into())
     }
     #[inline]
-    pub fn module_decl_export_default_expr(&self, span: Span, expr: Expr<'a>) -> ModuleDecl<'a> {
-        ModuleDecl::ExportDefaultExpr(self.box_export_default_expr(span, expr))
+    pub fn module_decl_export_default_expr(&mut self, span: Span, expr: Expr) -> ModuleDecl {
+        ModuleDecl::ExportDefaultExpr(self.export_default_expr(span, expr).into())
     }
     #[inline]
     pub fn module_decl_export_all(
-        &self,
+        &mut self,
         span: Span,
-        src: Box<'a, Str<'a>>,
+        src: Str,
         type_only: bool,
-        with: Option<Box<'a, ObjectLit<'a>>>,
-    ) -> ModuleDecl<'a> {
-        ModuleDecl::ExportAll(self.box_export_all(span, src, type_only, with))
+        with: Option<ObjectLit>,
+    ) -> ModuleDecl {
+        ModuleDecl::ExportAll(self.export_all(span, src, type_only, with).into())
     }
     #[inline]
     pub fn import_decl(
-        &self,
+        &mut self,
         span: Span,
-        specifiers: Vec<'a, ImportSpecifier<'a>>,
-        src: Box<'a, Str<'a>>,
+        specifiers: TypedSubRange<ImportSpecifier>,
+        src: Str,
         type_only: bool,
-        with: Option<Box<'a, ObjectLit<'a>>>,
+        with: Option<ObjectLit>,
         phase: ImportPhase,
-    ) -> ImportDecl<'a> {
-        ImportDecl {
+    ) -> ImportDecl {
+        let _f0 = self.add_extra(specifiers.to_extra_data());
+        let _f1 = self.add_extra(src.to_extra_data());
+        let _f2 = self.add_extra(type_only.to_extra_data());
+        let _f3 = self.add_extra(with.to_extra_data());
+        let _f4 = self.add_extra(phase.to_extra_data());
+        ImportDecl(self.add_node(
             span,
-            specifiers,
-            src,
-            type_only,
-            with,
-            phase,
-        }
-    }
-    #[inline]
-    pub fn box_import_decl(
-        &self,
-        span: Span,
-        specifiers: Vec<'a, ImportSpecifier<'a>>,
-        src: Box<'a, Str<'a>>,
-        type_only: bool,
-        with: Option<Box<'a, ObjectLit<'a>>>,
-        phase: ImportPhase,
-    ) -> Box<'a, ImportDecl<'a>> {
-        self.allocator
-            .boxed(self.import_decl(span, specifiers, src, type_only, with, phase))
+            NodeKind::ImportDecl,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn import_specifier_import_named_specifier(
-        &self,
+        &mut self,
         span: Span,
-        local: Box<'a, Ident<'a>>,
-        imported: ModuleExportName<'a>,
+        local: Ident,
+        imported: ModuleExportName,
         is_type_only: bool,
-    ) -> ImportSpecifier<'a> {
-        ImportSpecifier::Named(self.box_import_named_specifier(span, local, imported, is_type_only))
+    ) -> ImportSpecifier {
+        ImportSpecifier::Named(
+            self.import_named_specifier(span, local, imported, is_type_only)
+                .into(),
+        )
     }
     #[inline]
     pub fn import_specifier_import_default_specifier(
-        &self,
+        &mut self,
         span: Span,
-        local: Box<'a, Ident<'a>>,
-    ) -> ImportSpecifier<'a> {
-        ImportSpecifier::Default(self.box_import_default_specifier(span, local))
+        local: Ident,
+    ) -> ImportSpecifier {
+        ImportSpecifier::Default(self.import_default_specifier(span, local).into())
     }
     #[inline]
     pub fn import_specifier_import_star_as_specifier(
-        &self,
+        &mut self,
         span: Span,
-        local: Box<'a, Ident<'a>>,
-    ) -> ImportSpecifier<'a> {
-        ImportSpecifier::Namespace(self.box_import_star_as_specifier(span, local))
+        local: Ident,
+    ) -> ImportSpecifier {
+        ImportSpecifier::Namespace(self.import_star_as_specifier(span, local).into())
     }
     #[inline]
     pub fn import_named_specifier(
-        &self,
+        &mut self,
         span: Span,
-        local: Box<'a, Ident<'a>>,
-        imported: ModuleExportName<'a>,
+        local: Ident,
+        imported: ModuleExportName,
         is_type_only: bool,
-    ) -> ImportNamedSpecifier<'a> {
-        ImportNamedSpecifier {
+    ) -> ImportNamedSpecifier {
+        let _f0 = self.add_extra(local.to_extra_data());
+        let _f1 = self.add_extra(imported.to_extra_data());
+        let _f2 = self.add_extra(is_type_only.to_extra_data());
+        ImportNamedSpecifier(self.add_node(
             span,
-            local,
-            imported,
-            is_type_only,
-        }
+            NodeKind::ImportNamedSpecifier,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_import_named_specifier(
-        &self,
-        span: Span,
-        local: Box<'a, Ident<'a>>,
-        imported: ModuleExportName<'a>,
-        is_type_only: bool,
-    ) -> Box<'a, ImportNamedSpecifier<'a>> {
-        self.allocator
-            .boxed(self.import_named_specifier(span, local, imported, is_type_only))
+    pub fn import_default_specifier(&mut self, span: Span, local: Ident) -> ImportDefaultSpecifier {
+        ImportDefaultSpecifier(self.add_node(
+            span,
+            NodeKind::ImportDefaultSpecifier,
+            NodePayload {
+                inline_data: local.node_id().index() as u32,
+            },
+        ))
     }
     #[inline]
-    pub fn import_default_specifier(
-        &self,
-        span: Span,
-        local: Box<'a, Ident<'a>>,
-    ) -> ImportDefaultSpecifier<'a> {
-        ImportDefaultSpecifier { span, local }
+    pub fn import_star_as_specifier(&mut self, span: Span, local: Ident) -> ImportStarAsSpecifier {
+        ImportStarAsSpecifier(self.add_node(
+            span,
+            NodeKind::ImportStarAsSpecifier,
+            NodePayload {
+                inline_data: local.node_id().index() as u32,
+            },
+        ))
     }
     #[inline]
-    pub fn box_import_default_specifier(
-        &self,
-        span: Span,
-        local: Box<'a, Ident<'a>>,
-    ) -> Box<'a, ImportDefaultSpecifier<'a>> {
-        self.allocator
-            .boxed(self.import_default_specifier(span, local))
-    }
-    #[inline]
-    pub fn import_star_as_specifier(
-        &self,
-        span: Span,
-        local: Box<'a, Ident<'a>>,
-    ) -> ImportStarAsSpecifier<'a> {
-        ImportStarAsSpecifier { span, local }
-    }
-    #[inline]
-    pub fn box_import_star_as_specifier(
-        &self,
-        span: Span,
-        local: Box<'a, Ident<'a>>,
-    ) -> Box<'a, ImportStarAsSpecifier<'a>> {
-        self.allocator
-            .boxed(self.import_star_as_specifier(span, local))
-    }
-    #[inline]
-    pub fn export_decl(&self, span: Span, decl: Decl<'a>) -> ExportDecl<'a> {
-        ExportDecl { span, decl }
-    }
-    #[inline]
-    pub fn box_export_decl(&self, span: Span, decl: Decl<'a>) -> Box<'a, ExportDecl<'a>> {
-        self.allocator.boxed(self.export_decl(span, decl))
+    pub fn export_decl(&mut self, span: Span, decl: Decl) -> ExportDecl {
+        let _f0 = self.add_extra(decl.to_extra_data());
+        ExportDecl(self.add_node(
+            span,
+            NodeKind::ExportDecl,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn named_export(
-        &self,
+        &mut self,
         span: Span,
-        specifiers: Vec<'a, ExportSpecifier<'a>>,
-        src: Option<Box<'a, Str<'a>>>,
+        specifiers: TypedSubRange<ExportSpecifier>,
+        src: Option<Str>,
         type_only: bool,
-        with: Option<Box<'a, ObjectLit<'a>>>,
-    ) -> NamedExport<'a> {
-        NamedExport {
+        with: Option<ObjectLit>,
+    ) -> NamedExport {
+        let _f0 = self.add_extra(specifiers.to_extra_data());
+        let _f1 = self.add_extra(src.to_extra_data());
+        let _f2 = self.add_extra(type_only.to_extra_data());
+        let _f3 = self.add_extra(with.to_extra_data());
+        NamedExport(self.add_node(
             span,
-            specifiers,
-            src,
-            type_only,
-            with,
-        }
-    }
-    #[inline]
-    pub fn box_named_export(
-        &self,
-        span: Span,
-        specifiers: Vec<'a, ExportSpecifier<'a>>,
-        src: Option<Box<'a, Str<'a>>>,
-        type_only: bool,
-        with: Option<Box<'a, ObjectLit<'a>>>,
-    ) -> Box<'a, NamedExport<'a>> {
-        self.allocator
-            .boxed(self.named_export(span, specifiers, src, type_only, with))
+            NodeKind::NamedExport,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn export_specifier_export_namespace_specifier(
-        &self,
+        &mut self,
         span: Span,
-        name: ModuleExportName<'a>,
-    ) -> ExportSpecifier<'a> {
-        ExportSpecifier::Namespace(self.box_export_namespace_specifier(span, name))
+        name: ModuleExportName,
+    ) -> ExportSpecifier {
+        ExportSpecifier::Namespace(self.export_namespace_specifier(span, name).into())
     }
     #[inline]
     pub fn export_specifier_export_default_specifier(
-        &self,
-        exported: Box<'a, Ident<'a>>,
-    ) -> ExportSpecifier<'a> {
-        ExportSpecifier::Default(self.box_export_default_specifier(exported))
+        &mut self,
+        span: Span,
+        exported: Ident,
+    ) -> ExportSpecifier {
+        ExportSpecifier::Default(self.export_default_specifier(span, exported).into())
     }
     #[inline]
     pub fn export_specifier_export_named_specifier(
-        &self,
+        &mut self,
         span: Span,
-        orig: ModuleExportName<'a>,
-        exported: ModuleExportName<'a>,
+        orig: ModuleExportName,
+        exported: ModuleExportName,
         is_type_only: bool,
-    ) -> ExportSpecifier<'a> {
-        ExportSpecifier::Named(self.box_export_named_specifier(span, orig, exported, is_type_only))
+    ) -> ExportSpecifier {
+        ExportSpecifier::Named(
+            self.export_named_specifier(span, orig, exported, is_type_only)
+                .into(),
+        )
     }
     #[inline]
     pub fn export_namespace_specifier(
-        &self,
+        &mut self,
         span: Span,
-        name: ModuleExportName<'a>,
-    ) -> ExportNamespaceSpecifier<'a> {
-        ExportNamespaceSpecifier { span, name }
+        name: ModuleExportName,
+    ) -> ExportNamespaceSpecifier {
+        let _f0 = self.add_extra(name.to_extra_data());
+        ExportNamespaceSpecifier(self.add_node(
+            span,
+            NodeKind::ExportNamespaceSpecifier,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_export_namespace_specifier(
-        &self,
-        span: Span,
-        name: ModuleExportName<'a>,
-    ) -> Box<'a, ExportNamespaceSpecifier<'a>> {
-        self.allocator
-            .boxed(self.export_namespace_specifier(span, name))
-    }
-    #[inline]
-    pub fn module_export_name_ident(&self, span: Span, sym: Atom<'a>) -> ModuleExportName<'a> {
-        ModuleExportName::Ident(self.box_ident(span, sym))
+    pub fn module_export_name_ident(&mut self, span: Span, sym: Atom<'a>) -> ModuleExportName {
+        ModuleExportName::Ident(self.ident(span, sym).into())
     }
     #[inline]
     pub fn module_export_name_str(
-        &self,
+        &mut self,
         span: Span,
         value: Wtf8Atom<'a>,
         raw: Option<Atom<'a>>,
-    ) -> ModuleExportName<'a> {
-        ModuleExportName::Str(self.box_str(span, value, raw))
+    ) -> ModuleExportName {
+        ModuleExportName::Str(self.str(span, value, raw).into())
     }
     #[inline]
     pub fn export_default_specifier(
-        &self,
-        exported: Box<'a, Ident<'a>>,
-    ) -> ExportDefaultSpecifier<'a> {
-        ExportDefaultSpecifier { exported }
-    }
-    #[inline]
-    pub fn box_export_default_specifier(
-        &self,
-        exported: Box<'a, Ident<'a>>,
-    ) -> Box<'a, ExportDefaultSpecifier<'a>> {
-        self.allocator
-            .boxed(self.export_default_specifier(exported))
+        &mut self,
+        span: Span,
+        exported: Ident,
+    ) -> ExportDefaultSpecifier {
+        ExportDefaultSpecifier(self.add_node(
+            span,
+            NodeKind::ExportDefaultSpecifier,
+            NodePayload {
+                inline_data: exported.node_id().index() as u32,
+            },
+        ))
     }
     #[inline]
     pub fn export_named_specifier(
-        &self,
+        &mut self,
         span: Span,
-        orig: ModuleExportName<'a>,
-        exported: ModuleExportName<'a>,
+        orig: ModuleExportName,
+        exported: ModuleExportName,
         is_type_only: bool,
-    ) -> ExportNamedSpecifier<'a> {
-        ExportNamedSpecifier {
+    ) -> ExportNamedSpecifier {
+        let _f0 = self.add_extra(orig.to_extra_data());
+        let _f1 = self.add_extra(exported.to_extra_data());
+        let _f2 = self.add_extra(is_type_only.to_extra_data());
+        ExportNamedSpecifier(self.add_node(
             span,
-            orig,
-            exported,
-            is_type_only,
-        }
+            NodeKind::ExportNamedSpecifier,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_export_named_specifier(
-        &self,
-        span: Span,
-        orig: ModuleExportName<'a>,
-        exported: ModuleExportName<'a>,
-        is_type_only: bool,
-    ) -> Box<'a, ExportNamedSpecifier<'a>> {
-        self.allocator
-            .boxed(self.export_named_specifier(span, orig, exported, is_type_only))
-    }
-    #[inline]
-    pub fn export_default_decl(&self, span: Span, decl: DefaultDecl<'a>) -> ExportDefaultDecl<'a> {
-        ExportDefaultDecl { span, decl }
-    }
-    #[inline]
-    pub fn box_export_default_decl(
-        &self,
-        span: Span,
-        decl: DefaultDecl<'a>,
-    ) -> Box<'a, ExportDefaultDecl<'a>> {
-        self.allocator.boxed(self.export_default_decl(span, decl))
+    pub fn export_default_decl(&mut self, span: Span, decl: DefaultDecl) -> ExportDefaultDecl {
+        let _f0 = self.add_extra(decl.to_extra_data());
+        ExportDefaultDecl(self.add_node(
+            span,
+            NodeKind::ExportDefaultDecl,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn default_decl_class_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        class: Box<'a, Class<'a>>,
-    ) -> DefaultDecl<'a> {
-        DefaultDecl::Class(self.box_class_expr(ident, class))
+        &mut self,
+        span: Span,
+        ident: Option<Ident>,
+        class: Class,
+    ) -> DefaultDecl {
+        DefaultDecl::Class(self.class_expr(span, ident, class).into())
     }
     #[inline]
     pub fn default_decl_fn_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        function: Box<'a, Function<'a>>,
-    ) -> DefaultDecl<'a> {
-        DefaultDecl::Fn(self.box_fn_expr(ident, function))
-    }
-    #[inline]
-    pub fn export_default_expr(&self, span: Span, expr: Expr<'a>) -> ExportDefaultExpr<'a> {
-        ExportDefaultExpr { span, expr }
-    }
-    #[inline]
-    pub fn box_export_default_expr(
-        &self,
+        &mut self,
         span: Span,
-        expr: Expr<'a>,
-    ) -> Box<'a, ExportDefaultExpr<'a>> {
-        self.allocator.boxed(self.export_default_expr(span, expr))
+        ident: Option<Ident>,
+        function: Function,
+    ) -> DefaultDecl {
+        DefaultDecl::Fn(self.fn_expr(span, ident, function).into())
+    }
+    #[inline]
+    pub fn export_default_expr(&mut self, span: Span, expr: Expr) -> ExportDefaultExpr {
+        let _f0 = self.add_extra(expr.to_extra_data());
+        ExportDefaultExpr(self.add_node(
+            span,
+            NodeKind::ExportDefaultExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn export_all(
-        &self,
+        &mut self,
         span: Span,
-        src: Box<'a, Str<'a>>,
+        src: Str,
         type_only: bool,
-        with: Option<Box<'a, ObjectLit<'a>>>,
-    ) -> ExportAll<'a> {
-        ExportAll {
+        with: Option<ObjectLit>,
+    ) -> ExportAll {
+        let _f0 = self.add_extra(src.to_extra_data());
+        let _f1 = self.add_extra(type_only.to_extra_data());
+        let _f2 = self.add_extra(with.to_extra_data());
+        ExportAll(self.add_node(
             span,
-            src,
-            type_only,
-            with,
-        }
+            NodeKind::ExportAll,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_export_all(
-        &self,
-        span: Span,
-        src: Box<'a, Str<'a>>,
-        type_only: bool,
-        with: Option<Box<'a, ObjectLit<'a>>>,
-    ) -> Box<'a, ExportAll<'a>> {
-        self.allocator
-            .boxed(self.export_all(span, src, type_only, with))
-    }
-    #[inline]
-    pub fn block_stmt(&self, span: Span, stmts: Vec<'a, Stmt<'a>>) -> BlockStmt<'a> {
-        BlockStmt {
+    pub fn block_stmt(&mut self, span: Span, stmts: TypedSubRange<Stmt>) -> BlockStmt {
+        let _f0 = self.add_extra(stmts.to_extra_data());
+        let _f1 = self.add_extra(<Option<ScopeId>>::default().to_extra_data());
+        BlockStmt(self.add_node(
             span,
-            stmts,
-            scope_id: Default::default(),
-        }
+            NodeKind::BlockStmt,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_block_stmt(&self, span: Span, stmts: Vec<'a, Stmt<'a>>) -> Box<'a, BlockStmt<'a>> {
-        self.allocator.boxed(self.block_stmt(span, stmts))
+    pub fn stmt_block_stmt(&mut self, span: Span, stmts: TypedSubRange<Stmt>) -> Stmt {
+        Stmt::Block(self.block_stmt(span, stmts).into())
     }
     #[inline]
-    pub fn stmt_block_stmt(&self, span: Span, stmts: Vec<'a, Stmt<'a>>) -> Stmt<'a> {
-        Stmt::Block(self.box_block_stmt(span, stmts))
+    pub fn stmt_empty_stmt(&mut self, span: Span) -> Stmt {
+        Stmt::Empty(self.empty_stmt(span).into())
     }
     #[inline]
-    pub fn stmt_empty_stmt(&self, span: Span) -> Stmt<'a> {
-        Stmt::Empty(self.box_empty_stmt(span))
+    pub fn stmt_debugger_stmt(&mut self, span: Span) -> Stmt {
+        Stmt::Debugger(self.debugger_stmt(span).into())
     }
     #[inline]
-    pub fn stmt_debugger_stmt(&self, span: Span) -> Stmt<'a> {
-        Stmt::Debugger(self.box_debugger_stmt(span))
+    pub fn stmt_with_stmt(&mut self, span: Span, obj: Expr, body: Stmt) -> Stmt {
+        Stmt::With(self.with_stmt(span, obj, body).into())
     }
     #[inline]
-    pub fn stmt_with_stmt(&self, span: Span, obj: Expr<'a>, body: Stmt<'a>) -> Stmt<'a> {
-        Stmt::With(self.box_with_stmt(span, obj, body))
+    pub fn stmt_return_stmt(&mut self, span: Span, arg: Option<Expr>) -> Stmt {
+        Stmt::Return(self.return_stmt(span, arg).into())
     }
     #[inline]
-    pub fn stmt_return_stmt(&self, span: Span, arg: Option<Expr<'a>>) -> Stmt<'a> {
-        Stmt::Return(self.box_return_stmt(span, arg))
+    pub fn stmt_labeled_stmt(&mut self, span: Span, label: Ident, body: Stmt) -> Stmt {
+        Stmt::Labeled(self.labeled_stmt(span, label, body).into())
     }
     #[inline]
-    pub fn stmt_labeled_stmt(
-        &self,
-        span: Span,
-        label: Box<'a, Ident<'a>>,
-        body: Stmt<'a>,
-    ) -> Stmt<'a> {
-        Stmt::Labeled(self.box_labeled_stmt(span, label, body))
+    pub fn stmt_break_stmt(&mut self, span: Span, label: Option<Ident>) -> Stmt {
+        Stmt::Break(self.break_stmt(span, label).into())
     }
     #[inline]
-    pub fn stmt_break_stmt(&self, span: Span, label: Option<Box<'a, Ident<'a>>>) -> Stmt<'a> {
-        Stmt::Break(self.box_break_stmt(span, label))
+    pub fn stmt_continue_stmt(&mut self, span: Span, label: Option<Ident>) -> Stmt {
+        Stmt::Continue(self.continue_stmt(span, label).into())
     }
     #[inline]
-    pub fn stmt_continue_stmt(&self, span: Span, label: Option<Box<'a, Ident<'a>>>) -> Stmt<'a> {
-        Stmt::Continue(self.box_continue_stmt(span, label))
-    }
-    #[inline]
-    pub fn stmt_if_stmt(
-        &self,
-        span: Span,
-        test: Expr<'a>,
-        cons: Stmt<'a>,
-        alt: Option<Stmt<'a>>,
-    ) -> Stmt<'a> {
-        Stmt::If(self.box_if_stmt(span, test, cons, alt))
+    pub fn stmt_if_stmt(&mut self, span: Span, test: Expr, cons: Stmt, alt: Option<Stmt>) -> Stmt {
+        Stmt::If(self.if_stmt(span, test, cons, alt).into())
     }
     #[inline]
     pub fn stmt_switch_stmt(
-        &self,
+        &mut self,
         span: Span,
-        discriminant: Expr<'a>,
-        cases: Vec<'a, SwitchCase<'a>>,
-    ) -> Stmt<'a> {
-        Stmt::Switch(self.box_switch_stmt(span, discriminant, cases))
+        discriminant: Expr,
+        cases: TypedSubRange<SwitchCase>,
+    ) -> Stmt {
+        Stmt::Switch(self.switch_stmt(span, discriminant, cases).into())
     }
     #[inline]
-    pub fn stmt_throw_stmt(&self, span: Span, arg: Expr<'a>) -> Stmt<'a> {
-        Stmt::Throw(self.box_throw_stmt(span, arg))
+    pub fn stmt_throw_stmt(&mut self, span: Span, arg: Expr) -> Stmt {
+        Stmt::Throw(self.throw_stmt(span, arg).into())
     }
     #[inline]
     pub fn stmt_try_stmt(
-        &self,
+        &mut self,
         span: Span,
-        block: Box<'a, BlockStmt<'a>>,
-        handler: Option<Box<'a, CatchClause<'a>>>,
-        finalizer: Option<Box<'a, BlockStmt<'a>>>,
-    ) -> Stmt<'a> {
-        Stmt::Try(self.box_try_stmt(span, block, handler, finalizer))
+        block: BlockStmt,
+        handler: Option<CatchClause>,
+        finalizer: Option<BlockStmt>,
+    ) -> Stmt {
+        Stmt::Try(self.try_stmt(span, block, handler, finalizer).into())
     }
     #[inline]
-    pub fn stmt_while_stmt(&self, span: Span, test: Expr<'a>, body: Stmt<'a>) -> Stmt<'a> {
-        Stmt::While(self.box_while_stmt(span, test, body))
+    pub fn stmt_while_stmt(&mut self, span: Span, test: Expr, body: Stmt) -> Stmt {
+        Stmt::While(self.while_stmt(span, test, body).into())
     }
     #[inline]
-    pub fn stmt_do_while_stmt(&self, span: Span, test: Expr<'a>, body: Stmt<'a>) -> Stmt<'a> {
-        Stmt::DoWhile(self.box_do_while_stmt(span, test, body))
+    pub fn stmt_do_while_stmt(&mut self, span: Span, test: Expr, body: Stmt) -> Stmt {
+        Stmt::DoWhile(self.do_while_stmt(span, test, body).into())
     }
     #[inline]
     pub fn stmt_for_stmt(
-        &self,
+        &mut self,
         span: Span,
-        init: Option<VarDeclOrExpr<'a>>,
-        test: Option<Expr<'a>>,
-        update: Option<Expr<'a>>,
-        body: Stmt<'a>,
-    ) -> Stmt<'a> {
-        Stmt::For(self.box_for_stmt(span, init, test, update, body))
+        init: Option<VarDeclOrExpr>,
+        test: Option<Expr>,
+        update: Option<Expr>,
+        body: Stmt,
+    ) -> Stmt {
+        Stmt::For(self.for_stmt(span, init, test, update, body).into())
     }
     #[inline]
-    pub fn stmt_for_in_stmt(
-        &self,
-        span: Span,
-        left: ForHead<'a>,
-        right: Expr<'a>,
-        body: Stmt<'a>,
-    ) -> Stmt<'a> {
-        Stmt::ForIn(self.box_for_in_stmt(span, left, right, body))
+    pub fn stmt_for_in_stmt(&mut self, span: Span, left: ForHead, right: Expr, body: Stmt) -> Stmt {
+        Stmt::ForIn(self.for_in_stmt(span, left, right, body).into())
     }
     #[inline]
     pub fn stmt_for_of_stmt(
-        &self,
+        &mut self,
         span: Span,
         is_await: bool,
-        left: ForHead<'a>,
-        right: Expr<'a>,
-        body: Stmt<'a>,
-    ) -> Stmt<'a> {
-        Stmt::ForOf(self.box_for_of_stmt(span, is_await, left, right, body))
+        left: ForHead,
+        right: Expr,
+        body: Stmt,
+    ) -> Stmt {
+        Stmt::ForOf(self.for_of_stmt(span, is_await, left, right, body).into())
     }
     #[inline]
     pub fn stmt_decl_class_decl(
-        &self,
-        ident: Box<'a, Ident<'a>>,
+        &mut self,
+        span: Span,
+        ident: Ident,
         declare: bool,
-        class: Box<'a, Class<'a>>,
-    ) -> Stmt<'a> {
-        Stmt::Decl(
-            self.allocator
-                .boxed(Decl::Class(self.box_class_decl(ident, declare, class))),
-        )
+        class: Class,
+    ) -> Stmt {
+        Stmt::Decl(Decl::Class(
+            self.class_decl(span, ident, declare, class).into(),
+        ))
     }
     #[inline]
     pub fn stmt_decl_fn_decl(
-        &self,
-        ident: Box<'a, Ident<'a>>,
+        &mut self,
+        span: Span,
+        ident: Ident,
         declare: bool,
-        function: Box<'a, Function<'a>>,
-    ) -> Stmt<'a> {
-        Stmt::Decl(
-            self.allocator
-                .boxed(Decl::Fn(self.box_fn_decl(ident, declare, function))),
-        )
+        function: Function,
+    ) -> Stmt {
+        Stmt::Decl(Decl::Fn(
+            self.fn_decl(span, ident, declare, function).into(),
+        ))
     }
     #[inline]
     pub fn stmt_decl_var_decl(
-        &self,
+        &mut self,
         span: Span,
         kind: VarDeclKind,
         declare: bool,
-        decls: Vec<'a, VarDeclarator<'a>>,
-    ) -> Stmt<'a> {
-        Stmt::Decl(
-            self.allocator
-                .boxed(Decl::Var(self.box_var_decl(span, kind, declare, decls))),
-        )
+        decls: TypedSubRange<VarDeclarator>,
+    ) -> Stmt {
+        Stmt::Decl(Decl::Var(self.var_decl(span, kind, declare, decls).into()))
     }
     #[inline]
     pub fn stmt_decl_using_decl(
-        &self,
+        &mut self,
         span: Span,
         is_await: bool,
-        decls: Vec<'a, VarDeclarator<'a>>,
-    ) -> Stmt<'a> {
-        Stmt::Decl(
-            self.allocator
-                .boxed(Decl::Using(self.box_using_decl(span, is_await, decls))),
-        )
+        decls: TypedSubRange<VarDeclarator>,
+    ) -> Stmt {
+        Stmt::Decl(Decl::Using(self.using_decl(span, is_await, decls).into()))
     }
     #[inline]
-    pub fn stmt_expr_stmt(&self, span: Span, expr: Expr<'a>) -> Stmt<'a> {
-        Stmt::Expr(self.box_expr_stmt(span, expr))
+    pub fn stmt_expr_stmt(&mut self, span: Span, expr: Expr) -> Stmt {
+        Stmt::Expr(self.expr_stmt(span, expr).into())
     }
     #[inline]
-    pub fn expr_stmt(&self, span: Span, expr: Expr<'a>) -> ExprStmt<'a> {
-        ExprStmt { span, expr }
-    }
-    #[inline]
-    pub fn box_expr_stmt(&self, span: Span, expr: Expr<'a>) -> Box<'a, ExprStmt<'a>> {
-        self.allocator.boxed(self.expr_stmt(span, expr))
-    }
-    #[inline]
-    pub fn empty_stmt(&self, span: Span) -> EmptyStmt {
-        EmptyStmt { span }
-    }
-    #[inline]
-    pub fn box_empty_stmt(&self, span: Span) -> Box<'a, EmptyStmt> {
-        self.allocator.boxed(self.empty_stmt(span))
-    }
-    #[inline]
-    pub fn debugger_stmt(&self, span: Span) -> DebuggerStmt {
-        DebuggerStmt { span }
-    }
-    #[inline]
-    pub fn box_debugger_stmt(&self, span: Span) -> Box<'a, DebuggerStmt> {
-        self.allocator.boxed(self.debugger_stmt(span))
-    }
-    #[inline]
-    pub fn with_stmt(&self, span: Span, obj: Expr<'a>, body: Stmt<'a>) -> WithStmt<'a> {
-        WithStmt { span, obj, body }
-    }
-    #[inline]
-    pub fn box_with_stmt(
-        &self,
-        span: Span,
-        obj: Expr<'a>,
-        body: Stmt<'a>,
-    ) -> Box<'a, WithStmt<'a>> {
-        self.allocator.boxed(self.with_stmt(span, obj, body))
-    }
-    #[inline]
-    pub fn return_stmt(&self, span: Span, arg: Option<Expr<'a>>) -> ReturnStmt<'a> {
-        ReturnStmt { span, arg }
-    }
-    #[inline]
-    pub fn box_return_stmt(&self, span: Span, arg: Option<Expr<'a>>) -> Box<'a, ReturnStmt<'a>> {
-        self.allocator.boxed(self.return_stmt(span, arg))
-    }
-    #[inline]
-    pub fn labeled_stmt(
-        &self,
-        span: Span,
-        label: Box<'a, Ident<'a>>,
-        body: Stmt<'a>,
-    ) -> LabeledStmt<'a> {
-        LabeledStmt { span, label, body }
-    }
-    #[inline]
-    pub fn box_labeled_stmt(
-        &self,
-        span: Span,
-        label: Box<'a, Ident<'a>>,
-        body: Stmt<'a>,
-    ) -> Box<'a, LabeledStmt<'a>> {
-        self.allocator.boxed(self.labeled_stmt(span, label, body))
-    }
-    #[inline]
-    pub fn break_stmt(&self, span: Span, label: Option<Box<'a, Ident<'a>>>) -> BreakStmt<'a> {
-        BreakStmt { span, label }
-    }
-    #[inline]
-    pub fn box_break_stmt(
-        &self,
-        span: Span,
-        label: Option<Box<'a, Ident<'a>>>,
-    ) -> Box<'a, BreakStmt<'a>> {
-        self.allocator.boxed(self.break_stmt(span, label))
-    }
-    #[inline]
-    pub fn continue_stmt(&self, span: Span, label: Option<Box<'a, Ident<'a>>>) -> ContinueStmt<'a> {
-        ContinueStmt { span, label }
-    }
-    #[inline]
-    pub fn box_continue_stmt(
-        &self,
-        span: Span,
-        label: Option<Box<'a, Ident<'a>>>,
-    ) -> Box<'a, ContinueStmt<'a>> {
-        self.allocator.boxed(self.continue_stmt(span, label))
-    }
-    #[inline]
-    pub fn if_stmt(
-        &self,
-        span: Span,
-        test: Expr<'a>,
-        cons: Stmt<'a>,
-        alt: Option<Stmt<'a>>,
-    ) -> IfStmt<'a> {
-        IfStmt {
+    pub fn expr_stmt(&mut self, span: Span, expr: Expr) -> ExprStmt {
+        let _f0 = self.add_extra(expr.to_extra_data());
+        ExprStmt(self.add_node(
             span,
-            test,
-            cons,
-            alt,
-        }
+            NodeKind::ExprStmt,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_if_stmt(
-        &self,
-        span: Span,
-        test: Expr<'a>,
-        cons: Stmt<'a>,
-        alt: Option<Stmt<'a>>,
-    ) -> Box<'a, IfStmt<'a>> {
-        self.allocator.boxed(self.if_stmt(span, test, cons, alt))
+    pub fn empty_stmt(&mut self, span: Span) -> EmptyStmt {
+        EmptyStmt(self.add_node(span, NodeKind::EmptyStmt, NodePayload { empty: () }))
+    }
+    #[inline]
+    pub fn debugger_stmt(&mut self, span: Span) -> DebuggerStmt {
+        DebuggerStmt(self.add_node(span, NodeKind::DebuggerStmt, NodePayload { empty: () }))
+    }
+    #[inline]
+    pub fn with_stmt(&mut self, span: Span, obj: Expr, body: Stmt) -> WithStmt {
+        let _f0 = self.add_extra(obj.to_extra_data());
+        let _f1 = self.add_extra(body.to_extra_data());
+        WithStmt(self.add_node(
+            span,
+            NodeKind::WithStmt,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
+    }
+    #[inline]
+    pub fn return_stmt(&mut self, span: Span, arg: Option<Expr>) -> ReturnStmt {
+        let _f0 = self.add_extra(arg.to_extra_data());
+        ReturnStmt(self.add_node(
+            span,
+            NodeKind::ReturnStmt,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
+    }
+    #[inline]
+    pub fn labeled_stmt(&mut self, span: Span, label: Ident, body: Stmt) -> LabeledStmt {
+        let _f0 = self.add_extra(label.to_extra_data());
+        let _f1 = self.add_extra(body.to_extra_data());
+        LabeledStmt(self.add_node(
+            span,
+            NodeKind::LabeledStmt,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
+    }
+    #[inline]
+    pub fn break_stmt(&mut self, span: Span, label: Option<Ident>) -> BreakStmt {
+        BreakStmt(self.add_node(
+            span,
+            NodeKind::BreakStmt,
+            NodePayload {
+                inline_data: crate::OptionalNodeId::from(label.map(|n| n.node_id())).into_raw(),
+            },
+        ))
+    }
+    #[inline]
+    pub fn continue_stmt(&mut self, span: Span, label: Option<Ident>) -> ContinueStmt {
+        ContinueStmt(self.add_node(
+            span,
+            NodeKind::ContinueStmt,
+            NodePayload {
+                inline_data: crate::OptionalNodeId::from(label.map(|n| n.node_id())).into_raw(),
+            },
+        ))
+    }
+    #[inline]
+    pub fn if_stmt(&mut self, span: Span, test: Expr, cons: Stmt, alt: Option<Stmt>) -> IfStmt {
+        let _f0 = self.add_extra(test.to_extra_data());
+        let _f1 = self.add_extra(cons.to_extra_data());
+        let _f2 = self.add_extra(alt.to_extra_data());
+        IfStmt(self.add_node(
+            span,
+            NodeKind::IfStmt,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn switch_stmt(
-        &self,
+        &mut self,
         span: Span,
-        discriminant: Expr<'a>,
-        cases: Vec<'a, SwitchCase<'a>>,
-    ) -> SwitchStmt<'a> {
-        SwitchStmt {
+        discriminant: Expr,
+        cases: TypedSubRange<SwitchCase>,
+    ) -> SwitchStmt {
+        let _f0 = self.add_extra(discriminant.to_extra_data());
+        let _f1 = self.add_extra(cases.to_extra_data());
+        SwitchStmt(self.add_node(
             span,
-            discriminant,
-            cases,
-        }
+            NodeKind::SwitchStmt,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_switch_stmt(
-        &self,
-        span: Span,
-        discriminant: Expr<'a>,
-        cases: Vec<'a, SwitchCase<'a>>,
-    ) -> Box<'a, SwitchStmt<'a>> {
-        self.allocator
-            .boxed(self.switch_stmt(span, discriminant, cases))
-    }
-    #[inline]
-    pub fn throw_stmt(&self, span: Span, arg: Expr<'a>) -> ThrowStmt<'a> {
-        ThrowStmt { span, arg }
-    }
-    #[inline]
-    pub fn box_throw_stmt(&self, span: Span, arg: Expr<'a>) -> Box<'a, ThrowStmt<'a>> {
-        self.allocator.boxed(self.throw_stmt(span, arg))
+    pub fn throw_stmt(&mut self, span: Span, arg: Expr) -> ThrowStmt {
+        let _f0 = self.add_extra(arg.to_extra_data());
+        ThrowStmt(self.add_node(
+            span,
+            NodeKind::ThrowStmt,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn try_stmt(
-        &self,
+        &mut self,
         span: Span,
-        block: Box<'a, BlockStmt<'a>>,
-        handler: Option<Box<'a, CatchClause<'a>>>,
-        finalizer: Option<Box<'a, BlockStmt<'a>>>,
-    ) -> TryStmt<'a> {
-        TryStmt {
+        block: BlockStmt,
+        handler: Option<CatchClause>,
+        finalizer: Option<BlockStmt>,
+    ) -> TryStmt {
+        let _f0 = self.add_extra(block.to_extra_data());
+        let _f1 = self.add_extra(handler.to_extra_data());
+        let _f2 = self.add_extra(finalizer.to_extra_data());
+        TryStmt(self.add_node(
             span,
-            block,
-            handler,
-            finalizer,
-        }
+            NodeKind::TryStmt,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_try_stmt(
-        &self,
-        span: Span,
-        block: Box<'a, BlockStmt<'a>>,
-        handler: Option<Box<'a, CatchClause<'a>>>,
-        finalizer: Option<Box<'a, BlockStmt<'a>>>,
-    ) -> Box<'a, TryStmt<'a>> {
-        self.allocator
-            .boxed(self.try_stmt(span, block, handler, finalizer))
+    pub fn while_stmt(&mut self, span: Span, test: Expr, body: Stmt) -> WhileStmt {
+        let _f0 = self.add_extra(test.to_extra_data());
+        let _f1 = self.add_extra(body.to_extra_data());
+        WhileStmt(self.add_node(
+            span,
+            NodeKind::WhileStmt,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn while_stmt(&self, span: Span, test: Expr<'a>, body: Stmt<'a>) -> WhileStmt<'a> {
-        WhileStmt { span, test, body }
-    }
-    #[inline]
-    pub fn box_while_stmt(
-        &self,
-        span: Span,
-        test: Expr<'a>,
-        body: Stmt<'a>,
-    ) -> Box<'a, WhileStmt<'a>> {
-        self.allocator.boxed(self.while_stmt(span, test, body))
-    }
-    #[inline]
-    pub fn do_while_stmt(&self, span: Span, test: Expr<'a>, body: Stmt<'a>) -> DoWhileStmt<'a> {
-        DoWhileStmt { span, test, body }
-    }
-    #[inline]
-    pub fn box_do_while_stmt(
-        &self,
-        span: Span,
-        test: Expr<'a>,
-        body: Stmt<'a>,
-    ) -> Box<'a, DoWhileStmt<'a>> {
-        self.allocator.boxed(self.do_while_stmt(span, test, body))
+    pub fn do_while_stmt(&mut self, span: Span, test: Expr, body: Stmt) -> DoWhileStmt {
+        let _f0 = self.add_extra(test.to_extra_data());
+        let _f1 = self.add_extra(body.to_extra_data());
+        DoWhileStmt(self.add_node(
+            span,
+            NodeKind::DoWhileStmt,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn for_stmt(
-        &self,
+        &mut self,
         span: Span,
-        init: Option<VarDeclOrExpr<'a>>,
-        test: Option<Expr<'a>>,
-        update: Option<Expr<'a>>,
-        body: Stmt<'a>,
-    ) -> ForStmt<'a> {
-        ForStmt {
+        init: Option<VarDeclOrExpr>,
+        test: Option<Expr>,
+        update: Option<Expr>,
+        body: Stmt,
+    ) -> ForStmt {
+        let _f0 = self.add_extra(init.to_extra_data());
+        let _f1 = self.add_extra(test.to_extra_data());
+        let _f2 = self.add_extra(update.to_extra_data());
+        let _f3 = self.add_extra(body.to_extra_data());
+        ForStmt(self.add_node(
             span,
-            init,
-            test,
-            update,
-            body,
-        }
+            NodeKind::ForStmt,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_for_stmt(
-        &self,
-        span: Span,
-        init: Option<VarDeclOrExpr<'a>>,
-        test: Option<Expr<'a>>,
-        update: Option<Expr<'a>>,
-        body: Stmt<'a>,
-    ) -> Box<'a, ForStmt<'a>> {
-        self.allocator
-            .boxed(self.for_stmt(span, init, test, update, body))
-    }
-    #[inline]
-    pub fn for_in_stmt(
-        &self,
-        span: Span,
-        left: ForHead<'a>,
-        right: Expr<'a>,
-        body: Stmt<'a>,
-    ) -> ForInStmt<'a> {
-        ForInStmt {
+    pub fn for_in_stmt(&mut self, span: Span, left: ForHead, right: Expr, body: Stmt) -> ForInStmt {
+        let _f0 = self.add_extra(left.to_extra_data());
+        let _f1 = self.add_extra(right.to_extra_data());
+        let _f2 = self.add_extra(body.to_extra_data());
+        ForInStmt(self.add_node(
             span,
-            left,
-            right,
-            body,
-        }
-    }
-    #[inline]
-    pub fn box_for_in_stmt(
-        &self,
-        span: Span,
-        left: ForHead<'a>,
-        right: Expr<'a>,
-        body: Stmt<'a>,
-    ) -> Box<'a, ForInStmt<'a>> {
-        self.allocator
-            .boxed(self.for_in_stmt(span, left, right, body))
+            NodeKind::ForInStmt,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn for_of_stmt(
-        &self,
+        &mut self,
         span: Span,
         is_await: bool,
-        left: ForHead<'a>,
-        right: Expr<'a>,
-        body: Stmt<'a>,
-    ) -> ForOfStmt<'a> {
-        ForOfStmt {
+        left: ForHead,
+        right: Expr,
+        body: Stmt,
+    ) -> ForOfStmt {
+        let _f0 = self.add_extra(is_await.to_extra_data());
+        let _f1 = self.add_extra(left.to_extra_data());
+        let _f2 = self.add_extra(right.to_extra_data());
+        let _f3 = self.add_extra(body.to_extra_data());
+        ForOfStmt(self.add_node(
             span,
-            is_await,
-            left,
-            right,
-            body,
-        }
-    }
-    #[inline]
-    pub fn box_for_of_stmt(
-        &self,
-        span: Span,
-        is_await: bool,
-        left: ForHead<'a>,
-        right: Expr<'a>,
-        body: Stmt<'a>,
-    ) -> Box<'a, ForOfStmt<'a>> {
-        self.allocator
-            .boxed(self.for_of_stmt(span, is_await, left, right, body))
+            NodeKind::ForOfStmt,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn switch_case(
-        &self,
+        &mut self,
         span: Span,
-        test: Option<Expr<'a>>,
-        cons: Vec<'a, Stmt<'a>>,
-    ) -> SwitchCase<'a> {
-        SwitchCase { span, test, cons }
+        test: Option<Expr>,
+        cons: TypedSubRange<Stmt>,
+    ) -> SwitchCase {
+        let _f0 = self.add_extra(test.to_extra_data());
+        let _f1 = self.add_extra(cons.to_extra_data());
+        SwitchCase(self.add_node(
+            span,
+            NodeKind::SwitchCase,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_switch_case(
-        &self,
-        span: Span,
-        test: Option<Expr<'a>>,
-        cons: Vec<'a, Stmt<'a>>,
-    ) -> Box<'a, SwitchCase<'a>> {
-        self.allocator.boxed(self.switch_case(span, test, cons))
-    }
-    #[inline]
-    pub fn catch_clause(
-        &self,
-        span: Span,
-        param: Option<Pat<'a>>,
-        body: Box<'a, BlockStmt<'a>>,
-    ) -> CatchClause<'a> {
-        CatchClause { span, param, body }
-    }
-    #[inline]
-    pub fn box_catch_clause(
-        &self,
-        span: Span,
-        param: Option<Pat<'a>>,
-        body: Box<'a, BlockStmt<'a>>,
-    ) -> Box<'a, CatchClause<'a>> {
-        self.allocator.boxed(self.catch_clause(span, param, body))
+    pub fn catch_clause(&mut self, span: Span, param: Option<Pat>, body: BlockStmt) -> CatchClause {
+        let _f0 = self.add_extra(param.to_extra_data());
+        let _f1 = self.add_extra(body.to_extra_data());
+        CatchClause(self.add_node(
+            span,
+            NodeKind::CatchClause,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn for_head_var_decl(
-        &self,
+        &mut self,
         span: Span,
         kind: VarDeclKind,
         declare: bool,
-        decls: Vec<'a, VarDeclarator<'a>>,
-    ) -> ForHead<'a> {
-        ForHead::VarDecl(self.box_var_decl(span, kind, declare, decls))
+        decls: TypedSubRange<VarDeclarator>,
+    ) -> ForHead {
+        ForHead::VarDecl(self.var_decl(span, kind, declare, decls).into())
     }
     #[inline]
     pub fn for_head_using_decl(
-        &self,
+        &mut self,
         span: Span,
         is_await: bool,
-        decls: Vec<'a, VarDeclarator<'a>>,
-    ) -> ForHead<'a> {
-        ForHead::UsingDecl(self.box_using_decl(span, is_await, decls))
+        decls: TypedSubRange<VarDeclarator>,
+    ) -> ForHead {
+        ForHead::UsingDecl(self.using_decl(span, is_await, decls).into())
     }
     #[inline]
-    pub fn for_head_pat_binding_ident(&self, id: Box<'a, Ident<'a>>) -> ForHead<'a> {
-        ForHead::Pat(self.allocator.boxed(Pat::Ident(self.box_binding_ident(id))))
+    pub fn for_head_pat_binding_ident(&mut self, span: Span, id: Ident) -> ForHead {
+        ForHead::Pat(Pat::Ident(self.binding_ident(span, id).into()))
     }
     #[inline]
     pub fn for_head_pat_array_pat(
-        &self,
+        &mut self,
         span: Span,
-        elems: Vec<'a, Option<Pat<'a>>>,
+        elems: TypedSubRange<Option<Pat>>,
         optional: bool,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator
-                .boxed(Pat::Array(self.box_array_pat(span, elems, optional))),
-        )
+    ) -> ForHead {
+        ForHead::Pat(Pat::Array(self.array_pat(span, elems, optional).into()))
     }
     #[inline]
-    pub fn for_head_pat_rest_pat(&self, span: Span, dot3_token: Span, arg: Pat<'a>) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator
-                .boxed(Pat::Rest(self.box_rest_pat(span, dot3_token, arg))),
-        )
+    pub fn for_head_pat_rest_pat(&mut self, span: Span, dot3_token: Span, arg: Pat) -> ForHead {
+        ForHead::Pat(Pat::Rest(self.rest_pat(span, dot3_token, arg).into()))
     }
     #[inline]
     pub fn for_head_pat_object_pat(
-        &self,
+        &mut self,
         span: Span,
-        props: Vec<'a, ObjectPatProp<'a>>,
+        props: TypedSubRange<ObjectPatProp>,
         optional: bool,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator
-                .boxed(Pat::Object(self.box_object_pat(span, props, optional))),
-        )
+    ) -> ForHead {
+        ForHead::Pat(Pat::Object(self.object_pat(span, props, optional).into()))
     }
     #[inline]
-    pub fn for_head_pat_assign_pat(
-        &self,
-        span: Span,
-        left: Pat<'a>,
-        right: Expr<'a>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator
-                .boxed(Pat::Assign(self.box_assign_pat(span, left, right))),
-        )
+    pub fn for_head_pat_assign_pat(&mut self, span: Span, left: Pat, right: Expr) -> ForHead {
+        ForHead::Pat(Pat::Assign(self.assign_pat(span, left, right).into()))
     }
     #[inline]
-    pub fn for_head_pat_invalid(&self) -> ForHead<'a> {
-        ForHead::Pat(self.allocator.boxed(Pat::Invalid(self.box_invalid())))
+    pub fn for_head_pat_invalid(&mut self, span: Span) -> ForHead {
+        ForHead::Pat(Pat::Invalid(self.invalid(span).into()))
     }
     #[inline]
-    pub fn for_head_pat_expr_this_expr(&self, span: Span) -> ForHead<'a> {
-        ForHead::Pat(self.allocator.boxed(Pat::Expr(
-            self.allocator.boxed(Expr::This(self.box_this_expr(span))),
-        )))
+    pub fn for_head_pat_expr_this_expr(&mut self, span: Span) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::This(self.this_expr(span).into())))
     }
     #[inline]
     pub fn for_head_pat_expr_array_lit(
-        &self,
+        &mut self,
         span: Span,
-        elems: Vec<'a, Option<Box<'a, ExprOrSpread<'a>>>>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::Array(self.box_array_lit(span, elems))),
-            )),
-        )
+        elems: TypedSubRange<Option<ExprOrSpread>>,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Array(self.array_lit(span, elems).into())))
     }
     #[inline]
     pub fn for_head_pat_expr_object_lit(
-        &self,
+        &mut self,
         span: Span,
-        props: Vec<'a, PropOrSpread<'a>>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::Object(self.box_object_lit(span, props))),
-            )),
-        )
+        props: TypedSubRange<PropOrSpread>,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Object(self.object_lit(span, props).into())))
     }
     #[inline]
     pub fn for_head_pat_expr_fn_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        function: Box<'a, Function<'a>>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::Fn(self.box_fn_expr(ident, function))),
-            )),
-        )
+        &mut self,
+        span: Span,
+        ident: Option<Ident>,
+        function: Function,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Fn(
+            self.fn_expr(span, ident, function).into(),
+        )))
     }
     #[inline]
-    pub fn for_head_pat_expr_unary_expr(
-        &self,
-        span: Span,
-        op: UnaryOp,
-        arg: Expr<'a>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::Unary(self.box_unary_expr(span, op, arg))),
-            )),
-        )
+    pub fn for_head_pat_expr_unary_expr(&mut self, span: Span, op: UnaryOp, arg: Expr) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Unary(
+            self.unary_expr(span, op, arg).into(),
+        )))
     }
     #[inline]
     pub fn for_head_pat_expr_update_expr(
-        &self,
+        &mut self,
         span: Span,
         op: UpdateOp,
         prefix: bool,
-        arg: SimpleAssignTarget<'a>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator
-                .boxed(Pat::Expr(self.allocator.boxed(Expr::Update(
-                    self.box_update_expr(span, op, prefix, arg),
-                )))),
-        )
+        arg: SimpleAssignTarget,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Update(
+            self.update_expr(span, op, prefix, arg).into(),
+        )))
     }
     #[inline]
     pub fn for_head_pat_expr_bin_expr(
-        &self,
+        &mut self,
         span: Span,
         op: BinaryOp,
-        left: Expr<'a>,
-        right: Expr<'a>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::Bin(self.box_bin_expr(span, op, left, right))),
-            )),
-        )
+        left: Expr,
+        right: Expr,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Bin(
+            self.bin_expr(span, op, left, right).into(),
+        )))
     }
     #[inline]
     pub fn for_head_pat_expr_assign_expr(
-        &self,
+        &mut self,
         span: Span,
         op: AssignOp,
-        left: AssignTarget<'a>,
-        right: Expr<'a>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator
-                .boxed(Pat::Expr(self.allocator.boxed(Expr::Assign(
-                    self.box_assign_expr(span, op, left, right),
-                )))),
-        )
+        left: AssignTarget,
+        right: Expr,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Assign(
+            self.assign_expr(span, op, left, right).into(),
+        )))
     }
     #[inline]
     pub fn for_head_pat_expr_member_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: Expr<'a>,
-        prop: MemberProp<'a>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::Member(self.box_member_expr(span, obj, prop))),
-            )),
-        )
+        obj: Expr,
+        prop: MemberProp,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Member(
+            self.member_expr(span, obj, prop).into(),
+        )))
     }
     #[inline]
     pub fn for_head_pat_expr_super_prop_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: Box<'a, Super>,
-        prop: SuperProp<'a>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator
-                .boxed(Pat::Expr(self.allocator.boxed(Expr::SuperProp(
-                    self.box_super_prop_expr(span, obj, prop),
-                )))),
-        )
+        obj: Super,
+        prop: SuperProp,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::SuperProp(
+            self.super_prop_expr(span, obj, prop).into(),
+        )))
     }
     #[inline]
     pub fn for_head_pat_expr_cond_expr(
-        &self,
+        &mut self,
         span: Span,
-        test: Expr<'a>,
-        cons: Expr<'a>,
-        alt: Expr<'a>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::Cond(self.box_cond_expr(span, test, cons, alt))),
-            )),
-        )
+        test: Expr,
+        cons: Expr,
+        alt: Expr,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Cond(
+            self.cond_expr(span, test, cons, alt).into(),
+        )))
     }
     #[inline]
     pub fn for_head_pat_expr_import_expr(
-        &self,
+        &mut self,
         span: Span,
         import_span: Span,
-        source: Expr<'a>,
-        options: Option<Expr<'a>>,
+        source: Expr,
+        options: Option<Expr>,
         phase: ImportPhase,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator
-                .boxed(Pat::Expr(self.allocator.boxed(Expr::Import(
-                    self.box_import_expr(span, import_span, source, options, phase),
-                )))),
-        )
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Import(
+            self.import_expr(span, import_span, source, options, phase)
+                .into(),
+        )))
     }
     #[inline]
     pub fn for_head_pat_expr_call_expr(
-        &self,
+        &mut self,
         span: Span,
-        callee: Callee<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::Call(self.box_call_expr(span, callee, args))),
-            )),
-        )
+        callee: Callee,
+        args: TypedSubRange<ExprOrSpread>,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Call(
+            self.call_expr(span, callee, args).into(),
+        )))
     }
     #[inline]
     pub fn for_head_pat_expr_new_expr(
-        &self,
+        &mut self,
         span: Span,
-        callee: Expr<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::New(self.box_new_expr(span, callee, args))),
-            )),
-        )
-    }
-    #[inline]
-    pub fn for_head_pat_expr_seq_expr(&self, span: Span, exprs: Vec<'a, Expr<'a>>) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::Seq(self.box_seq_expr(span, exprs))),
-            )),
-        )
-    }
-    #[inline]
-    pub fn for_head_pat_expr_ident(&self, span: Span, sym: Atom<'a>) -> ForHead<'a> {
-        ForHead::Pat(self.allocator.boxed(Pat::Expr(
-            self.allocator.boxed(Expr::Ident(self.box_ident(span, sym))),
+        callee: Expr,
+        args: TypedSubRange<ExprOrSpread>,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::New(
+            self.new_expr(span, callee, args).into(),
         )))
+    }
+    #[inline]
+    pub fn for_head_pat_expr_seq_expr(
+        &mut self,
+        span: Span,
+        exprs: TypedSubRange<Expr>,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Seq(self.seq_expr(span, exprs).into())))
+    }
+    #[inline]
+    pub fn for_head_pat_expr_ident(&mut self, span: Span, sym: Atom<'a>) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Ident(self.ident(span, sym).into())))
     }
     #[inline]
     pub fn for_head_pat_expr_lit_str(
-        &self,
+        &mut self,
         span: Span,
         value: Wtf8Atom<'a>,
         raw: Option<Atom<'a>>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator.boxed(Expr::Lit(
-                    self.allocator
-                        .boxed(Lit::Str(self.box_str(span, value, raw))),
-                )),
-            )),
-        )
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Lit(Lit::Str(
+            self.str(span, value, raw).into(),
+        ))))
     }
     #[inline]
-    pub fn for_head_pat_expr_lit_bool(&self, span: Span, value: bool) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator
-                .boxed(Pat::Expr(self.allocator.boxed(Expr::Lit(
-                    self.allocator.boxed(Lit::Bool(self.box_bool(span, value))),
-                )))),
-        )
+    pub fn for_head_pat_expr_lit_bool(&mut self, span: Span, value: bool) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Lit(Lit::Bool(
+            self.bool(span, value).into(),
+        ))))
     }
     #[inline]
-    pub fn for_head_pat_expr_lit_null(&self, span: Span) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator
-                .boxed(Pat::Expr(self.allocator.boxed(Expr::Lit(
-                    self.allocator.boxed(Lit::Null(self.box_null(span))),
-                )))),
-        )
+    pub fn for_head_pat_expr_lit_null(&mut self, span: Span) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Lit(Lit::Null(self.null(span).into()))))
     }
     #[inline]
     pub fn for_head_pat_expr_lit_number(
-        &self,
+        &mut self,
         span: Span,
         value: f64,
         raw: Option<Atom<'a>>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator.boxed(Expr::Lit(
-                    self.allocator
-                        .boxed(Lit::Num(self.box_number(span, value, raw))),
-                )),
-            )),
-        )
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Lit(Lit::Num(
+            self.number(span, value, raw).into(),
+        ))))
     }
     #[inline]
     pub fn for_head_pat_expr_lit_big_int(
-        &self,
+        &mut self,
         span: Span,
         value: Atom<'a>,
         raw: Option<Atom<'a>>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator.boxed(Expr::Lit(
-                    self.allocator
-                        .boxed(Lit::BigInt(self.box_big_int(span, value, raw))),
-                )),
-            )),
-        )
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Lit(Lit::BigInt(
+            self.big_int(span, value, raw).into(),
+        ))))
     }
     #[inline]
     pub fn for_head_pat_expr_lit_regex(
-        &self,
+        &mut self,
         span: Span,
         exp: Atom<'a>,
         flags: Atom<'a>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator.boxed(Expr::Lit(
-                    self.allocator
-                        .boxed(Lit::Regex(self.box_regex(span, exp, flags))),
-                )),
-            )),
-        )
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Lit(Lit::Regex(
+            self.regex(span, exp, flags).into(),
+        ))))
     }
     #[inline]
     pub fn for_head_pat_expr_tpl(
-        &self,
+        &mut self,
         span: Span,
-        exprs: Vec<'a, Expr<'a>>,
-        quasis: Vec<'a, TplElement<'a>>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::Tpl(self.box_tpl(span, exprs, quasis))),
-            )),
-        )
+        exprs: TypedSubRange<Expr>,
+        quasis: TypedSubRange<TplElement>,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Tpl(self.tpl(span, exprs, quasis).into())))
     }
     #[inline]
-    pub fn for_head_pat_expr_tagged_tpl(
-        &self,
-        span: Span,
-        tag: Expr<'a>,
-        tpl: Box<'a, Tpl<'a>>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::TaggedTpl(self.box_tagged_tpl(span, tag, tpl))),
-            )),
-        )
+    pub fn for_head_pat_expr_tagged_tpl(&mut self, span: Span, tag: Expr, tpl: Tpl) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::TaggedTpl(
+            self.tagged_tpl(span, tag, tpl).into(),
+        )))
     }
     #[inline]
     pub fn for_head_pat_expr_arrow_expr(
-        &self,
+        &mut self,
         span: Span,
-        params: Vec<'a, Pat<'a>>,
-        body: BlockStmtOrExpr<'a>,
+        params: TypedSubRange<Pat>,
+        body: BlockStmtOrExpr,
         is_async: bool,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator
-                .boxed(Pat::Expr(self.allocator.boxed(Expr::Arrow(
-                    self.box_arrow_expr(span, params, body, is_async),
-                )))),
-        )
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Arrow(
+            self.arrow_expr(span, params, body, is_async).into(),
+        )))
     }
     #[inline]
     pub fn for_head_pat_expr_class_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        class: Box<'a, Class<'a>>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::Class(self.box_class_expr(ident, class))),
-            )),
-        )
+        &mut self,
+        span: Span,
+        ident: Option<Ident>,
+        class: Class,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Class(
+            self.class_expr(span, ident, class).into(),
+        )))
     }
     #[inline]
     pub fn for_head_pat_expr_yield_expr(
-        &self,
+        &mut self,
         span: Span,
-        arg: Option<Expr<'a>>,
+        arg: Option<Expr>,
         delegate: bool,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::Yield(self.box_yield_expr(span, arg, delegate))),
-            )),
-        )
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Yield(
+            self.yield_expr(span, arg, delegate).into(),
+        )))
     }
     #[inline]
-    pub fn for_head_pat_expr_meta_prop_expr(&self, span: Span, kind: MetaPropKind) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::MetaProp(self.box_meta_prop_expr(span, kind))),
-            )),
-        )
+    pub fn for_head_pat_expr_meta_prop_expr(&mut self, span: Span, kind: MetaPropKind) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::MetaProp(
+            self.meta_prop_expr(span, kind).into(),
+        )))
     }
     #[inline]
-    pub fn for_head_pat_expr_await_expr(&self, span: Span, arg: Expr<'a>) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::Await(self.box_await_expr(span, arg))),
-            )),
-        )
+    pub fn for_head_pat_expr_await_expr(&mut self, span: Span, arg: Expr) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Await(self.await_expr(span, arg).into())))
     }
     #[inline]
-    pub fn for_head_pat_expr_paren_expr(&self, span: Span, expr: Expr<'a>) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::Paren(self.box_paren_expr(span, expr))),
-            )),
-        )
+    pub fn for_head_pat_expr_paren_expr(&mut self, span: Span, expr: Expr) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Paren(self.paren_expr(span, expr).into())))
     }
     #[inline]
     pub fn for_head_pat_expr_jsx_member_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: JSXObject<'a>,
-        prop: Box<'a, IdentName<'a>>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator
-                .boxed(Pat::Expr(self.allocator.boxed(Expr::JSXMember(
-                    self.box_jsx_member_expr(span, obj, prop),
-                )))),
-        )
+        obj: JSXObject,
+        prop: IdentName,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::JSXMember(
+            self.jsx_member_expr(span, obj, prop).into(),
+        )))
     }
     #[inline]
     pub fn for_head_pat_expr_jsx_namespaced_name(
-        &self,
+        &mut self,
         span: Span,
-        ns: Box<'a, IdentName<'a>>,
-        name: Box<'a, IdentName<'a>>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(self.allocator.boxed(Pat::Expr(self.allocator.boxed(
-            Expr::JSXNamespacedName(self.box_jsx_namespaced_name(span, ns, name)),
-        ))))
+        ns: IdentName,
+        name: IdentName,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::JSXNamespacedName(
+            self.jsx_namespaced_name(span, ns, name).into(),
+        )))
     }
     #[inline]
-    pub fn for_head_pat_expr_jsx_empty_expr(&self, span: Span) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::JSXEmpty(self.box_jsx_empty_expr(span))),
-            )),
-        )
+    pub fn for_head_pat_expr_jsx_empty_expr(&mut self, span: Span) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::JSXEmpty(self.jsx_empty_expr(span).into())))
     }
     #[inline]
     pub fn for_head_pat_expr_jsx_element(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningElement<'a>>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Option<Box<'a, JSXClosingElement<'a>>>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator
-                .boxed(Pat::Expr(self.allocator.boxed(Expr::JSXElement(
-                    self.box_jsx_element(span, opening, children, closing),
-                )))),
-        )
+        opening: JSXOpeningElement,
+        children: TypedSubRange<JSXElementChild>,
+        closing: Option<JSXClosingElement>,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::JSXElement(
+            self.jsx_element(span, opening, children, closing).into(),
+        )))
     }
     #[inline]
     pub fn for_head_pat_expr_jsx_fragment(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningFragment>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Box<'a, JSXClosingFragment>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator
-                .boxed(Pat::Expr(self.allocator.boxed(Expr::JSXFragment(
-                    self.box_jsx_fragment(span, opening, children, closing),
-                )))),
-        )
+        opening: JSXOpeningFragment,
+        children: TypedSubRange<JSXElementChild>,
+        closing: JSXClosingFragment,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::JSXFragment(
+            self.jsx_fragment(span, opening, children, closing).into(),
+        )))
     }
     #[inline]
-    pub fn for_head_pat_expr_private_name(&self, span: Span, name: Atom<'a>) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator.boxed(Pat::Expr(
-                self.allocator
-                    .boxed(Expr::PrivateName(self.box_private_name(span, name))),
-            )),
-        )
+    pub fn for_head_pat_expr_private_name(&mut self, span: Span, name: Atom<'a>) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::PrivateName(
+            self.private_name(span, name).into(),
+        )))
     }
     #[inline]
     pub fn for_head_pat_expr_opt_chain_expr(
-        &self,
+        &mut self,
         span: Span,
         optional: bool,
-        base: OptChainBase<'a>,
-    ) -> ForHead<'a> {
-        ForHead::Pat(
-            self.allocator
-                .boxed(Pat::Expr(self.allocator.boxed(Expr::OptChain(
-                    self.box_opt_chain_expr(span, optional, base),
-                )))),
-        )
+        base: OptChainBase,
+    ) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::OptChain(
+            self.opt_chain_expr(span, optional, base).into(),
+        )))
     }
     #[inline]
-    pub fn for_head_pat_expr_invalid(&self) -> ForHead<'a> {
-        ForHead::Pat(self.allocator.boxed(Pat::Expr(
-            self.allocator.boxed(Expr::Invalid(self.box_invalid())),
-        )))
+    pub fn for_head_pat_expr_invalid(&mut self, span: Span) -> ForHead {
+        ForHead::Pat(Pat::Expr(Expr::Invalid(self.invalid(span).into())))
     }
     #[inline]
     pub fn var_decl_or_expr_var_decl(
-        &self,
+        &mut self,
         span: Span,
         kind: VarDeclKind,
         declare: bool,
-        decls: Vec<'a, VarDeclarator<'a>>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::VarDecl(self.box_var_decl(span, kind, declare, decls))
+        decls: TypedSubRange<VarDeclarator>,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::VarDecl(self.var_decl(span, kind, declare, decls).into())
     }
     #[inline]
-    pub fn var_decl_or_expr_expr_this_expr(&self, span: Span) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(self.allocator.boxed(Expr::This(self.box_this_expr(span))))
+    pub fn var_decl_or_expr_expr_this_expr(&mut self, span: Span) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::This(self.this_expr(span).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_array_lit(
-        &self,
+        &mut self,
         span: Span,
-        elems: Vec<'a, Option<Box<'a, ExprOrSpread<'a>>>>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Array(self.box_array_lit(span, elems))),
-        )
+        elems: TypedSubRange<Option<ExprOrSpread>>,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Array(self.array_lit(span, elems).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_object_lit(
-        &self,
+        &mut self,
         span: Span,
-        props: Vec<'a, PropOrSpread<'a>>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Object(self.box_object_lit(span, props))),
-        )
+        props: TypedSubRange<PropOrSpread>,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Object(self.object_lit(span, props).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_fn_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        function: Box<'a, Function<'a>>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Fn(self.box_fn_expr(ident, function))),
-        )
+        &mut self,
+        span: Span,
+        ident: Option<Ident>,
+        function: Function,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Fn(self.fn_expr(span, ident, function).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_unary_expr(
-        &self,
+        &mut self,
         span: Span,
         op: UnaryOp,
-        arg: Expr<'a>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Unary(self.box_unary_expr(span, op, arg))),
-        )
+        arg: Expr,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Unary(self.unary_expr(span, op, arg).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_update_expr(
-        &self,
+        &mut self,
         span: Span,
         op: UpdateOp,
         prefix: bool,
-        arg: SimpleAssignTarget<'a>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Update(self.box_update_expr(span, op, prefix, arg))),
-        )
+        arg: SimpleAssignTarget,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Update(self.update_expr(span, op, prefix, arg).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_bin_expr(
-        &self,
+        &mut self,
         span: Span,
         op: BinaryOp,
-        left: Expr<'a>,
-        right: Expr<'a>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Bin(self.box_bin_expr(span, op, left, right))),
-        )
+        left: Expr,
+        right: Expr,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Bin(self.bin_expr(span, op, left, right).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_assign_expr(
-        &self,
+        &mut self,
         span: Span,
         op: AssignOp,
-        left: AssignTarget<'a>,
-        right: Expr<'a>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Assign(self.box_assign_expr(span, op, left, right))),
-        )
+        left: AssignTarget,
+        right: Expr,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Assign(self.assign_expr(span, op, left, right).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_member_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: Expr<'a>,
-        prop: MemberProp<'a>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Member(self.box_member_expr(span, obj, prop))),
-        )
+        obj: Expr,
+        prop: MemberProp,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Member(self.member_expr(span, obj, prop).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_super_prop_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: Box<'a, Super>,
-        prop: SuperProp<'a>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::SuperProp(self.box_super_prop_expr(span, obj, prop))),
-        )
+        obj: Super,
+        prop: SuperProp,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::SuperProp(
+            self.super_prop_expr(span, obj, prop).into(),
+        ))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_cond_expr(
-        &self,
+        &mut self,
         span: Span,
-        test: Expr<'a>,
-        cons: Expr<'a>,
-        alt: Expr<'a>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Cond(self.box_cond_expr(span, test, cons, alt))),
-        )
+        test: Expr,
+        cons: Expr,
+        alt: Expr,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Cond(self.cond_expr(span, test, cons, alt).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_import_expr(
-        &self,
+        &mut self,
         span: Span,
         import_span: Span,
-        source: Expr<'a>,
-        options: Option<Expr<'a>>,
+        source: Expr,
+        options: Option<Expr>,
         phase: ImportPhase,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(self.allocator.boxed(Expr::Import(self.box_import_expr(
-            span,
-            import_span,
-            source,
-            options,
-            phase,
-        ))))
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Import(
+            self.import_expr(span, import_span, source, options, phase)
+                .into(),
+        ))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_call_expr(
-        &self,
+        &mut self,
         span: Span,
-        callee: Callee<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Call(self.box_call_expr(span, callee, args))),
-        )
+        callee: Callee,
+        args: TypedSubRange<ExprOrSpread>,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Call(self.call_expr(span, callee, args).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_new_expr(
-        &self,
+        &mut self,
         span: Span,
-        callee: Expr<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::New(self.box_new_expr(span, callee, args))),
-        )
+        callee: Expr,
+        args: TypedSubRange<ExprOrSpread>,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::New(self.new_expr(span, callee, args).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_seq_expr(
-        &self,
+        &mut self,
         span: Span,
-        exprs: Vec<'a, Expr<'a>>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Seq(self.box_seq_expr(span, exprs))),
-        )
+        exprs: TypedSubRange<Expr>,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Seq(self.seq_expr(span, exprs).into()))
     }
     #[inline]
-    pub fn var_decl_or_expr_expr_ident(&self, span: Span, sym: Atom<'a>) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(self.allocator.boxed(Expr::Ident(self.box_ident(span, sym))))
+    pub fn var_decl_or_expr_expr_ident(&mut self, span: Span, sym: Atom<'a>) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Ident(self.ident(span, sym).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_lit_str(
-        &self,
+        &mut self,
         span: Span,
         value: Wtf8Atom<'a>,
         raw: Option<Atom<'a>>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::Str(self.box_str(span, value, raw))),
-            )),
-        )
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Lit(Lit::Str(self.str(span, value, raw).into())))
     }
     #[inline]
-    pub fn var_decl_or_expr_expr_lit_bool(&self, span: Span, value: bool) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(self.allocator.boxed(Expr::Lit(
-            self.allocator.boxed(Lit::Bool(self.box_bool(span, value))),
-        )))
+    pub fn var_decl_or_expr_expr_lit_bool(&mut self, span: Span, value: bool) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Lit(Lit::Bool(self.bool(span, value).into())))
     }
     #[inline]
-    pub fn var_decl_or_expr_expr_lit_null(&self, span: Span) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(self.allocator.boxed(Expr::Lit(
-            self.allocator.boxed(Lit::Null(self.box_null(span))),
-        )))
+    pub fn var_decl_or_expr_expr_lit_null(&mut self, span: Span) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Lit(Lit::Null(self.null(span).into())))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_lit_number(
-        &self,
+        &mut self,
         span: Span,
         value: f64,
         raw: Option<Atom<'a>>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::Num(self.box_number(span, value, raw))),
-            )),
-        )
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Lit(Lit::Num(self.number(span, value, raw).into())))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_lit_big_int(
-        &self,
+        &mut self,
         span: Span,
         value: Atom<'a>,
         raw: Option<Atom<'a>>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::BigInt(self.box_big_int(span, value, raw))),
-            )),
-        )
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Lit(Lit::BigInt(
+            self.big_int(span, value, raw).into(),
+        )))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_lit_regex(
-        &self,
+        &mut self,
         span: Span,
         exp: Atom<'a>,
         flags: Atom<'a>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::Regex(self.box_regex(span, exp, flags))),
-            )),
-        )
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Lit(Lit::Regex(self.regex(span, exp, flags).into())))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_tpl(
-        &self,
+        &mut self,
         span: Span,
-        exprs: Vec<'a, Expr<'a>>,
-        quasis: Vec<'a, TplElement<'a>>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Tpl(self.box_tpl(span, exprs, quasis))),
-        )
+        exprs: TypedSubRange<Expr>,
+        quasis: TypedSubRange<TplElement>,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Tpl(self.tpl(span, exprs, quasis).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_tagged_tpl(
-        &self,
+        &mut self,
         span: Span,
-        tag: Expr<'a>,
-        tpl: Box<'a, Tpl<'a>>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::TaggedTpl(self.box_tagged_tpl(span, tag, tpl))),
-        )
+        tag: Expr,
+        tpl: Tpl,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::TaggedTpl(self.tagged_tpl(span, tag, tpl).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_arrow_expr(
-        &self,
+        &mut self,
         span: Span,
-        params: Vec<'a, Pat<'a>>,
-        body: BlockStmtOrExpr<'a>,
+        params: TypedSubRange<Pat>,
+        body: BlockStmtOrExpr,
         is_async: bool,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(self.allocator.boxed(Expr::Arrow(
-            self.box_arrow_expr(span, params, body, is_async),
-        )))
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Arrow(
+            self.arrow_expr(span, params, body, is_async).into(),
+        ))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_class_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        class: Box<'a, Class<'a>>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Class(self.box_class_expr(ident, class))),
-        )
+        &mut self,
+        span: Span,
+        ident: Option<Ident>,
+        class: Class,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Class(self.class_expr(span, ident, class).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_yield_expr(
-        &self,
+        &mut self,
         span: Span,
-        arg: Option<Expr<'a>>,
+        arg: Option<Expr>,
         delegate: bool,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Yield(self.box_yield_expr(span, arg, delegate))),
-        )
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Yield(self.yield_expr(span, arg, delegate).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_meta_prop_expr(
-        &self,
+        &mut self,
         span: Span,
         kind: MetaPropKind,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::MetaProp(self.box_meta_prop_expr(span, kind))),
-        )
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::MetaProp(self.meta_prop_expr(span, kind).into()))
     }
     #[inline]
-    pub fn var_decl_or_expr_expr_await_expr(&self, span: Span, arg: Expr<'a>) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Await(self.box_await_expr(span, arg))),
-        )
+    pub fn var_decl_or_expr_expr_await_expr(&mut self, span: Span, arg: Expr) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Await(self.await_expr(span, arg).into()))
     }
     #[inline]
-    pub fn var_decl_or_expr_expr_paren_expr(
-        &self,
-        span: Span,
-        expr: Expr<'a>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Paren(self.box_paren_expr(span, expr))),
-        )
+    pub fn var_decl_or_expr_expr_paren_expr(&mut self, span: Span, expr: Expr) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Paren(self.paren_expr(span, expr).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_jsx_member_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: JSXObject<'a>,
-        prop: Box<'a, IdentName<'a>>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::JSXMember(self.box_jsx_member_expr(span, obj, prop))),
-        )
+        obj: JSXObject,
+        prop: IdentName,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::JSXMember(
+            self.jsx_member_expr(span, obj, prop).into(),
+        ))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_jsx_namespaced_name(
-        &self,
+        &mut self,
         span: Span,
-        ns: Box<'a, IdentName<'a>>,
-        name: Box<'a, IdentName<'a>>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(self.allocator.boxed(Expr::JSXNamespacedName(
-            self.box_jsx_namespaced_name(span, ns, name),
-        )))
+        ns: IdentName,
+        name: IdentName,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::JSXNamespacedName(
+            self.jsx_namespaced_name(span, ns, name).into(),
+        ))
     }
     #[inline]
-    pub fn var_decl_or_expr_expr_jsx_empty_expr(&self, span: Span) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::JSXEmpty(self.box_jsx_empty_expr(span))),
-        )
+    pub fn var_decl_or_expr_expr_jsx_empty_expr(&mut self, span: Span) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::JSXEmpty(self.jsx_empty_expr(span).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_jsx_element(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningElement<'a>>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Option<Box<'a, JSXClosingElement<'a>>>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(self.allocator.boxed(Expr::JSXElement(
-            self.box_jsx_element(span, opening, children, closing),
-        )))
+        opening: JSXOpeningElement,
+        children: TypedSubRange<JSXElementChild>,
+        closing: Option<JSXClosingElement>,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::JSXElement(
+            self.jsx_element(span, opening, children, closing).into(),
+        ))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_jsx_fragment(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningFragment>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Box<'a, JSXClosingFragment>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(self.allocator.boxed(Expr::JSXFragment(
-            self.box_jsx_fragment(span, opening, children, closing),
-        )))
+        opening: JSXOpeningFragment,
+        children: TypedSubRange<JSXElementChild>,
+        closing: JSXClosingFragment,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::JSXFragment(
+            self.jsx_fragment(span, opening, children, closing).into(),
+        ))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_private_name(
-        &self,
+        &mut self,
         span: Span,
         name: Atom<'a>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::PrivateName(self.box_private_name(span, name))),
-        )
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::PrivateName(self.private_name(span, name).into()))
     }
     #[inline]
     pub fn var_decl_or_expr_expr_opt_chain_expr(
-        &self,
+        &mut self,
         span: Span,
         optional: bool,
-        base: OptChainBase<'a>,
-    ) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(self.allocator.boxed(Expr::OptChain(
-            self.box_opt_chain_expr(span, optional, base),
-        )))
+        base: OptChainBase,
+    ) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::OptChain(
+            self.opt_chain_expr(span, optional, base).into(),
+        ))
     }
     #[inline]
-    pub fn var_decl_or_expr_expr_invalid(&self) -> VarDeclOrExpr<'a> {
-        VarDeclOrExpr::Expr(self.allocator.boxed(Expr::Invalid(self.box_invalid())))
+    pub fn var_decl_or_expr_expr_invalid(&mut self, span: Span) -> VarDeclOrExpr {
+        VarDeclOrExpr::Expr(Expr::Invalid(self.invalid(span).into()))
     }
     #[inline]
     pub fn decl_class_decl(
-        &self,
-        ident: Box<'a, Ident<'a>>,
+        &mut self,
+        span: Span,
+        ident: Ident,
         declare: bool,
-        class: Box<'a, Class<'a>>,
-    ) -> Decl<'a> {
-        Decl::Class(self.box_class_decl(ident, declare, class))
+        class: Class,
+    ) -> Decl {
+        Decl::Class(self.class_decl(span, ident, declare, class).into())
     }
     #[inline]
     pub fn decl_fn_decl(
-        &self,
-        ident: Box<'a, Ident<'a>>,
+        &mut self,
+        span: Span,
+        ident: Ident,
         declare: bool,
-        function: Box<'a, Function<'a>>,
-    ) -> Decl<'a> {
-        Decl::Fn(self.box_fn_decl(ident, declare, function))
+        function: Function,
+    ) -> Decl {
+        Decl::Fn(self.fn_decl(span, ident, declare, function).into())
     }
     #[inline]
     pub fn decl_var_decl(
-        &self,
+        &mut self,
         span: Span,
         kind: VarDeclKind,
         declare: bool,
-        decls: Vec<'a, VarDeclarator<'a>>,
-    ) -> Decl<'a> {
-        Decl::Var(self.box_var_decl(span, kind, declare, decls))
+        decls: TypedSubRange<VarDeclarator>,
+    ) -> Decl {
+        Decl::Var(self.var_decl(span, kind, declare, decls).into())
     }
     #[inline]
     pub fn decl_using_decl(
-        &self,
+        &mut self,
         span: Span,
         is_await: bool,
-        decls: Vec<'a, VarDeclarator<'a>>,
-    ) -> Decl<'a> {
-        Decl::Using(self.box_using_decl(span, is_await, decls))
+        decls: TypedSubRange<VarDeclarator>,
+    ) -> Decl {
+        Decl::Using(self.using_decl(span, is_await, decls).into())
     }
     #[inline]
     pub fn fn_decl(
-        &self,
-        ident: Box<'a, Ident<'a>>,
+        &mut self,
+        span: Span,
+        ident: Ident,
         declare: bool,
-        function: Box<'a, Function<'a>>,
-    ) -> FnDecl<'a> {
-        FnDecl {
-            ident,
-            declare,
-            function,
-        }
-    }
-    #[inline]
-    pub fn box_fn_decl(
-        &self,
-        ident: Box<'a, Ident<'a>>,
-        declare: bool,
-        function: Box<'a, Function<'a>>,
-    ) -> Box<'a, FnDecl<'a>> {
-        self.allocator.boxed(self.fn_decl(ident, declare, function))
+        function: Function,
+    ) -> FnDecl {
+        let _f0 = self.add_extra(ident.to_extra_data());
+        let _f1 = self.add_extra(declare.to_extra_data());
+        let _f2 = self.add_extra(function.to_extra_data());
+        FnDecl(self.add_node(
+            span,
+            NodeKind::FnDecl,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn class_decl(
-        &self,
-        ident: Box<'a, Ident<'a>>,
+        &mut self,
+        span: Span,
+        ident: Ident,
         declare: bool,
-        class: Box<'a, Class<'a>>,
-    ) -> ClassDecl<'a> {
-        ClassDecl {
-            ident,
-            declare,
-            class,
-        }
-    }
-    #[inline]
-    pub fn box_class_decl(
-        &self,
-        ident: Box<'a, Ident<'a>>,
-        declare: bool,
-        class: Box<'a, Class<'a>>,
-    ) -> Box<'a, ClassDecl<'a>> {
-        self.allocator.boxed(self.class_decl(ident, declare, class))
+        class: Class,
+    ) -> ClassDecl {
+        let _f0 = self.add_extra(ident.to_extra_data());
+        let _f1 = self.add_extra(declare.to_extra_data());
+        let _f2 = self.add_extra(class.to_extra_data());
+        ClassDecl(self.add_node(
+            span,
+            NodeKind::ClassDecl,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn var_decl(
-        &self,
+        &mut self,
         span: Span,
         kind: VarDeclKind,
         declare: bool,
-        decls: Vec<'a, VarDeclarator<'a>>,
-    ) -> VarDecl<'a> {
-        VarDecl {
+        decls: TypedSubRange<VarDeclarator>,
+    ) -> VarDecl {
+        let _f0 = self.add_extra(kind.to_extra_data());
+        let _f1 = self.add_extra(declare.to_extra_data());
+        let _f2 = self.add_extra(decls.to_extra_data());
+        VarDecl(self.add_node(
             span,
-            kind,
-            declare,
-            decls,
-        }
+            NodeKind::VarDecl,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_var_decl(
-        &self,
-        span: Span,
-        kind: VarDeclKind,
-        declare: bool,
-        decls: Vec<'a, VarDeclarator<'a>>,
-    ) -> Box<'a, VarDecl<'a>> {
-        self.allocator
-            .boxed(self.var_decl(span, kind, declare, decls))
-    }
-    #[inline]
-    pub fn var_declarator(
-        &self,
-        span: Span,
-        name: Pat<'a>,
-        init: Option<Expr<'a>>,
-    ) -> VarDeclarator<'a> {
-        VarDeclarator { span, name, init }
-    }
-    #[inline]
-    pub fn box_var_declarator(
-        &self,
-        span: Span,
-        name: Pat<'a>,
-        init: Option<Expr<'a>>,
-    ) -> Box<'a, VarDeclarator<'a>> {
-        self.allocator.boxed(self.var_declarator(span, name, init))
+    pub fn var_declarator(&mut self, span: Span, name: Pat, init: Option<Expr>) -> VarDeclarator {
+        let _f0 = self.add_extra(name.to_extra_data());
+        let _f1 = self.add_extra(init.to_extra_data());
+        VarDeclarator(self.add_node(
+            span,
+            NodeKind::VarDeclarator,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn using_decl(
-        &self,
+        &mut self,
         span: Span,
         is_await: bool,
-        decls: Vec<'a, VarDeclarator<'a>>,
-    ) -> UsingDecl<'a> {
-        UsingDecl {
+        decls: TypedSubRange<VarDeclarator>,
+    ) -> UsingDecl {
+        let _f0 = self.add_extra(is_await.to_extra_data());
+        let _f1 = self.add_extra(decls.to_extra_data());
+        UsingDecl(self.add_node(
             span,
-            is_await,
-            decls,
-        }
+            NodeKind::UsingDecl,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_using_decl(
-        &self,
-        span: Span,
-        is_await: bool,
-        decls: Vec<'a, VarDeclarator<'a>>,
-    ) -> Box<'a, UsingDecl<'a>> {
-        self.allocator.boxed(self.using_decl(span, is_await, decls))
-    }
-    #[inline]
-    pub fn expr_this_expr(&self, span: Span) -> Expr<'a> {
-        Expr::This(self.box_this_expr(span))
+    pub fn expr_this_expr(&mut self, span: Span) -> Expr {
+        Expr::This(self.this_expr(span).into())
     }
     #[inline]
     pub fn expr_array_lit(
-        &self,
+        &mut self,
         span: Span,
-        elems: Vec<'a, Option<Box<'a, ExprOrSpread<'a>>>>,
-    ) -> Expr<'a> {
-        Expr::Array(self.box_array_lit(span, elems))
+        elems: TypedSubRange<Option<ExprOrSpread>>,
+    ) -> Expr {
+        Expr::Array(self.array_lit(span, elems).into())
     }
     #[inline]
-    pub fn expr_object_lit(&self, span: Span, props: Vec<'a, PropOrSpread<'a>>) -> Expr<'a> {
-        Expr::Object(self.box_object_lit(span, props))
+    pub fn expr_object_lit(&mut self, span: Span, props: TypedSubRange<PropOrSpread>) -> Expr {
+        Expr::Object(self.object_lit(span, props).into())
     }
     #[inline]
-    pub fn expr_fn_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        function: Box<'a, Function<'a>>,
-    ) -> Expr<'a> {
-        Expr::Fn(self.box_fn_expr(ident, function))
+    pub fn expr_fn_expr(&mut self, span: Span, ident: Option<Ident>, function: Function) -> Expr {
+        Expr::Fn(self.fn_expr(span, ident, function).into())
     }
     #[inline]
-    pub fn expr_unary_expr(&self, span: Span, op: UnaryOp, arg: Expr<'a>) -> Expr<'a> {
-        Expr::Unary(self.box_unary_expr(span, op, arg))
+    pub fn expr_unary_expr(&mut self, span: Span, op: UnaryOp, arg: Expr) -> Expr {
+        Expr::Unary(self.unary_expr(span, op, arg).into())
     }
     #[inline]
     pub fn expr_update_expr(
-        &self,
+        &mut self,
         span: Span,
         op: UpdateOp,
         prefix: bool,
-        arg: SimpleAssignTarget<'a>,
-    ) -> Expr<'a> {
-        Expr::Update(self.box_update_expr(span, op, prefix, arg))
+        arg: SimpleAssignTarget,
+    ) -> Expr {
+        Expr::Update(self.update_expr(span, op, prefix, arg).into())
     }
     #[inline]
-    pub fn expr_bin_expr(
-        &self,
-        span: Span,
-        op: BinaryOp,
-        left: Expr<'a>,
-        right: Expr<'a>,
-    ) -> Expr<'a> {
-        Expr::Bin(self.box_bin_expr(span, op, left, right))
+    pub fn expr_bin_expr(&mut self, span: Span, op: BinaryOp, left: Expr, right: Expr) -> Expr {
+        Expr::Bin(self.bin_expr(span, op, left, right).into())
     }
     #[inline]
     pub fn expr_assign_expr(
-        &self,
+        &mut self,
         span: Span,
         op: AssignOp,
-        left: AssignTarget<'a>,
-        right: Expr<'a>,
-    ) -> Expr<'a> {
-        Expr::Assign(self.box_assign_expr(span, op, left, right))
+        left: AssignTarget,
+        right: Expr,
+    ) -> Expr {
+        Expr::Assign(self.assign_expr(span, op, left, right).into())
     }
     #[inline]
-    pub fn expr_member_expr(&self, span: Span, obj: Expr<'a>, prop: MemberProp<'a>) -> Expr<'a> {
-        Expr::Member(self.box_member_expr(span, obj, prop))
+    pub fn expr_member_expr(&mut self, span: Span, obj: Expr, prop: MemberProp) -> Expr {
+        Expr::Member(self.member_expr(span, obj, prop).into())
     }
     #[inline]
-    pub fn expr_super_prop_expr(
-        &self,
-        span: Span,
-        obj: Box<'a, Super>,
-        prop: SuperProp<'a>,
-    ) -> Expr<'a> {
-        Expr::SuperProp(self.box_super_prop_expr(span, obj, prop))
+    pub fn expr_super_prop_expr(&mut self, span: Span, obj: Super, prop: SuperProp) -> Expr {
+        Expr::SuperProp(self.super_prop_expr(span, obj, prop).into())
     }
     #[inline]
-    pub fn expr_cond_expr(
-        &self,
-        span: Span,
-        test: Expr<'a>,
-        cons: Expr<'a>,
-        alt: Expr<'a>,
-    ) -> Expr<'a> {
-        Expr::Cond(self.box_cond_expr(span, test, cons, alt))
+    pub fn expr_cond_expr(&mut self, span: Span, test: Expr, cons: Expr, alt: Expr) -> Expr {
+        Expr::Cond(self.cond_expr(span, test, cons, alt).into())
     }
     #[inline]
     pub fn expr_import_expr(
-        &self,
+        &mut self,
         span: Span,
         import_span: Span,
-        source: Expr<'a>,
-        options: Option<Expr<'a>>,
+        source: Expr,
+        options: Option<Expr>,
         phase: ImportPhase,
-    ) -> Expr<'a> {
-        Expr::Import(self.box_import_expr(span, import_span, source, options, phase))
+    ) -> Expr {
+        Expr::Import(
+            self.import_expr(span, import_span, source, options, phase)
+                .into(),
+        )
     }
     #[inline]
     pub fn expr_call_expr(
-        &self,
+        &mut self,
         span: Span,
-        callee: Callee<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> Expr<'a> {
-        Expr::Call(self.box_call_expr(span, callee, args))
+        callee: Callee,
+        args: TypedSubRange<ExprOrSpread>,
+    ) -> Expr {
+        Expr::Call(self.call_expr(span, callee, args).into())
     }
     #[inline]
     pub fn expr_new_expr(
-        &self,
+        &mut self,
         span: Span,
-        callee: Expr<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> Expr<'a> {
-        Expr::New(self.box_new_expr(span, callee, args))
+        callee: Expr,
+        args: TypedSubRange<ExprOrSpread>,
+    ) -> Expr {
+        Expr::New(self.new_expr(span, callee, args).into())
     }
     #[inline]
-    pub fn expr_seq_expr(&self, span: Span, exprs: Vec<'a, Expr<'a>>) -> Expr<'a> {
-        Expr::Seq(self.box_seq_expr(span, exprs))
+    pub fn expr_seq_expr(&mut self, span: Span, exprs: TypedSubRange<Expr>) -> Expr {
+        Expr::Seq(self.seq_expr(span, exprs).into())
     }
     #[inline]
-    pub fn expr_ident(&self, span: Span, sym: Atom<'a>) -> Expr<'a> {
-        Expr::Ident(self.box_ident(span, sym))
+    pub fn expr_ident(&mut self, span: Span, sym: Atom<'a>) -> Expr {
+        Expr::Ident(self.ident(span, sym).into())
     }
     #[inline]
-    pub fn expr_lit_str(&self, span: Span, value: Wtf8Atom<'a>, raw: Option<Atom<'a>>) -> Expr<'a> {
-        Expr::Lit(
-            self.allocator
-                .boxed(Lit::Str(self.box_str(span, value, raw))),
-        )
+    pub fn expr_lit_str(&mut self, span: Span, value: Wtf8Atom<'a>, raw: Option<Atom<'a>>) -> Expr {
+        Expr::Lit(Lit::Str(self.str(span, value, raw).into()))
     }
     #[inline]
-    pub fn expr_lit_bool(&self, span: Span, value: bool) -> Expr<'a> {
-        Expr::Lit(self.allocator.boxed(Lit::Bool(self.box_bool(span, value))))
+    pub fn expr_lit_bool(&mut self, span: Span, value: bool) -> Expr {
+        Expr::Lit(Lit::Bool(self.bool(span, value).into()))
     }
     #[inline]
-    pub fn expr_lit_null(&self, span: Span) -> Expr<'a> {
-        Expr::Lit(self.allocator.boxed(Lit::Null(self.box_null(span))))
+    pub fn expr_lit_null(&mut self, span: Span) -> Expr {
+        Expr::Lit(Lit::Null(self.null(span).into()))
     }
     #[inline]
-    pub fn expr_lit_number(&self, span: Span, value: f64, raw: Option<Atom<'a>>) -> Expr<'a> {
-        Expr::Lit(
-            self.allocator
-                .boxed(Lit::Num(self.box_number(span, value, raw))),
-        )
+    pub fn expr_lit_number(&mut self, span: Span, value: f64, raw: Option<Atom<'a>>) -> Expr {
+        Expr::Lit(Lit::Num(self.number(span, value, raw).into()))
     }
     #[inline]
-    pub fn expr_lit_big_int(&self, span: Span, value: Atom<'a>, raw: Option<Atom<'a>>) -> Expr<'a> {
-        Expr::Lit(
-            self.allocator
-                .boxed(Lit::BigInt(self.box_big_int(span, value, raw))),
-        )
+    pub fn expr_lit_big_int(&mut self, span: Span, value: Atom<'a>, raw: Option<Atom<'a>>) -> Expr {
+        Expr::Lit(Lit::BigInt(self.big_int(span, value, raw).into()))
     }
     #[inline]
-    pub fn expr_lit_regex(&self, span: Span, exp: Atom<'a>, flags: Atom<'a>) -> Expr<'a> {
-        Expr::Lit(
-            self.allocator
-                .boxed(Lit::Regex(self.box_regex(span, exp, flags))),
-        )
+    pub fn expr_lit_regex(&mut self, span: Span, exp: Atom<'a>, flags: Atom<'a>) -> Expr {
+        Expr::Lit(Lit::Regex(self.regex(span, exp, flags).into()))
     }
     #[inline]
     pub fn expr_tpl(
-        &self,
+        &mut self,
         span: Span,
-        exprs: Vec<'a, Expr<'a>>,
-        quasis: Vec<'a, TplElement<'a>>,
-    ) -> Expr<'a> {
-        Expr::Tpl(self.box_tpl(span, exprs, quasis))
+        exprs: TypedSubRange<Expr>,
+        quasis: TypedSubRange<TplElement>,
+    ) -> Expr {
+        Expr::Tpl(self.tpl(span, exprs, quasis).into())
     }
     #[inline]
-    pub fn expr_tagged_tpl(&self, span: Span, tag: Expr<'a>, tpl: Box<'a, Tpl<'a>>) -> Expr<'a> {
-        Expr::TaggedTpl(self.box_tagged_tpl(span, tag, tpl))
+    pub fn expr_tagged_tpl(&mut self, span: Span, tag: Expr, tpl: Tpl) -> Expr {
+        Expr::TaggedTpl(self.tagged_tpl(span, tag, tpl).into())
     }
     #[inline]
     pub fn expr_arrow_expr(
-        &self,
+        &mut self,
         span: Span,
-        params: Vec<'a, Pat<'a>>,
-        body: BlockStmtOrExpr<'a>,
+        params: TypedSubRange<Pat>,
+        body: BlockStmtOrExpr,
         is_async: bool,
-    ) -> Expr<'a> {
-        Expr::Arrow(self.box_arrow_expr(span, params, body, is_async))
+    ) -> Expr {
+        Expr::Arrow(self.arrow_expr(span, params, body, is_async).into())
     }
     #[inline]
-    pub fn expr_class_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        class: Box<'a, Class<'a>>,
-    ) -> Expr<'a> {
-        Expr::Class(self.box_class_expr(ident, class))
+    pub fn expr_class_expr(&mut self, span: Span, ident: Option<Ident>, class: Class) -> Expr {
+        Expr::Class(self.class_expr(span, ident, class).into())
     }
     #[inline]
-    pub fn expr_yield_expr(&self, span: Span, arg: Option<Expr<'a>>, delegate: bool) -> Expr<'a> {
-        Expr::Yield(self.box_yield_expr(span, arg, delegate))
+    pub fn expr_yield_expr(&mut self, span: Span, arg: Option<Expr>, delegate: bool) -> Expr {
+        Expr::Yield(self.yield_expr(span, arg, delegate).into())
     }
     #[inline]
-    pub fn expr_meta_prop_expr(&self, span: Span, kind: MetaPropKind) -> Expr<'a> {
-        Expr::MetaProp(self.box_meta_prop_expr(span, kind))
+    pub fn expr_meta_prop_expr(&mut self, span: Span, kind: MetaPropKind) -> Expr {
+        Expr::MetaProp(self.meta_prop_expr(span, kind).into())
     }
     #[inline]
-    pub fn expr_await_expr(&self, span: Span, arg: Expr<'a>) -> Expr<'a> {
-        Expr::Await(self.box_await_expr(span, arg))
+    pub fn expr_await_expr(&mut self, span: Span, arg: Expr) -> Expr {
+        Expr::Await(self.await_expr(span, arg).into())
     }
     #[inline]
-    pub fn expr_paren_expr(&self, span: Span, expr: Expr<'a>) -> Expr<'a> {
-        Expr::Paren(self.box_paren_expr(span, expr))
+    pub fn expr_paren_expr(&mut self, span: Span, expr: Expr) -> Expr {
+        Expr::Paren(self.paren_expr(span, expr).into())
     }
     #[inline]
-    pub fn expr_jsx_member_expr(
-        &self,
-        span: Span,
-        obj: JSXObject<'a>,
-        prop: Box<'a, IdentName<'a>>,
-    ) -> Expr<'a> {
-        Expr::JSXMember(self.box_jsx_member_expr(span, obj, prop))
+    pub fn expr_jsx_member_expr(&mut self, span: Span, obj: JSXObject, prop: IdentName) -> Expr {
+        Expr::JSXMember(self.jsx_member_expr(span, obj, prop).into())
     }
     #[inline]
-    pub fn expr_jsx_namespaced_name(
-        &self,
-        span: Span,
-        ns: Box<'a, IdentName<'a>>,
-        name: Box<'a, IdentName<'a>>,
-    ) -> Expr<'a> {
-        Expr::JSXNamespacedName(self.box_jsx_namespaced_name(span, ns, name))
+    pub fn expr_jsx_namespaced_name(&mut self, span: Span, ns: IdentName, name: IdentName) -> Expr {
+        Expr::JSXNamespacedName(self.jsx_namespaced_name(span, ns, name).into())
     }
     #[inline]
-    pub fn expr_jsx_empty_expr(&self, span: Span) -> Expr<'a> {
-        Expr::JSXEmpty(self.box_jsx_empty_expr(span))
+    pub fn expr_jsx_empty_expr(&mut self, span: Span) -> Expr {
+        Expr::JSXEmpty(self.jsx_empty_expr(span).into())
     }
     #[inline]
     pub fn expr_jsx_element(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningElement<'a>>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Option<Box<'a, JSXClosingElement<'a>>>,
-    ) -> Expr<'a> {
-        Expr::JSXElement(self.box_jsx_element(span, opening, children, closing))
+        opening: JSXOpeningElement,
+        children: TypedSubRange<JSXElementChild>,
+        closing: Option<JSXClosingElement>,
+    ) -> Expr {
+        Expr::JSXElement(self.jsx_element(span, opening, children, closing).into())
     }
     #[inline]
     pub fn expr_jsx_fragment(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningFragment>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Box<'a, JSXClosingFragment>,
-    ) -> Expr<'a> {
-        Expr::JSXFragment(self.box_jsx_fragment(span, opening, children, closing))
+        opening: JSXOpeningFragment,
+        children: TypedSubRange<JSXElementChild>,
+        closing: JSXClosingFragment,
+    ) -> Expr {
+        Expr::JSXFragment(self.jsx_fragment(span, opening, children, closing).into())
     }
     #[inline]
-    pub fn expr_private_name(&self, span: Span, name: Atom<'a>) -> Expr<'a> {
-        Expr::PrivateName(self.box_private_name(span, name))
+    pub fn expr_private_name(&mut self, span: Span, name: Atom<'a>) -> Expr {
+        Expr::PrivateName(self.private_name(span, name).into())
     }
     #[inline]
-    pub fn expr_opt_chain_expr(
-        &self,
-        span: Span,
-        optional: bool,
-        base: OptChainBase<'a>,
-    ) -> Expr<'a> {
-        Expr::OptChain(self.box_opt_chain_expr(span, optional, base))
+    pub fn expr_opt_chain_expr(&mut self, span: Span, optional: bool, base: OptChainBase) -> Expr {
+        Expr::OptChain(self.opt_chain_expr(span, optional, base).into())
     }
     #[inline]
-    pub fn expr_invalid(&self) -> Expr<'a> {
-        Expr::Invalid(self.box_invalid())
+    pub fn expr_invalid(&mut self, span: Span) -> Expr {
+        Expr::Invalid(self.invalid(span).into())
     }
     #[inline]
-    pub fn this_expr(&self, span: Span) -> ThisExpr {
-        ThisExpr { span }
-    }
-    #[inline]
-    pub fn box_this_expr(&self, span: Span) -> Box<'a, ThisExpr> {
-        self.allocator.boxed(self.this_expr(span))
+    pub fn this_expr(&mut self, span: Span) -> ThisExpr {
+        ThisExpr(self.add_node(span, NodeKind::ThisExpr, NodePayload { empty: () }))
     }
     #[inline]
     pub fn array_lit(
-        &self,
+        &mut self,
         span: Span,
-        elems: Vec<'a, Option<Box<'a, ExprOrSpread<'a>>>>,
-    ) -> ArrayLit<'a> {
-        ArrayLit { span, elems }
+        elems: TypedSubRange<Option<ExprOrSpread>>,
+    ) -> ArrayLit {
+        let _f0 = self.add_extra(elems.to_extra_data());
+        ArrayLit(self.add_node(
+            span,
+            NodeKind::ArrayLit,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_array_lit(
-        &self,
-        span: Span,
-        elems: Vec<'a, Option<Box<'a, ExprOrSpread<'a>>>>,
-    ) -> Box<'a, ArrayLit<'a>> {
-        self.allocator.boxed(self.array_lit(span, elems))
-    }
-    #[inline]
-    pub fn object_lit(&self, span: Span, props: Vec<'a, PropOrSpread<'a>>) -> ObjectLit<'a> {
-        ObjectLit { span, props }
-    }
-    #[inline]
-    pub fn box_object_lit(
-        &self,
-        span: Span,
-        props: Vec<'a, PropOrSpread<'a>>,
-    ) -> Box<'a, ObjectLit<'a>> {
-        self.allocator.boxed(self.object_lit(span, props))
+    pub fn object_lit(&mut self, span: Span, props: TypedSubRange<PropOrSpread>) -> ObjectLit {
+        let _f0 = self.add_extra(props.to_extra_data());
+        ObjectLit(self.add_node(
+            span,
+            NodeKind::ObjectLit,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn prop_or_spread_spread_element(
-        &self,
+        &mut self,
+        span: Span,
         dot3_token: Span,
-        expr: Expr<'a>,
-    ) -> PropOrSpread<'a> {
-        PropOrSpread::Spread(self.box_spread_element(dot3_token, expr))
+        expr: Expr,
+    ) -> PropOrSpread {
+        PropOrSpread::Spread(self.spread_element(span, dot3_token, expr).into())
     }
     #[inline]
-    pub fn prop_or_spread_prop_ident(&self, span: Span, sym: Atom<'a>) -> PropOrSpread<'a> {
-        PropOrSpread::Prop(
-            self.allocator
-                .boxed(Prop::Shorthand(self.box_ident(span, sym))),
-        )
+    pub fn prop_or_spread_prop_ident(&mut self, span: Span, sym: Atom<'a>) -> PropOrSpread {
+        PropOrSpread::Prop(Prop::Shorthand(self.ident(span, sym).into()))
     }
     #[inline]
     pub fn prop_or_spread_prop_key_value_prop(
-        &self,
-        key: PropName<'a>,
-        value: Expr<'a>,
-    ) -> PropOrSpread<'a> {
-        PropOrSpread::Prop(
-            self.allocator
-                .boxed(Prop::KeyValue(self.box_key_value_prop(key, value))),
-        )
+        &mut self,
+        span: Span,
+        key: PropName,
+        value: Expr,
+    ) -> PropOrSpread {
+        PropOrSpread::Prop(Prop::KeyValue(self.key_value_prop(span, key, value).into()))
     }
     #[inline]
     pub fn prop_or_spread_prop_assign_prop(
-        &self,
+        &mut self,
         span: Span,
-        key: Box<'a, Ident<'a>>,
-        value: Expr<'a>,
-    ) -> PropOrSpread<'a> {
-        PropOrSpread::Prop(
-            self.allocator
-                .boxed(Prop::Assign(self.box_assign_prop(span, key, value))),
-        )
+        key: Ident,
+        value: Expr,
+    ) -> PropOrSpread {
+        PropOrSpread::Prop(Prop::Assign(self.assign_prop(span, key, value).into()))
     }
     #[inline]
     pub fn prop_or_spread_prop_getter_prop(
-        &self,
+        &mut self,
         span: Span,
-        key: PropName<'a>,
-        function: Box<'a, Function<'a>>,
-    ) -> PropOrSpread<'a> {
-        PropOrSpread::Prop(
-            self.allocator
-                .boxed(Prop::Getter(self.box_getter_prop(span, key, function))),
-        )
+        key: PropName,
+        function: Function,
+    ) -> PropOrSpread {
+        PropOrSpread::Prop(Prop::Getter(self.getter_prop(span, key, function).into()))
     }
     #[inline]
     pub fn prop_or_spread_prop_setter_prop(
-        &self,
+        &mut self,
         span: Span,
-        key: PropName<'a>,
-        function: Box<'a, Function<'a>>,
-    ) -> PropOrSpread<'a> {
-        PropOrSpread::Prop(
-            self.allocator
-                .boxed(Prop::Setter(self.box_setter_prop(span, key, function))),
-        )
+        key: PropName,
+        function: Function,
+    ) -> PropOrSpread {
+        PropOrSpread::Prop(Prop::Setter(self.setter_prop(span, key, function).into()))
     }
     #[inline]
     pub fn prop_or_spread_prop_method_prop(
-        &self,
-        key: PropName<'a>,
-        function: Box<'a, Function<'a>>,
-    ) -> PropOrSpread<'a> {
-        PropOrSpread::Prop(
-            self.allocator
-                .boxed(Prop::Method(self.box_method_prop(key, function))),
-        )
+        &mut self,
+        span: Span,
+        key: PropName,
+        function: Function,
+    ) -> PropOrSpread {
+        PropOrSpread::Prop(Prop::Method(self.method_prop(span, key, function).into()))
     }
     #[inline]
-    pub fn spread_element(&self, dot3_token: Span, expr: Expr<'a>) -> SpreadElement<'a> {
-        SpreadElement { dot3_token, expr }
+    pub fn spread_element(&mut self, span: Span, dot3_token: Span, expr: Expr) -> SpreadElement {
+        let _f0 = self.add_extra(dot3_token.to_extra_data());
+        let _f1 = self.add_extra(expr.to_extra_data());
+        SpreadElement(self.add_node(
+            span,
+            NodeKind::SpreadElement,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_spread_element(
-        &self,
-        dot3_token: Span,
-        expr: Expr<'a>,
-    ) -> Box<'a, SpreadElement<'a>> {
-        self.allocator.boxed(self.spread_element(dot3_token, expr))
-    }
-    #[inline]
-    pub fn unary_expr(&self, span: Span, op: UnaryOp, arg: Expr<'a>) -> UnaryExpr<'a> {
-        UnaryExpr { span, op, arg }
-    }
-    #[inline]
-    pub fn box_unary_expr(&self, span: Span, op: UnaryOp, arg: Expr<'a>) -> Box<'a, UnaryExpr<'a>> {
-        self.allocator.boxed(self.unary_expr(span, op, arg))
+    pub fn unary_expr(&mut self, span: Span, op: UnaryOp, arg: Expr) -> UnaryExpr {
+        let _f0 = self.add_extra(op.to_extra_data());
+        let _f1 = self.add_extra(arg.to_extra_data());
+        UnaryExpr(self.add_node(
+            span,
+            NodeKind::UnaryExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn update_expr(
-        &self,
+        &mut self,
         span: Span,
         op: UpdateOp,
         prefix: bool,
-        arg: SimpleAssignTarget<'a>,
-    ) -> UpdateExpr<'a> {
-        UpdateExpr {
+        arg: SimpleAssignTarget,
+    ) -> UpdateExpr {
+        let _f0 = self.add_extra(op.to_extra_data());
+        let _f1 = self.add_extra(prefix.to_extra_data());
+        let _f2 = self.add_extra(arg.to_extra_data());
+        UpdateExpr(self.add_node(
             span,
-            op,
-            prefix,
-            arg,
-        }
+            NodeKind::UpdateExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_update_expr(
-        &self,
-        span: Span,
-        op: UpdateOp,
-        prefix: bool,
-        arg: SimpleAssignTarget<'a>,
-    ) -> Box<'a, UpdateExpr<'a>> {
-        self.allocator
-            .boxed(self.update_expr(span, op, prefix, arg))
-    }
-    #[inline]
-    pub fn bin_expr(
-        &self,
-        span: Span,
-        op: BinaryOp,
-        left: Expr<'a>,
-        right: Expr<'a>,
-    ) -> BinExpr<'a> {
-        BinExpr {
+    pub fn bin_expr(&mut self, span: Span, op: BinaryOp, left: Expr, right: Expr) -> BinExpr {
+        let _f0 = self.add_extra(op.to_extra_data());
+        let _f1 = self.add_extra(left.to_extra_data());
+        let _f2 = self.add_extra(right.to_extra_data());
+        BinExpr(self.add_node(
             span,
-            op,
-            left,
-            right,
-        }
+            NodeKind::BinExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_bin_expr(
-        &self,
-        span: Span,
-        op: BinaryOp,
-        left: Expr<'a>,
-        right: Expr<'a>,
-    ) -> Box<'a, BinExpr<'a>> {
-        self.allocator.boxed(self.bin_expr(span, op, left, right))
+    pub fn fn_expr(&mut self, span: Span, ident: Option<Ident>, function: Function) -> FnExpr {
+        let _f0 = self.add_extra(ident.to_extra_data());
+        let _f1 = self.add_extra(function.to_extra_data());
+        FnExpr(self.add_node(
+            span,
+            NodeKind::FnExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn fn_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        function: Box<'a, Function<'a>>,
-    ) -> FnExpr<'a> {
-        FnExpr { ident, function }
-    }
-    #[inline]
-    pub fn box_fn_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        function: Box<'a, Function<'a>>,
-    ) -> Box<'a, FnExpr<'a>> {
-        self.allocator.boxed(self.fn_expr(ident, function))
-    }
-    #[inline]
-    pub fn class_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        class: Box<'a, Class<'a>>,
-    ) -> ClassExpr<'a> {
-        ClassExpr { ident, class }
-    }
-    #[inline]
-    pub fn box_class_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        class: Box<'a, Class<'a>>,
-    ) -> Box<'a, ClassExpr<'a>> {
-        self.allocator.boxed(self.class_expr(ident, class))
+    pub fn class_expr(&mut self, span: Span, ident: Option<Ident>, class: Class) -> ClassExpr {
+        let _f0 = self.add_extra(ident.to_extra_data());
+        let _f1 = self.add_extra(class.to_extra_data());
+        ClassExpr(self.add_node(
+            span,
+            NodeKind::ClassExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn assign_expr(
-        &self,
+        &mut self,
         span: Span,
         op: AssignOp,
-        left: AssignTarget<'a>,
-        right: Expr<'a>,
-    ) -> AssignExpr<'a> {
-        AssignExpr {
+        left: AssignTarget,
+        right: Expr,
+    ) -> AssignExpr {
+        let _f0 = self.add_extra(op.to_extra_data());
+        let _f1 = self.add_extra(left.to_extra_data());
+        let _f2 = self.add_extra(right.to_extra_data());
+        AssignExpr(self.add_node(
             span,
-            op,
-            left,
-            right,
-        }
+            NodeKind::AssignExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_assign_expr(
-        &self,
-        span: Span,
-        op: AssignOp,
-        left: AssignTarget<'a>,
-        right: Expr<'a>,
-    ) -> Box<'a, AssignExpr<'a>> {
-        self.allocator
-            .boxed(self.assign_expr(span, op, left, right))
-    }
-    #[inline]
-    pub fn member_expr(&self, span: Span, obj: Expr<'a>, prop: MemberProp<'a>) -> MemberExpr<'a> {
-        MemberExpr { span, obj, prop }
-    }
-    #[inline]
-    pub fn box_member_expr(
-        &self,
-        span: Span,
-        obj: Expr<'a>,
-        prop: MemberProp<'a>,
-    ) -> Box<'a, MemberExpr<'a>> {
-        self.allocator.boxed(self.member_expr(span, obj, prop))
-    }
-    #[inline]
-    pub fn member_prop_ident_name(&self, span: Span, sym: Atom<'a>) -> MemberProp<'a> {
-        MemberProp::Ident(self.box_ident_name(span, sym))
-    }
-    #[inline]
-    pub fn member_prop_private_name(&self, span: Span, name: Atom<'a>) -> MemberProp<'a> {
-        MemberProp::PrivateName(self.box_private_name(span, name))
-    }
-    #[inline]
-    pub fn member_prop_computed_prop_name(&self, span: Span, expr: Expr<'a>) -> MemberProp<'a> {
-        MemberProp::Computed(self.box_computed_prop_name(span, expr))
-    }
-    #[inline]
-    pub fn super_prop_expr(
-        &self,
-        span: Span,
-        obj: Box<'a, Super>,
-        prop: SuperProp<'a>,
-    ) -> SuperPropExpr<'a> {
-        SuperPropExpr { span, obj, prop }
-    }
-    #[inline]
-    pub fn box_super_prop_expr(
-        &self,
-        span: Span,
-        obj: Box<'a, Super>,
-        prop: SuperProp<'a>,
-    ) -> Box<'a, SuperPropExpr<'a>> {
-        self.allocator.boxed(self.super_prop_expr(span, obj, prop))
-    }
-    #[inline]
-    pub fn super_prop_ident_name(&self, span: Span, sym: Atom<'a>) -> SuperProp<'a> {
-        SuperProp::Ident(self.box_ident_name(span, sym))
-    }
-    #[inline]
-    pub fn super_prop_computed_prop_name(&self, span: Span, expr: Expr<'a>) -> SuperProp<'a> {
-        SuperProp::Computed(self.box_computed_prop_name(span, expr))
-    }
-    #[inline]
-    pub fn cond_expr(
-        &self,
-        span: Span,
-        test: Expr<'a>,
-        cons: Expr<'a>,
-        alt: Expr<'a>,
-    ) -> CondExpr<'a> {
-        CondExpr {
+    pub fn member_expr(&mut self, span: Span, obj: Expr, prop: MemberProp) -> MemberExpr {
+        let _f0 = self.add_extra(obj.to_extra_data());
+        let _f1 = self.add_extra(prop.to_extra_data());
+        MemberExpr(self.add_node(
             span,
-            test,
-            cons,
-            alt,
-        }
+            NodeKind::MemberExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_cond_expr(
-        &self,
-        span: Span,
-        test: Expr<'a>,
-        cons: Expr<'a>,
-        alt: Expr<'a>,
-    ) -> Box<'a, CondExpr<'a>> {
-        self.allocator.boxed(self.cond_expr(span, test, cons, alt))
+    pub fn member_prop_ident_name(&mut self, span: Span, sym: Atom<'a>) -> MemberProp {
+        MemberProp::Ident(self.ident_name(span, sym).into())
+    }
+    #[inline]
+    pub fn member_prop_private_name(&mut self, span: Span, name: Atom<'a>) -> MemberProp {
+        MemberProp::PrivateName(self.private_name(span, name).into())
+    }
+    #[inline]
+    pub fn member_prop_computed_prop_name(&mut self, span: Span, expr: Expr) -> MemberProp {
+        MemberProp::Computed(self.computed_prop_name(span, expr).into())
+    }
+    #[inline]
+    pub fn super_prop_expr(&mut self, span: Span, obj: Super, prop: SuperProp) -> SuperPropExpr {
+        let _f0 = self.add_extra(obj.to_extra_data());
+        let _f1 = self.add_extra(prop.to_extra_data());
+        SuperPropExpr(self.add_node(
+            span,
+            NodeKind::SuperPropExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
+    }
+    #[inline]
+    pub fn super_prop_ident_name(&mut self, span: Span, sym: Atom<'a>) -> SuperProp {
+        SuperProp::Ident(self.ident_name(span, sym).into())
+    }
+    #[inline]
+    pub fn super_prop_computed_prop_name(&mut self, span: Span, expr: Expr) -> SuperProp {
+        SuperProp::Computed(self.computed_prop_name(span, expr).into())
+    }
+    #[inline]
+    pub fn cond_expr(&mut self, span: Span, test: Expr, cons: Expr, alt: Expr) -> CondExpr {
+        let _f0 = self.add_extra(test.to_extra_data());
+        let _f1 = self.add_extra(cons.to_extra_data());
+        let _f2 = self.add_extra(alt.to_extra_data());
+        CondExpr(self.add_node(
+            span,
+            NodeKind::CondExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn import_expr(
-        &self,
+        &mut self,
         span: Span,
         import_span: Span,
-        source: Expr<'a>,
-        options: Option<Expr<'a>>,
+        source: Expr,
+        options: Option<Expr>,
         phase: ImportPhase,
-    ) -> ImportExpr<'a> {
-        ImportExpr {
+    ) -> ImportExpr {
+        let _f0 = self.add_extra(import_span.to_extra_data());
+        let _f1 = self.add_extra(source.to_extra_data());
+        let _f2 = self.add_extra(options.to_extra_data());
+        let _f3 = self.add_extra(phase.to_extra_data());
+        ImportExpr(self.add_node(
             span,
-            import_span,
-            source,
-            options,
-            phase,
-        }
-    }
-    #[inline]
-    pub fn box_import_expr(
-        &self,
-        span: Span,
-        import_span: Span,
-        source: Expr<'a>,
-        options: Option<Expr<'a>>,
-        phase: ImportPhase,
-    ) -> Box<'a, ImportExpr<'a>> {
-        self.allocator
-            .boxed(self.import_expr(span, import_span, source, options, phase))
+            NodeKind::ImportExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn call_expr(
-        &self,
+        &mut self,
         span: Span,
-        callee: Callee<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> CallExpr<'a> {
-        CallExpr { span, callee, args }
-    }
-    #[inline]
-    pub fn box_call_expr(
-        &self,
-        span: Span,
-        callee: Callee<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> Box<'a, CallExpr<'a>> {
-        self.allocator.boxed(self.call_expr(span, callee, args))
+        callee: Callee,
+        args: TypedSubRange<ExprOrSpread>,
+    ) -> CallExpr {
+        let _f0 = self.add_extra(callee.to_extra_data());
+        let _f1 = self.add_extra(args.to_extra_data());
+        CallExpr(self.add_node(
+            span,
+            NodeKind::CallExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn new_expr(
-        &self,
+        &mut self,
         span: Span,
-        callee: Expr<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> NewExpr<'a> {
-        NewExpr { span, callee, args }
+        callee: Expr,
+        args: TypedSubRange<ExprOrSpread>,
+    ) -> NewExpr {
+        let _f0 = self.add_extra(callee.to_extra_data());
+        let _f1 = self.add_extra(args.to_extra_data());
+        NewExpr(self.add_node(
+            span,
+            NodeKind::NewExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_new_expr(
-        &self,
-        span: Span,
-        callee: Expr<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> Box<'a, NewExpr<'a>> {
-        self.allocator.boxed(self.new_expr(span, callee, args))
-    }
-    #[inline]
-    pub fn seq_expr(&self, span: Span, exprs: Vec<'a, Expr<'a>>) -> SeqExpr<'a> {
-        SeqExpr { span, exprs }
-    }
-    #[inline]
-    pub fn box_seq_expr(&self, span: Span, exprs: Vec<'a, Expr<'a>>) -> Box<'a, SeqExpr<'a>> {
-        self.allocator.boxed(self.seq_expr(span, exprs))
+    pub fn seq_expr(&mut self, span: Span, exprs: TypedSubRange<Expr>) -> SeqExpr {
+        let _f0 = self.add_extra(exprs.to_extra_data());
+        SeqExpr(self.add_node(
+            span,
+            NodeKind::SeqExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn arrow_expr(
-        &self,
+        &mut self,
         span: Span,
-        params: Vec<'a, Pat<'a>>,
-        body: BlockStmtOrExpr<'a>,
+        params: TypedSubRange<Pat>,
+        body: BlockStmtOrExpr,
         is_async: bool,
-    ) -> ArrowExpr<'a> {
-        ArrowExpr {
+    ) -> ArrowExpr {
+        let _f0 = self.add_extra(params.to_extra_data());
+        let _f1 = self.add_extra(body.to_extra_data());
+        let _f2 = self.add_extra(is_async.to_extra_data());
+        ArrowExpr(self.add_node(
             span,
-            params,
-            body,
-            is_async,
-        }
+            NodeKind::ArrowExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_arrow_expr(
-        &self,
-        span: Span,
-        params: Vec<'a, Pat<'a>>,
-        body: BlockStmtOrExpr<'a>,
-        is_async: bool,
-    ) -> Box<'a, ArrowExpr<'a>> {
-        self.allocator
-            .boxed(self.arrow_expr(span, params, body, is_async))
-    }
-    #[inline]
-    pub fn yield_expr(&self, span: Span, arg: Option<Expr<'a>>, delegate: bool) -> YieldExpr<'a> {
-        YieldExpr {
+    pub fn yield_expr(&mut self, span: Span, arg: Option<Expr>, delegate: bool) -> YieldExpr {
+        let _f0 = self.add_extra(arg.to_extra_data());
+        let _f1 = self.add_extra(delegate.to_extra_data());
+        YieldExpr(self.add_node(
             span,
-            arg,
-            delegate,
-        }
+            NodeKind::YieldExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_yield_expr(
-        &self,
-        span: Span,
-        arg: Option<Expr<'a>>,
-        delegate: bool,
-    ) -> Box<'a, YieldExpr<'a>> {
-        self.allocator.boxed(self.yield_expr(span, arg, delegate))
+    pub fn meta_prop_expr(&mut self, span: Span, kind: MetaPropKind) -> MetaPropExpr {
+        MetaPropExpr(self.add_node(
+            span,
+            NodeKind::MetaPropExpr,
+            NodePayload {
+                inline_data: kind as u32,
+            },
+        ))
     }
     #[inline]
-    pub fn meta_prop_expr(&self, span: Span, kind: MetaPropKind) -> MetaPropExpr {
-        MetaPropExpr { span, kind }
-    }
-    #[inline]
-    pub fn box_meta_prop_expr(&self, span: Span, kind: MetaPropKind) -> Box<'a, MetaPropExpr> {
-        self.allocator.boxed(self.meta_prop_expr(span, kind))
-    }
-    #[inline]
-    pub fn await_expr(&self, span: Span, arg: Expr<'a>) -> AwaitExpr<'a> {
-        AwaitExpr { span, arg }
-    }
-    #[inline]
-    pub fn box_await_expr(&self, span: Span, arg: Expr<'a>) -> Box<'a, AwaitExpr<'a>> {
-        self.allocator.boxed(self.await_expr(span, arg))
+    pub fn await_expr(&mut self, span: Span, arg: Expr) -> AwaitExpr {
+        let _f0 = self.add_extra(arg.to_extra_data());
+        AwaitExpr(self.add_node(
+            span,
+            NodeKind::AwaitExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn tpl(
-        &self,
+        &mut self,
         span: Span,
-        exprs: Vec<'a, Expr<'a>>,
-        quasis: Vec<'a, TplElement<'a>>,
-    ) -> Tpl<'a> {
-        Tpl {
+        exprs: TypedSubRange<Expr>,
+        quasis: TypedSubRange<TplElement>,
+    ) -> Tpl {
+        let _f0 = self.add_extra(exprs.to_extra_data());
+        let _f1 = self.add_extra(quasis.to_extra_data());
+        Tpl(self.add_node(
             span,
-            exprs,
-            quasis,
-        }
+            NodeKind::Tpl,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_tpl(
-        &self,
-        span: Span,
-        exprs: Vec<'a, Expr<'a>>,
-        quasis: Vec<'a, TplElement<'a>>,
-    ) -> Box<'a, Tpl<'a>> {
-        self.allocator.boxed(self.tpl(span, exprs, quasis))
-    }
-    #[inline]
-    pub fn tagged_tpl(&self, span: Span, tag: Expr<'a>, tpl: Box<'a, Tpl<'a>>) -> TaggedTpl<'a> {
-        TaggedTpl { span, tag, tpl }
-    }
-    #[inline]
-    pub fn box_tagged_tpl(
-        &self,
-        span: Span,
-        tag: Expr<'a>,
-        tpl: Box<'a, Tpl<'a>>,
-    ) -> Box<'a, TaggedTpl<'a>> {
-        self.allocator.boxed(self.tagged_tpl(span, tag, tpl))
+    pub fn tagged_tpl(&mut self, span: Span, tag: Expr, tpl: Tpl) -> TaggedTpl {
+        let _f0 = self.add_extra(tag.to_extra_data());
+        let _f1 = self.add_extra(tpl.to_extra_data());
+        TaggedTpl(self.add_node(
+            span,
+            NodeKind::TaggedTpl,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn tpl_element(
-        &self,
+        &mut self,
         span: Span,
         tail: bool,
         cooked: Option<Wtf8Atom<'a>>,
         raw: Atom<'a>,
-    ) -> TplElement<'a> {
-        TplElement {
+    ) -> TplElement {
+        let _f0 = self.add_extra(tail.to_extra_data());
+        let _f1 = self.add_extra(cooked.to_extra_data());
+        let _f2 = self.add_extra(raw.to_extra_data());
+        TplElement(self.add_node(
             span,
-            tail,
-            cooked,
-            raw,
-        }
+            NodeKind::TplElement,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_tpl_element(
-        &self,
-        span: Span,
-        tail: bool,
-        cooked: Option<Wtf8Atom<'a>>,
-        raw: Atom<'a>,
-    ) -> Box<'a, TplElement<'a>> {
-        self.allocator
-            .boxed(self.tpl_element(span, tail, cooked, raw))
+    pub fn paren_expr(&mut self, span: Span, expr: Expr) -> ParenExpr {
+        let _f0 = self.add_extra(expr.to_extra_data());
+        ParenExpr(self.add_node(
+            span,
+            NodeKind::ParenExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn paren_expr(&self, span: Span, expr: Expr<'a>) -> ParenExpr<'a> {
-        ParenExpr { span, expr }
+    pub fn callee_super(&mut self, span: Span) -> Callee {
+        Callee::Super(self.super_(span).into())
     }
     #[inline]
-    pub fn box_paren_expr(&self, span: Span, expr: Expr<'a>) -> Box<'a, ParenExpr<'a>> {
-        self.allocator.boxed(self.paren_expr(span, expr))
-    }
-    #[inline]
-    pub fn callee_super(&self, span: Span) -> Callee<'a> {
-        Callee::Super(self.box_super(span))
-    }
-    #[inline]
-    pub fn callee_expr_this_expr(&self, span: Span) -> Callee<'a> {
-        Callee::Expr(self.allocator.boxed(Expr::This(self.box_this_expr(span))))
+    pub fn callee_expr_this_expr(&mut self, span: Span) -> Callee {
+        Callee::Expr(Expr::This(self.this_expr(span).into()))
     }
     #[inline]
     pub fn callee_expr_array_lit(
-        &self,
+        &mut self,
         span: Span,
-        elems: Vec<'a, Option<Box<'a, ExprOrSpread<'a>>>>,
-    ) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::Array(self.box_array_lit(span, elems))),
-        )
+        elems: TypedSubRange<Option<ExprOrSpread>>,
+    ) -> Callee {
+        Callee::Expr(Expr::Array(self.array_lit(span, elems).into()))
     }
     #[inline]
     pub fn callee_expr_object_lit(
-        &self,
+        &mut self,
         span: Span,
-        props: Vec<'a, PropOrSpread<'a>>,
-    ) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::Object(self.box_object_lit(span, props))),
-        )
+        props: TypedSubRange<PropOrSpread>,
+    ) -> Callee {
+        Callee::Expr(Expr::Object(self.object_lit(span, props).into()))
     }
     #[inline]
     pub fn callee_expr_fn_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        function: Box<'a, Function<'a>>,
-    ) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::Fn(self.box_fn_expr(ident, function))),
-        )
+        &mut self,
+        span: Span,
+        ident: Option<Ident>,
+        function: Function,
+    ) -> Callee {
+        Callee::Expr(Expr::Fn(self.fn_expr(span, ident, function).into()))
     }
     #[inline]
-    pub fn callee_expr_unary_expr(&self, span: Span, op: UnaryOp, arg: Expr<'a>) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::Unary(self.box_unary_expr(span, op, arg))),
-        )
+    pub fn callee_expr_unary_expr(&mut self, span: Span, op: UnaryOp, arg: Expr) -> Callee {
+        Callee::Expr(Expr::Unary(self.unary_expr(span, op, arg).into()))
     }
     #[inline]
     pub fn callee_expr_update_expr(
-        &self,
+        &mut self,
         span: Span,
         op: UpdateOp,
         prefix: bool,
-        arg: SimpleAssignTarget<'a>,
-    ) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::Update(self.box_update_expr(span, op, prefix, arg))),
-        )
+        arg: SimpleAssignTarget,
+    ) -> Callee {
+        Callee::Expr(Expr::Update(self.update_expr(span, op, prefix, arg).into()))
     }
     #[inline]
     pub fn callee_expr_bin_expr(
-        &self,
+        &mut self,
         span: Span,
         op: BinaryOp,
-        left: Expr<'a>,
-        right: Expr<'a>,
-    ) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::Bin(self.box_bin_expr(span, op, left, right))),
-        )
+        left: Expr,
+        right: Expr,
+    ) -> Callee {
+        Callee::Expr(Expr::Bin(self.bin_expr(span, op, left, right).into()))
     }
     #[inline]
     pub fn callee_expr_assign_expr(
-        &self,
+        &mut self,
         span: Span,
         op: AssignOp,
-        left: AssignTarget<'a>,
-        right: Expr<'a>,
-    ) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::Assign(self.box_assign_expr(span, op, left, right))),
-        )
+        left: AssignTarget,
+        right: Expr,
+    ) -> Callee {
+        Callee::Expr(Expr::Assign(self.assign_expr(span, op, left, right).into()))
     }
     #[inline]
-    pub fn callee_expr_member_expr(
-        &self,
-        span: Span,
-        obj: Expr<'a>,
-        prop: MemberProp<'a>,
-    ) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::Member(self.box_member_expr(span, obj, prop))),
-        )
+    pub fn callee_expr_member_expr(&mut self, span: Span, obj: Expr, prop: MemberProp) -> Callee {
+        Callee::Expr(Expr::Member(self.member_expr(span, obj, prop).into()))
     }
     #[inline]
     pub fn callee_expr_super_prop_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: Box<'a, Super>,
-        prop: SuperProp<'a>,
-    ) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::SuperProp(self.box_super_prop_expr(span, obj, prop))),
-        )
+        obj: Super,
+        prop: SuperProp,
+    ) -> Callee {
+        Callee::Expr(Expr::SuperProp(
+            self.super_prop_expr(span, obj, prop).into(),
+        ))
     }
     #[inline]
     pub fn callee_expr_cond_expr(
-        &self,
+        &mut self,
         span: Span,
-        test: Expr<'a>,
-        cons: Expr<'a>,
-        alt: Expr<'a>,
-    ) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::Cond(self.box_cond_expr(span, test, cons, alt))),
-        )
+        test: Expr,
+        cons: Expr,
+        alt: Expr,
+    ) -> Callee {
+        Callee::Expr(Expr::Cond(self.cond_expr(span, test, cons, alt).into()))
     }
     #[inline]
     pub fn callee_expr_import_expr(
-        &self,
+        &mut self,
         span: Span,
         import_span: Span,
-        source: Expr<'a>,
-        options: Option<Expr<'a>>,
+        source: Expr,
+        options: Option<Expr>,
         phase: ImportPhase,
-    ) -> Callee<'a> {
-        Callee::Expr(self.allocator.boxed(Expr::Import(self.box_import_expr(
-            span,
-            import_span,
-            source,
-            options,
-            phase,
-        ))))
+    ) -> Callee {
+        Callee::Expr(Expr::Import(
+            self.import_expr(span, import_span, source, options, phase)
+                .into(),
+        ))
     }
     #[inline]
     pub fn callee_expr_call_expr(
-        &self,
+        &mut self,
         span: Span,
-        callee: Callee<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::Call(self.box_call_expr(span, callee, args))),
-        )
+        callee: Callee,
+        args: TypedSubRange<ExprOrSpread>,
+    ) -> Callee {
+        Callee::Expr(Expr::Call(self.call_expr(span, callee, args).into()))
     }
     #[inline]
     pub fn callee_expr_new_expr(
-        &self,
+        &mut self,
         span: Span,
-        callee: Expr<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::New(self.box_new_expr(span, callee, args))),
-        )
+        callee: Expr,
+        args: TypedSubRange<ExprOrSpread>,
+    ) -> Callee {
+        Callee::Expr(Expr::New(self.new_expr(span, callee, args).into()))
     }
     #[inline]
-    pub fn callee_expr_seq_expr(&self, span: Span, exprs: Vec<'a, Expr<'a>>) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::Seq(self.box_seq_expr(span, exprs))),
-        )
+    pub fn callee_expr_seq_expr(&mut self, span: Span, exprs: TypedSubRange<Expr>) -> Callee {
+        Callee::Expr(Expr::Seq(self.seq_expr(span, exprs).into()))
     }
     #[inline]
-    pub fn callee_expr_ident(&self, span: Span, sym: Atom<'a>) -> Callee<'a> {
-        Callee::Expr(self.allocator.boxed(Expr::Ident(self.box_ident(span, sym))))
+    pub fn callee_expr_ident(&mut self, span: Span, sym: Atom<'a>) -> Callee {
+        Callee::Expr(Expr::Ident(self.ident(span, sym).into()))
     }
     #[inline]
     pub fn callee_expr_lit_str(
-        &self,
+        &mut self,
         span: Span,
         value: Wtf8Atom<'a>,
         raw: Option<Atom<'a>>,
-    ) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::Str(self.box_str(span, value, raw))),
-            )),
-        )
+    ) -> Callee {
+        Callee::Expr(Expr::Lit(Lit::Str(self.str(span, value, raw).into())))
     }
     #[inline]
-    pub fn callee_expr_lit_bool(&self, span: Span, value: bool) -> Callee<'a> {
-        Callee::Expr(self.allocator.boxed(Expr::Lit(
-            self.allocator.boxed(Lit::Bool(self.box_bool(span, value))),
-        )))
+    pub fn callee_expr_lit_bool(&mut self, span: Span, value: bool) -> Callee {
+        Callee::Expr(Expr::Lit(Lit::Bool(self.bool(span, value).into())))
     }
     #[inline]
-    pub fn callee_expr_lit_null(&self, span: Span) -> Callee<'a> {
-        Callee::Expr(self.allocator.boxed(Expr::Lit(
-            self.allocator.boxed(Lit::Null(self.box_null(span))),
-        )))
+    pub fn callee_expr_lit_null(&mut self, span: Span) -> Callee {
+        Callee::Expr(Expr::Lit(Lit::Null(self.null(span).into())))
     }
     #[inline]
     pub fn callee_expr_lit_number(
-        &self,
+        &mut self,
         span: Span,
         value: f64,
         raw: Option<Atom<'a>>,
-    ) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::Num(self.box_number(span, value, raw))),
-            )),
-        )
+    ) -> Callee {
+        Callee::Expr(Expr::Lit(Lit::Num(self.number(span, value, raw).into())))
     }
     #[inline]
     pub fn callee_expr_lit_big_int(
-        &self,
+        &mut self,
         span: Span,
         value: Atom<'a>,
         raw: Option<Atom<'a>>,
-    ) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::BigInt(self.box_big_int(span, value, raw))),
-            )),
-        )
+    ) -> Callee {
+        Callee::Expr(Expr::Lit(Lit::BigInt(
+            self.big_int(span, value, raw).into(),
+        )))
     }
     #[inline]
-    pub fn callee_expr_lit_regex(&self, span: Span, exp: Atom<'a>, flags: Atom<'a>) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::Regex(self.box_regex(span, exp, flags))),
-            )),
-        )
+    pub fn callee_expr_lit_regex(&mut self, span: Span, exp: Atom<'a>, flags: Atom<'a>) -> Callee {
+        Callee::Expr(Expr::Lit(Lit::Regex(self.regex(span, exp, flags).into())))
     }
     #[inline]
     pub fn callee_expr_tpl(
-        &self,
+        &mut self,
         span: Span,
-        exprs: Vec<'a, Expr<'a>>,
-        quasis: Vec<'a, TplElement<'a>>,
-    ) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::Tpl(self.box_tpl(span, exprs, quasis))),
-        )
+        exprs: TypedSubRange<Expr>,
+        quasis: TypedSubRange<TplElement>,
+    ) -> Callee {
+        Callee::Expr(Expr::Tpl(self.tpl(span, exprs, quasis).into()))
     }
     #[inline]
-    pub fn callee_expr_tagged_tpl(
-        &self,
-        span: Span,
-        tag: Expr<'a>,
-        tpl: Box<'a, Tpl<'a>>,
-    ) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::TaggedTpl(self.box_tagged_tpl(span, tag, tpl))),
-        )
+    pub fn callee_expr_tagged_tpl(&mut self, span: Span, tag: Expr, tpl: Tpl) -> Callee {
+        Callee::Expr(Expr::TaggedTpl(self.tagged_tpl(span, tag, tpl).into()))
     }
     #[inline]
     pub fn callee_expr_arrow_expr(
-        &self,
+        &mut self,
         span: Span,
-        params: Vec<'a, Pat<'a>>,
-        body: BlockStmtOrExpr<'a>,
+        params: TypedSubRange<Pat>,
+        body: BlockStmtOrExpr,
         is_async: bool,
-    ) -> Callee<'a> {
-        Callee::Expr(self.allocator.boxed(Expr::Arrow(
-            self.box_arrow_expr(span, params, body, is_async),
-        )))
+    ) -> Callee {
+        Callee::Expr(Expr::Arrow(
+            self.arrow_expr(span, params, body, is_async).into(),
+        ))
     }
     #[inline]
     pub fn callee_expr_class_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        class: Box<'a, Class<'a>>,
-    ) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::Class(self.box_class_expr(ident, class))),
-        )
+        &mut self,
+        span: Span,
+        ident: Option<Ident>,
+        class: Class,
+    ) -> Callee {
+        Callee::Expr(Expr::Class(self.class_expr(span, ident, class).into()))
     }
     #[inline]
     pub fn callee_expr_yield_expr(
-        &self,
+        &mut self,
         span: Span,
-        arg: Option<Expr<'a>>,
+        arg: Option<Expr>,
         delegate: bool,
-    ) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::Yield(self.box_yield_expr(span, arg, delegate))),
-        )
+    ) -> Callee {
+        Callee::Expr(Expr::Yield(self.yield_expr(span, arg, delegate).into()))
     }
     #[inline]
-    pub fn callee_expr_meta_prop_expr(&self, span: Span, kind: MetaPropKind) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::MetaProp(self.box_meta_prop_expr(span, kind))),
-        )
+    pub fn callee_expr_meta_prop_expr(&mut self, span: Span, kind: MetaPropKind) -> Callee {
+        Callee::Expr(Expr::MetaProp(self.meta_prop_expr(span, kind).into()))
     }
     #[inline]
-    pub fn callee_expr_await_expr(&self, span: Span, arg: Expr<'a>) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::Await(self.box_await_expr(span, arg))),
-        )
+    pub fn callee_expr_await_expr(&mut self, span: Span, arg: Expr) -> Callee {
+        Callee::Expr(Expr::Await(self.await_expr(span, arg).into()))
     }
     #[inline]
-    pub fn callee_expr_paren_expr(&self, span: Span, expr: Expr<'a>) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::Paren(self.box_paren_expr(span, expr))),
-        )
+    pub fn callee_expr_paren_expr(&mut self, span: Span, expr: Expr) -> Callee {
+        Callee::Expr(Expr::Paren(self.paren_expr(span, expr).into()))
     }
     #[inline]
     pub fn callee_expr_jsx_member_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: JSXObject<'a>,
-        prop: Box<'a, IdentName<'a>>,
-    ) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::JSXMember(self.box_jsx_member_expr(span, obj, prop))),
-        )
+        obj: JSXObject,
+        prop: IdentName,
+    ) -> Callee {
+        Callee::Expr(Expr::JSXMember(
+            self.jsx_member_expr(span, obj, prop).into(),
+        ))
     }
     #[inline]
     pub fn callee_expr_jsx_namespaced_name(
-        &self,
+        &mut self,
         span: Span,
-        ns: Box<'a, IdentName<'a>>,
-        name: Box<'a, IdentName<'a>>,
-    ) -> Callee<'a> {
-        Callee::Expr(self.allocator.boxed(Expr::JSXNamespacedName(
-            self.box_jsx_namespaced_name(span, ns, name),
-        )))
+        ns: IdentName,
+        name: IdentName,
+    ) -> Callee {
+        Callee::Expr(Expr::JSXNamespacedName(
+            self.jsx_namespaced_name(span, ns, name).into(),
+        ))
     }
     #[inline]
-    pub fn callee_expr_jsx_empty_expr(&self, span: Span) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::JSXEmpty(self.box_jsx_empty_expr(span))),
-        )
+    pub fn callee_expr_jsx_empty_expr(&mut self, span: Span) -> Callee {
+        Callee::Expr(Expr::JSXEmpty(self.jsx_empty_expr(span).into()))
     }
     #[inline]
     pub fn callee_expr_jsx_element(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningElement<'a>>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Option<Box<'a, JSXClosingElement<'a>>>,
-    ) -> Callee<'a> {
-        Callee::Expr(self.allocator.boxed(Expr::JSXElement(
-            self.box_jsx_element(span, opening, children, closing),
-        )))
+        opening: JSXOpeningElement,
+        children: TypedSubRange<JSXElementChild>,
+        closing: Option<JSXClosingElement>,
+    ) -> Callee {
+        Callee::Expr(Expr::JSXElement(
+            self.jsx_element(span, opening, children, closing).into(),
+        ))
     }
     #[inline]
     pub fn callee_expr_jsx_fragment(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningFragment>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Box<'a, JSXClosingFragment>,
-    ) -> Callee<'a> {
-        Callee::Expr(self.allocator.boxed(Expr::JSXFragment(
-            self.box_jsx_fragment(span, opening, children, closing),
-        )))
+        opening: JSXOpeningFragment,
+        children: TypedSubRange<JSXElementChild>,
+        closing: JSXClosingFragment,
+    ) -> Callee {
+        Callee::Expr(Expr::JSXFragment(
+            self.jsx_fragment(span, opening, children, closing).into(),
+        ))
     }
     #[inline]
-    pub fn callee_expr_private_name(&self, span: Span, name: Atom<'a>) -> Callee<'a> {
-        Callee::Expr(
-            self.allocator
-                .boxed(Expr::PrivateName(self.box_private_name(span, name))),
-        )
+    pub fn callee_expr_private_name(&mut self, span: Span, name: Atom<'a>) -> Callee {
+        Callee::Expr(Expr::PrivateName(self.private_name(span, name).into()))
     }
     #[inline]
     pub fn callee_expr_opt_chain_expr(
-        &self,
+        &mut self,
         span: Span,
         optional: bool,
-        base: OptChainBase<'a>,
-    ) -> Callee<'a> {
-        Callee::Expr(self.allocator.boxed(Expr::OptChain(
-            self.box_opt_chain_expr(span, optional, base),
-        )))
+        base: OptChainBase,
+    ) -> Callee {
+        Callee::Expr(Expr::OptChain(
+            self.opt_chain_expr(span, optional, base).into(),
+        ))
     }
     #[inline]
-    pub fn callee_expr_invalid(&self) -> Callee<'a> {
-        Callee::Expr(self.allocator.boxed(Expr::Invalid(self.box_invalid())))
+    pub fn callee_expr_invalid(&mut self, span: Span) -> Callee {
+        Callee::Expr(Expr::Invalid(self.invalid(span).into()))
     }
     #[inline]
-    pub fn super_(&self, span: Span) -> Super {
-        Super { span }
+    pub fn super_(&mut self, span: Span) -> Super {
+        Super(self.add_node(span, NodeKind::Super, NodePayload { empty: () }))
     }
     #[inline]
-    pub fn box_super(&self, span: Span) -> Box<'a, Super> {
-        self.allocator.boxed(self.super_(span))
-    }
-    #[inline]
-    pub fn expr_or_spread(&self, spread: Option<Span>, expr: Expr<'a>) -> ExprOrSpread<'a> {
-        ExprOrSpread { spread, expr }
-    }
-    #[inline]
-    pub fn box_expr_or_spread(
-        &self,
-        spread: Option<Span>,
-        expr: Expr<'a>,
-    ) -> Box<'a, ExprOrSpread<'a>> {
-        self.allocator.boxed(self.expr_or_spread(spread, expr))
+    pub fn expr_or_spread(&mut self, span: Span, spread: Option<Span>, expr: Expr) -> ExprOrSpread {
+        let _f0 = self.add_extra(spread.to_extra_data());
+        let _f1 = self.add_extra(expr.to_extra_data());
+        ExprOrSpread(self.add_node(
+            span,
+            NodeKind::ExprOrSpread,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn block_stmt_or_expr_block_stmt(
-        &self,
+        &mut self,
         span: Span,
-        stmts: Vec<'a, Stmt<'a>>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::BlockStmt(self.box_block_stmt(span, stmts))
+        stmts: TypedSubRange<Stmt>,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::BlockStmt(self.block_stmt(span, stmts).into())
     }
     #[inline]
-    pub fn block_stmt_or_expr_expr_this_expr(&self, span: Span) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(self.allocator.boxed(Expr::This(self.box_this_expr(span))))
+    pub fn block_stmt_or_expr_expr_this_expr(&mut self, span: Span) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::This(self.this_expr(span).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_array_lit(
-        &self,
+        &mut self,
         span: Span,
-        elems: Vec<'a, Option<Box<'a, ExprOrSpread<'a>>>>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Array(self.box_array_lit(span, elems))),
-        )
+        elems: TypedSubRange<Option<ExprOrSpread>>,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Array(self.array_lit(span, elems).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_object_lit(
-        &self,
+        &mut self,
         span: Span,
-        props: Vec<'a, PropOrSpread<'a>>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Object(self.box_object_lit(span, props))),
-        )
+        props: TypedSubRange<PropOrSpread>,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Object(self.object_lit(span, props).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_fn_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        function: Box<'a, Function<'a>>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Fn(self.box_fn_expr(ident, function))),
-        )
+        &mut self,
+        span: Span,
+        ident: Option<Ident>,
+        function: Function,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Fn(self.fn_expr(span, ident, function).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_unary_expr(
-        &self,
+        &mut self,
         span: Span,
         op: UnaryOp,
-        arg: Expr<'a>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Unary(self.box_unary_expr(span, op, arg))),
-        )
+        arg: Expr,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Unary(self.unary_expr(span, op, arg).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_update_expr(
-        &self,
+        &mut self,
         span: Span,
         op: UpdateOp,
         prefix: bool,
-        arg: SimpleAssignTarget<'a>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Update(self.box_update_expr(span, op, prefix, arg))),
-        )
+        arg: SimpleAssignTarget,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Update(self.update_expr(span, op, prefix, arg).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_bin_expr(
-        &self,
+        &mut self,
         span: Span,
         op: BinaryOp,
-        left: Expr<'a>,
-        right: Expr<'a>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Bin(self.box_bin_expr(span, op, left, right))),
-        )
+        left: Expr,
+        right: Expr,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Bin(self.bin_expr(span, op, left, right).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_assign_expr(
-        &self,
+        &mut self,
         span: Span,
         op: AssignOp,
-        left: AssignTarget<'a>,
-        right: Expr<'a>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Assign(self.box_assign_expr(span, op, left, right))),
-        )
+        left: AssignTarget,
+        right: Expr,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Assign(self.assign_expr(span, op, left, right).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_member_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: Expr<'a>,
-        prop: MemberProp<'a>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Member(self.box_member_expr(span, obj, prop))),
-        )
+        obj: Expr,
+        prop: MemberProp,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Member(self.member_expr(span, obj, prop).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_super_prop_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: Box<'a, Super>,
-        prop: SuperProp<'a>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::SuperProp(self.box_super_prop_expr(span, obj, prop))),
-        )
+        obj: Super,
+        prop: SuperProp,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::SuperProp(
+            self.super_prop_expr(span, obj, prop).into(),
+        ))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_cond_expr(
-        &self,
+        &mut self,
         span: Span,
-        test: Expr<'a>,
-        cons: Expr<'a>,
-        alt: Expr<'a>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Cond(self.box_cond_expr(span, test, cons, alt))),
-        )
+        test: Expr,
+        cons: Expr,
+        alt: Expr,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Cond(self.cond_expr(span, test, cons, alt).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_import_expr(
-        &self,
+        &mut self,
         span: Span,
         import_span: Span,
-        source: Expr<'a>,
-        options: Option<Expr<'a>>,
+        source: Expr,
+        options: Option<Expr>,
         phase: ImportPhase,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(self.allocator.boxed(Expr::Import(self.box_import_expr(
-            span,
-            import_span,
-            source,
-            options,
-            phase,
-        ))))
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Import(
+            self.import_expr(span, import_span, source, options, phase)
+                .into(),
+        ))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_call_expr(
-        &self,
+        &mut self,
         span: Span,
-        callee: Callee<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Call(self.box_call_expr(span, callee, args))),
-        )
+        callee: Callee,
+        args: TypedSubRange<ExprOrSpread>,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Call(self.call_expr(span, callee, args).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_new_expr(
-        &self,
+        &mut self,
         span: Span,
-        callee: Expr<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::New(self.box_new_expr(span, callee, args))),
-        )
+        callee: Expr,
+        args: TypedSubRange<ExprOrSpread>,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::New(self.new_expr(span, callee, args).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_seq_expr(
-        &self,
+        &mut self,
         span: Span,
-        exprs: Vec<'a, Expr<'a>>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Seq(self.box_seq_expr(span, exprs))),
-        )
+        exprs: TypedSubRange<Expr>,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Seq(self.seq_expr(span, exprs).into()))
     }
     #[inline]
-    pub fn block_stmt_or_expr_expr_ident(&self, span: Span, sym: Atom<'a>) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(self.allocator.boxed(Expr::Ident(self.box_ident(span, sym))))
+    pub fn block_stmt_or_expr_expr_ident(&mut self, span: Span, sym: Atom<'a>) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Ident(self.ident(span, sym).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_lit_str(
-        &self,
+        &mut self,
         span: Span,
         value: Wtf8Atom<'a>,
         raw: Option<Atom<'a>>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::Str(self.box_str(span, value, raw))),
-            )),
-        )
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Lit(Lit::Str(self.str(span, value, raw).into())))
     }
     #[inline]
-    pub fn block_stmt_or_expr_expr_lit_bool(&self, span: Span, value: bool) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(self.allocator.boxed(Expr::Lit(
-            self.allocator.boxed(Lit::Bool(self.box_bool(span, value))),
-        )))
+    pub fn block_stmt_or_expr_expr_lit_bool(&mut self, span: Span, value: bool) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Lit(Lit::Bool(self.bool(span, value).into())))
     }
     #[inline]
-    pub fn block_stmt_or_expr_expr_lit_null(&self, span: Span) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(self.allocator.boxed(Expr::Lit(
-            self.allocator.boxed(Lit::Null(self.box_null(span))),
-        )))
+    pub fn block_stmt_or_expr_expr_lit_null(&mut self, span: Span) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Lit(Lit::Null(self.null(span).into())))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_lit_number(
-        &self,
+        &mut self,
         span: Span,
         value: f64,
         raw: Option<Atom<'a>>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::Num(self.box_number(span, value, raw))),
-            )),
-        )
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Lit(Lit::Num(self.number(span, value, raw).into())))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_lit_big_int(
-        &self,
+        &mut self,
         span: Span,
         value: Atom<'a>,
         raw: Option<Atom<'a>>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::BigInt(self.box_big_int(span, value, raw))),
-            )),
-        )
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Lit(Lit::BigInt(
+            self.big_int(span, value, raw).into(),
+        )))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_lit_regex(
-        &self,
+        &mut self,
         span: Span,
         exp: Atom<'a>,
         flags: Atom<'a>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::Regex(self.box_regex(span, exp, flags))),
-            )),
-        )
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Lit(Lit::Regex(self.regex(span, exp, flags).into())))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_tpl(
-        &self,
+        &mut self,
         span: Span,
-        exprs: Vec<'a, Expr<'a>>,
-        quasis: Vec<'a, TplElement<'a>>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Tpl(self.box_tpl(span, exprs, quasis))),
-        )
+        exprs: TypedSubRange<Expr>,
+        quasis: TypedSubRange<TplElement>,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Tpl(self.tpl(span, exprs, quasis).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_tagged_tpl(
-        &self,
+        &mut self,
         span: Span,
-        tag: Expr<'a>,
-        tpl: Box<'a, Tpl<'a>>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::TaggedTpl(self.box_tagged_tpl(span, tag, tpl))),
-        )
+        tag: Expr,
+        tpl: Tpl,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::TaggedTpl(self.tagged_tpl(span, tag, tpl).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_arrow_expr(
-        &self,
+        &mut self,
         span: Span,
-        params: Vec<'a, Pat<'a>>,
-        body: BlockStmtOrExpr<'a>,
+        params: TypedSubRange<Pat>,
+        body: BlockStmtOrExpr,
         is_async: bool,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(self.allocator.boxed(Expr::Arrow(
-            self.box_arrow_expr(span, params, body, is_async),
-        )))
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Arrow(
+            self.arrow_expr(span, params, body, is_async).into(),
+        ))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_class_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        class: Box<'a, Class<'a>>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Class(self.box_class_expr(ident, class))),
-        )
+        &mut self,
+        span: Span,
+        ident: Option<Ident>,
+        class: Class,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Class(self.class_expr(span, ident, class).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_yield_expr(
-        &self,
+        &mut self,
         span: Span,
-        arg: Option<Expr<'a>>,
+        arg: Option<Expr>,
         delegate: bool,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Yield(self.box_yield_expr(span, arg, delegate))),
-        )
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Yield(self.yield_expr(span, arg, delegate).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_meta_prop_expr(
-        &self,
+        &mut self,
         span: Span,
         kind: MetaPropKind,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::MetaProp(self.box_meta_prop_expr(span, kind))),
-        )
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::MetaProp(self.meta_prop_expr(span, kind).into()))
     }
     #[inline]
-    pub fn block_stmt_or_expr_expr_await_expr(
-        &self,
-        span: Span,
-        arg: Expr<'a>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Await(self.box_await_expr(span, arg))),
-        )
+    pub fn block_stmt_or_expr_expr_await_expr(&mut self, span: Span, arg: Expr) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Await(self.await_expr(span, arg).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_paren_expr(
-        &self,
+        &mut self,
         span: Span,
-        expr: Expr<'a>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::Paren(self.box_paren_expr(span, expr))),
-        )
+        expr: Expr,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Paren(self.paren_expr(span, expr).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_jsx_member_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: JSXObject<'a>,
-        prop: Box<'a, IdentName<'a>>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::JSXMember(self.box_jsx_member_expr(span, obj, prop))),
-        )
+        obj: JSXObject,
+        prop: IdentName,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::JSXMember(
+            self.jsx_member_expr(span, obj, prop).into(),
+        ))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_jsx_namespaced_name(
-        &self,
+        &mut self,
         span: Span,
-        ns: Box<'a, IdentName<'a>>,
-        name: Box<'a, IdentName<'a>>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(self.allocator.boxed(Expr::JSXNamespacedName(
-            self.box_jsx_namespaced_name(span, ns, name),
-        )))
+        ns: IdentName,
+        name: IdentName,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::JSXNamespacedName(
+            self.jsx_namespaced_name(span, ns, name).into(),
+        ))
     }
     #[inline]
-    pub fn block_stmt_or_expr_expr_jsx_empty_expr(&self, span: Span) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::JSXEmpty(self.box_jsx_empty_expr(span))),
-        )
+    pub fn block_stmt_or_expr_expr_jsx_empty_expr(&mut self, span: Span) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::JSXEmpty(self.jsx_empty_expr(span).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_jsx_element(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningElement<'a>>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Option<Box<'a, JSXClosingElement<'a>>>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(self.allocator.boxed(Expr::JSXElement(
-            self.box_jsx_element(span, opening, children, closing),
-        )))
+        opening: JSXOpeningElement,
+        children: TypedSubRange<JSXElementChild>,
+        closing: Option<JSXClosingElement>,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::JSXElement(
+            self.jsx_element(span, opening, children, closing).into(),
+        ))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_jsx_fragment(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningFragment>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Box<'a, JSXClosingFragment>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(self.allocator.boxed(Expr::JSXFragment(
-            self.box_jsx_fragment(span, opening, children, closing),
-        )))
+        opening: JSXOpeningFragment,
+        children: TypedSubRange<JSXElementChild>,
+        closing: JSXClosingFragment,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::JSXFragment(
+            self.jsx_fragment(span, opening, children, closing).into(),
+        ))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_private_name(
-        &self,
+        &mut self,
         span: Span,
         name: Atom<'a>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(
-            self.allocator
-                .boxed(Expr::PrivateName(self.box_private_name(span, name))),
-        )
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::PrivateName(self.private_name(span, name).into()))
     }
     #[inline]
     pub fn block_stmt_or_expr_expr_opt_chain_expr(
-        &self,
+        &mut self,
         span: Span,
         optional: bool,
-        base: OptChainBase<'a>,
-    ) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(self.allocator.boxed(Expr::OptChain(
-            self.box_opt_chain_expr(span, optional, base),
-        )))
+        base: OptChainBase,
+    ) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::OptChain(
+            self.opt_chain_expr(span, optional, base).into(),
+        ))
     }
     #[inline]
-    pub fn block_stmt_or_expr_expr_invalid(&self) -> BlockStmtOrExpr<'a> {
-        BlockStmtOrExpr::Expr(self.allocator.boxed(Expr::Invalid(self.box_invalid())))
+    pub fn block_stmt_or_expr_expr_invalid(&mut self, span: Span) -> BlockStmtOrExpr {
+        BlockStmtOrExpr::Expr(Expr::Invalid(self.invalid(span).into()))
     }
     #[inline]
     pub fn assign_target_simple_assign_target_binding_ident(
-        &self,
-        id: Box<'a, Ident<'a>>,
-    ) -> AssignTarget<'a> {
-        AssignTarget::Simple(
-            self.allocator
-                .boxed(SimpleAssignTarget::Ident(self.box_binding_ident(id))),
-        )
+        &mut self,
+        span: Span,
+        id: Ident,
+    ) -> AssignTarget {
+        AssignTarget::Simple(SimpleAssignTarget::Ident(
+            self.binding_ident(span, id).into(),
+        ))
     }
     #[inline]
     pub fn assign_target_simple_assign_target_member_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: Expr<'a>,
-        prop: MemberProp<'a>,
-    ) -> AssignTarget<'a> {
-        AssignTarget::Simple(self.allocator.boxed(SimpleAssignTarget::Member(
-            self.box_member_expr(span, obj, prop),
-        )))
+        obj: Expr,
+        prop: MemberProp,
+    ) -> AssignTarget {
+        AssignTarget::Simple(SimpleAssignTarget::Member(
+            self.member_expr(span, obj, prop).into(),
+        ))
     }
     #[inline]
     pub fn assign_target_simple_assign_target_super_prop_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: Box<'a, Super>,
-        prop: SuperProp<'a>,
-    ) -> AssignTarget<'a> {
-        AssignTarget::Simple(self.allocator.boxed(SimpleAssignTarget::SuperProp(
-            self.box_super_prop_expr(span, obj, prop),
-        )))
+        obj: Super,
+        prop: SuperProp,
+    ) -> AssignTarget {
+        AssignTarget::Simple(SimpleAssignTarget::SuperProp(
+            self.super_prop_expr(span, obj, prop).into(),
+        ))
     }
     #[inline]
     pub fn assign_target_simple_assign_target_paren_expr(
-        &self,
+        &mut self,
         span: Span,
-        expr: Expr<'a>,
-    ) -> AssignTarget<'a> {
-        AssignTarget::Simple(
-            self.allocator
-                .boxed(SimpleAssignTarget::Paren(self.box_paren_expr(span, expr))),
-        )
+        expr: Expr,
+    ) -> AssignTarget {
+        AssignTarget::Simple(SimpleAssignTarget::Paren(
+            self.paren_expr(span, expr).into(),
+        ))
     }
     #[inline]
     pub fn assign_target_simple_assign_target_opt_chain_expr(
-        &self,
+        &mut self,
         span: Span,
         optional: bool,
-        base: OptChainBase<'a>,
-    ) -> AssignTarget<'a> {
-        AssignTarget::Simple(self.allocator.boxed(SimpleAssignTarget::OptChain(
-            self.box_opt_chain_expr(span, optional, base),
-        )))
+        base: OptChainBase,
+    ) -> AssignTarget {
+        AssignTarget::Simple(SimpleAssignTarget::OptChain(
+            self.opt_chain_expr(span, optional, base).into(),
+        ))
     }
     #[inline]
-    pub fn assign_target_simple_assign_target_invalid(&self) -> AssignTarget<'a> {
-        AssignTarget::Simple(
-            self.allocator
-                .boxed(SimpleAssignTarget::Invalid(self.box_invalid())),
-        )
+    pub fn assign_target_simple_assign_target_invalid(&mut self, span: Span) -> AssignTarget {
+        AssignTarget::Simple(SimpleAssignTarget::Invalid(self.invalid(span).into()))
     }
     #[inline]
     pub fn assign_target_assign_target_pat_array_pat(
-        &self,
+        &mut self,
         span: Span,
-        elems: Vec<'a, Option<Pat<'a>>>,
+        elems: TypedSubRange<Option<Pat>>,
         optional: bool,
-    ) -> AssignTarget<'a> {
-        AssignTarget::Pat(self.allocator.boxed(AssignTargetPat::Array(
-            self.box_array_pat(span, elems, optional),
-        )))
+    ) -> AssignTarget {
+        AssignTarget::Pat(AssignTargetPat::Array(
+            self.array_pat(span, elems, optional).into(),
+        ))
     }
     #[inline]
     pub fn assign_target_assign_target_pat_object_pat(
-        &self,
+        &mut self,
         span: Span,
-        props: Vec<'a, ObjectPatProp<'a>>,
+        props: TypedSubRange<ObjectPatProp>,
         optional: bool,
-    ) -> AssignTarget<'a> {
-        AssignTarget::Pat(self.allocator.boxed(AssignTargetPat::Object(
-            self.box_object_pat(span, props, optional),
-        )))
+    ) -> AssignTarget {
+        AssignTarget::Pat(AssignTargetPat::Object(
+            self.object_pat(span, props, optional).into(),
+        ))
     }
     #[inline]
-    pub fn assign_target_assign_target_pat_invalid(&self) -> AssignTarget<'a> {
-        AssignTarget::Pat(
-            self.allocator
-                .boxed(AssignTargetPat::Invalid(self.box_invalid())),
-        )
+    pub fn assign_target_assign_target_pat_invalid(&mut self, span: Span) -> AssignTarget {
+        AssignTarget::Pat(AssignTargetPat::Invalid(self.invalid(span).into()))
     }
     #[inline]
     pub fn assign_target_pat_array_pat(
-        &self,
+        &mut self,
         span: Span,
-        elems: Vec<'a, Option<Pat<'a>>>,
+        elems: TypedSubRange<Option<Pat>>,
         optional: bool,
-    ) -> AssignTargetPat<'a> {
-        AssignTargetPat::Array(self.box_array_pat(span, elems, optional))
+    ) -> AssignTargetPat {
+        AssignTargetPat::Array(self.array_pat(span, elems, optional).into())
     }
     #[inline]
     pub fn assign_target_pat_object_pat(
-        &self,
+        &mut self,
         span: Span,
-        props: Vec<'a, ObjectPatProp<'a>>,
+        props: TypedSubRange<ObjectPatProp>,
         optional: bool,
-    ) -> AssignTargetPat<'a> {
-        AssignTargetPat::Object(self.box_object_pat(span, props, optional))
+    ) -> AssignTargetPat {
+        AssignTargetPat::Object(self.object_pat(span, props, optional).into())
     }
     #[inline]
-    pub fn assign_target_pat_invalid(&self) -> AssignTargetPat<'a> {
-        AssignTargetPat::Invalid(self.box_invalid())
+    pub fn assign_target_pat_invalid(&mut self, span: Span) -> AssignTargetPat {
+        AssignTargetPat::Invalid(self.invalid(span).into())
     }
     #[inline]
     pub fn simple_assign_target_binding_ident(
-        &self,
-        id: Box<'a, Ident<'a>>,
-    ) -> SimpleAssignTarget<'a> {
-        SimpleAssignTarget::Ident(self.box_binding_ident(id))
+        &mut self,
+        span: Span,
+        id: Ident,
+    ) -> SimpleAssignTarget {
+        SimpleAssignTarget::Ident(self.binding_ident(span, id).into())
     }
     #[inline]
     pub fn simple_assign_target_member_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: Expr<'a>,
-        prop: MemberProp<'a>,
-    ) -> SimpleAssignTarget<'a> {
-        SimpleAssignTarget::Member(self.box_member_expr(span, obj, prop))
+        obj: Expr,
+        prop: MemberProp,
+    ) -> SimpleAssignTarget {
+        SimpleAssignTarget::Member(self.member_expr(span, obj, prop).into())
     }
     #[inline]
     pub fn simple_assign_target_super_prop_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: Box<'a, Super>,
-        prop: SuperProp<'a>,
-    ) -> SimpleAssignTarget<'a> {
-        SimpleAssignTarget::SuperProp(self.box_super_prop_expr(span, obj, prop))
+        obj: Super,
+        prop: SuperProp,
+    ) -> SimpleAssignTarget {
+        SimpleAssignTarget::SuperProp(self.super_prop_expr(span, obj, prop).into())
     }
     #[inline]
     pub fn simple_assign_target_paren_expr(
-        &self,
+        &mut self,
         span: Span,
-        expr: Expr<'a>,
-    ) -> SimpleAssignTarget<'a> {
-        SimpleAssignTarget::Paren(self.box_paren_expr(span, expr))
+        expr: Expr,
+    ) -> SimpleAssignTarget {
+        SimpleAssignTarget::Paren(self.paren_expr(span, expr).into())
     }
     #[inline]
     pub fn simple_assign_target_opt_chain_expr(
-        &self,
+        &mut self,
         span: Span,
         optional: bool,
-        base: OptChainBase<'a>,
-    ) -> SimpleAssignTarget<'a> {
-        SimpleAssignTarget::OptChain(self.box_opt_chain_expr(span, optional, base))
+        base: OptChainBase,
+    ) -> SimpleAssignTarget {
+        SimpleAssignTarget::OptChain(self.opt_chain_expr(span, optional, base).into())
     }
     #[inline]
-    pub fn simple_assign_target_invalid(&self) -> SimpleAssignTarget<'a> {
-        SimpleAssignTarget::Invalid(self.box_invalid())
+    pub fn simple_assign_target_invalid(&mut self, span: Span) -> SimpleAssignTarget {
+        SimpleAssignTarget::Invalid(self.invalid(span).into())
     }
     #[inline]
     pub fn opt_chain_expr(
-        &self,
+        &mut self,
         span: Span,
         optional: bool,
-        base: OptChainBase<'a>,
-    ) -> OptChainExpr<'a> {
-        OptChainExpr {
+        base: OptChainBase,
+    ) -> OptChainExpr {
+        let _f0 = self.add_extra(optional.to_extra_data());
+        let _f1 = self.add_extra(base.to_extra_data());
+        OptChainExpr(self.add_node(
             span,
-            optional,
-            base,
-        }
-    }
-    #[inline]
-    pub fn box_opt_chain_expr(
-        &self,
-        span: Span,
-        optional: bool,
-        base: OptChainBase<'a>,
-    ) -> Box<'a, OptChainExpr<'a>> {
-        self.allocator
-            .boxed(self.opt_chain_expr(span, optional, base))
+            NodeKind::OptChainExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn opt_chain_base_member_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: Expr<'a>,
-        prop: MemberProp<'a>,
-    ) -> OptChainBase<'a> {
-        OptChainBase::Member(self.box_member_expr(span, obj, prop))
+        obj: Expr,
+        prop: MemberProp,
+    ) -> OptChainBase {
+        OptChainBase::Member(self.member_expr(span, obj, prop).into())
     }
     #[inline]
     pub fn opt_chain_base_opt_call(
-        &self,
+        &mut self,
         span: Span,
-        callee: Expr<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> OptChainBase<'a> {
-        OptChainBase::Call(self.box_opt_call(span, callee, args))
+        callee: Expr,
+        args: TypedSubRange<ExprOrSpread>,
+    ) -> OptChainBase {
+        OptChainBase::Call(self.opt_call(span, callee, args).into())
     }
     #[inline]
     pub fn opt_call(
-        &self,
+        &mut self,
         span: Span,
-        callee: Expr<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> OptCall<'a> {
-        OptCall { span, callee, args }
+        callee: Expr,
+        args: TypedSubRange<ExprOrSpread>,
+    ) -> OptCall {
+        let _f0 = self.add_extra(callee.to_extra_data());
+        let _f1 = self.add_extra(args.to_extra_data());
+        OptCall(self.add_node(
+            span,
+            NodeKind::OptCall,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_opt_call(
-        &self,
-        span: Span,
-        callee: Expr<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> Box<'a, OptCall<'a>> {
-        self.allocator.boxed(self.opt_call(span, callee, args))
-    }
-    #[inline]
-    pub fn invalid(&self) -> Invalid {
-        Invalid {}
-    }
-    #[inline]
-    pub fn box_invalid(&self) -> Box<'a, Invalid> {
-        self.allocator.boxed(self.invalid())
+    pub fn invalid(&mut self, span: Span) -> Invalid {
+        Invalid(self.add_node(span, NodeKind::Invalid, NodePayload { empty: () }))
     }
     #[inline]
     pub fn function(
-        &self,
+        &mut self,
         span: Span,
-        params: Vec<'a, Param<'a>>,
-        decorators: Vec<'a, Decorator<'a>>,
-        body: Box<'a, BlockStmt<'a>>,
+        params: TypedSubRange<Param>,
+        decorators: TypedSubRange<Decorator>,
+        body: BlockStmt,
         is_generator: bool,
         is_async: bool,
-    ) -> Function<'a> {
-        Function {
+    ) -> Function {
+        let _f0 = self.add_extra(params.to_extra_data());
+        let _f1 = self.add_extra(decorators.to_extra_data());
+        let _f2 = self.add_extra(body.to_extra_data());
+        let _f3 = self.add_extra(is_generator.to_extra_data());
+        let _f4 = self.add_extra(is_async.to_extra_data());
+        Function(self.add_node(
             span,
-            params,
-            decorators,
-            body,
-            is_generator,
-            is_async,
-        }
+            NodeKind::Function,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_function(
-        &self,
-        span: Span,
-        params: Vec<'a, Param<'a>>,
-        decorators: Vec<'a, Decorator<'a>>,
-        body: Box<'a, BlockStmt<'a>>,
-        is_generator: bool,
-        is_async: bool,
-    ) -> Box<'a, Function<'a>> {
-        self.allocator
-            .boxed(self.function(span, params, decorators, body, is_generator, is_async))
-    }
-    #[inline]
-    pub fn param(&self, span: Span, decorators: Vec<'a, Decorator<'a>>, pat: Pat<'a>) -> Param<'a> {
-        Param {
+    pub fn param(&mut self, span: Span, decorators: TypedSubRange<Decorator>, pat: Pat) -> Param {
+        let _f0 = self.add_extra(decorators.to_extra_data());
+        let _f1 = self.add_extra(pat.to_extra_data());
+        Param(self.add_node(
             span,
-            decorators,
-            pat,
-        }
-    }
-    #[inline]
-    pub fn box_param(
-        &self,
-        span: Span,
-        decorators: Vec<'a, Decorator<'a>>,
-        pat: Pat<'a>,
-    ) -> Box<'a, Param<'a>> {
-        self.allocator.boxed(self.param(span, decorators, pat))
+            NodeKind::Param,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn param_or_ts_param_prop_param(
-        &self,
+        &mut self,
         span: Span,
-        decorators: Vec<'a, Decorator<'a>>,
-        pat: Pat<'a>,
-    ) -> ParamOrTsParamProp<'a> {
-        ParamOrTsParamProp::Param(self.box_param(span, decorators, pat))
+        decorators: TypedSubRange<Decorator>,
+        pat: Pat,
+    ) -> ParamOrTsParamProp {
+        ParamOrTsParamProp::Param(self.param(span, decorators, pat).into())
     }
     #[inline]
     pub fn class(
-        &self,
+        &mut self,
         span: Span,
-        decorators: Vec<'a, Decorator<'a>>,
-        body: Vec<'a, ClassMember<'a>>,
-        super_class: Option<Expr<'a>>,
+        decorators: TypedSubRange<Decorator>,
+        body: TypedSubRange<ClassMember>,
+        super_class: Option<Expr>,
         is_abstract: bool,
-    ) -> Class<'a> {
-        Class {
+    ) -> Class {
+        let _f0 = self.add_extra(decorators.to_extra_data());
+        let _f1 = self.add_extra(body.to_extra_data());
+        let _f2 = self.add_extra(super_class.to_extra_data());
+        let _f3 = self.add_extra(is_abstract.to_extra_data());
+        Class(self.add_node(
             span,
-            decorators,
-            body,
-            super_class,
-            is_abstract,
-        }
-    }
-    #[inline]
-    pub fn box_class(
-        &self,
-        span: Span,
-        decorators: Vec<'a, Decorator<'a>>,
-        body: Vec<'a, ClassMember<'a>>,
-        super_class: Option<Expr<'a>>,
-        is_abstract: bool,
-    ) -> Box<'a, Class<'a>> {
-        self.allocator
-            .boxed(self.class(span, decorators, body, super_class, is_abstract))
+            NodeKind::Class,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn class_member_constructor(
-        &self,
+        &mut self,
         span: Span,
-        key: PropName<'a>,
-        params: Vec<'a, ParamOrTsParamProp<'a>>,
-        body: Option<Box<'a, BlockStmt<'a>>>,
-    ) -> ClassMember<'a> {
-        ClassMember::Constructor(self.box_constructor(span, key, params, body))
+        key: PropName,
+        params: TypedSubRange<ParamOrTsParamProp>,
+        body: Option<BlockStmt>,
+    ) -> ClassMember {
+        ClassMember::Constructor(self.constructor(span, key, params, body).into())
     }
     #[inline]
     pub fn class_member_class_method(
-        &self,
+        &mut self,
         span: Span,
-        key: PropName<'a>,
-        function: Box<'a, Function<'a>>,
+        key: PropName,
+        function: Function,
         kind: MethodKind,
         is_static: bool,
-    ) -> ClassMember<'a> {
-        ClassMember::Method(self.box_class_method(span, key, function, kind, is_static))
+    ) -> ClassMember {
+        ClassMember::Method(
+            self.class_method(span, key, function, kind, is_static)
+                .into(),
+        )
     }
     #[inline]
     pub fn class_member_private_method(
-        &self,
+        &mut self,
         span: Span,
-        key: Box<'a, PrivateName<'a>>,
-        function: Box<'a, Function<'a>>,
+        key: PrivateName,
+        function: Function,
         kind: MethodKind,
         is_static: bool,
-    ) -> ClassMember<'a> {
-        ClassMember::PrivateMethod(self.box_private_method(span, key, function, kind, is_static))
+    ) -> ClassMember {
+        ClassMember::PrivateMethod(
+            self.private_method(span, key, function, kind, is_static)
+                .into(),
+        )
     }
     #[inline]
     pub fn class_member_class_prop(
-        &self,
+        &mut self,
         span: Span,
-        key: PropName<'a>,
-        value: Option<Expr<'a>>,
+        key: PropName,
+        value: Option<Expr>,
         is_static: bool,
-        decorators: Vec<'a, Decorator<'a>>,
-    ) -> ClassMember<'a> {
-        ClassMember::ClassProp(self.box_class_prop(span, key, value, is_static, decorators))
+        decorators: TypedSubRange<Decorator>,
+    ) -> ClassMember {
+        ClassMember::ClassProp(
+            self.class_prop(span, key, value, is_static, decorators)
+                .into(),
+        )
     }
     #[inline]
     pub fn class_member_private_prop(
-        &self,
+        &mut self,
         span: Span,
-        key: Box<'a, PrivateName<'a>>,
-        value: Option<Expr<'a>>,
+        key: PrivateName,
+        value: Option<Expr>,
         is_static: bool,
-        decorators: Vec<'a, Decorator<'a>>,
-    ) -> ClassMember<'a> {
-        ClassMember::PrivateProp(self.box_private_prop(span, key, value, is_static, decorators))
+        decorators: TypedSubRange<Decorator>,
+    ) -> ClassMember {
+        ClassMember::PrivateProp(
+            self.private_prop(span, key, value, is_static, decorators)
+                .into(),
+        )
     }
     #[inline]
-    pub fn class_member_empty_stmt(&self, span: Span) -> ClassMember<'a> {
-        ClassMember::Empty(self.box_empty_stmt(span))
+    pub fn class_member_empty_stmt(&mut self, span: Span) -> ClassMember {
+        ClassMember::Empty(self.empty_stmt(span).into())
     }
     #[inline]
-    pub fn class_member_static_block(
-        &self,
-        span: Span,
-        body: Box<'a, BlockStmt<'a>>,
-    ) -> ClassMember<'a> {
-        ClassMember::StaticBlock(self.box_static_block(span, body))
+    pub fn class_member_static_block(&mut self, span: Span, body: BlockStmt) -> ClassMember {
+        ClassMember::StaticBlock(self.static_block(span, body).into())
     }
     #[inline]
     pub fn class_member_auto_accessor(
-        &self,
+        &mut self,
         span: Span,
-        key: Key<'a>,
-        value: Option<Expr<'a>>,
+        key: Key,
+        value: Option<Expr>,
         is_static: bool,
-        decorators: Vec<'a, Decorator<'a>>,
-    ) -> ClassMember<'a> {
-        ClassMember::AutoAccessor(self.box_auto_accessor(span, key, value, is_static, decorators))
+        decorators: TypedSubRange<Decorator>,
+    ) -> ClassMember {
+        ClassMember::AutoAccessor(
+            self.auto_accessor(span, key, value, is_static, decorators)
+                .into(),
+        )
     }
     #[inline]
     pub fn class_prop(
-        &self,
+        &mut self,
         span: Span,
-        key: PropName<'a>,
-        value: Option<Expr<'a>>,
+        key: PropName,
+        value: Option<Expr>,
         is_static: bool,
-        decorators: Vec<'a, Decorator<'a>>,
-    ) -> ClassProp<'a> {
-        ClassProp {
+        decorators: TypedSubRange<Decorator>,
+    ) -> ClassProp {
+        let _f0 = self.add_extra(key.to_extra_data());
+        let _f1 = self.add_extra(value.to_extra_data());
+        let _f2 = self.add_extra(is_static.to_extra_data());
+        let _f3 = self.add_extra(decorators.to_extra_data());
+        ClassProp(self.add_node(
             span,
-            key,
-            value,
-            is_static,
-            decorators,
-        }
-    }
-    #[inline]
-    pub fn box_class_prop(
-        &self,
-        span: Span,
-        key: PropName<'a>,
-        value: Option<Expr<'a>>,
-        is_static: bool,
-        decorators: Vec<'a, Decorator<'a>>,
-    ) -> Box<'a, ClassProp<'a>> {
-        self.allocator
-            .boxed(self.class_prop(span, key, value, is_static, decorators))
+            NodeKind::ClassProp,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn private_prop(
-        &self,
+        &mut self,
         span: Span,
-        key: Box<'a, PrivateName<'a>>,
-        value: Option<Expr<'a>>,
+        key: PrivateName,
+        value: Option<Expr>,
         is_static: bool,
-        decorators: Vec<'a, Decorator<'a>>,
-    ) -> PrivateProp<'a> {
-        PrivateProp {
+        decorators: TypedSubRange<Decorator>,
+    ) -> PrivateProp {
+        let _f0 = self.add_extra(key.to_extra_data());
+        let _f1 = self.add_extra(value.to_extra_data());
+        let _f2 = self.add_extra(is_static.to_extra_data());
+        let _f3 = self.add_extra(decorators.to_extra_data());
+        PrivateProp(self.add_node(
             span,
-            key,
-            value,
-            is_static,
-            decorators,
-        }
-    }
-    #[inline]
-    pub fn box_private_prop(
-        &self,
-        span: Span,
-        key: Box<'a, PrivateName<'a>>,
-        value: Option<Expr<'a>>,
-        is_static: bool,
-        decorators: Vec<'a, Decorator<'a>>,
-    ) -> Box<'a, PrivateProp<'a>> {
-        self.allocator
-            .boxed(self.private_prop(span, key, value, is_static, decorators))
+            NodeKind::PrivateProp,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn class_method(
-        &self,
+        &mut self,
         span: Span,
-        key: PropName<'a>,
-        function: Box<'a, Function<'a>>,
+        key: PropName,
+        function: Function,
         kind: MethodKind,
         is_static: bool,
-    ) -> ClassMethod<'a> {
-        ClassMethod {
+    ) -> ClassMethod {
+        let _f0 = self.add_extra(key.to_extra_data());
+        let _f1 = self.add_extra(function.to_extra_data());
+        let _f2 = self.add_extra(kind.to_extra_data());
+        let _f3 = self.add_extra(is_static.to_extra_data());
+        ClassMethod(self.add_node(
             span,
-            key,
-            function,
-            kind,
-            is_static,
-        }
-    }
-    #[inline]
-    pub fn box_class_method(
-        &self,
-        span: Span,
-        key: PropName<'a>,
-        function: Box<'a, Function<'a>>,
-        kind: MethodKind,
-        is_static: bool,
-    ) -> Box<'a, ClassMethod<'a>> {
-        self.allocator
-            .boxed(self.class_method(span, key, function, kind, is_static))
+            NodeKind::ClassMethod,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn private_method(
-        &self,
+        &mut self,
         span: Span,
-        key: Box<'a, PrivateName<'a>>,
-        function: Box<'a, Function<'a>>,
+        key: PrivateName,
+        function: Function,
         kind: MethodKind,
         is_static: bool,
-    ) -> PrivateMethod<'a> {
-        PrivateMethod {
+    ) -> PrivateMethod {
+        let _f0 = self.add_extra(key.to_extra_data());
+        let _f1 = self.add_extra(function.to_extra_data());
+        let _f2 = self.add_extra(kind.to_extra_data());
+        let _f3 = self.add_extra(is_static.to_extra_data());
+        PrivateMethod(self.add_node(
             span,
-            key,
-            function,
-            kind,
-            is_static,
-        }
-    }
-    #[inline]
-    pub fn box_private_method(
-        &self,
-        span: Span,
-        key: Box<'a, PrivateName<'a>>,
-        function: Box<'a, Function<'a>>,
-        kind: MethodKind,
-        is_static: bool,
-    ) -> Box<'a, PrivateMethod<'a>> {
-        self.allocator
-            .boxed(self.private_method(span, key, function, kind, is_static))
+            NodeKind::PrivateMethod,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn constructor(
-        &self,
+        &mut self,
         span: Span,
-        key: PropName<'a>,
-        params: Vec<'a, ParamOrTsParamProp<'a>>,
-        body: Option<Box<'a, BlockStmt<'a>>>,
-    ) -> Constructor<'a> {
-        Constructor {
+        key: PropName,
+        params: TypedSubRange<ParamOrTsParamProp>,
+        body: Option<BlockStmt>,
+    ) -> Constructor {
+        let _f0 = self.add_extra(key.to_extra_data());
+        let _f1 = self.add_extra(params.to_extra_data());
+        let _f2 = self.add_extra(body.to_extra_data());
+        Constructor(self.add_node(
             span,
-            key,
-            params,
-            body,
-        }
+            NodeKind::Constructor,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_constructor(
-        &self,
-        span: Span,
-        key: PropName<'a>,
-        params: Vec<'a, ParamOrTsParamProp<'a>>,
-        body: Option<Box<'a, BlockStmt<'a>>>,
-    ) -> Box<'a, Constructor<'a>> {
-        self.allocator
-            .boxed(self.constructor(span, key, params, body))
+    pub fn decorator(&mut self, span: Span, expr: Expr) -> Decorator {
+        let _f0 = self.add_extra(expr.to_extra_data());
+        Decorator(self.add_node(
+            span,
+            NodeKind::Decorator,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn decorator(&self, span: Span, expr: Expr<'a>) -> Decorator<'a> {
-        Decorator { span, expr }
+    pub fn static_block(&mut self, span: Span, body: BlockStmt) -> StaticBlock {
+        StaticBlock(self.add_node(
+            span,
+            NodeKind::StaticBlock,
+            NodePayload {
+                inline_data: body.node_id().index() as u32,
+            },
+        ))
     }
     #[inline]
-    pub fn box_decorator(&self, span: Span, expr: Expr<'a>) -> Box<'a, Decorator<'a>> {
-        self.allocator.boxed(self.decorator(span, expr))
+    pub fn key_private_name(&mut self, span: Span, name: Atom<'a>) -> Key {
+        Key::Private(self.private_name(span, name).into())
     }
     #[inline]
-    pub fn static_block(&self, span: Span, body: Box<'a, BlockStmt<'a>>) -> StaticBlock<'a> {
-        StaticBlock { span, body }
-    }
-    #[inline]
-    pub fn box_static_block(
-        &self,
-        span: Span,
-        body: Box<'a, BlockStmt<'a>>,
-    ) -> Box<'a, StaticBlock<'a>> {
-        self.allocator.boxed(self.static_block(span, body))
-    }
-    #[inline]
-    pub fn key_private_name(&self, span: Span, name: Atom<'a>) -> Key<'a> {
-        Key::Private(self.box_private_name(span, name))
-    }
-    #[inline]
-    pub fn key_prop_name_ident_name(&self, span: Span, sym: Atom<'a>) -> Key<'a> {
-        Key::Public(
-            self.allocator
-                .boxed(PropName::Ident(self.box_ident_name(span, sym))),
-        )
+    pub fn key_prop_name_ident_name(&mut self, span: Span, sym: Atom<'a>) -> Key {
+        Key::Public(PropName::Ident(self.ident_name(span, sym).into()))
     }
     #[inline]
     pub fn key_prop_name_str(
-        &self,
+        &mut self,
         span: Span,
         value: Wtf8Atom<'a>,
         raw: Option<Atom<'a>>,
-    ) -> Key<'a> {
-        Key::Public(
-            self.allocator
-                .boxed(PropName::Str(self.box_str(span, value, raw))),
-        )
+    ) -> Key {
+        Key::Public(PropName::Str(self.str(span, value, raw).into()))
     }
     #[inline]
-    pub fn key_prop_name_number(&self, span: Span, value: f64, raw: Option<Atom<'a>>) -> Key<'a> {
-        Key::Public(
-            self.allocator
-                .boxed(PropName::Num(self.box_number(span, value, raw))),
-        )
+    pub fn key_prop_name_number(&mut self, span: Span, value: f64, raw: Option<Atom<'a>>) -> Key {
+        Key::Public(PropName::Num(self.number(span, value, raw).into()))
     }
     #[inline]
-    pub fn key_prop_name_computed_prop_name(&self, span: Span, expr: Expr<'a>) -> Key<'a> {
-        Key::Public(
-            self.allocator
-                .boxed(PropName::Computed(self.box_computed_prop_name(span, expr))),
-        )
+    pub fn key_prop_name_computed_prop_name(&mut self, span: Span, expr: Expr) -> Key {
+        Key::Public(PropName::Computed(
+            self.computed_prop_name(span, expr).into(),
+        ))
     }
     #[inline]
     pub fn key_prop_name_big_int(
-        &self,
+        &mut self,
         span: Span,
         value: Atom<'a>,
         raw: Option<Atom<'a>>,
-    ) -> Key<'a> {
-        Key::Public(
-            self.allocator
-                .boxed(PropName::BigInt(self.box_big_int(span, value, raw))),
-        )
+    ) -> Key {
+        Key::Public(PropName::BigInt(self.big_int(span, value, raw).into()))
     }
     #[inline]
     pub fn auto_accessor(
-        &self,
+        &mut self,
         span: Span,
-        key: Key<'a>,
-        value: Option<Expr<'a>>,
+        key: Key,
+        value: Option<Expr>,
         is_static: bool,
-        decorators: Vec<'a, Decorator<'a>>,
-    ) -> AutoAccessor<'a> {
-        AutoAccessor {
+        decorators: TypedSubRange<Decorator>,
+    ) -> AutoAccessor {
+        let _f0 = self.add_extra(key.to_extra_data());
+        let _f1 = self.add_extra(value.to_extra_data());
+        let _f2 = self.add_extra(is_static.to_extra_data());
+        let _f3 = self.add_extra(decorators.to_extra_data());
+        AutoAccessor(self.add_node(
             span,
-            key,
-            value,
-            is_static,
-            decorators,
-        }
+            NodeKind::AutoAccessor,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_auto_accessor(
-        &self,
-        span: Span,
-        key: Key<'a>,
-        value: Option<Expr<'a>>,
-        is_static: bool,
-        decorators: Vec<'a, Decorator<'a>>,
-    ) -> Box<'a, AutoAccessor<'a>> {
-        self.allocator
-            .boxed(self.auto_accessor(span, key, value, is_static, decorators))
+    pub fn prop_ident(&mut self, span: Span, sym: Atom<'a>) -> Prop {
+        Prop::Shorthand(self.ident(span, sym).into())
     }
     #[inline]
-    pub fn prop_ident(&self, span: Span, sym: Atom<'a>) -> Prop<'a> {
-        Prop::Shorthand(self.box_ident(span, sym))
+    pub fn prop_key_value_prop(&mut self, span: Span, key: PropName, value: Expr) -> Prop {
+        Prop::KeyValue(self.key_value_prop(span, key, value).into())
     }
     #[inline]
-    pub fn prop_key_value_prop(&self, key: PropName<'a>, value: Expr<'a>) -> Prop<'a> {
-        Prop::KeyValue(self.box_key_value_prop(key, value))
+    pub fn prop_assign_prop(&mut self, span: Span, key: Ident, value: Expr) -> Prop {
+        Prop::Assign(self.assign_prop(span, key, value).into())
     }
     #[inline]
-    pub fn prop_assign_prop(
-        &self,
-        span: Span,
-        key: Box<'a, Ident<'a>>,
-        value: Expr<'a>,
-    ) -> Prop<'a> {
-        Prop::Assign(self.box_assign_prop(span, key, value))
+    pub fn prop_getter_prop(&mut self, span: Span, key: PropName, function: Function) -> Prop {
+        Prop::Getter(self.getter_prop(span, key, function).into())
     }
     #[inline]
-    pub fn prop_getter_prop(
-        &self,
-        span: Span,
-        key: PropName<'a>,
-        function: Box<'a, Function<'a>>,
-    ) -> Prop<'a> {
-        Prop::Getter(self.box_getter_prop(span, key, function))
+    pub fn prop_setter_prop(&mut self, span: Span, key: PropName, function: Function) -> Prop {
+        Prop::Setter(self.setter_prop(span, key, function).into())
     }
     #[inline]
-    pub fn prop_setter_prop(
-        &self,
-        span: Span,
-        key: PropName<'a>,
-        function: Box<'a, Function<'a>>,
-    ) -> Prop<'a> {
-        Prop::Setter(self.box_setter_prop(span, key, function))
+    pub fn prop_method_prop(&mut self, span: Span, key: PropName, function: Function) -> Prop {
+        Prop::Method(self.method_prop(span, key, function).into())
     }
     #[inline]
-    pub fn prop_method_prop(&self, key: PropName<'a>, function: Box<'a, Function<'a>>) -> Prop<'a> {
-        Prop::Method(self.box_method_prop(key, function))
-    }
-    #[inline]
-    pub fn key_value_prop(&self, key: PropName<'a>, value: Expr<'a>) -> KeyValueProp<'a> {
-        KeyValueProp { key, value }
-    }
-    #[inline]
-    pub fn box_key_value_prop(
-        &self,
-        key: PropName<'a>,
-        value: Expr<'a>,
-    ) -> Box<'a, KeyValueProp<'a>> {
-        self.allocator.boxed(self.key_value_prop(key, value))
-    }
-    #[inline]
-    pub fn assign_prop(
-        &self,
-        span: Span,
-        key: Box<'a, Ident<'a>>,
-        value: Expr<'a>,
-    ) -> AssignProp<'a> {
-        AssignProp { span, key, value }
-    }
-    #[inline]
-    pub fn box_assign_prop(
-        &self,
-        span: Span,
-        key: Box<'a, Ident<'a>>,
-        value: Expr<'a>,
-    ) -> Box<'a, AssignProp<'a>> {
-        self.allocator.boxed(self.assign_prop(span, key, value))
-    }
-    #[inline]
-    pub fn getter_prop(
-        &self,
-        span: Span,
-        key: PropName<'a>,
-        function: Box<'a, Function<'a>>,
-    ) -> GetterProp<'a> {
-        GetterProp {
+    pub fn key_value_prop(&mut self, span: Span, key: PropName, value: Expr) -> KeyValueProp {
+        let _f0 = self.add_extra(key.to_extra_data());
+        let _f1 = self.add_extra(value.to_extra_data());
+        KeyValueProp(self.add_node(
             span,
-            key,
-            function,
-        }
+            NodeKind::KeyValueProp,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_getter_prop(
-        &self,
-        span: Span,
-        key: PropName<'a>,
-        function: Box<'a, Function<'a>>,
-    ) -> Box<'a, GetterProp<'a>> {
-        self.allocator.boxed(self.getter_prop(span, key, function))
-    }
-    #[inline]
-    pub fn setter_prop(
-        &self,
-        span: Span,
-        key: PropName<'a>,
-        function: Box<'a, Function<'a>>,
-    ) -> SetterProp<'a> {
-        SetterProp {
+    pub fn assign_prop(&mut self, span: Span, key: Ident, value: Expr) -> AssignProp {
+        let _f0 = self.add_extra(key.to_extra_data());
+        let _f1 = self.add_extra(value.to_extra_data());
+        AssignProp(self.add_node(
             span,
-            key,
-            function,
-        }
+            NodeKind::AssignProp,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_setter_prop(
-        &self,
-        span: Span,
-        key: PropName<'a>,
-        function: Box<'a, Function<'a>>,
-    ) -> Box<'a, SetterProp<'a>> {
-        self.allocator.boxed(self.setter_prop(span, key, function))
+    pub fn getter_prop(&mut self, span: Span, key: PropName, function: Function) -> GetterProp {
+        let _f0 = self.add_extra(key.to_extra_data());
+        let _f1 = self.add_extra(function.to_extra_data());
+        GetterProp(self.add_node(
+            span,
+            NodeKind::GetterProp,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn method_prop(
-        &self,
-        key: PropName<'a>,
-        function: Box<'a, Function<'a>>,
-    ) -> MethodProp<'a> {
-        MethodProp { key, function }
+    pub fn setter_prop(&mut self, span: Span, key: PropName, function: Function) -> SetterProp {
+        let _f0 = self.add_extra(key.to_extra_data());
+        let _f1 = self.add_extra(function.to_extra_data());
+        SetterProp(self.add_node(
+            span,
+            NodeKind::SetterProp,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_method_prop(
-        &self,
-        key: PropName<'a>,
-        function: Box<'a, Function<'a>>,
-    ) -> Box<'a, MethodProp<'a>> {
-        self.allocator.boxed(self.method_prop(key, function))
+    pub fn method_prop(&mut self, span: Span, key: PropName, function: Function) -> MethodProp {
+        let _f0 = self.add_extra(key.to_extra_data());
+        let _f1 = self.add_extra(function.to_extra_data());
+        MethodProp(self.add_node(
+            span,
+            NodeKind::MethodProp,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn prop_name_ident_name(&self, span: Span, sym: Atom<'a>) -> PropName<'a> {
-        PropName::Ident(self.box_ident_name(span, sym))
+    pub fn prop_name_ident_name(&mut self, span: Span, sym: Atom<'a>) -> PropName {
+        PropName::Ident(self.ident_name(span, sym).into())
     }
     #[inline]
     pub fn prop_name_str(
-        &self,
+        &mut self,
         span: Span,
         value: Wtf8Atom<'a>,
         raw: Option<Atom<'a>>,
-    ) -> PropName<'a> {
-        PropName::Str(self.box_str(span, value, raw))
+    ) -> PropName {
+        PropName::Str(self.str(span, value, raw).into())
     }
     #[inline]
-    pub fn prop_name_number(&self, span: Span, value: f64, raw: Option<Atom<'a>>) -> PropName<'a> {
-        PropName::Num(self.box_number(span, value, raw))
+    pub fn prop_name_number(&mut self, span: Span, value: f64, raw: Option<Atom<'a>>) -> PropName {
+        PropName::Num(self.number(span, value, raw).into())
     }
     #[inline]
-    pub fn prop_name_computed_prop_name(&self, span: Span, expr: Expr<'a>) -> PropName<'a> {
-        PropName::Computed(self.box_computed_prop_name(span, expr))
+    pub fn prop_name_computed_prop_name(&mut self, span: Span, expr: Expr) -> PropName {
+        PropName::Computed(self.computed_prop_name(span, expr).into())
     }
     #[inline]
     pub fn prop_name_big_int(
-        &self,
+        &mut self,
         span: Span,
         value: Atom<'a>,
         raw: Option<Atom<'a>>,
-    ) -> PropName<'a> {
-        PropName::BigInt(self.box_big_int(span, value, raw))
+    ) -> PropName {
+        PropName::BigInt(self.big_int(span, value, raw).into())
     }
     #[inline]
-    pub fn computed_prop_name(&self, span: Span, expr: Expr<'a>) -> ComputedPropName<'a> {
-        ComputedPropName { span, expr }
+    pub fn computed_prop_name(&mut self, span: Span, expr: Expr) -> ComputedPropName {
+        let _f0 = self.add_extra(expr.to_extra_data());
+        ComputedPropName(self.add_node(
+            span,
+            NodeKind::ComputedPropName,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_computed_prop_name(
-        &self,
-        span: Span,
-        expr: Expr<'a>,
-    ) -> Box<'a, ComputedPropName<'a>> {
-        self.allocator.boxed(self.computed_prop_name(span, expr))
-    }
-    #[inline]
-    pub fn pat_binding_ident(&self, id: Box<'a, Ident<'a>>) -> Pat<'a> {
-        Pat::Ident(self.box_binding_ident(id))
+    pub fn pat_binding_ident(&mut self, span: Span, id: Ident) -> Pat {
+        Pat::Ident(self.binding_ident(span, id).into())
     }
     #[inline]
     pub fn pat_array_pat(
-        &self,
+        &mut self,
         span: Span,
-        elems: Vec<'a, Option<Pat<'a>>>,
+        elems: TypedSubRange<Option<Pat>>,
         optional: bool,
-    ) -> Pat<'a> {
-        Pat::Array(self.box_array_pat(span, elems, optional))
+    ) -> Pat {
+        Pat::Array(self.array_pat(span, elems, optional).into())
     }
     #[inline]
-    pub fn pat_rest_pat(&self, span: Span, dot3_token: Span, arg: Pat<'a>) -> Pat<'a> {
-        Pat::Rest(self.box_rest_pat(span, dot3_token, arg))
+    pub fn pat_rest_pat(&mut self, span: Span, dot3_token: Span, arg: Pat) -> Pat {
+        Pat::Rest(self.rest_pat(span, dot3_token, arg).into())
     }
     #[inline]
     pub fn pat_object_pat(
-        &self,
+        &mut self,
         span: Span,
-        props: Vec<'a, ObjectPatProp<'a>>,
+        props: TypedSubRange<ObjectPatProp>,
         optional: bool,
-    ) -> Pat<'a> {
-        Pat::Object(self.box_object_pat(span, props, optional))
+    ) -> Pat {
+        Pat::Object(self.object_pat(span, props, optional).into())
     }
     #[inline]
-    pub fn pat_assign_pat(&self, span: Span, left: Pat<'a>, right: Expr<'a>) -> Pat<'a> {
-        Pat::Assign(self.box_assign_pat(span, left, right))
+    pub fn pat_assign_pat(&mut self, span: Span, left: Pat, right: Expr) -> Pat {
+        Pat::Assign(self.assign_pat(span, left, right).into())
     }
     #[inline]
-    pub fn pat_invalid(&self) -> Pat<'a> {
-        Pat::Invalid(self.box_invalid())
+    pub fn pat_invalid(&mut self, span: Span) -> Pat {
+        Pat::Invalid(self.invalid(span).into())
     }
     #[inline]
-    pub fn pat_expr_this_expr(&self, span: Span) -> Pat<'a> {
-        Pat::Expr(self.allocator.boxed(Expr::This(self.box_this_expr(span))))
+    pub fn pat_expr_this_expr(&mut self, span: Span) -> Pat {
+        Pat::Expr(Expr::This(self.this_expr(span).into()))
     }
     #[inline]
     pub fn pat_expr_array_lit(
-        &self,
+        &mut self,
         span: Span,
-        elems: Vec<'a, Option<Box<'a, ExprOrSpread<'a>>>>,
-    ) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::Array(self.box_array_lit(span, elems))),
-        )
+        elems: TypedSubRange<Option<ExprOrSpread>>,
+    ) -> Pat {
+        Pat::Expr(Expr::Array(self.array_lit(span, elems).into()))
     }
     #[inline]
-    pub fn pat_expr_object_lit(&self, span: Span, props: Vec<'a, PropOrSpread<'a>>) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::Object(self.box_object_lit(span, props))),
-        )
+    pub fn pat_expr_object_lit(&mut self, span: Span, props: TypedSubRange<PropOrSpread>) -> Pat {
+        Pat::Expr(Expr::Object(self.object_lit(span, props).into()))
     }
     #[inline]
     pub fn pat_expr_fn_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        function: Box<'a, Function<'a>>,
-    ) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::Fn(self.box_fn_expr(ident, function))),
-        )
+        &mut self,
+        span: Span,
+        ident: Option<Ident>,
+        function: Function,
+    ) -> Pat {
+        Pat::Expr(Expr::Fn(self.fn_expr(span, ident, function).into()))
     }
     #[inline]
-    pub fn pat_expr_unary_expr(&self, span: Span, op: UnaryOp, arg: Expr<'a>) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::Unary(self.box_unary_expr(span, op, arg))),
-        )
+    pub fn pat_expr_unary_expr(&mut self, span: Span, op: UnaryOp, arg: Expr) -> Pat {
+        Pat::Expr(Expr::Unary(self.unary_expr(span, op, arg).into()))
     }
     #[inline]
     pub fn pat_expr_update_expr(
-        &self,
+        &mut self,
         span: Span,
         op: UpdateOp,
         prefix: bool,
-        arg: SimpleAssignTarget<'a>,
-    ) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::Update(self.box_update_expr(span, op, prefix, arg))),
-        )
+        arg: SimpleAssignTarget,
+    ) -> Pat {
+        Pat::Expr(Expr::Update(self.update_expr(span, op, prefix, arg).into()))
     }
     #[inline]
-    pub fn pat_expr_bin_expr(
-        &self,
-        span: Span,
-        op: BinaryOp,
-        left: Expr<'a>,
-        right: Expr<'a>,
-    ) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::Bin(self.box_bin_expr(span, op, left, right))),
-        )
+    pub fn pat_expr_bin_expr(&mut self, span: Span, op: BinaryOp, left: Expr, right: Expr) -> Pat {
+        Pat::Expr(Expr::Bin(self.bin_expr(span, op, left, right).into()))
     }
     #[inline]
     pub fn pat_expr_assign_expr(
-        &self,
+        &mut self,
         span: Span,
         op: AssignOp,
-        left: AssignTarget<'a>,
-        right: Expr<'a>,
-    ) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::Assign(self.box_assign_expr(span, op, left, right))),
-        )
+        left: AssignTarget,
+        right: Expr,
+    ) -> Pat {
+        Pat::Expr(Expr::Assign(self.assign_expr(span, op, left, right).into()))
     }
     #[inline]
-    pub fn pat_expr_member_expr(&self, span: Span, obj: Expr<'a>, prop: MemberProp<'a>) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::Member(self.box_member_expr(span, obj, prop))),
-        )
+    pub fn pat_expr_member_expr(&mut self, span: Span, obj: Expr, prop: MemberProp) -> Pat {
+        Pat::Expr(Expr::Member(self.member_expr(span, obj, prop).into()))
     }
     #[inline]
-    pub fn pat_expr_super_prop_expr(
-        &self,
-        span: Span,
-        obj: Box<'a, Super>,
-        prop: SuperProp<'a>,
-    ) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::SuperProp(self.box_super_prop_expr(span, obj, prop))),
-        )
+    pub fn pat_expr_super_prop_expr(&mut self, span: Span, obj: Super, prop: SuperProp) -> Pat {
+        Pat::Expr(Expr::SuperProp(
+            self.super_prop_expr(span, obj, prop).into(),
+        ))
     }
     #[inline]
-    pub fn pat_expr_cond_expr(
-        &self,
-        span: Span,
-        test: Expr<'a>,
-        cons: Expr<'a>,
-        alt: Expr<'a>,
-    ) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::Cond(self.box_cond_expr(span, test, cons, alt))),
-        )
+    pub fn pat_expr_cond_expr(&mut self, span: Span, test: Expr, cons: Expr, alt: Expr) -> Pat {
+        Pat::Expr(Expr::Cond(self.cond_expr(span, test, cons, alt).into()))
     }
     #[inline]
     pub fn pat_expr_import_expr(
-        &self,
+        &mut self,
         span: Span,
         import_span: Span,
-        source: Expr<'a>,
-        options: Option<Expr<'a>>,
+        source: Expr,
+        options: Option<Expr>,
         phase: ImportPhase,
-    ) -> Pat<'a> {
-        Pat::Expr(self.allocator.boxed(Expr::Import(self.box_import_expr(
-            span,
-            import_span,
-            source,
-            options,
-            phase,
-        ))))
+    ) -> Pat {
+        Pat::Expr(Expr::Import(
+            self.import_expr(span, import_span, source, options, phase)
+                .into(),
+        ))
     }
     #[inline]
     pub fn pat_expr_call_expr(
-        &self,
+        &mut self,
         span: Span,
-        callee: Callee<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::Call(self.box_call_expr(span, callee, args))),
-        )
+        callee: Callee,
+        args: TypedSubRange<ExprOrSpread>,
+    ) -> Pat {
+        Pat::Expr(Expr::Call(self.call_expr(span, callee, args).into()))
     }
     #[inline]
     pub fn pat_expr_new_expr(
-        &self,
+        &mut self,
         span: Span,
-        callee: Expr<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::New(self.box_new_expr(span, callee, args))),
-        )
+        callee: Expr,
+        args: TypedSubRange<ExprOrSpread>,
+    ) -> Pat {
+        Pat::Expr(Expr::New(self.new_expr(span, callee, args).into()))
     }
     #[inline]
-    pub fn pat_expr_seq_expr(&self, span: Span, exprs: Vec<'a, Expr<'a>>) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::Seq(self.box_seq_expr(span, exprs))),
-        )
+    pub fn pat_expr_seq_expr(&mut self, span: Span, exprs: TypedSubRange<Expr>) -> Pat {
+        Pat::Expr(Expr::Seq(self.seq_expr(span, exprs).into()))
     }
     #[inline]
-    pub fn pat_expr_ident(&self, span: Span, sym: Atom<'a>) -> Pat<'a> {
-        Pat::Expr(self.allocator.boxed(Expr::Ident(self.box_ident(span, sym))))
+    pub fn pat_expr_ident(&mut self, span: Span, sym: Atom<'a>) -> Pat {
+        Pat::Expr(Expr::Ident(self.ident(span, sym).into()))
     }
     #[inline]
     pub fn pat_expr_lit_str(
-        &self,
+        &mut self,
         span: Span,
         value: Wtf8Atom<'a>,
         raw: Option<Atom<'a>>,
-    ) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::Str(self.box_str(span, value, raw))),
-            )),
-        )
+    ) -> Pat {
+        Pat::Expr(Expr::Lit(Lit::Str(self.str(span, value, raw).into())))
     }
     #[inline]
-    pub fn pat_expr_lit_bool(&self, span: Span, value: bool) -> Pat<'a> {
-        Pat::Expr(self.allocator.boxed(Expr::Lit(
-            self.allocator.boxed(Lit::Bool(self.box_bool(span, value))),
-        )))
+    pub fn pat_expr_lit_bool(&mut self, span: Span, value: bool) -> Pat {
+        Pat::Expr(Expr::Lit(Lit::Bool(self.bool(span, value).into())))
     }
     #[inline]
-    pub fn pat_expr_lit_null(&self, span: Span) -> Pat<'a> {
-        Pat::Expr(self.allocator.boxed(Expr::Lit(
-            self.allocator.boxed(Lit::Null(self.box_null(span))),
-        )))
+    pub fn pat_expr_lit_null(&mut self, span: Span) -> Pat {
+        Pat::Expr(Expr::Lit(Lit::Null(self.null(span).into())))
     }
     #[inline]
-    pub fn pat_expr_lit_number(&self, span: Span, value: f64, raw: Option<Atom<'a>>) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::Num(self.box_number(span, value, raw))),
-            )),
-        )
+    pub fn pat_expr_lit_number(&mut self, span: Span, value: f64, raw: Option<Atom<'a>>) -> Pat {
+        Pat::Expr(Expr::Lit(Lit::Num(self.number(span, value, raw).into())))
     }
     #[inline]
     pub fn pat_expr_lit_big_int(
-        &self,
+        &mut self,
         span: Span,
         value: Atom<'a>,
         raw: Option<Atom<'a>>,
-    ) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::BigInt(self.box_big_int(span, value, raw))),
-            )),
-        )
+    ) -> Pat {
+        Pat::Expr(Expr::Lit(Lit::BigInt(
+            self.big_int(span, value, raw).into(),
+        )))
     }
     #[inline]
-    pub fn pat_expr_lit_regex(&self, span: Span, exp: Atom<'a>, flags: Atom<'a>) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::Regex(self.box_regex(span, exp, flags))),
-            )),
-        )
+    pub fn pat_expr_lit_regex(&mut self, span: Span, exp: Atom<'a>, flags: Atom<'a>) -> Pat {
+        Pat::Expr(Expr::Lit(Lit::Regex(self.regex(span, exp, flags).into())))
     }
     #[inline]
     pub fn pat_expr_tpl(
-        &self,
+        &mut self,
         span: Span,
-        exprs: Vec<'a, Expr<'a>>,
-        quasis: Vec<'a, TplElement<'a>>,
-    ) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::Tpl(self.box_tpl(span, exprs, quasis))),
-        )
+        exprs: TypedSubRange<Expr>,
+        quasis: TypedSubRange<TplElement>,
+    ) -> Pat {
+        Pat::Expr(Expr::Tpl(self.tpl(span, exprs, quasis).into()))
     }
     #[inline]
-    pub fn pat_expr_tagged_tpl(&self, span: Span, tag: Expr<'a>, tpl: Box<'a, Tpl<'a>>) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::TaggedTpl(self.box_tagged_tpl(span, tag, tpl))),
-        )
+    pub fn pat_expr_tagged_tpl(&mut self, span: Span, tag: Expr, tpl: Tpl) -> Pat {
+        Pat::Expr(Expr::TaggedTpl(self.tagged_tpl(span, tag, tpl).into()))
     }
     #[inline]
     pub fn pat_expr_arrow_expr(
-        &self,
+        &mut self,
         span: Span,
-        params: Vec<'a, Pat<'a>>,
-        body: BlockStmtOrExpr<'a>,
+        params: TypedSubRange<Pat>,
+        body: BlockStmtOrExpr,
         is_async: bool,
-    ) -> Pat<'a> {
-        Pat::Expr(self.allocator.boxed(Expr::Arrow(
-            self.box_arrow_expr(span, params, body, is_async),
-        )))
+    ) -> Pat {
+        Pat::Expr(Expr::Arrow(
+            self.arrow_expr(span, params, body, is_async).into(),
+        ))
     }
     #[inline]
-    pub fn pat_expr_class_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        class: Box<'a, Class<'a>>,
-    ) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::Class(self.box_class_expr(ident, class))),
-        )
+    pub fn pat_expr_class_expr(&mut self, span: Span, ident: Option<Ident>, class: Class) -> Pat {
+        Pat::Expr(Expr::Class(self.class_expr(span, ident, class).into()))
     }
     #[inline]
-    pub fn pat_expr_yield_expr(
-        &self,
-        span: Span,
-        arg: Option<Expr<'a>>,
-        delegate: bool,
-    ) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::Yield(self.box_yield_expr(span, arg, delegate))),
-        )
+    pub fn pat_expr_yield_expr(&mut self, span: Span, arg: Option<Expr>, delegate: bool) -> Pat {
+        Pat::Expr(Expr::Yield(self.yield_expr(span, arg, delegate).into()))
     }
     #[inline]
-    pub fn pat_expr_meta_prop_expr(&self, span: Span, kind: MetaPropKind) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::MetaProp(self.box_meta_prop_expr(span, kind))),
-        )
+    pub fn pat_expr_meta_prop_expr(&mut self, span: Span, kind: MetaPropKind) -> Pat {
+        Pat::Expr(Expr::MetaProp(self.meta_prop_expr(span, kind).into()))
     }
     #[inline]
-    pub fn pat_expr_await_expr(&self, span: Span, arg: Expr<'a>) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::Await(self.box_await_expr(span, arg))),
-        )
+    pub fn pat_expr_await_expr(&mut self, span: Span, arg: Expr) -> Pat {
+        Pat::Expr(Expr::Await(self.await_expr(span, arg).into()))
     }
     #[inline]
-    pub fn pat_expr_paren_expr(&self, span: Span, expr: Expr<'a>) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::Paren(self.box_paren_expr(span, expr))),
-        )
+    pub fn pat_expr_paren_expr(&mut self, span: Span, expr: Expr) -> Pat {
+        Pat::Expr(Expr::Paren(self.paren_expr(span, expr).into()))
     }
     #[inline]
-    pub fn pat_expr_jsx_member_expr(
-        &self,
-        span: Span,
-        obj: JSXObject<'a>,
-        prop: Box<'a, IdentName<'a>>,
-    ) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::JSXMember(self.box_jsx_member_expr(span, obj, prop))),
-        )
+    pub fn pat_expr_jsx_member_expr(&mut self, span: Span, obj: JSXObject, prop: IdentName) -> Pat {
+        Pat::Expr(Expr::JSXMember(
+            self.jsx_member_expr(span, obj, prop).into(),
+        ))
     }
     #[inline]
     pub fn pat_expr_jsx_namespaced_name(
-        &self,
+        &mut self,
         span: Span,
-        ns: Box<'a, IdentName<'a>>,
-        name: Box<'a, IdentName<'a>>,
-    ) -> Pat<'a> {
-        Pat::Expr(self.allocator.boxed(Expr::JSXNamespacedName(
-            self.box_jsx_namespaced_name(span, ns, name),
-        )))
+        ns: IdentName,
+        name: IdentName,
+    ) -> Pat {
+        Pat::Expr(Expr::JSXNamespacedName(
+            self.jsx_namespaced_name(span, ns, name).into(),
+        ))
     }
     #[inline]
-    pub fn pat_expr_jsx_empty_expr(&self, span: Span) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::JSXEmpty(self.box_jsx_empty_expr(span))),
-        )
+    pub fn pat_expr_jsx_empty_expr(&mut self, span: Span) -> Pat {
+        Pat::Expr(Expr::JSXEmpty(self.jsx_empty_expr(span).into()))
     }
     #[inline]
     pub fn pat_expr_jsx_element(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningElement<'a>>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Option<Box<'a, JSXClosingElement<'a>>>,
-    ) -> Pat<'a> {
-        Pat::Expr(self.allocator.boxed(Expr::JSXElement(
-            self.box_jsx_element(span, opening, children, closing),
-        )))
+        opening: JSXOpeningElement,
+        children: TypedSubRange<JSXElementChild>,
+        closing: Option<JSXClosingElement>,
+    ) -> Pat {
+        Pat::Expr(Expr::JSXElement(
+            self.jsx_element(span, opening, children, closing).into(),
+        ))
     }
     #[inline]
     pub fn pat_expr_jsx_fragment(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningFragment>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Box<'a, JSXClosingFragment>,
-    ) -> Pat<'a> {
-        Pat::Expr(self.allocator.boxed(Expr::JSXFragment(
-            self.box_jsx_fragment(span, opening, children, closing),
-        )))
+        opening: JSXOpeningFragment,
+        children: TypedSubRange<JSXElementChild>,
+        closing: JSXClosingFragment,
+    ) -> Pat {
+        Pat::Expr(Expr::JSXFragment(
+            self.jsx_fragment(span, opening, children, closing).into(),
+        ))
     }
     #[inline]
-    pub fn pat_expr_private_name(&self, span: Span, name: Atom<'a>) -> Pat<'a> {
-        Pat::Expr(
-            self.allocator
-                .boxed(Expr::PrivateName(self.box_private_name(span, name))),
-        )
+    pub fn pat_expr_private_name(&mut self, span: Span, name: Atom<'a>) -> Pat {
+        Pat::Expr(Expr::PrivateName(self.private_name(span, name).into()))
     }
     #[inline]
     pub fn pat_expr_opt_chain_expr(
-        &self,
+        &mut self,
         span: Span,
         optional: bool,
-        base: OptChainBase<'a>,
-    ) -> Pat<'a> {
-        Pat::Expr(self.allocator.boxed(Expr::OptChain(
-            self.box_opt_chain_expr(span, optional, base),
-        )))
+        base: OptChainBase,
+    ) -> Pat {
+        Pat::Expr(Expr::OptChain(
+            self.opt_chain_expr(span, optional, base).into(),
+        ))
     }
     #[inline]
-    pub fn pat_expr_invalid(&self) -> Pat<'a> {
-        Pat::Expr(self.allocator.boxed(Expr::Invalid(self.box_invalid())))
+    pub fn pat_expr_invalid(&mut self, span: Span) -> Pat {
+        Pat::Expr(Expr::Invalid(self.invalid(span).into()))
     }
     #[inline]
     pub fn array_pat(
-        &self,
+        &mut self,
         span: Span,
-        elems: Vec<'a, Option<Pat<'a>>>,
+        elems: TypedSubRange<Option<Pat>>,
         optional: bool,
-    ) -> ArrayPat<'a> {
-        ArrayPat {
+    ) -> ArrayPat {
+        let _f0 = self.add_extra(elems.to_extra_data());
+        let _f1 = self.add_extra(optional.to_extra_data());
+        ArrayPat(self.add_node(
             span,
-            elems,
-            optional,
-        }
-    }
-    #[inline]
-    pub fn box_array_pat(
-        &self,
-        span: Span,
-        elems: Vec<'a, Option<Pat<'a>>>,
-        optional: bool,
-    ) -> Box<'a, ArrayPat<'a>> {
-        self.allocator.boxed(self.array_pat(span, elems, optional))
+            NodeKind::ArrayPat,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn object_pat(
-        &self,
+        &mut self,
         span: Span,
-        props: Vec<'a, ObjectPatProp<'a>>,
+        props: TypedSubRange<ObjectPatProp>,
         optional: bool,
-    ) -> ObjectPat<'a> {
-        ObjectPat {
+    ) -> ObjectPat {
+        let _f0 = self.add_extra(props.to_extra_data());
+        let _f1 = self.add_extra(optional.to_extra_data());
+        ObjectPat(self.add_node(
             span,
-            props,
-            optional,
-        }
+            NodeKind::ObjectPat,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_object_pat(
-        &self,
-        span: Span,
-        props: Vec<'a, ObjectPatProp<'a>>,
-        optional: bool,
-    ) -> Box<'a, ObjectPat<'a>> {
-        self.allocator.boxed(self.object_pat(span, props, optional))
-    }
-    #[inline]
-    pub fn assign_pat(&self, span: Span, left: Pat<'a>, right: Expr<'a>) -> AssignPat<'a> {
-        AssignPat { span, left, right }
-    }
-    #[inline]
-    pub fn box_assign_pat(
-        &self,
-        span: Span,
-        left: Pat<'a>,
-        right: Expr<'a>,
-    ) -> Box<'a, AssignPat<'a>> {
-        self.allocator.boxed(self.assign_pat(span, left, right))
-    }
-    #[inline]
-    pub fn rest_pat(&self, span: Span, dot3_token: Span, arg: Pat<'a>) -> RestPat<'a> {
-        RestPat {
+    pub fn assign_pat(&mut self, span: Span, left: Pat, right: Expr) -> AssignPat {
+        let _f0 = self.add_extra(left.to_extra_data());
+        let _f1 = self.add_extra(right.to_extra_data());
+        AssignPat(self.add_node(
             span,
-            dot3_token,
-            arg,
-        }
+            NodeKind::AssignPat,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_rest_pat(&self, span: Span, dot3_token: Span, arg: Pat<'a>) -> Box<'a, RestPat<'a>> {
-        self.allocator.boxed(self.rest_pat(span, dot3_token, arg))
+    pub fn rest_pat(&mut self, span: Span, dot3_token: Span, arg: Pat) -> RestPat {
+        let _f0 = self.add_extra(dot3_token.to_extra_data());
+        let _f1 = self.add_extra(arg.to_extra_data());
+        RestPat(self.add_node(
+            span,
+            NodeKind::RestPat,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn object_pat_prop_key_value_pat_prop(
-        &self,
-        key: PropName<'a>,
-        value: Pat<'a>,
-    ) -> ObjectPatProp<'a> {
-        ObjectPatProp::KeyValue(self.box_key_value_pat_prop(key, value))
+        &mut self,
+        span: Span,
+        key: PropName,
+        value: Pat,
+    ) -> ObjectPatProp {
+        ObjectPatProp::KeyValue(self.key_value_pat_prop(span, key, value).into())
     }
     #[inline]
     pub fn object_pat_prop_assign_pat_prop(
-        &self,
+        &mut self,
         span: Span,
-        key: Box<'a, BindingIdent<'a>>,
-        value: Option<Expr<'a>>,
-    ) -> ObjectPatProp<'a> {
-        ObjectPatProp::Assign(self.box_assign_pat_prop(span, key, value))
+        key: BindingIdent,
+        value: Option<Expr>,
+    ) -> ObjectPatProp {
+        ObjectPatProp::Assign(self.assign_pat_prop(span, key, value).into())
     }
     #[inline]
     pub fn object_pat_prop_rest_pat(
-        &self,
+        &mut self,
         span: Span,
         dot3_token: Span,
-        arg: Pat<'a>,
-    ) -> ObjectPatProp<'a> {
-        ObjectPatProp::Rest(self.box_rest_pat(span, dot3_token, arg))
+        arg: Pat,
+    ) -> ObjectPatProp {
+        ObjectPatProp::Rest(self.rest_pat(span, dot3_token, arg).into())
     }
     #[inline]
-    pub fn key_value_pat_prop(&self, key: PropName<'a>, value: Pat<'a>) -> KeyValuePatProp<'a> {
-        KeyValuePatProp { key, value }
-    }
-    #[inline]
-    pub fn box_key_value_pat_prop(
-        &self,
-        key: PropName<'a>,
-        value: Pat<'a>,
-    ) -> Box<'a, KeyValuePatProp<'a>> {
-        self.allocator.boxed(self.key_value_pat_prop(key, value))
+    pub fn key_value_pat_prop(&mut self, span: Span, key: PropName, value: Pat) -> KeyValuePatProp {
+        let _f0 = self.add_extra(key.to_extra_data());
+        let _f1 = self.add_extra(value.to_extra_data());
+        KeyValuePatProp(self.add_node(
+            span,
+            NodeKind::KeyValuePatProp,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn assign_pat_prop(
-        &self,
+        &mut self,
         span: Span,
-        key: Box<'a, BindingIdent<'a>>,
-        value: Option<Expr<'a>>,
-    ) -> AssignPatProp<'a> {
-        AssignPatProp { span, key, value }
-    }
-    #[inline]
-    pub fn box_assign_pat_prop(
-        &self,
-        span: Span,
-        key: Box<'a, BindingIdent<'a>>,
-        value: Option<Expr<'a>>,
-    ) -> Box<'a, AssignPatProp<'a>> {
-        self.allocator.boxed(self.assign_pat_prop(span, key, value))
-    }
-    #[inline]
-    pub fn ident(&self, span: Span, sym: Atom<'a>) -> Ident<'a> {
-        Ident {
+        key: BindingIdent,
+        value: Option<Expr>,
+    ) -> AssignPatProp {
+        let _f0 = self.add_extra(key.to_extra_data());
+        let _f1 = self.add_extra(value.to_extra_data());
+        AssignPatProp(self.add_node(
             span,
-            sym,
-            symbol_id: Default::default(),
-        }
+            NodeKind::AssignPatProp,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_ident(&self, span: Span, sym: Atom<'a>) -> Box<'a, Ident<'a>> {
-        self.allocator.boxed(self.ident(span, sym))
+    pub fn ident(&mut self, span: Span, sym: Atom<'a>) -> Ident {
+        let _f0 = self.add_extra(sym.to_extra_data());
+        let _f1 = self.add_extra(<Option<SymbolId>>::default().to_extra_data());
+        Ident(self.add_node(
+            span,
+            NodeKind::Ident,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn ident_name(&self, span: Span, sym: Atom<'a>) -> IdentName<'a> {
-        IdentName { span, sym }
+    pub fn ident_name(&mut self, span: Span, sym: Atom<'a>) -> IdentName {
+        let _f0 = self.add_extra(sym.to_extra_data());
+        IdentName(self.add_node(
+            span,
+            NodeKind::IdentName,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_ident_name(&self, span: Span, sym: Atom<'a>) -> Box<'a, IdentName<'a>> {
-        self.allocator.boxed(self.ident_name(span, sym))
+    pub fn private_name(&mut self, span: Span, name: Atom<'a>) -> PrivateName {
+        let _f0 = self.add_extra(name.to_extra_data());
+        PrivateName(self.add_node(
+            span,
+            NodeKind::PrivateName,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn private_name(&self, span: Span, name: Atom<'a>) -> PrivateName<'a> {
-        PrivateName { span, name }
+    pub fn binding_ident(&mut self, span: Span, id: Ident) -> BindingIdent {
+        BindingIdent(self.add_node(
+            span,
+            NodeKind::BindingIdent,
+            NodePayload {
+                inline_data: id.node_id().index() as u32,
+            },
+        ))
     }
     #[inline]
-    pub fn box_private_name(&self, span: Span, name: Atom<'a>) -> Box<'a, PrivateName<'a>> {
-        self.allocator.boxed(self.private_name(span, name))
+    pub fn lit_str(&mut self, span: Span, value: Wtf8Atom<'a>, raw: Option<Atom<'a>>) -> Lit {
+        Lit::Str(self.str(span, value, raw).into())
     }
     #[inline]
-    pub fn binding_ident(&self, id: Box<'a, Ident<'a>>) -> BindingIdent<'a> {
-        BindingIdent { id }
+    pub fn lit_bool(&mut self, span: Span, value: bool) -> Lit {
+        Lit::Bool(self.bool(span, value).into())
     }
     #[inline]
-    pub fn box_binding_ident(&self, id: Box<'a, Ident<'a>>) -> Box<'a, BindingIdent<'a>> {
-        self.allocator.boxed(self.binding_ident(id))
+    pub fn lit_null(&mut self, span: Span) -> Lit {
+        Lit::Null(self.null(span).into())
     }
     #[inline]
-    pub fn lit_str(&self, span: Span, value: Wtf8Atom<'a>, raw: Option<Atom<'a>>) -> Lit<'a> {
-        Lit::Str(self.box_str(span, value, raw))
+    pub fn lit_number(&mut self, span: Span, value: f64, raw: Option<Atom<'a>>) -> Lit {
+        Lit::Num(self.number(span, value, raw).into())
     }
     #[inline]
-    pub fn lit_bool(&self, span: Span, value: bool) -> Lit<'a> {
-        Lit::Bool(self.box_bool(span, value))
+    pub fn lit_big_int(&mut self, span: Span, value: Atom<'a>, raw: Option<Atom<'a>>) -> Lit {
+        Lit::BigInt(self.big_int(span, value, raw).into())
     }
     #[inline]
-    pub fn lit_null(&self, span: Span) -> Lit<'a> {
-        Lit::Null(self.box_null(span))
+    pub fn lit_regex(&mut self, span: Span, exp: Atom<'a>, flags: Atom<'a>) -> Lit {
+        Lit::Regex(self.regex(span, exp, flags).into())
     }
     #[inline]
-    pub fn lit_number(&self, span: Span, value: f64, raw: Option<Atom<'a>>) -> Lit<'a> {
-        Lit::Num(self.box_number(span, value, raw))
+    pub fn str(&mut self, span: Span, value: Wtf8Atom<'a>, raw: Option<Atom<'a>>) -> Str {
+        let _f0 = self.add_extra(value.to_extra_data());
+        let _f1 = self.add_extra(raw.to_extra_data());
+        Str(self.add_node(
+            span,
+            NodeKind::Str,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn lit_big_int(&self, span: Span, value: Atom<'a>, raw: Option<Atom<'a>>) -> Lit<'a> {
-        Lit::BigInt(self.box_big_int(span, value, raw))
+    pub fn bool(&mut self, span: Span, value: bool) -> Bool {
+        Bool(self.add_node(
+            span,
+            NodeKind::Bool,
+            NodePayload {
+                inline_data: value as u32,
+            },
+        ))
     }
     #[inline]
-    pub fn lit_regex(&self, span: Span, exp: Atom<'a>, flags: Atom<'a>) -> Lit<'a> {
-        Lit::Regex(self.box_regex(span, exp, flags))
+    pub fn null(&mut self, span: Span) -> Null {
+        Null(self.add_node(span, NodeKind::Null, NodePayload { empty: () }))
     }
     #[inline]
-    pub fn str(&self, span: Span, value: Wtf8Atom<'a>, raw: Option<Atom<'a>>) -> Str<'a> {
-        Str { span, value, raw }
+    pub fn number(&mut self, span: Span, value: f64, raw: Option<Atom<'a>>) -> Number {
+        let _f0 = self.add_extra(value.to_extra_data());
+        let _f1 = self.add_extra(raw.to_extra_data());
+        Number(self.add_node(
+            span,
+            NodeKind::Number,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_str(
-        &self,
-        span: Span,
-        value: Wtf8Atom<'a>,
-        raw: Option<Atom<'a>>,
-    ) -> Box<'a, Str<'a>> {
-        self.allocator.boxed(self.str(span, value, raw))
+    pub fn big_int(&mut self, span: Span, value: Atom<'a>, raw: Option<Atom<'a>>) -> BigInt {
+        let _f0 = self.add_extra(value.to_extra_data());
+        let _f1 = self.add_extra(raw.to_extra_data());
+        BigInt(self.add_node(
+            span,
+            NodeKind::BigInt,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn bool(&self, span: Span, value: bool) -> Bool {
-        Bool { span, value }
-    }
-    #[inline]
-    pub fn box_bool(&self, span: Span, value: bool) -> Box<'a, Bool> {
-        self.allocator.boxed(self.bool(span, value))
-    }
-    #[inline]
-    pub fn null(&self, span: Span) -> Null {
-        Null { span }
-    }
-    #[inline]
-    pub fn box_null(&self, span: Span) -> Box<'a, Null> {
-        self.allocator.boxed(self.null(span))
-    }
-    #[inline]
-    pub fn number(&self, span: Span, value: f64, raw: Option<Atom<'a>>) -> Number<'a> {
-        Number { span, value, raw }
-    }
-    #[inline]
-    pub fn box_number(&self, span: Span, value: f64, raw: Option<Atom<'a>>) -> Box<'a, Number<'a>> {
-        self.allocator.boxed(self.number(span, value, raw))
-    }
-    #[inline]
-    pub fn big_int(&self, span: Span, value: Atom<'a>, raw: Option<Atom<'a>>) -> BigInt<'a> {
-        BigInt { span, value, raw }
-    }
-    #[inline]
-    pub fn box_big_int(
-        &self,
-        span: Span,
-        value: Atom<'a>,
-        raw: Option<Atom<'a>>,
-    ) -> Box<'a, BigInt<'a>> {
-        self.allocator.boxed(self.big_int(span, value, raw))
-    }
-    #[inline]
-    pub fn regex(&self, span: Span, exp: Atom<'a>, flags: Atom<'a>) -> Regex<'a> {
-        Regex { span, exp, flags }
-    }
-    #[inline]
-    pub fn box_regex(&self, span: Span, exp: Atom<'a>, flags: Atom<'a>) -> Box<'a, Regex<'a>> {
-        self.allocator.boxed(self.regex(span, exp, flags))
+    pub fn regex(&mut self, span: Span, exp: Atom<'a>, flags: Atom<'a>) -> Regex {
+        let _f0 = self.add_extra(exp.to_extra_data());
+        let _f1 = self.add_extra(flags.to_extra_data());
+        Regex(self.add_node(
+            span,
+            NodeKind::Regex,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn jsx_object_jsx_member_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: JSXObject<'a>,
-        prop: Box<'a, IdentName<'a>>,
-    ) -> JSXObject<'a> {
-        JSXObject::JSXMemberExpr(self.box_jsx_member_expr(span, obj, prop))
+        obj: JSXObject,
+        prop: IdentName,
+    ) -> JSXObject {
+        JSXObject::JSXMemberExpr(self.jsx_member_expr(span, obj, prop).into())
     }
     #[inline]
-    pub fn jsx_object_ident(&self, span: Span, sym: Atom<'a>) -> JSXObject<'a> {
-        JSXObject::Ident(self.box_ident(span, sym))
+    pub fn jsx_object_ident(&mut self, span: Span, sym: Atom<'a>) -> JSXObject {
+        JSXObject::Ident(self.ident(span, sym).into())
     }
     #[inline]
     pub fn jsx_member_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: JSXObject<'a>,
-        prop: Box<'a, IdentName<'a>>,
-    ) -> JSXMemberExpr<'a> {
-        JSXMemberExpr { span, obj, prop }
-    }
-    #[inline]
-    pub fn box_jsx_member_expr(
-        &self,
-        span: Span,
-        obj: JSXObject<'a>,
-        prop: Box<'a, IdentName<'a>>,
-    ) -> Box<'a, JSXMemberExpr<'a>> {
-        self.allocator.boxed(self.jsx_member_expr(span, obj, prop))
+        obj: JSXObject,
+        prop: IdentName,
+    ) -> JSXMemberExpr {
+        let _f0 = self.add_extra(obj.to_extra_data());
+        let _f1 = self.add_extra(prop.to_extra_data());
+        JSXMemberExpr(self.add_node(
+            span,
+            NodeKind::JSXMemberExpr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn jsx_namespaced_name(
-        &self,
+        &mut self,
         span: Span,
-        ns: Box<'a, IdentName<'a>>,
-        name: Box<'a, IdentName<'a>>,
-    ) -> JSXNamespacedName<'a> {
-        JSXNamespacedName { span, ns, name }
+        ns: IdentName,
+        name: IdentName,
+    ) -> JSXNamespacedName {
+        let _f0 = self.add_extra(ns.to_extra_data());
+        let _f1 = self.add_extra(name.to_extra_data());
+        JSXNamespacedName(self.add_node(
+            span,
+            NodeKind::JSXNamespacedName,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_jsx_namespaced_name(
-        &self,
-        span: Span,
-        ns: Box<'a, IdentName<'a>>,
-        name: Box<'a, IdentName<'a>>,
-    ) -> Box<'a, JSXNamespacedName<'a>> {
-        self.allocator
-            .boxed(self.jsx_namespaced_name(span, ns, name))
+    pub fn jsx_empty_expr(&mut self, span: Span) -> JSXEmptyExpr {
+        JSXEmptyExpr(self.add_node(span, NodeKind::JSXEmptyExpr, NodePayload { empty: () }))
     }
     #[inline]
-    pub fn jsx_empty_expr(&self, span: Span) -> JSXEmptyExpr {
-        JSXEmptyExpr { span }
+    pub fn jsx_expr_container(&mut self, span: Span, expr: JSXExpr) -> JSXExprContainer {
+        let _f0 = self.add_extra(expr.to_extra_data());
+        JSXExprContainer(self.add_node(
+            span,
+            NodeKind::JSXExprContainer,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_jsx_empty_expr(&self, span: Span) -> Box<'a, JSXEmptyExpr> {
-        self.allocator.boxed(self.jsx_empty_expr(span))
+    pub fn jsx_expr_jsx_empty_expr(&mut self, span: Span) -> JSXExpr {
+        JSXExpr::JSXEmptyExpr(self.jsx_empty_expr(span).into())
     }
     #[inline]
-    pub fn jsx_expr_container(&self, span: Span, expr: JSXExpr<'a>) -> JSXExprContainer<'a> {
-        JSXExprContainer { span, expr }
-    }
-    #[inline]
-    pub fn box_jsx_expr_container(
-        &self,
-        span: Span,
-        expr: JSXExpr<'a>,
-    ) -> Box<'a, JSXExprContainer<'a>> {
-        self.allocator.boxed(self.jsx_expr_container(span, expr))
-    }
-    #[inline]
-    pub fn jsx_expr_jsx_empty_expr(&self, span: Span) -> JSXExpr<'a> {
-        JSXExpr::JSXEmptyExpr(self.box_jsx_empty_expr(span))
-    }
-    #[inline]
-    pub fn jsx_expr_expr_this_expr(&self, span: Span) -> JSXExpr<'a> {
-        JSXExpr::Expr(self.allocator.boxed(Expr::This(self.box_this_expr(span))))
+    pub fn jsx_expr_expr_this_expr(&mut self, span: Span) -> JSXExpr {
+        JSXExpr::Expr(Expr::This(self.this_expr(span).into()))
     }
     #[inline]
     pub fn jsx_expr_expr_array_lit(
-        &self,
+        &mut self,
         span: Span,
-        elems: Vec<'a, Option<Box<'a, ExprOrSpread<'a>>>>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::Array(self.box_array_lit(span, elems))),
-        )
+        elems: TypedSubRange<Option<ExprOrSpread>>,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::Array(self.array_lit(span, elems).into()))
     }
     #[inline]
     pub fn jsx_expr_expr_object_lit(
-        &self,
+        &mut self,
         span: Span,
-        props: Vec<'a, PropOrSpread<'a>>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::Object(self.box_object_lit(span, props))),
-        )
+        props: TypedSubRange<PropOrSpread>,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::Object(self.object_lit(span, props).into()))
     }
     #[inline]
     pub fn jsx_expr_expr_fn_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        function: Box<'a, Function<'a>>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::Fn(self.box_fn_expr(ident, function))),
-        )
+        &mut self,
+        span: Span,
+        ident: Option<Ident>,
+        function: Function,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::Fn(self.fn_expr(span, ident, function).into()))
     }
     #[inline]
-    pub fn jsx_expr_expr_unary_expr(&self, span: Span, op: UnaryOp, arg: Expr<'a>) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::Unary(self.box_unary_expr(span, op, arg))),
-        )
+    pub fn jsx_expr_expr_unary_expr(&mut self, span: Span, op: UnaryOp, arg: Expr) -> JSXExpr {
+        JSXExpr::Expr(Expr::Unary(self.unary_expr(span, op, arg).into()))
     }
     #[inline]
     pub fn jsx_expr_expr_update_expr(
-        &self,
+        &mut self,
         span: Span,
         op: UpdateOp,
         prefix: bool,
-        arg: SimpleAssignTarget<'a>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::Update(self.box_update_expr(span, op, prefix, arg))),
-        )
+        arg: SimpleAssignTarget,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::Update(self.update_expr(span, op, prefix, arg).into()))
     }
     #[inline]
     pub fn jsx_expr_expr_bin_expr(
-        &self,
+        &mut self,
         span: Span,
         op: BinaryOp,
-        left: Expr<'a>,
-        right: Expr<'a>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::Bin(self.box_bin_expr(span, op, left, right))),
-        )
+        left: Expr,
+        right: Expr,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::Bin(self.bin_expr(span, op, left, right).into()))
     }
     #[inline]
     pub fn jsx_expr_expr_assign_expr(
-        &self,
+        &mut self,
         span: Span,
         op: AssignOp,
-        left: AssignTarget<'a>,
-        right: Expr<'a>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::Assign(self.box_assign_expr(span, op, left, right))),
-        )
+        left: AssignTarget,
+        right: Expr,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::Assign(self.assign_expr(span, op, left, right).into()))
     }
     #[inline]
     pub fn jsx_expr_expr_member_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: Expr<'a>,
-        prop: MemberProp<'a>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::Member(self.box_member_expr(span, obj, prop))),
-        )
+        obj: Expr,
+        prop: MemberProp,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::Member(self.member_expr(span, obj, prop).into()))
     }
     #[inline]
     pub fn jsx_expr_expr_super_prop_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: Box<'a, Super>,
-        prop: SuperProp<'a>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::SuperProp(self.box_super_prop_expr(span, obj, prop))),
-        )
+        obj: Super,
+        prop: SuperProp,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::SuperProp(
+            self.super_prop_expr(span, obj, prop).into(),
+        ))
     }
     #[inline]
     pub fn jsx_expr_expr_cond_expr(
-        &self,
+        &mut self,
         span: Span,
-        test: Expr<'a>,
-        cons: Expr<'a>,
-        alt: Expr<'a>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::Cond(self.box_cond_expr(span, test, cons, alt))),
-        )
+        test: Expr,
+        cons: Expr,
+        alt: Expr,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::Cond(self.cond_expr(span, test, cons, alt).into()))
     }
     #[inline]
     pub fn jsx_expr_expr_import_expr(
-        &self,
+        &mut self,
         span: Span,
         import_span: Span,
-        source: Expr<'a>,
-        options: Option<Expr<'a>>,
+        source: Expr,
+        options: Option<Expr>,
         phase: ImportPhase,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(self.allocator.boxed(Expr::Import(self.box_import_expr(
-            span,
-            import_span,
-            source,
-            options,
-            phase,
-        ))))
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::Import(
+            self.import_expr(span, import_span, source, options, phase)
+                .into(),
+        ))
     }
     #[inline]
     pub fn jsx_expr_expr_call_expr(
-        &self,
+        &mut self,
         span: Span,
-        callee: Callee<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::Call(self.box_call_expr(span, callee, args))),
-        )
+        callee: Callee,
+        args: TypedSubRange<ExprOrSpread>,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::Call(self.call_expr(span, callee, args).into()))
     }
     #[inline]
     pub fn jsx_expr_expr_new_expr(
-        &self,
+        &mut self,
         span: Span,
-        callee: Expr<'a>,
-        args: Vec<'a, ExprOrSpread<'a>>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::New(self.box_new_expr(span, callee, args))),
-        )
+        callee: Expr,
+        args: TypedSubRange<ExprOrSpread>,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::New(self.new_expr(span, callee, args).into()))
     }
     #[inline]
-    pub fn jsx_expr_expr_seq_expr(&self, span: Span, exprs: Vec<'a, Expr<'a>>) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::Seq(self.box_seq_expr(span, exprs))),
-        )
+    pub fn jsx_expr_expr_seq_expr(&mut self, span: Span, exprs: TypedSubRange<Expr>) -> JSXExpr {
+        JSXExpr::Expr(Expr::Seq(self.seq_expr(span, exprs).into()))
     }
     #[inline]
-    pub fn jsx_expr_expr_ident(&self, span: Span, sym: Atom<'a>) -> JSXExpr<'a> {
-        JSXExpr::Expr(self.allocator.boxed(Expr::Ident(self.box_ident(span, sym))))
+    pub fn jsx_expr_expr_ident(&mut self, span: Span, sym: Atom<'a>) -> JSXExpr {
+        JSXExpr::Expr(Expr::Ident(self.ident(span, sym).into()))
     }
     #[inline]
     pub fn jsx_expr_expr_lit_str(
-        &self,
+        &mut self,
         span: Span,
         value: Wtf8Atom<'a>,
         raw: Option<Atom<'a>>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::Str(self.box_str(span, value, raw))),
-            )),
-        )
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::Lit(Lit::Str(self.str(span, value, raw).into())))
     }
     #[inline]
-    pub fn jsx_expr_expr_lit_bool(&self, span: Span, value: bool) -> JSXExpr<'a> {
-        JSXExpr::Expr(self.allocator.boxed(Expr::Lit(
-            self.allocator.boxed(Lit::Bool(self.box_bool(span, value))),
-        )))
+    pub fn jsx_expr_expr_lit_bool(&mut self, span: Span, value: bool) -> JSXExpr {
+        JSXExpr::Expr(Expr::Lit(Lit::Bool(self.bool(span, value).into())))
     }
     #[inline]
-    pub fn jsx_expr_expr_lit_null(&self, span: Span) -> JSXExpr<'a> {
-        JSXExpr::Expr(self.allocator.boxed(Expr::Lit(
-            self.allocator.boxed(Lit::Null(self.box_null(span))),
-        )))
+    pub fn jsx_expr_expr_lit_null(&mut self, span: Span) -> JSXExpr {
+        JSXExpr::Expr(Expr::Lit(Lit::Null(self.null(span).into())))
     }
     #[inline]
     pub fn jsx_expr_expr_lit_number(
-        &self,
+        &mut self,
         span: Span,
         value: f64,
         raw: Option<Atom<'a>>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::Num(self.box_number(span, value, raw))),
-            )),
-        )
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::Lit(Lit::Num(self.number(span, value, raw).into())))
     }
     #[inline]
     pub fn jsx_expr_expr_lit_big_int(
-        &self,
+        &mut self,
         span: Span,
         value: Atom<'a>,
         raw: Option<Atom<'a>>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::BigInt(self.box_big_int(span, value, raw))),
-            )),
-        )
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::Lit(Lit::BigInt(
+            self.big_int(span, value, raw).into(),
+        )))
     }
     #[inline]
     pub fn jsx_expr_expr_lit_regex(
-        &self,
+        &mut self,
         span: Span,
         exp: Atom<'a>,
         flags: Atom<'a>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator.boxed(Expr::Lit(
-                self.allocator
-                    .boxed(Lit::Regex(self.box_regex(span, exp, flags))),
-            )),
-        )
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::Lit(Lit::Regex(self.regex(span, exp, flags).into())))
     }
     #[inline]
     pub fn jsx_expr_expr_tpl(
-        &self,
+        &mut self,
         span: Span,
-        exprs: Vec<'a, Expr<'a>>,
-        quasis: Vec<'a, TplElement<'a>>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::Tpl(self.box_tpl(span, exprs, quasis))),
-        )
+        exprs: TypedSubRange<Expr>,
+        quasis: TypedSubRange<TplElement>,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::Tpl(self.tpl(span, exprs, quasis).into()))
     }
     #[inline]
-    pub fn jsx_expr_expr_tagged_tpl(
-        &self,
-        span: Span,
-        tag: Expr<'a>,
-        tpl: Box<'a, Tpl<'a>>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::TaggedTpl(self.box_tagged_tpl(span, tag, tpl))),
-        )
+    pub fn jsx_expr_expr_tagged_tpl(&mut self, span: Span, tag: Expr, tpl: Tpl) -> JSXExpr {
+        JSXExpr::Expr(Expr::TaggedTpl(self.tagged_tpl(span, tag, tpl).into()))
     }
     #[inline]
     pub fn jsx_expr_expr_arrow_expr(
-        &self,
+        &mut self,
         span: Span,
-        params: Vec<'a, Pat<'a>>,
-        body: BlockStmtOrExpr<'a>,
+        params: TypedSubRange<Pat>,
+        body: BlockStmtOrExpr,
         is_async: bool,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(self.allocator.boxed(Expr::Arrow(
-            self.box_arrow_expr(span, params, body, is_async),
-        )))
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::Arrow(
+            self.arrow_expr(span, params, body, is_async).into(),
+        ))
     }
     #[inline]
     pub fn jsx_expr_expr_class_expr(
-        &self,
-        ident: Option<Box<'a, Ident<'a>>>,
-        class: Box<'a, Class<'a>>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::Class(self.box_class_expr(ident, class))),
-        )
+        &mut self,
+        span: Span,
+        ident: Option<Ident>,
+        class: Class,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::Class(self.class_expr(span, ident, class).into()))
     }
     #[inline]
     pub fn jsx_expr_expr_yield_expr(
-        &self,
+        &mut self,
         span: Span,
-        arg: Option<Expr<'a>>,
+        arg: Option<Expr>,
         delegate: bool,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::Yield(self.box_yield_expr(span, arg, delegate))),
-        )
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::Yield(self.yield_expr(span, arg, delegate).into()))
     }
     #[inline]
-    pub fn jsx_expr_expr_meta_prop_expr(&self, span: Span, kind: MetaPropKind) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::MetaProp(self.box_meta_prop_expr(span, kind))),
-        )
+    pub fn jsx_expr_expr_meta_prop_expr(&mut self, span: Span, kind: MetaPropKind) -> JSXExpr {
+        JSXExpr::Expr(Expr::MetaProp(self.meta_prop_expr(span, kind).into()))
     }
     #[inline]
-    pub fn jsx_expr_expr_await_expr(&self, span: Span, arg: Expr<'a>) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::Await(self.box_await_expr(span, arg))),
-        )
+    pub fn jsx_expr_expr_await_expr(&mut self, span: Span, arg: Expr) -> JSXExpr {
+        JSXExpr::Expr(Expr::Await(self.await_expr(span, arg).into()))
     }
     #[inline]
-    pub fn jsx_expr_expr_paren_expr(&self, span: Span, expr: Expr<'a>) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::Paren(self.box_paren_expr(span, expr))),
-        )
+    pub fn jsx_expr_expr_paren_expr(&mut self, span: Span, expr: Expr) -> JSXExpr {
+        JSXExpr::Expr(Expr::Paren(self.paren_expr(span, expr).into()))
     }
     #[inline]
     pub fn jsx_expr_expr_jsx_member_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: JSXObject<'a>,
-        prop: Box<'a, IdentName<'a>>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::JSXMember(self.box_jsx_member_expr(span, obj, prop))),
-        )
+        obj: JSXObject,
+        prop: IdentName,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::JSXMember(
+            self.jsx_member_expr(span, obj, prop).into(),
+        ))
     }
     #[inline]
     pub fn jsx_expr_expr_jsx_namespaced_name(
-        &self,
+        &mut self,
         span: Span,
-        ns: Box<'a, IdentName<'a>>,
-        name: Box<'a, IdentName<'a>>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(self.allocator.boxed(Expr::JSXNamespacedName(
-            self.box_jsx_namespaced_name(span, ns, name),
-        )))
+        ns: IdentName,
+        name: IdentName,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::JSXNamespacedName(
+            self.jsx_namespaced_name(span, ns, name).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expr_expr_jsx_empty_expr(&self, span: Span) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::JSXEmpty(self.box_jsx_empty_expr(span))),
-        )
+    pub fn jsx_expr_expr_jsx_empty_expr(&mut self, span: Span) -> JSXExpr {
+        JSXExpr::Expr(Expr::JSXEmpty(self.jsx_empty_expr(span).into()))
     }
     #[inline]
     pub fn jsx_expr_expr_jsx_element(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningElement<'a>>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Option<Box<'a, JSXClosingElement<'a>>>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(self.allocator.boxed(Expr::JSXElement(
-            self.box_jsx_element(span, opening, children, closing),
-        )))
+        opening: JSXOpeningElement,
+        children: TypedSubRange<JSXElementChild>,
+        closing: Option<JSXClosingElement>,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::JSXElement(
+            self.jsx_element(span, opening, children, closing).into(),
+        ))
     }
     #[inline]
     pub fn jsx_expr_expr_jsx_fragment(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningFragment>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Box<'a, JSXClosingFragment>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(self.allocator.boxed(Expr::JSXFragment(
-            self.box_jsx_fragment(span, opening, children, closing),
-        )))
+        opening: JSXOpeningFragment,
+        children: TypedSubRange<JSXElementChild>,
+        closing: JSXClosingFragment,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::JSXFragment(
+            self.jsx_fragment(span, opening, children, closing).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expr_expr_private_name(&self, span: Span, name: Atom<'a>) -> JSXExpr<'a> {
-        JSXExpr::Expr(
-            self.allocator
-                .boxed(Expr::PrivateName(self.box_private_name(span, name))),
-        )
+    pub fn jsx_expr_expr_private_name(&mut self, span: Span, name: Atom<'a>) -> JSXExpr {
+        JSXExpr::Expr(Expr::PrivateName(self.private_name(span, name).into()))
     }
     #[inline]
     pub fn jsx_expr_expr_opt_chain_expr(
-        &self,
+        &mut self,
         span: Span,
         optional: bool,
-        base: OptChainBase<'a>,
-    ) -> JSXExpr<'a> {
-        JSXExpr::Expr(self.allocator.boxed(Expr::OptChain(
-            self.box_opt_chain_expr(span, optional, base),
-        )))
+        base: OptChainBase,
+    ) -> JSXExpr {
+        JSXExpr::Expr(Expr::OptChain(
+            self.opt_chain_expr(span, optional, base).into(),
+        ))
     }
     #[inline]
-    pub fn jsx_expr_expr_invalid(&self) -> JSXExpr<'a> {
-        JSXExpr::Expr(self.allocator.boxed(Expr::Invalid(self.box_invalid())))
+    pub fn jsx_expr_expr_invalid(&mut self, span: Span) -> JSXExpr {
+        JSXExpr::Expr(Expr::Invalid(self.invalid(span).into()))
     }
     #[inline]
-    pub fn jsx_spread_child(&self, span: Span, expr: Expr<'a>) -> JSXSpreadChild<'a> {
-        JSXSpreadChild { span, expr }
+    pub fn jsx_spread_child(&mut self, span: Span, expr: Expr) -> JSXSpreadChild {
+        let _f0 = self.add_extra(expr.to_extra_data());
+        JSXSpreadChild(self.add_node(
+            span,
+            NodeKind::JSXSpreadChild,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_jsx_spread_child(&self, span: Span, expr: Expr<'a>) -> Box<'a, JSXSpreadChild<'a>> {
-        self.allocator.boxed(self.jsx_spread_child(span, expr))
-    }
-    #[inline]
-    pub fn jsx_element_name_ident(&self, span: Span, sym: Atom<'a>) -> JSXElementName<'a> {
-        JSXElementName::Ident(self.box_ident(span, sym))
+    pub fn jsx_element_name_ident(&mut self, span: Span, sym: Atom<'a>) -> JSXElementName {
+        JSXElementName::Ident(self.ident(span, sym).into())
     }
     #[inline]
     pub fn jsx_element_name_jsx_member_expr(
-        &self,
+        &mut self,
         span: Span,
-        obj: JSXObject<'a>,
-        prop: Box<'a, IdentName<'a>>,
-    ) -> JSXElementName<'a> {
-        JSXElementName::JSXMemberExpr(self.box_jsx_member_expr(span, obj, prop))
+        obj: JSXObject,
+        prop: IdentName,
+    ) -> JSXElementName {
+        JSXElementName::JSXMemberExpr(self.jsx_member_expr(span, obj, prop).into())
     }
     #[inline]
     pub fn jsx_element_name_jsx_namespaced_name(
-        &self,
+        &mut self,
         span: Span,
-        ns: Box<'a, IdentName<'a>>,
-        name: Box<'a, IdentName<'a>>,
-    ) -> JSXElementName<'a> {
-        JSXElementName::JSXNamespacedName(self.box_jsx_namespaced_name(span, ns, name))
+        ns: IdentName,
+        name: IdentName,
+    ) -> JSXElementName {
+        JSXElementName::JSXNamespacedName(self.jsx_namespaced_name(span, ns, name).into())
     }
     #[inline]
     pub fn jsx_opening_element(
-        &self,
+        &mut self,
         span: Span,
-        name: JSXElementName<'a>,
-        attrs: Vec<'a, JSXAttrOrSpread<'a>>,
+        name: JSXElementName,
+        attrs: TypedSubRange<JSXAttrOrSpread>,
         self_closing: bool,
-    ) -> JSXOpeningElement<'a> {
-        JSXOpeningElement {
+    ) -> JSXOpeningElement {
+        let _f0 = self.add_extra(name.to_extra_data());
+        let _f1 = self.add_extra(attrs.to_extra_data());
+        let _f2 = self.add_extra(self_closing.to_extra_data());
+        JSXOpeningElement(self.add_node(
             span,
-            name,
-            attrs,
-            self_closing,
-        }
-    }
-    #[inline]
-    pub fn box_jsx_opening_element(
-        &self,
-        span: Span,
-        name: JSXElementName<'a>,
-        attrs: Vec<'a, JSXAttrOrSpread<'a>>,
-        self_closing: bool,
-    ) -> Box<'a, JSXOpeningElement<'a>> {
-        self.allocator
-            .boxed(self.jsx_opening_element(span, name, attrs, self_closing))
+            NodeKind::JSXOpeningElement,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn jsx_attr_or_spread_jsx_attr(
-        &self,
+        &mut self,
         span: Span,
-        name: JSXAttrName<'a>,
-        value: Option<JSXAttrValue<'a>>,
-    ) -> JSXAttrOrSpread<'a> {
-        JSXAttrOrSpread::JSXAttr(self.box_jsx_attr(span, name, value))
+        name: JSXAttrName,
+        value: Option<JSXAttrValue>,
+    ) -> JSXAttrOrSpread {
+        JSXAttrOrSpread::JSXAttr(self.jsx_attr(span, name, value).into())
     }
     #[inline]
     pub fn jsx_attr_or_spread_spread_element(
-        &self,
+        &mut self,
+        span: Span,
         dot3_token: Span,
-        expr: Expr<'a>,
-    ) -> JSXAttrOrSpread<'a> {
-        JSXAttrOrSpread::SpreadElement(self.box_spread_element(dot3_token, expr))
+        expr: Expr,
+    ) -> JSXAttrOrSpread {
+        JSXAttrOrSpread::SpreadElement(self.spread_element(span, dot3_token, expr).into())
     }
     #[inline]
-    pub fn jsx_closing_element(
-        &self,
-        span: Span,
-        name: JSXElementName<'a>,
-    ) -> JSXClosingElement<'a> {
-        JSXClosingElement { span, name }
-    }
-    #[inline]
-    pub fn box_jsx_closing_element(
-        &self,
-        span: Span,
-        name: JSXElementName<'a>,
-    ) -> Box<'a, JSXClosingElement<'a>> {
-        self.allocator.boxed(self.jsx_closing_element(span, name))
+    pub fn jsx_closing_element(&mut self, span: Span, name: JSXElementName) -> JSXClosingElement {
+        let _f0 = self.add_extra(name.to_extra_data());
+        JSXClosingElement(self.add_node(
+            span,
+            NodeKind::JSXClosingElement,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn jsx_attr(
-        &self,
+        &mut self,
         span: Span,
-        name: JSXAttrName<'a>,
-        value: Option<JSXAttrValue<'a>>,
-    ) -> JSXAttr<'a> {
-        JSXAttr { span, name, value }
+        name: JSXAttrName,
+        value: Option<JSXAttrValue>,
+    ) -> JSXAttr {
+        let _f0 = self.add_extra(name.to_extra_data());
+        let _f1 = self.add_extra(value.to_extra_data());
+        JSXAttr(self.add_node(
+            span,
+            NodeKind::JSXAttr,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_jsx_attr(
-        &self,
-        span: Span,
-        name: JSXAttrName<'a>,
-        value: Option<JSXAttrValue<'a>>,
-    ) -> Box<'a, JSXAttr<'a>> {
-        self.allocator.boxed(self.jsx_attr(span, name, value))
-    }
-    #[inline]
-    pub fn jsx_attr_name_ident_name(&self, span: Span, sym: Atom<'a>) -> JSXAttrName<'a> {
-        JSXAttrName::Ident(self.box_ident_name(span, sym))
+    pub fn jsx_attr_name_ident_name(&mut self, span: Span, sym: Atom<'a>) -> JSXAttrName {
+        JSXAttrName::Ident(self.ident_name(span, sym).into())
     }
     #[inline]
     pub fn jsx_attr_name_jsx_namespaced_name(
-        &self,
+        &mut self,
         span: Span,
-        ns: Box<'a, IdentName<'a>>,
-        name: Box<'a, IdentName<'a>>,
-    ) -> JSXAttrName<'a> {
-        JSXAttrName::JSXNamespacedName(self.box_jsx_namespaced_name(span, ns, name))
+        ns: IdentName,
+        name: IdentName,
+    ) -> JSXAttrName {
+        JSXAttrName::JSXNamespacedName(self.jsx_namespaced_name(span, ns, name).into())
     }
     #[inline]
     pub fn jsx_attr_value_str(
-        &self,
+        &mut self,
         span: Span,
         value: Wtf8Atom<'a>,
         raw: Option<Atom<'a>>,
-    ) -> JSXAttrValue<'a> {
-        JSXAttrValue::Str(self.box_str(span, value, raw))
+    ) -> JSXAttrValue {
+        JSXAttrValue::Str(self.str(span, value, raw).into())
     }
     #[inline]
-    pub fn jsx_attr_value_jsx_expr_container(
-        &self,
-        span: Span,
-        expr: JSXExpr<'a>,
-    ) -> JSXAttrValue<'a> {
-        JSXAttrValue::JSXExprContainer(self.box_jsx_expr_container(span, expr))
+    pub fn jsx_attr_value_jsx_expr_container(&mut self, span: Span, expr: JSXExpr) -> JSXAttrValue {
+        JSXAttrValue::JSXExprContainer(self.jsx_expr_container(span, expr).into())
     }
     #[inline]
     pub fn jsx_attr_value_jsx_element(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningElement<'a>>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Option<Box<'a, JSXClosingElement<'a>>>,
-    ) -> JSXAttrValue<'a> {
-        JSXAttrValue::JSXElement(self.box_jsx_element(span, opening, children, closing))
+        opening: JSXOpeningElement,
+        children: TypedSubRange<JSXElementChild>,
+        closing: Option<JSXClosingElement>,
+    ) -> JSXAttrValue {
+        JSXAttrValue::JSXElement(self.jsx_element(span, opening, children, closing).into())
     }
     #[inline]
     pub fn jsx_attr_value_jsx_fragment(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningFragment>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Box<'a, JSXClosingFragment>,
-    ) -> JSXAttrValue<'a> {
-        JSXAttrValue::JSXFragment(self.box_jsx_fragment(span, opening, children, closing))
+        opening: JSXOpeningFragment,
+        children: TypedSubRange<JSXElementChild>,
+        closing: JSXClosingFragment,
+    ) -> JSXAttrValue {
+        JSXAttrValue::JSXFragment(self.jsx_fragment(span, opening, children, closing).into())
     }
     #[inline]
-    pub fn jsx_text(&self, span: Span, value: Atom<'a>, raw: Atom<'a>) -> JSXText<'a> {
-        JSXText { span, value, raw }
-    }
-    #[inline]
-    pub fn box_jsx_text(&self, span: Span, value: Atom<'a>, raw: Atom<'a>) -> Box<'a, JSXText<'a>> {
-        self.allocator.boxed(self.jsx_text(span, value, raw))
+    pub fn jsx_text(&mut self, span: Span, value: Atom<'a>, raw: Atom<'a>) -> JSXText {
+        let _f0 = self.add_extra(value.to_extra_data());
+        let _f1 = self.add_extra(raw.to_extra_data());
+        JSXText(self.add_node(
+            span,
+            NodeKind::JSXText,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn jsx_element(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningElement<'a>>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Option<Box<'a, JSXClosingElement<'a>>>,
-    ) -> JSXElement<'a> {
-        JSXElement {
+        opening: JSXOpeningElement,
+        children: TypedSubRange<JSXElementChild>,
+        closing: Option<JSXClosingElement>,
+    ) -> JSXElement {
+        let _f0 = self.add_extra(opening.to_extra_data());
+        let _f1 = self.add_extra(children.to_extra_data());
+        let _f2 = self.add_extra(closing.to_extra_data());
+        JSXElement(self.add_node(
             span,
-            opening,
-            children,
-            closing,
-        }
-    }
-    #[inline]
-    pub fn box_jsx_element(
-        &self,
-        span: Span,
-        opening: Box<'a, JSXOpeningElement<'a>>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Option<Box<'a, JSXClosingElement<'a>>>,
-    ) -> Box<'a, JSXElement<'a>> {
-        self.allocator
-            .boxed(self.jsx_element(span, opening, children, closing))
+            NodeKind::JSXElement,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
     pub fn jsx_element_child_jsx_text(
-        &self,
+        &mut self,
         span: Span,
         value: Atom<'a>,
         raw: Atom<'a>,
-    ) -> JSXElementChild<'a> {
-        JSXElementChild::JSXText(self.box_jsx_text(span, value, raw))
+    ) -> JSXElementChild {
+        JSXElementChild::JSXText(self.jsx_text(span, value, raw).into())
     }
     #[inline]
     pub fn jsx_element_child_jsx_expr_container(
-        &self,
+        &mut self,
         span: Span,
-        expr: JSXExpr<'a>,
-    ) -> JSXElementChild<'a> {
-        JSXElementChild::JSXExprContainer(self.box_jsx_expr_container(span, expr))
+        expr: JSXExpr,
+    ) -> JSXElementChild {
+        JSXElementChild::JSXExprContainer(self.jsx_expr_container(span, expr).into())
     }
     #[inline]
     pub fn jsx_element_child_jsx_spread_child(
-        &self,
+        &mut self,
         span: Span,
-        expr: Expr<'a>,
-    ) -> JSXElementChild<'a> {
-        JSXElementChild::JSXSpreadChild(self.box_jsx_spread_child(span, expr))
+        expr: Expr,
+    ) -> JSXElementChild {
+        JSXElementChild::JSXSpreadChild(self.jsx_spread_child(span, expr).into())
     }
     #[inline]
     pub fn jsx_element_child_jsx_element(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningElement<'a>>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Option<Box<'a, JSXClosingElement<'a>>>,
-    ) -> JSXElementChild<'a> {
-        JSXElementChild::JSXElement(self.box_jsx_element(span, opening, children, closing))
+        opening: JSXOpeningElement,
+        children: TypedSubRange<JSXElementChild>,
+        closing: Option<JSXClosingElement>,
+    ) -> JSXElementChild {
+        JSXElementChild::JSXElement(self.jsx_element(span, opening, children, closing).into())
     }
     #[inline]
     pub fn jsx_element_child_jsx_fragment(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningFragment>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Box<'a, JSXClosingFragment>,
-    ) -> JSXElementChild<'a> {
-        JSXElementChild::JSXFragment(self.box_jsx_fragment(span, opening, children, closing))
+        opening: JSXOpeningFragment,
+        children: TypedSubRange<JSXElementChild>,
+        closing: JSXClosingFragment,
+    ) -> JSXElementChild {
+        JSXElementChild::JSXFragment(self.jsx_fragment(span, opening, children, closing).into())
     }
     #[inline]
     pub fn jsx_fragment(
-        &self,
+        &mut self,
         span: Span,
-        opening: Box<'a, JSXOpeningFragment>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Box<'a, JSXClosingFragment>,
-    ) -> JSXFragment<'a> {
-        JSXFragment {
+        opening: JSXOpeningFragment,
+        children: TypedSubRange<JSXElementChild>,
+        closing: JSXClosingFragment,
+    ) -> JSXFragment {
+        let _f0 = self.add_extra(opening.to_extra_data());
+        let _f1 = self.add_extra(children.to_extra_data());
+        let _f2 = self.add_extra(closing.to_extra_data());
+        JSXFragment(self.add_node(
             span,
-            opening,
-            children,
-            closing,
-        }
+            NodeKind::JSXFragment,
+            NodePayload {
+                extra_data_start: _f0,
+            },
+        ))
     }
     #[inline]
-    pub fn box_jsx_fragment(
-        &self,
-        span: Span,
-        opening: Box<'a, JSXOpeningFragment>,
-        children: Vec<'a, JSXElementChild<'a>>,
-        closing: Box<'a, JSXClosingFragment>,
-    ) -> Box<'a, JSXFragment<'a>> {
-        self.allocator
-            .boxed(self.jsx_fragment(span, opening, children, closing))
+    pub fn jsx_opening_fragment(&mut self, span: Span) -> JSXOpeningFragment {
+        JSXOpeningFragment(self.add_node(
+            span,
+            NodeKind::JSXOpeningFragment,
+            NodePayload { empty: () },
+        ))
     }
     #[inline]
-    pub fn jsx_opening_fragment(&self, span: Span) -> JSXOpeningFragment {
-        JSXOpeningFragment { span }
-    }
-    #[inline]
-    pub fn box_jsx_opening_fragment(&self, span: Span) -> Box<'a, JSXOpeningFragment> {
-        self.allocator.boxed(self.jsx_opening_fragment(span))
-    }
-    #[inline]
-    pub fn jsx_closing_fragment(&self, span: Span) -> JSXClosingFragment {
-        JSXClosingFragment { span }
-    }
-    #[inline]
-    pub fn box_jsx_closing_fragment(&self, span: Span) -> Box<'a, JSXClosingFragment> {
-        self.allocator.boxed(self.jsx_closing_fragment(span))
+    pub fn jsx_closing_fragment(&mut self, span: Span) -> JSXClosingFragment {
+        JSXClosingFragment(self.add_node(
+            span,
+            NodeKind::JSXClosingFragment,
+            NodePayload { empty: () },
+        ))
     }
 }
