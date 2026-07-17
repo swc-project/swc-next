@@ -6,7 +6,10 @@ use crate::{
     AST_CRATE_PATH,
     output::{RawOutput, RustOutput, output_path},
     schema::{AstEnum, AstStruct, AstType, Schema},
-    util::{INLINE_DATA_U32_SIZE, calculate_inline_layout, generate_field_to_u32, safe_ident},
+    util::{
+        INLINE_DATA_U64_SIZE, InlineStorageMode, calculate_inline_layout, generate_field_to_u32,
+        generate_field_to_u64, safe_ident,
+    },
 };
 
 pub fn ast_builder(schema: &Schema) -> RawOutput {
@@ -60,9 +63,8 @@ fn generate_build_function_for_struct(ast: &AstStruct, schema: &Schema) -> Token
     }
 }
 
-/// Generate build function using inline storage (for small nodes)
-/// Layout (4 bytes total):
-/// - Bytes 0-3: NodePayload.inline_data (u32)
+/// Generate a builder using either all 12 payload bytes or the leading u64 plus
+/// an ExtraDataId in the trailing word.
 fn generate_build_function_inline(
     ast: &AstStruct,
     schema: &Schema,
@@ -71,7 +73,6 @@ fn generate_build_function_inline(
     fn_params: TokenStream,
     layout: &crate::util::InlineLayout,
 ) -> TokenStream {
-    // Optimization: zero-field nodes use empty: () for shorter generated code
     if layout.fields.is_empty() {
         return quote! {
             #[inline]
@@ -79,73 +80,115 @@ fn generate_build_function_inline(
                 #ret_ty(self.add_node(
                     span,
                     NodeKind::#ret_ty,
-                    NodePayload { empty: () },
+                    NodePayload::inline(0, 0),
                 ))
             }
         };
     }
 
-    // Optimization: if FourBytes mode with a single field at offset 0 (1-4 bytes),
-    // we can directly assign the u32 value without byte conversion
-    let is_single_u32_field = layout.fields.len() == 1
-        && layout.fields[0].1 == 0   // byte_offset == 0
-        && layout.fields[0].2 <= INLINE_DATA_U32_SIZE; // byte_size <= 4
-
-    if is_single_u32_field {
-        let (field_idx, _, _) = layout.fields[0];
-        let field = &ast.fields[field_idx];
-        let field_name = format_ident!("{}", field.name);
-        let field_ty = &schema.types[field.type_id];
-
-        // Generate direct u32 value
-        let u32_value = generate_field_to_u32(field_ty, &field_name, schema);
-
-        return quote! {
-            #[inline]
-            pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
-                #ret_ty(self.add_node(
-                    span,
-                    NodeKind::#ret_ty,
-                    NodePayload {
-                        inline_data: #u32_value,
-                    },
-                ))
-            }
-        };
-    }
-
-    // General case: pack fields into NodePayload.inline_data.
+    let mut inline_defaults = TokenStream::new();
+    let mut pack_u64 = TokenStream::new();
     let mut pack_u32 = TokenStream::new();
 
     for &(field_idx, byte_offset, byte_size) in &layout.fields {
         let field = &ast.fields[field_idx];
-        let field_name = format_ident!("{}", field.name);
+        let mut field_name = format_ident!("{}", field.name);
         let field_ty = &schema.types[field.type_id];
 
-        // Generate u32 value for this field
-        let field_u32 = generate_field_to_u32(field_ty, &field_name, schema);
-        let bit_offset = byte_offset * 8;
+        if should_default_in_builder(ast, &field.name) {
+            let default_name = format_ident!("_inline_default_{field_idx}");
+            let default_ty = field_ty.repr_ident(schema);
+            inline_defaults.extend(quote! {
+                let #default_name = <#default_ty>::default();
+            });
+            field_name = default_name;
+        }
 
-        debug_assert!(byte_offset + byte_size <= INLINE_DATA_U32_SIZE);
-        if byte_offset == 0 {
-            pack_u32.extend(quote! { | #field_u32 });
+        if byte_size == INLINE_DATA_U64_SIZE {
+            debug_assert_eq!(byte_offset, 0);
+            let field_u64 = generate_field_to_u64(field_ty, &field_name);
+            pack_u64.extend(quote! { | #field_u64 });
+            continue;
+        }
+
+        let field_u32 = generate_field_to_u32(field_ty, &field_name, schema);
+        if byte_offset < INLINE_DATA_U64_SIZE {
+            debug_assert!(byte_offset + byte_size <= INLINE_DATA_U64_SIZE);
+            let bit_offset = byte_offset * 8;
+            if bit_offset == 0 {
+                pack_u64.extend(quote! { | (#field_u32 as u64) });
+            } else {
+                pack_u64.extend(quote! { | ((#field_u32 as u64) << #bit_offset) });
+            }
         } else {
-            pack_u32.extend(quote! { | ((#field_u32) << #bit_offset) });
+            let word_offset = byte_offset - INLINE_DATA_U64_SIZE;
+            debug_assert!(word_offset + byte_size <= 4);
+            let bit_offset = word_offset * 8;
+            if bit_offset == 0 {
+                pack_u32.extend(quote! { | #field_u32 });
+            } else {
+                pack_u32.extend(quote! { | ((#field_u32) << #bit_offset) });
+            }
         }
     }
 
-    quote! {
-        #[inline]
-        pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
-            #ret_ty(
-                self.add_node(
+    match layout.mode {
+        InlineStorageMode::Full => quote! {
+            #[inline]
+            pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
+                #inline_defaults
+                #ret_ty(self.add_node(
                     span,
                     NodeKind::#ret_ty,
-                    NodePayload {
-                        inline_data: 0u32 #pack_u32,
-                    },
-                )
-            )
+                    NodePayload::inline(0u64 #pack_u64, 0u32 #pack_u32),
+                ))
+            }
+        },
+        InlineStorageMode::Partial => {
+            let mut add_extra_data = TokenStream::new();
+            let mut first_extra_data_id = None;
+            let mut extra_index = 0usize;
+
+            for (field_index, field) in ast.fields.iter().enumerate() {
+                if layout
+                    .fields
+                    .iter()
+                    .any(|(inline_index, _, _)| *inline_index == field_index)
+                {
+                    continue;
+                }
+
+                let extra_data_id = format_ident!("_f{extra_index}");
+                first_extra_data_id.get_or_insert_with(|| extra_data_id.clone());
+                extra_index += 1;
+
+                let field_name = format_ident!("{}", field.name);
+                let field_value = if should_default_in_builder(ast, &field.name) {
+                    let field_ty = schema.types[field.type_id].repr_ident(schema);
+                    quote!(<#field_ty>::default())
+                } else {
+                    quote!(#field_name)
+                };
+                add_extra_data.extend(quote! {
+                    let #extra_data_id = self.add_extra(#field_value.to_extra_data());
+                });
+            }
+
+            let start_id =
+                first_extra_data_id.expect("partial layout must contain an extra-data field");
+
+            quote! {
+                #[inline]
+                pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
+                    #inline_defaults
+                    #add_extra_data
+                    #ret_ty(self.add_node(
+                        span,
+                        NodeKind::#ret_ty,
+                        NodePayload::partial(0u64 #pack_u64, #start_id),
+                    ))
+                }
+            }
         }
     }
 }
@@ -173,9 +216,10 @@ fn generate_build_function_extra_data(
         });
     }
 
-    let node_data = match ast.fields.len() {
-        0 => quote!(empty: ()),
-        _ => quote!(extra_data_start: _f0),
+    let node_payload = if ast.fields.is_empty() {
+        quote!(NodePayload::inline(0, 0))
+    } else {
+        quote!(NodePayload::partial(0, _f0))
     };
 
     let tokens = quote! {
@@ -187,9 +231,7 @@ fn generate_build_function_extra_data(
                 self.add_node(
                     span,
                     NodeKind::#ret_ty,
-                    NodePayload {
-                        #node_data
-                    },
+                    #node_payload,
                 )
             )
         }

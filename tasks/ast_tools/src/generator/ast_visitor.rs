@@ -115,7 +115,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                             let extra_data_start = unsafe {
                                 ast.nodes
                                     .data_unchecked(self.0)
-                                    .extra_data_start
+                                    .extra_data_start()
                                     .index()
                             };
                             let extra_data = ast.extra_data.as_slice();

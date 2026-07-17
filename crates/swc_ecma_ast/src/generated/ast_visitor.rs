@@ -1051,28 +1051,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportDecl {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1, field_value_3) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: TypedSubRange<ImportSpecifier> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Str = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(3usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_3: Option<ObjectLit> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1, field_value_3)
-        };
+        let field_value_0 = self.specifiers(visitor.ast());
+        let field_value_1 = self.src(visitor.ast());
+        let field_value_3 = self.with(visitor.ast());
         <TypedSubRange<ImportSpecifier> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Str as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<ObjectLit> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
@@ -1103,23 +1084,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportNamedSpecifier {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Ident = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: ModuleExportName = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.local(visitor.ast());
+        let field_value_1 = self.imported(visitor.ast());
         <Ident as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <ModuleExportName as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -1164,28 +1130,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for NamedExport {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1, field_value_3) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: TypedSubRange<ExportSpecifier> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Option<Str> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(3usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_3: Option<ObjectLit> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1, field_value_3)
-        };
+        let field_value_0 = self.specifiers(visitor.ast());
+        let field_value_1 = self.src(visitor.ast());
+        let field_value_3 = self.with(visitor.ast());
         <TypedSubRange<ExportSpecifier> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<Str> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<ObjectLit> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
@@ -1251,23 +1198,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportNamedSpecifier {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: ModuleExportName = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: ModuleExportName = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.orig(visitor.ast());
+        let field_value_1 = self.exported(visitor.ast());
         <ModuleExportName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <ModuleExportName as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -1314,23 +1246,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportAll {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_2) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Str = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(2usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_2: Option<ObjectLit> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_2)
-        };
+        let field_value_0 = self.src(visitor.ast());
+        let field_value_2 = self.with(visitor.ast());
         <Str as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<ObjectLit> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
@@ -1410,23 +1327,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for WithStmt {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Stmt = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.obj(visitor.ast());
+        let field_value_1 = self.body(visitor.ast());
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Stmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -1449,23 +1351,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for LabeledStmt {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Ident = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Stmt = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.label(visitor.ast());
+        let field_value_1 = self.body(visitor.ast());
         <Ident as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Stmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -1499,28 +1386,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for IfStmt {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1, field_value_2) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Stmt = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(2usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_2: Option<Stmt> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1, field_value_2)
-        };
+        let field_value_0 = self.test(visitor.ast());
+        let field_value_1 = self.cons(visitor.ast());
+        let field_value_2 = self.alt(visitor.ast());
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Stmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<Stmt> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -1533,23 +1401,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SwitchStmt {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: TypedSubRange<SwitchCase> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.discriminant(visitor.ast());
+        let field_value_1 = self.cases(visitor.ast());
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<SwitchCase> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -1572,28 +1425,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TryStmt {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1, field_value_2) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: BlockStmt = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Option<CatchClause> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(2usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_2: Option<BlockStmt> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1, field_value_2)
-        };
+        let field_value_0 = self.block(visitor.ast());
+        let field_value_1 = self.handler(visitor.ast());
+        let field_value_2 = self.finalizer(visitor.ast());
         <BlockStmt as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<CatchClause> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<BlockStmt> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -1606,23 +1440,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for WhileStmt {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Stmt = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.test(visitor.ast());
+        let field_value_1 = self.body(visitor.ast());
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Stmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -1634,23 +1453,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for DoWhileStmt {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Stmt = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.test(visitor.ast());
+        let field_value_1 = self.body(visitor.ast());
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Stmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -1662,33 +1466,10 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForStmt {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1, field_value_2, field_value_3) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Option<VarDeclOrExpr> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Option<Expr> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(2usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_2: Option<Expr> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(3usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_3: Stmt = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1, field_value_2, field_value_3)
-        };
+        let field_value_0 = self.init(visitor.ast());
+        let field_value_1 = self.test(visitor.ast());
+        let field_value_2 = self.update(visitor.ast());
+        let field_value_3 = self.body(visitor.ast());
         <Option<VarDeclOrExpr> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -1702,28 +1483,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForInStmt {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1, field_value_2) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: ForHead = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(2usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_2: Stmt = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1, field_value_2)
-        };
+        let field_value_0 = self.left(visitor.ast());
+        let field_value_1 = self.right(visitor.ast());
+        let field_value_2 = self.body(visitor.ast());
         <ForHead as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Stmt as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -1736,28 +1498,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForOfStmt {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_1, field_value_2, field_value_3) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: ForHead = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(2usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_2: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(3usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_3: Stmt = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_1, field_value_2, field_value_3)
-        };
+        let field_value_1 = self.left(visitor.ast());
+        let field_value_2 = self.right(visitor.ast());
+        let field_value_3 = self.body(visitor.ast());
         <ForHead as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
         <Stmt as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
@@ -1770,23 +1513,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SwitchCase {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Option<Expr> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: TypedSubRange<Stmt> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.test(visitor.ast());
+        let field_value_1 = self.cons(visitor.ast());
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -1798,23 +1526,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for CatchClause {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Option<Pat> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: BlockStmt = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.param(visitor.ast());
+        let field_value_1 = self.body(visitor.ast());
         <Option<Pat> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <BlockStmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -1868,23 +1581,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FnDecl {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_2) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Ident = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(2usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_2: Function = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_2)
-        };
+        let field_value_0 = self.ident(visitor.ast());
+        let field_value_2 = self.function(visitor.ast());
         <Ident as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Function as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
@@ -1896,23 +1594,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassDecl {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_2) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Ident = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(2usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_2: Class = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_2)
-        };
+        let field_value_0 = self.ident(visitor.ast());
+        let field_value_2 = self.class(visitor.ast());
         <Ident as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Class as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
@@ -1935,23 +1618,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for VarDeclarator {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Pat = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Option<Expr> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.name(visitor.ast());
+        let field_value_1 = self.init(visitor.ast());
         <Pat as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2099,23 +1767,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BinExpr {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_1, field_value_2) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(2usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_2: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_1, field_value_2)
-        };
+        let field_value_1 = self.left(visitor.ast());
+        let field_value_2 = self.right(visitor.ast());
         <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
@@ -2127,23 +1780,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FnExpr {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Option<Ident> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Function = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.ident(visitor.ast());
+        let field_value_1 = self.function(visitor.ast());
         <Option<Ident> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Function as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2155,23 +1793,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassExpr {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Option<Ident> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Class = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.ident(visitor.ast());
+        let field_value_1 = self.class(visitor.ast());
         <Option<Ident> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Class as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2183,23 +1806,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignExpr {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_1, field_value_2) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: AssignTarget = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(2usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_2: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_1, field_value_2)
-        };
+        let field_value_1 = self.left(visitor.ast());
+        let field_value_2 = self.right(visitor.ast());
         <AssignTarget as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
@@ -2211,23 +1819,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for MemberExpr {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: MemberProp = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.obj(visitor.ast());
+        let field_value_1 = self.prop(visitor.ast());
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <MemberProp as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2253,23 +1846,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SuperPropExpr {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Super = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: SuperProp = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.obj(visitor.ast());
+        let field_value_1 = self.prop(visitor.ast());
         <Super as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <SuperProp as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2294,28 +1872,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for CondExpr {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1, field_value_2) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(2usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_2: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1, field_value_2)
-        };
+        let field_value_0 = self.test(visitor.ast());
+        let field_value_1 = self.cons(visitor.ast());
+        let field_value_2 = self.alt(visitor.ast());
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -2328,23 +1887,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportExpr {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_1, field_value_2) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(2usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_2: Option<Expr> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_1, field_value_2)
-        };
+        let field_value_1 = self.source(visitor.ast());
+        let field_value_2 = self.options(visitor.ast());
         <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
@@ -2356,23 +1900,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for CallExpr {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Callee = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: TypedSubRange<ExprOrSpread> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.callee(visitor.ast());
+        let field_value_1 = self.args(visitor.ast());
         <Callee as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<ExprOrSpread> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2384,23 +1913,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for NewExpr {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: TypedSubRange<ExprOrSpread> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.callee(visitor.ast());
+        let field_value_1 = self.args(visitor.ast());
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<ExprOrSpread> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2423,23 +1937,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ArrowExpr {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: TypedSubRange<Pat> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: BlockStmtOrExpr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.params(visitor.ast());
+        let field_value_1 = self.body(visitor.ast());
         <TypedSubRange<Pat> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <BlockStmtOrExpr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2481,23 +1980,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Tpl {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: TypedSubRange<Expr> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: TypedSubRange<TplElement> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.exprs(visitor.ast());
+        let field_value_1 = self.quasis(visitor.ast());
         <TypedSubRange<Expr> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<TplElement> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2509,23 +1993,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TaggedTpl {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Tpl = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.tag(visitor.ast());
+        let field_value_1 = self.tpl(visitor.ast());
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Tpl as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2669,23 +2138,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for OptCall {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: TypedSubRange<ExprOrSpread> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.callee(visitor.ast());
+        let field_value_1 = self.args(visitor.ast());
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<ExprOrSpread> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2705,28 +2159,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Function {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1, field_value_2) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: TypedSubRange<Param> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: TypedSubRange<Decorator> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(2usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_2: BlockStmt = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1, field_value_2)
-        };
+        let field_value_0 = self.params(visitor.ast());
+        let field_value_1 = self.decorators(visitor.ast());
+        let field_value_2 = self.body(visitor.ast());
         <TypedSubRange<Param> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <BlockStmt as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -2739,23 +2174,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Param {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: TypedSubRange<Decorator> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Pat = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.decorators(visitor.ast());
+        let field_value_1 = self.pat(visitor.ast());
         <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Pat as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2779,28 +2199,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Class {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1, field_value_2) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: TypedSubRange<Decorator> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: TypedSubRange<ClassMember> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(2usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_2: Option<Expr> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1, field_value_2)
-        };
+        let field_value_0 = self.decorators(visitor.ast());
+        let field_value_1 = self.body(visitor.ast());
+        let field_value_2 = self.super_class(visitor.ast());
         <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<ClassMember> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -2832,28 +2233,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassProp {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1, field_value_3) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: PropName = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Option<Expr> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(3usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_3: TypedSubRange<Decorator> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1, field_value_3)
-        };
+        let field_value_0 = self.key(visitor.ast());
+        let field_value_1 = self.value(visitor.ast());
+        let field_value_3 = self.decorators(visitor.ast());
         <PropName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
@@ -2866,28 +2248,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PrivateProp {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1, field_value_3) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: PrivateName = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Option<Expr> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(3usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_3: TypedSubRange<Decorator> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1, field_value_3)
-        };
+        let field_value_0 = self.key(visitor.ast());
+        let field_value_1 = self.value(visitor.ast());
+        let field_value_3 = self.decorators(visitor.ast());
         <PrivateName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
@@ -2900,23 +2263,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassMethod {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: PropName = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Function = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.key(visitor.ast());
+        let field_value_1 = self.function(visitor.ast());
         <PropName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Function as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2928,23 +2276,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PrivateMethod {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: PrivateName = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Function = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.key(visitor.ast());
+        let field_value_1 = self.function(visitor.ast());
         <PrivateName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Function as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -2956,28 +2289,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Constructor {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1, field_value_2) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: PropName = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: TypedSubRange<ParamOrTsParamProp> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(2usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_2: Option<BlockStmt> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1, field_value_2)
-        };
+        let field_value_0 = self.key(visitor.ast());
+        let field_value_1 = self.params(visitor.ast());
+        let field_value_2 = self.body(visitor.ast());
         <PropName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<ParamOrTsParamProp> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<BlockStmt> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -3025,28 +2339,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AutoAccessor {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1, field_value_3) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Key = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Option<Expr> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(3usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_3: TypedSubRange<Decorator> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1, field_value_3)
-        };
+        let field_value_0 = self.key(visitor.ast());
+        let field_value_1 = self.value(visitor.ast());
+        let field_value_3 = self.decorators(visitor.ast());
         <Key as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
@@ -3076,23 +2371,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for KeyValueProp {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: PropName = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.key(visitor.ast());
+        let field_value_1 = self.value(visitor.ast());
         <PropName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -3104,23 +2384,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignProp {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Ident = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.key(visitor.ast());
+        let field_value_1 = self.value(visitor.ast());
         <Ident as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -3132,23 +2397,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for GetterProp {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: PropName = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Function = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.key(visitor.ast());
+        let field_value_1 = self.function(visitor.ast());
         <PropName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Function as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -3160,23 +2410,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SetterProp {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: PropName = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Function = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.key(visitor.ast());
+        let field_value_1 = self.function(visitor.ast());
         <PropName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Function as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -3188,23 +2423,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for MethodProp {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: PropName = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Function = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.key(visitor.ast());
+        let field_value_1 = self.function(visitor.ast());
         <PropName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Function as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -3283,23 +2503,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignPat {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: Pat = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Expr = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.left(visitor.ast());
+        let field_value_1 = self.right(visitor.ast());
         <Pat as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -3336,23 +2541,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for KeyValuePatProp {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: PropName = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Pat = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.key(visitor.ast());
+        let field_value_1 = self.value(visitor.ast());
         <PropName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Pat as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -3364,23 +2554,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignPatProp {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: BindingIdent = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Option<Expr> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.key(visitor.ast());
+        let field_value_1 = self.value(visitor.ast());
         <BindingIdent as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -3505,23 +2680,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXMemberExpr {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: JSXObject = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: IdentName = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.obj(visitor.ast());
+        let field_value_1 = self.prop(visitor.ast());
         <JSXObject as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <IdentName as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -3533,23 +2693,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXNamespacedName {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: IdentName = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: IdentName = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.ns(visitor.ast());
+        let field_value_1 = self.name(visitor.ast());
         <IdentName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <IdentName as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -3620,23 +2765,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXOpeningElement {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: JSXElementName = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: TypedSubRange<JSXAttrOrSpread> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.name(visitor.ast());
+        let field_value_1 = self.attrs(visitor.ast());
         <JSXElementName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<JSXAttrOrSpread> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -3672,23 +2802,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXAttr {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: JSXAttrName = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: Option<JSXAttrValue> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1)
-        };
+        let field_value_0 = self.name(visitor.ast());
+        let field_value_1 = self.value(visitor.ast());
         <JSXAttrName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<JSXAttrValue> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
@@ -3740,28 +2855,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXElement {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1, field_value_2) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: JSXOpeningElement = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: TypedSubRange<JSXElementChild> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(2usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_2: Option<JSXClosingElement> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1, field_value_2)
-        };
+        let field_value_0 = self.opening(visitor.ast());
+        let field_value_1 = self.children(visitor.ast());
+        let field_value_2 = self.closing(visitor.ast());
         <JSXOpeningElement as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<JSXElementChild> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<JSXClosingElement> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
@@ -3794,28 +2890,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXFragment {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let (field_value_0, field_value_1, field_value_2) = {
-            let ast = visitor.ast();
-            let extra_data_start =
-                unsafe { ast.nodes.data_unchecked(self.0).extra_data_start.index() };
-            let extra_data = ast.extra_data.as_slice();
-            let offset = extra_data_start.wrapping_add(0usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_0: JSXOpeningFragment = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(1usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_1: TypedSubRange<JSXElementChild> = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            let offset = extra_data_start.wrapping_add(2usize);
-            debug_assert!(offset < extra_data.len());
-            let field_value_2: JSXClosingFragment = unsafe {
-                ExtraDataCompact::from_extra_data(*extra_data.get_unchecked(offset), ast)
-            };
-            (field_value_0, field_value_1, field_value_2)
-        };
+        let field_value_0 = self.opening(visitor.ast());
+        let field_value_1 = self.children(visitor.ast());
+        let field_value_2 = self.closing(visitor.ast());
         <JSXOpeningFragment as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <TypedSubRange<JSXElementChild> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <JSXClosingFragment as VisitWith<'a, V>>::visit_with(field_value_2, visitor);

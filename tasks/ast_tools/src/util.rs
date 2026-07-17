@@ -8,30 +8,51 @@ use syn::Ident;
 
 use crate::schema::{self, AstEnum, AstStruct, AstType, Schema};
 
-/// Maximum bytes for inline storage
-pub const INLINE_DATA_U32_SIZE: usize = std::mem::size_of::<u32>(); // NodePayload.inline_data (u32)
+/// Bytes available for fields when the trailing word stores an ExtraDataId.
+pub const INLINE_DATA_U64_SIZE: usize = std::mem::size_of::<u64>();
+/// Bytes in the trailing inline word.
+pub const INLINE_DATA_U32_SIZE: usize = std::mem::size_of::<u32>();
+/// Maximum bytes for fully inline storage.
+pub const INLINE_TOTAL_SIZE: usize = INLINE_DATA_U64_SIZE + INLINE_DATA_U32_SIZE;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InlineStorageMode {
+    /// All fields fit in the 12-byte payload.
+    Full,
+    /// Some fields use the first eight bytes and the trailing word stores ExtraDataId.
+    Partial,
+}
 
 /// Get the byte size for a field type, or None if not inlinable
 pub fn field_byte_size(ty: &AstType, schema: &Schema) -> Option<usize> {
     match ty {
         // NodeId types are 4 bytes (u32)
         AstType::Struct(_) => Some(4),
-        AstType::Enum(_) => Some(8),
-        // Vec requires SubRange (8 bytes) - too big for inline
-        AstType::Vec(_) => None,
+        AstType::Enum(_) => Some(4),
+        // Vec is represented by an 8-byte SubRange.
+        AstType::Vec(_) => Some(8),
         // Option<NodeId> is 4 bytes (OptionalNodeId)
         AstType::Option(ast_option) => {
             let inner_ty = &schema.types[ast_option.inner_type_id];
             match inner_ty {
-                // Option<Vec<T>> needs OptionalSubRange - too big
-                AstType::Vec(_) => None,
+                // Option<Vec<T>> is represented by an 8-byte OptionalSubRange.
+                AstType::Vec(_) => Some(8),
                 // Option<Struct> is OptionalNodeId (4 bytes)
                 AstType::Struct(_) => Some(4),
-                // Option<Enum> is 8 bytes
-                AstType::Enum(_) => Some(8),
-                // Option<Primitive> not supported for inline storage
-                // (would need proper niche optimization handling)
-                _ => None,
+                // Option<Enum> is encoded as OptionalNodeId.
+                AstType::Enum(_) => Some(4),
+                AstType::Primitive(primitive)
+                    if matches!(primitive.name, "Span" | "Atom" | "Wtf8Atom") =>
+                {
+                    Some(8)
+                }
+                AstType::Primitive(primitive)
+                    if matches!(primitive.name, "ScopeId" | "SymbolId") =>
+                {
+                    Some(4)
+                }
+                // Other Option<Primitive> representations are not encoded here.
+                AstType::Primitive(_) | AstType::Option(_) => None,
             }
         }
         AstType::Primitive(prim) => {
@@ -41,6 +62,7 @@ pub fn field_byte_size(ty: &AstType, schema: &Schema) -> Option<usize> {
                 "u8" | "i8" => Some(1),
                 "u16" | "i16" => Some(2),
                 "u32" | "i32" => Some(4),
+                "u64" | "f64" | "Span" | "Atom" | "Wtf8Atom" => Some(8),
                 // For other types, check if they have #[repr(uN)] in schema
                 name => schema.repr_sizes.get(name).copied(),
             }
@@ -51,46 +73,77 @@ pub fn field_byte_size(ty: &AstType, schema: &Schema) -> Option<usize> {
 /// Layout information for inline storage
 #[derive(Debug, Clone)]
 pub struct InlineLayout {
-    /// Fields with their byte offsets within the 4-byte inline payload.
-    /// Offset 0-3: NodePayload.inline_data (u32)
+    pub mode: InlineStorageMode,
+    /// Inlined fields with byte offsets within NodePayload.
+    /// Offsets 0-7 use inline_data; offsets 8-11 use the trailing word.
     pub fields: Vec<(usize, usize, usize)>, // (field_index, byte_offset, byte_size)
 }
 
 /// Calculate the inline layout for a struct
-/// Returns None if the struct cannot be inlined
-///
-/// This function packs fields into the four bytes provided by [NodePayload].
+/// Returns None if no field can be inlined.
 pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<InlineLayout> {
-    // Collect all fields with their sizes
     let mut field_info: Vec<(usize, usize)> = Vec::new(); // (field_index, size)
     let mut total_size = 0usize;
+    let mut all_fields_inlinable = true;
 
     for (index, field) in ast.fields.iter().enumerate() {
         let field_ty = &schema.types[field.type_id];
-        let size = field_byte_size(field_ty, schema)?;
-        field_info.push((index, size));
-        total_size += size;
+        if let Some(size) = field_byte_size(field_ty, schema) {
+            debug_assert!(size <= INLINE_DATA_U64_SIZE);
+            field_info.push((index, size));
+            total_size += size;
+        } else {
+            all_fields_inlinable = false;
+        }
     }
 
-    if total_size > INLINE_DATA_U32_SIZE {
+    let mut sorted_fields = field_info.clone();
+    sorted_fields.sort_by_key(|b| std::cmp::Reverse(b.1));
+
+    if all_fields_inlinable && total_size <= INLINE_TOTAL_SIZE {
+        let mut fields = Vec::with_capacity(sorted_fields.len());
+        let mut u64_used = 0usize;
+        let mut u32_used = 0usize;
+
+        for (field_index, size) in sorted_fields {
+            if u64_used + size <= INLINE_DATA_U64_SIZE {
+                fields.push((field_index, u64_used, size));
+                u64_used += size;
+            } else if u32_used + size <= INLINE_DATA_U32_SIZE {
+                fields.push((field_index, INLINE_DATA_U64_SIZE + u32_used, size));
+                u32_used += size;
+            } else {
+                unreachable!("inlinable fields must fit in the 8 + 4 byte bins");
+            }
+        }
+
+        fields.sort_by_key(|(field_index, _, _)| *field_index);
+        return Some(InlineLayout {
+            mode: InlineStorageMode::Full,
+            fields,
+        });
+    }
+
+    // Partial mode reserves the trailing u32 for ExtraDataId, so greedily
+    // maximize use of the leading u64.
+    let mut fields = Vec::new();
+    let mut u64_used = 0usize;
+    for (field_index, size) in sorted_fields {
+        if u64_used + size <= INLINE_DATA_U64_SIZE {
+            fields.push((field_index, u64_used, size));
+            u64_used += size;
+        }
+    }
+
+    if fields.is_empty() {
         return None;
     }
 
-    // Sort fields by size for deterministic, compact packing.
-    let mut sorted_fields = field_info;
-    sorted_fields.sort_by_key(|b| std::cmp::Reverse(b.1));
-
-    let mut fields: Vec<(usize, usize, usize)> = Vec::new(); // (field_index, offset, size)
-    let mut current_offset = 0usize;
-    for (field_index, size) in sorted_fields {
-        fields.push((field_index, current_offset, size));
-        current_offset += size;
-    }
-
-    // Sort fields back by original field index for consistent ordering
     fields.sort_by_key(|(field_index, _, _)| *field_index);
-
-    Some(InlineLayout { fields })
+    Some(InlineLayout {
+        mode: InlineStorageMode::Partial,
+        fields,
+    })
 }
 
 /// Reserved word in Rust.
@@ -180,9 +233,15 @@ pub fn generate_field_to_u32(
         AstType::Struct(_) | AstType::Enum(_) => {
             quote!(#field_name.node_id().index() as u32)
         }
-        AstType::Option(_) => {
-            quote!(crate::OptionalNodeId::from(#field_name.map(|n| n.node_id())).into_raw())
-        }
+        AstType::Option(ast_option) => match &schema.types[ast_option.inner_type_id] {
+            AstType::Struct(_) | AstType::Enum(_) => {
+                quote!(crate::OptionalNodeId::from(#field_name.map(|n| n.node_id())).into_raw())
+            }
+            AstType::Primitive(primitive) if matches!(primitive.name, "ScopeId" | "SymbolId") => {
+                quote!(#field_name.map_or(0, |id| id.index() as u32 + 1))
+            }
+            _ => unreachable!("Unexpected option in u32 conversion"),
+        },
         AstType::Primitive(prim) => match prim.name {
             "u32" => quote!(#field_name),
             "i32" => quote!(#field_name as u32),
@@ -203,6 +262,18 @@ pub fn generate_field_to_u32(
     }
 }
 
+/// Generate an expression that reinterprets an eight-byte field as inline data.
+pub fn generate_field_to_u64(field_ty: &AstType, field_name: &syn::Ident) -> TokenStream {
+    debug_assert!(matches!(
+        field_ty,
+        AstType::Vec(_) | AstType::Option(_) | AstType::Primitive(_)
+    ));
+
+    // Each supported type initializes all eight bytes of its ExtraData union
+    // representation, so reading the raw word does not observe padding.
+    quote!(unsafe { #field_name.to_extra_data().other })
+}
+
 /// Generate expression to convert u32 to a field type (for inline storage)
 pub fn generate_u32_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream {
     match field_ty {
@@ -215,9 +286,23 @@ pub fn generate_u32_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream
         AstType::Option(ast_option) => {
             let inner_ty = &schema.types[ast_option.inner_type_id];
             let field_inner_ident = inner_ty.repr_ident(schema);
-            quote! {
-                let opt = crate::OptionalNodeId::from_raw(raw);
-                opt.map(|id| unsafe { #field_inner_ident::from_node_id_unchecked(id, ast) })
+            match inner_ty {
+                AstType::Struct(_) | AstType::Enum(_) => quote! {
+                    let opt = crate::OptionalNodeId::from_raw(raw);
+                    opt.map(|id| unsafe { #field_inner_ident::from_node_id_unchecked(id, ast) })
+                },
+                AstType::Primitive(primitive)
+                    if matches!(primitive.name, "ScopeId" | "SymbolId") =>
+                {
+                    quote! {
+                        (raw != 0).then(|| unsafe {
+                            <#field_inner_ident as oxc_index::Idx>::from_usize_unchecked(
+                                raw.wrapping_sub(1) as usize
+                            )
+                        })
+                    }
+                }
+                _ => unreachable!("Unexpected option in u32 conversion"),
             }
         }
         AstType::Primitive(prim) => match prim.name {
@@ -250,6 +335,13 @@ pub fn generate_u32_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream
             }
         },
         _ => unreachable!(),
+    }
+}
+
+/// Generate an expression that reconstructs an eight-byte field from inline data.
+pub fn generate_u64_to_field() -> TokenStream {
+    quote! {
+        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
     }
 }
 

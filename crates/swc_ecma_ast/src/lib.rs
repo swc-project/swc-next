@@ -62,19 +62,68 @@ multi_index_vec! {
     }
 }
 
-/// Compact payload for a node. It is either the start index of
-/// [Ast::extra_data] or up to four bytes of inline field data.
+/// Compact 12-byte payload for a node.
 ///
-/// We use union here to eliminate the tag cost of enum.
-///
-/// # Safety:
-/// It is only access the by the property accesses of typed AST node, and the construction of typed AST is
-/// another safety guarantee.
+/// Fully inlined nodes use all 12 bytes. Nodes with out-of-line fields use the
+/// first eight bytes for inline data and the trailing four bytes for the start
+/// index in [Ast::extra_data].
+#[repr(C, packed(4))]
 #[derive(Clone, Copy)]
-pub union NodePayload {
-    empty: (),
+pub struct NodePayload {
+    inline_data: u64,
+    trailing: NodePayloadTrailing,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+union NodePayloadTrailing {
     extra_data_start: ExtraDataId,
     inline_data: u32,
+}
+
+impl NodePayload {
+    #[inline]
+    const fn inline(inline_data: u64, trailing_inline_data: u32) -> Self {
+        Self {
+            inline_data,
+            trailing: NodePayloadTrailing {
+                inline_data: trailing_inline_data,
+            },
+        }
+    }
+
+    #[inline]
+    const fn partial(inline_data: u64, extra_data_start: ExtraDataId) -> Self {
+        Self {
+            inline_data,
+            trailing: NodePayloadTrailing { extra_data_start },
+        }
+    }
+
+    #[inline]
+    fn inline_data(&self) -> u64 {
+        self.inline_data
+    }
+
+    #[inline]
+    fn set_inline_data(&mut self, inline_data: u64) {
+        self.inline_data = inline_data;
+    }
+
+    #[inline]
+    unsafe fn trailing_inline_data(&self) -> u32 {
+        unsafe { self.trailing.inline_data }
+    }
+
+    #[inline]
+    unsafe fn set_trailing_inline_data(&mut self, inline_data: u32) {
+        self.trailing = NodePayloadTrailing { inline_data };
+    }
+
+    #[inline]
+    unsafe fn extra_data_start(&self) -> ExtraDataId {
+        unsafe { self.trailing.extra_data_start }
+    }
 }
 
 /// The extra data is used to represent the field of AST node.
