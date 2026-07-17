@@ -41,7 +41,7 @@ fn generate_node_id_for_struct(ast: &AstStruct, _schema: &Schema) -> TokenStream
     quote! {
         impl NodeIdTrait for #name {
             #[inline]
-            fn node_id(&self) -> NodeId {
+            fn node_id(self) -> NodeId {
                 self.0
             }
 
@@ -85,7 +85,7 @@ fn generate_node_id_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
     quote! {
         impl NodeIdTrait for #name {
             #[inline]
-            fn node_id(&self) -> NodeId {
+            fn node_id(self) -> NodeId {
                 match self {
                     #node_id_getter_arms
                 }

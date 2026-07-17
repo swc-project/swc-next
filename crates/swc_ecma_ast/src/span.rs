@@ -44,7 +44,7 @@ impl Span {
         Self { start, end }
     }
 
-    pub fn is_dummy(&self) -> bool {
+    pub fn is_dummy(self) -> bool {
         self.start == 0 && self.end == 0
     }
 }

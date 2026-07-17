@@ -75,11 +75,19 @@ impl OptionalSubRange {
 /// A typed sub range of nodes in an arena.
 ///
 /// See [SubRange]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct TypedSubRange<T> {
     pub(crate) inner: SubRange,
     pub(crate) _phantom: PhantomData<T>,
 }
+
+impl<T> Clone for TypedSubRange<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T> Copy for TypedSubRange<T> {}
 
 impl<T> TypedSubRange<T> {
     pub fn empty() -> Self {
@@ -89,11 +97,11 @@ impl<T> TypedSubRange<T> {
         }
     }
 
-    pub fn len(&self) -> usize {
+    pub fn len(self) -> usize {
         self.end.index() - self.start.index()
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub fn is_empty(self) -> bool {
         self.len() == 0
     }
 
@@ -108,7 +116,7 @@ impl<T> TypedSubRange<T> {
         }
     }
 
-    pub fn get(&self, index: usize) -> Option<NodeExtraDataId<T>> {
+    pub fn get(self, index: usize) -> Option<NodeExtraDataId<T>> {
         if index < self.len() {
             let id = self.start + index;
             return Some(NodeExtraDataId {
@@ -119,7 +127,7 @@ impl<T> TypedSubRange<T> {
         None
     }
 
-    pub fn first(&self) -> Option<NodeExtraDataId<T>> {
+    pub fn first(self) -> Option<NodeExtraDataId<T>> {
         if self.is_empty() {
             return None;
         }
@@ -130,7 +138,7 @@ impl<T> TypedSubRange<T> {
         })
     }
 
-    pub fn last(&self) -> Option<NodeExtraDataId<T>> {
+    pub fn last(self) -> Option<NodeExtraDataId<T>> {
         if self.is_empty() {
             return None;
         }
@@ -141,7 +149,7 @@ impl<T> TypedSubRange<T> {
         })
     }
 
-    pub fn iter(&self) -> TypedSubRangeIterator<T> {
+    pub fn iter(self) -> TypedSubRangeIterator<T> {
         TypedSubRangeIterator {
             cur: self.start,
             end: self.end,
@@ -174,7 +182,7 @@ impl<T> TypedSubRange<T> {
 
 impl<T> TypedSubRange<T> {
     #[inline]
-    pub fn replace_slot<'a>(&self, ast: &mut Ast<'a>, at: NodeExtraDataId<T>, new: T)
+    pub fn replace_slot<'a>(self, ast: &mut Ast<'a>, at: NodeExtraDataId<T>, new: T)
     where
         T: ExtraDataCompact<'a>,
     {
@@ -182,7 +190,7 @@ impl<T> TypedSubRange<T> {
     }
 
     #[inline]
-    pub fn get_node<'a>(&self, ast: &Ast<'a>, index: usize) -> Option<T>
+    pub fn get_node<'a>(self, ast: &Ast<'a>, index: usize) -> Option<T>
     where
         T: ExtraDataCompact<'a>,
     {

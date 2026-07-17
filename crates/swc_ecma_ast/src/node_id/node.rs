@@ -1,8 +1,8 @@
 use crate::Ast;
 
-pub trait NodeIdTrait {
+pub trait NodeIdTrait: Copy {
     /// Get node id from node
-    fn node_id(&self) -> NodeId;
+    fn node_id(self) -> NodeId;
 
     /// A safe method to construct typed ast node, with `node.kind` checking
     fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self;

@@ -101,7 +101,7 @@ impl NodePayload {
     }
 
     #[inline]
-    fn inline_data(&self) -> u64 {
+    fn inline_data(self) -> u64 {
         self.inline_data
     }
 
@@ -111,7 +111,7 @@ impl NodePayload {
     }
 
     #[inline]
-    unsafe fn trailing_inline_data(&self) -> u32 {
+    unsafe fn trailing_inline_data(self) -> u32 {
         unsafe { self.trailing.inline_data }
     }
 
@@ -121,7 +121,7 @@ impl NodePayload {
     }
 
     #[inline]
-    unsafe fn extra_data_start(&self) -> ExtraDataId {
+    unsafe fn extra_data_start(self) -> ExtraDataId {
         unsafe { self.trailing.extra_data_start }
     }
 }

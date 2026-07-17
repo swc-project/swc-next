@@ -4,7 +4,7 @@ use crate::{ast::*, node_id::*};
 use oxc_index::Idx;
 impl NodeIdTrait for Program {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Module(it) => it.node_id(),
             Self::Script(it) => it.node_id(),
@@ -25,7 +25,7 @@ impl NodeIdTrait for Program {
 }
 impl NodeIdTrait for Module {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -40,7 +40,7 @@ impl NodeIdTrait for Module {
 }
 impl NodeIdTrait for Script {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -55,7 +55,7 @@ impl NodeIdTrait for Script {
 }
 impl NodeIdTrait for ModuleItem {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::ModuleDecl(it) => it.node_id(),
             Self::Stmt(it) => it.node_id(),
@@ -148,7 +148,7 @@ impl NodeIdTrait for ModuleItem {
 }
 impl NodeIdTrait for ModuleDecl {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Import(it) => it.node_id(),
             Self::ExportDecl(it) => it.node_id(),
@@ -183,7 +183,7 @@ impl NodeIdTrait for ModuleDecl {
 }
 impl NodeIdTrait for ImportDecl {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -198,7 +198,7 @@ impl NodeIdTrait for ImportDecl {
 }
 impl NodeIdTrait for ImportSpecifier {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Named(it) => it.node_id(),
             Self::Default(it) => it.node_id(),
@@ -227,7 +227,7 @@ impl NodeIdTrait for ImportSpecifier {
 }
 impl NodeIdTrait for ImportNamedSpecifier {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -242,7 +242,7 @@ impl NodeIdTrait for ImportNamedSpecifier {
 }
 impl NodeIdTrait for ImportDefaultSpecifier {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -257,7 +257,7 @@ impl NodeIdTrait for ImportDefaultSpecifier {
 }
 impl NodeIdTrait for ImportStarAsSpecifier {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -272,7 +272,7 @@ impl NodeIdTrait for ImportStarAsSpecifier {
 }
 impl NodeIdTrait for ExportDecl {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -287,7 +287,7 @@ impl NodeIdTrait for ExportDecl {
 }
 impl NodeIdTrait for NamedExport {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -302,7 +302,7 @@ impl NodeIdTrait for NamedExport {
 }
 impl NodeIdTrait for ExportSpecifier {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Namespace(it) => it.node_id(),
             Self::Default(it) => it.node_id(),
@@ -331,7 +331,7 @@ impl NodeIdTrait for ExportSpecifier {
 }
 impl NodeIdTrait for ExportNamespaceSpecifier {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -346,7 +346,7 @@ impl NodeIdTrait for ExportNamespaceSpecifier {
 }
 impl NodeIdTrait for ModuleExportName {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Ident(it) => it.node_id(),
             Self::Str(it) => it.node_id(),
@@ -367,7 +367,7 @@ impl NodeIdTrait for ModuleExportName {
 }
 impl NodeIdTrait for ExportDefaultSpecifier {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -382,7 +382,7 @@ impl NodeIdTrait for ExportDefaultSpecifier {
 }
 impl NodeIdTrait for ExportNamedSpecifier {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -397,7 +397,7 @@ impl NodeIdTrait for ExportNamedSpecifier {
 }
 impl NodeIdTrait for ExportDefaultDecl {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -412,7 +412,7 @@ impl NodeIdTrait for ExportDefaultDecl {
 }
 impl NodeIdTrait for DefaultDecl {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Class(it) => it.node_id(),
             Self::Fn(it) => it.node_id(),
@@ -433,7 +433,7 @@ impl NodeIdTrait for DefaultDecl {
 }
 impl NodeIdTrait for ExportDefaultExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -448,7 +448,7 @@ impl NodeIdTrait for ExportDefaultExpr {
 }
 impl NodeIdTrait for ExportAll {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -463,7 +463,7 @@ impl NodeIdTrait for ExportAll {
 }
 impl NodeIdTrait for BlockStmt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -478,7 +478,7 @@ impl NodeIdTrait for BlockStmt {
 }
 impl NodeIdTrait for Stmt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Block(it) => it.node_id(),
             Self::Empty(it) => it.node_id(),
@@ -536,7 +536,7 @@ impl NodeIdTrait for Stmt {
 }
 impl NodeIdTrait for ExprStmt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -551,7 +551,7 @@ impl NodeIdTrait for ExprStmt {
 }
 impl NodeIdTrait for EmptyStmt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -566,7 +566,7 @@ impl NodeIdTrait for EmptyStmt {
 }
 impl NodeIdTrait for DebuggerStmt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -581,7 +581,7 @@ impl NodeIdTrait for DebuggerStmt {
 }
 impl NodeIdTrait for WithStmt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -596,7 +596,7 @@ impl NodeIdTrait for WithStmt {
 }
 impl NodeIdTrait for ReturnStmt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -611,7 +611,7 @@ impl NodeIdTrait for ReturnStmt {
 }
 impl NodeIdTrait for LabeledStmt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -626,7 +626,7 @@ impl NodeIdTrait for LabeledStmt {
 }
 impl NodeIdTrait for BreakStmt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -641,7 +641,7 @@ impl NodeIdTrait for BreakStmt {
 }
 impl NodeIdTrait for ContinueStmt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -656,7 +656,7 @@ impl NodeIdTrait for ContinueStmt {
 }
 impl NodeIdTrait for IfStmt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -671,7 +671,7 @@ impl NodeIdTrait for IfStmt {
 }
 impl NodeIdTrait for SwitchStmt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -686,7 +686,7 @@ impl NodeIdTrait for SwitchStmt {
 }
 impl NodeIdTrait for ThrowStmt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -701,7 +701,7 @@ impl NodeIdTrait for ThrowStmt {
 }
 impl NodeIdTrait for TryStmt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -716,7 +716,7 @@ impl NodeIdTrait for TryStmt {
 }
 impl NodeIdTrait for WhileStmt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -731,7 +731,7 @@ impl NodeIdTrait for WhileStmt {
 }
 impl NodeIdTrait for DoWhileStmt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -746,7 +746,7 @@ impl NodeIdTrait for DoWhileStmt {
 }
 impl NodeIdTrait for ForStmt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -761,7 +761,7 @@ impl NodeIdTrait for ForStmt {
 }
 impl NodeIdTrait for ForInStmt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -776,7 +776,7 @@ impl NodeIdTrait for ForInStmt {
 }
 impl NodeIdTrait for ForOfStmt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -791,7 +791,7 @@ impl NodeIdTrait for ForOfStmt {
 }
 impl NodeIdTrait for SwitchCase {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -806,7 +806,7 @@ impl NodeIdTrait for SwitchCase {
 }
 impl NodeIdTrait for CatchClause {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -821,7 +821,7 @@ impl NodeIdTrait for CatchClause {
 }
 impl NodeIdTrait for ForHead {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::VarDecl(it) => it.node_id(),
             Self::UsingDecl(it) => it.node_id(),
@@ -960,7 +960,7 @@ impl NodeIdTrait for ForHead {
 }
 impl NodeIdTrait for VarDeclOrExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::VarDecl(it) => it.node_id(),
             Self::Expr(it) => it.node_id(),
@@ -1082,7 +1082,7 @@ impl NodeIdTrait for VarDeclOrExpr {
 }
 impl NodeIdTrait for Decl {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Class(it) => it.node_id(),
             Self::Fn(it) => it.node_id(),
@@ -1107,7 +1107,7 @@ impl NodeIdTrait for Decl {
 }
 impl NodeIdTrait for FnDecl {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1122,7 +1122,7 @@ impl NodeIdTrait for FnDecl {
 }
 impl NodeIdTrait for ClassDecl {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1137,7 +1137,7 @@ impl NodeIdTrait for ClassDecl {
 }
 impl NodeIdTrait for VarDecl {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1152,7 +1152,7 @@ impl NodeIdTrait for VarDecl {
 }
 impl NodeIdTrait for VarDeclarator {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1167,7 +1167,7 @@ impl NodeIdTrait for VarDeclarator {
 }
 impl NodeIdTrait for UsingDecl {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1182,7 +1182,7 @@ impl NodeIdTrait for UsingDecl {
 }
 impl NodeIdTrait for Expr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::This(it) => it.node_id(),
             Self::Array(it) => it.node_id(),
@@ -1272,7 +1272,7 @@ impl NodeIdTrait for Expr {
 }
 impl NodeIdTrait for ThisExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1287,7 +1287,7 @@ impl NodeIdTrait for ThisExpr {
 }
 impl NodeIdTrait for ArrayLit {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1302,7 +1302,7 @@ impl NodeIdTrait for ArrayLit {
 }
 impl NodeIdTrait for ObjectLit {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1317,7 +1317,7 @@ impl NodeIdTrait for ObjectLit {
 }
 impl NodeIdTrait for PropOrSpread {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Spread(it) => it.node_id(),
             Self::Prop(it) => it.node_id(),
@@ -1357,7 +1357,7 @@ impl NodeIdTrait for PropOrSpread {
 }
 impl NodeIdTrait for SpreadElement {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1372,7 +1372,7 @@ impl NodeIdTrait for SpreadElement {
 }
 impl NodeIdTrait for UnaryExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1387,7 +1387,7 @@ impl NodeIdTrait for UnaryExpr {
 }
 impl NodeIdTrait for UpdateExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1402,7 +1402,7 @@ impl NodeIdTrait for UpdateExpr {
 }
 impl NodeIdTrait for BinExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1417,7 +1417,7 @@ impl NodeIdTrait for BinExpr {
 }
 impl NodeIdTrait for FnExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1432,7 +1432,7 @@ impl NodeIdTrait for FnExpr {
 }
 impl NodeIdTrait for ClassExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1447,7 +1447,7 @@ impl NodeIdTrait for ClassExpr {
 }
 impl NodeIdTrait for AssignExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1462,7 +1462,7 @@ impl NodeIdTrait for AssignExpr {
 }
 impl NodeIdTrait for MemberExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1477,7 +1477,7 @@ impl NodeIdTrait for MemberExpr {
 }
 impl NodeIdTrait for MemberProp {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Ident(it) => it.node_id(),
             Self::PrivateName(it) => it.node_id(),
@@ -1504,7 +1504,7 @@ impl NodeIdTrait for MemberProp {
 }
 impl NodeIdTrait for SuperPropExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1519,7 +1519,7 @@ impl NodeIdTrait for SuperPropExpr {
 }
 impl NodeIdTrait for SuperProp {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Ident(it) => it.node_id(),
             Self::Computed(it) => it.node_id(),
@@ -1542,7 +1542,7 @@ impl NodeIdTrait for SuperProp {
 }
 impl NodeIdTrait for CondExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1557,7 +1557,7 @@ impl NodeIdTrait for CondExpr {
 }
 impl NodeIdTrait for ImportExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1572,7 +1572,7 @@ impl NodeIdTrait for ImportExpr {
 }
 impl NodeIdTrait for CallExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1587,7 +1587,7 @@ impl NodeIdTrait for CallExpr {
 }
 impl NodeIdTrait for NewExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1602,7 +1602,7 @@ impl NodeIdTrait for NewExpr {
 }
 impl NodeIdTrait for SeqExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1617,7 +1617,7 @@ impl NodeIdTrait for SeqExpr {
 }
 impl NodeIdTrait for ArrowExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1632,7 +1632,7 @@ impl NodeIdTrait for ArrowExpr {
 }
 impl NodeIdTrait for YieldExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1647,7 +1647,7 @@ impl NodeIdTrait for YieldExpr {
 }
 impl NodeIdTrait for MetaPropExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1662,7 +1662,7 @@ impl NodeIdTrait for MetaPropExpr {
 }
 impl NodeIdTrait for AwaitExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1677,7 +1677,7 @@ impl NodeIdTrait for AwaitExpr {
 }
 impl NodeIdTrait for Tpl {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1692,7 +1692,7 @@ impl NodeIdTrait for Tpl {
 }
 impl NodeIdTrait for TaggedTpl {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1707,7 +1707,7 @@ impl NodeIdTrait for TaggedTpl {
 }
 impl NodeIdTrait for TplElement {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1722,7 +1722,7 @@ impl NodeIdTrait for TplElement {
 }
 impl NodeIdTrait for ParenExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1737,7 +1737,7 @@ impl NodeIdTrait for ParenExpr {
 }
 impl NodeIdTrait for Callee {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Super(it) => it.node_id(),
             Self::Expr(it) => it.node_id(),
@@ -1829,7 +1829,7 @@ impl NodeIdTrait for Callee {
 }
 impl NodeIdTrait for Super {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1844,7 +1844,7 @@ impl NodeIdTrait for Super {
 }
 impl NodeIdTrait for ExprOrSpread {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -1859,7 +1859,7 @@ impl NodeIdTrait for ExprOrSpread {
 }
 impl NodeIdTrait for BlockStmtOrExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::BlockStmt(it) => it.node_id(),
             Self::Expr(it) => it.node_id(),
@@ -1987,7 +1987,7 @@ impl NodeIdTrait for BlockStmtOrExpr {
 }
 impl NodeIdTrait for AssignTarget {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Simple(it) => it.node_id(),
             Self::Pat(it) => it.node_id(),
@@ -2030,7 +2030,7 @@ impl NodeIdTrait for AssignTarget {
 }
 impl NodeIdTrait for AssignTargetPat {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Array(it) => it.node_id(),
             Self::Object(it) => it.node_id(),
@@ -2053,7 +2053,7 @@ impl NodeIdTrait for AssignTargetPat {
 }
 impl NodeIdTrait for SimpleAssignTarget {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Ident(it) => it.node_id(),
             Self::Member(it) => it.node_id(),
@@ -2090,7 +2090,7 @@ impl NodeIdTrait for SimpleAssignTarget {
 }
 impl NodeIdTrait for OptChainExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2105,7 +2105,7 @@ impl NodeIdTrait for OptChainExpr {
 }
 impl NodeIdTrait for OptChainBase {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Member(it) => it.node_id(),
             Self::Call(it) => it.node_id(),
@@ -2126,7 +2126,7 @@ impl NodeIdTrait for OptChainBase {
 }
 impl NodeIdTrait for OptCall {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2141,7 +2141,7 @@ impl NodeIdTrait for OptCall {
 }
 impl NodeIdTrait for Invalid {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2156,7 +2156,7 @@ impl NodeIdTrait for Invalid {
 }
 impl NodeIdTrait for Function {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2171,7 +2171,7 @@ impl NodeIdTrait for Function {
 }
 impl NodeIdTrait for Param {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2186,7 +2186,7 @@ impl NodeIdTrait for Param {
 }
 impl NodeIdTrait for ParamOrTsParamProp {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Param(it) => it.node_id(),
         }
@@ -2205,7 +2205,7 @@ impl NodeIdTrait for ParamOrTsParamProp {
 }
 impl NodeIdTrait for Class {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2220,7 +2220,7 @@ impl NodeIdTrait for Class {
 }
 impl NodeIdTrait for ClassMember {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Constructor(it) => it.node_id(),
             Self::Method(it) => it.node_id(),
@@ -2263,7 +2263,7 @@ impl NodeIdTrait for ClassMember {
 }
 impl NodeIdTrait for ClassProp {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2278,7 +2278,7 @@ impl NodeIdTrait for ClassProp {
 }
 impl NodeIdTrait for PrivateProp {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2293,7 +2293,7 @@ impl NodeIdTrait for PrivateProp {
 }
 impl NodeIdTrait for ClassMethod {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2308,7 +2308,7 @@ impl NodeIdTrait for ClassMethod {
 }
 impl NodeIdTrait for PrivateMethod {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2323,7 +2323,7 @@ impl NodeIdTrait for PrivateMethod {
 }
 impl NodeIdTrait for Constructor {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2338,7 +2338,7 @@ impl NodeIdTrait for Constructor {
 }
 impl NodeIdTrait for Decorator {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2353,7 +2353,7 @@ impl NodeIdTrait for Decorator {
 }
 impl NodeIdTrait for StaticBlock {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2368,7 +2368,7 @@ impl NodeIdTrait for StaticBlock {
 }
 impl NodeIdTrait for Key {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Private(it) => it.node_id(),
             Self::Public(it) => it.node_id(),
@@ -2397,7 +2397,7 @@ impl NodeIdTrait for Key {
 }
 impl NodeIdTrait for AutoAccessor {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2412,7 +2412,7 @@ impl NodeIdTrait for AutoAccessor {
 }
 impl NodeIdTrait for Prop {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Shorthand(it) => it.node_id(),
             Self::KeyValue(it) => it.node_id(),
@@ -2441,7 +2441,7 @@ impl NodeIdTrait for Prop {
 }
 impl NodeIdTrait for KeyValueProp {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2456,7 +2456,7 @@ impl NodeIdTrait for KeyValueProp {
 }
 impl NodeIdTrait for AssignProp {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2471,7 +2471,7 @@ impl NodeIdTrait for AssignProp {
 }
 impl NodeIdTrait for GetterProp {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2486,7 +2486,7 @@ impl NodeIdTrait for GetterProp {
 }
 impl NodeIdTrait for SetterProp {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2501,7 +2501,7 @@ impl NodeIdTrait for SetterProp {
 }
 impl NodeIdTrait for MethodProp {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2516,7 +2516,7 @@ impl NodeIdTrait for MethodProp {
 }
 impl NodeIdTrait for PropName {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Ident(it) => it.node_id(),
             Self::Str(it) => it.node_id(),
@@ -2545,7 +2545,7 @@ impl NodeIdTrait for PropName {
 }
 impl NodeIdTrait for ComputedPropName {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2560,7 +2560,7 @@ impl NodeIdTrait for ComputedPropName {
 }
 impl NodeIdTrait for Pat {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Ident(it) => it.node_id(),
             Self::Array(it) => it.node_id(),
@@ -2647,7 +2647,7 @@ impl NodeIdTrait for Pat {
 }
 impl NodeIdTrait for ArrayPat {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2662,7 +2662,7 @@ impl NodeIdTrait for ArrayPat {
 }
 impl NodeIdTrait for ObjectPat {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2677,7 +2677,7 @@ impl NodeIdTrait for ObjectPat {
 }
 impl NodeIdTrait for AssignPat {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2692,7 +2692,7 @@ impl NodeIdTrait for AssignPat {
 }
 impl NodeIdTrait for RestPat {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2707,7 +2707,7 @@ impl NodeIdTrait for RestPat {
 }
 impl NodeIdTrait for ObjectPatProp {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::KeyValue(it) => it.node_id(),
             Self::Assign(it) => it.node_id(),
@@ -2734,7 +2734,7 @@ impl NodeIdTrait for ObjectPatProp {
 }
 impl NodeIdTrait for KeyValuePatProp {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2749,7 +2749,7 @@ impl NodeIdTrait for KeyValuePatProp {
 }
 impl NodeIdTrait for AssignPatProp {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2764,7 +2764,7 @@ impl NodeIdTrait for AssignPatProp {
 }
 impl NodeIdTrait for Ident {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2779,7 +2779,7 @@ impl NodeIdTrait for Ident {
 }
 impl NodeIdTrait for IdentName {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2794,7 +2794,7 @@ impl NodeIdTrait for IdentName {
 }
 impl NodeIdTrait for PrivateName {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2809,7 +2809,7 @@ impl NodeIdTrait for PrivateName {
 }
 impl NodeIdTrait for BindingIdent {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2824,7 +2824,7 @@ impl NodeIdTrait for BindingIdent {
 }
 impl NodeIdTrait for Lit {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Str(it) => it.node_id(),
             Self::Bool(it) => it.node_id(),
@@ -2853,7 +2853,7 @@ impl NodeIdTrait for Lit {
 }
 impl NodeIdTrait for Str {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2868,7 +2868,7 @@ impl NodeIdTrait for Str {
 }
 impl NodeIdTrait for Bool {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2883,7 +2883,7 @@ impl NodeIdTrait for Bool {
 }
 impl NodeIdTrait for Null {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2898,7 +2898,7 @@ impl NodeIdTrait for Null {
 }
 impl NodeIdTrait for Number {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2913,7 +2913,7 @@ impl NodeIdTrait for Number {
 }
 impl NodeIdTrait for BigInt {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2928,7 +2928,7 @@ impl NodeIdTrait for BigInt {
 }
 impl NodeIdTrait for Regex {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2943,7 +2943,7 @@ impl NodeIdTrait for Regex {
 }
 impl NodeIdTrait for JSXObject {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::JSXMemberExpr(it) => it.node_id(),
             Self::Ident(it) => it.node_id(),
@@ -2966,7 +2966,7 @@ impl NodeIdTrait for JSXObject {
 }
 impl NodeIdTrait for JSXMemberExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2981,7 +2981,7 @@ impl NodeIdTrait for JSXMemberExpr {
 }
 impl NodeIdTrait for JSXNamespacedName {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -2996,7 +2996,7 @@ impl NodeIdTrait for JSXNamespacedName {
 }
 impl NodeIdTrait for JSXEmptyExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -3011,7 +3011,7 @@ impl NodeIdTrait for JSXEmptyExpr {
 }
 impl NodeIdTrait for JSXExprContainer {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -3026,7 +3026,7 @@ impl NodeIdTrait for JSXExprContainer {
 }
 impl NodeIdTrait for JSXExpr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::JSXEmptyExpr(it) => it.node_id(),
             Self::Expr(it) => it.node_id(),
@@ -3119,7 +3119,7 @@ impl NodeIdTrait for JSXExpr {
 }
 impl NodeIdTrait for JSXSpreadChild {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -3134,7 +3134,7 @@ impl NodeIdTrait for JSXSpreadChild {
 }
 impl NodeIdTrait for JSXElementName {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Ident(it) => it.node_id(),
             Self::JSXMemberExpr(it) => it.node_id(),
@@ -3161,7 +3161,7 @@ impl NodeIdTrait for JSXElementName {
 }
 impl NodeIdTrait for JSXOpeningElement {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -3176,7 +3176,7 @@ impl NodeIdTrait for JSXOpeningElement {
 }
 impl NodeIdTrait for JSXAttrOrSpread {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::JSXAttr(it) => it.node_id(),
             Self::SpreadElement(it) => it.node_id(),
@@ -3199,7 +3199,7 @@ impl NodeIdTrait for JSXAttrOrSpread {
 }
 impl NodeIdTrait for JSXClosingElement {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -3214,7 +3214,7 @@ impl NodeIdTrait for JSXClosingElement {
 }
 impl NodeIdTrait for JSXAttr {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -3229,7 +3229,7 @@ impl NodeIdTrait for JSXAttr {
 }
 impl NodeIdTrait for JSXAttrName {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Ident(it) => it.node_id(),
             Self::JSXNamespacedName(it) => it.node_id(),
@@ -3252,7 +3252,7 @@ impl NodeIdTrait for JSXAttrName {
 }
 impl NodeIdTrait for JSXAttrValue {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::Str(it) => it.node_id(),
             Self::JSXExprContainer(it) => it.node_id(),
@@ -3281,7 +3281,7 @@ impl NodeIdTrait for JSXAttrValue {
 }
 impl NodeIdTrait for JSXText {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -3296,7 +3296,7 @@ impl NodeIdTrait for JSXText {
 }
 impl NodeIdTrait for JSXElement {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -3311,7 +3311,7 @@ impl NodeIdTrait for JSXElement {
 }
 impl NodeIdTrait for JSXElementChild {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         match self {
             Self::JSXText(it) => it.node_id(),
             Self::JSXExprContainer(it) => it.node_id(),
@@ -3346,7 +3346,7 @@ impl NodeIdTrait for JSXElementChild {
 }
 impl NodeIdTrait for JSXFragment {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -3361,7 +3361,7 @@ impl NodeIdTrait for JSXFragment {
 }
 impl NodeIdTrait for JSXOpeningFragment {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
@@ -3376,7 +3376,7 @@ impl NodeIdTrait for JSXOpeningFragment {
 }
 impl NodeIdTrait for JSXClosingFragment {
     #[inline]
-    fn node_id(&self) -> NodeId {
+    fn node_id(self) -> NodeId {
         self.0
     }
     #[inline]
