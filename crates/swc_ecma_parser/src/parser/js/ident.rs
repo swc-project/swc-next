@@ -6,14 +6,14 @@ use crate::{Context, PResult, Parser, error::SyntaxError, input::Tokens, lexer::
 
 impl<'a, I: Tokens<'a>> Parser<'a, I> {
     // https://tc39.es/ecma262/#prod-ModuleExportName
-    pub(crate) fn parse_module_export_name(&mut self) -> PResult<ModuleExportName<'a>> {
+    pub(crate) fn parse_module_export_name(&mut self) -> PResult<ModuleExportName> {
         let cur = self.input().cur();
         let module_export_name = if cur == Token::Str {
-            let lit = self.parse_str_lit();
-            ModuleExportName::Str(self.boxed(lit))
+            ModuleExportName::Str(self.parse_str_lit())
         } else if cur.is_word() {
             let (span, sym) = self.parse_ident_name()?;
-            ModuleExportName::Ident(self.ast.box_ident(span, sym))
+            let sym = self.to_utf8_ref(sym);
+            ModuleExportName::Ident(self.ast.ident(span, sym))
         } else {
             unexpected!(self, "identifier or string");
         };
@@ -38,7 +38,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
     pub(crate) fn parse_maybe_private_name(
         &mut self,
-    ) -> PResult<Either<PrivateName<'a>, (Span, Atom<'a>)>> {
+    ) -> PResult<Either<PrivateName, (Span, Atom<'a>)>> {
         let is_private = self.input().is(Token::Hash);
         if is_private {
             self.parse_private_name().map(Either::Left)
@@ -47,7 +47,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         }
     }
 
-    pub(crate) fn parse_private_name(&mut self) -> PResult<PrivateName<'a>> {
+    pub(crate) fn parse_private_name(&mut self) -> PResult<PrivateName> {
         let start = self.cur_pos();
         self.assert_and_bump(Token::Hash);
         let hash_end = self.input().prev_span().end;
@@ -59,12 +59,13 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             );
         }
         let (_, sym) = self.parse_ident_name()?;
+        let sym = self.to_utf8_ref(sym);
         Ok(self.ast.private_name(self.span(start), sym))
     }
 
     /// IdentifierReference
     #[inline]
-    fn parse_ident_ref(&mut self) -> PResult<Ident<'a>> {
+    fn parse_ident_ref(&mut self) -> PResult<Ident> {
         let ctx = self.ctx();
         self.parse_ident(
             !ctx.contains(Context::InGenerator),
@@ -74,14 +75,14 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
     /// LabelIdentifier
     #[inline]
-    pub(crate) fn parse_label_ident(&mut self) -> PResult<Ident<'a>> {
+    pub(crate) fn parse_label_ident(&mut self) -> PResult<Ident> {
         self.parse_ident_ref()
     }
 
     /// Different from legacy SWC: This function returns [Ident] instead of [BindingIdent]
     /// Legacy SWC transforms [BindingIdent] back to [Ident], leading to memory hole in ast context
     /// https://tc39.es/ecma262/multipage/ecmascript-language-expressions.html#prod-BindingIdentifier
-    pub(crate) fn parse_binding_ident(&mut self, disallow_let: bool) -> PResult<Ident<'a>> {
+    pub(crate) fn parse_binding_ident(&mut self, disallow_let: bool) -> PResult<Ident> {
         trace_cur!(self, parse_binding_ident);
 
         let cur = self.input().cur();
@@ -90,6 +91,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         } else if cur == Token::Ident {
             let span = self.input().cur_span();
             let word = self.input_mut().expect_word_token_and_bump();
+            let word = self.to_utf8_ref(word);
 
             let word_str = word.as_str();
             if "arguments" == word_str || "eval" == word_str {
@@ -107,22 +109,19 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         if (ctx.intersects(Context::InAsync.union(Context::InStaticBlock)) && token == Token::Await)
             || (ctx.contains(Context::InGenerator) && token == Token::Yield)
         {
-            self.emit_err(ident.span(), SyntaxError::ExpectedIdent);
+            self.emit_err(ident.span(self.ast), SyntaxError::ExpectedIdent);
         }
 
         Ok(ident)
     }
 
-    pub(crate) fn parse_opt_binding_ident(
-        &mut self,
-        disallow_let: bool,
-    ) -> PResult<Option<Ident<'a>>> {
+    pub(crate) fn parse_opt_binding_ident(&mut self, disallow_let: bool) -> PResult<Option<Ident>> {
         trace_cur!(self, parse_opt_binding_ident);
         let token_and_span = self.input().get_cur();
         let cur = token_and_span.token;
         if cur == Token::This && self.input().syntax().typescript() {
             let start = token_and_span.span.start;
-            let sym = Atom::new_const("this");
+            let sym = self.ast.add_atom("this");
             let ident = self.ast.ident(self.span(start), sym);
             Ok(Some(ident))
         } else if cur.is_word() && !cur.is_reserved(self.ctx()) {
@@ -135,7 +134,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
     /// Identifier
     ///
     /// In strict mode, "yield" is SyntaxError if matched.
-    pub(crate) fn parse_ident(&mut self, incl_yield: bool, incl_await: bool) -> PResult<Ident<'a>> {
+    pub(crate) fn parse_ident(&mut self, incl_yield: bool, incl_await: bool) -> PResult<Ident> {
         trace_cur!(self, parse_ident);
 
         let token_and_span = self.input().get_cur();
@@ -152,6 +151,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         // "package", "private", "protected", "public", "static", or "yield".
         if t == Token::Enum {
             let word = self.input_mut().expect_word_token_and_bump();
+            let word = self.to_utf8_ref(word);
             let word_str = word.as_str();
             self.emit_err(
                 span,
@@ -170,6 +170,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             || t == Token::Public
         {
             let word = self.input_mut().expect_word_token_and_bump();
+            let word = self.to_utf8_ref(word);
             let word_str = word.as_str();
             self.emit_strict_mode_err(
                 span,
@@ -204,6 +205,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             word = self.atom_from_span(span)
         } else if t == Token::Ident {
             let word = self.input_mut().expect_word_token_and_bump();
+            let word = self.to_utf8_ref(word);
             let word_str = word.as_str();
             if self.ctx().contains(Context::InClassField) && word_str == "arguments" {
                 self.emit_err(span, SyntaxError::ArgumentsInClassField)
@@ -218,6 +220,8 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             unreachable!()
         }
         self.bump();
+
+        let word = self.to_utf8_ref(word);
         Ok(self.ast.ident(self.span(start), word))
     }
 }

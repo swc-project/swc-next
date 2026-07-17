@@ -33,7 +33,6 @@ pub mod unstable {
     };
 }
 
-use swc_experimental_allocator::Allocator;
 use swc_experimental_ecma_ast::*;
 
 mod context;
@@ -48,16 +47,22 @@ pub use lexer::source::StringSource;
 pub use parser::*;
 pub use syntax::{EsSyntax, Syntax, SyntaxFlags, TsSyntax};
 
-pub fn with_file_parser<'a, 'cmt, T>(
-    allocator: &'a Allocator,
+pub fn with_file_parser<'a, T>(
+    ast: &'a mut Ast<'a>,
     src: &'a str,
     syntax: Syntax,
     target: EsVersion,
-    comments: Option<&'cmt mut Comments<'a>>,
-    op: impl FnOnce(&mut Parser<'a, self::Lexer<'a, 'cmt>>) -> T,
+    comments: Option<&'a mut Comments<'a>>,
+    op: impl FnOnce(&mut Parser<'a, self::Lexer<'a, 'a>>) -> T,
 ) -> T {
-    let lexer = self::Lexer::new(allocator, syntax, target, StringSource::new(src), comments);
-    let mut p = Parser::new_from(allocator, lexer);
+    let lexer = self::Lexer::new(
+        ast.allocator(),
+        syntax,
+        target,
+        StringSource::new(src),
+        comments,
+    );
+    let mut p = Parser::new_from(ast, lexer);
     op(&mut p)
 }
 
@@ -72,36 +77,34 @@ macro_rules! expose {
         /// This is an alias for [Parser], [Lexer] and [SourceFileInput], but
         /// instantiation of generics occur in `swc_ecma_parser` crate.
         pub fn $name<'a>(
-            allocator: &'a Allocator,
+            ast: &'a mut Ast<'a>,
             src: &'a str,
             syntax: Syntax,
             target: EsVersion,
             comments: Option<&'a mut Comments<'a>>,
         ) -> PResult<$T> {
-            with_file_parser(allocator, src, syntax, target, comments, $($t)*)
+            with_file_parser(ast, src, syntax, target, comments, $($t)*)
         }
     };
 }
 
-expose!(parse_file_as_expr, Expr<'a>, |p: &mut Parser<
+expose!(parse_file_as_expr, Expr, |p: &mut Parser<
     'a,
     Lexer<'a, '_>,
 >| { p.parse_expr() });
-expose!(parse_file_as_module, Module<'a>, |p: &mut Parser<
+expose!(parse_file_as_module, Module, |p: &mut Parser<
     'a,
     Lexer<'a, '_>,
 >| { p.parse_module() });
-expose!(parse_file_as_script, Script<'a>, |p: &mut Parser<
+expose!(parse_file_as_script, Script, |p: &mut Parser<
     'a,
     Lexer<'a, '_>,
 >| { p.parse_script() });
-expose!(parse_file_as_commonjs, Script<'a>, |p: &mut Parser<
+expose!(parse_file_as_commonjs, Script, |p: &mut Parser<
     'a,
     Lexer<'a, '_>,
->| {
-    p.parse_commonjs()
-});
-expose!(parse_file_as_program, Program<'a>, |p: &mut Parser<
+>| { p.parse_commonjs() });
+expose!(parse_file_as_program, Program, |p: &mut Parser<
     'a,
     Lexer<'a, '_>,
 >| { p.parse_program() });

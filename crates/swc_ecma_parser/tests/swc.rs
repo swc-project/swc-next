@@ -5,6 +5,7 @@ use std::{
 
 use rstest::rstest;
 use swc_experimental_allocator::Allocator;
+use swc_experimental_ecma_ast::Ast;
 use swc_experimental_ecma_parser::{EsSyntax, Parser, StringSource, Syntax};
 
 #[rstest]
@@ -43,8 +44,9 @@ fn parse_case(path: &Path) -> bool {
     let ext = path.extension().unwrap().to_string_lossy();
 
     let allocator = Allocator::new();
+    let mut ast = Ast::new(code.len(), &allocator);
     let input = StringSource::new(&code);
-    let mut parser = Parser::new(&allocator, syntax(path, &code), input, None);
+    let mut parser = Parser::new(&mut ast, syntax(path, &code), input, None);
 
     let result = match ext.as_ref() {
         "cjs" => parser.parse_script().map(|_| ()),

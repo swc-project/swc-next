@@ -1,5 +1,4 @@
-use swc_experimental_allocator::vec::Vec;
-use swc_experimental_allocator::{atom::Atom, boxed::Box as AstBox};
+use swc_experimental_allocator::atom::Atom;
 use swc_experimental_ecma_ast::*;
 
 use crate::{
@@ -7,31 +6,32 @@ use crate::{
     error::{Error, SyntaxError},
     input::Tokens,
     lexer::Token,
-    parser::{Parser, js::pat::PatType, util::FromStmt},
+    parser::{
+        Parser,
+        js::pat::PatType,
+        util::{FromStmt, ScratchIndex},
+    },
 };
 
 #[allow(clippy::enum_variant_names)]
-enum TempForHead<'a> {
+enum TempForHead {
     For {
-        init: Option<VarDeclOrExpr<'a>>,
-        test: Option<Expr<'a>>,
-        update: Option<Expr<'a>>,
+        init: Option<VarDeclOrExpr>,
+        test: Option<Expr>,
+        update: Option<Expr>,
     },
     ForIn {
-        left: ForHead<'a>,
-        right: Expr<'a>,
+        left: ForHead,
+        right: Expr,
     },
     ForOf {
-        left: ForHead<'a>,
-        right: Expr<'a>,
+        left: ForHead,
+        right: Expr,
     },
 }
 
 impl<'a, I: Tokens<'a>> Parser<'a, I> {
-    fn parse_normal_for_head(
-        &mut self,
-        init: Option<VarDeclOrExpr<'a>>,
-    ) -> PResult<TempForHead<'a>> {
+    fn parse_normal_for_head(&mut self, init: Option<VarDeclOrExpr>) -> PResult<TempForHead> {
         let test = if self.input_mut().eat(Token::Semi) {
             None
         } else {
@@ -49,7 +49,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         Ok(TempForHead::For { init, test, update })
     }
 
-    fn parse_for_each_head(&mut self, left: ForHead<'a>) -> PResult<TempForHead<'a>> {
+    fn parse_for_each_head(&mut self, left: ForHead) -> PResult<TempForHead> {
         let is_of = self.input().cur() == Token::Of;
         self.bump();
         if is_of {
@@ -57,14 +57,17 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             Ok(TempForHead::ForOf { left, right })
         } else {
             if let ForHead::UsingDecl(d) = &left {
-                self.emit_err(d.span(), SyntaxError::UsingDeclNotAllowedForForInLoop)
+                self.emit_err(
+                    d.span(self.ast),
+                    SyntaxError::UsingDeclNotAllowedForForInLoop,
+                )
             }
             let right = self.allow_in_expr(|p| p.parse_expr_inner())?;
             Ok(TempForHead::ForIn { left, right })
         }
     }
 
-    fn parse_return_stmt(&mut self) -> PResult<Stmt<'a>> {
+    fn parse_return_stmt(&mut self) -> PResult<Stmt> {
         self.assert_and_bump(Token::Return);
         let start = self.input().prev_span().start;
 
@@ -89,7 +92,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         &mut self,
         for_loop: bool,
         kind: VarDeclKind,
-    ) -> PResult<VarDeclarator<'a>> {
+    ) -> PResult<VarDeclarator> {
         let start = self.cur_pos();
 
         let is_let_or_const = matches!(kind, VarDeclKind::Let | VarDeclKind::Const);
@@ -167,7 +170,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         Ok(self.ast.var_declarator(self.span(start), name, init))
     }
 
-    pub(crate) fn parse_var_stmt(&mut self, for_loop: bool) -> PResult<VarDecl<'a>> {
+    pub(crate) fn parse_var_stmt(&mut self, for_loop: bool) -> PResult<VarDecl> {
         let start = self.cur_pos();
         let t = self.input().cur();
         let kind = if t == Token::Const {
@@ -220,7 +223,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         //     }
         // }
 
-        let decls = self.collect_vec(|p, decls| {
+        let decls = self.scratch_start(|p, decls| {
             loop {
                 // Handle
                 //      var a,;
@@ -245,7 +248,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                     p.parse_var_declarator(for_loop, kind)
                 }?;
 
-                decls.push(decl);
+                decls.push(p, decl);
 
                 if !p.input_mut().eat(Token::Comma) {
                     break;
@@ -271,7 +274,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         Ok(self.ast.var_decl(self.span(start), kind, false, decls))
     }
 
-    fn parse_using_decl(&mut self, start: u32, is_await: bool) -> PResult<Option<UsingDecl<'a>>> {
+    fn parse_using_decl(&mut self, start: u32, is_await: bool) -> PResult<Option<UsingDecl>> {
         // using
         // reader = init()
 
@@ -286,7 +289,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
         self.assert_and_bump(Token::Using);
 
-        let decls = self.collect_vec(|p, decls| {
+        let decls = self.scratch_start(|p, decls| {
             loop {
                 // Handle
                 //      var a,;
@@ -299,7 +302,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 }
 
                 let decl = p.parse_var_declarator(false, VarDeclKind::Var)?;
-                decls.push(decl);
+                decls.push(p, decl);
                 if !p.input_mut().eat(Token::Comma) {
                     break;
                 }
@@ -316,14 +319,15 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             Ok(())
         })?;
         for decl in decls.iter() {
-            match decl.name {
+            let decl = self.ast.get_node_in_sub_range(decl);
+            match decl.name(self.ast) {
                 Pat::Ident(..) => {}
                 _ => {
                     self.emit_err(self.span(start), SyntaxError::InvalidNameInUsingDecl);
                 }
             }
 
-            if decl.init.is_none() {
+            if decl.init(self.ast).is_none() {
                 self.emit_err(self.span(start), SyntaxError::InitRequiredForUsingDecl);
             }
         }
@@ -333,7 +337,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         Ok(Some(self.ast.using_decl(self.span(start), is_await, decls)))
     }
 
-    fn parse_for_head(&mut self) -> PResult<TempForHead<'a>> {
+    fn parse_for_head(&mut self) -> PResult<TempForHead> {
         // let strict = self.ctx().contains(Context::Strict);
 
         let cur = self.input().cur();
@@ -346,16 +350,24 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
             let cur = self.input().cur();
             if cur == Token::Of || cur == Token::In {
-                if decl.decls.len() != 1 {
-                    for d in decl.decls.iter().skip(1) {
-                        self.emit_err(d.name.span(), SyntaxError::TooManyVarInForInHead);
+                if decl.decls(self.ast).len() != 1 {
+                    for d in decl.decls(self.ast).iter().skip(1) {
+                        let d = self.ast.get_node_in_sub_range(d);
+                        self.emit_err(
+                            d.name(self.ast).span(self.ast),
+                            SyntaxError::TooManyVarInForInHead,
+                        );
                     }
                 } else {
-                    let decl = decl.decls.first().unwrap();
+                    let decls = decl.decls(self.ast);
+                    let decl = self.ast.get_node_in_sub_range(decls.get(0).unwrap());
                     if (self.ctx().contains(Context::Strict) || self.input().is(Token::Of))
-                        && decl.init.is_some()
+                        && decl.init(self.ast).is_some()
                     {
-                        self.emit_err(decl.name.span(), SyntaxError::VarInitializerInForInHead);
+                        self.emit_err(
+                            decl.name(self.ast).span(self.ast),
+                            SyntaxError::VarInitializerInForInHead,
+                        );
                     }
 
                     // if self.syntax().typescript() {
@@ -375,11 +387,11 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                     // }
                 }
 
-                return self.parse_for_each_head(ForHead::VarDecl(self.boxed(decl)));
+                return self.parse_for_each_head(ForHead::VarDecl(decl));
             }
 
             expect!(self, Token::Semi);
-            return self.parse_normal_for_head(Some(VarDeclOrExpr::VarDecl(self.boxed(decl))));
+            return self.parse_normal_for_head(Some(VarDeclOrExpr::VarDecl(decl)));
         }
 
         if self.input_mut().eat(Token::Semi) {
@@ -394,12 +406,15 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
         if self.input().syntax().explicit_resource_management() {
             // using foo
-            let mut maybe_using_decl = init.is_ident_ref_to("using");
+            let mut maybe_using_decl = init.is_ident_ref_to(self.ast, "using");
             let mut maybe_await_using_decl = false;
 
             // await using foo
             if !maybe_using_decl
-                && matches!(&init, Expr::Await(e) if e.arg.is_ident_ref_to("using"))
+                && init
+                    .as_await()
+                    .filter(|e| e.arg(self.ast).is_ident_ref_to(self.ast, "using"))
+                    .is_some()
             {
                 maybe_using_decl = true;
                 maybe_await_using_decl = true;
@@ -416,13 +431,13 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
         if is_using_decl {
             let name = self.parse_binding_ident(false)?;
-            let name = self.ast.box_binding_ident(self.boxed(name));
+            let name = self.ast.binding_ident(self.span(start), name);
             let decl = self
                 .ast
                 .var_declarator(self.span(start), Pat::Ident(name), Some(init));
 
-            let decls = self.collect_vec(|_p, decls| {
-                decls.push(decl);
+            let decls = self.scratch_start(|p, decls| {
+                decls.push(p, decl);
                 Ok(())
             })?;
 
@@ -438,7 +453,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 return Err(self.eof_error());
             }
 
-            return self.parse_for_each_head(ForHead::UsingDecl(self.boxed(pat)));
+            return self.parse_for_each_head(ForHead::UsingDecl(pat));
         }
 
         // for (a of b)
@@ -453,20 +468,20 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 match pat {
                     Pat::Ident(..) => {}
                     Pat::Expr(..) => {}
-                    ref v => self.emit_err(v.span(), SyntaxError::TS2491),
+                    ref v => self.emit_err(v.span(self.ast), SyntaxError::TS2491),
                 }
             }
 
-            return self.parse_for_each_head(ForHead::Pat(self.boxed(pat)));
+            return self.parse_for_each_head(ForHead::Pat(pat));
         }
 
         expect!(self, Token::Semi);
 
         let init = self.verify_expr(init)?;
-        self.parse_normal_for_head(Some(VarDeclOrExpr::Expr(self.boxed(init))))
+        self.parse_normal_for_head(Some(VarDeclOrExpr::Expr(init)))
     }
 
-    fn parse_for_stmt(&mut self) -> PResult<Stmt<'a>> {
+    fn parse_for_stmt(&mut self) -> PResult<Stmt> {
         let start = self.cur_pos();
 
         self.assert_and_bump(Token::For);
@@ -516,12 +531,12 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         })
     }
 
-    pub fn parse_stmt(&mut self) -> PResult<Stmt<'a>> {
+    pub fn parse_stmt(&mut self) -> PResult<Stmt> {
         trace_cur!(self, parse_stmt);
         self.parse_stmt_like(false, handle_import_export)
     }
 
-    fn parse_if_stmt(&mut self) -> PResult<IfStmt<'a>> {
+    fn parse_if_stmt(&mut self) -> PResult<IfStmt> {
         let start = self.cur_pos();
 
         self.assert_and_bump(Token::If);
@@ -535,7 +550,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 Error::new(
                     err.span(),
                     SyntaxError::WithLabel {
-                        inner: std::boxed::Box::new(err),
+                        inner: Box::new(err),
                         span: if_token,
                         note: "Tried to parse the condition for an if statement",
                     },
@@ -554,7 +569,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         Ok(self.ast.if_stmt(span, test, cons, alt))
     }
 
-    fn parse_throw_stmt(&mut self) -> PResult<Stmt<'a>> {
+    fn parse_throw_stmt(&mut self) -> PResult<Stmt> {
         let start = self.cur_pos();
 
         self.assert_and_bump(Token::Throw);
@@ -571,7 +586,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         Ok(self.ast.stmt_throw_stmt(span, arg))
     }
 
-    fn parse_with_stmt(&mut self) -> PResult<Stmt<'a>> {
+    fn parse_with_stmt(&mut self) -> PResult<Stmt> {
         if self.syntax().typescript() {
             let span = self.input().cur_span();
             self.emit_err(span, SyntaxError::TS2410);
@@ -598,7 +613,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         Ok(self.ast.stmt_with_stmt(span, obj, body))
     }
 
-    fn parse_while_stmt(&mut self) -> PResult<Stmt<'a>> {
+    fn parse_while_stmt(&mut self) -> PResult<Stmt> {
         let start = self.cur_pos();
 
         self.assert_and_bump(Token::While);
@@ -617,7 +632,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
     }
 
     /// It's optional since es2019
-    fn parse_catch_param(&mut self) -> PResult<Option<Pat<'a>>> {
+    fn parse_catch_param(&mut self) -> PResult<Option<Pat>> {
         if self.input_mut().eat(Token::LParen) {
             let pat = self.parse_binding_pat_or_ident(false)?;
 
@@ -650,7 +665,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         }
     }
 
-    fn parse_do_stmt(&mut self) -> PResult<Stmt<'a>> {
+    fn parse_do_stmt(&mut self) -> PResult<Stmt> {
         let start = self.cur_pos();
 
         self.assert_and_bump(Token::Do);
@@ -675,19 +690,18 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         Ok(self.ast.stmt_do_while_stmt(span, test, body))
     }
 
-    fn parse_labelled_stmt(&mut self, l: AstBox<'a, Ident<'a>>) -> PResult<Stmt<'a>> {
+    fn parse_labelled_stmt(&mut self, l: Ident) -> PResult<Stmt> {
         self.do_inside_of_context(Context::IsBreakAllowed, |p| {
             p.do_outside_of_context(Context::AllowUsingDecl, |p| {
-                let start = l.span_lo();
-                let sym = l.sym;
+                let start = l.span_lo(p.ast);
+                let sym = l.sym(p.ast);
                 let atom = sym.as_str();
 
-                let mut errors = std::vec::Vec::new();
+                let mut errors = Vec::new();
                 for lb in &p.state().labels {
-                    let lb = lb.as_str();
-                    if atom == lb {
+                    if sym == *lb {
                         errors.push(Error::new(
-                            l.span(),
+                            l.span(p.ast),
                             SyntaxError::DuplicateLabel(atom.to_string()),
                         ));
                     }
@@ -695,18 +709,18 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 p.state_mut().labels.push(sym);
 
                 let body = if p.input().is(Token::Function) {
-                    let f = p.parse_fn_decl(p.vec())?;
+                    let f = p.parse_fn_decl(TypedSubRange::empty())?;
                     if let Decl::Fn(fn_decl) = &f {
-                        let function = &fn_decl.function;
+                        let function = fn_decl.function(p.ast);
                         if p.ctx().contains(Context::Strict) {
-                            p.emit_err(function.span(), SyntaxError::LabelledFunctionInStrict)
+                            p.emit_err(function.span(p.ast), SyntaxError::LabelledFunctionInStrict)
                         }
-                        if function.is_generator || function.is_async {
-                            p.emit_err(function.span(), SyntaxError::LabelledGeneratorOrAsync)
+                        if function.is_generator(p.ast) || function.is_async(p.ast) {
+                            p.emit_err(function.span(p.ast), SyntaxError::LabelledGeneratorOrAsync)
                         }
                     }
 
-                    Stmt::Decl(p.boxed(f))
+                    Stmt::Decl(f)
                 } else {
                     p.do_outside_of_context(Context::TopLevel, Self::parse_stmt)?
                 };
@@ -716,11 +730,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 }
 
                 {
-                    let pos = p
-                        .state()
-                        .labels
-                        .iter()
-                        .position(|v| v.as_str() == sym.as_str());
+                    let pos = p.state().labels.iter().position(|v| *v == sym);
                     if let Some(pos) = pos {
                         p.state_mut().labels.remove(pos);
                     }
@@ -731,7 +741,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         })
     }
 
-    pub(crate) fn parse_block(&mut self, allow_directives: bool) -> PResult<BlockStmt<'a>> {
+    pub(crate) fn parse_block(&mut self, allow_directives: bool) -> PResult<BlockStmt> {
         let start = self.cur_pos();
 
         expect!(self, Token::LBrace);
@@ -744,7 +754,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         Ok(self.ast.block_stmt(span, stmts))
     }
 
-    fn parse_finally_block(&mut self) -> PResult<Option<BlockStmt<'a>>> {
+    fn parse_finally_block(&mut self) -> PResult<Option<BlockStmt>> {
         Ok(if self.input_mut().eat(Token::Finally) {
             self.parse_block(false).map(Some)?
         } else {
@@ -752,21 +762,19 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         })
     }
 
-    fn parse_catch_clause(&mut self) -> PResult<Option<CatchClause<'a>>> {
+    fn parse_catch_clause(&mut self) -> PResult<Option<CatchClause>> {
         let start = self.cur_pos();
         Ok(if self.input_mut().eat(Token::Catch) {
             let param = self.parse_catch_param()?;
-            let body = self.parse_block(false)?;
-            Some(
-                self.ast
-                    .catch_clause(self.span(start), param, self.boxed(body)),
-            )
+            self.parse_block(false)
+                .map(|body| self.ast.catch_clause(self.span(start), param, body))
+                .map(Some)?
         } else {
             None
         })
     }
 
-    fn parse_try_stmt(&mut self) -> PResult<Stmt<'a>> {
+    fn parse_try_stmt(&mut self) -> PResult<Stmt> {
         let start = self.cur_pos();
         self.assert_and_bump(Token::Try);
 
@@ -781,15 +789,10 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         }
 
         let span = self.span(start);
-        Ok(self.ast.stmt_try_stmt(
-            span,
-            self.boxed(block),
-            self.box_opt(handler),
-            self.box_opt(finalizer),
-        ))
+        Ok(self.ast.stmt_try_stmt(span, block, handler, finalizer))
     }
 
-    fn parse_switch_stmt(&mut self) -> PResult<Stmt<'a>> {
+    fn parse_switch_stmt(&mut self) -> PResult<Stmt> {
         let switch_start = self.cur_pos();
 
         self.assert_and_bump(Token::Switch);
@@ -801,7 +804,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         expect!(self, Token::LBrace);
 
         let mut span_of_previous_default = None;
-        let cases = self.collect_vec(|p, cases| {
+        let cases = self.scratch_start(|p, cases| {
             p.do_inside_of_context(Context::IsBreakAllowed, |p| {
                 while {
                     let cur = p.input().cur();
@@ -822,7 +825,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                     };
                     expect!(p, Token::Colon);
 
-                    let cons = p.collect_vec(|p, cons| {
+                    let cons = p.scratch_start(|p, cons| {
                         while {
                             let cur = p.input().cur();
                             !(cur == Token::Case || cur == Token::Default || cur == Token::RBrace)
@@ -831,7 +834,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                                 Context::TopLevel,
                                 Self::parse_stmt_list_item,
                             )?;
-                            cons.push(con);
+                            cons.push(p, con);
                         }
                         Ok(())
                     })?;
@@ -841,7 +844,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                         test,
                         cons,
                     );
-                    cases.push(case);
+                    cases.push(p, case);
                 }
                 Ok(())
             })?;
@@ -857,7 +860,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
     }
 
     /// Parse a statement and maybe a declaration.
-    pub fn parse_stmt_list_item(&mut self) -> PResult<Stmt<'a>> {
+    pub fn parse_stmt_list_item(&mut self) -> PResult<Stmt> {
         trace_cur!(self, parse_stmt_list_item);
         self.parse_stmt_like(true, handle_import_export)
     }
@@ -867,7 +870,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
     pub(crate) fn parse_stmt_like<Type: FromStmt<'a>>(
         &mut self,
         include_decl: bool,
-        handle_import_export: impl Fn(&mut Self, Vec<'a, Decorator<'a>>) -> PResult<Type>,
+        handle_import_export: impl Fn(&mut Self, TypedSubRange<Decorator>) -> PResult<Type>,
     ) -> PResult<Type> {
         trace_cur!(self, parse_stmt_like);
 
@@ -877,7 +880,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         let decorators = if self.input().get_cur().token == Token::At {
             self.parse_decorators(true)?
         } else {
-            self.vec()
+            TypedSubRange::empty()
         };
 
         let cur = self.input().cur();
@@ -890,7 +893,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 p.parse_stmt_internal(start, include_decl, decorators)
             })
         })
-        .map(|stmt| Type::from_stmt(&self.ast, stmt))
+        .map(Type::from_stmt)
     }
 
     /// `parseStatementContent`
@@ -898,8 +901,8 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         &mut self,
         start: u32,
         include_decl: bool,
-        decorators: Vec<'a, Decorator<'a>>,
-    ) -> PResult<Stmt<'a>> {
+        decorators: TypedSubRange<Decorator>,
+    ) -> PResult<Stmt> {
         trace_cur!(self, parse_stmt_internal);
 
         // let is_typescript = self.input().syntax().typescript();
@@ -932,8 +935,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                 self.assert_and_bump(Token::Await);
                 let v = self.parse_using_decl(start, true)?;
                 if let Some(v) = v {
-                    let decl = Decl::Using(self.boxed(v));
-                    return Ok(Stmt::Decl(self.boxed(decl)));
+                    return Ok(Stmt::Decl(Decl::Using(v)));
                 }
 
                 let expr = self.parse_await_expr(eaten_await)?;
@@ -960,7 +962,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                         .state()
                         .labels
                         .iter()
-                        .any(|l| l.as_str() == label.as_ref().unwrap().sym.as_str())
+                        .any(|l| *l == label.as_ref().unwrap().sym(self.ast))
                 {
                     self.emit_err(span, SyntaxError::TS1116);
                 } else if !self.ctx().contains(Context::IsBreakAllowed) {
@@ -973,14 +975,14 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                     .state()
                     .labels
                     .iter()
-                    .any(|l| l.as_str() == label.as_ref().unwrap().sym.as_str())
+                    .any(|l| *l == label.as_ref().unwrap().sym(self.ast))
             {
                 self.emit_err(span, SyntaxError::TS1107);
             }
             return Ok(if is_break {
-                self.ast.stmt_break_stmt(span, self.box_opt(label))
+                self.ast.stmt_break_stmt(span, label)
             } else {
-                self.ast.stmt_continue_stmt(span, self.box_opt(label))
+                self.ast.stmt_continue_stmt(span, label)
             });
         } else if cur == Token::Debugger {
             self.bump();
@@ -994,18 +996,16 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             if !include_decl {
                 self.emit_err(self.input().cur_span(), SyntaxError::DeclNotAllowed);
             }
-            return self
-                .parse_fn_decl(decorators)
-                .map(|decl| Stmt::Decl(self.boxed(decl)));
+            return self.parse_fn_decl(decorators).map(Stmt::Decl);
         } else if cur == Token::Class {
             if !include_decl {
                 self.emit_err(self.input().cur_span(), SyntaxError::DeclNotAllowed);
             }
             return self
                 .parse_class_decl(start, start, decorators, false)
-                .map(|decl| Stmt::Decl(self.boxed(decl)));
+                .map(Stmt::Decl);
         } else if cur == Token::If {
-            return self.parse_if_stmt().map(|stmt| Stmt::If(self.boxed(stmt)));
+            return self.parse_if_stmt().map(Stmt::If);
         } else if cur == Token::Return {
             return self.parse_return_stmt();
         } else if cur == Token::Switch {
@@ -1020,7 +1020,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             let _ = self.parse_catch_clause();
             let _ = self.parse_finally_block();
 
-            let invalid = self.ast.expr_invalid();
+            let invalid = self.ast.expr_invalid(span);
             return Ok(self.ast.stmt_expr_stmt(span, invalid));
         } else if cur == Token::Finally {
             // Error recovery
@@ -1029,7 +1029,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
             let _ = self.parse_finally_block();
 
-            let invalud = self.ast.expr_invalid();
+            let invalud = self.ast.expr_invalid(span);
             return Ok(self.ast.stmt_expr_stmt(span, invalud));
         } else if cur == Token::Try {
             return self.parse_try_stmt();
@@ -1039,8 +1039,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             return self.parse_while_stmt();
         } else if cur == Token::Var || (cur == Token::Const && include_decl) {
             let v = self.parse_var_stmt(false)?;
-            let decl = Decl::Var(self.boxed(v));
-            return Ok(Stmt::Decl(self.boxed(decl)));
+            return Ok(Stmt::Decl(Decl::Var(v)));
         } else if cur == Token::Let && include_decl {
             // 'let' can start an identifier reference.
             let is_keyword = match peek!(self) {
@@ -1050,14 +1049,12 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
             if is_keyword {
                 let v = self.parse_var_stmt(false)?;
-                let decl = Decl::Var(self.boxed(v));
-                return Ok(Stmt::Decl(self.boxed(decl)));
+                return Ok(Stmt::Decl(Decl::Var(v)));
             }
         } else if cur == Token::Using && include_decl {
             let v = self.parse_using_decl(start, false)?;
             if let Some(v) = v {
-                let decl = Decl::Using(self.boxed(v));
-                return Ok(Stmt::Decl(self.boxed(decl)));
+                return Ok(Stmt::Decl(Decl::Using(v)));
             }
         // } else if cur == Token::Interface
         //     && is_typescript
@@ -1086,7 +1083,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         } else if cur == Token::LBrace {
             return self
                 .do_inside_of_context(Context::AllowUsingDecl, |p| p.parse_block(false))
-                .map(|block| Stmt::Block(self.boxed(block)));
+                .map(Stmt::Block);
         } else if cur == Token::Semi {
             self.bump();
             return Ok(self.ast.stmt_empty_stmt(self.span(start)));
@@ -1097,9 +1094,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             && peek!(self).is_some_and(|peek| peek == Token::Function)
             && !self.input_mut().has_linebreak_between_cur_and_peeked()
         {
-            return self
-                .parse_async_fn_decl(decorators)
-                .map(|decl| Stmt::Decl(self.boxed(decl)));
+            return self.parse_async_fn_decl(decorators).map(Stmt::Decl);
         }
 
         // If the statement does not start with a statement keyword or a
@@ -1124,7 +1119,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             #[allow(clippy::collapsible_if)]
             if expr_token == Token::Interface && self.input().had_line_break_before_cur() {
                 self.emit_strict_mode_err(
-                    ident.span(),
+                    ident.span(self.ast),
                     SyntaxError::InvalidIdentInStrict("interface".to_string()),
                 );
 
@@ -1169,7 +1164,9 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
             syntax_error!(
                 self,
-                SyntaxError::ExpectedSemiForExprStmt { expr: expr.span() }
+                SyntaxError::ExpectedSemiForExprStmt {
+                    expr: expr.span(self.ast)
+                }
             );
         }
     }
@@ -1178,24 +1175,24 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         &mut self,
         allow_directives: bool,
         end: Option<Token>,
-    ) -> PResult<Vec<'a, Stmt<'a>>> {
+    ) -> PResult<TypedSubRange<Stmt>> {
         self.parse_block_body(allow_directives, end, handle_import_export)
     }
 
-    pub(crate) fn parse_block_body<Type: FromStmt<'a>>(
+    pub(crate) fn parse_block_body<Type: FromStmt<'a> + 'a>(
         &mut self,
         allow_directives: bool,
         end: Option<Token>,
-        handle_import_export: impl Fn(&mut Self, Vec<'a, Decorator<'a>>) -> PResult<Type>,
-    ) -> PResult<Vec<'a, Type>> {
+        handle_import_export: impl Fn(&mut Self, TypedSubRange<Decorator>) -> PResult<Type>,
+    ) -> PResult<TypedSubRange<Type>> {
         trace_cur!(self, parse_block_body);
 
         let cur_str = self.input.iter.read_string(self.input.cur_span());
         let has_strict_directive =
             allow_directives && (cur_str == "\"use strict\"" || cur_str == "'use strict'");
 
-        let stmts = self.collect_vec(|p, stmts| {
-            let parse_stmts = |p: &mut Self, stmts: &mut Vec<'a, Type>| -> PResult<()> {
+        let stmts = self.scratch_start(|p, stmts| {
+            let parse_stmts = |p: &mut Self, stmts: &mut ScratchIndex<Type>| -> PResult<()> {
                 if let Some(end) = end {
                     loop {
                         let cur = p.input().cur();
@@ -1212,12 +1209,12 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
                         }
 
                         let stmt = p.parse_stmt_like(true, &handle_import_export)?;
-                        stmts.push(stmt);
+                        stmts.push(p, stmt);
                     }
                 } else {
                     while p.input().cur() != Token::Eof {
                         let stmt = p.parse_stmt_like(true, &handle_import_export)?;
-                        stmts.push(stmt);
+                        stmts.push(p, stmt);
                     }
                 }
 
@@ -1244,7 +1241,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
         let cur = self.input().cur();
         Ok(if cur == Token::Shebang {
             let atom = self.input_mut().expect_shebang_token_and_bump();
-            atom.into()
+            self.to_utf8_ref(atom).into()
         } else {
             None
         })
@@ -1253,8 +1250,8 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
 
 fn handle_import_export<'a, I: Tokens<'a>>(
     p: &mut Parser<'a, I>,
-    _: Vec<'a, Decorator<'a>>,
-) -> PResult<Stmt<'a>> {
+    _: TypedSubRange<Decorator>,
+) -> PResult<Stmt> {
     let start = p.cur_pos();
     if p.input().is(Token::Import) && peek!(p).is_some_and(|peek| peek == Token::LParen) {
         let expr = p.parse_expr_inner()?;
