@@ -30,7 +30,7 @@ enum TempForHead {
     },
 }
 
-impl<'a, I: Tokens<'a>> Parser<'a, I> {
+impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
     fn parse_normal_for_head(&mut self, init: Option<VarDeclOrExpr>) -> PResult<TempForHead> {
         let test = if self.input_mut().eat(Token::Semi) {
             None
@@ -1248,8 +1248,8 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
     }
 }
 
-fn handle_import_export<'a, I: Tokens<'a>>(
-    p: &mut Parser<'a, I>,
+fn handle_import_export<'p, 'a, I: Tokens<'a>>(
+    p: &mut Parser<'p, 'a, I>,
     _: TypedSubRange<Decorator>,
 ) -> PResult<Stmt> {
     let start = p.cur_pos();

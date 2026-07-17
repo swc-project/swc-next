@@ -2,7 +2,7 @@ use swc_experimental_ecma_ast::*;
 
 use crate::{Context, PResult, Parser, error::SyntaxError, input::Tokens, lexer::Token};
 
-impl<'a, I: Tokens<'a>> Parser<'a, I> {
+impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
     pub fn parse_module_item(&mut self) -> PResult<ModuleItem> {
         self.do_inside_of_context(Context::TopLevel, |p| {
             p.parse_stmt_like(true, handle_import_export)
@@ -938,8 +938,8 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
     }
 }
 
-fn handle_import_export<'a, I: Tokens<'a>>(
-    p: &mut Parser<'a, I>,
+fn handle_import_export<'p, 'a, I: Tokens<'a>>(
+    p: &mut Parser<'p, 'a, I>,
     decorators: TypedSubRange<Decorator>,
 ) -> PResult<ModuleItem> {
     if !p

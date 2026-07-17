@@ -40,8 +40,8 @@ pub struct ParserCheckpoint<'a, I: Tokens<'a>> {
 }
 
 /// EcmaScript parser.
-pub struct Parser<'a, I: self::input::Tokens<'a>> {
-    ast: &'a mut Ast<'a>,
+pub struct Parser<'p, 'a, I: self::input::Tokens<'a>> {
+    ast: &'p mut Ast<'a>,
     /// Don't mutable this directly. Use Parser::scratch_xxx instead for safety.
     scratch: std::vec::Vec<ExtraData<'a>>,
     state: State<'a>,
@@ -49,7 +49,7 @@ pub struct Parser<'a, I: self::input::Tokens<'a>> {
     found_module_item: bool,
 }
 
-impl<'a, I: Tokens<'a>> Parser<'a, I> {
+impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
     #[inline(always)]
     pub fn input(&self) -> &Buffer<'a, I> {
         &self.input
@@ -124,20 +124,20 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
     }
 }
 
-impl<'a> Parser<'a, Lexer<'a, '_>> {
+impl<'p, 'a, 'cmt> Parser<'p, 'a, Lexer<'a, 'cmt>> {
     pub fn new(
-        ast: &'a mut Ast<'a>,
+        ast: &'p mut Ast<'a>,
         syntax: Syntax,
         input: StringSource<'a>,
-        comments: Option<&'a mut Comments<'a>>,
+        comments: Option<&'cmt mut Comments<'a>>,
     ) -> Self {
         let lexer = Lexer::new(ast.allocator(), syntax, Default::default(), input, comments);
         Self::new_from(ast, lexer)
     }
 }
 
-impl<'a, I: Tokens<'a>> Parser<'a, I> {
-    pub fn new_from(ast: &'a mut Ast<'a>, mut input: I) -> Self {
+impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
+    pub fn new_from(ast: &'p mut Ast<'a>, mut input: I) -> Self {
         let in_declare = input.syntax().dts();
         let mut ctx = input.ctx() | Context::TopLevel;
         ctx.set(Context::InDeclare, in_declare);
@@ -316,7 +316,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
     }
 }
 
-impl<'a, I: Tokens<'a>> Parser<'a, I> {
+impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
     #[inline(always)]
     pub fn ctx(&self) -> Context {
         self.input().get_ctx()

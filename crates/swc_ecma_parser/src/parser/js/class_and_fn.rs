@@ -27,7 +27,7 @@ struct MakeMethodArgs {
     is_generator: bool,
 }
 
-impl<'a, I: Tokens<'a>> Parser<'a, I> {
+impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
     /// If `required` is `true`, this never returns `None`.
     fn parse_maybe_opt_binding_ident(
         &mut self,

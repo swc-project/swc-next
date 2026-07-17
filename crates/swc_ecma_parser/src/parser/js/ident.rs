@@ -4,7 +4,7 @@ use swc_experimental_ecma_ast::*;
 
 use crate::{Context, PResult, Parser, error::SyntaxError, input::Tokens, lexer::Token};
 
-impl<'a, I: Tokens<'a>> Parser<'a, I> {
+impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
     // https://tc39.es/ecma262/#prod-ModuleExportName
     pub(crate) fn parse_module_export_name(&mut self) -> PResult<ModuleExportName> {
         let cur = self.input().cur();

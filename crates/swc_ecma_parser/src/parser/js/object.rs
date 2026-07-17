@@ -3,7 +3,7 @@ use swc_experimental_ecma_ast::*;
 use crate::parser::js::is_not_this;
 use crate::{Context, PResult, Parser, error::SyntaxError, input::Tokens, lexer::Token};
 
-impl<'a, I: Tokens<'a>> Parser<'a, I> {
+impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
     pub(crate) fn parse_object<Object, ObjectProp: ExtraDataCompact<'a> + 'a>(
         &mut self,
         parse_prop: impl Fn(&mut Self) -> PResult<ObjectProp>,

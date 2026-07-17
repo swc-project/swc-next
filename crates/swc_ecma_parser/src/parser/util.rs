@@ -170,7 +170,7 @@ impl<N> ScratchIndex<N> {
         }
     }
 
-    pub(crate) fn end<'a, I: Tokens<'a>>(self, p: &mut Parser<'a, I>) -> TypedSubRange<N>
+    pub(crate) fn end<'p, 'a, I: Tokens<'a>>(self, p: &mut Parser<'p, 'a, I>) -> TypedSubRange<N>
     where
         N: ExtraDataCompact<'a>,
     {
@@ -178,7 +178,7 @@ impl<N> ScratchIndex<N> {
         unsafe { std::mem::transmute(range) }
     }
 
-    pub(crate) fn push<'a, I: Tokens<'a>>(&mut self, p: &mut Parser<'a, I>, node: N)
+    pub(crate) fn push<'p, 'a, I: Tokens<'a>>(&mut self, p: &mut Parser<'p, 'a, I>, node: N)
     where
         N: ExtraDataCompact<'a>,
     {
