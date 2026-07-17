@@ -5,7 +5,7 @@ use quote::{format_ident, quote};
 use crate::{
     AST_CRATE_PATH,
     output::{RawOutput, RustOutput, output_path},
-    schema::{AstType, Schema},
+    schema::{AstType, Schema, TypeId},
     util::safe_ident,
 };
 
@@ -64,18 +64,26 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 // VisitWith/VisitMutWith
                 // Use typed getter methods instead of directly accessing extra_data.
                 // This handles both inline and extra_data storage transparently.
+                let mut field_loads = TokenStream::new();
                 let mut visit_children = TokenStream::new();
                 let mut visit_mut_children = TokenStream::new();
 
-                for field in ast.fields.iter() {
+                for (field_index, field) in ast.fields.iter().enumerate() {
+                    if !should_visit_type(field.type_id, schema) {
+                        continue;
+                    }
+
                     let field_ty = &schema.types[field.type_id];
                     let field_ty_ident = field_ty.repr_ident(schema);
                     let getter_name = safe_ident(&field.name.to_case(Case::Snake));
                     let setter_name = format_ident!("set_{}", &field.name);
+                    let field_value = format_ident!("field_value_{field_index}");
 
+                    field_loads.extend(quote! {
+                        let #field_value = self.#getter_name(visitor.ast());
+                    });
                     visit_children.extend(quote! {
-                        let field_value = self.#getter_name(visitor.ast());
-                        <#field_ty_ident as VisitWith<'a, V>>::visit_with(field_value, visitor);
+                        <#field_ty_ident as VisitWith<'a, V>>::visit_with(#field_value, visitor);
                     });
                     visit_mut_children.extend(quote! {
                         let field_value = self.#getter_name(visitor.ast());
@@ -93,6 +101,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
 
                         #[inline]
                         fn visit_children_with(self, visitor: &mut V) {
+                            #field_loads
                             #visit_children
                         }
                     }
@@ -185,6 +194,10 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 });
             }
             AstType::Option(ast) => {
+                if !should_visit_type(ast.inner_type_id, schema) {
+                    continue;
+                }
+
                 let inner_type = &schema.types[ast.inner_type_id];
                 let (fn_name, fn_mut_name) = match inner_type {
                     AstType::Vec(vec) => {
@@ -261,6 +274,10 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 });
             }
             AstType::Vec(ast) => {
+                if !should_visit_type(ast.inner_type_id, schema) {
+                    continue;
+                }
+
                 let inner_type = &schema.types[ast.inner_type_id];
                 let (fn_name, fn_mut_name) = match inner_type {
                     AstType::Option(opt) => {
@@ -375,4 +392,13 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
         tokens: output,
     }
     .into()
+}
+
+fn should_visit_type(type_id: TypeId, schema: &Schema) -> bool {
+    match &schema.types[type_id] {
+        AstType::Struct(_) | AstType::Enum(_) => true,
+        AstType::Vec(ast) => should_visit_type(ast.inner_type_id, schema),
+        AstType::Option(ast) => should_visit_type(ast.inner_type_id, schema),
+        AstType::Primitive(_) => false,
+    }
 }
