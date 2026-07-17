@@ -39,8 +39,8 @@ impl CodegenConformanceRunner {
             }
 
             let allocator = Allocator::new();
-            let experimental_root = match parse(&allocator, case) {
-                ParseResult::Succ(ret) => ret,
+            let (experimental_root, mut ast) = match parse(&allocator, case) {
+                ParseResult::Succ(ret, ast) => (ret, ast),
                 _ => return None,
             };
             let legacy_root = match legacy::parse(case) {
@@ -48,7 +48,7 @@ impl CodegenConformanceRunner {
                 _ => return None,
             };
 
-            let experimental_code = match generate_code(experimental_root) {
+            let experimental_code = match generate_code(experimental_root, &mut ast) {
                 Ok(ret) => ret,
                 Err(()) => {
                     return Some(TestResult::Panic {

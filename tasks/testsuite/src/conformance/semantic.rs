@@ -15,7 +15,9 @@ use swc_core::{
 };
 use swc_experimental_allocator::Allocator;
 use swc_experimental_allocator::atom::Atom as ExperimentalAtom;
-use swc_experimental_ecma_ast::{BlockStmt, Ident, Program, ScopeId, Visit, VisitWith};
+use swc_experimental_ecma_ast::{
+    Ast, BlockStmt, GetSpan, Ident, Program, ScopeId, Visit, VisitWith,
+};
 use swc_experimental_ecma_semantic::resolver::{Semantic, resolver};
 
 use crate::{
@@ -60,13 +62,13 @@ impl SemanticConformanceRunner {
             }
 
             let allocator = Allocator::new();
-            let root = match parse(&allocator, case) {
-                ParseResult::Succ(ret) => ret,
+            let (root, mut ast) = match parse(&allocator, case) {
+                ParseResult::Succ(ret, ast) => (ret, ast),
                 _ => return None,
             };
-            let semantic = resolver(&root);
+            let semantic = resolver(root, &mut ast);
 
-            match check_symbol_conformance(case, &root, &semantic) {
+            match check_symbol_conformance(case, root, &ast, &semantic) {
                 Ok(true) => Some(TestResult::Passed {
                     path: case.path().to_owned(),
                 }),
@@ -83,7 +85,8 @@ impl SemanticConformanceRunner {
 
 fn check_symbol_conformance<'a, C: Case>(
     case: &C,
-    root: &Program<'a>,
+    root: Program,
+    ast: &Ast<'a>,
     semantic: &Semantic,
 ) -> Result<bool, String> {
     let Some(legacy_semantics) = collect_legacy_semantics(case) else {
@@ -103,6 +106,7 @@ fn check_symbol_conformance<'a, C: Case>(
     let legacy_blocks = normalize_scope_groups(legacy_semantics.blocks.into_values());
 
     let mut experimental_collector = ExperimentalSymbolsCollector {
+        ast,
         semantic,
         comparable_symbol_spans: &comparable_symbol_spans,
         symbols: HashMap::default(),
@@ -223,41 +227,47 @@ impl LegacyVisit for LegacySymbolsCollector {
     }
 }
 
-struct ExperimentalSymbolsCollector<'semantic, 'ast> {
-    semantic: &'semantic Semantic,
-    comparable_symbol_spans: &'semantic HashSet<SymbolSpan>,
+struct ExperimentalSymbolsCollector<'visit, 'ast> {
+    ast: &'visit Ast<'ast>,
+    semantic: &'visit Semantic,
+    comparable_symbol_spans: &'visit HashSet<SymbolSpan>,
     symbols: ExperimentalSymbolSpans<'ast>,
     blocks: ExperimentalBlockSpans,
 }
 
-impl<'a> Visit<'a> for ExperimentalSymbolsCollector<'_, 'a> {
-    fn visit_block_stmt(&mut self, node: &BlockStmt<'a>) {
-        if let Some(scope_id) = node.scope_id.get() {
+impl<'ast> Visit<'ast> for ExperimentalSymbolsCollector<'_, 'ast> {
+    fn ast(&self) -> &Ast<'ast> {
+        self.ast
+    }
+
+    fn visit_block_stmt(&mut self, node: BlockStmt) {
+        if let Some(scope_id) = node.scope_id(self.ast) {
             self.blocks.entry(scope_id).or_default().push(SymbolSpan {
-                start: node.span.start,
-                end: node.span.end,
+                start: node.span(self.ast).start,
+                end: node.span(self.ast).end,
             });
         }
 
         node.visit_children_with(self);
     }
 
-    fn visit_ident(&mut self, node: &Ident<'a>) {
+    fn visit_ident(&mut self, node: Ident) {
+        let node_span = node.span(self.ast);
         let span = SymbolSpan {
-            start: node.span.start,
-            end: node.span.end,
+            start: node_span.start,
+            end: node_span.end,
         };
 
         if !self.comparable_symbol_spans.contains(&span) {
             return;
         }
 
-        if node.symbol_id.get().is_none() {
+        if node.symbol_id(self.ast).is_none() {
             return;
         }
 
         self.symbols
-            .entry((node.sym, self.semantic.node_scope(node)))
+            .entry((node.sym(self.ast), self.semantic.node_scope(node, self.ast)))
             .or_default()
             .push(span);
     }

@@ -27,10 +27,10 @@ impl ParserRunner {
 
             let allocator = Allocator::new();
             match (case.should_fail(), parse(&allocator, case)) {
-                (false, ParseResult::Succ(_)) => TestResult::Passed {
+                (false, ParseResult::Succ(..)) => TestResult::Passed {
                     path: case.relative_path().to_owned(),
                 },
-                (true, ParseResult::Succ(_)) => TestResult::Failed {
+                (true, ParseResult::Succ(..)) => TestResult::Failed {
                     path: case.relative_path().to_owned(),
                     error: "Expected failure, but parsed successfully".to_string(),
                 },

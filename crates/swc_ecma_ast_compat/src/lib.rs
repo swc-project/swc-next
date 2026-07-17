@@ -1,4 +1,6 @@
-pub mod exp_to_legacy;
-pub mod legacy_to_exp;
+mod compat;
+mod compat_impl;
+mod unsafe_arena;
 
-pub use exp_to_legacy::{ArenaConvert, ArenaConvertAst, OwnedConvert};
+pub use compat::AstCompat;
+pub use unsafe_arena::{UnsafeArenaAstCompat, UnsafeConverted};

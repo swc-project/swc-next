@@ -38,8 +38,8 @@ impl RemoveParenConformanceRunner {
             }
 
             let allocator = Allocator::new();
-            let mut experimental_root = match parse(&allocator, case) {
-                ParseResult::Succ(ret) => ret,
+            let (mut experimental_root, mut ast) = match parse(&allocator, case) {
+                ParseResult::Succ(ret, ast) => (ret, ast),
                 _ => return None,
             };
             let mut legacy_root = match legacy::parse(case) {
@@ -47,9 +47,9 @@ impl RemoveParenConformanceRunner {
                 _ => return None,
             };
 
-            remove_paren::remove_paren(&mut experimental_root, &allocator, None);
+            remove_paren::remove_paren(&mut experimental_root, &mut ast, None);
             legacy_root.visit_mut_with(&mut legacy_paren_remover(None));
-            let experimental_root = convert_experimental_program(experimental_root);
+            let experimental_root = convert_experimental_program(experimental_root, &mut ast);
             if let Some(error) = ast_compare(&legacy_root, &experimental_root) {
                 return Some(TestResult::Failed {
                     path: case.relative_path().to_owned(),

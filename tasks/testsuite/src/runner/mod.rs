@@ -7,13 +7,13 @@ pub mod semantic;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use swc_experimental_allocator::Allocator;
-use swc_experimental_ecma_ast::Program;
+use swc_experimental_ecma_ast::{Ast, Program};
 use swc_experimental_ecma_parser::{Parser, StringSource, Syntax, error::Error};
 
 use crate::cases::{Case, IsModule};
 
 pub enum ParseResult<'a> {
-    Succ(Program<'a>),
+    Succ(Program, Ast<'a>),
     Fail(Vec<Error>),
     Panic,
     Ignore,
@@ -30,17 +30,14 @@ pub fn parse_code<'a>(
     is_module: IsModule,
 ) -> ParseResult<'a> {
     let input = StringSource::new(code);
-    let mut parser = Parser::new(allocator, syntax, input, None);
+    let mut ast = Ast::new(input.source_len(), allocator);
+    let mut parser = Parser::new(&mut ast, syntax, input, None);
     let ret = match is_module {
         IsModule::Script => catch_unwind(AssertUnwindSafe(|| {
-            parser
-                .parse_script()
-                .map(|script| Program::Script(allocator.boxed(script)))
+            parser.parse_script().map(Program::Script)
         })),
         IsModule::Module => catch_unwind(AssertUnwindSafe(|| {
-            parser
-                .parse_module()
-                .map(|module| Program::Module(allocator.boxed(module)))
+            parser.parse_module().map(Program::Module)
         })),
         IsModule::Unknown => catch_unwind(AssertUnwindSafe(|| parser.parse_program())),
         IsModule::Skip => {
@@ -55,7 +52,8 @@ pub fn parse_code<'a>(
                 if !errors.is_empty() {
                     return ParseResult::Fail(errors);
                 }
-                ParseResult::Succ(root)
+                drop(parser);
+                ParseResult::Succ(root, ast)
             }
             Err(e) => ParseResult::Fail(vec![e]),
         },

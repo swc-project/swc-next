@@ -39,12 +39,12 @@ impl CodegenRunner {
             }
 
             let allocator = Allocator::new();
-            let root = match parse(&allocator, case) {
-                ParseResult::Succ(ret) => ret,
+            let (root, mut ast) = match parse(&allocator, case) {
+                ParseResult::Succ(ret, ast) => (ret, ast),
                 _ => return None,
             };
 
-            let first = match generate_code(root) {
+            let first = match generate_code(root, &mut ast) {
                 Ok(ret) => ret,
                 Err(()) => {
                     return Some(TestResult::Panic {
@@ -54,9 +54,9 @@ impl CodegenRunner {
             };
 
             let second_allocator = Allocator::new();
-            let reparsed =
+            let (reparsed, mut reparsed_ast) =
                 match parse_code(&second_allocator, &first, case.syntax(), case.is_module()) {
-                    ParseResult::Succ(ret) => ret,
+                    ParseResult::Succ(ret, ast) => (ret, ast),
                     ParseResult::Fail(errors) => {
                         return Some(TestResult::Failed {
                             path: case.relative_path().to_owned(),
@@ -71,7 +71,7 @@ impl CodegenRunner {
                     ParseResult::Ignore => return None,
                 };
 
-            let second = match generate_code(reparsed) {
+            let second = match generate_code(reparsed, &mut reparsed_ast) {
                 Ok(ret) => ret,
                 Err(()) => {
                     return Some(TestResult::Panic {
@@ -98,10 +98,13 @@ impl CodegenRunner {
     }
 }
 
-pub fn generate_code(program: Program) -> Result<String, ()> {
+pub fn generate_code(
+    program: Program,
+    ast: &mut swc_experimental_ecma_ast::Ast<'_>,
+) -> Result<String, ()> {
     catch_unwind(AssertUnwindSafe(|| {
-        let semantic = resolver(&program);
-        Codegen::new(CodegenOptions::default()).build(program, &semantic)
+        let semantic = resolver(program, ast);
+        Codegen::new(CodegenOptions::default()).build(program, ast, &semantic)
     }))
     .map_err(|_| ())
 }

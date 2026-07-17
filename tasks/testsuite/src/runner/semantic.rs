@@ -2,7 +2,7 @@ use colored::Colorize;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use swc_experimental_allocator::Allocator;
 use swc_experimental_ecma_ast::{
-    BlockStmt, ExportSpecifier, Ident, ImportNamedSpecifier, Visit, VisitWith,
+    Ast, BlockStmt, ExportSpecifier, GetSpan, Ident, ImportNamedSpecifier, Visit, VisitWith,
 };
 use swc_experimental_ecma_semantic::resolver::resolver;
 
@@ -30,16 +30,19 @@ impl SemanticRunner {
             }
 
             let allocator = Allocator::new();
-            let root = match parse(&allocator, case) {
-                ParseResult::Succ(ret) => ret,
+            let (root, mut ast) = match parse(&allocator, case) {
+                ParseResult::Succ(ret, ast) => (ret, ast),
                 _ => return None,
             };
 
-            let _semantic = resolver(&root);
+            let _semantic = resolver(root, &mut ast);
 
             // check semantic
             if !case.syntax().export_default_from() {
-                let mut collector = SemanticIdsCollector::default();
+                let mut collector = SemanticIdsCollector {
+                    ast: &ast,
+                    errors: Vec::new(),
+                };
                 root.visit_with(&mut collector);
                 if !collector.errors.is_empty() {
                     return Some(TestResult::Failed {
@@ -57,19 +60,23 @@ impl SemanticRunner {
     }
 }
 
-#[derive(Default)]
-struct SemanticIdsCollector {
+struct SemanticIdsCollector<'visit, 'ast> {
+    ast: &'visit Ast<'ast>,
     errors: Vec<String>,
 }
 
-impl<'a> Visit<'a> for SemanticIdsCollector {
-    fn visit_import_named_specifier(&mut self, node: &ImportNamedSpecifier<'a>) {
-        // swc_core only resolves the local binding for named import specifiers;
-        // semantic conformance keeps this smoke test aligned with that behavior.
-        node.local.visit_with(self);
+impl<'ast> Visit<'ast> for SemanticIdsCollector<'_, 'ast> {
+    fn ast(&self) -> &Ast<'ast> {
+        self.ast
     }
 
-    fn visit_export_specifier(&mut self, node: &ExportSpecifier<'a>) {
+    fn visit_import_named_specifier(&mut self, node: ImportNamedSpecifier) {
+        // swc_core only resolves the local binding for named import specifiers;
+        // semantic conformance keeps this smoke test aligned with that behavior.
+        node.local(self.ast).visit_with(self);
+    }
+
+    fn visit_export_specifier(&mut self, node: ExportSpecifier) {
         // swc_core does not treat every export specifier name as a local semantic
         // identifier; semantic conformance checks the exact swc_core boundary.
         if let ExportSpecifier::Default(export_default_specifier) = node {
@@ -77,20 +84,23 @@ impl<'a> Visit<'a> for SemanticIdsCollector {
         }
     }
 
-    fn visit_block_stmt(&mut self, node: &BlockStmt<'a>) {
-        if node.scope_id.get().is_none() {
-            self.errors
-                .push(format!("Missing ScopeId for BlockStmt: {:?}", node.span));
+    fn visit_block_stmt(&mut self, node: BlockStmt) {
+        if node.scope_id(self.ast).is_none() {
+            self.errors.push(format!(
+                "Missing ScopeId for BlockStmt: {:?}",
+                node.span(self.ast)
+            ));
         }
 
         node.visit_children_with(self);
     }
 
-    fn visit_ident(&mut self, node: &Ident<'a>) {
-        if node.symbol_id.get().is_none() {
+    fn visit_ident(&mut self, node: Ident) {
+        if node.symbol_id(self.ast).is_none() {
             self.errors.push(format!(
                 "Missing SymbolId for Ident {:?}: {:?}",
-                node.sym, node.span
+                node.sym(self.ast),
+                node.span(self.ast)
             ));
         }
     }

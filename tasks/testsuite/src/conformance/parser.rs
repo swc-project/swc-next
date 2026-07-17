@@ -33,15 +33,15 @@ impl ParserConformanceRunner {
             }
 
             let allocator = Allocator::new();
-            let experimental_root = match parse(&allocator, case) {
-                ParseResult::Succ(ret) => ret,
+            let (experimental_root, mut ast) = match parse(&allocator, case) {
+                ParseResult::Succ(ret, ast) => (ret, ast),
                 _ => return None,
             };
             let legacy_root = match legacy::parse(case) {
                 legacy::ParseResult::Succ(ret) => ret,
                 _ => return None,
             };
-            let experimental_root = convert_experimental_program(experimental_root);
+            let experimental_root = convert_experimental_program(experimental_root, &mut ast);
             if let Some(error) = ast_compare(&legacy_root, &experimental_root) {
                 return Some(TestResult::Failed {
                     path: case.relative_path().to_owned(),

@@ -3,10 +3,8 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use colored::Colorize;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use swc_experimental_allocator::Allocator;
-use swc_experimental_ecma_ast::Program;
-use swc_experimental_ecma_ast_compat::{
-    OwnedConvert, legacy_to_exp::AstConvert as LegacyToExperimentalConvert,
-};
+use swc_experimental_ecma_ast::{Ast, Program};
+use swc_experimental_ecma_ast_compat::AstCompat;
 use swc_experimental_ecma_semantic::resolver::resolver;
 
 use crate::{
@@ -38,8 +36,8 @@ impl AstConvertRunner {
             }
 
             let allocator = Allocator::new();
-            let experimental_root = match parse(&allocator, case) {
-                ParseResult::Succ(ret) => ret,
+            let (experimental_root, mut ast) = match parse(&allocator, case) {
+                ParseResult::Succ(ret, ast) => (ret, ast),
                 ParseResult::Panic => {
                     return Some(TestResult::Panic {
                         path: case.relative_path().to_owned(),
@@ -49,12 +47,21 @@ impl AstConvertRunner {
             };
 
             let ret = catch_unwind(AssertUnwindSafe(|| {
-                let legacy_root = convert_experimental_to_legacy(experimental_root);
+                let legacy_root = convert_experimental_to_legacy(experimental_root, &mut ast);
+                let code = swc_core::ecma::codegen::to_code(&legacy_root);
 
                 let roundtrip_allocator = Allocator::new();
-                let roundtrip_root = LegacyToExperimentalConvert::new(&roundtrip_allocator)
-                    .convert_program(legacy_root.clone());
-                let roundtrip_legacy_root = convert_experimental_to_legacy(roundtrip_root);
+                let (roundtrip_root, mut roundtrip_ast) = match crate::runner::parse_code(
+                    &roundtrip_allocator,
+                    &code,
+                    case.syntax(),
+                    case.is_module(),
+                ) {
+                    ParseResult::Succ(root, ast) => (root, ast),
+                    _ => panic!("generated legacy AST failed to parse"),
+                };
+                let roundtrip_legacy_root =
+                    convert_experimental_to_legacy(roundtrip_root, &mut roundtrip_ast);
 
                 (legacy_root, roundtrip_legacy_root)
             }));
@@ -83,7 +90,10 @@ impl AstConvertRunner {
     }
 }
 
-fn convert_experimental_to_legacy(program: Program) -> swc_core::ecma::ast::Program {
-    let semantic = resolver(&program);
-    OwnedConvert::new(&semantic).convert_program(program)
+fn convert_experimental_to_legacy(
+    program: Program,
+    ast: &mut Ast<'_>,
+) -> swc_core::ecma::ast::Program {
+    let semantic = resolver(program, ast);
+    AstCompat::new(ast, &semantic).compat_program(program)
 }

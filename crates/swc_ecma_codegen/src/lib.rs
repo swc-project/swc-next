@@ -7,7 +7,7 @@
 //! The public API is intentionally small and should be treated as unstable. At
 //! the moment, this crate is not intended for external production use.
 
-use swc_experimental_ecma_ast::Program;
+use swc_experimental_ecma_ast::{Ast, Program};
 use swc_experimental_ecma_semantic::resolver::Semantic;
 
 pub struct Codegen {
@@ -23,10 +23,8 @@ impl Codegen {
         Self { options }
     }
 
-    pub fn build(self, program: Program, semantic: &Semantic) -> String {
-        let convert = swc_experimental_ecma_ast_compat::ArenaConvert::new(semantic);
-        convert
-            .convert_program(program)
-            .with_ref(swc_core::ecma::codegen::to_code)
+    pub fn build(self, program: Program, ast: &Ast<'_>, semantic: &Semantic) -> String {
+        let mut convert = swc_experimental_ecma_ast_compat::AstCompat::new(ast, semantic);
+        swc_core::ecma::codegen::to_code(&convert.compat_program(program))
     }
 }

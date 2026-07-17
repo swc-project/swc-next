@@ -3,6 +3,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use swc_experimental_allocator::Allocator;
+use swc_experimental_ecma_ast::{Ast, Comments};
 use swc_experimental_ecma_parser::{Parser, StringSource};
 use swc_experimental_ecma_transforms_base::remove_paren::remove_paren;
 
@@ -14,19 +15,24 @@ fn bench_transform(c: &mut Criterion) {
             let allocator = Allocator::new();
             b.iter_batched(
                 || {
+                    let mut comments = Comments::new_in(&allocator);
                     let input = StringSource::new(source);
-                    let mut parser = Parser::new(
-                        &allocator,
-                        swc_experimental_ecma_parser::Syntax::Es(Default::default()),
-                        input,
-                        None,
-                    );
-                    parser.parse_module().unwrap()
+                    let mut ast = Ast::new(input.source_len(), &allocator);
+                    let module = {
+                        let mut parser = Parser::new(
+                            &mut ast,
+                            swc_experimental_ecma_parser::Syntax::Es(Default::default()),
+                            input,
+                            Some(&mut comments),
+                        );
+                        parser.parse_module().unwrap()
+                    };
+                    (module, ast, comments)
                 },
-                |mut module| {
-                    remove_paren(&mut module, &allocator, None);
+                |(mut module, mut ast, mut comments)| {
+                    remove_paren(&mut module, &mut ast, Some(&mut comments));
                 },
-                BatchSize::PerIteration,
+                BatchSize::SmallInput,
             );
         });
     }
