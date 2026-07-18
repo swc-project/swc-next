@@ -1,4 +1,4 @@
-/// Compact values stored in the flattening AST's extra-data table.
+/// Eight-byte staging representation used to encode compact AST values.
 #[derive(Clone, Copy)]
 pub union ExtraData {
     atom: AtomId,

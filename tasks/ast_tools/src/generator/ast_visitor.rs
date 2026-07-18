@@ -79,18 +79,24 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     let getter_name = safe_ident(&field.name.to_case(Case::Snake));
                     let setter_name = format_ident!("set_{}", &field.name);
                     let field_value = format_ident!("field_value_{field_index}");
+                    let preceding_types = ast.fields[..field_index]
+                        .iter()
+                        .map(|field| schema.types[field.type_id].repr_ident(schema))
+                        .collect::<Vec<_>>();
+                    let word_offset =
+                        quote!(0usize #(+ <#preceding_types as ExtraDataLayout>::WORDS)*);
 
                     getter_field_loads.extend(quote! {
                         let #field_value = self.#getter_name(visitor.ast());
                     });
                     extra_data_field_loads.extend(quote! {
-                        let offset = extra_data_start.wrapping_add(#field_index);
-                        debug_assert!(offset < extra_data.len());
-                        let #field_value: #field_ty_ident = unsafe {
-                            ExtraDataCompact::from_extra_data(
-                                *extra_data.get_unchecked(offset),
-                                ast,
+                        let offset = unsafe {
+                            ExtraDataId::from_usize_unchecked(
+                                extra_data_start.wrapping_add(#word_offset)
                             )
+                        };
+                        let #field_value: #field_ty_ident = unsafe {
+                            ast.read_extra_data(offset)
                         };
                     });
                     field_values.push(field_value.clone());
@@ -117,7 +123,6 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                                     >> #EXTRA_DATA_ID_BIT_OFFSET)
                                     as u32 as usize
                             };
-                            let extra_data = ast.extra_data.as_slice();
                             #extra_data_field_loads
                             (#(#field_values,)*)
                         };

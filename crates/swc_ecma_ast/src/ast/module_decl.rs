@@ -39,6 +39,10 @@ pub enum ImportPhase {
     Defer,
 }
 
+impl crate::ExtraDataLayout for ImportPhase {
+    const WORDS: usize = 1;
+}
+
 impl<'a> ExtraDataCompact<'a> for ImportPhase {
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
         ExtraData { other: self as u64 }

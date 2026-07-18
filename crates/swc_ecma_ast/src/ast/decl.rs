@@ -45,6 +45,10 @@ pub enum VarDeclKind {
     Const,
 }
 
+impl crate::ExtraDataLayout for VarDeclKind {
+    const WORDS: usize = 1;
+}
+
 impl<'a> ExtraDataCompact<'a> for VarDeclKind {
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
         ExtraData { other: self as u64 }

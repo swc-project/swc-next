@@ -203,9 +203,11 @@ fn generate_extra_data_property_accessors(
     field_getters: &mut TokenStream,
     field_setters: &mut TokenStream,
 ) {
-    for (offset, field) in ast.fields.iter().enumerate() {
+    let mut preceding_types = Vec::new();
+    for field in &ast.fields {
         let field_name = format_ident!("{}", field.name);
         let field_ty = &schema.types[field.type_id].repr_ident(schema);
+        let offset = quote!(0usize #(+ <#preceding_types as ExtraDataLayout>::WORDS)*);
 
         let getter_name = safe_ident(&field.name.to_case(Case::Snake));
         field_getters.extend(quote! {
@@ -218,13 +220,7 @@ fn generate_extra_data_property_accessors(
                     )
                 };
 
-                debug_assert!(offset.index() < ast.extra_data.len());
-                unsafe {
-                    ExtraDataCompact::from_extra_data(
-                        *ast.extra_data.as_slice().get_unchecked(offset.index()),
-                        ast,
-                    )
-                }
+                unsafe { ast.read_extra_data(offset) }
             }
         });
 
@@ -239,12 +235,10 @@ fn generate_extra_data_property_accessors(
                     )
                 };
 
-                debug_assert!(offset.index() < ast.extra_data.len());
-                unsafe {
-                    *ast.extra_data.as_mut_slice().get_unchecked_mut(offset.index()) = #field_name.to_extra_data(ast);
-                };
+                unsafe { ast.write_extra_data(offset, #field_name) };
             }
         });
+        preceding_types.push(field_ty.clone());
     }
 }
 
@@ -255,7 +249,7 @@ fn generate_extra_data_property_accessors_partial(
     field_setters: &mut TokenStream,
     layout: &InlineLayout,
 ) {
-    let mut extra_offset = 0usize;
+    let mut preceding_types = Vec::new();
 
     for (field_index, field) in ast.fields.iter().enumerate() {
         if layout
@@ -269,7 +263,7 @@ fn generate_extra_data_property_accessors_partial(
         let field_name = format_ident!("{}", field.name);
         let field_ty = &schema.types[field.type_id].repr_ident(schema);
         let getter_name = safe_ident(&field.name.to_case(Case::Snake));
-        let offset = extra_offset;
+        let offset = quote!(0usize #(+ <#preceding_types as ExtraDataLayout>::WORDS)*);
 
         field_getters.extend(quote! {
             #[inline]
@@ -281,13 +275,7 @@ fn generate_extra_data_property_accessors_partial(
                     )
                 };
 
-                debug_assert!(offset.index() < ast.extra_data.len());
-                unsafe {
-                    ExtraDataCompact::from_extra_data(
-                        *ast.extra_data.as_slice().get_unchecked(offset.index()),
-                        ast,
-                    )
-                }
+                unsafe { ast.read_extra_data(offset) }
             }
         });
 
@@ -302,14 +290,11 @@ fn generate_extra_data_property_accessors_partial(
                     )
                 };
 
-                debug_assert!(offset.index() < ast.extra_data.len());
-                unsafe {
-                    *ast.extra_data.as_mut_slice().get_unchecked_mut(offset.index()) = #field_name.to_extra_data(ast);
-                };
+                unsafe { ast.write_extra_data(offset, #field_name) };
             }
         });
 
-        extra_offset += 1;
+        preceding_types.push(field_ty.clone());
     }
 }
 

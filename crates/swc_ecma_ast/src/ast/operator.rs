@@ -65,6 +65,10 @@ pub enum BinaryOp {
     NullishCoalescing,
 }
 
+impl crate::ExtraDataLayout for BinaryOp {
+    const WORDS: usize = 1;
+}
+
 impl<'a> ExtraDataCompact<'a> for BinaryOp {
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
         ExtraData { other: self as u64 }
@@ -156,6 +160,10 @@ pub enum AssignOp {
     NullishAssign,
 }
 
+impl crate::ExtraDataLayout for AssignOp {
+    const WORDS: usize = 1;
+}
+
 impl<'a> ExtraDataCompact<'a> for AssignOp {
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
         ExtraData { other: self as u64 }
@@ -174,6 +182,10 @@ pub enum UpdateOp {
     PlusPlus,
     /// `--`
     MinusMinus,
+}
+
+impl crate::ExtraDataLayout for UpdateOp {
+    const WORDS: usize = 1;
 }
 
 impl<'a> ExtraDataCompact<'a> for UpdateOp {
@@ -204,6 +216,10 @@ pub enum UnaryOp {
     Void,
     /// `delete`
     Delete,
+}
+
+impl crate::ExtraDataLayout for UnaryOp {
+    const WORDS: usize = 1;
 }
 
 impl<'a> ExtraDataCompact<'a> for UnaryOp {

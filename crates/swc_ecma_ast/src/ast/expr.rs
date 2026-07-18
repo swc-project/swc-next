@@ -253,6 +253,10 @@ pub enum MetaPropKind {
     ImportMeta,
 }
 
+impl crate::ExtraDataLayout for MetaPropKind {
+    const WORDS: usize = 1;
+}
+
 impl<'a> ExtraDataCompact<'a> for MetaPropKind {
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
         ExtraData { other: self as u64 }

@@ -104,6 +104,10 @@ pub enum MethodKind {
     Setter,
 }
 
+impl crate::ExtraDataLayout for MethodKind {
+    const WORDS: usize = 1;
+}
+
 impl<'a> ExtraDataCompact<'a> for MethodKind {
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
         ExtraData { other: self as u64 }

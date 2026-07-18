@@ -143,7 +143,7 @@ fn generate_build_function_inline(
                 } else {
                     quote!(#field_name)
                 };
-                extra_data_values.push(quote!(#field_value.to_extra_data(self)));
+                extra_data_values.push(field_value);
             }
 
             let (add_extra_data, start_id) = generate_add_extra_data(&extra_data_values);
@@ -185,7 +185,7 @@ fn generate_build_function_extra_data(
         } else {
             quote!(#field_name)
         };
-        extra_data_values.push(quote!(#field_value.to_extra_data(self)));
+        extra_data_values.push(field_value);
     }
 
     let (add_extra_data, start_id) = generate_add_extra_data(&extra_data_values);
@@ -222,12 +222,12 @@ fn generate_add_extra_data(values: &[TokenStream]) -> (TokenStream, Option<Token
             },
             Some(quote!(_f0)),
         ),
-        values => (
+        [first, rest @ ..] => (
             quote! {
-                let _extra_data = [#(#values),*];
-                let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
+                let _extra_data_start = self.add_extra(#first);
+                #(self.add_extra(#rest);)*
             },
-            Some(quote!(_extra_data_range.start)),
+            Some(quote!(_extra_data_start)),
         ),
     }
 }
