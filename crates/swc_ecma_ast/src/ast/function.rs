@@ -17,7 +17,7 @@ pub struct Param {
     pat: Pat,
 }
 
-#[ast]
+#[ast(repr)]
 pub enum ParamOrTsParamProp {
     // TsParamProp(TsParamProp),
     Param(Param),

@@ -7,7 +7,7 @@ use crate::{
     output::{RawOutput, RustOutput, output_path},
     schema::{AstEnum, AstStruct, AstType, Schema},
     util::{
-        INLINE_DATA_U64_SIZE, InlineLayout, InlineStorageMode, calculate_inline_layout,
+        EXTRA_DATA_ID_BIT_OFFSET, InlineLayout, InlineStorageMode, calculate_inline_layout,
         generate_field_to_u32, generate_field_to_u64, generate_u32_to_field, generate_u64_to_field,
         safe_ident,
     },
@@ -28,6 +28,7 @@ pub fn ast_property(schema: &Schema) -> RawOutput {
     let output = quote! {
             #![allow(unused, clippy::useless_conversion, clippy::identity_op, clippy::erasing_op, clippy::let_and_return)]
             use crate::*;
+            use oxc_index::Idx;
 
             #impls
     };
@@ -118,8 +119,8 @@ fn generate_inline_read(
     byte_size: usize,
 ) -> TokenStream {
     let extract_expr = generate_extract_bits(byte_offset, byte_size);
-    let cast_expr = if byte_size == INLINE_DATA_U64_SIZE {
-        generate_u64_to_field()
+    let cast_expr = if byte_size == std::mem::size_of::<u64>() {
+        generate_u64_to_field(field_ty, schema)
     } else {
         generate_u32_to_field(field_ty, schema)
     };
@@ -130,35 +131,25 @@ fn generate_inline_read(
     }
 }
 
-/// Generate code to extract a field value as u32 using bit operations
+/// Generate code to extract a field value using u128 bit operations.
 fn generate_extract_bits(byte_offset: usize, byte_size: usize) -> TokenStream {
-    if byte_size == INLINE_DATA_U64_SIZE {
-        debug_assert_eq!(byte_offset, 0);
+    let bit_offset = byte_offset * 8;
+    if byte_size == std::mem::size_of::<u64>() {
         return quote! {
-            let raw = unsafe { ast.nodes.data_unchecked(self.0).inline_data() };
+            let raw =
+                (unsafe { ast.nodes.data_unchecked(self.0).0 } >> #bit_offset) as u64;
         };
     }
 
     let bit_size = byte_size * 8;
-    let mask: u32 = if bit_size >= 32 {
+    let mask = if bit_size >= 32 {
         u32::MAX
     } else {
         (1u32 << bit_size) - 1
     };
-
-    if byte_offset < INLINE_DATA_U64_SIZE {
-        debug_assert!(byte_offset + byte_size <= INLINE_DATA_U64_SIZE);
-        let bit_offset = byte_offset * 8;
-        quote! {
-            let raw = ((unsafe { ast.nodes.data_unchecked(self.0).inline_data() } >> #bit_offset) as u32) & #mask;
-        }
-    } else {
-        let word_offset = byte_offset - INLINE_DATA_U64_SIZE;
-        debug_assert!(word_offset + byte_size <= 4);
-        let bit_offset = word_offset * 8;
-        quote! {
-            let raw = (unsafe { ast.nodes.data_unchecked(self.0).trailing_inline_data() } >> #bit_offset) & #mask;
-        }
+    quote! {
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> #bit_offset) as u32) & #mask;
     }
 }
 
@@ -172,8 +163,8 @@ fn generate_inline_write(
 ) -> TokenStream {
     let insert_expr = generate_insert_bits(byte_offset, byte_size);
 
-    if byte_size == INLINE_DATA_U64_SIZE {
-        let to_u64 = generate_field_to_u64(field_ty, field_name, quote!(ast));
+    if byte_size == std::mem::size_of::<u64>() {
+        let to_u64 = generate_field_to_u64(field_ty, field_name, quote!(ast), schema);
         quote! {
             let field_val: u64 = #to_u64;
             #insert_expr
@@ -189,46 +180,19 @@ fn generate_inline_write(
 
 /// Generate code to insert a field value using bit operations (read-modify-write)
 fn generate_insert_bits(byte_offset: usize, byte_size: usize) -> TokenStream {
-    if byte_size == INLINE_DATA_U64_SIZE {
-        debug_assert_eq!(byte_offset, 0);
-        return quote! {
-            unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
-        };
-    }
-
     let bit_size = byte_size * 8;
-    let mask = if bit_size >= 64 {
-        u64::MAX
+    let mask = if bit_size >= 128 {
+        u128::MAX
     } else {
-        (1u64 << bit_size) - 1
+        (1u128 << bit_size) - 1
     };
-
-    if byte_offset < INLINE_DATA_U64_SIZE {
-        debug_assert!(byte_offset + byte_size <= INLINE_DATA_U64_SIZE);
-        let bit_offset = byte_offset * 8;
-        let clear_mask = !(mask << bit_offset);
-        quote! {
-            let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-            let old = payload.inline_data();
-            payload.set_inline_data(
-                (old & #clear_mask) | (((field_val as u64) & #mask) << #bit_offset)
-            );
-        }
-    } else {
-        let word_offset = byte_offset - INLINE_DATA_U64_SIZE;
-        debug_assert!(word_offset + byte_size <= 4);
-        let bit_offset = word_offset * 8;
-        let mask = mask as u32;
-        let clear_mask = !(mask << bit_offset);
-        quote! {
-            let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-            let old = unsafe { payload.trailing_inline_data() };
-            unsafe {
-                payload.set_trailing_inline_data(
-                    (old & #clear_mask) | ((field_val & #mask) << #bit_offset)
-                );
-            }
-        }
+    let bit_offset = byte_offset * 8;
+    let clear_mask = !(mask << bit_offset);
+    quote! {
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 =
+            (payload.0 & #clear_mask)
+            | (((field_val as u128) & #mask) << #bit_offset);
     }
 }
 
@@ -247,7 +211,12 @@ fn generate_extra_data_property_accessors(
         field_getters.extend(quote! {
             #[inline]
             pub fn #getter_name<'a>(self, ast: &crate::Ast<'a>) -> #field_ty {
-                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.data_unchecked(self.0).extra_data_start().index().wrapping_add(#offset)) };
+                let offset = unsafe {
+                    ExtraDataId::from_usize_unchecked(
+                        ((ast.nodes.data_unchecked(self.0).0 >> #EXTRA_DATA_ID_BIT_OFFSET) as u32 as usize)
+                            .wrapping_add(#offset)
+                    )
+                };
 
                 debug_assert!(offset.index() < ast.extra_data.len());
                 unsafe {
@@ -263,7 +232,12 @@ fn generate_extra_data_property_accessors(
         field_setters.extend(quote! {
             #[inline]
             pub fn #setter_name<'a>(self, ast: &mut crate::Ast<'a>, #field_name: #field_ty) {
-                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.data_unchecked(self.0).extra_data_start().index().wrapping_add(#offset)) };
+                let offset = unsafe {
+                    ExtraDataId::from_usize_unchecked(
+                        ((ast.nodes.data_unchecked(self.0).0 >> #EXTRA_DATA_ID_BIT_OFFSET) as u32 as usize)
+                            .wrapping_add(#offset)
+                    )
+                };
 
                 debug_assert!(offset.index() < ast.extra_data.len());
                 unsafe {
@@ -300,7 +274,12 @@ fn generate_extra_data_property_accessors_partial(
         field_getters.extend(quote! {
             #[inline]
             pub fn #getter_name<'a>(self, ast: &crate::Ast<'a>) -> #field_ty {
-                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.data_unchecked(self.0).extra_data_start().index().wrapping_add(#offset)) };
+                let offset = unsafe {
+                    ExtraDataId::from_usize_unchecked(
+                        ((ast.nodes.data_unchecked(self.0).0 >> #EXTRA_DATA_ID_BIT_OFFSET) as u32 as usize)
+                            .wrapping_add(#offset)
+                    )
+                };
 
                 debug_assert!(offset.index() < ast.extra_data.len());
                 unsafe {
@@ -316,7 +295,12 @@ fn generate_extra_data_property_accessors_partial(
         field_setters.extend(quote! {
             #[inline]
             pub fn #setter_name<'a>(self, ast: &mut crate::Ast<'a>, #field_name: #field_ty) {
-                let offset = unsafe { ExtraDataId::from_usize_unchecked(ast.nodes.data_unchecked(self.0).extra_data_start().index().wrapping_add(#offset)) };
+                let offset = unsafe {
+                    ExtraDataId::from_usize_unchecked(
+                        ((ast.nodes.data_unchecked(self.0).0 >> #EXTRA_DATA_ID_BIT_OFFSET) as u32 as usize)
+                            .wrapping_add(#offset)
+                    )
+                };
 
                 debug_assert!(offset.index() < ast.extra_data.len());
                 unsafe {

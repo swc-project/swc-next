@@ -464,10 +464,8 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
             // for ({} in foo) is invalid
             if self.input().syntax().typescript() && is_in {
-                match pat {
-                    Pat::Ident(..) => {}
-                    Pat::Expr(..) => {}
-                    ref v => self.emit_err(v.span(self.ast), SyntaxError::TS2491),
+                if !matches!(pat, Pat::Ident(..)) && pat.into_expr().is_err() {
+                    self.emit_err(pat.span(self.ast), SyntaxError::TS2491);
                 }
             }
 

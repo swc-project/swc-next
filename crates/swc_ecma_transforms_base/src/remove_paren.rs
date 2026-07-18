@@ -213,7 +213,14 @@ fn ignore_return_value(
     ast: &mut Ast<'_>,
 ) -> Option<Expr> {
     match expr {
-        Expr::Fn(..) | Expr::Arrow(..) | Expr::Lit(..) => {
+        Expr::Fn(..)
+        | Expr::Arrow(..)
+        | Expr::Str(..)
+        | Expr::Bool(..)
+        | Expr::Null(..)
+        | Expr::Num(..)
+        | Expr::BigInt(..)
+        | Expr::Regex(..) => {
             if *has_padding_value {
                 None
             } else {
@@ -260,7 +267,18 @@ fn ignore_padding_value(exprs: Vec<Expr>) -> Vec<Expr> {
         .into_iter()
         .enumerate()
         .filter_map(|(idx, expr)| match expr {
-            Expr::Fn(..) | Expr::Arrow(..) | Expr::Lit(..) if idx + 1 != len => None,
+            Expr::Fn(..)
+            | Expr::Arrow(..)
+            | Expr::Str(..)
+            | Expr::Bool(..)
+            | Expr::Null(..)
+            | Expr::Num(..)
+            | Expr::BigInt(..)
+            | Expr::Regex(..)
+                if idx + 1 != len =>
+            {
+                None
+            }
             _ => Some(expr),
         })
         .collect()

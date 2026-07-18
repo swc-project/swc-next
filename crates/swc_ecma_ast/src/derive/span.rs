@@ -1,4 +1,4 @@
-use crate::{DUMMY_SP, NodeIdTrait};
+use crate::DUMMY_SP;
 
 pub trait GetSpan: Copy {
     fn span(self, ast: &crate::Ast<'_>) -> crate::Span;
@@ -16,23 +16,6 @@ pub trait GetSpan: Copy {
 
 pub trait SetSpan: Copy {
     fn set_span(self, ast: &mut crate::Ast<'_>, span: crate::Span);
-}
-
-impl<T: NodeIdTrait> GetSpan for T {
-    #[inline]
-    fn span(self, ast: &crate::Ast<'_>) -> crate::Span {
-        // SAFETY: `NodeIdTrait` guarantees that this ID belongs to the AST.
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
-    }
-}
-
-impl<T: NodeIdTrait> SetSpan for T {
-    #[inline]
-    fn set_span(self, ast: &mut crate::Ast<'_>, span: crate::Span) {
-        unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
-        }
-    }
 }
 
 impl<S> GetSpan for Option<S>

@@ -440,12 +440,15 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             let (callee, is_import) = (Callee::Expr(callee), false);
             let args = self.parse_args(is_import)?;
 
-            let call_expr = match callee {
-                Callee::Expr(e) if unwrap_ts_non_null(e).is_opt_chain() => {
+            let call_expr = match callee.into_expr() {
+                Ok(e) if unwrap_ts_non_null(e).is_opt_chain() => {
                     let base = self.ast.opt_chain_base_opt_call(self.span(start), e, args);
                     self.ast.expr_opt_chain_expr(self.span(start), false, base)
                 }
-                _ => self.ast.expr_call_expr(self.span(start), callee, args),
+                Ok(e) => self
+                    .ast
+                    .expr_call_expr(self.span(start), Callee::Expr(e), args),
+                Err(callee) => self.ast.expr_call_expr(self.span(start), callee, args),
             };
 
             return self.parse_subscripts_expr::<false>(call_expr, false);
@@ -1008,15 +1011,16 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         no_computed_member: bool,
     ) -> PResult<Expr> {
         let start = obj.span(self.ast).start;
-        let expr = match obj {
-            Callee::Super(s) => self.parse_subscript_super(start, s, no_call)?,
-            Callee::Expr(expr) => {
+        let expr = match obj.into_expr() {
+            Ok(expr) => {
                 return if no_computed_member {
                     self.parse_subscripts_expr::<true>(expr, no_call)
                 } else {
                     self.parse_subscripts_expr::<false>(expr, no_call)
                 };
             }
+            Err(Callee::Super(s)) => self.parse_subscript_super(start, s, no_call)?,
+            Err(_) => unreachable!(),
             #[cfg(swc_ast_unknown)]
             _ => unreachable!(),
         };
@@ -2229,9 +2233,9 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                     AssignTargetOrSpread::ExprOrSpread(expr_or_spread) => {
                         expr_or_spread.expr(self.ast).is_ident()
                     }
-                    AssignTargetOrSpread::Pat(Pat::Expr(expr)) => expr.is_ident(),
-                    AssignTargetOrSpread::Pat(Pat::Ident(..)) => true,
-                    _ => false,
+                    AssignTargetOrSpread::Pat(pat) => {
+                        matches!(pat, Pat::Ident(..)) || pat.into_expr().is_ok_and(Expr::is_ident)
+                    }
                 }
             } {
                 let params = {
@@ -2407,7 +2411,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 {
                     for prop in o.props(self.ast).iter() {
                         let prop = self.ast.get_node_in_sub_range(prop);
-                        if let PropOrSpread::Prop(prop) = prop
+                        if let Ok(prop) = prop.into_prop()
                             && prop.is_assign()
                         {
                             self.emit_err(prop.span(self.ast), SyntaxError::AssignProperty);
@@ -2432,7 +2436,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         if let Some(async_span) = async_span {
             // It's a call expression
             let sym = self.ast.add_atom("async");
-            let callee = self.ast.callee_expr_ident(async_span, sym);
+            let callee = self.ast.callee_ident(async_span, sym);
             return Ok(self.ast.expr_call_expr(
                 self.span(async_span.start),
                 callee,
@@ -2670,7 +2674,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
             self.bump();
             let span = self.span(start);
-            Some(self.ast.expr_lit_regex(span, exp, flags))
+            Some(self.ast.expr_regex(span, exp, flags))
         } else {
             None
         }

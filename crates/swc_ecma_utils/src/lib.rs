@@ -80,7 +80,14 @@ impl ExprExt for Expr {
                 }
             }
 
-            Expr::Lit(..) | Expr::This(..) | Expr::PrivateName(..) => false,
+            Expr::Str(..)
+            | Expr::Bool(..)
+            | Expr::Null(..)
+            | Expr::Num(..)
+            | Expr::BigInt(..)
+            | Expr::Regex(..)
+            | Expr::This(..)
+            | Expr::PrivateName(..) => false,
 
             Expr::Paren(e) => e.expr(ast).may_have_side_effects(ctx),
 
@@ -128,25 +135,30 @@ impl ExprExt for Expr {
                         return true;
                     }
                     Expr::Object(obj_lit) => {
-                        let can_have_side_effect = |prop| match ast.get_node_in_sub_range(prop) {
-                            PropOrSpread::Spread(_) => true,
-                            PropOrSpread::Prop(prop) => match prop {
-                                Prop::Getter(_) | Prop::Setter(_) | Prop::Method(_) => true,
-                                Prop::Shorthand(ident) => ident.sym(ast).as_str() == "__proto__",
-                                Prop::KeyValue(kv) => match kv.key(ast) {
-                                    PropName::Ident(ident_name) => {
-                                        ident_name.sym(ast).as_str() == "__proto__"
+                        if obj_lit.props(ast).iter().any(|prop| {
+                            match ast.get_node_in_sub_range(prop).into_prop() {
+                                Err(PropOrSpread::Spread(_)) => true,
+                                Ok(prop) => match prop {
+                                    Prop::Getter(_) | Prop::Setter(_) | Prop::Method(_) => true,
+                                    Prop::Shorthand(ident) => {
+                                        ident.sym(ast).as_str() == "__proto__"
                                     }
-                                    PropName::Str(str_lit) => {
-                                        str_lit.value(ast).as_wtf8().as_str() == Some("__proto__")
-                                    }
-                                    PropName::Computed(_) => true,
+                                    Prop::KeyValue(kv) => match kv.key(ast) {
+                                        PropName::Ident(ident_name) => {
+                                            ident_name.sym(ast).as_str() == "__proto__"
+                                        }
+                                        PropName::Str(str_lit) => {
+                                            str_lit.value(ast).as_wtf8().as_str()
+                                                == Some("__proto__")
+                                        }
+                                        PropName::Computed(_) => true,
+                                        _ => false,
+                                    },
                                     _ => false,
                                 },
-                                _ => false,
-                            },
-                        };
-                        if obj_lit.props(ast).iter().any(can_have_side_effect) {
+                                Err(_) => unreachable!(),
+                            }
+                        }) {
                             return true;
                         }
                     }
@@ -188,7 +200,7 @@ impl ExprExt for Expr {
             Expr::New(_) => true,
 
             Expr::Call(call_expr) => {
-                let Callee::Expr(callee) = call_expr.callee(ast) else {
+                let Ok(callee) = call_expr.callee(ast).into_expr() else {
                     return true;
                 };
 
@@ -226,8 +238,8 @@ impl ExprExt for Expr {
             }
 
             Expr::Object(obj) => obj.props(ast).iter().any(|node| {
-                match ast.get_node_in_sub_range(node) {
-                    PropOrSpread::Prop(node) => match node {
+                match ast.get_node_in_sub_range(node).into_prop() {
+                    Ok(node) => match node {
                         Prop::Shorthand(..) => false,
                         Prop::KeyValue(kv) => {
                             let key_has_side_effect = match kv.key(ast) {
@@ -252,7 +264,8 @@ impl ExprExt for Expr {
                         Prop::Assign(_) => true,
                     },
                     // may trigger getter
-                    PropOrSpread::Spread(_) => true,
+                    Err(PropOrSpread::Spread(_)) => true,
+                    Err(_) => unreachable!(),
                 }
             }),
 
@@ -312,7 +325,7 @@ impl ExprExt for Expr {
 
                     match obj {
                         Expr::Ident(ident) => ident.sym(ast).as_str() == "Math",
-                        Expr::Lit(Lit::Str(..)) => is_pure_str_method(prop.sym(ast).as_str()),
+                        Expr::Str(..) => is_pure_str_method(prop.sym(ast).as_str()),
                         Expr::Tpl(tpl) if tpl.exprs(ast).is_empty() => {
                             is_pure_str_method(prop.sym(ast).as_str())
                         }
@@ -399,12 +412,10 @@ impl StmtExt for Stmt {
                             .any(|stmt| ast.get_node_in_sub_range(stmt).may_have_side_effects(ctx))
                     })
             }
-            Stmt::Decl(decl) => match decl {
-                Decl::Class(class_decl) => class_has_side_effect(ctx, class_decl.class(ast)),
-                Decl::Fn(_) => !ctx.in_strict,
-                Decl::Var(var_decl) => var_decl.kind(ast) == VarDeclKind::Var,
-                _ => false,
-            },
+            Stmt::Class(class_decl) => class_has_side_effect(ctx, class_decl.class(ast)),
+            Stmt::Fn(_) => !ctx.in_strict,
+            Stmt::Var(var_decl) => var_decl.kind(ast) == VarDeclKind::Var,
+            Stmt::Using(_) => false,
             Stmt::Expr(expr_stmt) => expr_stmt.expr(ast).may_have_side_effects(ctx),
             _ => true,
         }

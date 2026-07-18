@@ -750,7 +750,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
             self.eat_general_semi();
 
-            return Ok(self.ast.module_item_stmt_expr_stmt(self.span(start), expr));
+            return Ok(self.ast.module_item_expr_stmt(self.span(start), expr));
         }
 
         if peek!(self).is_some_and(|cur| cur == Token::LParen) {
@@ -758,7 +758,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
             self.eat_general_semi();
 
-            return Ok(self.ast.module_item_stmt_expr_stmt(self.span(start), expr));
+            return Ok(self.ast.module_item_expr_stmt(self.span(start), expr));
         }
 
         // It's now import statement
@@ -787,7 +787,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             };
             self.eat_general_semi();
 
-            return Ok(self.ast.module_item_module_decl_import_decl(
+            return Ok(self.ast.module_item_import_decl(
                 self.span(start),
                 TypedSubRange::empty(),
                 src,
@@ -931,7 +931,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
         self.expect_general_semi()?;
 
-        Ok(self.ast.module_item_module_decl_import_decl(
+        Ok(self.ast.module_item_import_decl(
             self.span(start),
             specifiers,
             src,

@@ -6,7 +6,7 @@ use crate::{
     AST_CRATE_PATH,
     output::{RawOutput, RustOutput, output_path},
     schema::{AstType, Schema, TypeId},
-    util::{calculate_inline_layout, safe_ident},
+    util::{EXTRA_DATA_ID_BIT_OFFSET, calculate_inline_layout, safe_ident},
 };
 
 pub fn ast_visitor(schema: &Schema) -> RawOutput {
@@ -113,10 +113,9 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                         let (#(#field_values,)*) = {
                             let ast = visitor.ast();
                             let extra_data_start = unsafe {
-                                ast.nodes
-                                    .data_unchecked(self.0)
-                                    .extra_data_start()
-                                    .index()
+                                (ast.nodes.data_unchecked(self.0).0
+                                    >> #EXTRA_DATA_ID_BIT_OFFSET)
+                                    as u32 as usize
                             };
                             let extra_data = ast.extra_data.as_slice();
                             #extra_data_field_loads

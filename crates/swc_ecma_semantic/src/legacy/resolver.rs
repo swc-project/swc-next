@@ -573,8 +573,8 @@ impl<'visit, 'ast> Visit<'ast> for Resolver<'visit, 'ast> {
             e.params(child.ast()).visit_with(child);
             child.ident_type = old;
 
-            match e.body(child.ast()) {
-                BlockStmtOrExpr::BlockStmt(s) => {
+            match e.body(child.ast()).into_expr() {
+                Err(BlockStmtOrExpr::BlockStmt(s)) => {
                     child.mark_block(s);
 
                     let old_strict_mode = child.strict_mode;
@@ -595,7 +595,8 @@ impl<'visit, 'ast> Visit<'ast> for Resolver<'visit, 'ast> {
                     s.stmts(child.ast()).visit_with(child);
                     child.strict_mode = old_strict_mode;
                 }
-                BlockStmtOrExpr::Expr(e) => e.visit_with(child),
+                Ok(e) => e.visit_with(child),
+                Err(_) => unreachable!(),
             }
 
             // e.return_type.visit_with(child);
@@ -2161,7 +2162,7 @@ impl<'resolver, 'visit, 'ast> Visit<'ast> for Hoister<'resolver, 'visit, 'ast> {
         //     console.log(a);
         //   }
         // }
-        if let ForHead::Pat(_) = n {
+        if n.into_pat().is_ok() {
             return;
         }
 
@@ -2197,11 +2198,11 @@ impl<'resolver, 'visit, 'ast> Visit<'ast> for Hoister<'resolver, 'visit, 'ast> {
             .filter_map(|item| {
                 let item = self.ast().get_node_in_sub_range(item);
                 match item {
-                    Stmt::Decl(Decl::Var(..)) => {
+                    Stmt::Var(..) => {
                         item.visit_with(self);
                         None
                     }
-                    Stmt::Decl(Decl::Fn(..)) => {
+                    Stmt::Fn(..) => {
                         item.visit_with(self);
                         None
                     }

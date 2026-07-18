@@ -44,9 +44,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             JSXExpr::JSXEmptyExpr(..) => {
                 syntax_error!(self, self.span(start), SyntaxError::EmptyJSXAttr)
             }
-            JSXExpr::Expr(..) => Ok(JSXAttrValue::JSXExprContainer(node)),
-            #[cfg(swc_ast_unknown)]
-            _ => unreachable!(),
+            _ => Ok(JSXAttrValue::JSXExprContainer(node)),
         }
     }
 

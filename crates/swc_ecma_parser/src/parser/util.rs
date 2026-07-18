@@ -75,7 +75,12 @@ impl ExprExt for Expr {
             }
 
             Expr::This(..)
-            | Expr::Lit(..)
+            | Expr::Str(..)
+            | Expr::Bool(..)
+            | Expr::Null(..)
+            | Expr::Num(..)
+            | Expr::BigInt(..)
+            | Expr::Regex(..)
             | Expr::Array(..)
             | Expr::Object(..)
             | Expr::Fn(..)

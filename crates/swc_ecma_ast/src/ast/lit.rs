@@ -1,6 +1,6 @@
 use swc_experimental_ast_macros::ast;
 
-#[ast]
+#[ast(repr)]
 pub enum Lit {
     Str(Str),
     Bool(Bool),

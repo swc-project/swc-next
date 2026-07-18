@@ -5,7 +5,7 @@ use crate::{
     ast::{BigInt, Ident, IdentName, Str},
 };
 
-#[ast]
+#[ast(repr)]
 pub enum Prop {
     Shorthand(Ident),
     KeyValue(KeyValueProp),
@@ -43,7 +43,7 @@ pub struct MethodProp {
     function: Function,
 }
 
-#[ast]
+#[ast(repr)]
 pub enum PropName {
     Ident(IdentName),
     Str(Str),

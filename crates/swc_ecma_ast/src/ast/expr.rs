@@ -4,7 +4,7 @@ use swc_experimental_ast_macros::ast;
 
 use crate::{Ast, ExtraData, GetSpan, ast::*, node_id::ExtraDataCompact};
 
-#[ast]
+#[ast(repr)]
 pub enum Expr {
     This(ThisExpr),
     Array(ArrayLit),
@@ -22,7 +22,12 @@ pub enum Expr {
     New(NewExpr),
     Seq(SeqExpr),
     Ident(Ident),
-    Lit(Lit),
+    Str(Str),
+    Bool(Bool),
+    Null(Null),
+    Num(Number),
+    BigInt(BigInt),
+    Regex(Regex),
     Tpl(Tpl),
     TaggedTpl(TaggedTpl),
     Arrow(ArrowExpr),
@@ -47,6 +52,21 @@ pub enum Expr {
     Invalid(Invalid),
 }
 
+#[allow(non_snake_case)]
+impl Expr {
+    /// Compatibility constructor for code which produces a generic literal.
+    pub fn Lit(lit: Lit) -> Self {
+        match lit {
+            Lit::Str(node) => Self::Str(node),
+            Lit::Bool(node) => Self::Bool(node),
+            Lit::Null(node) => Self::Null(node),
+            Lit::Num(node) => Self::Num(node),
+            Lit::BigInt(node) => Self::BigInt(node),
+            Lit::Regex(node) => Self::Regex(node),
+        }
+    }
+}
+
 #[ast]
 pub struct ThisExpr {}
 
@@ -60,10 +80,37 @@ pub struct ObjectLit {
     props: Vec<PropOrSpread>,
 }
 
-#[ast]
+#[ast(repr)]
 pub enum PropOrSpread {
+    // Prop
+    Shorthand(Ident),
+    KeyValue(KeyValueProp),
+    Assign(AssignProp),
+    Getter(GetterProp),
+    Setter(SetterProp),
+    Method(MethodProp),
+
+    // PropOrSpread
     Spread(SpreadElement),
-    Prop(Prop),
+}
+
+#[allow(non_snake_case)]
+impl PropOrSpread {
+    #[inline]
+    pub fn Prop(prop: Prop) -> Self {
+        const {
+            assert!(std::mem::size_of::<Prop>() == std::mem::size_of::<Self>());
+        }
+        unsafe { std::mem::transmute(prop) }
+    }
+
+    #[inline]
+    pub fn into_prop(self) -> Result<Prop, Self> {
+        match self {
+            Self::Spread(_) => Err(self),
+            _ => unsafe { Ok(std::mem::transmute(self)) },
+        }
+    }
 }
 
 #[ast]
@@ -116,7 +163,7 @@ pub struct MemberExpr {
     prop: MemberProp,
 }
 
-#[ast]
+#[ast(repr)]
 pub enum MemberProp {
     Ident(IdentName),
     PrivateName(PrivateName),
@@ -135,7 +182,7 @@ pub struct SuperPropExpr {
     prop: SuperProp,
 }
 
-#[ast]
+#[ast(repr)]
 pub enum SuperProp {
     Ident(IdentName),
     Computed(ComputedPropName),
@@ -246,10 +293,69 @@ pub struct ParenExpr {
     expr: Expr,
 }
 
-#[ast]
+#[ast(repr)]
 pub enum Callee {
+    // Expr
+    This(ThisExpr),
+    Array(ArrayLit),
+    Object(ObjectLit),
+    Fn(FnExpr),
+    Unary(UnaryExpr),
+    Update(UpdateExpr),
+    Bin(BinExpr),
+    Assign(AssignExpr),
+    Member(MemberExpr),
+    SuperProp(SuperPropExpr),
+    Cond(CondExpr),
+    Import(ImportExpr),
+    Call(CallExpr),
+    New(NewExpr),
+    Seq(SeqExpr),
+    Ident(Ident),
+    Str(Str),
+    Bool(Bool),
+    Null(Null),
+    Num(Number),
+    BigInt(BigInt),
+    Regex(Regex),
+    Tpl(Tpl),
+    TaggedTpl(TaggedTpl),
+    Arrow(ArrowExpr),
+    Class(ClassExpr),
+    Yield(YieldExpr),
+    MetaProp(MetaPropExpr),
+    Await(AwaitExpr),
+    Paren(ParenExpr),
+    JSXMember(JSXMemberExpr),
+    JSXNamespacedName(JSXNamespacedName),
+    JSXEmpty(JSXEmptyExpr),
+    JSXElement(JSXElement),
+    JSXFragment(JSXFragment),
+    PrivateName(PrivateName),
+    OptChain(OptChainExpr),
+    Invalid(Invalid),
+
+    // Callee
     Super(Super),
-    Expr(Expr),
+}
+
+#[allow(non_snake_case)]
+impl Callee {
+    #[inline]
+    pub fn Expr(expr: Expr) -> Self {
+        const {
+            assert!(std::mem::size_of::<Expr>() == std::mem::size_of::<Self>());
+        }
+        unsafe { std::mem::transmute(expr) }
+    }
+
+    #[inline]
+    pub fn into_expr(self) -> Result<Expr, Self> {
+        match self {
+            Self::Super(_) => Err(self),
+            _ => unsafe { Ok(std::mem::transmute(self)) },
+        }
+    }
 }
 
 #[ast]
@@ -261,26 +367,135 @@ pub struct ExprOrSpread {
     expr: Expr,
 }
 
-#[ast]
+#[ast(repr)]
 pub enum BlockStmtOrExpr {
+    // Expr
+    This(ThisExpr),
+    Array(ArrayLit),
+    Object(ObjectLit),
+    Fn(FnExpr),
+    Unary(UnaryExpr),
+    Update(UpdateExpr),
+    Bin(BinExpr),
+    Assign(AssignExpr),
+    Member(MemberExpr),
+    SuperProp(SuperPropExpr),
+    Cond(CondExpr),
+    Import(ImportExpr),
+    Call(CallExpr),
+    New(NewExpr),
+    Seq(SeqExpr),
+    Ident(Ident),
+    Str(Str),
+    Bool(Bool),
+    Null(Null),
+    Num(Number),
+    BigInt(BigInt),
+    Regex(Regex),
+    Tpl(Tpl),
+    TaggedTpl(TaggedTpl),
+    Arrow(ArrowExpr),
+    Class(ClassExpr),
+    Yield(YieldExpr),
+    MetaProp(MetaPropExpr),
+    Await(AwaitExpr),
+    Paren(ParenExpr),
+    JSXMember(JSXMemberExpr),
+    JSXNamespacedName(JSXNamespacedName),
+    JSXEmpty(JSXEmptyExpr),
+    JSXElement(JSXElement),
+    JSXFragment(JSXFragment),
+    PrivateName(PrivateName),
+    OptChain(OptChainExpr),
+    Invalid(Invalid),
+
+    // BlockStmtOrExpr
     BlockStmt(BlockStmt),
-    Expr(Expr),
 }
 
-#[ast]
+#[allow(non_snake_case)]
+impl BlockStmtOrExpr {
+    #[inline]
+    pub fn Expr(expr: Expr) -> Self {
+        const {
+            assert!(std::mem::size_of::<Expr>() == std::mem::size_of::<Self>());
+        }
+        unsafe { std::mem::transmute(expr) }
+    }
+
+    #[inline]
+    pub fn into_expr(self) -> Result<Expr, Self> {
+        match self {
+            Self::BlockStmt(_) => Err(self),
+            _ => unsafe { Ok(std::mem::transmute(self)) },
+        }
+    }
+}
+
+#[ast(repr)]
 pub enum AssignTarget {
-    Simple(SimpleAssignTarget),
-    Pat(AssignTargetPat),
+    SimpleIdent(BindingIdent),
+    SimpleMember(MemberExpr),
+    SimpleSuperProp(SuperPropExpr),
+    SimpleParen(ParenExpr),
+    SimpleOptChain(OptChainExpr),
+    SimpleInvalid(Invalid),
+    PatArray(ArrayPat),
+    PatObject(ObjectPat),
+    PatternInvalid(Invalid),
 }
 
-#[ast]
+#[allow(non_snake_case)]
+impl AssignTarget {
+    pub fn Simple(target: SimpleAssignTarget) -> Self {
+        match target {
+            SimpleAssignTarget::Ident(node) => Self::SimpleIdent(node),
+            SimpleAssignTarget::Member(node) => Self::SimpleMember(node),
+            SimpleAssignTarget::SuperProp(node) => Self::SimpleSuperProp(node),
+            SimpleAssignTarget::Paren(node) => Self::SimpleParen(node),
+            SimpleAssignTarget::OptChain(node) => Self::SimpleOptChain(node),
+            SimpleAssignTarget::Invalid(node) => Self::SimpleInvalid(node),
+        }
+    }
+
+    pub fn Pat(target: AssignTargetPat) -> Self {
+        match target {
+            AssignTargetPat::Array(node) => Self::PatArray(node),
+            AssignTargetPat::Object(node) => Self::PatObject(node),
+            AssignTargetPat::Invalid(node) => Self::PatternInvalid(node),
+        }
+    }
+
+    pub fn into_simple(self) -> Option<SimpleAssignTarget> {
+        match self {
+            Self::SimpleIdent(node) => Some(SimpleAssignTarget::Ident(node)),
+            Self::SimpleMember(node) => Some(SimpleAssignTarget::Member(node)),
+            Self::SimpleSuperProp(node) => Some(SimpleAssignTarget::SuperProp(node)),
+            Self::SimpleParen(node) => Some(SimpleAssignTarget::Paren(node)),
+            Self::SimpleOptChain(node) => Some(SimpleAssignTarget::OptChain(node)),
+            Self::SimpleInvalid(node) => Some(SimpleAssignTarget::Invalid(node)),
+            _ => None,
+        }
+    }
+
+    pub fn into_pat(self) -> Option<AssignTargetPat> {
+        match self {
+            Self::PatArray(node) => Some(AssignTargetPat::Array(node)),
+            Self::PatObject(node) => Some(AssignTargetPat::Object(node)),
+            Self::PatternInvalid(node) => Some(AssignTargetPat::Invalid(node)),
+            _ => None,
+        }
+    }
+}
+
+#[ast(repr)]
 pub enum AssignTargetPat {
     Array(ArrayPat),
     Object(ObjectPat),
     Invalid(Invalid),
 }
 
-#[ast]
+#[ast(repr)]
 pub enum SimpleAssignTarget {
     Ident(BindingIdent),
     Member(MemberExpr),
@@ -301,7 +516,7 @@ pub struct OptChainExpr {
     base: OptChainBase,
 }
 
-#[ast]
+#[ast(repr)]
 pub enum OptChainBase {
     Member(MemberExpr),
     Call(OptCall),
@@ -337,11 +552,13 @@ impl AssignTarget {
             Pat::Object(o) => AssignTarget::Pat(AssignTargetPat::Object(o)),
             Pat::Ident(i) => AssignTarget::Simple(SimpleAssignTarget::Ident(i)),
             Pat::Invalid(i) => AssignTarget::Simple(SimpleAssignTarget::Invalid(i)),
-            Pat::Expr(e) => match Self::try_from_expr(ast, e) {
-                Ok(v) => v,
-                Err(e) => return Err(Pat::Expr(e)),
+            p => match p.into_expr() {
+                Ok(e) => match Self::try_from_expr(ast, e) {
+                    Ok(v) => v,
+                    Err(e) => return Err(Pat::Expr(e)),
+                },
+                Err(p) => return Err(p),
             },
-            _ => return Err(p),
         })
     }
 }

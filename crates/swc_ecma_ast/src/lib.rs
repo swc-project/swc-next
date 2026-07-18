@@ -28,9 +28,7 @@ pub use comment::*;
 pub use common::*;
 pub use derive::*;
 pub use generated::ast_visitor::*;
-pub use node_id::{
-    ExtraDataCompact, ExtraDataId, NodeId, NodeIdTrait, OptionalNodeId, SubRange, TypedSubRange,
-};
+pub use node_id::{ExtraDataCompact, ExtraDataId, NodeId, SubRange, TypedSubRange};
 pub use semantic::{ScopeId, SymbolId};
 pub use span::{DUMMY_SP, Span};
 pub use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
@@ -63,142 +61,16 @@ multi_index_vec! {
     }
 }
 
-/// Compact 12-byte payload for a node.
+/// Compact 128-bit payload for a node.
 ///
-/// Fully inlined nodes use all 12 bytes. Nodes with out-of-line fields use the
-/// first eight bytes for inline data and the trailing four bytes for the start
-/// index in [Ast::extra_data].
-#[repr(C, packed(4))]
+/// Fully inlined nodes use all 128 bits. Nodes with out-of-line fields use the
+/// low 96 bits for inline data and the high 32 bits for the start index in
+/// [Ast::extra_data].
+#[repr(transparent)]
 #[derive(Clone, Copy)]
-pub struct NodePayload {
-    inline_data: u64,
-    trailing: NodePayloadTrailing,
-}
+pub struct NodePayload(pub(crate) u128);
 
-#[repr(C)]
-#[derive(Clone, Copy)]
-union NodePayloadTrailing {
-    extra_data_start: ExtraDataId,
-    inline_data: u32,
-}
-
-impl NodePayload {
-    #[inline]
-    const fn inline(inline_data: u64, trailing_inline_data: u32) -> Self {
-        Self {
-            inline_data,
-            trailing: NodePayloadTrailing {
-                inline_data: trailing_inline_data,
-            },
-        }
-    }
-
-    #[inline]
-    const fn partial(inline_data: u64, extra_data_start: ExtraDataId) -> Self {
-        Self {
-            inline_data,
-            trailing: NodePayloadTrailing { extra_data_start },
-        }
-    }
-
-    #[inline]
-    fn inline_data(self) -> u64 {
-        self.inline_data
-    }
-
-    #[inline]
-    fn set_inline_data(&mut self, inline_data: u64) {
-        self.inline_data = inline_data;
-    }
-
-    #[inline]
-    unsafe fn trailing_inline_data(self) -> u32 {
-        unsafe { self.trailing.inline_data }
-    }
-
-    #[inline]
-    unsafe fn set_trailing_inline_data(&mut self, inline_data: u32) {
-        self.trailing = NodePayloadTrailing { inline_data };
-    }
-
-    #[inline]
-    unsafe fn extra_data_start(self) -> ExtraDataId {
-        unsafe { self.trailing.extra_data_start }
-    }
-}
-
-/// The extra data is used to represent the field of AST node.
-/// It's usally another Id to point to the data structures in [Ast],
-/// or it can be a compact value.
-///
-/// # Safety:
-/// It is only access the by the property accesses of typed AST node, and the construction of typed AST is
-/// another safety guarantee.
-#[derive(Clone, Copy)]
-pub union ExtraData {
-    // Ids
-    node: NodeId,
-    optional_node: OptionalNodeId,
-
-    // Atom handles index dedicated tables in `Ast::atoms`.
-    atom: AtomId,
-    wtf8_atom: Wtf8AtomId,
-
-    // Primitives
-    span: Span,
-    optional_span: OptionalSpan,
-    bool: bool,
-    number: f64,
-    sub_range: SubRange,
-    optional_sub_range: OptionalSubRange,
-    optional_scope_id: Option<ScopeId>,
-    optional_symbol_id: Option<SymbolId>,
-
-    // Typed enums
-    program: Program,
-    module_decl: ModuleDecl,
-    expr: Expr,
-    stmt: Stmt,
-    decl: Decl,
-    pat: Pat,
-    default_decl: DefaultDecl,
-    opt_chain_base: OptChainBase,
-    module_export_name: ModuleExportName,
-    for_head: ForHead,
-    member_prop: MemberProp,
-    super_prop: SuperProp,
-    callee: Callee,
-    block_stmt_or_expr: BlockStmtOrExpr,
-    prop_name: PropName,
-    key: Key,
-    jsx_object: JSXObject,
-    jsx_element_name: JSXElementName,
-    jsx_attr_name: JSXAttrName,
-    jsx_expr: JSXExpr,
-    var_decl_or_expr: VarDeclOrExpr,
-    import_specifier: ImportSpecifier,
-    export_specifier: ExportSpecifier,
-    prop_or_spread: PropOrSpread,
-    assign_target_pat: AssignTargetPat,
-    simple_assign_target: SimpleAssignTarget,
-    param_or_ts_param_prop: ParamOrTsParamProp,
-    class_member: ClassMember,
-    prop: Prop,
-    object_pat_prop: ObjectPatProp,
-    lit: Lit,
-    jsx_attr_or_spread: JSXAttrOrSpread,
-    jsx_attr_value: JSXAttrValue,
-    jsx_element_child: JSXElementChild,
-
-    optional_expr: Option<Expr>,
-    optional_pat: Option<Pat>,
-    optional_stmt: Option<Stmt>,
-    optional_var_decl_or_expr: Option<VarDeclOrExpr>,
-    optional_jsx_attr_value: Option<JSXAttrValue>,
-
-    /// Any other data (usually enum) that can be represented within 8 bytes.
-    other: u64,
-}
+include!("generated/ast_extra_data.rs");
 
 /// The NodeKind is one-to-one mapping to the typed AST node declared with struct keyword (not enum).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

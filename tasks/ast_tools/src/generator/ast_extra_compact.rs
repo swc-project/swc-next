@@ -14,75 +14,54 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
         match ty {
             AstType::Struct(ast_struct) => {
                 let ident = format_ident!("{}", ast_struct.name);
-                let (to_expr, from_expr) = (
-                    quote!(ExtraData {
-                        node: self.node_id()
-                    }),
-                    quote!(unsafe { Self::from_node_id_unchecked(data.node, ast) }),
-                );
+                let field_ident = format_ident!("{}", map_field_type_to_extra_field(ty, schema));
 
                 impls.extend(quote! {
                    impl<'a> ExtraDataCompact<'a> for #ident {
                         #[inline]
                         fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-                            #to_expr
+                            ExtraData { #field_ident: self }
                         }
 
                         #[inline]
-                        unsafe fn from_extra_data(data: ExtraData, ast: &Ast<'a>) -> Self {
-                            #from_expr
+                        unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
+                            unsafe { data.#field_ident }
                         }
                    }
                 });
             }
             AstType::Enum(ast_enum) => {
+                for variant in &ast_enum.variants {
+                    if let Some(type_id) = variant.type_id {
+                        assert!(
+                            !matches!(schema.types[type_id], AstType::Enum(_)),
+                            "{}::{} must inline the nested AST enum variants",
+                            ast_enum.name,
+                            variant.name,
+                        );
+                    }
+                }
+
                 let ident = format_ident!("{}", ast_enum.name);
-                let extra_field = map_field_type_to_extra_field(ty, schema);
-
-                let (to_expr, from_expr) = match extra_field.as_str() {
-                    "node" => (
-                        quote!(ExtraData {
-                            node: self.node_id()
-                        }),
-                        quote!(unsafe { Self::from_node_id_unchecked(data.node, ast) }),
-                    ),
-                    "other" => {
-                        if let Some(&size) = schema.repr_sizes.get(&ast_enum.name) {
-                            let cast_ty = match size {
-                                1 => quote!(u8),
-                                2 => quote!(u16),
-                                4 => quote!(u32),
-                                8 => quote!(u64),
-                                _ => quote!(u64),
-                            };
-
-                            (
-                                quote!(ExtraData { other: self as u64 }),
-                                quote!(unsafe { std::mem::transmute(data.other as #cast_ty) }),
-                            )
-                        } else {
-                            panic!("Invalid type size {}", ast_enum.name);
-                        }
-                    }
-                    _ => {
-                        let field_ident = format_ident!("{}", extra_field);
-                        (
-                            quote!(ExtraData { #field_ident: self }),
-                            quote!(unsafe { data.#field_ident }),
-                        )
-                    }
-                };
+                let field_ident = format_ident!("{}", map_field_type_to_extra_field(ty, schema));
 
                 impls.extend(quote! {
+                   const _: () =
+                       assert!(std::mem::size_of::<#ident>() == std::mem::size_of::<u64>());
+
                    impl<'a> ExtraDataCompact<'a> for #ident {
                         #[inline]
                         fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-                            #to_expr
+                            ExtraData {
+                                #field_ident: unsafe { std::mem::transmute::<Self, u64>(self) }
+                            }
                         }
 
                         #[inline]
-                        unsafe fn from_extra_data(data: ExtraData, ast: &Ast<'a>) -> Self {
-                            #from_expr
+                        unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
+                            unsafe {
+                                std::mem::transmute::<u64, Self>(data.#field_ident)
+                            }
                         }
                    }
                 });
@@ -95,17 +74,19 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
                 }
 
                 let optional_extra_field = map_field_type_to_extra_field(ty, schema);
-                let inner_ty_ident = inner_type.repr_ident(schema);
                 let opt_field_ident = format_ident!("{}", optional_extra_field);
-                let (opt_to, opt_from) = if optional_extra_field == "optional_node" {
+                let (opt_to, opt_from) = if matches!(inner_type, AstType::Enum(_)) {
                     (
                         quote!(ExtraData {
-                            optional_node: self.map(|n| n.node_id()).into()
+                            #opt_field_ident: self.map_or(u64::MAX, |node| unsafe {
+                                node.to_extra_data(ast).other
+                            })
                         }),
-                        quote!(unsafe {
-                            data.optional_node
-                                .to_option()
-                                .map(|id| #inner_ty_ident::from_node_id_unchecked(id, ast))
+                        quote!({
+                            let raw = unsafe { data.#opt_field_ident };
+                            (raw != u64::MAX).then(|| unsafe {
+                                ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast)
+                            })
                         }),
                     )
                 } else {
@@ -119,7 +100,7 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
                 impls.extend(quote! {
                    impl<'a> ExtraDataCompact<'a> for #ty_ident {
                         #[inline]
-                        fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
+                        fn to_extra_data(self, ast: &Ast<'a>) -> ExtraData {
                             #opt_to
                         }
 
@@ -136,8 +117,9 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
 
     let output = quote! {
         #![allow(unused, clippy::manual_map)]
-        use crate::{Ast, CloneIn, NodeKind, ExtraData};
+        use crate::{Ast, CloneIn, ExtraData};
         use crate::{ast::*, node_id::*};
+        use oxc_index::Idx;
 
         #impls
     };

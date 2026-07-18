@@ -7,8 +7,8 @@ use crate::{
     output::{RawOutput, RustOutput, output_path},
     schema::{AstEnum, AstStruct, AstType, Schema},
     util::{
-        INLINE_DATA_U64_SIZE, InlineStorageMode, calculate_inline_layout, generate_field_to_u32,
-        generate_field_to_u64, safe_ident,
+        EXTRA_DATA_ID_BIT_OFFSET, InlineStorageMode, calculate_inline_layout,
+        generate_field_to_u32, generate_field_to_u64, safe_ident,
     },
 };
 
@@ -37,6 +37,7 @@ pub fn ast_builder(schema: &Schema) -> RawOutput {
     let output = quote! {
             #![allow(unused, clippy::useless_conversion, clippy::identity_op)]
             use crate::*;
+            use oxc_index::Idx;
 
             impl<'a> Ast<'a> {
                 #build_functions
@@ -63,8 +64,7 @@ fn generate_build_function_for_struct(ast: &AstStruct, schema: &Schema) -> Token
     }
 }
 
-/// Generate a builder using either all 12 payload bytes or the leading u64 plus
-/// an ExtraDataId in the trailing word.
+/// Generate a builder by packing fields into a u128 payload.
 fn generate_build_function_inline(
     ast: &AstStruct,
     schema: &Schema,
@@ -80,15 +80,14 @@ fn generate_build_function_inline(
                 #ret_ty(self.add_node(
                     span,
                     NodeKind::#ret_ty,
-                    NodePayload::inline(0, 0),
+                    NodePayload(0),
                 ))
             }
         };
     }
 
     let mut inline_defaults = TokenStream::new();
-    let mut pack_u64 = TokenStream::new();
-    let mut pack_u32 = TokenStream::new();
+    let mut pack_u128 = TokenStream::new();
 
     for &(field_idx, byte_offset, byte_size) in &layout.fields {
         let field = &ast.fields[field_idx];
@@ -104,32 +103,15 @@ fn generate_build_function_inline(
             field_name = default_name;
         }
 
-        if byte_size == INLINE_DATA_U64_SIZE {
-            debug_assert_eq!(byte_offset, 0);
-            let field_u64 = generate_field_to_u64(field_ty, &field_name, quote!(self));
-            pack_u64.extend(quote! { | #field_u64 });
+        let bit_offset = byte_offset * 8;
+        if byte_size == std::mem::size_of::<u64>() {
+            let field_u64 = generate_field_to_u64(field_ty, &field_name, quote!(self), schema);
+            pack_u128.extend(quote! { | ((#field_u64 as u128) << #bit_offset) });
             continue;
         }
 
         let field_u32 = generate_field_to_u32(field_ty, &field_name, schema);
-        if byte_offset < INLINE_DATA_U64_SIZE {
-            debug_assert!(byte_offset + byte_size <= INLINE_DATA_U64_SIZE);
-            let bit_offset = byte_offset * 8;
-            if bit_offset == 0 {
-                pack_u64.extend(quote! { | (#field_u32 as u64) });
-            } else {
-                pack_u64.extend(quote! { | ((#field_u32 as u64) << #bit_offset) });
-            }
-        } else {
-            let word_offset = byte_offset - INLINE_DATA_U64_SIZE;
-            debug_assert!(word_offset + byte_size <= 4);
-            let bit_offset = word_offset * 8;
-            if bit_offset == 0 {
-                pack_u32.extend(quote! { | #field_u32 });
-            } else {
-                pack_u32.extend(quote! { | ((#field_u32) << #bit_offset) });
-            }
-        }
+        pack_u128.extend(quote! { | ((#field_u32 as u128) << #bit_offset) });
     }
 
     match layout.mode {
@@ -140,7 +122,7 @@ fn generate_build_function_inline(
                 #ret_ty(self.add_node(
                     span,
                     NodeKind::#ret_ty,
-                    NodePayload::inline(0u64 #pack_u64, 0u32 #pack_u32),
+                    NodePayload(0u128 #pack_u128),
                 ))
             }
         },
@@ -177,7 +159,11 @@ fn generate_build_function_inline(
                     #ret_ty(self.add_node(
                         span,
                         NodeKind::#ret_ty,
-                        NodePayload::partial(0u64 #pack_u64, #start_id),
+                        NodePayload(
+                            0u128
+                            #pack_u128
+                            | ((#start_id.index() as u128) << #EXTRA_DATA_ID_BIT_OFFSET)
+                        ),
                     ))
                 }
             }
@@ -207,8 +193,10 @@ fn generate_build_function_extra_data(
 
     let (add_extra_data, start_id) = generate_add_extra_data(&extra_data_values);
     let node_payload = match start_id {
-        Some(start_id) => quote!(NodePayload::partial(0, #start_id)),
-        None => quote!(NodePayload::inline(0, 0)),
+        Some(start_id) => {
+            quote!(NodePayload((#start_id.index() as u128) << #EXTRA_DATA_ID_BIT_OFFSET))
+        }
+        None => quote!(NodePayload(0)),
     };
 
     let tokens = quote! {
@@ -284,7 +272,17 @@ fn generate_build_function_for_enum(
                     for name in recursive_context.name.iter() {
                         fn_name.push_str(name);
                     }
-                    fn_name.push_str(&ast_struct.name);
+                    let has_duplicate_payload = ast
+                        .variants
+                        .iter()
+                        .filter(|candidate| candidate.type_id == Some(payload_ty_id))
+                        .count()
+                        > 1;
+                    if has_duplicate_payload {
+                        fn_name.push_str(&variant.name);
+                    } else {
+                        fn_name.push_str(&ast_struct.name);
+                    }
                     safe_ident(&fn_name.to_case(Case::Snake))
                 };
 

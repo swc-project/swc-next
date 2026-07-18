@@ -80,9 +80,8 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 }
             }
             Pat::Assign(a) => self.pat_is_valid_argument_in_strict(a.left(self.ast)),
-            Pat::Invalid(_) | Pat::Expr(_) => (),
-            #[cfg(swc_ast_unknown)]
-            _ => unreachable!(),
+            Pat::Invalid(_) => (),
+            _ => (),
         }
     }
 
@@ -153,7 +152,12 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 | Expr::SuperProp(..)
                 | Expr::Call(..)
                 | Expr::New(..)
-                | Expr::Lit(..)
+                | Expr::Str(..)
+                | Expr::Bool(..)
+                | Expr::Null(..)
+                | Expr::Num(..)
+                | Expr::BigInt(..)
+                | Expr::Regex(..)
                 | Expr::Ident(..)
                 | Expr::Fn(..)
                 | Expr::Class(..)
@@ -192,32 +196,30 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                     return Ok(self.ast.pat_invalid(span));
                 }
 
-                let left = match assign_expr.left(self.ast) {
-                    AssignTarget::Simple(left) => {
-                        let left = match left {
-                            SimpleAssignTarget::Ident(binding_ident) => {
-                                let sym = binding_ident.id(self.ast);
-                                Expr::Ident(sym)
-                            }
-                            SimpleAssignTarget::Member(member_expr) => Expr::Member(member_expr),
-                            SimpleAssignTarget::SuperProp(super_prop_expr) => {
-                                Expr::SuperProp(super_prop_expr)
-                            }
-                            SimpleAssignTarget::Paren(paren_expr) => Expr::Paren(paren_expr),
-                            SimpleAssignTarget::OptChain(opt_chain_expr) => {
-                                Expr::OptChain(opt_chain_expr)
-                            }
-                            SimpleAssignTarget::Invalid(invalid) => Expr::Invalid(invalid),
-                        };
-                        self.reparse_expr_as_pat(pat_ty, left)?
-                    }
-                    AssignTarget::Pat(pat) => match pat {
+                let target = assign_expr.left(self.ast);
+                let left = if let Some(left) = target.into_simple() {
+                    let left = match left {
+                        SimpleAssignTarget::Ident(binding_ident) => {
+                            let sym = binding_ident.id(self.ast);
+                            Expr::Ident(sym)
+                        }
+                        SimpleAssignTarget::Member(member_expr) => Expr::Member(member_expr),
+                        SimpleAssignTarget::SuperProp(super_prop_expr) => {
+                            Expr::SuperProp(super_prop_expr)
+                        }
+                        SimpleAssignTarget::Paren(paren_expr) => Expr::Paren(paren_expr),
+                        SimpleAssignTarget::OptChain(opt_chain_expr) => {
+                            Expr::OptChain(opt_chain_expr)
+                        }
+                        SimpleAssignTarget::Invalid(invalid) => Expr::Invalid(invalid),
+                    };
+                    self.reparse_expr_as_pat(pat_ty, left)?
+                } else {
+                    match target.into_pat().expect("assign target must be a pattern") {
                         AssignTargetPat::Array(array_pat) => Pat::Array(array_pat),
                         AssignTargetPat::Object(object_pat) => Pat::Object(object_pat),
                         AssignTargetPat::Invalid(invalid) => Pat::Invalid(invalid),
-                    },
-                    #[cfg(swc_ast_unknown)]
-                    _ => unreachable!(),
+                    }
                 };
                 let right = assign_expr.right(self.ast);
                 Ok(self.ast.pat_assign_pat(span, left, right))
@@ -232,8 +234,8 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                     for (idx, prop) in props.iter().enumerate() {
                         let prop = p.ast.get_node_in_sub_range(prop);
                         let span = prop.span(p.ast);
-                        let prop = match prop {
-                            PropOrSpread::Prop(prop) => match prop {
+                        let prop = match prop.into_prop() {
+                            Ok(prop) => match prop {
                                 Prop::Shorthand(id) => {
                                     let binding_ident = p.ast.binding_ident(id.span(p.ast), id);
                                     p.ast.object_pat_prop_assign_pat_prop(
@@ -263,7 +265,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                                 _ => syntax_error!(p, prop.span(p.ast), SyntaxError::InvalidPat),
                             },
 
-                            PropOrSpread::Spread(spread) => {
+                            Err(PropOrSpread::Spread(spread)) => {
                                 let dot_3_token = spread.dot_3_token(p.ast);
                                 let expr = spread.expr(p.ast);
                                 if idx != len - 1 {
@@ -290,8 +292,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                                 };
                                 p.ast.object_pat_prop_rest_pat(span, dot_3_token, pat)
                             }
-                            #[cfg(swc_ast_unknown)]
-                            _ => unreachable!(),
+                            Err(_) => unreachable!(),
                         };
 
                         obj_props.push(p, prop);
@@ -391,7 +392,12 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
             // Invalid patterns.
             // Note that assignment expression with '=' is valid, and handled above.
-            Expr::Lit(..) => {
+            Expr::Str(..)
+            | Expr::Bool(..)
+            | Expr::Null(..)
+            | Expr::Num(..)
+            | Expr::BigInt(..)
+            | Expr::Regex(..) => {
                 self.emit_err(span, SyntaxError::InvalidPat);
                 Ok(self.ast.pat_invalid(span))
             }

@@ -1,16 +1,80 @@
 use swc_experimental_ast_macros::ast;
 
-use crate::ast::{BindingIdent, Expr, Invalid};
+use crate::ast::*;
 
-#[ast]
+#[ast(repr)]
 pub enum Pat {
+    // Expr
+    ExprThis(ThisExpr),
+    ExprArray(ArrayLit),
+    ExprObject(ObjectLit),
+    ExprFn(FnExpr),
+    ExprUnary(UnaryExpr),
+    ExprUpdate(UpdateExpr),
+    ExprBin(BinExpr),
+    ExprAssign(AssignExpr),
+    ExprMember(MemberExpr),
+    ExprSuperProp(SuperPropExpr),
+    ExprCond(CondExpr),
+    ExprImport(ImportExpr),
+    ExprCall(CallExpr),
+    ExprNew(NewExpr),
+    ExprSeq(SeqExpr),
+    ExprIdent(Ident),
+    ExprStr(Str),
+    ExprBool(Bool),
+    ExprNull(Null),
+    ExprNum(Number),
+    ExprBigInt(BigInt),
+    ExprRegex(Regex),
+    ExprTpl(Tpl),
+    ExprTaggedTpl(TaggedTpl),
+    ExprArrow(ArrowExpr),
+    ExprClass(ClassExpr),
+    ExprYield(YieldExpr),
+    ExprMetaProp(MetaPropExpr),
+    ExprAwait(AwaitExpr),
+    ExprParen(ParenExpr),
+    ExprJSXMember(JSXMemberExpr),
+    ExprJSXNamespacedName(JSXNamespacedName),
+    ExprJSXEmpty(JSXEmptyExpr),
+    ExprJSXElement(JSXElement),
+    ExprJSXFragment(JSXFragment),
+    ExprPrivateName(PrivateName),
+    ExprOptChain(OptChainExpr),
+    ExprInvalid(Invalid),
+
+    // Pat
     Ident(BindingIdent),
     Array(ArrayPat),
     Rest(RestPat),
     Object(ObjectPat),
     Assign(AssignPat),
     Invalid(Invalid),
-    Expr(Expr),
+}
+
+#[allow(non_snake_case)]
+impl Pat {
+    #[inline]
+    pub fn Expr(expr: Expr) -> Self {
+        const {
+            assert!(std::mem::size_of::<Expr>() == std::mem::size_of::<Self>());
+        }
+        unsafe { std::mem::transmute(expr) }
+    }
+
+    #[inline]
+    pub fn into_expr(self) -> Result<Expr, Self> {
+        match self {
+            Self::Ident(_)
+            | Self::Array(_)
+            | Self::Rest(_)
+            | Self::Object(_)
+            | Self::Assign(_)
+            | Self::Invalid(_) => Err(self),
+            _ => unsafe { Ok(std::mem::transmute(self)) },
+        }
+    }
 }
 
 #[ast]
@@ -40,7 +104,7 @@ pub struct RestPat {
     // type_ann: Option<Box<TsTypeAnn>>,
 }
 
-#[ast]
+#[ast(repr)]
 pub enum ObjectPatProp {
     KeyValue(KeyValuePatProp),
     Assign(AssignPatProp),

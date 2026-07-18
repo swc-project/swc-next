@@ -8,7 +8,7 @@ use crate::{
     node_id::ExtraDataCompact,
 };
 
-#[ast]
+#[ast(repr)]
 pub enum ModuleDecl {
     Import(ImportDecl),
     ExportDecl(ExportDecl),
@@ -49,7 +49,7 @@ impl<'a> ExtraDataCompact<'a> for ImportPhase {
     }
 }
 
-#[ast]
+#[ast(repr)]
 pub enum ImportSpecifier {
     Named(ImportNamedSpecifier),
     Default(ImportDefaultSpecifier),
@@ -86,7 +86,7 @@ pub struct NamedExport {
     with: Option<ObjectLit>,
 }
 
-#[ast]
+#[ast(repr)]
 pub enum ExportSpecifier {
     Namespace(ExportNamespaceSpecifier),
     Default(ExportDefaultSpecifier),
@@ -98,7 +98,7 @@ pub struct ExportNamespaceSpecifier {
     name: ModuleExportName,
 }
 
-#[ast]
+#[ast(repr)]
 pub enum ModuleExportName {
     Ident(Ident),
     Str(Str),
@@ -121,7 +121,7 @@ pub struct ExportDefaultDecl {
     decl: DefaultDecl,
 }
 
-#[ast]
+#[ast(repr)]
 pub enum DefaultDecl {
     Class(ClassExpr),
     Fn(FnExpr),

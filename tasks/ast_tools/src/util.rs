@@ -1,46 +1,45 @@
-use std::collections::BTreeMap;
-
 use convert_case::{Case, Casing};
 use phf::{Set as PhfSet, phf_set};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::Ident;
 
-use crate::schema::{self, AstEnum, AstStruct, AstType, Schema};
+use crate::schema::{AstStruct, AstType, Schema};
 
-/// Bytes available for fields when the trailing word stores an ExtraDataId.
-pub const INLINE_DATA_U64_SIZE: usize = std::mem::size_of::<u64>();
-/// Bytes in the trailing inline word.
-pub const INLINE_DATA_U32_SIZE: usize = std::mem::size_of::<u32>();
 /// Maximum bytes for fully inline storage.
-pub const INLINE_TOTAL_SIZE: usize = INLINE_DATA_U64_SIZE + INLINE_DATA_U32_SIZE;
+pub const INLINE_TOTAL_SIZE: usize = std::mem::size_of::<u128>();
+/// Bytes available to inline fields when the high word stores ExtraDataId.
+pub const PARTIAL_INLINE_SIZE: usize = INLINE_TOTAL_SIZE - std::mem::size_of::<u32>();
+/// Bit offset of ExtraDataId inside a partial NodePayload.
+pub const EXTRA_DATA_ID_BIT_OFFSET: usize = PARTIAL_INLINE_SIZE * 8;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InlineStorageMode {
-    /// All fields fit in the 12-byte payload.
+    /// All fields fit in the 16-byte payload.
     Full,
-    /// Some fields use the first eight bytes and the trailing word stores ExtraDataId.
+    /// Some fields use the low 12 bytes and the high word stores ExtraDataId.
     Partial,
 }
 
 /// Get the byte size for a field type, or None if not inlinable
 pub fn field_byte_size(ty: &AstType, schema: &Schema) -> Option<usize> {
     match ty {
-        // NodeId types are 4 bytes (u32)
+        // Concrete AST IDs are statically typed by their four-byte wrapper.
         AstType::Struct(_) => Some(4),
-        AstType::Enum(_) => Some(4),
+        // AST enums need both a full NodeId and an enum-local variant tag.
+        AstType::Enum(_) => Some(8),
         // Vec is represented by an 8-byte SubRange.
         AstType::Vec(_) => Some(8),
-        // Option<NodeId> is 4 bytes (OptionalNodeId)
+        // Optional typed inline AST IDs are 4 bytes.
         AstType::Option(ast_option) => {
             let inner_ty = &schema.types[ast_option.inner_type_id];
             match inner_ty {
                 // Option<Vec<T>> is represented by an 8-byte OptionalSubRange.
                 AstType::Vec(_) => Some(8),
-                // Option<Struct> is OptionalNodeId (4 bytes)
+                // Option<Struct> uses u32::MAX as its absent sentinel.
                 AstType::Struct(_) => Some(4),
-                // Option<Enum> is encoded as OptionalNodeId.
-                AstType::Enum(_) => Some(4),
+                // Option<Enum> uses u64::MAX as its absent sentinel.
+                AstType::Enum(_) => Some(8),
                 AstType::Primitive(primitive)
                     if matches!(primitive.name, "Span" | "Atom" | "Wtf8Atom") =>
                 {
@@ -75,7 +74,6 @@ pub fn field_byte_size(ty: &AstType, schema: &Schema) -> Option<usize> {
 pub struct InlineLayout {
     pub mode: InlineStorageMode,
     /// Inlined fields with byte offsets within NodePayload.
-    /// Offsets 0-7 use inline_data; offsets 8-11 use the trailing word.
     pub fields: Vec<(usize, usize, usize)>, // (field_index, byte_offset, byte_size)
 }
 
@@ -89,7 +87,7 @@ pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<Inlin
     for (index, field) in ast.fields.iter().enumerate() {
         let field_ty = &schema.types[field.type_id];
         if let Some(size) = field_byte_size(field_ty, schema) {
-            debug_assert!(size <= INLINE_DATA_U64_SIZE);
+            debug_assert!(size <= std::mem::size_of::<u64>());
             field_info.push((index, size));
             total_size += size;
         } else {
@@ -102,19 +100,11 @@ pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<Inlin
 
     if all_fields_inlinable && total_size <= INLINE_TOTAL_SIZE {
         let mut fields = Vec::with_capacity(sorted_fields.len());
-        let mut u64_used = 0usize;
-        let mut u32_used = 0usize;
+        let mut used = 0usize;
 
         for (field_index, size) in sorted_fields {
-            if u64_used + size <= INLINE_DATA_U64_SIZE {
-                fields.push((field_index, u64_used, size));
-                u64_used += size;
-            } else if u32_used + size <= INLINE_DATA_U32_SIZE {
-                fields.push((field_index, INLINE_DATA_U64_SIZE + u32_used, size));
-                u32_used += size;
-            } else {
-                unreachable!("inlinable fields must fit in the 8 + 4 byte bins");
-            }
+            fields.push((field_index, used, size));
+            used += size;
         }
 
         fields.sort_by_key(|(field_index, _, _)| *field_index);
@@ -124,14 +114,13 @@ pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<Inlin
         });
     }
 
-    // Partial mode reserves the trailing u32 for ExtraDataId, so greedily
-    // maximize use of the leading u64.
+    // Partial mode reserves the high u32 for ExtraDataId.
     let mut fields = Vec::new();
-    let mut u64_used = 0usize;
+    let mut used = 0usize;
     for (field_index, size) in sorted_fields {
-        if u64_used + size <= INLINE_DATA_U64_SIZE {
-            fields.push((field_index, u64_used, size));
-            u64_used += size;
+        if used + size <= PARTIAL_INLINE_SIZE {
+            fields.push((field_index, used, size));
+            used += size;
         }
     }
 
@@ -176,12 +165,14 @@ pub fn safe_ident(name: &str) -> Ident {
 
 pub fn map_field_type_to_extra_field(ast: &AstType, schema: &Schema) -> String {
     match ast {
-        AstType::Struct(_) => "node".to_owned(),
+        AstType::Struct(ast_struct) => {
+            format!("ast_{}", ast_struct.name.to_case(Case::Snake))
+        }
         AstType::Enum(ast_enum) => {
-            if ast_enum.name == "AssignTarget" || ast_enum.name == "ModuleItem" {
-                "node".to_owned()
+            if schema.repr_sizes.contains_key(&ast_enum.name) {
+                "other".to_owned()
             } else {
-                ast_enum.name.to_case(Case::Snake)
+                format!("ast_{}", ast_enum.name.to_case(Case::Snake))
             }
         }
         AstType::Vec(_) => "sub_range".to_owned(),
@@ -190,11 +181,14 @@ pub fn map_field_type_to_extra_field(ast: &AstType, schema: &Schema) -> String {
             match inner_ty {
                 AstType::Vec(_) => "optional_sub_range".to_owned(),
                 AstType::Enum(ast_enum) => {
-                    if ast_enum.name == "AssignTarget" || ast_enum.name == "ModuleItem" {
-                        "optional_node".to_owned()
+                    if schema.repr_sizes.contains_key(&ast_enum.name) {
+                        "other".to_owned()
                     } else {
-                        format!("optional_{}", ast_enum.name.to_case(Case::Snake))
+                        format!("optional_ast_{}", ast_enum.name.to_case(Case::Snake))
                     }
+                }
+                AstType::Struct(ast_struct) => {
+                    format!("optional_ast_{}", ast_struct.name.to_case(Case::Snake))
                 }
                 AstType::Primitive(primitive) => match primitive.name {
                     "Atom" => "atom".to_owned(),
@@ -204,7 +198,7 @@ pub fn map_field_type_to_extra_field(ast: &AstType, schema: &Schema) -> String {
                     "Span" => "optional_span".to_owned(),
                     _ => "optional_node".to_owned(),
                 },
-                _ => "optional_node".to_owned(),
+                _ => unreachable!("unsupported optional extra-data type"),
             }
         }
         AstType::Primitive(ast_primitive) => {
@@ -230,12 +224,12 @@ pub fn generate_field_to_u32(
     schema: &Schema,
 ) -> TokenStream {
     match field_ty {
-        AstType::Struct(_) | AstType::Enum(_) => {
+        AstType::Struct(_) => {
             quote!(#field_name.node_id().index() as u32)
         }
         AstType::Option(ast_option) => match &schema.types[ast_option.inner_type_id] {
-            AstType::Struct(_) | AstType::Enum(_) => {
-                quote!(crate::OptionalNodeId::from(#field_name.map(|n| n.node_id())).into_raw())
+            AstType::Struct(_) => {
+                quote!(#field_name.map_or(u32::MAX, |node| node.node_id().index() as u32))
             }
             AstType::Primitive(primitive) if matches!(primitive.name, "ScopeId" | "SymbolId") => {
                 quote!(#field_name.map_or(0, |id| id.index() as u32 + 1))
@@ -267,33 +261,35 @@ pub fn generate_field_to_u64(
     field_ty: &AstType,
     field_name: &syn::Ident,
     ast: TokenStream,
+    _schema: &Schema,
 ) -> TokenStream {
     debug_assert!(matches!(
         field_ty,
-        AstType::Vec(_) | AstType::Option(_) | AstType::Primitive(_)
+        AstType::Enum(_) | AstType::Vec(_) | AstType::Option(_) | AstType::Primitive(_)
     ));
 
-    // Each supported type initializes all eight bytes of its ExtraData union
-    // representation, so reading the raw word does not observe padding.
+    // Every eight-byte representation is defined by ExtraDataCompact. Reading
+    // the union's raw word observes the same bits that will be stored inline.
     quote!(unsafe { #field_name.to_extra_data(#ast).other })
 }
 
 /// Generate expression to convert u32 to a field type (for inline storage)
 pub fn generate_u32_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream {
     match field_ty {
-        AstType::Struct(_) | AstType::Enum(_) => {
+        AstType::Struct(_) => {
             let field_inner_ty = field_ty.repr_ident(schema);
             quote! {
-                unsafe { #field_inner_ty::from_node_id_unchecked(crate::NodeId::from_raw_unchecked(raw), ast) }
+                #field_inner_ty(NodeId::from_raw_unchecked(raw))
             }
         }
         AstType::Option(ast_option) => {
             let inner_ty = &schema.types[ast_option.inner_type_id];
             let field_inner_ident = inner_ty.repr_ident(schema);
             match inner_ty {
-                AstType::Struct(_) | AstType::Enum(_) => quote! {
-                    let opt = crate::OptionalNodeId::from_raw(raw);
-                    opt.map(|id| unsafe { #field_inner_ident::from_node_id_unchecked(id, ast) })
+                AstType::Struct(_) => quote! {
+                    (raw != u32::MAX).then(|| {
+                        #field_inner_ident(NodeId::from_raw_unchecked(raw))
+                    })
                 },
                 AstType::Primitive(primitive)
                     if matches!(primitive.name, "ScopeId" | "SymbolId") =>
@@ -343,53 +339,8 @@ pub fn generate_u32_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream
 }
 
 /// Generate an expression that reconstructs an eight-byte field from inline data.
-pub fn generate_u64_to_field() -> TokenStream {
+pub fn generate_u64_to_field(_field_ty: &AstType, _schema: &Schema) -> TokenStream {
     quote! {
         unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
     }
-}
-
-pub struct FlattenElement {
-    /// Final nested struct ident, corresponding to NodeKind::XXX
-    pub kind: Ident,
-    /// From the first enum::variant to the last enum::variant
-    pub path: Vec<TokenStream>,
-}
-
-pub fn flat_enum_type(ast: &AstEnum, schema: &Schema) -> BTreeMap<String, FlattenElement> {
-    let mut flatten = BTreeMap::new();
-    let mut worklist = Vec::new();
-
-    let enum_ident = format_ident!("{}", ast.name);
-    for variant in ast.variants.iter() {
-        let variant_ident = format_ident!("{}", variant.name);
-        let path = quote!( #enum_ident::#variant_ident );
-        worklist.push((variant, vec![path]));
-    }
-
-    while let Some((variant, path)) = worklist.pop() {
-        let Some(variant_inner_ty_id) = variant.type_id else {
-            continue;
-        };
-
-        let variant_inner_ty = &schema.types[variant_inner_ty_id];
-        match variant_inner_ty {
-            schema::AstType::Struct(ast_struct) => {
-                let kind = format_ident!("{}", ast_struct.name);
-                flatten.insert(ast_struct.name.clone(), FlattenElement { kind, path });
-            }
-            schema::AstType::Enum(ast_enum) => {
-                let nested_enum_ident = format_ident!("{}", ast_enum.name);
-                for nested_variant in ast_enum.variants.iter() {
-                    let nested_variant_ident = format_ident!("{}", nested_variant.name);
-                    let mut path = path.clone();
-                    path.push(quote! ( #nested_enum_ident::#nested_variant_ident ));
-                    worklist.push((nested_variant, path));
-                }
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    flatten
 }

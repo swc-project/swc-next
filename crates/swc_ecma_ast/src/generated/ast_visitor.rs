@@ -1018,8 +1018,44 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ModuleItem {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match self {
-            Self::ModuleDecl(it) => <ModuleDecl as VisitWith<'a, V>>::visit_with(it, visitor),
-            Self::Stmt(it) => <Stmt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ModuleDeclImport(it) => <ImportDecl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ModuleDeclExportDecl(it) => {
+                <ExportDecl as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            Self::ModuleDeclExportNamed(it) => {
+                <NamedExport as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            Self::ModuleDeclExportDefaultDecl(it) => {
+                <ExportDefaultDecl as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            Self::ModuleDeclExportDefaultExpr(it) => {
+                <ExportDefaultExpr as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            Self::ModuleDeclExportAll(it) => {
+                <ExportAll as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            Self::StmtBlock(it) => <BlockStmt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtEmpty(it) => <EmptyStmt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtDebugger(it) => <DebuggerStmt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtWith(it) => <WithStmt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtReturn(it) => <ReturnStmt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtLabeled(it) => <LabeledStmt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtBreak(it) => <BreakStmt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtContinue(it) => <ContinueStmt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtIf(it) => <IfStmt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtSwitch(it) => <SwitchStmt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtThrow(it) => <ThrowStmt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtTry(it) => <TryStmt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtWhile(it) => <WhileStmt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtDoWhile(it) => <DoWhileStmt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtFor(it) => <ForStmt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtForIn(it) => <ForInStmt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtForOf(it) => <ForOfStmt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtDeclClass(it) => <ClassDecl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtDeclFn(it) => <FnDecl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtDeclVar(it) => <VarDecl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtDeclUsing(it) => <UsingDecl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::StmtExpr(it) => <ExprStmt as VisitWith<'a, V>>::visit_with(it, visitor),
         }
     }
 }
@@ -1271,6 +1307,10 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Stmt {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match self {
+            Self::Class(it) => <ClassDecl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Fn(it) => <FnDecl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Var(it) => <VarDecl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Using(it) => <UsingDecl as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::Block(it) => <BlockStmt as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::Empty(it) => <EmptyStmt as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::Debugger(it) => <DebuggerStmt as VisitWith<'a, V>>::visit_with(it, visitor),
@@ -1288,7 +1328,6 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Stmt {
             Self::For(it) => <ForStmt as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::ForIn(it) => <ForInStmt as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::ForOf(it) => <ForOfStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            Self::Decl(it) => <Decl as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::Expr(it) => <ExprStmt as VisitWith<'a, V>>::visit_with(it, visitor),
         }
     }
@@ -1540,9 +1579,54 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForHead {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match self {
+            Self::ExprThis(it) => <ThisExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprArray(it) => <ArrayLit as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprObject(it) => <ObjectLit as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprFn(it) => <FnExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprUnary(it) => <UnaryExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprUpdate(it) => <UpdateExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprBin(it) => <BinExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprAssign(it) => <AssignExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprMember(it) => <MemberExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprSuperProp(it) => <SuperPropExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprCond(it) => <CondExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprImport(it) => <ImportExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprCall(it) => <CallExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprNew(it) => <NewExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprSeq(it) => <SeqExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprIdent(it) => <Ident as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprStr(it) => <Str as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprBool(it) => <Bool as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprNull(it) => <Null as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprNum(it) => <Number as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprBigInt(it) => <BigInt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprRegex(it) => <Regex as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprTpl(it) => <Tpl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprTaggedTpl(it) => <TaggedTpl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprArrow(it) => <ArrowExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprClass(it) => <ClassExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprYield(it) => <YieldExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprMetaProp(it) => <MetaPropExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprAwait(it) => <AwaitExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprParen(it) => <ParenExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprJSXMember(it) => <JSXMemberExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprJSXNamespacedName(it) => {
+                <JSXNamespacedName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            Self::ExprJSXEmpty(it) => <JSXEmptyExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprJSXElement(it) => <JSXElement as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprJSXFragment(it) => <JSXFragment as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprPrivateName(it) => <PrivateName as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprOptChain(it) => <OptChainExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprInvalid(it) => <Invalid as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Ident(it) => <BindingIdent as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Array(it) => <ArrayPat as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Rest(it) => <RestPat as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Object(it) => <ObjectPat as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Assign(it) => <AssignPat as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Invalid(it) => <Invalid as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::VarDecl(it) => <VarDecl as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::UsingDecl(it) => <UsingDecl as VisitWith<'a, V>>::visit_with(it, visitor),
-            Self::Pat(it) => <Pat as VisitWith<'a, V>>::visit_with(it, visitor),
         }
     }
 }
@@ -1554,8 +1638,47 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for VarDeclOrExpr {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match self {
+            Self::This(it) => <ThisExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Array(it) => <ArrayLit as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Object(it) => <ObjectLit as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Fn(it) => <FnExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Unary(it) => <UnaryExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Update(it) => <UpdateExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Bin(it) => <BinExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Assign(it) => <AssignExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Member(it) => <MemberExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::SuperProp(it) => <SuperPropExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Cond(it) => <CondExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Import(it) => <ImportExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Call(it) => <CallExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::New(it) => <NewExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Seq(it) => <SeqExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Ident(it) => <Ident as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Str(it) => <Str as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Bool(it) => <Bool as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Null(it) => <Null as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Num(it) => <Number as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::BigInt(it) => <BigInt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Regex(it) => <Regex as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Tpl(it) => <Tpl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::TaggedTpl(it) => <TaggedTpl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Arrow(it) => <ArrowExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Class(it) => <ClassExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Yield(it) => <YieldExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::MetaProp(it) => <MetaPropExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Await(it) => <AwaitExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Paren(it) => <ParenExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::JSXMember(it) => <JSXMemberExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::JSXNamespacedName(it) => {
+                <JSXNamespacedName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            Self::JSXEmpty(it) => <JSXEmptyExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::JSXElement(it) => <JSXElement as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::JSXFragment(it) => <JSXFragment as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::PrivateName(it) => <PrivateName as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::OptChain(it) => <OptChainExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Invalid(it) => <Invalid as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::VarDecl(it) => <VarDecl as VisitWith<'a, V>>::visit_with(it, visitor),
-            Self::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
         }
     }
 }
@@ -1659,7 +1782,12 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Expr {
             Self::New(it) => <NewExpr as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::Seq(it) => <SeqExpr as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::Ident(it) => <Ident as VisitWith<'a, V>>::visit_with(it, visitor),
-            Self::Lit(it) => <Lit as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Str(it) => <Str as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Bool(it) => <Bool as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Null(it) => <Null as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Num(it) => <Number as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::BigInt(it) => <BigInt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Regex(it) => <Regex as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::Tpl(it) => <Tpl as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::TaggedTpl(it) => <TaggedTpl as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::Arrow(it) => <ArrowExpr as VisitWith<'a, V>>::visit_with(it, visitor),
@@ -1722,8 +1850,13 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PropOrSpread {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match self {
+            Self::Shorthand(it) => <Ident as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::KeyValue(it) => <KeyValueProp as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Assign(it) => <AssignProp as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Getter(it) => <GetterProp as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Setter(it) => <SetterProp as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Method(it) => <MethodProp as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::Spread(it) => <SpreadElement as VisitWith<'a, V>>::visit_with(it, visitor),
-            Self::Prop(it) => <Prop as VisitWith<'a, V>>::visit_with(it, visitor),
         }
     }
 }
@@ -2026,8 +2159,47 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Callee {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match self {
+            Self::This(it) => <ThisExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Array(it) => <ArrayLit as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Object(it) => <ObjectLit as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Fn(it) => <FnExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Unary(it) => <UnaryExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Update(it) => <UpdateExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Bin(it) => <BinExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Assign(it) => <AssignExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Member(it) => <MemberExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::SuperProp(it) => <SuperPropExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Cond(it) => <CondExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Import(it) => <ImportExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Call(it) => <CallExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::New(it) => <NewExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Seq(it) => <SeqExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Ident(it) => <Ident as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Str(it) => <Str as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Bool(it) => <Bool as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Null(it) => <Null as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Num(it) => <Number as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::BigInt(it) => <BigInt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Regex(it) => <Regex as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Tpl(it) => <Tpl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::TaggedTpl(it) => <TaggedTpl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Arrow(it) => <ArrowExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Class(it) => <ClassExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Yield(it) => <YieldExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::MetaProp(it) => <MetaPropExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Await(it) => <AwaitExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Paren(it) => <ParenExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::JSXMember(it) => <JSXMemberExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::JSXNamespacedName(it) => {
+                <JSXNamespacedName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            Self::JSXEmpty(it) => <JSXEmptyExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::JSXElement(it) => <JSXElement as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::JSXFragment(it) => <JSXFragment as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::PrivateName(it) => <PrivateName as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::OptChain(it) => <OptChainExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Invalid(it) => <Invalid as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::Super(it) => <Super as VisitWith<'a, V>>::visit_with(it, visitor),
-            Self::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
         }
     }
 }
@@ -2058,8 +2230,47 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BlockStmtOrExpr {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match self {
+            Self::This(it) => <ThisExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Array(it) => <ArrayLit as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Object(it) => <ObjectLit as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Fn(it) => <FnExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Unary(it) => <UnaryExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Update(it) => <UpdateExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Bin(it) => <BinExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Assign(it) => <AssignExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Member(it) => <MemberExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::SuperProp(it) => <SuperPropExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Cond(it) => <CondExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Import(it) => <ImportExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Call(it) => <CallExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::New(it) => <NewExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Seq(it) => <SeqExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Ident(it) => <Ident as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Str(it) => <Str as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Bool(it) => <Bool as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Null(it) => <Null as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Num(it) => <Number as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::BigInt(it) => <BigInt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Regex(it) => <Regex as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Tpl(it) => <Tpl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::TaggedTpl(it) => <TaggedTpl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Arrow(it) => <ArrowExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Class(it) => <ClassExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Yield(it) => <YieldExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::MetaProp(it) => <MetaPropExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Await(it) => <AwaitExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Paren(it) => <ParenExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::JSXMember(it) => <JSXMemberExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::JSXNamespacedName(it) => {
+                <JSXNamespacedName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            Self::JSXEmpty(it) => <JSXEmptyExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::JSXElement(it) => <JSXElement as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::JSXFragment(it) => <JSXFragment as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::PrivateName(it) => <PrivateName as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::OptChain(it) => <OptChainExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Invalid(it) => <Invalid as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::BlockStmt(it) => <BlockStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            Self::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
         }
     }
 }
@@ -2071,8 +2282,17 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignTarget {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match self {
-            Self::Simple(it) => <SimpleAssignTarget as VisitWith<'a, V>>::visit_with(it, visitor),
-            Self::Pat(it) => <AssignTargetPat as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::SimpleIdent(it) => <BindingIdent as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::SimpleMember(it) => <MemberExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::SimpleSuperProp(it) => {
+                <SuperPropExpr as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            Self::SimpleParen(it) => <ParenExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::SimpleOptChain(it) => <OptChainExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::SimpleInvalid(it) => <Invalid as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::PatArray(it) => <ArrayPat as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::PatObject(it) => <ObjectPat as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::PatternInvalid(it) => <Invalid as VisitWith<'a, V>>::visit_with(it, visitor),
         }
     }
 }
@@ -2327,8 +2547,12 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Key {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match self {
+            Self::Ident(it) => <IdentName as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Str(it) => <Str as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Num(it) => <Number as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Computed(it) => <ComputedPropName as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::BigInt(it) => <BigInt as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::Private(it) => <PrivateName as VisitWith<'a, V>>::visit_with(it, visitor),
-            Self::Public(it) => <PropName as VisitWith<'a, V>>::visit_with(it, visitor),
         }
     }
 }
@@ -2464,13 +2688,52 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Pat {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match self {
+            Self::ExprThis(it) => <ThisExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprArray(it) => <ArrayLit as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprObject(it) => <ObjectLit as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprFn(it) => <FnExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprUnary(it) => <UnaryExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprUpdate(it) => <UpdateExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprBin(it) => <BinExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprAssign(it) => <AssignExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprMember(it) => <MemberExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprSuperProp(it) => <SuperPropExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprCond(it) => <CondExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprImport(it) => <ImportExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprCall(it) => <CallExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprNew(it) => <NewExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprSeq(it) => <SeqExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprIdent(it) => <Ident as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprStr(it) => <Str as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprBool(it) => <Bool as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprNull(it) => <Null as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprNum(it) => <Number as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprBigInt(it) => <BigInt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprRegex(it) => <Regex as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprTpl(it) => <Tpl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprTaggedTpl(it) => <TaggedTpl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprArrow(it) => <ArrowExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprClass(it) => <ClassExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprYield(it) => <YieldExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprMetaProp(it) => <MetaPropExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprAwait(it) => <AwaitExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprParen(it) => <ParenExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprJSXMember(it) => <JSXMemberExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprJSXNamespacedName(it) => {
+                <JSXNamespacedName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            Self::ExprJSXEmpty(it) => <JSXEmptyExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprJSXElement(it) => <JSXElement as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprJSXFragment(it) => <JSXFragment as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprPrivateName(it) => <PrivateName as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprOptChain(it) => <OptChainExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::ExprInvalid(it) => <Invalid as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::Ident(it) => <BindingIdent as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::Array(it) => <ArrayPat as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::Rest(it) => <RestPat as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::Object(it) => <ObjectPat as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::Assign(it) => <AssignPat as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::Invalid(it) => <Invalid as VisitWith<'a, V>>::visit_with(it, visitor),
-            Self::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
         }
     }
 }
@@ -2726,8 +2989,47 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXExpr {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match self {
+            Self::This(it) => <ThisExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Array(it) => <ArrayLit as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Object(it) => <ObjectLit as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Fn(it) => <FnExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Unary(it) => <UnaryExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Update(it) => <UpdateExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Bin(it) => <BinExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Assign(it) => <AssignExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Member(it) => <MemberExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::SuperProp(it) => <SuperPropExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Cond(it) => <CondExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Import(it) => <ImportExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Call(it) => <CallExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::New(it) => <NewExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Seq(it) => <SeqExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Ident(it) => <Ident as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Str(it) => <Str as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Bool(it) => <Bool as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Null(it) => <Null as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Num(it) => <Number as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::BigInt(it) => <BigInt as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Regex(it) => <Regex as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Tpl(it) => <Tpl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::TaggedTpl(it) => <TaggedTpl as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Arrow(it) => <ArrowExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Class(it) => <ClassExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Yield(it) => <YieldExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::MetaProp(it) => <MetaPropExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Await(it) => <AwaitExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Paren(it) => <ParenExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::JSXMember(it) => <JSXMemberExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::JSXNamespacedName(it) => {
+                <JSXNamespacedName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            Self::JSXEmpty(it) => <JSXEmptyExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::JSXElement(it) => <JSXElement as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::JSXFragment(it) => <JSXFragment as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::PrivateName(it) => <PrivateName as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::OptChain(it) => <OptChainExpr as VisitWith<'a, V>>::visit_with(it, visitor),
+            Self::Invalid(it) => <Invalid as VisitWith<'a, V>>::visit_with(it, visitor),
             Self::JSXEmptyExpr(it) => <JSXEmptyExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            Self::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
         }
     }
 }
@@ -4598,12 +4900,92 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ModuleItem {
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
         match self {
-            Self::ModuleDecl(it) => Self::ModuleDecl(
-                <ModuleDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ),
-            Self::Stmt(it) => {
-                Self::Stmt(<Stmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            Self::ModuleDeclImport(it) => {
+                Self::ModuleDeclImport(<ImportDecl as VisitMutWith<'a, V>>::visit_mut_with(
+                    it, visitor,
+                ))
             }
+            Self::ModuleDeclExportDecl(it) => Self::ModuleDeclExportDecl(
+                <ExportDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ModuleDeclExportNamed(it) => Self::ModuleDeclExportNamed(
+                <NamedExport as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ModuleDeclExportDefaultDecl(it) => Self::ModuleDeclExportDefaultDecl(
+                <ExportDefaultDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ModuleDeclExportDefaultExpr(it) => Self::ModuleDeclExportDefaultExpr(
+                <ExportDefaultExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ModuleDeclExportAll(it) => Self::ModuleDeclExportAll(
+                <ExportAll as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::StmtBlock(it) => Self::StmtBlock(
+                <BlockStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::StmtEmpty(it) => Self::StmtEmpty(
+                <EmptyStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::StmtDebugger(it) => Self::StmtDebugger(
+                <DebuggerStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::StmtWith(it) => Self::StmtWith(
+                <WithStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::StmtReturn(it) => Self::StmtReturn(
+                <ReturnStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::StmtLabeled(it) => Self::StmtLabeled(
+                <LabeledStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::StmtBreak(it) => Self::StmtBreak(
+                <BreakStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::StmtContinue(it) => Self::StmtContinue(
+                <ContinueStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::StmtIf(it) => {
+                Self::StmtIf(<IfStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::StmtSwitch(it) => Self::StmtSwitch(
+                <SwitchStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::StmtThrow(it) => Self::StmtThrow(
+                <ThrowStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::StmtTry(it) => Self::StmtTry(<TryStmt as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::StmtWhile(it) => Self::StmtWhile(
+                <WhileStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::StmtDoWhile(it) => Self::StmtDoWhile(
+                <DoWhileStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::StmtFor(it) => Self::StmtFor(<ForStmt as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::StmtForIn(it) => Self::StmtForIn(
+                <ForInStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::StmtForOf(it) => Self::StmtForOf(
+                <ForOfStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::StmtDeclClass(it) => Self::StmtDeclClass(
+                <ClassDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::StmtDeclFn(it) => {
+                Self::StmtDeclFn(<FnDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::StmtDeclVar(it) => Self::StmtDeclVar(
+                <VarDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::StmtDeclUsing(it) => Self::StmtDeclUsing(
+                <UsingDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::StmtExpr(it) => Self::StmtExpr(
+                <ExprStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
         }
     }
 }
@@ -4920,6 +5302,16 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Stmt {
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
         match self {
+            Self::Class(it) => Self::Class(<ClassDecl as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Fn(it) => Self::Fn(<FnDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)),
+            Self::Var(it) => Self::Var(<VarDecl as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Using(it) => Self::Using(<UsingDecl as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
             Self::Block(it) => Self::Block(<BlockStmt as VisitMutWith<'a, V>>::visit_mut_with(
                 it, visitor,
             )),
@@ -4969,9 +5361,6 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Stmt {
             Self::ForOf(it) => Self::ForOf(<ForOfStmt as VisitMutWith<'a, V>>::visit_mut_with(
                 it, visitor,
             )),
-            Self::Decl(it) => {
-                Self::Decl(<Decl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
-            }
             Self::Expr(it) => Self::Expr(<ExprStmt as VisitMutWith<'a, V>>::visit_mut_with(
                 it, visitor,
             )),
@@ -5288,13 +5677,152 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ForHead {
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
         match self {
+            Self::ExprThis(it) => Self::ExprThis(
+                <ThisExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprArray(it) => Self::ExprArray(
+                <ArrayLit as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprObject(it) => Self::ExprObject(
+                <ObjectLit as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprFn(it) => {
+                Self::ExprFn(<FnExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::ExprUnary(it) => Self::ExprUnary(
+                <UnaryExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprUpdate(it) => Self::ExprUpdate(
+                <UpdateExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprBin(it) => Self::ExprBin(<BinExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::ExprAssign(it) => Self::ExprAssign(
+                <AssignExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprMember(it) => Self::ExprMember(
+                <MemberExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprSuperProp(it) => {
+                Self::ExprSuperProp(<SuperPropExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                    it, visitor,
+                ))
+            }
+            Self::ExprCond(it) => Self::ExprCond(
+                <CondExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprImport(it) => Self::ExprImport(
+                <ImportExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprCall(it) => Self::ExprCall(
+                <CallExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprNew(it) => Self::ExprNew(<NewExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::ExprSeq(it) => Self::ExprSeq(<SeqExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::ExprIdent(it) => {
+                Self::ExprIdent(<Ident as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::ExprStr(it) => {
+                Self::ExprStr(<Str as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::ExprBool(it) => {
+                Self::ExprBool(<Bool as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::ExprNull(it) => {
+                Self::ExprNull(<Null as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::ExprNum(it) => {
+                Self::ExprNum(<Number as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::ExprBigInt(it) => {
+                Self::ExprBigInt(<BigInt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::ExprRegex(it) => {
+                Self::ExprRegex(<Regex as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::ExprTpl(it) => {
+                Self::ExprTpl(<Tpl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::ExprTaggedTpl(it) => Self::ExprTaggedTpl(
+                <TaggedTpl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprArrow(it) => Self::ExprArrow(
+                <ArrowExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprClass(it) => Self::ExprClass(
+                <ClassExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprYield(it) => Self::ExprYield(
+                <YieldExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprMetaProp(it) => Self::ExprMetaProp(
+                <MetaPropExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprAwait(it) => Self::ExprAwait(
+                <AwaitExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprParen(it) => Self::ExprParen(
+                <ParenExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprJSXMember(it) => {
+                Self::ExprJSXMember(<JSXMemberExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                    it, visitor,
+                ))
+            }
+            Self::ExprJSXNamespacedName(it) => Self::ExprJSXNamespacedName(
+                <JSXNamespacedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprJSXEmpty(it) => Self::ExprJSXEmpty(
+                <JSXEmptyExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprJSXElement(it) => Self::ExprJSXElement(
+                <JSXElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprJSXFragment(it) => {
+                Self::ExprJSXFragment(<JSXFragment as VisitMutWith<'a, V>>::visit_mut_with(
+                    it, visitor,
+                ))
+            }
+            Self::ExprPrivateName(it) => {
+                Self::ExprPrivateName(<PrivateName as VisitMutWith<'a, V>>::visit_mut_with(
+                    it, visitor,
+                ))
+            }
+            Self::ExprOptChain(it) => Self::ExprOptChain(
+                <OptChainExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprInvalid(it) => Self::ExprInvalid(
+                <Invalid as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::Ident(it) => Self::Ident(<BindingIdent as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Array(it) => Self::Array(<ArrayPat as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Rest(it) => Self::Rest(<RestPat as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Object(it) => Self::Object(<ObjectPat as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Assign(it) => Self::Assign(<AssignPat as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Invalid(it) => Self::Invalid(<Invalid as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
             Self::VarDecl(it) => Self::VarDecl(<VarDecl as VisitMutWith<'a, V>>::visit_mut_with(
                 it, visitor,
             )),
             Self::UsingDecl(it) => Self::UsingDecl(
                 <UsingDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
             ),
-            Self::Pat(it) => Self::Pat(<Pat as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)),
         }
     }
 }
@@ -5306,12 +5834,117 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for VarDeclOrExpr {
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
         match self {
+            Self::This(it) => Self::This(<ThisExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Array(it) => Self::Array(<ArrayLit as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Object(it) => Self::Object(<ObjectLit as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Fn(it) => Self::Fn(<FnExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)),
+            Self::Unary(it) => Self::Unary(<UnaryExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Update(it) => Self::Update(<UpdateExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Bin(it) => Self::Bin(<BinExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Assign(it) => Self::Assign(<AssignExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Member(it) => Self::Member(<MemberExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::SuperProp(it) => Self::SuperProp(
+                <SuperPropExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::Cond(it) => Self::Cond(<CondExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Import(it) => Self::Import(<ImportExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Call(it) => Self::Call(<CallExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::New(it) => Self::New(<NewExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Seq(it) => Self::Seq(<SeqExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Ident(it) => {
+                Self::Ident(<Ident as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Str(it) => Self::Str(<Str as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)),
+            Self::Bool(it) => {
+                Self::Bool(<Bool as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Null(it) => {
+                Self::Null(<Null as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Num(it) => {
+                Self::Num(<Number as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::BigInt(it) => {
+                Self::BigInt(<BigInt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Regex(it) => {
+                Self::Regex(<Regex as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Tpl(it) => Self::Tpl(<Tpl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)),
+            Self::TaggedTpl(it) => Self::TaggedTpl(
+                <TaggedTpl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::Arrow(it) => Self::Arrow(<ArrowExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Class(it) => Self::Class(<ClassExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Yield(it) => Self::Yield(<YieldExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::MetaProp(it) => Self::MetaProp(
+                <MetaPropExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::Await(it) => Self::Await(<AwaitExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Paren(it) => Self::Paren(<ParenExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::JSXMember(it) => Self::JSXMember(
+                <JSXMemberExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::JSXNamespacedName(it) => Self::JSXNamespacedName(
+                <JSXNamespacedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::JSXEmpty(it) => Self::JSXEmpty(
+                <JSXEmptyExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::JSXElement(it) => Self::JSXElement(
+                <JSXElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::JSXFragment(it) => Self::JSXFragment(
+                <JSXFragment as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::PrivateName(it) => Self::PrivateName(
+                <PrivateName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::OptChain(it) => Self::OptChain(
+                <OptChainExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::Invalid(it) => Self::Invalid(<Invalid as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
             Self::VarDecl(it) => Self::VarDecl(<VarDecl as VisitMutWith<'a, V>>::visit_mut_with(
                 it, visitor,
             )),
-            Self::Expr(it) => {
-                Self::Expr(<Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
-            }
         }
     }
 }
@@ -5470,7 +6103,22 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Expr {
             Self::Ident(it) => {
                 Self::Ident(<Ident as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
             }
-            Self::Lit(it) => Self::Lit(<Lit as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)),
+            Self::Str(it) => Self::Str(<Str as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)),
+            Self::Bool(it) => {
+                Self::Bool(<Bool as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Null(it) => {
+                Self::Null(<Null as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Num(it) => {
+                Self::Num(<Number as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::BigInt(it) => {
+                Self::BigInt(<BigInt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Regex(it) => {
+                Self::Regex(<Regex as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
             Self::Tpl(it) => Self::Tpl(<Tpl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)),
             Self::TaggedTpl(it) => Self::TaggedTpl(
                 <TaggedTpl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
@@ -5570,12 +6218,27 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for PropOrSpread {
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
         match self {
+            Self::Shorthand(it) => {
+                Self::Shorthand(<Ident as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::KeyValue(it) => Self::KeyValue(
+                <KeyValueProp as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::Assign(it) => Self::Assign(<AssignProp as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Getter(it) => Self::Getter(<GetterProp as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Setter(it) => Self::Setter(<SetterProp as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Method(it) => Self::Method(<MethodProp as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
             Self::Spread(it) => Self::Spread(
                 <SpreadElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
             ),
-            Self::Prop(it) => {
-                Self::Prop(<Prop as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
-            }
         }
     }
 }
@@ -5960,11 +6623,116 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Callee {
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
         match self {
+            Self::This(it) => Self::This(<ThisExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Array(it) => Self::Array(<ArrayLit as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Object(it) => Self::Object(<ObjectLit as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Fn(it) => Self::Fn(<FnExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)),
+            Self::Unary(it) => Self::Unary(<UnaryExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Update(it) => Self::Update(<UpdateExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Bin(it) => Self::Bin(<BinExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Assign(it) => Self::Assign(<AssignExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Member(it) => Self::Member(<MemberExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::SuperProp(it) => Self::SuperProp(
+                <SuperPropExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::Cond(it) => Self::Cond(<CondExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Import(it) => Self::Import(<ImportExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Call(it) => Self::Call(<CallExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::New(it) => Self::New(<NewExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Seq(it) => Self::Seq(<SeqExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Ident(it) => {
+                Self::Ident(<Ident as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Str(it) => Self::Str(<Str as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)),
+            Self::Bool(it) => {
+                Self::Bool(<Bool as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Null(it) => {
+                Self::Null(<Null as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Num(it) => {
+                Self::Num(<Number as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::BigInt(it) => {
+                Self::BigInt(<BigInt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Regex(it) => {
+                Self::Regex(<Regex as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Tpl(it) => Self::Tpl(<Tpl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)),
+            Self::TaggedTpl(it) => Self::TaggedTpl(
+                <TaggedTpl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::Arrow(it) => Self::Arrow(<ArrowExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Class(it) => Self::Class(<ClassExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Yield(it) => Self::Yield(<YieldExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::MetaProp(it) => Self::MetaProp(
+                <MetaPropExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::Await(it) => Self::Await(<AwaitExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Paren(it) => Self::Paren(<ParenExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::JSXMember(it) => Self::JSXMember(
+                <JSXMemberExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::JSXNamespacedName(it) => Self::JSXNamespacedName(
+                <JSXNamespacedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::JSXEmpty(it) => Self::JSXEmpty(
+                <JSXEmptyExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::JSXElement(it) => Self::JSXElement(
+                <JSXElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::JSXFragment(it) => Self::JSXFragment(
+                <JSXFragment as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::PrivateName(it) => Self::PrivateName(
+                <PrivateName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::OptChain(it) => Self::OptChain(
+                <OptChainExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::Invalid(it) => Self::Invalid(<Invalid as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
             Self::Super(it) => {
                 Self::Super(<Super as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
-            }
-            Self::Expr(it) => {
-                Self::Expr(<Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
             }
         }
     }
@@ -6000,12 +6768,117 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BlockStmtOrExpr {
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
         match self {
+            Self::This(it) => Self::This(<ThisExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Array(it) => Self::Array(<ArrayLit as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Object(it) => Self::Object(<ObjectLit as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Fn(it) => Self::Fn(<FnExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)),
+            Self::Unary(it) => Self::Unary(<UnaryExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Update(it) => Self::Update(<UpdateExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Bin(it) => Self::Bin(<BinExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Assign(it) => Self::Assign(<AssignExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Member(it) => Self::Member(<MemberExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::SuperProp(it) => Self::SuperProp(
+                <SuperPropExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::Cond(it) => Self::Cond(<CondExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Import(it) => Self::Import(<ImportExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Call(it) => Self::Call(<CallExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::New(it) => Self::New(<NewExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Seq(it) => Self::Seq(<SeqExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Ident(it) => {
+                Self::Ident(<Ident as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Str(it) => Self::Str(<Str as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)),
+            Self::Bool(it) => {
+                Self::Bool(<Bool as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Null(it) => {
+                Self::Null(<Null as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Num(it) => {
+                Self::Num(<Number as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::BigInt(it) => {
+                Self::BigInt(<BigInt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Regex(it) => {
+                Self::Regex(<Regex as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Tpl(it) => Self::Tpl(<Tpl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)),
+            Self::TaggedTpl(it) => Self::TaggedTpl(
+                <TaggedTpl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::Arrow(it) => Self::Arrow(<ArrowExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Class(it) => Self::Class(<ClassExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Yield(it) => Self::Yield(<YieldExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::MetaProp(it) => Self::MetaProp(
+                <MetaPropExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::Await(it) => Self::Await(<AwaitExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Paren(it) => Self::Paren(<ParenExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::JSXMember(it) => Self::JSXMember(
+                <JSXMemberExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::JSXNamespacedName(it) => Self::JSXNamespacedName(
+                <JSXNamespacedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::JSXEmpty(it) => Self::JSXEmpty(
+                <JSXEmptyExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::JSXElement(it) => Self::JSXElement(
+                <JSXElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::JSXFragment(it) => Self::JSXFragment(
+                <JSXFragment as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::PrivateName(it) => Self::PrivateName(
+                <PrivateName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::OptChain(it) => Self::OptChain(
+                <OptChainExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::Invalid(it) => Self::Invalid(<Invalid as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
             Self::BlockStmt(it) => Self::BlockStmt(
                 <BlockStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
             ),
-            Self::Expr(it) => {
-                Self::Expr(<Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
-            }
         }
     }
 }
@@ -6017,12 +6890,37 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for AssignTarget {
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
         match self {
-            Self::Simple(it) => Self::Simple(
-                <SimpleAssignTarget as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            Self::SimpleIdent(it) => Self::SimpleIdent(
+                <BindingIdent as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
             ),
-            Self::Pat(it) => Self::Pat(<AssignTargetPat as VisitMutWith<'a, V>>::visit_mut_with(
-                it, visitor,
-            )),
+            Self::SimpleMember(it) => Self::SimpleMember(
+                <MemberExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::SimpleSuperProp(it) => {
+                Self::SimpleSuperProp(<SuperPropExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                    it, visitor,
+                ))
+            }
+            Self::SimpleParen(it) => Self::SimpleParen(
+                <ParenExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::SimpleOptChain(it) => {
+                Self::SimpleOptChain(<OptChainExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                    it, visitor,
+                ))
+            }
+            Self::SimpleInvalid(it) => Self::SimpleInvalid(
+                <Invalid as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::PatArray(it) => Self::PatArray(
+                <ArrayPat as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::PatObject(it) => Self::PatObject(
+                <ObjectPat as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::PatternInvalid(it) => Self::PatternInvalid(
+                <Invalid as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
         }
     }
 }
@@ -6375,12 +7273,22 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Key {
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
         match self {
+            Self::Ident(it) => Self::Ident(<IdentName as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Str(it) => Self::Str(<Str as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)),
+            Self::Num(it) => {
+                Self::Num(<Number as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Computed(it) => Self::Computed(
+                <ComputedPropName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::BigInt(it) => {
+                Self::BigInt(<BigInt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
             Self::Private(it) => Self::Private(
                 <PrivateName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
             ),
-            Self::Public(it) => Self::Public(<PropName as VisitMutWith<'a, V>>::visit_mut_with(
-                it, visitor,
-            )),
         }
     }
 }
@@ -6558,6 +7466,128 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Pat {
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
         match self {
+            Self::ExprThis(it) => Self::ExprThis(
+                <ThisExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprArray(it) => Self::ExprArray(
+                <ArrayLit as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprObject(it) => Self::ExprObject(
+                <ObjectLit as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprFn(it) => {
+                Self::ExprFn(<FnExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::ExprUnary(it) => Self::ExprUnary(
+                <UnaryExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprUpdate(it) => Self::ExprUpdate(
+                <UpdateExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprBin(it) => Self::ExprBin(<BinExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::ExprAssign(it) => Self::ExprAssign(
+                <AssignExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprMember(it) => Self::ExprMember(
+                <MemberExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprSuperProp(it) => {
+                Self::ExprSuperProp(<SuperPropExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                    it, visitor,
+                ))
+            }
+            Self::ExprCond(it) => Self::ExprCond(
+                <CondExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprImport(it) => Self::ExprImport(
+                <ImportExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprCall(it) => Self::ExprCall(
+                <CallExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprNew(it) => Self::ExprNew(<NewExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::ExprSeq(it) => Self::ExprSeq(<SeqExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::ExprIdent(it) => {
+                Self::ExprIdent(<Ident as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::ExprStr(it) => {
+                Self::ExprStr(<Str as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::ExprBool(it) => {
+                Self::ExprBool(<Bool as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::ExprNull(it) => {
+                Self::ExprNull(<Null as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::ExprNum(it) => {
+                Self::ExprNum(<Number as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::ExprBigInt(it) => {
+                Self::ExprBigInt(<BigInt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::ExprRegex(it) => {
+                Self::ExprRegex(<Regex as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::ExprTpl(it) => {
+                Self::ExprTpl(<Tpl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::ExprTaggedTpl(it) => Self::ExprTaggedTpl(
+                <TaggedTpl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprArrow(it) => Self::ExprArrow(
+                <ArrowExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprClass(it) => Self::ExprClass(
+                <ClassExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprYield(it) => Self::ExprYield(
+                <YieldExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprMetaProp(it) => Self::ExprMetaProp(
+                <MetaPropExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprAwait(it) => Self::ExprAwait(
+                <AwaitExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprParen(it) => Self::ExprParen(
+                <ParenExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprJSXMember(it) => {
+                Self::ExprJSXMember(<JSXMemberExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                    it, visitor,
+                ))
+            }
+            Self::ExprJSXNamespacedName(it) => Self::ExprJSXNamespacedName(
+                <JSXNamespacedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprJSXEmpty(it) => Self::ExprJSXEmpty(
+                <JSXEmptyExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprJSXElement(it) => Self::ExprJSXElement(
+                <JSXElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprJSXFragment(it) => {
+                Self::ExprJSXFragment(<JSXFragment as VisitMutWith<'a, V>>::visit_mut_with(
+                    it, visitor,
+                ))
+            }
+            Self::ExprPrivateName(it) => {
+                Self::ExprPrivateName(<PrivateName as VisitMutWith<'a, V>>::visit_mut_with(
+                    it, visitor,
+                ))
+            }
+            Self::ExprOptChain(it) => Self::ExprOptChain(
+                <OptChainExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::ExprInvalid(it) => Self::ExprInvalid(
+                <Invalid as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
             Self::Ident(it) => Self::Ident(<BindingIdent as VisitMutWith<'a, V>>::visit_mut_with(
                 it, visitor,
             )),
@@ -6576,9 +7606,6 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Pat {
             Self::Invalid(it) => Self::Invalid(<Invalid as VisitMutWith<'a, V>>::visit_mut_with(
                 it, visitor,
             )),
-            Self::Expr(it) => {
-                Self::Expr(<Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
-            }
         }
     }
 }
@@ -6907,12 +7934,117 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXExpr {
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Self {
         match self {
+            Self::This(it) => Self::This(<ThisExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Array(it) => Self::Array(<ArrayLit as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Object(it) => Self::Object(<ObjectLit as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Fn(it) => Self::Fn(<FnExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)),
+            Self::Unary(it) => Self::Unary(<UnaryExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Update(it) => Self::Update(<UpdateExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Bin(it) => Self::Bin(<BinExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Assign(it) => Self::Assign(<AssignExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Member(it) => Self::Member(<MemberExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::SuperProp(it) => Self::SuperProp(
+                <SuperPropExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::Cond(it) => Self::Cond(<CondExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Import(it) => Self::Import(<ImportExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Call(it) => Self::Call(<CallExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::New(it) => Self::New(<NewExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Seq(it) => Self::Seq(<SeqExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Ident(it) => {
+                Self::Ident(<Ident as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Str(it) => Self::Str(<Str as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)),
+            Self::Bool(it) => {
+                Self::Bool(<Bool as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Null(it) => {
+                Self::Null(<Null as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Num(it) => {
+                Self::Num(<Number as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::BigInt(it) => {
+                Self::BigInt(<BigInt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Regex(it) => {
+                Self::Regex(<Regex as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
+            }
+            Self::Tpl(it) => Self::Tpl(<Tpl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)),
+            Self::TaggedTpl(it) => Self::TaggedTpl(
+                <TaggedTpl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::Arrow(it) => Self::Arrow(<ArrowExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Class(it) => Self::Class(<ClassExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Yield(it) => Self::Yield(<YieldExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::MetaProp(it) => Self::MetaProp(
+                <MetaPropExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::Await(it) => Self::Await(<AwaitExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::Paren(it) => Self::Paren(<ParenExpr as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
+            Self::JSXMember(it) => Self::JSXMember(
+                <JSXMemberExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::JSXNamespacedName(it) => Self::JSXNamespacedName(
+                <JSXNamespacedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::JSXEmpty(it) => Self::JSXEmpty(
+                <JSXEmptyExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::JSXElement(it) => Self::JSXElement(
+                <JSXElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::JSXFragment(it) => Self::JSXFragment(
+                <JSXFragment as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::PrivateName(it) => Self::PrivateName(
+                <PrivateName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::OptChain(it) => Self::OptChain(
+                <OptChainExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ),
+            Self::Invalid(it) => Self::Invalid(<Invalid as VisitMutWith<'a, V>>::visit_mut_with(
+                it, visitor,
+            )),
             Self::JSXEmptyExpr(it) => Self::JSXEmptyExpr(
                 <JSXEmptyExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
             ),
-            Self::Expr(it) => {
-                Self::Expr(<Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor))
-            }
         }
     }
 }

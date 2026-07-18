@@ -5,7 +5,6 @@ use crate::{
     AST_CRATE_PATH,
     output::{RawOutput, RustOutput, output_path},
     schema::{AstEnum, AstStruct, AstType, Schema},
-    util::flat_enum_type,
 };
 
 pub fn ast_node_id(schema: &Schema) -> RawOutput {
@@ -22,9 +21,8 @@ pub fn ast_node_id(schema: &Schema) -> RawOutput {
 
     let output = quote! {
             #![allow(unused)]
-            use crate::{Ast, NodeKind};
+            use crate::{Ast, GetSpan, SetSpan};
             use crate::{ast::*, node_id::*};
-            use oxc_index::Idx;
 
             #impls
     };
@@ -39,21 +37,32 @@ pub fn ast_node_id(schema: &Schema) -> RawOutput {
 fn generate_node_id_for_struct(ast: &AstStruct, _schema: &Schema) -> TokenStream {
     let name = format_ident!("{}", ast.name);
     quote! {
-        impl NodeIdTrait for #name {
+        impl #name {
             #[inline]
-            fn node_id(self) -> NodeId {
+            pub fn node_id(self) -> NodeId {
                 self.0
             }
+        }
 
+        impl GetSpan for #name {
             #[inline]
-            unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast<'_>) -> Self {
-                Self(node_id)
+            fn span(self, ast: &Ast<'_>) -> crate::Span {
+                unsafe { *ast.nodes.span_unchecked(self.0) }
+            }
+        }
+
+        impl SetSpan for #name {
+            #[inline]
+            fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
+                unsafe {
+                    *ast.nodes.span_mut_unchecked(self.0) = span;
+                }
             }
         }
     }
 }
 
-fn generate_node_id_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
+fn generate_node_id_for_enum(ast: &AstEnum, _schema: &Schema) -> TokenStream {
     let name = format_ident!("{}", ast.name);
 
     let mut node_id_getter_arms = TokenStream::new();
@@ -64,33 +73,28 @@ fn generate_node_id_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
         });
     }
 
-    let mut from_node_id_arms = TokenStream::new();
-    for (_, element) in flat_enum_type(ast, schema) {
-        let kind = element.kind;
-        let body = element.path.iter().rev().fold(
-            quote!({ unsafe { #kind::from_node_id_unchecked(id, ast) } }),
-            |acc, construcotr| quote!(#construcotr(#acc)),
-        );
-        from_node_id_arms.extend(quote! {
-            NodeKind::#kind => #body,
-        });
-    }
-
     quote! {
-        impl NodeIdTrait for #name {
+        impl #name {
             #[inline]
-            fn node_id(self) -> NodeId {
+            pub fn node_id(self) -> NodeId {
                 match self {
                     #node_id_getter_arms
                 }
             }
 
+        }
+        impl GetSpan for #name {
             #[inline]
-            unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast<'_>) -> Self {
-                let kind = unsafe { *ast.nodes.kind_unchecked(id) };
-                match kind {
-                    #from_node_id_arms
-                    _ => unreachable!(),
+            fn span(self, ast: &Ast<'_>) -> crate::Span {
+                unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+            }
+        }
+
+        impl SetSpan for #name {
+            #[inline]
+            fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
+                unsafe {
+                    *ast.nodes.span_mut_unchecked(self.node_id()) = span;
                 }
             }
         }

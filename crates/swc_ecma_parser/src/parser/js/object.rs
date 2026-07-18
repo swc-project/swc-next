@@ -181,11 +181,8 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                     })
                 })
                 .map(|function| {
-                    self.ast.prop_or_spread_prop_method_prop(
-                        function.span(self.ast),
-                        name,
-                        function,
-                    )
+                    self.ast
+                        .prop_or_spread_method_prop(function.span(self.ast), name, function)
                 });
         }
 
@@ -217,7 +214,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
             self.emit_err(self.input().cur_span(), SyntaxError::TS1005);
             let value = self.ast.invalid(self.span(start));
-            return Ok(self.ast.prop_or_spread_prop_key_value_prop(
+            return Ok(self.ast.prop_or_spread_key_value_prop(
                 Span::new(key.span_lo(self.ast), self.last_pos()),
                 key,
                 Expr::Invalid(value),
@@ -231,9 +228,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         if self.input_mut().eat(Token::Colon) {
             let value = self.allow_in_expr(Self::parse_assignment_expr)?;
             let span = Span::new(key.span_lo(self.ast), value.span_hi(self.ast));
-            return Ok(self
-                .ast
-                .prop_or_spread_prop_key_value_prop(span, key, value));
+            return Ok(self.ast.prop_or_spread_key_value_prop(span, key, value));
         }
 
         // Handle `a(){}` (and async(){} / get(){} / set(){})
@@ -255,7 +250,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 })
                 .map(|function| {
                     self.ast
-                        .prop_or_spread_prop_method_prop(function.span(self.ast), key, function)
+                        .prop_or_spread_method_prop(function.span(self.ast), key, function)
                 });
         }
 
@@ -283,7 +278,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             if self.input_mut().eat(Token::Eq) {
                 let value = self.allow_in_expr(Self::parse_assignment_expr)?;
                 let span = self.span(start);
-                return Ok(self.ast.prop_or_spread_prop_assign_prop(span, ident, value));
+                return Ok(self.ast.prop_or_spread_assign_prop(span, ident, value));
             }
 
             return Ok(PropOrSpread::Prop(Prop::Shorthand(ident)));
@@ -336,7 +331,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                                 }
 
                                 p.ast
-                                    .prop_or_spread_prop_getter_prop(p.span(start), key, function)
+                                    .prop_or_spread_getter_prop(p.span(start), key, function)
                             });
                     }
 
@@ -382,7 +377,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                             )
                             .map(|function| {
                                 p.ast
-                                    .prop_or_spread_prop_setter_prop(p.span(start), key, function)
+                                    .prop_or_spread_setter_prop(p.span(start), key, function)
                             });
                     }
 
@@ -398,7 +393,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                             )
                             .map(|function| {
                                 let span = Span::new(key.span_lo(p.ast), key.span_hi(p.ast));
-                                p.ast.prop_or_spread_prop_method_prop(span, key, function)
+                                p.ast.prop_or_spread_method_prop(span, key, function)
                             });
                     }
 

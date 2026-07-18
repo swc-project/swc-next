@@ -34,8 +34,6 @@ macro_rules! impl_extra_data_copy {
 impl_extra_data_copy!(crate::Span, span);
 impl_extra_data_copy!(bool, bool);
 impl_extra_data_copy!(f64, number);
-impl_extra_data_copy!(crate::NodeId, node);
-impl_extra_data_copy!(crate::OptionalNodeId, optional_node);
 impl_extra_data_copy!(u64, other);
 impl_extra_data_copy!(Option<crate::ScopeId>, optional_scope_id);
 impl_extra_data_copy!(Option<crate::SymbolId>, optional_symbol_id);

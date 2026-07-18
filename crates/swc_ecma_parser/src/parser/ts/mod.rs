@@ -980,7 +980,7 @@ impl<'a, I: Tokens<'a>> Parser<'a, I> {
             let bracket_span = self.span(start);
 
             match *expr {
-                Expr::Lit(Lit::Str(str_lit)) => {
+                Expr::Str(str_lit) => {
                     // String literal: ["\t"] → "\t"
                     TsEnumMemberId::Str(str_lit)
                 }

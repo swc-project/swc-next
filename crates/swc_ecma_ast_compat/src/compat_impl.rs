@@ -87,13 +87,12 @@ pub(crate) trait CompatImpl<'ast> {
     }
 
     fn compat_module_item(&mut self, item: experimental::ModuleItem) -> legacy::ModuleItem {
-        match item {
-            experimental::ModuleItem::ModuleDecl(module_decl) => {
-                legacy::ModuleItem::ModuleDecl(self.compat_module_decl(module_decl))
-            }
-            experimental::ModuleItem::Stmt(stmt) => {
-                legacy::ModuleItem::Stmt(self.compat_stmt(stmt))
-            }
+        if let Some(module_decl) = item.into_module_decl() {
+            legacy::ModuleItem::ModuleDecl(self.compat_module_decl(module_decl))
+        } else {
+            legacy::ModuleItem::Stmt(
+                self.compat_stmt(item.into_stmt().expect("module item must be a statement")),
+            )
         }
     }
 
@@ -318,7 +317,18 @@ pub(crate) trait CompatImpl<'ast> {
                 right: self.compat_expr(for_of_stmt.right(self.ast())),
                 body: alloc_box!(self, self.compat_stmt(for_of_stmt.body(self.ast()))),
             }),
-            experimental::Stmt::Decl(decl) => legacy::Stmt::Decl(self.compat_decl(decl)),
+            experimental::Stmt::Class(node) => {
+                legacy::Stmt::Decl(self.compat_decl(experimental::Decl::Class(node)))
+            }
+            experimental::Stmt::Fn(node) => {
+                legacy::Stmt::Decl(self.compat_decl(experimental::Decl::Fn(node)))
+            }
+            experimental::Stmt::Var(node) => {
+                legacy::Stmt::Decl(self.compat_decl(experimental::Decl::Var(node)))
+            }
+            experimental::Stmt::Using(node) => {
+                legacy::Stmt::Decl(self.compat_decl(experimental::Decl::Using(node)))
+            }
             experimental::Stmt::Expr(expr_stmt) => legacy::Stmt::Expr(legacy::ExprStmt {
                 span: compat_span(expr_stmt.span(self.ast())),
                 expr: self.compat_expr(expr_stmt.expr(self.ast())),
@@ -509,11 +519,13 @@ pub(crate) trait CompatImpl<'ast> {
                 experimental::Expr::Call(c) => legacy::Expr::Call(legacy::CallExpr {
                     span: compat_span(c.span(self.ast())),
                     ctxt: Default::default(),
-                    callee: match c.callee(self.ast()) {
-                        experimental::Callee::Super(s) => legacy::Callee::Super(legacy::Super {
-                            span: compat_span(s.span(self.ast())),
-                        }),
-                        experimental::Callee::Expr(e) => legacy::Callee::Expr(self.compat_expr(e)),
+                    callee: match c.callee(self.ast()).into_expr() {
+                        Err(experimental::Callee::Super(s)) =>
+                            legacy::Callee::Super(legacy::Super {
+                                span: compat_span(s.span(self.ast())),
+                            }),
+                        Ok(e) => legacy::Callee::Expr(self.compat_expr(e)),
+                        Err(_) => unreachable!(),
                     },
                     args: self
                         .compat_type_sub_range(c.args(self.ast()), Self::compat_expr_or_spread),
@@ -535,7 +547,24 @@ pub(crate) trait CompatImpl<'ast> {
                     exprs: self.compat_type_sub_range(s.exprs(self.ast()), Self::compat_expr),
                 }),
                 experimental::Expr::Ident(i) => legacy::Expr::Ident(self.compat_ident(i)),
-                experimental::Expr::Lit(l) => legacy::Expr::Lit(self.compat_lit(l)),
+                experimental::Expr::Str(l) => {
+                    legacy::Expr::Lit(self.compat_lit(experimental::Lit::Str(l)))
+                }
+                experimental::Expr::Bool(l) => {
+                    legacy::Expr::Lit(self.compat_lit(experimental::Lit::Bool(l)))
+                }
+                experimental::Expr::Null(l) => {
+                    legacy::Expr::Lit(self.compat_lit(experimental::Lit::Null(l)))
+                }
+                experimental::Expr::Num(l) => {
+                    legacy::Expr::Lit(self.compat_lit(experimental::Lit::Num(l)))
+                }
+                experimental::Expr::BigInt(l) => {
+                    legacy::Expr::Lit(self.compat_lit(experimental::Lit::BigInt(l)))
+                }
+                experimental::Expr::Regex(l) => {
+                    legacy::Expr::Lit(self.compat_lit(experimental::Lit::Regex(l)))
+                }
                 experimental::Expr::Tpl(t) => legacy::Expr::Tpl(legacy::Tpl {
                     span: compat_span(t.span(self.ast())),
                     exprs: self.compat_type_sub_range(t.exprs(self.ast()), Self::compat_expr),
@@ -555,13 +584,14 @@ pub(crate) trait CompatImpl<'ast> {
                     params: self.compat_type_sub_range(a.params(self.ast()), Self::compat_pat),
                     body: alloc_box!(
                         self,
-                        match a.body(self.ast()) {
-                            experimental::BlockStmtOrExpr::BlockStmt(b) => {
+                        match a.body(self.ast()).into_expr() {
+                            Err(experimental::BlockStmtOrExpr::BlockStmt(b)) => {
                                 legacy::BlockStmtOrExpr::BlockStmt(self.compat_block_stmt(b))
                             }
-                            experimental::BlockStmtOrExpr::Expr(e) => {
+                            Ok(e) => {
                                 legacy::BlockStmtOrExpr::Expr(self.compat_expr(e))
                             }
+                            Err(_) => unreachable!(),
                         }
                     ),
                     is_async: a.is_async(self.ast()),
@@ -671,13 +701,12 @@ pub(crate) trait CompatImpl<'ast> {
     }
 
     fn compat_var_decl_or_expr(&mut self, v: experimental::VarDeclOrExpr) -> legacy::VarDeclOrExpr {
-        match v {
-            experimental::VarDeclOrExpr::VarDecl(d) => {
+        match v.into_expr() {
+            Err(experimental::VarDeclOrExpr::VarDecl(d)) => {
                 legacy::VarDeclOrExpr::VarDecl(alloc_box!(self, self.compat_var_decl(d)))
             }
-            experimental::VarDeclOrExpr::Expr(e) => {
-                legacy::VarDeclOrExpr::Expr(self.compat_expr(e))
-            }
+            Ok(e) => legacy::VarDeclOrExpr::Expr(self.compat_expr(e)),
+            Err(_) => unreachable!(),
         }
     }
 
@@ -696,11 +725,11 @@ pub(crate) trait CompatImpl<'ast> {
     }
 
     fn compat_for_head(&mut self, h: experimental::ForHead) -> legacy::ForHead {
-        match h {
-            experimental::ForHead::VarDecl(v) => {
+        match h.into_pat() {
+            Err(experimental::ForHead::VarDecl(v)) => {
                 legacy::ForHead::VarDecl(alloc_box!(self, self.compat_var_decl(v)))
             }
-            experimental::ForHead::UsingDecl(u) => legacy::ForHead::UsingDecl(alloc_box!(
+            Err(experimental::ForHead::UsingDecl(u)) => legacy::ForHead::UsingDecl(alloc_box!(
                 self,
                 legacy::UsingDecl {
                     span: compat_span(u.span(self.ast())),
@@ -709,9 +738,8 @@ pub(crate) trait CompatImpl<'ast> {
                         .compat_type_sub_range(u.decls(self.ast()), Self::compat_var_declarator),
                 }
             )),
-            experimental::ForHead::Pat(p) => {
-                legacy::ForHead::Pat(alloc_box!(self, self.compat_pat(p)))
-            }
+            Ok(p) => legacy::ForHead::Pat(alloc_box!(self, self.compat_pat(p))),
+            Err(_) => unreachable!(),
         }
     }
 
@@ -806,16 +834,15 @@ pub(crate) trait CompatImpl<'ast> {
     }
 
     fn compat_prop_or_spread(&mut self, p: experimental::PropOrSpread) -> legacy::PropOrSpread {
-        match p {
-            experimental::PropOrSpread::Spread(s) => {
+        match p.into_prop() {
+            Err(experimental::PropOrSpread::Spread(s)) => {
                 legacy::PropOrSpread::Spread(legacy::SpreadElement {
                     dot3_token: compat_span(s.dot_3_token(self.ast())),
                     expr: self.compat_expr(s.expr(self.ast())),
                 })
             }
-            experimental::PropOrSpread::Prop(prop) => {
-                legacy::PropOrSpread::Prop(alloc_box!(self, self.compat_prop(prop)))
-            }
+            Ok(prop) => legacy::PropOrSpread::Prop(alloc_box!(self, self.compat_prop(prop))),
+            Err(_) => unreachable!(),
         }
     }
 
@@ -1074,16 +1101,15 @@ pub(crate) trait CompatImpl<'ast> {
             experimental::ClassMember::AutoAccessor(a) => {
                 legacy::ClassMember::AutoAccessor(legacy::AutoAccessor {
                     span: compat_span(a.span(self.ast())),
-                    key: match a.key(self.ast()) {
-                        experimental::Key::Private(p) => {
+                    key: match a.key(self.ast()).into_public() {
+                        Err(experimental::Key::Private(p)) => {
                             legacy::Key::Private(legacy::PrivateName {
                                 span: compat_span(p.span(self.ast())),
                                 name: self.compat_utf8_ref(p.name(self.ast())),
                             })
                         }
-                        experimental::Key::Public(n) => {
-                            legacy::Key::Public(self.compat_prop_name(n))
-                        }
+                        Ok(n) => legacy::Key::Public(self.compat_prop_name(n)),
+                        Err(_) => unreachable!(),
                     },
                     value: a.value(self.ast()).map(|e| self.compat_expr(e)),
                     type_ann: None,
@@ -1185,7 +1211,9 @@ pub(crate) trait CompatImpl<'ast> {
             experimental::Pat::Invalid(i) => legacy::Pat::Invalid(legacy::Invalid {
                 span: compat_span(i.span(self.ast())),
             }),
-            experimental::Pat::Expr(e) => legacy::Pat::Expr(self.compat_expr(e)),
+            p => legacy::Pat::Expr(
+                self.compat_expr(p.into_expr().unwrap_or_else(|_| unreachable!())),
+            ),
         }
     }
 
@@ -1289,8 +1317,8 @@ pub(crate) trait CompatImpl<'ast> {
     }
 
     fn compat_assign_target(&mut self, t: experimental::AssignTarget) -> legacy::AssignTarget {
-        match t {
-            experimental::AssignTarget::Simple(s) => legacy::AssignTarget::Simple(match s {
+        if let Some(s) = t.into_simple() {
+            legacy::AssignTarget::Simple(match s {
                 experimental::SimpleAssignTarget::Ident(b) => {
                     legacy::SimpleAssignTarget::Ident(legacy::BindingIdent {
                         id: self.compat_ident(b.id(self.ast())),
@@ -1367,8 +1395,10 @@ pub(crate) trait CompatImpl<'ast> {
                         span: compat_span(i.span(self.ast())),
                     })
                 }
-            }),
-            experimental::AssignTarget::Pat(p) => legacy::AssignTarget::Pat(match p {
+            })
+        } else {
+            let p = t.into_pat().expect("assign target must be a pattern");
+            legacy::AssignTarget::Pat(match p {
                 experimental::AssignTargetPat::Array(a) => {
                     legacy::AssignTargetPat::Array(legacy::ArrayPat {
                         span: compat_span(a.span(self.ast())),
@@ -1395,7 +1425,7 @@ pub(crate) trait CompatImpl<'ast> {
                         span: compat_span(i.span(self.ast())),
                     })
                 }
-            }),
+            })
         }
     }
 
@@ -1445,11 +1475,12 @@ pub(crate) trait CompatImpl<'ast> {
     }
 
     fn compat_jsx_expr(&mut self, e: experimental::JSXExpr) -> legacy::JSXExpr {
-        match e {
-            experimental::JSXExpr::JSXEmptyExpr(ee) => {
+        match e.into_expr() {
+            Err(experimental::JSXExpr::JSXEmptyExpr(ee)) => {
                 legacy::JSXExpr::JSXEmptyExpr(self.compat_jsx_empty_expr(ee))
             }
-            experimental::JSXExpr::Expr(ex) => legacy::JSXExpr::Expr(self.compat_expr(ex)),
+            Ok(ex) => legacy::JSXExpr::Expr(self.compat_expr(ex)),
+            Err(_) => unreachable!(),
         }
     }
 

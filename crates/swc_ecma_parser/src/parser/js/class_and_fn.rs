@@ -506,8 +506,8 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             _ => {}
         }
 
-        match key {
-            Key::Private(key) => {
+        match key.into_public() {
+            Err(Key::Private(key)) => {
                 let span = self.span(start);
                 // if accessibility.is_some() {
                 //     self.emit_err(span.with_hi(key.span_hi()), SyntaxError::TS18010);
@@ -517,7 +517,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                     .ast
                     .class_member_private_method(span, key, function, kind, is_static))
             }
-            Key::Public(key) => {
+            Ok(key) => {
                 let span = self.span(start);
                 if is_abstract {
                     self.emit_err(span, SyntaxError::TS1245)
@@ -527,8 +527,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                     .ast
                     .class_member_class_method(span, key, function, kind, is_static))
             }
-            #[cfg(swc_ast_unknown)]
-            _ => unreachable!(),
+            Err(_) => unreachable!(),
         }
     }
 
@@ -715,8 +714,8 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 ));
             }
 
-            Ok(match key {
-                Key::Private(key) => {
+            Ok(match key.into_public() {
+                Err(Key::Private(key)) => {
                     // let span = p.span(start);
                     // if accessibility.is_some() {
                     //     p.emit_err(span.with_hi(key.span_hi()), SyntaxError::TS18010);
@@ -730,7 +729,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                         decorators,
                     )
                 }
-                Key::Public(key) => {
+                Ok(key) => {
                     let span = p.span(start);
                     if is_abstract && value.is_some() {
                         p.emit_err(span, SyntaxError::TS1267)
@@ -739,8 +738,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                     p.ast
                         .class_member_class_prop(span, key, value, is_static, decorators)
                 }
-                #[cfg(swc_ast_unknown)]
-                _ => unreachable!(),
+                Err(_) => unreachable!(),
             })
         })
     }
@@ -918,7 +916,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             && matches!(key_token, Token::Bang | Token::Colon)
         {
             let sym = self.ast.add_atom("readonly");
-            self.ast.key_prop_name_ident_name(readonly, sym)
+            self.ast.key_ident_name(readonly, sym)
         } else {
             self.parse_class_prop_name()?
         };
@@ -1026,10 +1024,9 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                     self.emit_err(span, SyntaxError::TS1242);
                 }
 
-                let key = match key {
-                    Key::Public(key) => key,
-                    _ => unreachable!("is_constructor() returns false for PrivateName"),
-                };
+                let key = key
+                    .into_public()
+                    .unwrap_or_else(|_| unreachable!("constructor cannot be a PrivateName"));
 
                 return Ok(self
                     .ast
@@ -1228,7 +1225,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             // Handle declare(){}
             if self.is_class_method() {
                 let sym = self.ast.add_atom("declare");
-                let key = self.ast.key_prop_name_ident_name(self.span(start), sym);
+                let key = self.ast.key_ident_name(self.span(start), sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
                 return self.make_method(
@@ -1253,7 +1250,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 // Property named `declare`
 
                 let sym = self.ast.add_atom("declare");
-                let key = self.ast.key_prop_name_ident_name(self.span(start), sym);
+                let key = self.ast.key_ident_name(self.span(start), sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
                 return self.make_property(
@@ -1300,7 +1297,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             // Handle accessor(){}
             if self.is_class_method() {
                 let sym = self.ast.add_atom("accessor");
-                let key = self.ast.key_prop_name_ident_name(accessor_token, sym);
+                let key = self.ast.key_ident_name(accessor_token, sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
                 return self.make_method(
@@ -1325,7 +1322,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 // Property named `accessor`
 
                 let sym = self.ast.add_atom("accessor");
-                let key = self.ast.key_prop_name_ident_name(accessor_token, sym);
+                let key = self.ast.key_ident_name(accessor_token, sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
                 let is_static = static_token.is_some();
@@ -1349,7 +1346,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             // Handle static(){}
             if self.is_class_method() {
                 let sym = self.ast.add_atom("static");
-                let key = self.ast.key_prop_name_ident_name(static_token, sym);
+                let key = self.ast.key_ident_name(static_token, sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
                 return self.make_method(
@@ -1379,7 +1376,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 let is_parsing_static_blocks = self.input().is(Token::LBrace);
                 if !is_parsing_static_blocks {
                     let sym = self.ast.add_atom("static");
-                    let key = self.ast.key_prop_name_ident_name(static_token, sym);
+                    let key = self.ast.key_ident_name(static_token, sym);
                     let is_optional = self.input().syntax().typescript()
                         && self.input_mut().eat(Token::QuestionMark);
                     return self.make_property(
@@ -1709,9 +1706,9 @@ fn has_use_strict(ast: &Ast, block: BlockStmt) -> Option<Span> {
 }
 
 fn is_constructor(ast: &Ast, key: Key) -> bool {
-    if let Key::Public(PropName::Ident(ident_name)) = key {
+    if let Key::Ident(ident_name) = key {
         ident_name.sym(ast).as_str().eq("constructor")
-    } else if let Key::Public(PropName::Str(s)) = key {
+    } else if let Key::Str(s) = key {
         s.value(ast).as_wtf8().eq(Wtf8::from_str("constructor"))
     } else {
         false
