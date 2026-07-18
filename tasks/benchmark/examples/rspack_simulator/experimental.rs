@@ -1,9 +1,9 @@
 use rustc_hash::FxHashSet;
 use swc_experimental_allocator::{Allocator, vec::Vec as ArenaVec};
 use swc_experimental_ecma_ast::{
-    Ast, BreakStmt, ClassMember, Comments, ContinueStmt, DebuggerStmt, ExportAll,
-    ExportDefaultExpr, ExprStmt, GetSpan, ImportDecl, NamedExport, Program, ReturnStmt, Span,
-    ThrowStmt, UpdateExpr, VarDecl, Visit, VisitWith, YieldExpr,
+    Ast, BreakStmt, ClassMember, ContinueStmt, DebuggerStmt, ExportAll, ExportDefaultExpr,
+    ExprStmt, GetSpan, ImportDecl, NamedExport, Program, ReturnStmt, Span, ThrowStmt, UpdateExpr,
+    VarDecl, Visit, VisitWith, YieldExpr,
 };
 use swc_experimental_ecma_ast_compat::{AstCompat, UnsafeArenaAstCompat};
 use swc_experimental_ecma_parser::{
@@ -21,8 +21,8 @@ pub enum CompatMode {
 
 pub fn run(src: &'static str, compat: Option<CompatMode>) {
     let allocator = Allocator::new();
-    let (mut program, mut ast, tokens, mut comments) = run_parse(src, &allocator);
-    run_remove_paren(&mut program, &mut ast, &mut comments);
+    let (mut program, mut ast, tokens) = run_parse(src, &allocator);
+    run_remove_paren(&mut program, &mut ast);
     let semantic = run_resolver(program, &mut ast);
     let _semi = run_collect_semiconlons(&ast, program, &tokens);
     match compat {
@@ -35,8 +35,7 @@ pub fn run(src: &'static str, compat: Option<CompatMode>) {
 fn run_parse<'a>(
     src: &'a str,
     allocator: &'a Allocator,
-) -> (Program, Ast<'a>, ArenaVec<'a, TokenAndSpan>, Comments<'a>) {
-    let mut comments = Comments::new_in(allocator);
+) -> (Program, Ast<'a>, ArenaVec<'a, TokenAndSpan>) {
     let mut ast = Ast::new(src.len(), allocator);
     let (program, tokens) = {
         let parser_lexer = Lexer::new(
@@ -44,7 +43,7 @@ fn run_parse<'a>(
             Syntax::Es(Default::default()),
             Default::default(),
             StringSource::new(src),
-            Some(&mut comments),
+            None,
         );
 
         // Empirically, 1/8 of the source length is a good capacity.
@@ -55,16 +54,12 @@ fn run_parse<'a>(
         let tokens = Capturing::take(&mut parser.input_mut().iter);
         (program, tokens)
     };
-    (program, ast, tokens, comments)
+    (program, ast, tokens)
 }
 
 #[inline(never)]
-fn run_remove_paren<'visit, 'ast: 'visit>(
-    root: &mut Program,
-    ast: &'visit mut Ast<'ast>,
-    comments: &mut Comments<'ast>,
-) {
-    remove_paren(root, ast, Some(comments));
+fn run_remove_paren<'visit, 'ast: 'visit>(root: &mut Program, ast: &'visit mut Ast<'ast>) {
+    remove_paren(root, ast, None);
 }
 
 #[inline(never)]
