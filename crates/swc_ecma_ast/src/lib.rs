@@ -329,6 +329,44 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
+    fn add_extra_data(&mut self, data: &[(ExtraData, usize)]) -> ExtraDataId {
+        let id = self.next_extra_data_id();
+        let word_len = data.iter().fold(0usize, |total, &(_, words)| {
+            assert!(
+                matches!(words, 1 | 2),
+                "extra data values must occupy one or two words"
+            );
+            total
+                .checked_add(words)
+                .expect("extra data word length overflow")
+        });
+        let old_len = self.extra_data.len();
+        let new_len = old_len
+            .checked_add(word_len)
+            .expect("extra data length overflow");
+        self.extra_data.reserve(word_len);
+
+        // SAFETY: `reserve` made room for every staged value. All validation
+        // and overflow checks happen before writing, and each `ExtraData`
+        // initializes its complete eight-byte union.
+        unsafe {
+            let mut dst = self.extra_data.as_mut_ptr().add(old_len);
+            for &(value, words) in data {
+                let raw = value.other;
+                if words == 1 {
+                    dst.write(raw as u32);
+                } else {
+                    dst.cast::<u64>().write_unaligned(raw);
+                }
+                dst = dst.add(words);
+            }
+            self.extra_data.set_len(new_len);
+        }
+
+        id
+    }
+
+    #[inline]
     pub(crate) unsafe fn read_extra_data<T: ExtraDataCompact<'a>>(&self, id: ExtraDataId) -> T {
         let index = id.index();
         debug_assert!(index + T::WORDS <= self.extra_data.len());
@@ -483,5 +521,35 @@ impl<'a> Ast<'a> {
     #[inline]
     pub fn node_count(&self) -> usize {
         self.nodes.len()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mixed_extra_data_batch_uses_word_offsets() {
+        let allocator = Allocator::default();
+        let mut ast = Ast::new(0, &allocator);
+        let data = [
+            (true.to_extra_data(&ast), <bool as ExtraDataLayout>::WORDS),
+            (
+                0x1122_3344_5566_7788_u64.to_extra_data(&ast),
+                <u64 as ExtraDataLayout>::WORDS,
+            ),
+            (false.to_extra_data(&ast), <bool as ExtraDataLayout>::WORDS),
+        ];
+
+        let start = ast.add_extra_data(&data);
+
+        assert_eq!(start.index(), 0);
+        assert_eq!(ast.extra_data.len(), 4);
+        assert!(unsafe { ast.read_extra_data::<bool>(start) });
+        assert_eq!(
+            unsafe { ast.read_extra_data::<u64>(start + 1) },
+            0x1122_3344_5566_7788
+        );
+        assert!(!unsafe { ast.read_extra_data::<bool>(start + 3) });
     }
 }

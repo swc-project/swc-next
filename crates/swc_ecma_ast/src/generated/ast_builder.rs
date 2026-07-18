@@ -312,9 +312,21 @@ impl<'a> Ast<'a> {
         with: Option<ObjectLit>,
         phase: ImportPhase,
     ) -> ImportDecl {
-        let _extra_data_start = self.add_extra(type_only);
-        self.add_extra(with);
-        self.add_extra(phase);
+        let _extra_data = [
+            (
+                (type_only).to_extra_data(self),
+                <bool as ExtraDataLayout>::WORDS,
+            ),
+            (
+                (with).to_extra_data(self),
+                <Option<ObjectLit> as ExtraDataLayout>::WORDS,
+            ),
+            (
+                (phase).to_extra_data(self),
+                <ImportPhase as ExtraDataLayout>::WORDS,
+            ),
+        ];
+        let _extra_data_start = self.add_extra_data(&_extra_data);
         ImportDecl(self.add_node(
             span,
             NodePayload(
@@ -402,8 +414,17 @@ impl<'a> Ast<'a> {
         type_only: bool,
         with: Option<ObjectLit>,
     ) -> NamedExport {
-        let _extra_data_start = self.add_extra(type_only);
-        self.add_extra(with);
+        let _extra_data = [
+            (
+                (type_only).to_extra_data(self),
+                <bool as ExtraDataLayout>::WORDS,
+            ),
+            (
+                (with).to_extra_data(self),
+                <Option<ObjectLit> as ExtraDataLayout>::WORDS,
+            ),
+        ];
+        let _extra_data_start = self.add_extra_data(&_extra_data);
         NamedExport(self.add_node(
             span,
             NodePayload(
@@ -766,8 +787,14 @@ impl<'a> Ast<'a> {
     }
     #[inline]
     pub fn if_stmt(&mut self, span: Span, test: Expr, cons: Stmt, alt: Option<Stmt>) -> IfStmt {
-        let _extra_data_start = self.add_extra(cons);
-        self.add_extra(alt);
+        let _extra_data = [
+            ((cons).to_extra_data(self), <Stmt as ExtraDataLayout>::WORDS),
+            (
+                (alt).to_extra_data(self),
+                <Option<Stmt> as ExtraDataLayout>::WORDS,
+            ),
+        ];
+        let _extra_data_start = self.add_extra_data(&_extra_data);
         IfStmt(self.add_node(
             span,
             NodePayload(
@@ -851,9 +878,18 @@ impl<'a> Ast<'a> {
         update: Option<Expr>,
         body: Stmt,
     ) -> ForStmt {
-        let _extra_data_start = self.add_extra(test);
-        self.add_extra(update);
-        self.add_extra(body);
+        let _extra_data = [
+            (
+                (test).to_extra_data(self),
+                <Option<Expr> as ExtraDataLayout>::WORDS,
+            ),
+            (
+                (update).to_extra_data(self),
+                <Option<Expr> as ExtraDataLayout>::WORDS,
+            ),
+            ((body).to_extra_data(self), <Stmt as ExtraDataLayout>::WORDS),
+        ];
+        let _extra_data_start = self.add_extra_data(&_extra_data);
         ForStmt(self.add_node(
             span,
             NodePayload(
@@ -865,8 +901,14 @@ impl<'a> Ast<'a> {
     }
     #[inline]
     pub fn for_in_stmt(&mut self, span: Span, left: ForHead, right: Expr, body: Stmt) -> ForInStmt {
-        let _extra_data_start = self.add_extra(right);
-        self.add_extra(body);
+        let _extra_data = [
+            (
+                (right).to_extra_data(self),
+                <Expr as ExtraDataLayout>::WORDS,
+            ),
+            ((body).to_extra_data(self), <Stmt as ExtraDataLayout>::WORDS),
+        ];
+        let _extra_data_start = self.add_extra_data(&_extra_data);
         ForInStmt(self.add_node(
             span,
             NodePayload(
@@ -885,8 +927,14 @@ impl<'a> Ast<'a> {
         right: Expr,
         body: Stmt,
     ) -> ForOfStmt {
-        let _extra_data_start = self.add_extra(right);
-        self.add_extra(body);
+        let _extra_data = [
+            (
+                (right).to_extra_data(self),
+                <Expr as ExtraDataLayout>::WORDS,
+            ),
+            ((body).to_extra_data(self), <Stmt as ExtraDataLayout>::WORDS),
+        ];
+        let _extra_data_start = self.add_extra_data(&_extra_data);
         ForOfStmt(self.add_node(
             span,
             NodePayload(
@@ -2104,8 +2152,11 @@ impl<'a> Ast<'a> {
     }
     #[inline]
     pub fn cond_expr(&mut self, span: Span, test: Expr, cons: Expr, alt: Expr) -> CondExpr {
-        let _extra_data_start = self.add_extra(cons);
-        self.add_extra(alt);
+        let _extra_data = [
+            ((cons).to_extra_data(self), <Expr as ExtraDataLayout>::WORDS),
+            ((alt).to_extra_data(self), <Expr as ExtraDataLayout>::WORDS),
+        ];
+        let _extra_data_start = self.add_extra_data(&_extra_data);
         CondExpr(self.add_node(
             span,
             NodePayload(
@@ -2124,8 +2175,17 @@ impl<'a> Ast<'a> {
         options: Option<Expr>,
         phase: ImportPhase,
     ) -> ImportExpr {
-        let _extra_data_start = self.add_extra(source);
-        self.add_extra(options);
+        let _extra_data = [
+            (
+                (source).to_extra_data(self),
+                <Expr as ExtraDataLayout>::WORDS,
+            ),
+            (
+                (options).to_extra_data(self),
+                <Option<Expr> as ExtraDataLayout>::WORDS,
+            ),
+        ];
+        let _extra_data_start = self.add_extra_data(&_extra_data);
         ImportExpr(self.add_node(
             span,
             NodePayload(
@@ -3029,9 +3089,21 @@ impl<'a> Ast<'a> {
         is_generator: bool,
         is_async: bool,
     ) -> Function {
-        let _extra_data_start = self.add_extra(decorators);
-        self.add_extra(is_generator);
-        self.add_extra(is_async);
+        let _extra_data = [
+            (
+                (decorators).to_extra_data(self),
+                <TypedSubRange<Decorator> as ExtraDataLayout>::WORDS,
+            ),
+            (
+                (is_generator).to_extra_data(self),
+                <bool as ExtraDataLayout>::WORDS,
+            ),
+            (
+                (is_async).to_extra_data(self),
+                <bool as ExtraDataLayout>::WORDS,
+            ),
+        ];
+        let _extra_data_start = self.add_extra_data(&_extra_data);
         Function(self.add_node(
             span,
             NodePayload(
@@ -3071,8 +3143,17 @@ impl<'a> Ast<'a> {
         super_class: Option<Expr>,
         is_abstract: bool,
     ) -> Class {
-        let _extra_data_start = self.add_extra(body);
-        self.add_extra(super_class);
+        let _extra_data = [
+            (
+                (body).to_extra_data(self),
+                <TypedSubRange<ClassMember> as ExtraDataLayout>::WORDS,
+            ),
+            (
+                (super_class).to_extra_data(self),
+                <Option<Expr> as ExtraDataLayout>::WORDS,
+            ),
+        ];
+        let _extra_data_start = self.add_extra_data(&_extra_data);
         Class(self.add_node(
             span,
             NodePayload(
@@ -3180,8 +3261,17 @@ impl<'a> Ast<'a> {
         is_static: bool,
         decorators: TypedSubRange<Decorator>,
     ) -> ClassProp {
-        let _extra_data_start = self.add_extra(value);
-        self.add_extra(decorators);
+        let _extra_data = [
+            (
+                (value).to_extra_data(self),
+                <Option<Expr> as ExtraDataLayout>::WORDS,
+            ),
+            (
+                (decorators).to_extra_data(self),
+                <TypedSubRange<Decorator> as ExtraDataLayout>::WORDS,
+            ),
+        ];
+        let _extra_data_start = self.add_extra_data(&_extra_data);
         ClassProp(self.add_node(
             span,
             NodePayload(
@@ -3201,8 +3291,17 @@ impl<'a> Ast<'a> {
         is_static: bool,
         decorators: TypedSubRange<Decorator>,
     ) -> PrivateProp {
-        let _extra_data_start = self.add_extra(is_static);
-        self.add_extra(decorators);
+        let _extra_data = [
+            (
+                (is_static).to_extra_data(self),
+                <bool as ExtraDataLayout>::WORDS,
+            ),
+            (
+                (decorators).to_extra_data(self),
+                <TypedSubRange<Decorator> as ExtraDataLayout>::WORDS,
+            ),
+        ];
+        let _extra_data_start = self.add_extra_data(&_extra_data);
         PrivateProp(self.add_node(
             span,
             NodePayload(
@@ -3320,8 +3419,17 @@ impl<'a> Ast<'a> {
         is_static: bool,
         decorators: TypedSubRange<Decorator>,
     ) -> AutoAccessor {
-        let _extra_data_start = self.add_extra(value);
-        self.add_extra(decorators);
+        let _extra_data = [
+            (
+                (value).to_extra_data(self),
+                <Option<Expr> as ExtraDataLayout>::WORDS,
+            ),
+            (
+                (decorators).to_extra_data(self),
+                <TypedSubRange<Decorator> as ExtraDataLayout>::WORDS,
+            ),
+        ];
+        let _extra_data_start = self.add_extra_data(&_extra_data);
         AutoAccessor(self.add_node(
             span,
             NodePayload(
