@@ -145,9 +145,7 @@ fn generate_build_function_inline(
             }
         },
         InlineStorageMode::Partial => {
-            let mut add_extra_data = TokenStream::new();
-            let mut first_extra_data_id = None;
-            let mut extra_index = 0usize;
+            let mut extra_data_values = Vec::new();
 
             for (field_index, field) in ast.fields.iter().enumerate() {
                 if layout
@@ -158,10 +156,6 @@ fn generate_build_function_inline(
                     continue;
                 }
 
-                let extra_data_id = format_ident!("_f{extra_index}");
-                first_extra_data_id.get_or_insert_with(|| extra_data_id.clone());
-                extra_index += 1;
-
                 let field_name = format_ident!("{}", field.name);
                 let field_value = if should_default_in_builder(ast, &field.name) {
                     let field_ty = schema.types[field.type_id].repr_ident(schema);
@@ -169,13 +163,11 @@ fn generate_build_function_inline(
                 } else {
                     quote!(#field_name)
                 };
-                add_extra_data.extend(quote! {
-                    let #extra_data_id = self.add_extra(#field_value.to_extra_data(self));
-                });
+                extra_data_values.push(quote!(#field_value.to_extra_data(self)));
             }
 
-            let start_id =
-                first_extra_data_id.expect("partial layout must contain an extra-data field");
+            let (add_extra_data, start_id) = generate_add_extra_data(&extra_data_values);
+            let start_id = start_id.expect("partial layout must contain an extra-data field");
 
             quote! {
                 #[inline]
@@ -201,9 +193,8 @@ fn generate_build_function_extra_data(
     ret_ty: syn::Ident,
     fn_params: TokenStream,
 ) -> TokenStream {
-    let mut add_extra_data = TokenStream::new();
-    for (index, field) in ast.fields.iter().enumerate() {
-        let extra_data_id = format_ident!("_f{}", index);
+    let mut extra_data_values = Vec::new();
+    for field in &ast.fields {
         let field_name = format_ident!("{}", field.name);
         let field_value = if should_default_in_builder(ast, &field.name) {
             let field_ty = schema.types[field.type_id].repr_ident(schema);
@@ -211,15 +202,13 @@ fn generate_build_function_extra_data(
         } else {
             quote!(#field_name)
         };
-        add_extra_data.extend(quote! {
-            let #extra_data_id = self.add_extra(#field_value.to_extra_data(self));
-        });
+        extra_data_values.push(quote!(#field_value.to_extra_data(self)));
     }
 
-    let node_payload = if ast.fields.is_empty() {
-        quote!(NodePayload::inline(0, 0))
-    } else {
-        quote!(NodePayload::partial(0, _f0))
+    let (add_extra_data, start_id) = generate_add_extra_data(&extra_data_values);
+    let node_payload = match start_id {
+        Some(start_id) => quote!(NodePayload::partial(0, #start_id)),
+        None => quote!(NodePayload::inline(0, 0)),
     };
 
     let tokens = quote! {
@@ -238,6 +227,25 @@ fn generate_build_function_extra_data(
     };
 
     tokens
+}
+
+fn generate_add_extra_data(values: &[TokenStream]) -> (TokenStream, Option<TokenStream>) {
+    match values {
+        [] => (TokenStream::new(), None),
+        [value] => (
+            quote! {
+                let _f0 = self.add_extra(#value);
+            },
+            Some(quote!(_f0)),
+        ),
+        values => (
+            quote! {
+                let _extra_data = [#(#values),*];
+                let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
+            },
+            Some(quote!(_extra_data_range.start)),
+        ),
+    }
 }
 
 // TODO: Use [crate::util::flat_enum_type]

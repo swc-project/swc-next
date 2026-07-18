@@ -46,12 +46,6 @@ fn generate_node_id_for_struct(ast: &AstStruct, _schema: &Schema) -> TokenStream
             }
 
             #[inline]
-            fn from_node_id(node_id: NodeId, ast: &Ast<'_>) -> Self {
-                assert!(*ast.nodes.kind(node_id) == NodeKind::#name);
-                Self(node_id)
-            }
-
-            #[inline]
             unsafe fn from_node_id_unchecked(node_id: NodeId, _ast: &Ast<'_>) -> Self {
                 Self(node_id)
             }
@@ -74,7 +68,7 @@ fn generate_node_id_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
     for (_, element) in flat_enum_type(ast, schema) {
         let kind = element.kind;
         let body = element.path.iter().rev().fold(
-            quote!({ #kind::from_node_id(id, ast) }),
+            quote!({ unsafe { #kind::from_node_id_unchecked(id, ast) } }),
             |acc, construcotr| quote!(#construcotr(#acc)),
         );
         from_node_id_arms.extend(quote! {
@@ -92,16 +86,12 @@ fn generate_node_id_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
             }
 
             #[inline]
-            fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self {
-                match ast.nodes.kind(id) {
+            unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast<'_>) -> Self {
+                let kind = unsafe { *ast.nodes.kind_unchecked(id) };
+                match kind {
                     #from_node_id_arms
                     _ => unreachable!(),
                 }
-            }
-
-            #[inline]
-            unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast<'_>) -> Self {
-                Self::from_node_id(id, ast)
             }
         }
     }

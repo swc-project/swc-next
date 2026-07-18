@@ -4,9 +4,6 @@ pub trait NodeIdTrait: Copy {
     /// Get node id from node
     fn node_id(self) -> NodeId;
 
-    /// A safe method to construct typed ast node, with `node.kind` checking
-    fn from_node_id(id: NodeId, ast: &Ast<'_>) -> Self;
-
     /// # Safety
     /// 1. The caller should ensure that `node.kind` is corresponding to `Self`
     unsafe fn from_node_id_unchecked(id: NodeId, ast: &Ast<'_>) -> Self;
