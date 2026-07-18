@@ -33,11 +33,12 @@ pub use node_id::{
 };
 pub use semantic::{ScopeId, SymbolId};
 pub use span::{DUMMY_SP, Span};
-pub use strings::{Atom, StringPool, Wtf8Atom};
+pub use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
 
 use crate::multi_index_vec::multi_index_vec;
 use crate::node_id::OptionalSubRange;
 use crate::span::OptionalSpan;
+use crate::strings::{AtomId, AtomStore, Wtf8AtomId};
 
 /// AST context that stores everything about the flattening AST.
 pub struct Ast<'a> {
@@ -47,10 +48,10 @@ pub struct Ast<'a> {
     pub(crate) nodes: NodeData<'a>,
 
     /// Flattening AST fields.
-    extra_data: ArenaVec<'a, ExtraData<'a>>,
+    extra_data: ArenaVec<'a, ExtraData>,
 
-    /// UTF-8 and WTF-8 strings share this interned byte pool.
-    strings: &'a StringPool<'a>,
+    /// Borrowed atoms are kept out of `ExtraData` so it remains eight bytes.
+    atoms: AtomStore<'a>,
 }
 
 multi_index_vec! {
@@ -134,14 +135,14 @@ impl NodePayload {
 /// It is only access the by the property accesses of typed AST node, and the construction of typed AST is
 /// another safety guarantee.
 #[derive(Clone, Copy)]
-pub union ExtraData<'a> {
+pub union ExtraData {
     // Ids
     node: NodeId,
     optional_node: OptionalNodeId,
 
-    // Interned atoms are byte ranges into `Ast::strings`.
-    atom: Atom<'a>,
-    wtf8_atom: Wtf8Atom<'a>,
+    // Atom handles index dedicated tables in `Ast::atoms`.
+    atom: AtomId,
+    wtf8_atom: Wtf8AtomId,
 
     // Primitives
     span: Span,
@@ -195,7 +196,7 @@ pub union ExtraData<'a> {
     optional_var_decl_or_expr: Option<VarDeclOrExpr>,
     optional_jsx_attr_value: Option<JSXAttrValue>,
 
-    /// Any other data (usually enum) that can be representated within 8 bytes
+    /// Any other data (usually enum) that can be represented within 8 bytes.
     other: u64,
 }
 
@@ -404,12 +405,12 @@ pub enum NodeKind {
 
 impl<'a> Ast<'a> {
     /// Create a flattening AST whose atom storage is backed by `allocator`.
-    pub fn new(source_len: usize, allocator: &'a Allocator) -> Self {
+    pub fn new(_source_len: usize, allocator: &'a Allocator) -> Self {
         Self {
             allocator,
             nodes: NodeData::new_in(allocator),
             extra_data: ArenaVec::with_capacity_in(0, allocator),
-            strings: allocator.alloc(StringPool::with_capacity_in(source_len, 0, allocator)),
+            atoms: AtomStore::new_in(allocator),
         }
     }
 
@@ -419,7 +420,7 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
-    fn add_extra(&mut self, extra: ExtraData<'a>) -> ExtraDataId {
+    fn add_extra(&mut self, extra: ExtraData) -> ExtraDataId {
         let id = self.next_extra_data_id();
         self.extra_data.push(extra);
         id
@@ -441,8 +442,10 @@ impl<'a> Ast<'a> {
         iter: I,
     ) -> TypedSubRange<N> {
         let start = self.next_extra_data_id();
-        self.extra_data
-            .extend(iter.into_iter().map(|n| n.to_extra_data()));
+        for node in iter {
+            let data = node.to_extra_data(self);
+            self.extra_data.push(data);
+        }
         TypedSubRange {
             inner: SubRange {
                 start,
@@ -459,22 +462,12 @@ impl<'a> Ast<'a> {
 
     #[inline]
     pub fn add_atom(&self, value: &str) -> Atom<'a> {
-        self.strings.add_atom(value)
+        Atom::new_in(value, self.allocator)
     }
 
     #[inline]
     pub fn add_wtf8_atom(&self, value: &swc_experimental_allocator::wtf8::Wtf8) -> Wtf8Atom<'a> {
-        self.strings.add_wtf8_atom(value)
-    }
-
-    #[inline]
-    pub fn atom(&self, atom: Atom<'_>) -> &str {
-        self.strings.atom(atom)
-    }
-
-    #[inline]
-    pub fn wtf8_atom(&self, atom: Wtf8Atom<'_>) -> &swc_experimental_allocator::wtf8::Wtf8 {
-        self.strings.wtf8_atom(atom)
+        Wtf8Atom::new_in(value, self.allocator)
     }
 
     #[inline]
@@ -482,10 +475,24 @@ impl<'a> Ast<'a> {
         Atom::empty()
     }
 
-    #[doc(hidden)]
     #[inline]
-    pub fn string_pool(&self) -> &'a StringPool<'a> {
-        self.strings
+    pub(crate) fn store_atom(&self, atom: Atom<'a>) -> AtomId {
+        self.atoms.store_atom(atom)
+    }
+
+    #[inline]
+    pub(crate) fn stored_atom(&self, id: AtomId) -> Atom<'a> {
+        self.atoms.atom(id)
+    }
+
+    #[inline]
+    pub(crate) fn store_wtf8_atom(&self, atom: Wtf8Atom<'a>) -> Wtf8AtomId {
+        self.atoms.store_wtf8_atom(atom)
+    }
+
+    #[inline]
+    pub(crate) fn stored_wtf8_atom(&self, id: Wtf8AtomId) -> Wtf8Atom<'a> {
+        self.atoms.wtf8_atom(id)
     }
 
     #[inline]

@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use swc_experimental_ecma_ast::*;
 
 use super::{Parser, input::Tokens};
@@ -172,7 +170,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 self,
                 tagname.span(self.ast),
                 SyntaxError::JSXExpectedClosingTag {
-                    tag: get_qualified_jsx_name(self.ast, open_name).into_owned(),
+                    tag: get_qualified_jsx_name(self.ast, open_name),
                 }
             )
         }
@@ -453,31 +451,31 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
     }
 }
 
-fn get_qualified_jsx_name<'a>(ast: &'a Ast<'a>, name: JSXElementName) -> Cow<'a, str> {
-    fn get_qualified_obj_name<'a>(ast: &'a Ast<'a>, obj: JSXObject) -> Cow<'a, str> {
+fn get_qualified_jsx_name(ast: &Ast<'_>, name: JSXElementName) -> String {
+    fn get_qualified_obj_name(ast: &Ast<'_>, obj: JSXObject) -> String {
         match obj {
-            JSXObject::Ident(i) => Cow::Owned(i.sym(ast).as_str(ast).to_string()),
-            JSXObject::JSXMemberExpr(member) => Cow::Owned(format!(
+            JSXObject::Ident(i) => i.sym(ast).as_str().to_string(),
+            JSXObject::JSXMemberExpr(member) => format!(
                 "{}.{}",
                 get_qualified_obj_name(ast, member.obj(ast)),
-                member.prop(ast).sym(ast).as_str(ast)
-            )),
+                member.prop(ast).sym(ast).as_str()
+            ),
             #[cfg(swc_ast_unknown)]
             _ => unreachable!(),
         }
     }
     match name {
-        JSXElementName::Ident(i) => Cow::Owned(i.sym(ast).as_str(ast).to_string()),
-        JSXElementName::JSXNamespacedName(item) => Cow::Owned(format!(
+        JSXElementName::Ident(i) => i.sym(ast).as_str().to_string(),
+        JSXElementName::JSXNamespacedName(item) => format!(
             "{}:{}",
-            item.ns(ast).sym(ast).as_str(ast),
-            item.name(ast).sym(ast).as_str(ast)
-        )),
-        JSXElementName::JSXMemberExpr(item) => Cow::Owned(format!(
+            item.ns(ast).sym(ast).as_str(),
+            item.name(ast).sym(ast).as_str()
+        ),
+        JSXElementName::JSXMemberExpr(item) => format!(
             "{}.{}",
             get_qualified_obj_name(ast, item.obj(ast)),
-            item.prop(ast).sym(ast).as_str(ast)
-        )),
+            item.prop(ast).sym(ast).as_str()
+        ),
         #[cfg(swc_ast_unknown)]
         _ => unreachable!(),
     }

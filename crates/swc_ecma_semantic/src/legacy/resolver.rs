@@ -321,7 +321,7 @@ impl<'visit, 'ast> Resolver<'visit, 'ast> {
         while let Some(cur) = scope {
             let cur_scope = &self.scopes[cur];
             if cur_scope.declared_symbols.contains_key(&sym) {
-                return match sym.as_str(self.ast) {
+                return match sym.as_str() {
                     // https://tc39.es/ecma262/multipage/global-object.html#sec-value-properties-of-the-global-object-infinity
                     // non configurable global value
                     "undefined" | "NaN" | "Infinity"

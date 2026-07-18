@@ -45,6 +45,6 @@ pub struct Regex {
 
 impl BigInt {
     pub fn to_bigint(self, ast: &crate::Ast<'_>) -> num_bigint::BigInt {
-        num_bigint::BigInt::parse_bytes(self.value(ast).as_bytes(ast), 10).unwrap()
+        num_bigint::BigInt::parse_bytes(self.value(ast).as_bytes(), 10).unwrap()
     }
 }

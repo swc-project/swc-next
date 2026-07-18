@@ -46,7 +46,7 @@ pub trait IsInvalidClassName {
 
 impl IsInvalidClassName for Ident {
     fn invalid_class_name(&self, ast: &Ast) -> Option<Span> {
-        match self.sym(ast).as_str(ast) {
+        match self.sym(ast).as_str() {
             "string" | "null" | "number" | "object" | "any" | "unknown" | "boolean" | "bigint"
             | "symbol" | "void" | "never" | "intrinsic" => Some(self.span(ast)),
             _ => None,
@@ -182,6 +182,7 @@ impl<N> ScratchIndex<N> {
     where
         N: ExtraDataCompact<'a>,
     {
-        p.scratch.push(node.to_extra_data());
+        let data = node.to_extra_data(p.ast);
+        p.scratch.push(data);
     }
 }

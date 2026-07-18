@@ -175,11 +175,11 @@ impl<'a> Comments<'a> {
     ///
     /// If `flag` is `PURE`, this method will look for `@__PURE__` and
     /// `#__PURE__`.
-    pub fn has_flag(&self, lo: u32, flag: &str, ast: &Ast<'a>) -> bool {
+    pub fn has_flag(&self, lo: u32, flag: &str, _ast: &Ast<'a>) -> bool {
         self.with_leading(lo, |comments| {
             for c in comments {
                 if c.kind == CommentKind::Block {
-                    for line in c.text.as_str(ast).lines() {
+                    for line in c.text.as_str().lines() {
                         let line = line.trim_start_matches(['*', ' ']);
                         let line = line.trim();
 

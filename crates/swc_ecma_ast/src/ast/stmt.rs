@@ -162,7 +162,7 @@ impl Stmt {
             Stmt::Expr(expr) => match expr.expr(ast) {
                 Expr::Lit(Lit::Str(s)) => {
                     let raw = s.raw(ast);
-                    matches!(raw, Some(value) if value.as_str(ast) == "\"use strict\"" || value.as_str(ast) == "'use strict'")
+                    matches!(raw, Some(value) if value.as_str() == "\"use strict\"" || value.as_str() == "'use strict'")
                 }
                 _ => false,
             },

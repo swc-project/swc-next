@@ -42,7 +42,7 @@ pub struct ParserCheckpoint<'a, I: Tokens<'a>> {
 pub struct Parser<'p, 'a, I: self::input::Tokens<'a>> {
     ast: &'p mut Ast<'a>,
     /// Don't mutable this directly. Use Parser::scratch_xxx instead for safety.
-    scratch: std::vec::Vec<ExtraData<'a>>,
+    scratch: std::vec::Vec<ExtraData>,
     state: State<'a>,
     input: self::input::Buffer<'a, I>,
     found_module_item: bool,

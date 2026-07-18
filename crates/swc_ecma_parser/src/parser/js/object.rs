@@ -74,10 +74,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         let value = if self.input_mut().eat(Token::Eq) {
             self.allow_in_expr(Self::parse_assignment_expr).map(Some)?
         } else {
-            if self
-                .ctx()
-                .is_reserved_word(key.sym(self.ast).as_str(self.ast))
-            {
+            if self.ctx().is_reserved_word(key.sym(self.ast).as_str()) {
                 self.emit_err(
                     key.span(self.ast),
                     SyntaxError::ReservedWordInObjShorthandOrPat,
@@ -278,7 +275,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         // It means we should check for invalid expressions like { for, }
         let cur = self.input().cur();
         if matches!(cur, Token::Eq | Token::Comma | Token::RBrace) {
-            if self.ctx().is_reserved_word(ident_sym.as_str(self.ast)) {
+            if self.ctx().is_reserved_word(ident_sym.as_str()) {
                 self.emit_err(ident_span, SyntaxError::ReservedWordInObjShorthandOrPat);
             }
 

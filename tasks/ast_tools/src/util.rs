@@ -263,7 +263,11 @@ pub fn generate_field_to_u32(
 }
 
 /// Generate an expression that reinterprets an eight-byte field as inline data.
-pub fn generate_field_to_u64(field_ty: &AstType, field_name: &syn::Ident) -> TokenStream {
+pub fn generate_field_to_u64(
+    field_ty: &AstType,
+    field_name: &syn::Ident,
+    ast: TokenStream,
+) -> TokenStream {
     debug_assert!(matches!(
         field_ty,
         AstType::Vec(_) | AstType::Option(_) | AstType::Primitive(_)
@@ -271,7 +275,7 @@ pub fn generate_field_to_u64(field_ty: &AstType, field_name: &syn::Ident) -> Tok
 
     // Each supported type initializes all eight bytes of its ExtraData union
     // representation, so reading the raw word does not observe padding.
-    quote!(unsafe { #field_name.to_extra_data().other })
+    quote!(unsafe { #field_name.to_extra_data(#ast).other })
 }
 
 /// Generate expression to convert u32 to a field type (for inline storage)

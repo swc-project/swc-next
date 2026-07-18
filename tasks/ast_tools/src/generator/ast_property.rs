@@ -173,7 +173,7 @@ fn generate_inline_write(
     let insert_expr = generate_insert_bits(byte_offset, byte_size);
 
     if byte_size == INLINE_DATA_U64_SIZE {
-        let to_u64 = generate_field_to_u64(field_ty, field_name);
+        let to_u64 = generate_field_to_u64(field_ty, field_name, quote!(ast));
         quote! {
             let field_val: u64 = #to_u64;
             #insert_expr
@@ -267,7 +267,7 @@ fn generate_extra_data_property_accessors(
 
                 debug_assert!(offset.index() < ast.extra_data.len());
                 unsafe {
-                    *ast.extra_data.as_mut_slice().get_unchecked_mut(offset.index()) = #field_name.to_extra_data();
+                    *ast.extra_data.as_mut_slice().get_unchecked_mut(offset.index()) = #field_name.to_extra_data(ast);
                 };
             }
         });
@@ -320,7 +320,7 @@ fn generate_extra_data_property_accessors_partial(
 
                 debug_assert!(offset.index() < ast.extra_data.len());
                 unsafe {
-                    *ast.extra_data.as_mut_slice().get_unchecked_mut(offset.index()) = #field_name.to_extra_data();
+                    *ast.extra_data.as_mut_slice().get_unchecked_mut(offset.index()) = #field_name.to_extra_data(ast);
                 };
             }
         });

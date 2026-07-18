@@ -106,7 +106,7 @@ fn generate_build_function_inline(
 
         if byte_size == INLINE_DATA_U64_SIZE {
             debug_assert_eq!(byte_offset, 0);
-            let field_u64 = generate_field_to_u64(field_ty, &field_name);
+            let field_u64 = generate_field_to_u64(field_ty, &field_name, quote!(self));
             pack_u64.extend(quote! { | #field_u64 });
             continue;
         }
@@ -170,7 +170,7 @@ fn generate_build_function_inline(
                     quote!(#field_name)
                 };
                 add_extra_data.extend(quote! {
-                    let #extra_data_id = self.add_extra(#field_value.to_extra_data());
+                    let #extra_data_id = self.add_extra(#field_value.to_extra_data(self));
                 });
             }
 
@@ -212,7 +212,7 @@ fn generate_build_function_extra_data(
             quote!(#field_name)
         };
         add_extra_data.extend(quote! {
-            let #extra_data_id = self.add_extra(#field_value.to_extra_data());
+            let #extra_data_id = self.add_extra(#field_value.to_extra_data(self));
         });
     }
 

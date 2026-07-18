@@ -125,7 +125,7 @@ pub enum MemberProp {
 
 impl MemberProp {
     pub fn is_ident_with(self, ast: &Ast<'_>, sym: &str) -> bool {
-        matches!(self, MemberProp::Ident(i) if i.sym(ast).as_str(ast) == sym)
+        matches!(self, MemberProp::Ident(i) if i.sym(ast).as_str() == sym)
     }
 }
 
@@ -207,11 +207,11 @@ pub enum MetaPropKind {
 }
 
 impl<'a> ExtraDataCompact<'a> for MetaPropKind {
-    fn to_extra_data(self) -> ExtraData<'a> {
+    fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
         ExtraData { other: self as u64 }
     }
 
-    unsafe fn from_extra_data(data: ExtraData<'a>, _ast: &Ast<'a>) -> Self {
+    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         unsafe { mem::transmute(data.other as u8) }
     }
 }
@@ -324,7 +324,7 @@ impl Expr {
         S: ?Sized + AsRef<str>,
     {
         match self {
-            Expr::Ident(i) => i.sym(ast).as_str(ast) == ident.as_ref(),
+            Expr::Ident(i) => i.sym(ast).as_str() == ident.as_ref(),
             _ => false,
         }
     }

@@ -41,7 +41,7 @@ impl<'ast> Visit<'ast> for ScopeDisplayVisitor<'_, 'ast> {
     fn visit_ident(&mut self, node: swc_experimental_ecma_ast::Ident) {
         println!(
             "{} ({:?}) -> {:?}",
-            node.sym(self.ast).as_str(self.ast),
+            node.sym(self.ast).as_str(),
             node.sym(self.ast),
             self.semantic.node_scope(node, self.ast),
         );

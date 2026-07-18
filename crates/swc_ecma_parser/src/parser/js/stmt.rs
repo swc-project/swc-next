@@ -694,7 +694,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             p.do_outside_of_context(Context::AllowUsingDecl, |p| {
                 let start = l.span_lo(p.ast);
                 let sym = l.sym(p.ast);
-                let atom = sym.as_str(p.ast);
+                let atom = sym.as_str();
 
                 let mut errors = Vec::new();
                 for lb in &p.state().labels {

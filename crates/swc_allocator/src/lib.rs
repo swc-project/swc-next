@@ -2,6 +2,7 @@ use bumpalo::Bump;
 use std::{alloc::Layout, cell::Cell, ptr::NonNull};
 
 mod allocator_api;
+pub mod atom;
 pub mod boxed;
 pub mod hash_map;
 pub mod hash_set;

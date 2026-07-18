@@ -116,7 +116,7 @@ fn check_symbol_conformance<'a, C: Case>(
         experimental_collector
             .symbols
             .into_iter()
-            .map(|((sym, _), spans)| (sym.as_str(ast).to_string(), spans)),
+            .map(|((sym, _), spans)| (sym.as_str().to_string(), spans)),
     );
     let experimental_blocks = normalize_scope_groups(experimental_collector.blocks.into_values());
 

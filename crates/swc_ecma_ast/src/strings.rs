@@ -1,234 +1,94 @@
-use std::{cell::Cell, marker::PhantomData, ptr::NonNull, str};
+use std::cell::UnsafeCell;
 
 use swc_experimental_allocator::{
     Allocator,
-    hash_map::{EntryRef, HashMap as ArenaHashMap},
+    atom::{Atom, Wtf8Atom},
     vec::Vec as ArenaVec,
-    wtf8::Wtf8,
 };
 
-use crate::Ast;
-
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub(crate) struct StringId {
-    start: u32,
-    end: u32,
-}
-
-impl StringId {
-    pub(crate) const EMPTY: Self = Self { start: 0, end: 0 };
-}
-
-/// An interned UTF-8 string stored by an [`Ast`].
+/// Compact handles stored in node payloads and `ExtraData`.
 ///
-/// The two `u32`s are byte offsets into the AST's shared string buffer.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Atom<'a> {
-    start: u32,
-    end: u32,
-    marker: PhantomData<&'a ()>,
-}
+/// Zero is reserved for `None`; table indices are encoded as `index + 1`.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct AtomId(u64);
 
-impl<'a> Atom<'a> {
-    pub const EMPTY: Self = Self::from_id(StringId::EMPTY);
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Wtf8AtomId(u64);
 
-    #[inline]
-    const fn from_id(id: StringId) -> Self {
-        Self {
-            start: id.start,
-            end: id.end,
-            marker: PhantomData,
-        }
-    }
-
-    #[inline]
-    const fn id(self) -> StringId {
-        StringId {
-            start: self.start,
-            end: self.end,
-        }
-    }
-
-    #[inline]
-    pub const fn empty() -> Self {
-        Self::EMPTY
-    }
-
-    #[inline]
-    pub fn new_in(value: &str, ast: &Ast<'a>) -> Self {
-        ast.add_atom(value)
-    }
-
-    #[inline]
-    pub const fn len(self) -> u32 {
-        self.end - self.start
-    }
-
-    #[inline]
-    pub const fn is_empty(self) -> bool {
-        self.start == self.end
-    }
-
-    #[inline]
-    pub fn as_str<'ast>(self, ast: &'ast Ast<'_>) -> &'ast str {
-        ast.atom(self)
-    }
-
-    #[inline]
-    pub fn as_bytes<'ast>(self, ast: &'ast Ast<'_>) -> &'ast [u8] {
-        self.as_str(ast).as_bytes()
-    }
-}
-
-/// An interned WTF-8 string stored by an [`Ast`].
+/// Append-only side tables for borrowed atoms.
 ///
-/// UTF-8 atoms and WTF-8 atoms use the same byte buffer and interning table.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Wtf8Atom<'a> {
-    start: u32,
-    end: u32,
-    marker: PhantomData<&'a ()>,
+/// Mutation through `UnsafeCell` is safe because `Ast` is single-threaded and
+/// the tables only append. Existing `Atom` values point to source or arena
+/// storage, not into these vectors.
+pub(crate) struct AtomStore<'a> {
+    atoms: UnsafeCell<ArenaVec<'a, Atom<'a>>>,
+    wtf8_atoms: UnsafeCell<ArenaVec<'a, Wtf8Atom<'a>>>,
 }
 
-impl<'a> Wtf8Atom<'a> {
-    pub const EMPTY: Self = Self::from_id(StringId::EMPTY);
-
-    #[inline]
-    const fn from_id(id: StringId) -> Self {
+impl<'a> AtomStore<'a> {
+    pub(crate) fn new_in(allocator: &'a Allocator) -> Self {
         Self {
-            start: id.start,
-            end: id.end,
-            marker: PhantomData,
+            atoms: UnsafeCell::new(ArenaVec::new_in(allocator)),
+            wtf8_atoms: UnsafeCell::new(ArenaVec::new_in(allocator)),
         }
     }
 
     #[inline]
-    const fn id(self) -> StringId {
-        StringId {
-            start: self.start,
-            end: self.end,
-        }
+    pub(crate) fn store_atom(&self, atom: Atom<'a>) -> AtomId {
+        // SAFETY: The store is append-only and Ast is !Sync.
+        let atoms = unsafe { &mut *self.atoms.get() };
+        let index = atoms.len();
+        atoms.push(atom);
+        AtomId(u64::try_from(index).expect("atom table exceeds u64") + 1)
     }
 
     #[inline]
-    pub const fn empty() -> Self {
-        Self::EMPTY
+    pub(crate) fn atom(&self, id: AtomId) -> Atom<'a> {
+        debug_assert_ne!(id.0, 0);
+        let index = usize::try_from(id.0 - 1).expect("atom id exceeds usize");
+        // SAFETY: AtomIds are only created immediately after appending the
+        // corresponding table entry.
+        unsafe { *(&*self.atoms.get()).as_slice().get_unchecked(index) }
     }
 
     #[inline]
-    pub fn new_in(value: &Wtf8, ast: &Ast<'a>) -> Self {
-        ast.add_wtf8_atom(value)
+    pub(crate) fn store_wtf8_atom(&self, atom: Wtf8Atom<'a>) -> Wtf8AtomId {
+        // SAFETY: The store is append-only and Ast is !Sync.
+        let atoms = unsafe { &mut *self.wtf8_atoms.get() };
+        let index = atoms.len();
+        atoms.push(atom);
+        Wtf8AtomId(u64::try_from(index).expect("WTF-8 atom table exceeds u64") + 1)
     }
 
     #[inline]
-    pub const fn len(self) -> u32 {
-        self.end - self.start
+    pub(crate) fn wtf8_atom(&self, id: Wtf8AtomId) -> Wtf8Atom<'a> {
+        debug_assert_ne!(id.0, 0);
+        let index = usize::try_from(id.0 - 1).expect("WTF-8 atom id exceeds usize");
+        // SAFETY: Wtf8AtomIds are only created immediately after appending the
+        // corresponding table entry.
+        unsafe { *(&*self.wtf8_atoms.get()).as_slice().get_unchecked(index) }
     }
 
     #[inline]
-    pub const fn is_empty(self) -> bool {
-        self.start == self.end
+    pub(crate) const fn none_atom() -> AtomId {
+        AtomId(0)
     }
 
     #[inline]
-    pub fn as_wtf8<'ast>(self, ast: &'ast Ast<'_>) -> &'ast Wtf8 {
-        ast.wtf8_atom(self)
-    }
-}
-
-#[derive(Debug)]
-pub struct StringPool<'a> {
-    bytes: NonNull<ArenaVec<'a, u8>>,
-    dedup: NonNull<ArenaHashMap<'a, ArenaVec<'a, u8>, StringId>>,
-    not_sync: PhantomData<Cell<()>>,
-}
-
-impl<'a> StringPool<'a> {
-    pub(crate) fn with_capacity_in(bytes: usize, entries: usize, allocator: &'a Allocator) -> Self {
-        Self {
-            bytes: NonNull::from(allocator.alloc(ArenaVec::with_capacity_in(bytes, allocator))),
-            dedup: NonNull::from(
-                allocator.alloc(ArenaHashMap::with_capacity_in(entries, allocator)),
-            ),
-            not_sync: PhantomData,
-        }
+    pub(crate) const fn none_wtf8_atom() -> Wtf8AtomId {
+        Wtf8AtomId(0)
     }
 
     #[inline]
-    fn get(&self, id: StringId) -> &[u8] {
-        debug_assert!(id.end >= id.start);
-        // SAFETY: Interning only appends. ArenaVec growth leaves its old
-        // allocation alive in the arena, so existing slices remain valid.
-        let bytes = unsafe { self.bytes.as_ref() };
-        &bytes[id.start as usize..id.end as usize]
-    }
-
-    fn intern(&self, text: &[u8]) -> StringId {
-        if text.is_empty() {
-            return StringId::EMPTY;
-        }
-        // SAFETY: StringPool is append-only and `not_sync` makes it !Sync, so
-        // parser and lexer access it sequentially on one thread.
-        let dedup = unsafe { &mut *self.dedup.as_ptr() };
-        match dedup.entry_ref(text) {
-            EntryRef::Occupied(entry) => *entry.get(),
-            EntryRef::Vacant(entry) => {
-                // SAFETY: See the append-only invariant above.
-                let bytes = unsafe { &mut *self.bytes.as_ptr() };
-                let start = bytes.len() as u32;
-                bytes.extend_from_slice_copy(text);
-                let end = bytes.len() as u32;
-                let id = StringId { start, end };
-                let mut key = ArenaVec::with_capacity_in(text.len(), bytes.bump());
-                key.extend_from_slice_copy(text);
-                // SAFETY: `key` is byte-for-byte equal to the lookup slice,
-                // and ArenaVec hashes and compares through its slice contents.
-                unsafe { entry.insert_entry_with_key_unchecked(key, id) };
-                id
-            }
-        }
+    pub(crate) const fn is_none_atom(id: AtomId) -> bool {
+        id.0 == 0
     }
 
     #[inline]
-    pub fn add_atom(&self, text: &str) -> Atom<'a> {
-        Atom::from_id(self.intern(text.as_bytes()))
-    }
-
-    #[inline]
-    pub fn add_wtf8_atom(&self, text: &Wtf8) -> Wtf8Atom<'a> {
-        Wtf8Atom::from_id(self.intern(text.as_bytes()))
-    }
-
-    #[inline]
-    pub fn atom(&self, atom: Atom<'_>) -> &str {
-        // Atom can only be constructed from UTF-8 input.
-        unsafe { str::from_utf8_unchecked(self.get(atom.id())) }
-    }
-
-    #[inline]
-    pub fn wtf8_atom(&self, atom: Wtf8Atom<'_>) -> &Wtf8 {
-        // Wtf8Atom can only be constructed from a validated Wtf8 value.
-        unsafe { Wtf8::from_bytes_unchecked(self.get(atom.id())) }
-    }
-}
-
-impl<'from, 'to> swc_experimental_allocator::CloneIn<'to> for Atom<'from> {
-    type Cloned = Atom<'to>;
-
-    #[inline]
-    fn clone_in(&self, _allocator: &'to swc_experimental_allocator::Allocator) -> Self::Cloned {
-        Atom::from_id(self.id())
-    }
-}
-
-impl<'from, 'to> swc_experimental_allocator::CloneIn<'to> for Wtf8Atom<'from> {
-    type Cloned = Wtf8Atom<'to>;
-
-    #[inline]
-    fn clone_in(&self, _allocator: &'to swc_experimental_allocator::Allocator) -> Self::Cloned {
-        Wtf8Atom::from_id(self.id())
+    pub(crate) const fn is_none_wtf8_atom(id: Wtf8AtomId) -> bool {
+        id.0 == 0
     }
 }
 
@@ -237,39 +97,55 @@ mod tests {
     use std::mem::size_of;
 
     use super::*;
+    use crate::Ast;
 
     #[test]
-    fn atoms_are_two_u32s() {
-        assert_eq!(size_of::<Atom<'_>>(), 8);
-        assert_eq!(size_of::<Wtf8Atom<'_>>(), 8);
-        assert_eq!(size_of::<StringId>(), 8);
+    fn public_atoms_are_borrowed_slices_and_stored_ids_are_compact() {
+        assert_eq!(size_of::<Atom<'_>>(), 16);
+        assert_eq!(size_of::<Wtf8Atom<'_>>(), 16);
+        assert_eq!(size_of::<AtomId>(), 8);
+        assert_eq!(size_of::<Wtf8AtomId>(), 8);
     }
 
     #[test]
-    fn utf8_and_wtf8_share_interned_storage() {
+    fn atom_store_preserves_content_equality_without_interning() {
         let allocator = Allocator::default();
-        let pool = StringPool::with_capacity_in(0, 0, &allocator);
-        let atom = pool.add_atom("shared");
-        let wtf8 = pool.add_wtf8_atom(Wtf8::from_str("shared"));
+        let store = AtomStore::new_in(&allocator);
+        let first = store.store_atom(Atom::from("same"));
+        let second = store.store_atom(Atom::from("same"));
 
-        assert_eq!(atom.id(), wtf8.id());
-        assert_eq!(pool.atom(atom), "shared");
-        assert_eq!(pool.wtf8_atom(wtf8).as_str(), Some("shared"));
-        assert_eq!(unsafe { pool.dedup.as_ref() }.len(), 1);
-        assert_eq!(&**unsafe { pool.bytes.as_ref() }, b"shared");
+        assert_ne!(first, second);
+        assert_eq!(store.atom(first), store.atom(second));
     }
 
     #[test]
-    fn dedup_survives_growth() {
+    fn atom_store_keeps_the_original_borrowed_slice() {
         let allocator = Allocator::default();
-        let pool = StringPool::with_capacity_in(0, 0, &allocator);
-        let first = pool.add_atom("first");
+        let store = AtomStore::new_in(&allocator);
+        let source = String::from("borrowed");
+        let atom = Atom::from(source.as_str());
+        let id = store.store_atom(atom);
+        let stored = store.atom(id);
 
-        for index in 0..128 {
-            pool.add_atom(&format!("unique-string-{index}"));
-        }
+        assert_eq!(stored.as_ptr(), source.as_ptr());
+    }
 
-        assert_eq!(pool.add_atom("first"), first);
-        assert_eq!(unsafe { pool.dedup.as_ref() }.len(), 129);
+    #[test]
+    fn optional_atom_distinguishes_none_from_an_empty_atom() {
+        use crate::ExtraDataCompact;
+
+        let allocator = Allocator::default();
+        let ast = Ast::new(0, &allocator);
+        let none = None::<Atom<'_>>.to_extra_data(&ast);
+        let empty = Some(Atom::empty()).to_extra_data(&ast);
+
+        assert_eq!(
+            unsafe { Option::<Atom<'_>>::from_extra_data(none, &ast) },
+            None
+        );
+        assert_eq!(
+            unsafe { Option::<Atom<'_>>::from_extra_data(empty, &ast) },
+            Some(Atom::empty())
+        );
     }
 }

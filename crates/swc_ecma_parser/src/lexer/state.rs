@@ -74,7 +74,7 @@ impl<'a> crate::input::Tokens<'a> for Lexer<'a, '_> {
     }
 
     fn atom_from_span(&self, span: Span) -> Atom<'a> {
-        self.strings.add_atom(self.read_string(span))
+        Atom::from(self.read_string(span))
     }
 
     #[inline]
@@ -283,15 +283,15 @@ impl<'a> crate::input::Tokens<'a> for Lexer<'a, '_> {
                 builder.push_str(&token.to_string());
                 builder.push_str(&v);
             } else if let Some(TokenValue::Word(value)) = self.state.token_value.take() {
-                builder.push_str(self.strings.atom(value));
+                builder.push_str(value.as_ref());
                 builder.push_str(&v);
             } else {
                 builder.push_str(&token.to_string());
                 builder.push_str(&v);
             };
-            self.strings.add_atom(&builder)
+            Atom::new_in(builder, self.allocator)
         } else if token.is_known_ident() || token.is_keyword() {
-            self.strings.add_atom(&token.to_string())
+            Atom::new_in(token.to_string(), self.allocator)
         } else if let Some(TokenValue::Word(value)) = self.state.token_value.take() {
             value
         } else {
@@ -488,7 +488,7 @@ impl<'a> Lexer<'a, '_> {
                 self.input_slice_to_cur(chunk_start)
             };
             value.push_str(s);
-            self.strings.add_atom(&value)
+            Atom::new_in(value, self.allocator)
         };
 
         self.state.set_token_value(TokenValue::JsxText(value));

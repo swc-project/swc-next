@@ -40,11 +40,11 @@ pub enum ImportPhase {
 }
 
 impl<'a> ExtraDataCompact<'a> for ImportPhase {
-    fn to_extra_data(self) -> ExtraData<'a> {
+    fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
         ExtraData { other: self as u64 }
     }
 
-    unsafe fn from_extra_data(data: ExtraData<'a>, _ast: &Ast<'a>) -> Self {
+    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         unsafe { mem::transmute(data.other as u8) }
     }
 }

@@ -36,7 +36,7 @@ pub trait EsReserved<'a>: Copy {
     #[inline]
     #[rustfmt::skip]
     fn is_reserved(self, ast: &Ast<'a>) -> bool {
-        matches!(self.atom(ast).as_str(ast),
+        matches!(self.atom(ast).as_str(),
             | "break" | "case" | "catch" | "class" | "const" | "continue" | "debugger" | "default"
             | "delete" | "do" | "else" | "enum" | "export" | "extends" | "false" | "finally"
             | "for" | "function" | "if" | "import" | "in" | "instanceof" | "new" | "null"
@@ -48,7 +48,7 @@ pub trait EsReserved<'a>: Copy {
     #[inline]
     #[rustfmt::skip]
     fn is_reserved_in_strict_mode(self, ast: &Ast<'a>, is_module: bool) -> bool {
-        match self.atom(ast).as_str(ast) {
+        match self.atom(ast).as_str() {
             "await" if is_module => true,
             "implements" | "interface" | "let" | "package" | "private" | "protected" | "public"
             | "static" | "yield" => true,
@@ -58,13 +58,13 @@ pub trait EsReserved<'a>: Copy {
 
     #[inline]
     fn is_reserved_in_strict_bind(self, ast: &Ast<'a>) -> bool {
-        matches!(self.atom(ast).as_str(ast), "eval" | "arguments")
+        matches!(self.atom(ast).as_str(), "eval" | "arguments")
     }
 
     #[inline]
     #[rustfmt::skip]
     fn is_reserved_in_es3(self, ast: &Ast<'a>) -> bool {
-        matches!(self.atom(ast).as_str(ast),
+        matches!(self.atom(ast).as_str(),
             | "abstract" | "boolean" | "byte" | "char" | "double" | "final" | "float" | "goto"
             | "int" | "long" | "native" | "short" | "synchronized" | "throws" | "transient"
             | "volatile"

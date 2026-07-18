@@ -58,7 +58,7 @@ impl ExprExt for Expr {
 
                 if ctx.semantic.node_scope(i, ast) == ctx.semantic.unresolved_scope_id() {
                     !matches!(
-                        i.sym(ast).as_str(ast),
+                        i.sym(ast).as_str(),
                         "Infinity"
                             | "NaN"
                             | "Math"
@@ -132,14 +132,13 @@ impl ExprExt for Expr {
                             PropOrSpread::Spread(_) => true,
                             PropOrSpread::Prop(prop) => match prop {
                                 Prop::Getter(_) | Prop::Setter(_) | Prop::Method(_) => true,
-                                Prop::Shorthand(ident) => ident.sym(ast).as_str(ast) == "__proto__",
+                                Prop::Shorthand(ident) => ident.sym(ast).as_str() == "__proto__",
                                 Prop::KeyValue(kv) => match kv.key(ast) {
                                     PropName::Ident(ident_name) => {
-                                        ident_name.sym(ast).as_str(ast) == "__proto__"
+                                        ident_name.sym(ast).as_str() == "__proto__"
                                     }
                                     PropName::Str(str_lit) => {
-                                        str_lit.value(ast).as_wtf8(ast).as_str()
-                                            == Some("__proto__")
+                                        str_lit.value(ast).as_wtf8().as_str() == Some("__proto__")
                                     }
                                     PropName::Computed(_) => true,
                                     _ => false,
@@ -312,10 +311,10 @@ impl ExprExt for Expr {
                     }
 
                     match obj {
-                        Expr::Ident(ident) => ident.sym(ast).as_str(ast) == "Math",
-                        Expr::Lit(Lit::Str(..)) => is_pure_str_method(prop.sym(ast).as_str(ast)),
+                        Expr::Ident(ident) => ident.sym(ast).as_str() == "Math",
+                        Expr::Lit(Lit::Str(..)) => is_pure_str_method(prop.sym(ast).as_str()),
                         Expr::Tpl(tpl) if tpl.exprs(ast).is_empty() => {
-                            is_pure_str_method(prop.sym(ast).as_str(ast))
+                            is_pure_str_method(prop.sym(ast).as_str())
                         }
                         _ => false,
                     }
@@ -341,7 +340,7 @@ impl ExprExt for Expr {
         match *self {
             Expr::Ident(i) => {
                 ctx.semantic.node_scope(i, ctx.ast) == ctx.semantic.unresolved_scope_id()
-                    && i.sym(ctx.ast).as_str(ctx.ast) == id
+                    && i.sym(ctx.ast).as_str() == id
             }
             _ => false,
         }

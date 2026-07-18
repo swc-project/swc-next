@@ -57,7 +57,7 @@ impl Module {
     }
     #[inline]
     pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: TypedSubRange<ModuleItem>) {
-        let field_val: u64 = unsafe { body.to_extra_data().other };
+        let field_val: u64 = unsafe { body.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -75,7 +75,7 @@ impl Module {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = shebang.to_extra_data();
+                .get_unchecked_mut(offset.index()) = shebang.to_extra_data(ast);
         };
     }
 }
@@ -106,7 +106,7 @@ impl Script {
     }
     #[inline]
     pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: TypedSubRange<Stmt>) {
-        let field_val: u64 = unsafe { body.to_extra_data().other };
+        let field_val: u64 = unsafe { body.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -124,7 +124,7 @@ impl Script {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = shebang.to_extra_data();
+                .get_unchecked_mut(offset.index()) = shebang.to_extra_data(ast);
         };
     }
 }
@@ -308,7 +308,7 @@ impl ImportDecl {
         ast: &mut crate::Ast<'a>,
         specifiers: TypedSubRange<ImportSpecifier>,
     ) {
-        let field_val: u64 = unsafe { specifiers.to_extra_data().other };
+        let field_val: u64 = unsafe { specifiers.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -326,7 +326,7 @@ impl ImportDecl {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = src.to_extra_data();
+                .get_unchecked_mut(offset.index()) = src.to_extra_data(ast);
         };
     }
     #[inline]
@@ -344,7 +344,7 @@ impl ImportDecl {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = type_only.to_extra_data();
+                .get_unchecked_mut(offset.index()) = type_only.to_extra_data(ast);
         };
     }
     #[inline]
@@ -362,7 +362,7 @@ impl ImportDecl {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = with.to_extra_data();
+                .get_unchecked_mut(offset.index()) = with.to_extra_data(ast);
         };
     }
     #[inline]
@@ -380,7 +380,7 @@ impl ImportDecl {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = phase.to_extra_data();
+                .get_unchecked_mut(offset.index()) = phase.to_extra_data(ast);
         };
     }
 }
@@ -589,7 +589,7 @@ impl NamedExport {
         ast: &mut crate::Ast<'a>,
         specifiers: TypedSubRange<ExportSpecifier>,
     ) {
-        let field_val: u64 = unsafe { specifiers.to_extra_data().other };
+        let field_val: u64 = unsafe { specifiers.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -607,7 +607,7 @@ impl NamedExport {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = src.to_extra_data();
+                .get_unchecked_mut(offset.index()) = src.to_extra_data(ast);
         };
     }
     #[inline]
@@ -625,7 +625,7 @@ impl NamedExport {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = type_only.to_extra_data();
+                .get_unchecked_mut(offset.index()) = type_only.to_extra_data(ast);
         };
     }
     #[inline]
@@ -643,7 +643,7 @@ impl NamedExport {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = with.to_extra_data();
+                .get_unchecked_mut(offset.index()) = with.to_extra_data(ast);
         };
     }
 }
@@ -917,7 +917,7 @@ impl BlockStmt {
     }
     #[inline]
     pub fn set_stmts<'a>(self, ast: &mut crate::Ast<'a>, stmts: TypedSubRange<Stmt>) {
-        let field_val: u64 = unsafe { stmts.to_extra_data().other };
+        let field_val: u64 = unsafe { stmts.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -1352,7 +1352,7 @@ impl SwitchStmt {
     }
     #[inline]
     pub fn set_cases<'a>(self, ast: &mut crate::Ast<'a>, cases: TypedSubRange<SwitchCase>) {
-        let field_val: u64 = unsafe { cases.to_extra_data().other };
+        let field_val: u64 = unsafe { cases.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
 }
@@ -1573,7 +1573,7 @@ impl ForStmt {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = update.to_extra_data();
+                .get_unchecked_mut(offset.index()) = update.to_extra_data(ast);
         };
     }
     #[inline]
@@ -1591,7 +1591,7 @@ impl ForStmt {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+                .get_unchecked_mut(offset.index()) = body.to_extra_data(ast);
         };
     }
 }
@@ -1727,7 +1727,7 @@ impl ForOfStmt {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = is_await.to_extra_data();
+                .get_unchecked_mut(offset.index()) = is_await.to_extra_data(ast);
         };
     }
     #[inline]
@@ -1745,7 +1745,7 @@ impl ForOfStmt {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+                .get_unchecked_mut(offset.index()) = body.to_extra_data(ast);
         };
     }
 }
@@ -1774,7 +1774,7 @@ impl SwitchCase {
     }
     #[inline]
     pub fn set_cons<'a>(self, ast: &mut crate::Ast<'a>, cons: TypedSubRange<Stmt>) {
-        let field_val: u64 = unsafe { cons.to_extra_data().other };
+        let field_val: u64 = unsafe { cons.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
 }
@@ -2052,7 +2052,7 @@ impl VarDecl {
     }
     #[inline]
     pub fn set_decls<'a>(self, ast: &mut crate::Ast<'a>, decls: TypedSubRange<VarDeclarator>) {
-        let field_val: u64 = unsafe { decls.to_extra_data().other };
+        let field_val: u64 = unsafe { decls.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
 }
@@ -2113,7 +2113,7 @@ impl UsingDecl {
     }
     #[inline]
     pub fn set_decls<'a>(self, ast: &mut crate::Ast<'a>, decls: TypedSubRange<VarDeclarator>) {
-        let field_val: u64 = unsafe { decls.to_extra_data().other };
+        let field_val: u64 = unsafe { decls.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
 }
@@ -2495,7 +2495,7 @@ impl ArrayLit {
         ast: &mut crate::Ast<'a>,
         elems: TypedSubRange<Option<ExprOrSpread>>,
     ) {
-        let field_val: u64 = unsafe { elems.to_extra_data().other };
+        let field_val: u64 = unsafe { elems.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
 }
@@ -2507,7 +2507,7 @@ impl ObjectLit {
     }
     #[inline]
     pub fn set_props<'a>(self, ast: &mut crate::Ast<'a>, props: TypedSubRange<PropOrSpread>) {
-        let field_val: u64 = unsafe { props.to_extra_data().other };
+        let field_val: u64 = unsafe { props.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
 }
@@ -2549,7 +2549,7 @@ impl SpreadElement {
     }
     #[inline]
     pub fn set_dot3_token<'a>(self, ast: &mut crate::Ast<'a>, dot3_token: Span) {
-        let field_val: u64 = unsafe { dot3_token.to_extra_data().other };
+        let field_val: u64 = unsafe { dot3_token.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -3042,7 +3042,7 @@ impl ImportExpr {
     }
     #[inline]
     pub fn set_import_span<'a>(self, ast: &mut crate::Ast<'a>, import_span: Span) {
-        let field_val: u64 = unsafe { import_span.to_extra_data().other };
+        let field_val: u64 = unsafe { import_span.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -3060,7 +3060,7 @@ impl ImportExpr {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = source.to_extra_data();
+                .get_unchecked_mut(offset.index()) = source.to_extra_data(ast);
         };
     }
     #[inline]
@@ -3078,7 +3078,7 @@ impl ImportExpr {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = options.to_extra_data();
+                .get_unchecked_mut(offset.index()) = options.to_extra_data(ast);
         };
     }
     #[inline]
@@ -3096,7 +3096,7 @@ impl ImportExpr {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = phase.to_extra_data();
+                .get_unchecked_mut(offset.index()) = phase.to_extra_data(ast);
         };
     }
 }
@@ -3124,7 +3124,7 @@ impl CallExpr {
     }
     #[inline]
     pub fn set_args<'a>(self, ast: &mut crate::Ast<'a>, args: TypedSubRange<ExprOrSpread>) {
-        let field_val: u64 = unsafe { args.to_extra_data().other };
+        let field_val: u64 = unsafe { args.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
 }
@@ -3152,7 +3152,7 @@ impl NewExpr {
     }
     #[inline]
     pub fn set_args<'a>(self, ast: &mut crate::Ast<'a>, args: TypedSubRange<ExprOrSpread>) {
-        let field_val: u64 = unsafe { args.to_extra_data().other };
+        let field_val: u64 = unsafe { args.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
 }
@@ -3164,7 +3164,7 @@ impl SeqExpr {
     }
     #[inline]
     pub fn set_exprs<'a>(self, ast: &mut crate::Ast<'a>, exprs: TypedSubRange<Expr>) {
-        let field_val: u64 = unsafe { exprs.to_extra_data().other };
+        let field_val: u64 = unsafe { exprs.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
 }
@@ -3214,7 +3214,7 @@ impl ArrowExpr {
     }
     #[inline]
     pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: TypedSubRange<Pat>) {
-        let field_val: u64 = unsafe { params.to_extra_data().other };
+        let field_val: u64 = unsafe { params.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -3232,7 +3232,7 @@ impl ArrowExpr {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+                .get_unchecked_mut(offset.index()) = body.to_extra_data(ast);
         };
     }
     #[inline]
@@ -3250,7 +3250,7 @@ impl ArrowExpr {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = is_async.to_extra_data();
+                .get_unchecked_mut(offset.index()) = is_async.to_extra_data(ast);
         };
     }
 }
@@ -3348,7 +3348,7 @@ impl Tpl {
     }
     #[inline]
     pub fn set_exprs<'a>(self, ast: &mut crate::Ast<'a>, exprs: TypedSubRange<Expr>) {
-        let field_val: u64 = unsafe { exprs.to_extra_data().other };
+        let field_val: u64 = unsafe { exprs.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -3366,7 +3366,7 @@ impl Tpl {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = quasis.to_extra_data();
+                .get_unchecked_mut(offset.index()) = quasis.to_extra_data(ast);
         };
     }
 }
@@ -3448,7 +3448,7 @@ impl TplElement {
     }
     #[inline]
     pub fn set_cooked<'a>(self, ast: &mut crate::Ast<'a>, cooked: Option<Wtf8Atom<'a>>) {
-        let field_val: u64 = unsafe { cooked.to_extra_data().other };
+        let field_val: u64 = unsafe { cooked.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -3466,7 +3466,7 @@ impl TplElement {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = tail.to_extra_data();
+                .get_unchecked_mut(offset.index()) = tail.to_extra_data(ast);
         };
     }
     #[inline]
@@ -3484,7 +3484,7 @@ impl TplElement {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = raw.to_extra_data();
+                .get_unchecked_mut(offset.index()) = raw.to_extra_data(ast);
         };
     }
 }
@@ -3544,7 +3544,7 @@ impl ExprOrSpread {
     }
     #[inline]
     pub fn set_spread<'a>(self, ast: &mut crate::Ast<'a>, spread: Option<Span>) {
-        let field_val: u64 = unsafe { spread.to_extra_data().other };
+        let field_val: u64 = unsafe { spread.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -3789,7 +3789,7 @@ impl OptCall {
     }
     #[inline]
     pub fn set_args<'a>(self, ast: &mut crate::Ast<'a>, args: TypedSubRange<ExprOrSpread>) {
-        let field_val: u64 = unsafe { args.to_extra_data().other };
+        let field_val: u64 = unsafe { args.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
 }
@@ -3878,7 +3878,7 @@ impl Function {
     }
     #[inline]
     pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: TypedSubRange<Param>) {
-        let field_val: u64 = unsafe { params.to_extra_data().other };
+        let field_val: u64 = unsafe { params.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -3900,7 +3900,7 @@ impl Function {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = decorators.to_extra_data();
+                .get_unchecked_mut(offset.index()) = decorators.to_extra_data(ast);
         };
     }
     #[inline]
@@ -3918,7 +3918,7 @@ impl Function {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+                .get_unchecked_mut(offset.index()) = body.to_extra_data(ast);
         };
     }
     #[inline]
@@ -3936,7 +3936,7 @@ impl Function {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = is_generator.to_extra_data();
+                .get_unchecked_mut(offset.index()) = is_generator.to_extra_data(ast);
         };
     }
     #[inline]
@@ -3954,7 +3954,7 @@ impl Function {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = is_async.to_extra_data();
+                .get_unchecked_mut(offset.index()) = is_async.to_extra_data(ast);
         };
     }
 }
@@ -3976,7 +3976,7 @@ impl Param {
         ast: &mut crate::Ast<'a>,
         decorators: TypedSubRange<Decorator>,
     ) {
-        let field_val: u64 = unsafe { decorators.to_extra_data().other };
+        let field_val: u64 = unsafe { decorators.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -4072,7 +4072,7 @@ impl Class {
         ast: &mut crate::Ast<'a>,
         decorators: TypedSubRange<Decorator>,
     ) {
-        let field_val: u64 = unsafe { decorators.to_extra_data().other };
+        let field_val: u64 = unsafe { decorators.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -4090,7 +4090,7 @@ impl Class {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+                .get_unchecked_mut(offset.index()) = body.to_extra_data(ast);
         };
     }
     #[inline]
@@ -4108,7 +4108,7 @@ impl Class {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = super_class.to_extra_data();
+                .get_unchecked_mut(offset.index()) = super_class.to_extra_data(ast);
         };
     }
     #[inline]
@@ -4126,7 +4126,7 @@ impl Class {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = is_abstract.to_extra_data();
+                .get_unchecked_mut(offset.index()) = is_abstract.to_extra_data(ast);
         };
     }
 }
@@ -4289,7 +4289,7 @@ impl ClassProp {
         ast: &mut crate::Ast<'a>,
         decorators: TypedSubRange<Decorator>,
     ) {
-        let field_val: u64 = unsafe { decorators.to_extra_data().other };
+        let field_val: u64 = unsafe { decorators.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -4307,7 +4307,7 @@ impl ClassProp {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = key.to_extra_data();
+                .get_unchecked_mut(offset.index()) = key.to_extra_data(ast);
         };
     }
     #[inline]
@@ -4325,7 +4325,7 @@ impl ClassProp {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = value.to_extra_data();
+                .get_unchecked_mut(offset.index()) = value.to_extra_data(ast);
         };
     }
     #[inline]
@@ -4343,7 +4343,7 @@ impl ClassProp {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = is_static.to_extra_data();
+                .get_unchecked_mut(offset.index()) = is_static.to_extra_data(ast);
         };
     }
 }
@@ -4416,7 +4416,7 @@ impl PrivateProp {
         ast: &mut crate::Ast<'a>,
         decorators: TypedSubRange<Decorator>,
     ) {
-        let field_val: u64 = unsafe { decorators.to_extra_data().other };
+        let field_val: u64 = unsafe { decorators.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -4434,7 +4434,7 @@ impl PrivateProp {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = key.to_extra_data();
+                .get_unchecked_mut(offset.index()) = key.to_extra_data(ast);
         };
     }
     #[inline]
@@ -4452,7 +4452,7 @@ impl PrivateProp {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = value.to_extra_data();
+                .get_unchecked_mut(offset.index()) = value.to_extra_data(ast);
         };
     }
     #[inline]
@@ -4470,7 +4470,7 @@ impl PrivateProp {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = is_static.to_extra_data();
+                .get_unchecked_mut(offset.index()) = is_static.to_extra_data(ast);
         };
     }
 }
@@ -4652,7 +4652,7 @@ impl Constructor {
         ast: &mut crate::Ast<'a>,
         params: TypedSubRange<ParamOrTsParamProp>,
     ) {
-        let field_val: u64 = unsafe { params.to_extra_data().other };
+        let field_val: u64 = unsafe { params.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -4670,7 +4670,7 @@ impl Constructor {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = key.to_extra_data();
+                .get_unchecked_mut(offset.index()) = key.to_extra_data(ast);
         };
     }
     #[inline]
@@ -4688,7 +4688,7 @@ impl Constructor {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = body.to_extra_data();
+                .get_unchecked_mut(offset.index()) = body.to_extra_data(ast);
         };
     }
 }
@@ -4819,7 +4819,7 @@ impl AutoAccessor {
         ast: &mut crate::Ast<'a>,
         decorators: TypedSubRange<Decorator>,
     ) {
-        let field_val: u64 = unsafe { decorators.to_extra_data().other };
+        let field_val: u64 = unsafe { decorators.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -4837,7 +4837,7 @@ impl AutoAccessor {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = key.to_extra_data();
+                .get_unchecked_mut(offset.index()) = key.to_extra_data(ast);
         };
     }
     #[inline]
@@ -4855,7 +4855,7 @@ impl AutoAccessor {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = value.to_extra_data();
+                .get_unchecked_mut(offset.index()) = value.to_extra_data(ast);
         };
     }
     #[inline]
@@ -4873,7 +4873,7 @@ impl AutoAccessor {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = is_static.to_extra_data();
+                .get_unchecked_mut(offset.index()) = is_static.to_extra_data(ast);
         };
     }
 }
@@ -5272,7 +5272,7 @@ impl ArrayPat {
     }
     #[inline]
     pub fn set_elems<'a>(self, ast: &mut crate::Ast<'a>, elems: TypedSubRange<Option<Pat>>) {
-        let field_val: u64 = unsafe { elems.to_extra_data().other };
+        let field_val: u64 = unsafe { elems.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -5300,7 +5300,7 @@ impl ObjectPat {
     }
     #[inline]
     pub fn set_props<'a>(self, ast: &mut crate::Ast<'a>, props: TypedSubRange<ObjectPatProp>) {
-        let field_val: u64 = unsafe { props.to_extra_data().other };
+        let field_val: u64 = unsafe { props.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -5360,7 +5360,7 @@ impl RestPat {
     }
     #[inline]
     pub fn set_dot3_token<'a>(self, ast: &mut crate::Ast<'a>, dot3_token: Span) {
-        let field_val: u64 = unsafe { dot3_token.to_extra_data().other };
+        let field_val: u64 = unsafe { dot3_token.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -5490,7 +5490,7 @@ impl Ident {
     }
     #[inline]
     pub fn set_sym<'a>(self, ast: &mut crate::Ast<'a>, sym: Atom<'a>) {
-        let field_val: u64 = unsafe { sym.to_extra_data().other };
+        let field_val: u64 = unsafe { sym.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -5512,7 +5512,7 @@ impl IdentName {
     }
     #[inline]
     pub fn set_sym<'a>(self, ast: &mut crate::Ast<'a>, sym: Atom<'a>) {
-        let field_val: u64 = unsafe { sym.to_extra_data().other };
+        let field_val: u64 = unsafe { sym.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
 }
@@ -5524,7 +5524,7 @@ impl PrivateName {
     }
     #[inline]
     pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: Atom<'a>) {
-        let field_val: u64 = unsafe { name.to_extra_data().other };
+        let field_val: u64 = unsafe { name.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
 }
@@ -5640,7 +5640,7 @@ impl Str {
     }
     #[inline]
     pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: Wtf8Atom<'a>) {
-        let field_val: u64 = unsafe { value.to_extra_data().other };
+        let field_val: u64 = unsafe { value.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -5658,7 +5658,7 @@ impl Str {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = raw.to_extra_data();
+                .get_unchecked_mut(offset.index()) = raw.to_extra_data(ast);
         };
     }
 }
@@ -5707,7 +5707,7 @@ impl Number {
     }
     #[inline]
     pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: f64) {
-        let field_val: u64 = unsafe { value.to_extra_data().other };
+        let field_val: u64 = unsafe { value.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -5725,7 +5725,7 @@ impl Number {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = raw.to_extra_data();
+                .get_unchecked_mut(offset.index()) = raw.to_extra_data(ast);
         };
     }
 }
@@ -5756,7 +5756,7 @@ impl BigInt {
     }
     #[inline]
     pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: Atom<'a>) {
-        let field_val: u64 = unsafe { value.to_extra_data().other };
+        let field_val: u64 = unsafe { value.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -5774,7 +5774,7 @@ impl BigInt {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = raw.to_extra_data();
+                .get_unchecked_mut(offset.index()) = raw.to_extra_data(ast);
         };
     }
 }
@@ -5805,7 +5805,7 @@ impl Regex {
     }
     #[inline]
     pub fn set_exp<'a>(self, ast: &mut crate::Ast<'a>, exp: Atom<'a>) {
-        let field_val: u64 = unsafe { exp.to_extra_data().other };
+        let field_val: u64 = unsafe { exp.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -5823,7 +5823,7 @@ impl Regex {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = flags.to_extra_data();
+                .get_unchecked_mut(offset.index()) = flags.to_extra_data(ast);
         };
     }
 }
@@ -6055,7 +6055,7 @@ impl JSXOpeningElement {
     }
     #[inline]
     pub fn set_attrs<'a>(self, ast: &mut crate::Ast<'a>, attrs: TypedSubRange<JSXAttrOrSpread>) {
-        let field_val: u64 = unsafe { attrs.to_extra_data().other };
+        let field_val: u64 = unsafe { attrs.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -6073,7 +6073,7 @@ impl JSXOpeningElement {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = name.to_extra_data();
+                .get_unchecked_mut(offset.index()) = name.to_extra_data(ast);
         };
     }
     #[inline]
@@ -6091,7 +6091,7 @@ impl JSXOpeningElement {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = self_closing.to_extra_data();
+                .get_unchecked_mut(offset.index()) = self_closing.to_extra_data(ast);
         };
     }
 }
@@ -6268,7 +6268,7 @@ impl JSXText {
     }
     #[inline]
     pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: Atom<'a>) {
-        let field_val: u64 = unsafe { value.to_extra_data().other };
+        let field_val: u64 = unsafe { value.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -6286,7 +6286,7 @@ impl JSXText {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = raw.to_extra_data();
+                .get_unchecked_mut(offset.index()) = raw.to_extra_data(ast);
         };
     }
 }
@@ -6340,7 +6340,7 @@ impl JSXElement {
         ast: &mut crate::Ast<'a>,
         children: TypedSubRange<JSXElementChild>,
     ) {
-        let field_val: u64 = unsafe { children.to_extra_data().other };
+        let field_val: u64 = unsafe { children.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -6358,7 +6358,7 @@ impl JSXElement {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = opening.to_extra_data();
+                .get_unchecked_mut(offset.index()) = opening.to_extra_data(ast);
         };
     }
     #[inline]
@@ -6376,7 +6376,7 @@ impl JSXElement {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = closing.to_extra_data();
+                .get_unchecked_mut(offset.index()) = closing.to_extra_data(ast);
         };
     }
 }
@@ -6487,7 +6487,7 @@ impl JSXFragment {
         ast: &mut crate::Ast<'a>,
         children: TypedSubRange<JSXElementChild>,
     ) {
-        let field_val: u64 = unsafe { children.to_extra_data().other };
+        let field_val: u64 = unsafe { children.to_extra_data(ast).other };
         unsafe { ast.nodes.data_mut_unchecked(self.0) }.set_inline_data(field_val);
     }
     #[inline]
@@ -6505,7 +6505,7 @@ impl JSXFragment {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = opening.to_extra_data();
+                .get_unchecked_mut(offset.index()) = opening.to_extra_data(ast);
         };
     }
     #[inline]
@@ -6523,7 +6523,7 @@ impl JSXFragment {
         unsafe {
             *ast.extra_data
                 .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = closing.to_extra_data();
+                .get_unchecked_mut(offset.index()) = closing.to_extra_data(ast);
         };
     }
 }

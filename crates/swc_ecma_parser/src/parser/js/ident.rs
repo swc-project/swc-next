@@ -92,7 +92,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             let word = self.input_mut().expect_word_token_and_bump();
             let word = self.to_utf8_ref(word);
 
-            let word_str = word.as_str(self.ast);
+            let word_str = word.as_str();
             if "arguments" == word_str || "eval" == word_str {
                 self.emit_strict_mode_err(span, SyntaxError::EvalAndArgumentsInStrict);
             }
@@ -151,7 +151,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         if t == Token::Enum {
             let word = self.input_mut().expect_word_token_and_bump();
             let word = self.to_utf8_ref(word);
-            let word_str = word.as_str(self.ast);
+            let word_str = word.as_str();
             self.emit_err(
                 span,
                 SyntaxError::InvalidIdentInStrict(word_str.to_string()),
@@ -170,7 +170,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         {
             let word = self.input_mut().expect_word_token_and_bump();
             let word = self.to_utf8_ref(word);
-            let word_str = word.as_str(self.ast);
+            let word_str = word.as_str();
             self.emit_strict_mode_err(
                 span,
                 SyntaxError::InvalidIdentInStrict(word_str.to_string()),
@@ -205,7 +205,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         } else if t == Token::Ident {
             let word = self.input_mut().expect_word_token_and_bump();
             let word = self.to_utf8_ref(word);
-            let word_str = word.as_str(self.ast);
+            let word_str = word.as_str();
             if self.ctx().contains(Context::InClassField) && word_str == "arguments" {
                 self.emit_err(span, SyntaxError::ArgumentsInClassField)
             }

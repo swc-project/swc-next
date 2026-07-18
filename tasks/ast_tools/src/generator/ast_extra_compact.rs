@@ -24,12 +24,12 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
                 impls.extend(quote! {
                    impl<'a> ExtraDataCompact<'a> for #ident {
                         #[inline]
-                        fn to_extra_data(self) -> ExtraData<'a> {
+                        fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
                             #to_expr
                         }
 
                         #[inline]
-                        unsafe fn from_extra_data(data: ExtraData<'a>, ast: &Ast<'a>) -> Self {
+                        unsafe fn from_extra_data(data: ExtraData, ast: &Ast<'a>) -> Self {
                             #from_expr
                         }
                    }
@@ -76,12 +76,12 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
                 impls.extend(quote! {
                    impl<'a> ExtraDataCompact<'a> for #ident {
                         #[inline]
-                        fn to_extra_data(self) -> ExtraData<'a> {
+                        fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
                             #to_expr
                         }
 
                         #[inline]
-                        unsafe fn from_extra_data(data: ExtraData<'a>, ast: &Ast<'a>) -> Self {
+                        unsafe fn from_extra_data(data: ExtraData, ast: &Ast<'a>) -> Self {
                             #from_expr
                         }
                    }
@@ -119,12 +119,12 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
                 impls.extend(quote! {
                    impl<'a> ExtraDataCompact<'a> for #ty_ident {
                         #[inline]
-                        fn to_extra_data(self) -> ExtraData<'a> {
+                        fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
                             #opt_to
                         }
 
                         #[inline]
-                        unsafe fn from_extra_data(data: ExtraData<'a>, ast: &Ast<'a>) -> Self {
+                        unsafe fn from_extra_data(data: ExtraData, ast: &Ast<'a>) -> Self {
                             #opt_from
                         }
                    }

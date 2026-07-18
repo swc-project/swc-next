@@ -187,7 +187,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                     })?;
 
                     let possibly_orig_name_sym = possibly_orig_name.sym(self.ast);
-                    let possibly_orig_name_str = possibly_orig_name_sym.as_str(self.ast);
+                    let possibly_orig_name_str = possibly_orig_name_sym.as_str();
                     if possibly_orig_token == Token::As {
                         // `import { type as } from 'mod'`
                         if !self.input().cur().is_word() {
@@ -275,7 +275,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 // 'IdentifierName' as 'ImportedBinding'
                 if self
                     .ctx()
-                    .is_reserved_word(orig_name.sym(self.ast).as_str(self.ast))
+                    .is_reserved_word(orig_name.sym(self.ast).as_str())
                 {
                     syntax_error!(
                         self,
@@ -309,7 +309,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                         SyntaxError::ImportBindingIsString(
                             orig_str
                                 .value(self.ast)
-                                .as_wtf8(self.ast)
+                                .as_wtf8()
                                 .to_string_lossy()
                                 .into_owned()
                         )
@@ -683,21 +683,17 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                                     default
                                         .exported(self.ast)
                                         .sym(self.ast)
-                                        .as_str(self.ast)
+                                        .as_str()
                                         .to_string(),
                                 ),
                             );
                         }
                         ExportSpecifier::Namespace(namespace) => {
                             let export_name = match namespace.name(self.ast) {
-                                ModuleExportName::Ident(i) => {
-                                    i.sym(self.ast).as_str(self.ast).to_string()
+                                ModuleExportName::Ident(i) => i.sym(self.ast).as_str().to_string(),
+                                ModuleExportName::Str(s) => {
+                                    s.value(self.ast).as_wtf8().to_string_lossy().into_owned()
                                 }
-                                ModuleExportName::Str(s) => s
-                                    .value(self.ast)
-                                    .as_wtf8(self.ast)
-                                    .to_string_lossy()
-                                    .into_owned(),
                                 #[cfg(swc_ast_unknown)]
                                 _ => unreachable!(),
                             };
@@ -711,7 +707,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                                 self.emit_err(
                                     id.span(self.ast),
                                     SyntaxError::ExportExpectFrom(
-                                        id.sym(self.ast).as_str(self.ast).to_string(),
+                                        id.sym(self.ast).as_str().to_string(),
                                     ),
                                 );
                             }
@@ -809,7 +805,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                     let local_token = p.input().cur();
                     let mut local = p.parse_imported_default_binding()?;
                     let local_sym_atom = local.sym(p.ast);
-                    let local_sym = local_sym_atom.as_str(p.ast);
+                    let local_sym = local_sym_atom.as_str();
                     let is_source = local_sym == "source";
                     let is_defer = local_sym == "defer";
 

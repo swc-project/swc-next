@@ -186,7 +186,8 @@ impl<T> TypedSubRange<T> {
     where
         T: ExtraDataCompact<'a>,
     {
-        ast.extra_data[at.inner.index()] = new.to_extra_data();
+        let data = new.to_extra_data(ast);
+        ast.extra_data[at.inner.index()] = data;
     }
 
     #[inline]

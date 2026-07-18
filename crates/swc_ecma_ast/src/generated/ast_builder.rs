@@ -26,11 +26,11 @@ impl<'a> Ast<'a> {
         body: TypedSubRange<ModuleItem>,
         shebang: Option<Atom<'a>>,
     ) -> Module {
-        let _f0 = self.add_extra(shebang.to_extra_data());
+        let _f0 = self.add_extra(shebang.to_extra_data(self));
         Module(self.add_node(
             span,
             NodeKind::Module,
-            NodePayload::partial(0u64 | unsafe { body.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { body.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
@@ -40,11 +40,11 @@ impl<'a> Ast<'a> {
         body: TypedSubRange<Stmt>,
         shebang: Option<Atom<'a>>,
     ) -> Script {
-        let _f0 = self.add_extra(shebang.to_extra_data());
+        let _f0 = self.add_extra(shebang.to_extra_data(self));
         Script(self.add_node(
             span,
             NodeKind::Script,
-            NodePayload::partial(0u64 | unsafe { body.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { body.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
@@ -362,14 +362,14 @@ impl<'a> Ast<'a> {
         with: Option<ObjectLit>,
         phase: ImportPhase,
     ) -> ImportDecl {
-        let _f0 = self.add_extra(src.to_extra_data());
-        let _f1 = self.add_extra(type_only.to_extra_data());
-        let _f2 = self.add_extra(with.to_extra_data());
-        let _f3 = self.add_extra(phase.to_extra_data());
+        let _f0 = self.add_extra(src.to_extra_data(self));
+        let _f1 = self.add_extra(type_only.to_extra_data(self));
+        let _f2 = self.add_extra(with.to_extra_data(self));
+        let _f3 = self.add_extra(phase.to_extra_data(self));
         ImportDecl(self.add_node(
             span,
             NodeKind::ImportDecl,
-            NodePayload::partial(0u64 | unsafe { specifiers.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { specifiers.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
@@ -452,13 +452,13 @@ impl<'a> Ast<'a> {
         type_only: bool,
         with: Option<ObjectLit>,
     ) -> NamedExport {
-        let _f0 = self.add_extra(src.to_extra_data());
-        let _f1 = self.add_extra(type_only.to_extra_data());
-        let _f2 = self.add_extra(with.to_extra_data());
+        let _f0 = self.add_extra(src.to_extra_data(self));
+        let _f1 = self.add_extra(type_only.to_extra_data(self));
+        let _f2 = self.add_extra(with.to_extra_data(self));
         NamedExport(self.add_node(
             span,
             NodeKind::NamedExport,
-            NodePayload::partial(0u64 | unsafe { specifiers.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { specifiers.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
@@ -605,7 +605,7 @@ impl<'a> Ast<'a> {
             span,
             NodeKind::BlockStmt,
             NodePayload::inline(
-                0u64 | unsafe { stmts.to_extra_data().other },
+                0u64 | unsafe { stmts.to_extra_data(self).other },
                 0u32 | _inline_default_1.map_or(0, |id| id.index() as u32 + 1),
             ),
         ))
@@ -846,7 +846,7 @@ impl<'a> Ast<'a> {
             span,
             NodeKind::SwitchStmt,
             NodePayload::inline(
-                0u64 | unsafe { cases.to_extra_data().other },
+                0u64 | unsafe { cases.to_extra_data(self).other },
                 0u32 | discriminant.node_id().index() as u32,
             ),
         ))
@@ -912,8 +912,8 @@ impl<'a> Ast<'a> {
         update: Option<Expr>,
         body: Stmt,
     ) -> ForStmt {
-        let _f0 = self.add_extra(update.to_extra_data());
-        let _f1 = self.add_extra(body.to_extra_data());
+        let _f0 = self.add_extra(update.to_extra_data(self));
+        let _f1 = self.add_extra(body.to_extra_data(self));
         ForStmt(self.add_node(
             span,
             NodeKind::ForStmt,
@@ -946,8 +946,8 @@ impl<'a> Ast<'a> {
         right: Expr,
         body: Stmt,
     ) -> ForOfStmt {
-        let _f0 = self.add_extra(is_await.to_extra_data());
-        let _f1 = self.add_extra(body.to_extra_data());
+        let _f0 = self.add_extra(is_await.to_extra_data(self));
+        let _f1 = self.add_extra(body.to_extra_data(self));
         ForOfStmt(self.add_node(
             span,
             NodeKind::ForOfStmt,
@@ -969,7 +969,7 @@ impl<'a> Ast<'a> {
             span,
             NodeKind::SwitchCase,
             NodePayload::inline(
-                0u64 | unsafe { cons.to_extra_data().other },
+                0u64 | unsafe { cons.to_extra_data(self).other },
                 0u32 | crate::OptionalNodeId::from(test.map(|n| n.node_id())).into_raw(),
             ),
         ))
@@ -1804,7 +1804,7 @@ impl<'a> Ast<'a> {
             span,
             NodeKind::VarDecl,
             NodePayload::inline(
-                0u64 | unsafe { decls.to_extra_data().other },
+                0u64 | unsafe { decls.to_extra_data(self).other },
                 0u32 | kind as u32 | ((declare as u32) << 8usize),
             ),
         ))
@@ -1833,7 +1833,7 @@ impl<'a> Ast<'a> {
             span,
             NodeKind::UsingDecl,
             NodePayload::inline(
-                0u64 | unsafe { decls.to_extra_data().other },
+                0u64 | unsafe { decls.to_extra_data(self).other },
                 0u32 | is_await as u32,
             ),
         ))
@@ -2062,7 +2062,7 @@ impl<'a> Ast<'a> {
         ArrayLit(self.add_node(
             span,
             NodeKind::ArrayLit,
-            NodePayload::inline(0u64 | unsafe { elems.to_extra_data().other }, 0u32),
+            NodePayload::inline(0u64 | unsafe { elems.to_extra_data(self).other }, 0u32),
         ))
     }
     #[inline]
@@ -2070,7 +2070,7 @@ impl<'a> Ast<'a> {
         ObjectLit(self.add_node(
             span,
             NodeKind::ObjectLit,
-            NodePayload::inline(0u64 | unsafe { props.to_extra_data().other }, 0u32),
+            NodePayload::inline(0u64 | unsafe { props.to_extra_data(self).other }, 0u32),
         ))
     }
     #[inline]
@@ -2137,7 +2137,7 @@ impl<'a> Ast<'a> {
             span,
             NodeKind::SpreadElement,
             NodePayload::inline(
-                0u64 | unsafe { dot3_token.to_extra_data().other },
+                0u64 | unsafe { dot3_token.to_extra_data(self).other },
                 0u32 | expr.node_id().index() as u32,
             ),
         ))
@@ -2291,13 +2291,13 @@ impl<'a> Ast<'a> {
         options: Option<Expr>,
         phase: ImportPhase,
     ) -> ImportExpr {
-        let _f0 = self.add_extra(source.to_extra_data());
-        let _f1 = self.add_extra(options.to_extra_data());
-        let _f2 = self.add_extra(phase.to_extra_data());
+        let _f0 = self.add_extra(source.to_extra_data(self));
+        let _f1 = self.add_extra(options.to_extra_data(self));
+        let _f2 = self.add_extra(phase.to_extra_data(self));
         ImportExpr(self.add_node(
             span,
             NodeKind::ImportExpr,
-            NodePayload::partial(0u64 | unsafe { import_span.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { import_span.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
@@ -2311,7 +2311,7 @@ impl<'a> Ast<'a> {
             span,
             NodeKind::CallExpr,
             NodePayload::inline(
-                0u64 | unsafe { args.to_extra_data().other },
+                0u64 | unsafe { args.to_extra_data(self).other },
                 0u32 | callee.node_id().index() as u32,
             ),
         ))
@@ -2327,7 +2327,7 @@ impl<'a> Ast<'a> {
             span,
             NodeKind::NewExpr,
             NodePayload::inline(
-                0u64 | unsafe { args.to_extra_data().other },
+                0u64 | unsafe { args.to_extra_data(self).other },
                 0u32 | callee.node_id().index() as u32,
             ),
         ))
@@ -2337,7 +2337,7 @@ impl<'a> Ast<'a> {
         SeqExpr(self.add_node(
             span,
             NodeKind::SeqExpr,
-            NodePayload::inline(0u64 | unsafe { exprs.to_extra_data().other }, 0u32),
+            NodePayload::inline(0u64 | unsafe { exprs.to_extra_data(self).other }, 0u32),
         ))
     }
     #[inline]
@@ -2348,12 +2348,12 @@ impl<'a> Ast<'a> {
         body: BlockStmtOrExpr,
         is_async: bool,
     ) -> ArrowExpr {
-        let _f0 = self.add_extra(body.to_extra_data());
-        let _f1 = self.add_extra(is_async.to_extra_data());
+        let _f0 = self.add_extra(body.to_extra_data(self));
+        let _f1 = self.add_extra(is_async.to_extra_data(self));
         ArrowExpr(self.add_node(
             span,
             NodeKind::ArrowExpr,
-            NodePayload::partial(0u64 | unsafe { params.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { params.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
@@ -2391,11 +2391,11 @@ impl<'a> Ast<'a> {
         exprs: TypedSubRange<Expr>,
         quasis: TypedSubRange<TplElement>,
     ) -> Tpl {
-        let _f0 = self.add_extra(quasis.to_extra_data());
+        let _f0 = self.add_extra(quasis.to_extra_data(self));
         Tpl(self.add_node(
             span,
             NodeKind::Tpl,
-            NodePayload::partial(0u64 | unsafe { exprs.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { exprs.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
@@ -2418,12 +2418,12 @@ impl<'a> Ast<'a> {
         cooked: Option<Wtf8Atom<'a>>,
         raw: Atom<'a>,
     ) -> TplElement {
-        let _f0 = self.add_extra(tail.to_extra_data());
-        let _f1 = self.add_extra(raw.to_extra_data());
+        let _f0 = self.add_extra(tail.to_extra_data(self));
+        let _f1 = self.add_extra(raw.to_extra_data(self));
         TplElement(self.add_node(
             span,
             NodeKind::TplElement,
-            NodePayload::partial(0u64 | unsafe { cooked.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { cooked.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
@@ -2741,7 +2741,7 @@ impl<'a> Ast<'a> {
             span,
             NodeKind::ExprOrSpread,
             NodePayload::inline(
-                0u64 | unsafe { spread.to_extra_data().other },
+                0u64 | unsafe { spread.to_extra_data(self).other },
                 0u32 | expr.node_id().index() as u32,
             ),
         ))
@@ -3281,7 +3281,7 @@ impl<'a> Ast<'a> {
             span,
             NodeKind::OptCall,
             NodePayload::inline(
-                0u64 | unsafe { args.to_extra_data().other },
+                0u64 | unsafe { args.to_extra_data(self).other },
                 0u32 | callee.node_id().index() as u32,
             ),
         ))
@@ -3300,14 +3300,14 @@ impl<'a> Ast<'a> {
         is_generator: bool,
         is_async: bool,
     ) -> Function {
-        let _f0 = self.add_extra(decorators.to_extra_data());
-        let _f1 = self.add_extra(body.to_extra_data());
-        let _f2 = self.add_extra(is_generator.to_extra_data());
-        let _f3 = self.add_extra(is_async.to_extra_data());
+        let _f0 = self.add_extra(decorators.to_extra_data(self));
+        let _f1 = self.add_extra(body.to_extra_data(self));
+        let _f2 = self.add_extra(is_generator.to_extra_data(self));
+        let _f3 = self.add_extra(is_async.to_extra_data(self));
         Function(self.add_node(
             span,
             NodeKind::Function,
-            NodePayload::partial(0u64 | unsafe { params.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { params.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
@@ -3316,7 +3316,7 @@ impl<'a> Ast<'a> {
             span,
             NodeKind::Param,
             NodePayload::inline(
-                0u64 | unsafe { decorators.to_extra_data().other },
+                0u64 | unsafe { decorators.to_extra_data(self).other },
                 0u32 | pat.node_id().index() as u32,
             ),
         ))
@@ -3339,13 +3339,13 @@ impl<'a> Ast<'a> {
         super_class: Option<Expr>,
         is_abstract: bool,
     ) -> Class {
-        let _f0 = self.add_extra(body.to_extra_data());
-        let _f1 = self.add_extra(super_class.to_extra_data());
-        let _f2 = self.add_extra(is_abstract.to_extra_data());
+        let _f0 = self.add_extra(body.to_extra_data(self));
+        let _f1 = self.add_extra(super_class.to_extra_data(self));
+        let _f2 = self.add_extra(is_abstract.to_extra_data(self));
         Class(self.add_node(
             span,
             NodeKind::Class,
-            NodePayload::partial(0u64 | unsafe { decorators.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { decorators.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
@@ -3445,13 +3445,13 @@ impl<'a> Ast<'a> {
         is_static: bool,
         decorators: TypedSubRange<Decorator>,
     ) -> ClassProp {
-        let _f0 = self.add_extra(key.to_extra_data());
-        let _f1 = self.add_extra(value.to_extra_data());
-        let _f2 = self.add_extra(is_static.to_extra_data());
+        let _f0 = self.add_extra(key.to_extra_data(self));
+        let _f1 = self.add_extra(value.to_extra_data(self));
+        let _f2 = self.add_extra(is_static.to_extra_data(self));
         ClassProp(self.add_node(
             span,
             NodeKind::ClassProp,
-            NodePayload::partial(0u64 | unsafe { decorators.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { decorators.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
@@ -3463,13 +3463,13 @@ impl<'a> Ast<'a> {
         is_static: bool,
         decorators: TypedSubRange<Decorator>,
     ) -> PrivateProp {
-        let _f0 = self.add_extra(key.to_extra_data());
-        let _f1 = self.add_extra(value.to_extra_data());
-        let _f2 = self.add_extra(is_static.to_extra_data());
+        let _f0 = self.add_extra(key.to_extra_data(self));
+        let _f1 = self.add_extra(value.to_extra_data(self));
+        let _f2 = self.add_extra(is_static.to_extra_data(self));
         PrivateProp(self.add_node(
             span,
             NodeKind::PrivateProp,
-            NodePayload::partial(0u64 | unsafe { decorators.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { decorators.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
@@ -3518,12 +3518,12 @@ impl<'a> Ast<'a> {
         params: TypedSubRange<ParamOrTsParamProp>,
         body: Option<BlockStmt>,
     ) -> Constructor {
-        let _f0 = self.add_extra(key.to_extra_data());
-        let _f1 = self.add_extra(body.to_extra_data());
+        let _f0 = self.add_extra(key.to_extra_data(self));
+        let _f1 = self.add_extra(body.to_extra_data(self));
         Constructor(self.add_node(
             span,
             NodeKind::Constructor,
-            NodePayload::partial(0u64 | unsafe { params.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { params.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
@@ -3587,13 +3587,13 @@ impl<'a> Ast<'a> {
         is_static: bool,
         decorators: TypedSubRange<Decorator>,
     ) -> AutoAccessor {
-        let _f0 = self.add_extra(key.to_extra_data());
-        let _f1 = self.add_extra(value.to_extra_data());
-        let _f2 = self.add_extra(is_static.to_extra_data());
+        let _f0 = self.add_extra(key.to_extra_data(self));
+        let _f1 = self.add_extra(value.to_extra_data(self));
+        let _f2 = self.add_extra(is_static.to_extra_data(self));
         AutoAccessor(self.add_node(
             span,
             NodeKind::AutoAccessor,
-            NodePayload::partial(0u64 | unsafe { decorators.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { decorators.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
@@ -4015,7 +4015,7 @@ impl<'a> Ast<'a> {
             span,
             NodeKind::ArrayPat,
             NodePayload::inline(
-                0u64 | unsafe { elems.to_extra_data().other },
+                0u64 | unsafe { elems.to_extra_data(self).other },
                 0u32 | optional as u32,
             ),
         ))
@@ -4031,7 +4031,7 @@ impl<'a> Ast<'a> {
             span,
             NodeKind::ObjectPat,
             NodePayload::inline(
-                0u64 | unsafe { props.to_extra_data().other },
+                0u64 | unsafe { props.to_extra_data(self).other },
                 0u32 | optional as u32,
             ),
         ))
@@ -4054,7 +4054,7 @@ impl<'a> Ast<'a> {
             span,
             NodeKind::RestPat,
             NodePayload::inline(
-                0u64 | unsafe { dot3_token.to_extra_data().other },
+                0u64 | unsafe { dot3_token.to_extra_data(self).other },
                 0u32 | arg.node_id().index() as u32,
             ),
         ))
@@ -4123,7 +4123,7 @@ impl<'a> Ast<'a> {
             span,
             NodeKind::Ident,
             NodePayload::inline(
-                0u64 | unsafe { sym.to_extra_data().other },
+                0u64 | unsafe { sym.to_extra_data(self).other },
                 0u32 | _inline_default_1.map_or(0, |id| id.index() as u32 + 1),
             ),
         ))
@@ -4133,7 +4133,7 @@ impl<'a> Ast<'a> {
         IdentName(self.add_node(
             span,
             NodeKind::IdentName,
-            NodePayload::inline(0u64 | unsafe { sym.to_extra_data().other }, 0u32),
+            NodePayload::inline(0u64 | unsafe { sym.to_extra_data(self).other }, 0u32),
         ))
     }
     #[inline]
@@ -4141,7 +4141,7 @@ impl<'a> Ast<'a> {
         PrivateName(self.add_node(
             span,
             NodeKind::PrivateName,
-            NodePayload::inline(0u64 | unsafe { name.to_extra_data().other }, 0u32),
+            NodePayload::inline(0u64 | unsafe { name.to_extra_data(self).other }, 0u32),
         ))
     }
     #[inline]
@@ -4178,11 +4178,11 @@ impl<'a> Ast<'a> {
     }
     #[inline]
     pub fn str(&mut self, span: Span, value: Wtf8Atom<'a>, raw: Option<Atom<'a>>) -> Str {
-        let _f0 = self.add_extra(raw.to_extra_data());
+        let _f0 = self.add_extra(raw.to_extra_data(self));
         Str(self.add_node(
             span,
             NodeKind::Str,
-            NodePayload::partial(0u64 | unsafe { value.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { value.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
@@ -4199,29 +4199,29 @@ impl<'a> Ast<'a> {
     }
     #[inline]
     pub fn number(&mut self, span: Span, value: f64, raw: Option<Atom<'a>>) -> Number {
-        let _f0 = self.add_extra(raw.to_extra_data());
+        let _f0 = self.add_extra(raw.to_extra_data(self));
         Number(self.add_node(
             span,
             NodeKind::Number,
-            NodePayload::partial(0u64 | unsafe { value.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { value.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
     pub fn big_int(&mut self, span: Span, value: Atom<'a>, raw: Option<Atom<'a>>) -> BigInt {
-        let _f0 = self.add_extra(raw.to_extra_data());
+        let _f0 = self.add_extra(raw.to_extra_data(self));
         BigInt(self.add_node(
             span,
             NodeKind::BigInt,
-            NodePayload::partial(0u64 | unsafe { value.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { value.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
     pub fn regex(&mut self, span: Span, exp: Atom<'a>, flags: Atom<'a>) -> Regex {
-        let _f0 = self.add_extra(flags.to_extra_data());
+        let _f0 = self.add_extra(flags.to_extra_data(self));
         Regex(self.add_node(
             span,
             NodeKind::Regex,
-            NodePayload::partial(0u64 | unsafe { exp.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { exp.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
@@ -4628,12 +4628,12 @@ impl<'a> Ast<'a> {
         attrs: TypedSubRange<JSXAttrOrSpread>,
         self_closing: bool,
     ) -> JSXOpeningElement {
-        let _f0 = self.add_extra(name.to_extra_data());
-        let _f1 = self.add_extra(self_closing.to_extra_data());
+        let _f0 = self.add_extra(name.to_extra_data(self));
+        let _f1 = self.add_extra(self_closing.to_extra_data(self));
         JSXOpeningElement(self.add_node(
             span,
             NodeKind::JSXOpeningElement,
-            NodePayload::partial(0u64 | unsafe { attrs.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { attrs.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
@@ -4728,11 +4728,11 @@ impl<'a> Ast<'a> {
     }
     #[inline]
     pub fn jsx_text(&mut self, span: Span, value: Atom<'a>, raw: Atom<'a>) -> JSXText {
-        let _f0 = self.add_extra(raw.to_extra_data());
+        let _f0 = self.add_extra(raw.to_extra_data(self));
         JSXText(self.add_node(
             span,
             NodeKind::JSXText,
-            NodePayload::partial(0u64 | unsafe { value.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { value.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
@@ -4743,12 +4743,12 @@ impl<'a> Ast<'a> {
         children: TypedSubRange<JSXElementChild>,
         closing: Option<JSXClosingElement>,
     ) -> JSXElement {
-        let _f0 = self.add_extra(opening.to_extra_data());
-        let _f1 = self.add_extra(closing.to_extra_data());
+        let _f0 = self.add_extra(opening.to_extra_data(self));
+        let _f1 = self.add_extra(closing.to_extra_data(self));
         JSXElement(self.add_node(
             span,
             NodeKind::JSXElement,
-            NodePayload::partial(0u64 | unsafe { children.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { children.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
@@ -4804,12 +4804,12 @@ impl<'a> Ast<'a> {
         children: TypedSubRange<JSXElementChild>,
         closing: JSXClosingFragment,
     ) -> JSXFragment {
-        let _f0 = self.add_extra(opening.to_extra_data());
-        let _f1 = self.add_extra(closing.to_extra_data());
+        let _f0 = self.add_extra(opening.to_extra_data(self));
+        let _f1 = self.add_extra(closing.to_extra_data(self));
         JSXFragment(self.add_node(
             span,
             NodeKind::JSXFragment,
-            NodePayload::partial(0u64 | unsafe { children.to_extra_data().other }, _f0),
+            NodePayload::partial(0u64 | unsafe { children.to_extra_data(self).other }, _f0),
         ))
     }
     #[inline]
