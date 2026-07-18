@@ -174,7 +174,8 @@ impl<N> ScratchIndex<N> {
     where
         N: ExtraDataCompact<'a>,
     {
-        let range = p.ast.add_typed_sub_range(p.scratch.drain(self.start..));
+        let range = p.ast.add_extra_data_sub_range(&p.scratch[self.start..]);
+        p.scratch.truncate(self.start);
         unsafe { std::mem::transmute(range) }
     }
 

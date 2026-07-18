@@ -455,6 +455,17 @@ impl<'a> Ast<'a> {
         }
     }
 
+    /// Append pre-encoded extra data as a single contiguous range.
+    pub fn add_extra_data_sub_range(&mut self, data: &[ExtraData]) -> SubRange {
+        let start = self.next_extra_data_id();
+        let end = start.index() + data.len();
+        self.extra_data.extend_from_slice_copy(data);
+        SubRange {
+            start,
+            end: ExtraDataId::from_usize_unchecked(end),
+        }
+    }
+
     #[inline]
     pub fn allocator(&self) -> &'a Allocator {
         self.allocator
