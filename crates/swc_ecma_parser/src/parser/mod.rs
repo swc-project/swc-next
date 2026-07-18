@@ -118,8 +118,8 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
     }
 
     #[inline]
-    fn atom_from_span(&mut self, span: Span) -> Atom<'a> {
-        self.ast.add_atom(self.input.iter.read_string(span))
+    fn atom_from_span(&self, span: Span) -> Atom<'a> {
+        Atom::from(self.input.iter.read_string(span))
     }
 }
 
