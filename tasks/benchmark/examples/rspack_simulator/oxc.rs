@@ -17,10 +17,10 @@ pub fn run(src: &'static str) {
     let allocator = Allocator::default();
     let source_type = SourceType::unambiguous();
     let (program, tokens) = run_parse(src, source_type, &allocator);
-    let semantic = run_semantic(&program);
-    let semi = run_collect_semicolons(&program, &tokens);
-    let idents = run_scan_dependencies(&program);
-    drop((semantic, semi, idents));
+    // let semantic = run_semantic(&program);
+    // let semi = run_collect_semicolons(&program, &tokens);
+    // let idents = run_scan_dependencies(&program);
+    drop((program, tokens));
 }
 
 #[inline(never)]

@@ -22,13 +22,14 @@ pub enum CompatMode {
 pub fn run(src: &'static str, compat: Option<CompatMode>) {
     let allocator = Allocator::new();
     let (mut program, mut ast, tokens) = run_parse(src, &allocator);
-    run_remove_paren(&mut program, &mut ast);
-    let semantic = run_resolver(program, &mut ast);
-    let _semi = run_collect_semiconlons(&ast, program, &tokens);
-    match compat {
-        Some(compat) => run_compat_and_scan(program, &ast, &semantic, compat),
-        None => run_scan_dependencies(program, &ast),
-    }
+    // run_remove_paren(&mut program, &mut ast);
+    // let semantic = run_resolver(program, &mut ast);
+    // let _semi = run_collect_semiconlons(&ast, program, &tokens);
+    // match compat {
+    //     Some(compat) => run_compat_and_scan(program, &ast, &semantic, compat),
+    //     None => run_scan_dependencies(program, &ast),
+    // }
+    drop((program, ast, tokens));
 }
 
 #[inline(never)]
