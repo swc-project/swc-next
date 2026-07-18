@@ -170,7 +170,7 @@ fn generate_inline_write(
             #insert_expr
         }
     } else {
-        let to_u32 = generate_field_to_u32(field_ty, field_name, schema);
+        let to_u32 = generate_field_to_u32(field_ty, field_name, quote!(ast), schema);
         quote! {
             let field_val: u32 = #to_u32;
             #insert_expr

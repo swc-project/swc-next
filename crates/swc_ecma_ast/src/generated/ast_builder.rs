@@ -32,7 +32,7 @@ impl<'a> Ast<'a> {
             NodePayload(
                 0u128
                     | ((unsafe { body.to_extra_data(self).other } as u128) << 0usize)
-                    | ((unsafe { shebang.to_extra_data(self).other } as u128) << 64usize),
+                    | ((unsafe { shebang.to_extra_data(self).atom }.raw() as u128) << 64usize),
             ),
         ))
     }
@@ -48,7 +48,7 @@ impl<'a> Ast<'a> {
             NodePayload(
                 0u128
                     | ((unsafe { body.to_extra_data(self).other } as u128) << 0usize)
-                    | ((unsafe { shebang.to_extra_data(self).other } as u128) << 64usize),
+                    | ((unsafe { shebang.to_extra_data(self).atom }.raw() as u128) << 64usize),
             ),
         ))
     }
@@ -2257,14 +2257,13 @@ impl<'a> Ast<'a> {
         cooked: Option<Wtf8Atom<'a>>,
         raw: Atom<'a>,
     ) -> TplElement {
-        let _f0 = self.add_extra(raw.to_extra_data(self));
         TplElement(self.add_node(
             span,
             NodePayload(
                 0u128
                     | ((tail as u32 as u128) << 64usize)
-                    | ((unsafe { cooked.to_extra_data(self).other } as u128) << 0usize)
-                    | ((_f0.index() as u128) << 96usize),
+                    | ((unsafe { cooked.to_extra_data(self).wtf8_atom }.raw() as u128) << 0usize)
+                    | ((unsafe { raw.to_extra_data(self).atom }.raw() as u128) << 32usize),
             ),
         ))
     }
@@ -3817,9 +3816,9 @@ impl<'a> Ast<'a> {
             span,
             NodePayload(
                 0u128
-                    | ((unsafe { sym.to_extra_data(self).other } as u128) << 0usize)
+                    | ((unsafe { sym.to_extra_data(self).atom }.raw() as u128) << 0usize)
                     | ((_inline_default_1.map_or(0, |id| id.index() as u32 + 1) as u128)
-                        << 64usize),
+                        << 32usize),
             ),
         ))
     }
@@ -3827,14 +3826,18 @@ impl<'a> Ast<'a> {
     pub fn ident_name(&mut self, span: Span, sym: Atom<'a>) -> IdentName {
         IdentName(self.add_node(
             span,
-            NodePayload(0u128 | ((unsafe { sym.to_extra_data(self).other } as u128) << 0usize)),
+            NodePayload(
+                0u128 | ((unsafe { sym.to_extra_data(self).atom }.raw() as u128) << 0usize),
+            ),
         ))
     }
     #[inline]
     pub fn private_name(&mut self, span: Span, name: Atom<'a>) -> PrivateName {
         PrivateName(self.add_node(
             span,
-            NodePayload(0u128 | ((unsafe { name.to_extra_data(self).other } as u128) << 0usize)),
+            NodePayload(
+                0u128 | ((unsafe { name.to_extra_data(self).atom }.raw() as u128) << 0usize),
+            ),
         ))
     }
     #[inline]
@@ -3874,8 +3877,8 @@ impl<'a> Ast<'a> {
             span,
             NodePayload(
                 0u128
-                    | ((unsafe { value.to_extra_data(self).other } as u128) << 0usize)
-                    | ((unsafe { raw.to_extra_data(self).other } as u128) << 64usize),
+                    | ((unsafe { value.to_extra_data(self).wtf8_atom }.raw() as u128) << 0usize)
+                    | ((unsafe { raw.to_extra_data(self).atom }.raw() as u128) << 32usize),
             ),
         ))
     }
@@ -3897,7 +3900,7 @@ impl<'a> Ast<'a> {
             NodePayload(
                 0u128
                     | ((unsafe { value.to_extra_data(self).other } as u128) << 0usize)
-                    | ((unsafe { raw.to_extra_data(self).other } as u128) << 64usize),
+                    | ((unsafe { raw.to_extra_data(self).atom }.raw() as u128) << 64usize),
             ),
         ))
     }
@@ -3907,8 +3910,8 @@ impl<'a> Ast<'a> {
             span,
             NodePayload(
                 0u128
-                    | ((unsafe { value.to_extra_data(self).other } as u128) << 0usize)
-                    | ((unsafe { raw.to_extra_data(self).other } as u128) << 64usize),
+                    | ((unsafe { value.to_extra_data(self).atom }.raw() as u128) << 0usize)
+                    | ((unsafe { raw.to_extra_data(self).atom }.raw() as u128) << 32usize),
             ),
         ))
     }
@@ -3918,8 +3921,8 @@ impl<'a> Ast<'a> {
             span,
             NodePayload(
                 0u128
-                    | ((unsafe { exp.to_extra_data(self).other } as u128) << 0usize)
-                    | ((unsafe { flags.to_extra_data(self).other } as u128) << 64usize),
+                    | ((unsafe { exp.to_extra_data(self).atom }.raw() as u128) << 0usize)
+                    | ((unsafe { flags.to_extra_data(self).atom }.raw() as u128) << 32usize),
             ),
         ))
     }
@@ -4385,8 +4388,8 @@ impl<'a> Ast<'a> {
             span,
             NodePayload(
                 0u128
-                    | ((unsafe { value.to_extra_data(self).other } as u128) << 0usize)
-                    | ((unsafe { raw.to_extra_data(self).other } as u128) << 64usize),
+                    | ((unsafe { value.to_extra_data(self).atom }.raw() as u128) << 0usize)
+                    | ((unsafe { raw.to_extra_data(self).atom }.raw() as u128) << 32usize),
             ),
         ))
     }

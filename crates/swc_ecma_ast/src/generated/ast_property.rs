@@ -39,8 +39,16 @@ impl Module {
     }
     #[inline]
     pub fn shebang<'a>(self, ast: &crate::Ast<'a>) -> Option<Atom<'a>> {
-        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
-        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                ExtraData {
+                    atom: AtomId::from_raw(raw),
+                },
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: TypedSubRange<ModuleItem>) {
@@ -51,10 +59,10 @@ impl Module {
     }
     #[inline]
     pub fn set_shebang<'a>(self, ast: &mut crate::Ast<'a>, shebang: Option<Atom<'a>>) {
-        let field_val: u64 = unsafe { shebang.to_extra_data(ast).other };
+        let field_val: u32 = unsafe { shebang.to_extra_data(ast).atom }.raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 18446744073709551615u128)
-            | (((field_val as u128) & 18446744073709551615u128) << 64usize);
+        payload.0 = (payload.0 & 340282366841710300967557013911933812735u128)
+            | (((field_val as u128) & 4294967295u128) << 64usize);
     }
 }
 impl Script {
@@ -65,8 +73,16 @@ impl Script {
     }
     #[inline]
     pub fn shebang<'a>(self, ast: &crate::Ast<'a>) -> Option<Atom<'a>> {
-        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
-        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                ExtraData {
+                    atom: AtomId::from_raw(raw),
+                },
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: TypedSubRange<Stmt>) {
@@ -77,10 +93,10 @@ impl Script {
     }
     #[inline]
     pub fn set_shebang<'a>(self, ast: &mut crate::Ast<'a>, shebang: Option<Atom<'a>>) {
-        let field_val: u64 = unsafe { shebang.to_extra_data(ast).other };
+        let field_val: u32 = unsafe { shebang.to_extra_data(ast).atom }.raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 18446744073709551615u128)
-            | (((field_val as u128) & 18446744073709551615u128) << 64usize);
+        payload.0 = (payload.0 & 340282366841710300967557013911933812735u128)
+            | (((field_val as u128) & 4294967295u128) << 64usize);
     }
 }
 impl ModuleItem {
@@ -4413,21 +4429,26 @@ impl TplElement {
     }
     #[inline]
     pub fn cooked<'a>(self, ast: &crate::Ast<'a>) -> Option<Wtf8Atom<'a>> {
-        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                ExtraData {
+                    wtf8_atom: Wtf8AtomId::from_raw(raw),
+                },
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn raw<'a>(self, ast: &crate::Ast<'a>) -> Atom<'a> {
-        let offset = unsafe {
-            ExtraDataId::from_usize_unchecked(
-                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize),
-            )
-        };
-        debug_assert!(offset.index() < ast.extra_data.len());
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
         unsafe {
             ExtraDataCompact::from_extra_data(
-                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ExtraData {
+                    atom: AtomId::from_raw(raw),
+                },
                 ast,
             )
         }
@@ -4441,25 +4462,17 @@ impl TplElement {
     }
     #[inline]
     pub fn set_cooked<'a>(self, ast: &mut crate::Ast<'a>, cooked: Option<Wtf8Atom<'a>>) {
-        let field_val: u64 = unsafe { cooked.to_extra_data(ast).other };
+        let field_val: u32 = unsafe { cooked.to_extra_data(ast).wtf8_atom }.raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
-            | (((field_val as u128) & 18446744073709551615u128) << 0usize);
+        payload.0 = (payload.0 & 340282366920938463463374607427473244160u128)
+            | (((field_val as u128) & 4294967295u128) << 0usize);
     }
     #[inline]
     pub fn set_raw<'a>(self, ast: &mut crate::Ast<'a>, raw: Atom<'a>) {
-        let offset = unsafe {
-            ExtraDataId::from_usize_unchecked(
-                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize),
-            )
-        };
-        debug_assert!(offset.index() < ast.extra_data.len());
-        unsafe {
-            *ast.extra_data
-                .as_mut_slice()
-                .get_unchecked_mut(offset.index()) = raw.to_extra_data(ast);
-        };
+        let field_val: u32 = unsafe { raw.to_extra_data(ast).atom }.raw();
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366920938463444927863362353627135u128)
+            | (((field_val as u128) & 4294967295u128) << 32usize);
     }
 }
 impl ParenExpr {
@@ -7488,58 +7501,82 @@ impl AssignPatProp {
 impl Ident {
     #[inline]
     pub fn sym<'a>(self, ast: &crate::Ast<'a>) -> Atom<'a> {
-        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                ExtraData {
+                    atom: AtomId::from_raw(raw),
+                },
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn symbol_id<'a>(self, ast: &crate::Ast<'a>) -> Option<SymbolId> {
         let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
         (raw != 0).then(|| unsafe {
             <SymbolId as oxc_index::Idx>::from_usize_unchecked(raw.wrapping_sub(1) as usize)
         })
     }
     #[inline]
     pub fn set_sym<'a>(self, ast: &mut crate::Ast<'a>, sym: Atom<'a>) {
-        let field_val: u64 = unsafe { sym.to_extra_data(ast).other };
+        let field_val: u32 = unsafe { sym.to_extra_data(ast).atom }.raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
-            | (((field_val as u128) & 18446744073709551615u128) << 0usize);
+        payload.0 = (payload.0 & 340282366920938463463374607427473244160u128)
+            | (((field_val as u128) & 4294967295u128) << 0usize);
     }
     #[inline]
     pub fn set_symbol_id<'a>(self, ast: &mut crate::Ast<'a>, symbol_id: Option<SymbolId>) {
         let field_val: u32 = symbol_id.map_or(0, |id| id.index() as u32 + 1);
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366841710300967557013911933812735u128)
-            | (((field_val as u128) & 4294967295u128) << 64usize);
+        payload.0 = (payload.0 & 340282366920938463444927863362353627135u128)
+            | (((field_val as u128) & 4294967295u128) << 32usize);
     }
 }
 impl IdentName {
     #[inline]
     pub fn sym<'a>(self, ast: &crate::Ast<'a>) -> Atom<'a> {
-        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                ExtraData {
+                    atom: AtomId::from_raw(raw),
+                },
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_sym<'a>(self, ast: &mut crate::Ast<'a>, sym: Atom<'a>) {
-        let field_val: u64 = unsafe { sym.to_extra_data(ast).other };
+        let field_val: u32 = unsafe { sym.to_extra_data(ast).atom }.raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
-            | (((field_val as u128) & 18446744073709551615u128) << 0usize);
+        payload.0 = (payload.0 & 340282366920938463463374607427473244160u128)
+            | (((field_val as u128) & 4294967295u128) << 0usize);
     }
 }
 impl PrivateName {
     #[inline]
     pub fn name<'a>(self, ast: &crate::Ast<'a>) -> Atom<'a> {
-        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                ExtraData {
+                    atom: AtomId::from_raw(raw),
+                },
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: Atom<'a>) {
-        let field_val: u64 = unsafe { name.to_extra_data(ast).other };
+        let field_val: u32 = unsafe { name.to_extra_data(ast).atom }.raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
-            | (((field_val as u128) & 18446744073709551615u128) << 0usize);
+        payload.0 = (payload.0 & 340282366920938463463374607427473244160u128)
+            | (((field_val as u128) & 4294967295u128) << 0usize);
     }
 }
 impl BindingIdent {
@@ -7628,27 +7665,43 @@ impl Lit {
 impl Str {
     #[inline]
     pub fn value<'a>(self, ast: &crate::Ast<'a>) -> Wtf8Atom<'a> {
-        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                ExtraData {
+                    wtf8_atom: Wtf8AtomId::from_raw(raw),
+                },
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn raw<'a>(self, ast: &crate::Ast<'a>) -> Option<Atom<'a>> {
-        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
-        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                ExtraData {
+                    atom: AtomId::from_raw(raw),
+                },
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: Wtf8Atom<'a>) {
-        let field_val: u64 = unsafe { value.to_extra_data(ast).other };
+        let field_val: u32 = unsafe { value.to_extra_data(ast).wtf8_atom }.raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
-            | (((field_val as u128) & 18446744073709551615u128) << 0usize);
+        payload.0 = (payload.0 & 340282366920938463463374607427473244160u128)
+            | (((field_val as u128) & 4294967295u128) << 0usize);
     }
     #[inline]
     pub fn set_raw<'a>(self, ast: &mut crate::Ast<'a>, raw: Option<Atom<'a>>) {
-        let field_val: u64 = unsafe { raw.to_extra_data(ast).other };
+        let field_val: u32 = unsafe { raw.to_extra_data(ast).atom }.raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 18446744073709551615u128)
-            | (((field_val as u128) & 18446744073709551615u128) << 64usize);
+        payload.0 = (payload.0 & 340282366920938463444927863362353627135u128)
+            | (((field_val as u128) & 4294967295u128) << 32usize);
     }
 }
 impl Bool {
@@ -7674,8 +7727,16 @@ impl Number {
     }
     #[inline]
     pub fn raw<'a>(self, ast: &crate::Ast<'a>) -> Option<Atom<'a>> {
-        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
-        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                ExtraData {
+                    atom: AtomId::from_raw(raw),
+                },
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: f64) {
@@ -7686,62 +7747,94 @@ impl Number {
     }
     #[inline]
     pub fn set_raw<'a>(self, ast: &mut crate::Ast<'a>, raw: Option<Atom<'a>>) {
-        let field_val: u64 = unsafe { raw.to_extra_data(ast).other };
+        let field_val: u32 = unsafe { raw.to_extra_data(ast).atom }.raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 18446744073709551615u128)
-            | (((field_val as u128) & 18446744073709551615u128) << 64usize);
+        payload.0 = (payload.0 & 340282366841710300967557013911933812735u128)
+            | (((field_val as u128) & 4294967295u128) << 64usize);
     }
 }
 impl BigInt {
     #[inline]
     pub fn value<'a>(self, ast: &crate::Ast<'a>) -> Atom<'a> {
-        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                ExtraData {
+                    atom: AtomId::from_raw(raw),
+                },
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn raw<'a>(self, ast: &crate::Ast<'a>) -> Option<Atom<'a>> {
-        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
-        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                ExtraData {
+                    atom: AtomId::from_raw(raw),
+                },
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: Atom<'a>) {
-        let field_val: u64 = unsafe { value.to_extra_data(ast).other };
+        let field_val: u32 = unsafe { value.to_extra_data(ast).atom }.raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
-            | (((field_val as u128) & 18446744073709551615u128) << 0usize);
+        payload.0 = (payload.0 & 340282366920938463463374607427473244160u128)
+            | (((field_val as u128) & 4294967295u128) << 0usize);
     }
     #[inline]
     pub fn set_raw<'a>(self, ast: &mut crate::Ast<'a>, raw: Option<Atom<'a>>) {
-        let field_val: u64 = unsafe { raw.to_extra_data(ast).other };
+        let field_val: u32 = unsafe { raw.to_extra_data(ast).atom }.raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 18446744073709551615u128)
-            | (((field_val as u128) & 18446744073709551615u128) << 64usize);
+        payload.0 = (payload.0 & 340282366920938463444927863362353627135u128)
+            | (((field_val as u128) & 4294967295u128) << 32usize);
     }
 }
 impl Regex {
     #[inline]
     pub fn exp<'a>(self, ast: &crate::Ast<'a>) -> Atom<'a> {
-        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                ExtraData {
+                    atom: AtomId::from_raw(raw),
+                },
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn flags<'a>(self, ast: &crate::Ast<'a>) -> Atom<'a> {
-        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
-        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                ExtraData {
+                    atom: AtomId::from_raw(raw),
+                },
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_exp<'a>(self, ast: &mut crate::Ast<'a>, exp: Atom<'a>) {
-        let field_val: u64 = unsafe { exp.to_extra_data(ast).other };
+        let field_val: u32 = unsafe { exp.to_extra_data(ast).atom }.raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
-            | (((field_val as u128) & 18446744073709551615u128) << 0usize);
+        payload.0 = (payload.0 & 340282366920938463463374607427473244160u128)
+            | (((field_val as u128) & 4294967295u128) << 0usize);
     }
     #[inline]
     pub fn set_flags<'a>(self, ast: &mut crate::Ast<'a>, flags: Atom<'a>) {
-        let field_val: u64 = unsafe { flags.to_extra_data(ast).other };
+        let field_val: u32 = unsafe { flags.to_extra_data(ast).atom }.raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 18446744073709551615u128)
-            | (((field_val as u128) & 18446744073709551615u128) << 64usize);
+        payload.0 = (payload.0 & 340282366920938463444927863362353627135u128)
+            | (((field_val as u128) & 4294967295u128) << 32usize);
     }
 }
 impl JSXObject {
@@ -8512,27 +8605,43 @@ impl JSXAttrValue {
 impl JSXText {
     #[inline]
     pub fn value<'a>(self, ast: &crate::Ast<'a>) -> Atom<'a> {
-        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
-        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                ExtraData {
+                    atom: AtomId::from_raw(raw),
+                },
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn raw<'a>(self, ast: &crate::Ast<'a>) -> Atom<'a> {
-        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
-        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+        let raw =
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                ExtraData {
+                    atom: AtomId::from_raw(raw),
+                },
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: Atom<'a>) {
-        let field_val: u64 = unsafe { value.to_extra_data(ast).other };
+        let field_val: u32 = unsafe { value.to_extra_data(ast).atom }.raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
-            | (((field_val as u128) & 18446744073709551615u128) << 0usize);
+        payload.0 = (payload.0 & 340282366920938463463374607427473244160u128)
+            | (((field_val as u128) & 4294967295u128) << 0usize);
     }
     #[inline]
     pub fn set_raw<'a>(self, ast: &mut crate::Ast<'a>, raw: Atom<'a>) {
-        let field_val: u64 = unsafe { raw.to_extra_data(ast).other };
+        let field_val: u32 = unsafe { raw.to_extra_data(ast).atom }.raw();
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 18446744073709551615u128)
-            | (((field_val as u128) & 18446744073709551615u128) << 64usize);
+        payload.0 = (payload.0 & 340282366920938463444927863362353627135u128)
+            | (((field_val as u128) & 4294967295u128) << 32usize);
     }
 }
 impl JSXElement {

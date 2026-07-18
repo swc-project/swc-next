@@ -109,7 +109,7 @@ fn generate_build_function_inline(
             continue;
         }
 
-        let field_u32 = generate_field_to_u32(field_ty, &field_name, schema);
+        let field_u32 = generate_field_to_u32(field_ty, &field_name, quote!(self), schema);
         pack_u128.extend(quote! { | ((#field_u32 as u128) << #bit_offset) });
     }
 

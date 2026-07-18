@@ -11,11 +11,35 @@ use swc_experimental_allocator::{
 /// Zero is reserved for `None`; table indices are encoded as `index + 1`.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) struct AtomId(u64);
+pub(crate) struct AtomId(u32);
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) struct Wtf8AtomId(u64);
+pub(crate) struct Wtf8AtomId(u32);
+
+impl AtomId {
+    #[inline]
+    pub(crate) const fn from_raw(raw: u32) -> Self {
+        Self(raw)
+    }
+
+    #[inline]
+    pub(crate) const fn raw(self) -> u32 {
+        self.0
+    }
+}
+
+impl Wtf8AtomId {
+    #[inline]
+    pub(crate) const fn from_raw(raw: u32) -> Self {
+        Self(raw)
+    }
+
+    #[inline]
+    pub(crate) const fn raw(self) -> u32 {
+        self.0
+    }
+}
 
 /// Append-only side tables for borrowed atoms.
 ///
@@ -40,8 +64,9 @@ impl<'a> AtomStore<'a> {
         // SAFETY: The store is append-only and Ast is !Sync.
         let atoms = unsafe { &mut *self.atoms.get() };
         let index = atoms.len();
+        let id = index as u32 + 1;
         atoms.push(atom);
-        AtomId(u64::try_from(index).expect("atom table exceeds u64") + 1)
+        AtomId(id)
     }
 
     #[inline]
@@ -58,8 +83,9 @@ impl<'a> AtomStore<'a> {
         // SAFETY: The store is append-only and Ast is !Sync.
         let atoms = unsafe { &mut *self.wtf8_atoms.get() };
         let index = atoms.len();
+        let id = index as u32 + 1;
         atoms.push(atom);
-        Wtf8AtomId(u64::try_from(index).expect("WTF-8 atom table exceeds u64") + 1)
+        Wtf8AtomId(id)
     }
 
     #[inline]
@@ -103,8 +129,8 @@ mod tests {
     fn public_atoms_are_borrowed_slices_and_stored_ids_are_compact() {
         assert_eq!(size_of::<Atom<'_>>(), 16);
         assert_eq!(size_of::<Wtf8Atom<'_>>(), 16);
-        assert_eq!(size_of::<AtomId>(), 8);
-        assert_eq!(size_of::<Wtf8AtomId>(), 8);
+        assert_eq!(size_of::<AtomId>(), 4);
+        assert_eq!(size_of::<Wtf8AtomId>(), 4);
     }
 
     #[test]
