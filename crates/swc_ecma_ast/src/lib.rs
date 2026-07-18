@@ -56,7 +56,6 @@ multi_index_vec! {
     /// Arena-backed structure-of-arrays storage for flattening AST nodes.
     pub struct NodeData<'a, NodeId> {
         pub(crate) span => span_mut => span_unchecked => span_mut_unchecked: Span,
-        pub(crate) kind => kind_mut => kind_unchecked => kind_mut_unchecked: NodeKind,
         pub(crate) data => data_mut => data_unchecked => data_mut_unchecked: NodePayload,
     }
 }
@@ -72,7 +71,10 @@ pub struct NodePayload(pub(crate) u128);
 
 include!("generated/ast_extra_data.rs");
 
-/// The NodeKind is one-to-one mapping to the typed AST node declared with struct keyword (not enum).
+/// Identifies typed AST nodes in generic visitor callbacks.
+///
+/// This is derived from the statically known node type and is not stored in
+/// [`NodeData`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeKind {
     // module.rs
@@ -287,8 +289,8 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
-    pub(crate) fn add_node(&mut self, span: Span, kind: NodeKind, data: NodePayload) -> NodeId {
-        self.nodes.push(span, kind, data)
+    pub(crate) fn add_node(&mut self, span: Span, data: NodePayload) -> NodeId {
+        self.nodes.push(span, data)
     }
 
     #[inline]
