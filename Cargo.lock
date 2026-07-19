@@ -2141,14 +2141,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "swc_experimental_ecma_utils"
-version = "0.11.0"
-dependencies = [
- "swc_experimental_ecma_ast",
- "swc_experimental_ecma_semantic",
-]
-
-[[package]]
 name = "swc_experimental_ecma_visit"
 version = "0.11.0"
 dependencies = [
