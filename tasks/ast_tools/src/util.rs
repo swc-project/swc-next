@@ -94,10 +94,9 @@ pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<Inlin
         }
     }
 
-    let mut sorted_fields = field_info.clone();
-    sorted_fields.sort_by_key(|b| std::cmp::Reverse(b.1));
-
     if all_fields_inlinable && total_size <= INLINE_TOTAL_SIZE {
+        let mut sorted_fields = field_info;
+        sorted_fields.sort_by_key(|&(_, size)| std::cmp::Reverse(size));
         let mut fields = Vec::with_capacity(sorted_fields.len());
         let mut used = 0usize;
 
@@ -113,15 +112,10 @@ pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<Inlin
         });
     }
 
-    // Partial mode reserves the high u32 for ExtraDataId.
-    let mut fields = Vec::new();
-    let mut used = 0usize;
-    for (field_index, size) in sorted_fields {
-        if used + size <= PARTIAL_INLINE_SIZE {
-            fields.push((field_index, used, size));
-            used += size;
-        }
-    }
+    // Partial mode reserves the high u32 for ExtraDataId. Pack the smallest
+    // fields first to maximize the number of inline fields and therefore
+    // minimize the number of ExtraData entries.
+    let mut fields = select_partial_inline_fields(field_info);
 
     if fields.is_empty() {
         return None;
@@ -132,6 +126,20 @@ pub fn calculate_inline_layout(ast: &AstStruct, schema: &Schema) -> Option<Inlin
         mode: InlineStorageMode::Partial,
         fields,
     })
+}
+
+fn select_partial_inline_fields(mut field_info: Vec<(usize, usize)>) -> Vec<(usize, usize, usize)> {
+    field_info.sort_by_key(|&(field_index, size)| (size, field_index));
+
+    let mut fields = Vec::new();
+    let mut used = 0usize;
+    for (field_index, size) in field_info {
+        if used + size <= PARTIAL_INLINE_SIZE {
+            fields.push((field_index, used, size));
+            used += size;
+        }
+    }
+    fields
 }
 
 /// Reserved word in Rust.
@@ -330,5 +338,17 @@ pub fn generate_u32_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream
 pub fn generate_u64_to_field(_field_ty: &AstType, _schema: &Schema) -> TokenStream {
     quote! {
         unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::select_partial_inline_fields;
+
+    #[test]
+    fn partial_inline_layout_maximizes_field_count() {
+        let fields = select_partial_inline_fields(vec![(0, 8), (1, 4), (2, 4), (3, 2), (4, 1)]);
+
+        assert_eq!(fields, vec![(4, 0, 1), (3, 1, 2), (1, 3, 4), (2, 7, 4)]);
     }
 }

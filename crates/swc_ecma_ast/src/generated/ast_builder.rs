@@ -369,20 +369,18 @@ impl<'a> Ast<'a> {
         with: Option<ObjectLit>,
         phase: ImportPhase,
     ) -> ImportDecl {
-        let _extra_data = [
-            type_only.to_extra_data(self),
-            with.to_extra_data(self),
-            phase.to_extra_data(self),
-        ];
-        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
+        let _f0 = self.add_extra(specifiers.to_extra_data(self));
         ImportDecl(self.add_node(
             span,
             NodeKind::ImportDecl,
             NodePayload(
                 0u128
-                    | ((unsafe { specifiers.to_extra_data(self).other } as u128) << 0usize)
-                    | ((src.node_id().index() as u32 as u128) << 64usize)
-                    | ((_extra_data_range.start.index() as u128) << 96usize),
+                    | ((src.node_id().index() as u32 as u128) << 16usize)
+                    | ((type_only as u32 as u128) << 0usize)
+                    | ((with.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
+                        << 48usize)
+                    | ((phase as u32 as u128) << 8usize)
+                    | ((_f0.index() as u128) << 96usize),
             ),
         ))
     }
@@ -467,17 +465,18 @@ impl<'a> Ast<'a> {
         type_only: bool,
         with: Option<ObjectLit>,
     ) -> NamedExport {
-        let _extra_data = [type_only.to_extra_data(self), with.to_extra_data(self)];
-        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
+        let _f0 = self.add_extra(specifiers.to_extra_data(self));
         NamedExport(self.add_node(
             span,
             NodeKind::NamedExport,
             NodePayload(
                 0u128
-                    | ((unsafe { specifiers.to_extra_data(self).other } as u128) << 0usize)
                     | ((src.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
-                        << 64usize)
-                    | ((_extra_data_range.start.index() as u128) << 96usize),
+                        << 8usize)
+                    | ((type_only as u32 as u128) << 0usize)
+                    | ((with.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
+                        << 40usize)
+                    | ((_f0.index() as u128) << 96usize),
             ),
         ))
     }
@@ -2340,16 +2339,17 @@ impl<'a> Ast<'a> {
         options: Option<Expr>,
         phase: ImportPhase,
     ) -> ImportExpr {
-        let _extra_data = [options.to_extra_data(self), phase.to_extra_data(self)];
-        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
+        let _f0 = self.add_extra(import_span.to_extra_data(self));
         ImportExpr(self.add_node(
             span,
             NodeKind::ImportExpr,
             NodePayload(
                 0u128
-                    | ((unsafe { import_span.to_extra_data(self).other } as u128) << 0usize)
-                    | ((source.node_id().index() as u32 as u128) << 64usize)
-                    | ((_extra_data_range.start.index() as u128) << 96usize),
+                    | ((source.node_id().index() as u32 as u128) << 8usize)
+                    | ((options.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
+                        << 40usize)
+                    | ((phase as u32 as u128) << 0usize)
+                    | ((_f0.index() as u128) << 96usize),
             ),
         ))
     }
@@ -3367,19 +3367,16 @@ impl<'a> Ast<'a> {
         is_generator: bool,
         is_async: bool,
     ) -> Function {
-        let _extra_data = [
-            decorators.to_extra_data(self),
-            is_generator.to_extra_data(self),
-            is_async.to_extra_data(self),
-        ];
+        let _extra_data = [params.to_extra_data(self), decorators.to_extra_data(self)];
         let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         Function(self.add_node(
             span,
             NodeKind::Function,
             NodePayload(
                 0u128
-                    | ((unsafe { params.to_extra_data(self).other } as u128) << 0usize)
-                    | ((body.node_id().index() as u32 as u128) << 64usize)
+                    | ((body.node_id().index() as u32 as u128) << 16usize)
+                    | ((is_generator as u32 as u128) << 0usize)
+                    | ((is_async as u32 as u128) << 8usize)
                     | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
@@ -3414,17 +3411,17 @@ impl<'a> Ast<'a> {
         super_class: Option<Expr>,
         is_abstract: bool,
     ) -> Class {
-        let _extra_data = [body.to_extra_data(self), is_abstract.to_extra_data(self)];
+        let _extra_data = [decorators.to_extra_data(self), body.to_extra_data(self)];
         let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         Class(self.add_node(
             span,
             NodeKind::Class,
             NodePayload(
                 0u128
-                    | ((unsafe { decorators.to_extra_data(self).other } as u128) << 0usize)
                     | ((super_class.map_or(u32::MAX, |node| node.node_id().index() as u32)
                         as u128)
-                        << 64usize)
+                        << 8usize)
+                    | ((is_abstract as u32 as u128) << 0usize)
                     | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
@@ -3526,16 +3523,17 @@ impl<'a> Ast<'a> {
         is_static: bool,
         decorators: TypedSubRange<Decorator>,
     ) -> ClassProp {
-        let _extra_data = [value.to_extra_data(self), is_static.to_extra_data(self)];
-        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
+        let _f0 = self.add_extra(decorators.to_extra_data(self));
         ClassProp(self.add_node(
             span,
             NodeKind::ClassProp,
             NodePayload(
                 0u128
-                    | ((key.node_id().index() as u32 as u128) << 64usize)
-                    | ((unsafe { decorators.to_extra_data(self).other } as u128) << 0usize)
-                    | ((_extra_data_range.start.index() as u128) << 96usize),
+                    | ((key.node_id().index() as u32 as u128) << 8usize)
+                    | ((value.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
+                        << 40usize)
+                    | ((is_static as u32 as u128) << 0usize)
+                    | ((_f0.index() as u128) << 96usize),
             ),
         ))
     }
@@ -3548,16 +3546,17 @@ impl<'a> Ast<'a> {
         is_static: bool,
         decorators: TypedSubRange<Decorator>,
     ) -> PrivateProp {
-        let _extra_data = [value.to_extra_data(self), is_static.to_extra_data(self)];
-        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
+        let _f0 = self.add_extra(decorators.to_extra_data(self));
         PrivateProp(self.add_node(
             span,
             NodeKind::PrivateProp,
             NodePayload(
                 0u128
-                    | ((key.node_id().index() as u32 as u128) << 64usize)
-                    | ((unsafe { decorators.to_extra_data(self).other } as u128) << 0usize)
-                    | ((_extra_data_range.start.index() as u128) << 96usize),
+                    | ((key.node_id().index() as u32 as u128) << 8usize)
+                    | ((value.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
+                        << 40usize)
+                    | ((is_static as u32 as u128) << 0usize)
+                    | ((_f0.index() as u128) << 96usize),
             ),
         ))
     }
@@ -3684,16 +3683,17 @@ impl<'a> Ast<'a> {
         is_static: bool,
         decorators: TypedSubRange<Decorator>,
     ) -> AutoAccessor {
-        let _extra_data = [value.to_extra_data(self), is_static.to_extra_data(self)];
-        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
+        let _f0 = self.add_extra(decorators.to_extra_data(self));
         AutoAccessor(self.add_node(
             span,
             NodeKind::AutoAccessor,
             NodePayload(
                 0u128
-                    | ((key.node_id().index() as u32 as u128) << 64usize)
-                    | ((unsafe { decorators.to_extra_data(self).other } as u128) << 0usize)
-                    | ((_extra_data_range.start.index() as u128) << 96usize),
+                    | ((key.node_id().index() as u32 as u128) << 8usize)
+                    | ((value.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
+                        << 40usize)
+                    | ((is_static as u32 as u128) << 0usize)
+                    | ((_f0.index() as u128) << 96usize),
             ),
         ))
     }

@@ -126,6 +126,13 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
+    fn add_extra(&mut self, extra: ExtraData) -> ExtraDataId {
+        let id = self.next_extra_data_id();
+        self.extra_data.push(extra);
+        id
+    }
+
+    #[inline]
     fn next_extra_data_id(&self) -> ExtraDataId {
         let index = self.extra_data.len();
         assert!(
