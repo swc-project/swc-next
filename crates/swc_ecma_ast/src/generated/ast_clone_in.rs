@@ -5,9 +5,10 @@ impl<'a> CloneIn<'a> for Program {
     type Cloned = Program;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Module(it) => Self::Module(it.clone_in(ast)),
-            Self::Script(it) => Self::Script(it.clone_in(ast)),
+        let data = ast.program_data(*self);
+        match data {
+            ProgramData::Module(it) => Self::Module(it.clone_in(ast)),
+            ProgramData::Script(it) => Self::Script(it.clone_in(ast)),
         }
     }
 }
@@ -35,39 +36,10 @@ impl<'a> CloneIn<'a> for ModuleItem {
     type Cloned = ModuleItem;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::ModuleDeclImport(it) => Self::ModuleDeclImport(it.clone_in(ast)),
-            Self::ModuleDeclExportDecl(it) => Self::ModuleDeclExportDecl(it.clone_in(ast)),
-            Self::ModuleDeclExportNamed(it) => Self::ModuleDeclExportNamed(it.clone_in(ast)),
-            Self::ModuleDeclExportDefaultDecl(it) => {
-                Self::ModuleDeclExportDefaultDecl(it.clone_in(ast))
-            }
-            Self::ModuleDeclExportDefaultExpr(it) => {
-                Self::ModuleDeclExportDefaultExpr(it.clone_in(ast))
-            }
-            Self::ModuleDeclExportAll(it) => Self::ModuleDeclExportAll(it.clone_in(ast)),
-            Self::StmtBlock(it) => Self::StmtBlock(it.clone_in(ast)),
-            Self::StmtEmpty(it) => Self::StmtEmpty(it.clone_in(ast)),
-            Self::StmtDebugger(it) => Self::StmtDebugger(it.clone_in(ast)),
-            Self::StmtWith(it) => Self::StmtWith(it.clone_in(ast)),
-            Self::StmtReturn(it) => Self::StmtReturn(it.clone_in(ast)),
-            Self::StmtLabeled(it) => Self::StmtLabeled(it.clone_in(ast)),
-            Self::StmtBreak(it) => Self::StmtBreak(it.clone_in(ast)),
-            Self::StmtContinue(it) => Self::StmtContinue(it.clone_in(ast)),
-            Self::StmtIf(it) => Self::StmtIf(it.clone_in(ast)),
-            Self::StmtSwitch(it) => Self::StmtSwitch(it.clone_in(ast)),
-            Self::StmtThrow(it) => Self::StmtThrow(it.clone_in(ast)),
-            Self::StmtTry(it) => Self::StmtTry(it.clone_in(ast)),
-            Self::StmtWhile(it) => Self::StmtWhile(it.clone_in(ast)),
-            Self::StmtDoWhile(it) => Self::StmtDoWhile(it.clone_in(ast)),
-            Self::StmtFor(it) => Self::StmtFor(it.clone_in(ast)),
-            Self::StmtForIn(it) => Self::StmtForIn(it.clone_in(ast)),
-            Self::StmtForOf(it) => Self::StmtForOf(it.clone_in(ast)),
-            Self::StmtDeclClass(it) => Self::StmtDeclClass(it.clone_in(ast)),
-            Self::StmtDeclFn(it) => Self::StmtDeclFn(it.clone_in(ast)),
-            Self::StmtDeclVar(it) => Self::StmtDeclVar(it.clone_in(ast)),
-            Self::StmtDeclUsing(it) => Self::StmtDeclUsing(it.clone_in(ast)),
-            Self::StmtExpr(it) => Self::StmtExpr(it.clone_in(ast)),
+        let data = ast.module_item_data(*self);
+        match data {
+            ModuleItemData::ModuleDecl(it) => Self::ModuleDecl(it.clone_in(ast)),
+            ModuleItemData::Stmt(it) => Self::Stmt(it.clone_in(ast)),
         }
     }
 }
@@ -75,13 +47,14 @@ impl<'a> CloneIn<'a> for ModuleDecl {
     type Cloned = ModuleDecl;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Import(it) => Self::Import(it.clone_in(ast)),
-            Self::ExportDecl(it) => Self::ExportDecl(it.clone_in(ast)),
-            Self::ExportNamed(it) => Self::ExportNamed(it.clone_in(ast)),
-            Self::ExportDefaultDecl(it) => Self::ExportDefaultDecl(it.clone_in(ast)),
-            Self::ExportDefaultExpr(it) => Self::ExportDefaultExpr(it.clone_in(ast)),
-            Self::ExportAll(it) => Self::ExportAll(it.clone_in(ast)),
+        let data = ast.module_decl_data(*self);
+        match data {
+            ModuleDeclData::Import(it) => Self::Import(it.clone_in(ast)),
+            ModuleDeclData::ExportDecl(it) => Self::ExportDecl(it.clone_in(ast)),
+            ModuleDeclData::ExportNamed(it) => Self::ExportNamed(it.clone_in(ast)),
+            ModuleDeclData::ExportDefaultDecl(it) => Self::ExportDefaultDecl(it.clone_in(ast)),
+            ModuleDeclData::ExportDefaultExpr(it) => Self::ExportDefaultExpr(it.clone_in(ast)),
+            ModuleDeclData::ExportAll(it) => Self::ExportAll(it.clone_in(ast)),
         }
     }
 }
@@ -102,10 +75,11 @@ impl<'a> CloneIn<'a> for ImportSpecifier {
     type Cloned = ImportSpecifier;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Named(it) => Self::Named(it.clone_in(ast)),
-            Self::Default(it) => Self::Default(it.clone_in(ast)),
-            Self::Namespace(it) => Self::Namespace(it.clone_in(ast)),
+        let data = ast.import_specifier_data(*self);
+        match data {
+            ImportSpecifierData::Named(it) => Self::Named(it.clone_in(ast)),
+            ImportSpecifierData::Default(it) => Self::Default(it.clone_in(ast)),
+            ImportSpecifierData::Namespace(it) => Self::Namespace(it.clone_in(ast)),
         }
     }
 }
@@ -163,10 +137,11 @@ impl<'a> CloneIn<'a> for ExportSpecifier {
     type Cloned = ExportSpecifier;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Namespace(it) => Self::Namespace(it.clone_in(ast)),
-            Self::Default(it) => Self::Default(it.clone_in(ast)),
-            Self::Named(it) => Self::Named(it.clone_in(ast)),
+        let data = ast.export_specifier_data(*self);
+        match data {
+            ExportSpecifierData::Namespace(it) => Self::Namespace(it.clone_in(ast)),
+            ExportSpecifierData::Default(it) => Self::Default(it.clone_in(ast)),
+            ExportSpecifierData::Named(it) => Self::Named(it.clone_in(ast)),
         }
     }
 }
@@ -183,9 +158,10 @@ impl<'a> CloneIn<'a> for ModuleExportName {
     type Cloned = ModuleExportName;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
-            Self::Str(it) => Self::Str(it.clone_in(ast)),
+        let data = ast.module_export_name_data(*self);
+        match data {
+            ModuleExportNameData::Ident(it) => Self::Ident(it.clone_in(ast)),
+            ModuleExportNameData::Str(it) => Self::Str(it.clone_in(ast)),
         }
     }
 }
@@ -222,9 +198,10 @@ impl<'a> CloneIn<'a> for DefaultDecl {
     type Cloned = DefaultDecl;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Class(it) => Self::Class(it.clone_in(ast)),
-            Self::Fn(it) => Self::Fn(it.clone_in(ast)),
+        let data = ast.default_decl_data(*self);
+        match data {
+            DefaultDeclData::Class(it) => Self::Class(it.clone_in(ast)),
+            DefaultDeclData::Fn(it) => Self::Fn(it.clone_in(ast)),
         }
     }
 }
@@ -261,29 +238,27 @@ impl<'a> CloneIn<'a> for Stmt {
     type Cloned = Stmt;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Class(it) => Self::Class(it.clone_in(ast)),
-            Self::Fn(it) => Self::Fn(it.clone_in(ast)),
-            Self::Var(it) => Self::Var(it.clone_in(ast)),
-            Self::Using(it) => Self::Using(it.clone_in(ast)),
-            Self::Block(it) => Self::Block(it.clone_in(ast)),
-            Self::Empty(it) => Self::Empty(it.clone_in(ast)),
-            Self::Debugger(it) => Self::Debugger(it.clone_in(ast)),
-            Self::With(it) => Self::With(it.clone_in(ast)),
-            Self::Return(it) => Self::Return(it.clone_in(ast)),
-            Self::Labeled(it) => Self::Labeled(it.clone_in(ast)),
-            Self::Break(it) => Self::Break(it.clone_in(ast)),
-            Self::Continue(it) => Self::Continue(it.clone_in(ast)),
-            Self::If(it) => Self::If(it.clone_in(ast)),
-            Self::Switch(it) => Self::Switch(it.clone_in(ast)),
-            Self::Throw(it) => Self::Throw(it.clone_in(ast)),
-            Self::Try(it) => Self::Try(it.clone_in(ast)),
-            Self::While(it) => Self::While(it.clone_in(ast)),
-            Self::DoWhile(it) => Self::DoWhile(it.clone_in(ast)),
-            Self::For(it) => Self::For(it.clone_in(ast)),
-            Self::ForIn(it) => Self::ForIn(it.clone_in(ast)),
-            Self::ForOf(it) => Self::ForOf(it.clone_in(ast)),
-            Self::Expr(it) => Self::Expr(it.clone_in(ast)),
+        let data = ast.stmt_data(*self);
+        match data {
+            StmtData::Block(it) => Self::Block(it.clone_in(ast)),
+            StmtData::Empty(it) => Self::Empty(it.clone_in(ast)),
+            StmtData::Debugger(it) => Self::Debugger(it.clone_in(ast)),
+            StmtData::With(it) => Self::With(it.clone_in(ast)),
+            StmtData::Return(it) => Self::Return(it.clone_in(ast)),
+            StmtData::Labeled(it) => Self::Labeled(it.clone_in(ast)),
+            StmtData::Break(it) => Self::Break(it.clone_in(ast)),
+            StmtData::Continue(it) => Self::Continue(it.clone_in(ast)),
+            StmtData::If(it) => Self::If(it.clone_in(ast)),
+            StmtData::Switch(it) => Self::Switch(it.clone_in(ast)),
+            StmtData::Throw(it) => Self::Throw(it.clone_in(ast)),
+            StmtData::Try(it) => Self::Try(it.clone_in(ast)),
+            StmtData::While(it) => Self::While(it.clone_in(ast)),
+            StmtData::DoWhile(it) => Self::DoWhile(it.clone_in(ast)),
+            StmtData::For(it) => Self::For(it.clone_in(ast)),
+            StmtData::ForIn(it) => Self::ForIn(it.clone_in(ast)),
+            StmtData::ForOf(it) => Self::ForOf(it.clone_in(ast)),
+            StmtData::Decl(it) => Self::Decl(it.clone_in(ast)),
+            StmtData::Expr(it) => Self::Expr(it.clone_in(ast)),
         }
     }
 }
@@ -479,53 +454,11 @@ impl<'a> CloneIn<'a> for ForHead {
     type Cloned = ForHead;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::ExprThis(it) => Self::ExprThis(it.clone_in(ast)),
-            Self::ExprArray(it) => Self::ExprArray(it.clone_in(ast)),
-            Self::ExprObject(it) => Self::ExprObject(it.clone_in(ast)),
-            Self::ExprFn(it) => Self::ExprFn(it.clone_in(ast)),
-            Self::ExprUnary(it) => Self::ExprUnary(it.clone_in(ast)),
-            Self::ExprUpdate(it) => Self::ExprUpdate(it.clone_in(ast)),
-            Self::ExprBin(it) => Self::ExprBin(it.clone_in(ast)),
-            Self::ExprAssign(it) => Self::ExprAssign(it.clone_in(ast)),
-            Self::ExprMember(it) => Self::ExprMember(it.clone_in(ast)),
-            Self::ExprSuperProp(it) => Self::ExprSuperProp(it.clone_in(ast)),
-            Self::ExprCond(it) => Self::ExprCond(it.clone_in(ast)),
-            Self::ExprImport(it) => Self::ExprImport(it.clone_in(ast)),
-            Self::ExprCall(it) => Self::ExprCall(it.clone_in(ast)),
-            Self::ExprNew(it) => Self::ExprNew(it.clone_in(ast)),
-            Self::ExprSeq(it) => Self::ExprSeq(it.clone_in(ast)),
-            Self::ExprIdent(it) => Self::ExprIdent(it.clone_in(ast)),
-            Self::ExprStr(it) => Self::ExprStr(it.clone_in(ast)),
-            Self::ExprBool(it) => Self::ExprBool(it.clone_in(ast)),
-            Self::ExprNull(it) => Self::ExprNull(it.clone_in(ast)),
-            Self::ExprNum(it) => Self::ExprNum(it.clone_in(ast)),
-            Self::ExprBigInt(it) => Self::ExprBigInt(it.clone_in(ast)),
-            Self::ExprRegex(it) => Self::ExprRegex(it.clone_in(ast)),
-            Self::ExprTpl(it) => Self::ExprTpl(it.clone_in(ast)),
-            Self::ExprTaggedTpl(it) => Self::ExprTaggedTpl(it.clone_in(ast)),
-            Self::ExprArrow(it) => Self::ExprArrow(it.clone_in(ast)),
-            Self::ExprClass(it) => Self::ExprClass(it.clone_in(ast)),
-            Self::ExprYield(it) => Self::ExprYield(it.clone_in(ast)),
-            Self::ExprMetaProp(it) => Self::ExprMetaProp(it.clone_in(ast)),
-            Self::ExprAwait(it) => Self::ExprAwait(it.clone_in(ast)),
-            Self::ExprParen(it) => Self::ExprParen(it.clone_in(ast)),
-            Self::ExprJSXMember(it) => Self::ExprJSXMember(it.clone_in(ast)),
-            Self::ExprJSXNamespacedName(it) => Self::ExprJSXNamespacedName(it.clone_in(ast)),
-            Self::ExprJSXEmpty(it) => Self::ExprJSXEmpty(it.clone_in(ast)),
-            Self::ExprJSXElement(it) => Self::ExprJSXElement(it.clone_in(ast)),
-            Self::ExprJSXFragment(it) => Self::ExprJSXFragment(it.clone_in(ast)),
-            Self::ExprPrivateName(it) => Self::ExprPrivateName(it.clone_in(ast)),
-            Self::ExprOptChain(it) => Self::ExprOptChain(it.clone_in(ast)),
-            Self::ExprInvalid(it) => Self::ExprInvalid(it.clone_in(ast)),
-            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
-            Self::Array(it) => Self::Array(it.clone_in(ast)),
-            Self::Rest(it) => Self::Rest(it.clone_in(ast)),
-            Self::Object(it) => Self::Object(it.clone_in(ast)),
-            Self::Assign(it) => Self::Assign(it.clone_in(ast)),
-            Self::Invalid(it) => Self::Invalid(it.clone_in(ast)),
-            Self::VarDecl(it) => Self::VarDecl(it.clone_in(ast)),
-            Self::UsingDecl(it) => Self::UsingDecl(it.clone_in(ast)),
+        let data = ast.for_head_data(*self);
+        match data {
+            ForHeadData::VarDecl(it) => Self::VarDecl(it.clone_in(ast)),
+            ForHeadData::UsingDecl(it) => Self::UsingDecl(it.clone_in(ast)),
+            ForHeadData::Pat(it) => Self::Pat(it.clone_in(ast)),
         }
     }
 }
@@ -533,46 +466,10 @@ impl<'a> CloneIn<'a> for VarDeclOrExpr {
     type Cloned = VarDeclOrExpr;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::This(it) => Self::This(it.clone_in(ast)),
-            Self::Array(it) => Self::Array(it.clone_in(ast)),
-            Self::Object(it) => Self::Object(it.clone_in(ast)),
-            Self::Fn(it) => Self::Fn(it.clone_in(ast)),
-            Self::Unary(it) => Self::Unary(it.clone_in(ast)),
-            Self::Update(it) => Self::Update(it.clone_in(ast)),
-            Self::Bin(it) => Self::Bin(it.clone_in(ast)),
-            Self::Assign(it) => Self::Assign(it.clone_in(ast)),
-            Self::Member(it) => Self::Member(it.clone_in(ast)),
-            Self::SuperProp(it) => Self::SuperProp(it.clone_in(ast)),
-            Self::Cond(it) => Self::Cond(it.clone_in(ast)),
-            Self::Import(it) => Self::Import(it.clone_in(ast)),
-            Self::Call(it) => Self::Call(it.clone_in(ast)),
-            Self::New(it) => Self::New(it.clone_in(ast)),
-            Self::Seq(it) => Self::Seq(it.clone_in(ast)),
-            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
-            Self::Str(it) => Self::Str(it.clone_in(ast)),
-            Self::Bool(it) => Self::Bool(it.clone_in(ast)),
-            Self::Null(it) => Self::Null(it.clone_in(ast)),
-            Self::Num(it) => Self::Num(it.clone_in(ast)),
-            Self::BigInt(it) => Self::BigInt(it.clone_in(ast)),
-            Self::Regex(it) => Self::Regex(it.clone_in(ast)),
-            Self::Tpl(it) => Self::Tpl(it.clone_in(ast)),
-            Self::TaggedTpl(it) => Self::TaggedTpl(it.clone_in(ast)),
-            Self::Arrow(it) => Self::Arrow(it.clone_in(ast)),
-            Self::Class(it) => Self::Class(it.clone_in(ast)),
-            Self::Yield(it) => Self::Yield(it.clone_in(ast)),
-            Self::MetaProp(it) => Self::MetaProp(it.clone_in(ast)),
-            Self::Await(it) => Self::Await(it.clone_in(ast)),
-            Self::Paren(it) => Self::Paren(it.clone_in(ast)),
-            Self::JSXMember(it) => Self::JSXMember(it.clone_in(ast)),
-            Self::JSXNamespacedName(it) => Self::JSXNamespacedName(it.clone_in(ast)),
-            Self::JSXEmpty(it) => Self::JSXEmpty(it.clone_in(ast)),
-            Self::JSXElement(it) => Self::JSXElement(it.clone_in(ast)),
-            Self::JSXFragment(it) => Self::JSXFragment(it.clone_in(ast)),
-            Self::PrivateName(it) => Self::PrivateName(it.clone_in(ast)),
-            Self::OptChain(it) => Self::OptChain(it.clone_in(ast)),
-            Self::Invalid(it) => Self::Invalid(it.clone_in(ast)),
-            Self::VarDecl(it) => Self::VarDecl(it.clone_in(ast)),
+        let data = ast.var_decl_or_expr_data(*self);
+        match data {
+            VarDeclOrExprData::VarDecl(it) => Self::VarDecl(it.clone_in(ast)),
+            VarDeclOrExprData::Expr(it) => Self::Expr(it.clone_in(ast)),
         }
     }
 }
@@ -580,11 +477,12 @@ impl<'a> CloneIn<'a> for Decl {
     type Cloned = Decl;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Class(it) => Self::Class(it.clone_in(ast)),
-            Self::Fn(it) => Self::Fn(it.clone_in(ast)),
-            Self::Var(it) => Self::Var(it.clone_in(ast)),
-            Self::Using(it) => Self::Using(it.clone_in(ast)),
+        let data = ast.decl_data(*self);
+        match data {
+            DeclData::Class(it) => Self::Class(it.clone_in(ast)),
+            DeclData::Fn(it) => Self::Fn(it.clone_in(ast)),
+            DeclData::Var(it) => Self::Var(it.clone_in(ast)),
+            DeclData::Using(it) => Self::Using(it.clone_in(ast)),
         }
     }
 }
@@ -645,45 +543,41 @@ impl<'a> CloneIn<'a> for Expr {
     type Cloned = Expr;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::This(it) => Self::This(it.clone_in(ast)),
-            Self::Array(it) => Self::Array(it.clone_in(ast)),
-            Self::Object(it) => Self::Object(it.clone_in(ast)),
-            Self::Fn(it) => Self::Fn(it.clone_in(ast)),
-            Self::Unary(it) => Self::Unary(it.clone_in(ast)),
-            Self::Update(it) => Self::Update(it.clone_in(ast)),
-            Self::Bin(it) => Self::Bin(it.clone_in(ast)),
-            Self::Assign(it) => Self::Assign(it.clone_in(ast)),
-            Self::Member(it) => Self::Member(it.clone_in(ast)),
-            Self::SuperProp(it) => Self::SuperProp(it.clone_in(ast)),
-            Self::Cond(it) => Self::Cond(it.clone_in(ast)),
-            Self::Import(it) => Self::Import(it.clone_in(ast)),
-            Self::Call(it) => Self::Call(it.clone_in(ast)),
-            Self::New(it) => Self::New(it.clone_in(ast)),
-            Self::Seq(it) => Self::Seq(it.clone_in(ast)),
-            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
-            Self::Str(it) => Self::Str(it.clone_in(ast)),
-            Self::Bool(it) => Self::Bool(it.clone_in(ast)),
-            Self::Null(it) => Self::Null(it.clone_in(ast)),
-            Self::Num(it) => Self::Num(it.clone_in(ast)),
-            Self::BigInt(it) => Self::BigInt(it.clone_in(ast)),
-            Self::Regex(it) => Self::Regex(it.clone_in(ast)),
-            Self::Tpl(it) => Self::Tpl(it.clone_in(ast)),
-            Self::TaggedTpl(it) => Self::TaggedTpl(it.clone_in(ast)),
-            Self::Arrow(it) => Self::Arrow(it.clone_in(ast)),
-            Self::Class(it) => Self::Class(it.clone_in(ast)),
-            Self::Yield(it) => Self::Yield(it.clone_in(ast)),
-            Self::MetaProp(it) => Self::MetaProp(it.clone_in(ast)),
-            Self::Await(it) => Self::Await(it.clone_in(ast)),
-            Self::Paren(it) => Self::Paren(it.clone_in(ast)),
-            Self::JSXMember(it) => Self::JSXMember(it.clone_in(ast)),
-            Self::JSXNamespacedName(it) => Self::JSXNamespacedName(it.clone_in(ast)),
-            Self::JSXEmpty(it) => Self::JSXEmpty(it.clone_in(ast)),
-            Self::JSXElement(it) => Self::JSXElement(it.clone_in(ast)),
-            Self::JSXFragment(it) => Self::JSXFragment(it.clone_in(ast)),
-            Self::PrivateName(it) => Self::PrivateName(it.clone_in(ast)),
-            Self::OptChain(it) => Self::OptChain(it.clone_in(ast)),
-            Self::Invalid(it) => Self::Invalid(it.clone_in(ast)),
+        let data = ast.expr_data(*self);
+        match data {
+            ExprData::This(it) => Self::This(it.clone_in(ast)),
+            ExprData::Array(it) => Self::Array(it.clone_in(ast)),
+            ExprData::Object(it) => Self::Object(it.clone_in(ast)),
+            ExprData::Fn(it) => Self::Fn(it.clone_in(ast)),
+            ExprData::Unary(it) => Self::Unary(it.clone_in(ast)),
+            ExprData::Update(it) => Self::Update(it.clone_in(ast)),
+            ExprData::Bin(it) => Self::Bin(it.clone_in(ast)),
+            ExprData::Assign(it) => Self::Assign(it.clone_in(ast)),
+            ExprData::Member(it) => Self::Member(it.clone_in(ast)),
+            ExprData::SuperProp(it) => Self::SuperProp(it.clone_in(ast)),
+            ExprData::Cond(it) => Self::Cond(it.clone_in(ast)),
+            ExprData::Import(it) => Self::Import(it.clone_in(ast)),
+            ExprData::Call(it) => Self::Call(it.clone_in(ast)),
+            ExprData::New(it) => Self::New(it.clone_in(ast)),
+            ExprData::Seq(it) => Self::Seq(it.clone_in(ast)),
+            ExprData::Ident(it) => Self::Ident(it.clone_in(ast)),
+            ExprData::Lit(it) => Self::Lit(it.clone_in(ast)),
+            ExprData::Tpl(it) => Self::Tpl(it.clone_in(ast)),
+            ExprData::TaggedTpl(it) => Self::TaggedTpl(it.clone_in(ast)),
+            ExprData::Arrow(it) => Self::Arrow(it.clone_in(ast)),
+            ExprData::Class(it) => Self::Class(it.clone_in(ast)),
+            ExprData::Yield(it) => Self::Yield(it.clone_in(ast)),
+            ExprData::MetaProp(it) => Self::MetaProp(it.clone_in(ast)),
+            ExprData::Await(it) => Self::Await(it.clone_in(ast)),
+            ExprData::Paren(it) => Self::Paren(it.clone_in(ast)),
+            ExprData::JSXMember(it) => Self::JSXMember(it.clone_in(ast)),
+            ExprData::JSXNamespacedName(it) => Self::JSXNamespacedName(it.clone_in(ast)),
+            ExprData::JSXEmpty(it) => Self::JSXEmpty(it.clone_in(ast)),
+            ExprData::JSXElement(it) => Self::JSXElement(it.clone_in(ast)),
+            ExprData::JSXFragment(it) => Self::JSXFragment(it.clone_in(ast)),
+            ExprData::PrivateName(it) => Self::PrivateName(it.clone_in(ast)),
+            ExprData::OptChain(it) => Self::OptChain(it.clone_in(ast)),
+            ExprData::Invalid(it) => Self::Invalid(it.clone_in(ast)),
         }
     }
 }
@@ -717,14 +611,10 @@ impl<'a> CloneIn<'a> for PropOrSpread {
     type Cloned = PropOrSpread;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Shorthand(it) => Self::Shorthand(it.clone_in(ast)),
-            Self::KeyValue(it) => Self::KeyValue(it.clone_in(ast)),
-            Self::Assign(it) => Self::Assign(it.clone_in(ast)),
-            Self::Getter(it) => Self::Getter(it.clone_in(ast)),
-            Self::Setter(it) => Self::Setter(it.clone_in(ast)),
-            Self::Method(it) => Self::Method(it.clone_in(ast)),
-            Self::Spread(it) => Self::Spread(it.clone_in(ast)),
+        let data = ast.prop_or_spread_data(*self);
+        match data {
+            PropOrSpreadData::Spread(it) => Self::Spread(it.clone_in(ast)),
+            PropOrSpreadData::Prop(it) => Self::Prop(it.clone_in(ast)),
         }
     }
 }
@@ -815,10 +705,11 @@ impl<'a> CloneIn<'a> for MemberProp {
     type Cloned = MemberProp;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
-            Self::PrivateName(it) => Self::PrivateName(it.clone_in(ast)),
-            Self::Computed(it) => Self::Computed(it.clone_in(ast)),
+        let data = ast.member_prop_data(*self);
+        match data {
+            MemberPropData::Ident(it) => Self::Ident(it.clone_in(ast)),
+            MemberPropData::PrivateName(it) => Self::PrivateName(it.clone_in(ast)),
+            MemberPropData::Computed(it) => Self::Computed(it.clone_in(ast)),
         }
     }
 }
@@ -836,9 +727,10 @@ impl<'a> CloneIn<'a> for SuperProp {
     type Cloned = SuperProp;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
-            Self::Computed(it) => Self::Computed(it.clone_in(ast)),
+        let data = ast.super_prop_data(*self);
+        match data {
+            SuperPropData::Ident(it) => Self::Ident(it.clone_in(ast)),
+            SuperPropData::Computed(it) => Self::Computed(it.clone_in(ast)),
         }
     }
 }
@@ -977,46 +869,10 @@ impl<'a> CloneIn<'a> for Callee {
     type Cloned = Callee;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::This(it) => Self::This(it.clone_in(ast)),
-            Self::Array(it) => Self::Array(it.clone_in(ast)),
-            Self::Object(it) => Self::Object(it.clone_in(ast)),
-            Self::Fn(it) => Self::Fn(it.clone_in(ast)),
-            Self::Unary(it) => Self::Unary(it.clone_in(ast)),
-            Self::Update(it) => Self::Update(it.clone_in(ast)),
-            Self::Bin(it) => Self::Bin(it.clone_in(ast)),
-            Self::Assign(it) => Self::Assign(it.clone_in(ast)),
-            Self::Member(it) => Self::Member(it.clone_in(ast)),
-            Self::SuperProp(it) => Self::SuperProp(it.clone_in(ast)),
-            Self::Cond(it) => Self::Cond(it.clone_in(ast)),
-            Self::Import(it) => Self::Import(it.clone_in(ast)),
-            Self::Call(it) => Self::Call(it.clone_in(ast)),
-            Self::New(it) => Self::New(it.clone_in(ast)),
-            Self::Seq(it) => Self::Seq(it.clone_in(ast)),
-            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
-            Self::Str(it) => Self::Str(it.clone_in(ast)),
-            Self::Bool(it) => Self::Bool(it.clone_in(ast)),
-            Self::Null(it) => Self::Null(it.clone_in(ast)),
-            Self::Num(it) => Self::Num(it.clone_in(ast)),
-            Self::BigInt(it) => Self::BigInt(it.clone_in(ast)),
-            Self::Regex(it) => Self::Regex(it.clone_in(ast)),
-            Self::Tpl(it) => Self::Tpl(it.clone_in(ast)),
-            Self::TaggedTpl(it) => Self::TaggedTpl(it.clone_in(ast)),
-            Self::Arrow(it) => Self::Arrow(it.clone_in(ast)),
-            Self::Class(it) => Self::Class(it.clone_in(ast)),
-            Self::Yield(it) => Self::Yield(it.clone_in(ast)),
-            Self::MetaProp(it) => Self::MetaProp(it.clone_in(ast)),
-            Self::Await(it) => Self::Await(it.clone_in(ast)),
-            Self::Paren(it) => Self::Paren(it.clone_in(ast)),
-            Self::JSXMember(it) => Self::JSXMember(it.clone_in(ast)),
-            Self::JSXNamespacedName(it) => Self::JSXNamespacedName(it.clone_in(ast)),
-            Self::JSXEmpty(it) => Self::JSXEmpty(it.clone_in(ast)),
-            Self::JSXElement(it) => Self::JSXElement(it.clone_in(ast)),
-            Self::JSXFragment(it) => Self::JSXFragment(it.clone_in(ast)),
-            Self::PrivateName(it) => Self::PrivateName(it.clone_in(ast)),
-            Self::OptChain(it) => Self::OptChain(it.clone_in(ast)),
-            Self::Invalid(it) => Self::Invalid(it.clone_in(ast)),
-            Self::Super(it) => Self::Super(it.clone_in(ast)),
+        let data = ast.callee_data(*self);
+        match data {
+            CalleeData::Super(it) => Self::Super(it.clone_in(ast)),
+            CalleeData::Expr(it) => Self::Expr(it.clone_in(ast)),
         }
     }
 }
@@ -1042,46 +898,10 @@ impl<'a> CloneIn<'a> for BlockStmtOrExpr {
     type Cloned = BlockStmtOrExpr;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::This(it) => Self::This(it.clone_in(ast)),
-            Self::Array(it) => Self::Array(it.clone_in(ast)),
-            Self::Object(it) => Self::Object(it.clone_in(ast)),
-            Self::Fn(it) => Self::Fn(it.clone_in(ast)),
-            Self::Unary(it) => Self::Unary(it.clone_in(ast)),
-            Self::Update(it) => Self::Update(it.clone_in(ast)),
-            Self::Bin(it) => Self::Bin(it.clone_in(ast)),
-            Self::Assign(it) => Self::Assign(it.clone_in(ast)),
-            Self::Member(it) => Self::Member(it.clone_in(ast)),
-            Self::SuperProp(it) => Self::SuperProp(it.clone_in(ast)),
-            Self::Cond(it) => Self::Cond(it.clone_in(ast)),
-            Self::Import(it) => Self::Import(it.clone_in(ast)),
-            Self::Call(it) => Self::Call(it.clone_in(ast)),
-            Self::New(it) => Self::New(it.clone_in(ast)),
-            Self::Seq(it) => Self::Seq(it.clone_in(ast)),
-            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
-            Self::Str(it) => Self::Str(it.clone_in(ast)),
-            Self::Bool(it) => Self::Bool(it.clone_in(ast)),
-            Self::Null(it) => Self::Null(it.clone_in(ast)),
-            Self::Num(it) => Self::Num(it.clone_in(ast)),
-            Self::BigInt(it) => Self::BigInt(it.clone_in(ast)),
-            Self::Regex(it) => Self::Regex(it.clone_in(ast)),
-            Self::Tpl(it) => Self::Tpl(it.clone_in(ast)),
-            Self::TaggedTpl(it) => Self::TaggedTpl(it.clone_in(ast)),
-            Self::Arrow(it) => Self::Arrow(it.clone_in(ast)),
-            Self::Class(it) => Self::Class(it.clone_in(ast)),
-            Self::Yield(it) => Self::Yield(it.clone_in(ast)),
-            Self::MetaProp(it) => Self::MetaProp(it.clone_in(ast)),
-            Self::Await(it) => Self::Await(it.clone_in(ast)),
-            Self::Paren(it) => Self::Paren(it.clone_in(ast)),
-            Self::JSXMember(it) => Self::JSXMember(it.clone_in(ast)),
-            Self::JSXNamespacedName(it) => Self::JSXNamespacedName(it.clone_in(ast)),
-            Self::JSXEmpty(it) => Self::JSXEmpty(it.clone_in(ast)),
-            Self::JSXElement(it) => Self::JSXElement(it.clone_in(ast)),
-            Self::JSXFragment(it) => Self::JSXFragment(it.clone_in(ast)),
-            Self::PrivateName(it) => Self::PrivateName(it.clone_in(ast)),
-            Self::OptChain(it) => Self::OptChain(it.clone_in(ast)),
-            Self::Invalid(it) => Self::Invalid(it.clone_in(ast)),
-            Self::BlockStmt(it) => Self::BlockStmt(it.clone_in(ast)),
+        let data = ast.block_stmt_or_expr_data(*self);
+        match data {
+            BlockStmtOrExprData::BlockStmt(it) => Self::BlockStmt(it.clone_in(ast)),
+            BlockStmtOrExprData::Expr(it) => Self::Expr(it.clone_in(ast)),
         }
     }
 }
@@ -1089,16 +909,10 @@ impl<'a> CloneIn<'a> for AssignTarget {
     type Cloned = AssignTarget;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::SimpleIdent(it) => Self::SimpleIdent(it.clone_in(ast)),
-            Self::SimpleMember(it) => Self::SimpleMember(it.clone_in(ast)),
-            Self::SimpleSuperProp(it) => Self::SimpleSuperProp(it.clone_in(ast)),
-            Self::SimpleParen(it) => Self::SimpleParen(it.clone_in(ast)),
-            Self::SimpleOptChain(it) => Self::SimpleOptChain(it.clone_in(ast)),
-            Self::SimpleInvalid(it) => Self::SimpleInvalid(it.clone_in(ast)),
-            Self::PatArray(it) => Self::PatArray(it.clone_in(ast)),
-            Self::PatObject(it) => Self::PatObject(it.clone_in(ast)),
-            Self::PatternInvalid(it) => Self::PatternInvalid(it.clone_in(ast)),
+        let data = ast.assign_target_data(*self);
+        match data {
+            AssignTargetData::Simple(it) => Self::Simple(it.clone_in(ast)),
+            AssignTargetData::Pat(it) => Self::Pat(it.clone_in(ast)),
         }
     }
 }
@@ -1106,10 +920,11 @@ impl<'a> CloneIn<'a> for AssignTargetPat {
     type Cloned = AssignTargetPat;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Array(it) => Self::Array(it.clone_in(ast)),
-            Self::Object(it) => Self::Object(it.clone_in(ast)),
-            Self::Invalid(it) => Self::Invalid(it.clone_in(ast)),
+        let data = ast.assign_target_pat_data(*self);
+        match data {
+            AssignTargetPatData::Array(it) => Self::Array(it.clone_in(ast)),
+            AssignTargetPatData::Object(it) => Self::Object(it.clone_in(ast)),
+            AssignTargetPatData::Invalid(it) => Self::Invalid(it.clone_in(ast)),
         }
     }
 }
@@ -1117,13 +932,14 @@ impl<'a> CloneIn<'a> for SimpleAssignTarget {
     type Cloned = SimpleAssignTarget;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
-            Self::Member(it) => Self::Member(it.clone_in(ast)),
-            Self::SuperProp(it) => Self::SuperProp(it.clone_in(ast)),
-            Self::Paren(it) => Self::Paren(it.clone_in(ast)),
-            Self::OptChain(it) => Self::OptChain(it.clone_in(ast)),
-            Self::Invalid(it) => Self::Invalid(it.clone_in(ast)),
+        let data = ast.simple_assign_target_data(*self);
+        match data {
+            SimpleAssignTargetData::Ident(it) => Self::Ident(it.clone_in(ast)),
+            SimpleAssignTargetData::Member(it) => Self::Member(it.clone_in(ast)),
+            SimpleAssignTargetData::SuperProp(it) => Self::SuperProp(it.clone_in(ast)),
+            SimpleAssignTargetData::Paren(it) => Self::Paren(it.clone_in(ast)),
+            SimpleAssignTargetData::OptChain(it) => Self::OptChain(it.clone_in(ast)),
+            SimpleAssignTargetData::Invalid(it) => Self::Invalid(it.clone_in(ast)),
         }
     }
 }
@@ -1141,9 +957,10 @@ impl<'a> CloneIn<'a> for OptChainBase {
     type Cloned = OptChainBase;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Member(it) => Self::Member(it.clone_in(ast)),
-            Self::Call(it) => Self::Call(it.clone_in(ast)),
+        let data = ast.opt_chain_base_data(*self);
+        match data {
+            OptChainBaseData::Member(it) => Self::Member(it.clone_in(ast)),
+            OptChainBaseData::Call(it) => Self::Call(it.clone_in(ast)),
         }
     }
 }
@@ -1192,8 +1009,9 @@ impl<'a> CloneIn<'a> for ParamOrTsParamProp {
     type Cloned = ParamOrTsParamProp;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Param(it) => Self::Param(it.clone_in(ast)),
+        let data = ast.param_or_ts_param_prop_data(*self);
+        match data {
+            ParamOrTsParamPropData::Param(it) => Self::Param(it.clone_in(ast)),
         }
     }
 }
@@ -1213,15 +1031,16 @@ impl<'a> CloneIn<'a> for ClassMember {
     type Cloned = ClassMember;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Constructor(it) => Self::Constructor(it.clone_in(ast)),
-            Self::Method(it) => Self::Method(it.clone_in(ast)),
-            Self::PrivateMethod(it) => Self::PrivateMethod(it.clone_in(ast)),
-            Self::ClassProp(it) => Self::ClassProp(it.clone_in(ast)),
-            Self::PrivateProp(it) => Self::PrivateProp(it.clone_in(ast)),
-            Self::Empty(it) => Self::Empty(it.clone_in(ast)),
-            Self::StaticBlock(it) => Self::StaticBlock(it.clone_in(ast)),
-            Self::AutoAccessor(it) => Self::AutoAccessor(it.clone_in(ast)),
+        let data = ast.class_member_data(*self);
+        match data {
+            ClassMemberData::Constructor(it) => Self::Constructor(it.clone_in(ast)),
+            ClassMemberData::Method(it) => Self::Method(it.clone_in(ast)),
+            ClassMemberData::PrivateMethod(it) => Self::PrivateMethod(it.clone_in(ast)),
+            ClassMemberData::ClassProp(it) => Self::ClassProp(it.clone_in(ast)),
+            ClassMemberData::PrivateProp(it) => Self::PrivateProp(it.clone_in(ast)),
+            ClassMemberData::Empty(it) => Self::Empty(it.clone_in(ast)),
+            ClassMemberData::StaticBlock(it) => Self::StaticBlock(it.clone_in(ast)),
+            ClassMemberData::AutoAccessor(it) => Self::AutoAccessor(it.clone_in(ast)),
         }
     }
 }
@@ -1306,13 +1125,10 @@ impl<'a> CloneIn<'a> for Key {
     type Cloned = Key;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
-            Self::Str(it) => Self::Str(it.clone_in(ast)),
-            Self::Num(it) => Self::Num(it.clone_in(ast)),
-            Self::Computed(it) => Self::Computed(it.clone_in(ast)),
-            Self::BigInt(it) => Self::BigInt(it.clone_in(ast)),
-            Self::Private(it) => Self::Private(it.clone_in(ast)),
+        let data = ast.key_data(*self);
+        match data {
+            KeyData::Private(it) => Self::Private(it.clone_in(ast)),
+            KeyData::Public(it) => Self::Public(it.clone_in(ast)),
         }
     }
 }
@@ -1332,13 +1148,14 @@ impl<'a> CloneIn<'a> for Prop {
     type Cloned = Prop;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Shorthand(it) => Self::Shorthand(it.clone_in(ast)),
-            Self::KeyValue(it) => Self::KeyValue(it.clone_in(ast)),
-            Self::Assign(it) => Self::Assign(it.clone_in(ast)),
-            Self::Getter(it) => Self::Getter(it.clone_in(ast)),
-            Self::Setter(it) => Self::Setter(it.clone_in(ast)),
-            Self::Method(it) => Self::Method(it.clone_in(ast)),
+        let data = ast.prop_data(*self);
+        match data {
+            PropData::Shorthand(it) => Self::Shorthand(it.clone_in(ast)),
+            PropData::KeyValue(it) => Self::KeyValue(it.clone_in(ast)),
+            PropData::Assign(it) => Self::Assign(it.clone_in(ast)),
+            PropData::Getter(it) => Self::Getter(it.clone_in(ast)),
+            PropData::Setter(it) => Self::Setter(it.clone_in(ast)),
+            PropData::Method(it) => Self::Method(it.clone_in(ast)),
         }
     }
 }
@@ -1396,12 +1213,13 @@ impl<'a> CloneIn<'a> for PropName {
     type Cloned = PropName;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
-            Self::Str(it) => Self::Str(it.clone_in(ast)),
-            Self::Num(it) => Self::Num(it.clone_in(ast)),
-            Self::Computed(it) => Self::Computed(it.clone_in(ast)),
-            Self::BigInt(it) => Self::BigInt(it.clone_in(ast)),
+        let data = ast.prop_name_data(*self);
+        match data {
+            PropNameData::Ident(it) => Self::Ident(it.clone_in(ast)),
+            PropNameData::Str(it) => Self::Str(it.clone_in(ast)),
+            PropNameData::Num(it) => Self::Num(it.clone_in(ast)),
+            PropNameData::Computed(it) => Self::Computed(it.clone_in(ast)),
+            PropNameData::BigInt(it) => Self::BigInt(it.clone_in(ast)),
         }
     }
 }
@@ -1418,51 +1236,15 @@ impl<'a> CloneIn<'a> for Pat {
     type Cloned = Pat;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::ExprThis(it) => Self::ExprThis(it.clone_in(ast)),
-            Self::ExprArray(it) => Self::ExprArray(it.clone_in(ast)),
-            Self::ExprObject(it) => Self::ExprObject(it.clone_in(ast)),
-            Self::ExprFn(it) => Self::ExprFn(it.clone_in(ast)),
-            Self::ExprUnary(it) => Self::ExprUnary(it.clone_in(ast)),
-            Self::ExprUpdate(it) => Self::ExprUpdate(it.clone_in(ast)),
-            Self::ExprBin(it) => Self::ExprBin(it.clone_in(ast)),
-            Self::ExprAssign(it) => Self::ExprAssign(it.clone_in(ast)),
-            Self::ExprMember(it) => Self::ExprMember(it.clone_in(ast)),
-            Self::ExprSuperProp(it) => Self::ExprSuperProp(it.clone_in(ast)),
-            Self::ExprCond(it) => Self::ExprCond(it.clone_in(ast)),
-            Self::ExprImport(it) => Self::ExprImport(it.clone_in(ast)),
-            Self::ExprCall(it) => Self::ExprCall(it.clone_in(ast)),
-            Self::ExprNew(it) => Self::ExprNew(it.clone_in(ast)),
-            Self::ExprSeq(it) => Self::ExprSeq(it.clone_in(ast)),
-            Self::ExprIdent(it) => Self::ExprIdent(it.clone_in(ast)),
-            Self::ExprStr(it) => Self::ExprStr(it.clone_in(ast)),
-            Self::ExprBool(it) => Self::ExprBool(it.clone_in(ast)),
-            Self::ExprNull(it) => Self::ExprNull(it.clone_in(ast)),
-            Self::ExprNum(it) => Self::ExprNum(it.clone_in(ast)),
-            Self::ExprBigInt(it) => Self::ExprBigInt(it.clone_in(ast)),
-            Self::ExprRegex(it) => Self::ExprRegex(it.clone_in(ast)),
-            Self::ExprTpl(it) => Self::ExprTpl(it.clone_in(ast)),
-            Self::ExprTaggedTpl(it) => Self::ExprTaggedTpl(it.clone_in(ast)),
-            Self::ExprArrow(it) => Self::ExprArrow(it.clone_in(ast)),
-            Self::ExprClass(it) => Self::ExprClass(it.clone_in(ast)),
-            Self::ExprYield(it) => Self::ExprYield(it.clone_in(ast)),
-            Self::ExprMetaProp(it) => Self::ExprMetaProp(it.clone_in(ast)),
-            Self::ExprAwait(it) => Self::ExprAwait(it.clone_in(ast)),
-            Self::ExprParen(it) => Self::ExprParen(it.clone_in(ast)),
-            Self::ExprJSXMember(it) => Self::ExprJSXMember(it.clone_in(ast)),
-            Self::ExprJSXNamespacedName(it) => Self::ExprJSXNamespacedName(it.clone_in(ast)),
-            Self::ExprJSXEmpty(it) => Self::ExprJSXEmpty(it.clone_in(ast)),
-            Self::ExprJSXElement(it) => Self::ExprJSXElement(it.clone_in(ast)),
-            Self::ExprJSXFragment(it) => Self::ExprJSXFragment(it.clone_in(ast)),
-            Self::ExprPrivateName(it) => Self::ExprPrivateName(it.clone_in(ast)),
-            Self::ExprOptChain(it) => Self::ExprOptChain(it.clone_in(ast)),
-            Self::ExprInvalid(it) => Self::ExprInvalid(it.clone_in(ast)),
-            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
-            Self::Array(it) => Self::Array(it.clone_in(ast)),
-            Self::Rest(it) => Self::Rest(it.clone_in(ast)),
-            Self::Object(it) => Self::Object(it.clone_in(ast)),
-            Self::Assign(it) => Self::Assign(it.clone_in(ast)),
-            Self::Invalid(it) => Self::Invalid(it.clone_in(ast)),
+        let data = ast.pat_data(*self);
+        match data {
+            PatData::Ident(it) => Self::Ident(it.clone_in(ast)),
+            PatData::Array(it) => Self::Array(it.clone_in(ast)),
+            PatData::Rest(it) => Self::Rest(it.clone_in(ast)),
+            PatData::Object(it) => Self::Object(it.clone_in(ast)),
+            PatData::Assign(it) => Self::Assign(it.clone_in(ast)),
+            PatData::Invalid(it) => Self::Invalid(it.clone_in(ast)),
+            PatData::Expr(it) => Self::Expr(it.clone_in(ast)),
         }
     }
 }
@@ -1510,10 +1292,11 @@ impl<'a> CloneIn<'a> for ObjectPatProp {
     type Cloned = ObjectPatProp;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::KeyValue(it) => Self::KeyValue(it.clone_in(ast)),
-            Self::Assign(it) => Self::Assign(it.clone_in(ast)),
-            Self::Rest(it) => Self::Rest(it.clone_in(ast)),
+        let data = ast.object_pat_prop_data(*self);
+        match data {
+            ObjectPatPropData::KeyValue(it) => Self::KeyValue(it.clone_in(ast)),
+            ObjectPatPropData::Assign(it) => Self::Assign(it.clone_in(ast)),
+            ObjectPatPropData::Rest(it) => Self::Rest(it.clone_in(ast)),
         }
     }
 }
@@ -1577,13 +1360,14 @@ impl<'a> CloneIn<'a> for Lit {
     type Cloned = Lit;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Str(it) => Self::Str(it.clone_in(ast)),
-            Self::Bool(it) => Self::Bool(it.clone_in(ast)),
-            Self::Null(it) => Self::Null(it.clone_in(ast)),
-            Self::Num(it) => Self::Num(it.clone_in(ast)),
-            Self::BigInt(it) => Self::BigInt(it.clone_in(ast)),
-            Self::Regex(it) => Self::Regex(it.clone_in(ast)),
+        let data = ast.lit_data(*self);
+        match data {
+            LitData::Str(it) => Self::Str(it.clone_in(ast)),
+            LitData::Bool(it) => Self::Bool(it.clone_in(ast)),
+            LitData::Null(it) => Self::Null(it.clone_in(ast)),
+            LitData::Num(it) => Self::Num(it.clone_in(ast)),
+            LitData::BigInt(it) => Self::BigInt(it.clone_in(ast)),
+            LitData::Regex(it) => Self::Regex(it.clone_in(ast)),
         }
     }
 }
@@ -1648,9 +1432,10 @@ impl<'a> CloneIn<'a> for JSXObject {
     type Cloned = JSXObject;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::JSXMemberExpr(it) => Self::JSXMemberExpr(it.clone_in(ast)),
-            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
+        let data = ast.jsx_object_data(*self);
+        match data {
+            JSXObjectData::JSXMemberExpr(it) => Self::JSXMemberExpr(it.clone_in(ast)),
+            JSXObjectData::Ident(it) => Self::Ident(it.clone_in(ast)),
         }
     }
 }
@@ -1695,46 +1480,10 @@ impl<'a> CloneIn<'a> for JSXExpr {
     type Cloned = JSXExpr;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::This(it) => Self::This(it.clone_in(ast)),
-            Self::Array(it) => Self::Array(it.clone_in(ast)),
-            Self::Object(it) => Self::Object(it.clone_in(ast)),
-            Self::Fn(it) => Self::Fn(it.clone_in(ast)),
-            Self::Unary(it) => Self::Unary(it.clone_in(ast)),
-            Self::Update(it) => Self::Update(it.clone_in(ast)),
-            Self::Bin(it) => Self::Bin(it.clone_in(ast)),
-            Self::Assign(it) => Self::Assign(it.clone_in(ast)),
-            Self::Member(it) => Self::Member(it.clone_in(ast)),
-            Self::SuperProp(it) => Self::SuperProp(it.clone_in(ast)),
-            Self::Cond(it) => Self::Cond(it.clone_in(ast)),
-            Self::Import(it) => Self::Import(it.clone_in(ast)),
-            Self::Call(it) => Self::Call(it.clone_in(ast)),
-            Self::New(it) => Self::New(it.clone_in(ast)),
-            Self::Seq(it) => Self::Seq(it.clone_in(ast)),
-            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
-            Self::Str(it) => Self::Str(it.clone_in(ast)),
-            Self::Bool(it) => Self::Bool(it.clone_in(ast)),
-            Self::Null(it) => Self::Null(it.clone_in(ast)),
-            Self::Num(it) => Self::Num(it.clone_in(ast)),
-            Self::BigInt(it) => Self::BigInt(it.clone_in(ast)),
-            Self::Regex(it) => Self::Regex(it.clone_in(ast)),
-            Self::Tpl(it) => Self::Tpl(it.clone_in(ast)),
-            Self::TaggedTpl(it) => Self::TaggedTpl(it.clone_in(ast)),
-            Self::Arrow(it) => Self::Arrow(it.clone_in(ast)),
-            Self::Class(it) => Self::Class(it.clone_in(ast)),
-            Self::Yield(it) => Self::Yield(it.clone_in(ast)),
-            Self::MetaProp(it) => Self::MetaProp(it.clone_in(ast)),
-            Self::Await(it) => Self::Await(it.clone_in(ast)),
-            Self::Paren(it) => Self::Paren(it.clone_in(ast)),
-            Self::JSXMember(it) => Self::JSXMember(it.clone_in(ast)),
-            Self::JSXNamespacedName(it) => Self::JSXNamespacedName(it.clone_in(ast)),
-            Self::JSXEmpty(it) => Self::JSXEmpty(it.clone_in(ast)),
-            Self::JSXElement(it) => Self::JSXElement(it.clone_in(ast)),
-            Self::JSXFragment(it) => Self::JSXFragment(it.clone_in(ast)),
-            Self::PrivateName(it) => Self::PrivateName(it.clone_in(ast)),
-            Self::OptChain(it) => Self::OptChain(it.clone_in(ast)),
-            Self::Invalid(it) => Self::Invalid(it.clone_in(ast)),
-            Self::JSXEmptyExpr(it) => Self::JSXEmptyExpr(it.clone_in(ast)),
+        let data = ast.jsx_expr_data(*self);
+        match data {
+            JSXExprData::JSXEmptyExpr(it) => Self::JSXEmptyExpr(it.clone_in(ast)),
+            JSXExprData::Expr(it) => Self::Expr(it.clone_in(ast)),
         }
     }
 }
@@ -1751,10 +1500,11 @@ impl<'a> CloneIn<'a> for JSXElementName {
     type Cloned = JSXElementName;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
-            Self::JSXMemberExpr(it) => Self::JSXMemberExpr(it.clone_in(ast)),
-            Self::JSXNamespacedName(it) => Self::JSXNamespacedName(it.clone_in(ast)),
+        let data = ast.jsx_element_name_data(*self);
+        match data {
+            JSXElementNameData::Ident(it) => Self::Ident(it.clone_in(ast)),
+            JSXElementNameData::JSXMemberExpr(it) => Self::JSXMemberExpr(it.clone_in(ast)),
+            JSXElementNameData::JSXNamespacedName(it) => Self::JSXNamespacedName(it.clone_in(ast)),
         }
     }
 }
@@ -1773,9 +1523,10 @@ impl<'a> CloneIn<'a> for JSXAttrOrSpread {
     type Cloned = JSXAttrOrSpread;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::JSXAttr(it) => Self::JSXAttr(it.clone_in(ast)),
-            Self::SpreadElement(it) => Self::SpreadElement(it.clone_in(ast)),
+        let data = ast.jsx_attr_or_spread_data(*self);
+        match data {
+            JSXAttrOrSpreadData::JSXAttr(it) => Self::JSXAttr(it.clone_in(ast)),
+            JSXAttrOrSpreadData::SpreadElement(it) => Self::SpreadElement(it.clone_in(ast)),
         }
     }
 }
@@ -1802,9 +1553,10 @@ impl<'a> CloneIn<'a> for JSXAttrName {
     type Cloned = JSXAttrName;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Ident(it) => Self::Ident(it.clone_in(ast)),
-            Self::JSXNamespacedName(it) => Self::JSXNamespacedName(it.clone_in(ast)),
+        let data = ast.jsx_attr_name_data(*self);
+        match data {
+            JSXAttrNameData::Ident(it) => Self::Ident(it.clone_in(ast)),
+            JSXAttrNameData::JSXNamespacedName(it) => Self::JSXNamespacedName(it.clone_in(ast)),
         }
     }
 }
@@ -1812,11 +1564,12 @@ impl<'a> CloneIn<'a> for JSXAttrValue {
     type Cloned = JSXAttrValue;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::Str(it) => Self::Str(it.clone_in(ast)),
-            Self::JSXExprContainer(it) => Self::JSXExprContainer(it.clone_in(ast)),
-            Self::JSXElement(it) => Self::JSXElement(it.clone_in(ast)),
-            Self::JSXFragment(it) => Self::JSXFragment(it.clone_in(ast)),
+        let data = ast.jsx_attr_value_data(*self);
+        match data {
+            JSXAttrValueData::Str(it) => Self::Str(it.clone_in(ast)),
+            JSXAttrValueData::JSXExprContainer(it) => Self::JSXExprContainer(it.clone_in(ast)),
+            JSXAttrValueData::JSXElement(it) => Self::JSXElement(it.clone_in(ast)),
+            JSXAttrValueData::JSXFragment(it) => Self::JSXFragment(it.clone_in(ast)),
         }
     }
 }
@@ -1845,12 +1598,13 @@ impl<'a> CloneIn<'a> for JSXElementChild {
     type Cloned = JSXElementChild;
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        match self {
-            Self::JSXText(it) => Self::JSXText(it.clone_in(ast)),
-            Self::JSXExprContainer(it) => Self::JSXExprContainer(it.clone_in(ast)),
-            Self::JSXSpreadChild(it) => Self::JSXSpreadChild(it.clone_in(ast)),
-            Self::JSXElement(it) => Self::JSXElement(it.clone_in(ast)),
-            Self::JSXFragment(it) => Self::JSXFragment(it.clone_in(ast)),
+        let data = ast.jsx_element_child_data(*self);
+        match data {
+            JSXElementChildData::JSXText(it) => Self::JSXText(it.clone_in(ast)),
+            JSXElementChildData::JSXExprContainer(it) => Self::JSXExprContainer(it.clone_in(ast)),
+            JSXElementChildData::JSXSpreadChild(it) => Self::JSXSpreadChild(it.clone_in(ast)),
+            JSXElementChildData::JSXElement(it) => Self::JSXElement(it.clone_in(ast)),
+            JSXElementChildData::JSXFragment(it) => Self::JSXFragment(it.clone_in(ast)),
         }
     }
 }

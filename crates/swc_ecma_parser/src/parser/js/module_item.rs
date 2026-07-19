@@ -31,8 +31,9 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             && !self.input().had_line_break_before_cur()
             && (self.input_mut().eat(Token::Assert) || self.input_mut().eat(Token::With))
         {
-            match self.parse_object_expr()? {
-                Expr::Object(v) => Some(v),
+            let expr = self.parse_object_expr()?;
+            match self.ast.expr_data(expr) {
+                ExprData::Object(v) => Some(v),
                 _ => unreachable!(),
             }
         } else {
@@ -48,8 +49,9 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         let mut is_type_only = false;
 
         let orig_token = self.input().cur();
-        let orig = match self.parse_module_export_name()? {
-            ModuleExportName::Ident(orig_ident) => {
+        let orig = self.parse_module_export_name()?;
+        let orig = match self.ast.module_export_name_data(orig) {
+            ModuleExportNameData::Ident(orig_ident) => {
                 // Handle:
                 // `export { type xx }`
                 // `export { type xx as yy }`
@@ -137,7 +139,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                     ModuleExportName::Ident(orig_ident)
                 }
             }
-            module_export_name => module_export_name,
+            ModuleExportNameData::Str(s) => ModuleExportName::Str(s),
         };
 
         let exported = if self.input_mut().eat(Token::As) {
@@ -167,8 +169,9 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
     fn parse_import_specifier(&mut self, type_only: bool) -> PResult<ImportSpecifier> {
         let start = self.cur_pos();
         let orig_token = self.input().cur();
-        match self.parse_module_export_name()? {
-            ModuleExportName::Ident(mut orig_name) => {
+        let orig = self.parse_module_export_name()?;
+        match self.ast.module_export_name_data(orig) {
+            ModuleExportNameData::Ident(mut orig_name) => {
                 let mut is_type_only = false;
                 // Handle:
                 // `import { type xx } from 'mod'`
@@ -293,7 +296,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                     is_type_only,
                 ))
             }
-            ModuleExportName::Str(orig_str) => {
+            ModuleExportNameData::Str(orig_str) => {
                 if self.input_mut().eat(Token::As) {
                     let local: Ident = self.parse_binding_ident(false)?;
                     Ok(self.ast.import_specifier_import_named_specifier(
@@ -675,8 +678,8 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             } else {
                 for s in specifiers.iter() {
                     let s = self.ast.get_node_in_sub_range(s);
-                    match s {
-                        ExportSpecifier::Default(default) => {
+                    match self.ast.export_specifier_data(s) {
+                        ExportSpecifierData::Default(default) => {
                             self.emit_err(
                                 default.exported(self.ast).span(self.ast),
                                 SyntaxError::ExportExpectFrom(
@@ -688,34 +691,42 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                                 ),
                             );
                         }
-                        ExportSpecifier::Namespace(namespace) => {
-                            let export_name = match namespace.name(self.ast) {
-                                ModuleExportName::Ident(i) => i.sym(self.ast).as_str().to_string(),
-                                ModuleExportName::Str(s) => {
-                                    s.value(self.ast).as_wtf8().to_string_lossy().into_owned()
-                                }
-                                #[cfg(swc_ast_unknown)]
-                                _ => unreachable!(),
-                            };
+                        ExportSpecifierData::Namespace(namespace) => {
+                            let export_name =
+                                match self.ast.module_export_name_data(namespace.name(self.ast)) {
+                                    ModuleExportNameData::Ident(i) => {
+                                        i.sym(self.ast).as_str().to_string()
+                                    }
+                                    ModuleExportNameData::Str(s) => {
+                                        s.value(self.ast).as_wtf8().to_string_lossy().into_owned()
+                                    }
+                                    #[cfg(swc_ast_unknown)]
+                                    _ => unreachable!(),
+                                };
                             self.emit_err(
                                 namespace.span(self.ast),
                                 SyntaxError::ExportExpectFrom(export_name),
                             );
                         }
-                        ExportSpecifier::Named(named) => match named.orig(self.ast) {
-                            ModuleExportName::Ident(id) if id.is_reserved(self.ast) => {
-                                self.emit_err(
-                                    id.span(self.ast),
-                                    SyntaxError::ExportExpectFrom(
-                                        id.sym(self.ast).as_str().to_string(),
-                                    ),
-                                );
+                        ExportSpecifierData::Named(named) => {
+                            match self.ast.module_export_name_data(named.orig(self.ast)) {
+                                ModuleExportNameData::Ident(id) if id.is_reserved(self.ast) => {
+                                    self.emit_err(
+                                        id.span(self.ast),
+                                        SyntaxError::ExportExpectFrom(
+                                            id.sym(self.ast).as_str().to_string(),
+                                        ),
+                                    );
+                                }
+                                ModuleExportNameData::Str(s) => {
+                                    self.emit_err(
+                                        s.span(self.ast),
+                                        SyntaxError::ExportBindingIsString,
+                                    );
+                                }
+                                _ => {}
                             }
-                            ModuleExportName::Str(s) => {
-                                self.emit_err(s.span(self.ast), SyntaxError::ExportBindingIsString);
-                            }
-                            _ => {}
-                        },
+                        }
                         #[cfg(swc_ast_unknown)]
                         _ => unreachable!(),
                     }
@@ -750,7 +761,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
             self.eat_general_semi();
 
-            return Ok(self.ast.module_item_expr_stmt(self.span(start), expr));
+            return Ok(self.ast.module_item_stmt_expr_stmt(self.span(start), expr));
         }
 
         if peek!(self).is_some_and(|cur| cur == Token::LParen) {
@@ -758,7 +769,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
             self.eat_general_semi();
 
-            return Ok(self.ast.module_item_expr_stmt(self.span(start), expr));
+            return Ok(self.ast.module_item_stmt_expr_stmt(self.span(start), expr));
         }
 
         // It's now import statement
@@ -778,8 +789,9 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 && !self.input().had_line_break_before_cur()
                 && (self.input_mut().eat(Token::Assert) || self.input_mut().eat(Token::With))
             {
-                match self.parse_object_expr()? {
-                    Expr::Object(v) => Some(v),
+                let expr = self.parse_object_expr()?;
+                match self.ast.expr_data(expr) {
+                    ExprData::Object(v) => Some(v),
                     _ => unreachable!(),
                 }
             } else {
@@ -787,7 +799,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             };
             self.eat_general_semi();
 
-            return Ok(self.ast.module_item_import_decl(
+            return Ok(self.ast.module_item_module_decl_import_decl(
                 self.span(start),
                 TypedSubRange::empty(),
                 src,
@@ -921,8 +933,9 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             && !self.input().had_line_break_before_cur()
             && (self.input_mut().eat(Token::Assert) || self.input_mut().eat(Token::With))
         {
-            match self.parse_object_expr()? {
-                Expr::Object(v) => Some(v),
+            let expr = self.parse_object_expr()?;
+            match self.ast.expr_data(expr) {
+                ExprData::Object(v) => Some(v),
                 _ => unreachable!(),
             }
         } else {
@@ -931,7 +944,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
         self.expect_general_semi()?;
 
-        Ok(self.ast.module_item_import_decl(
+        Ok(self.ast.module_item_module_decl_import_decl(
             self.span(start),
             specifiers,
             src,

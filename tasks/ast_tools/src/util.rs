@@ -1,4 +1,3 @@
-use convert_case::{Case, Casing};
 use phf::{Set as PhfSet, phf_set};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -26,8 +25,8 @@ pub fn field_byte_size(ty: &AstType, schema: &Schema) -> Option<usize> {
     match ty {
         // Concrete AST IDs are statically typed by their four-byte wrapper.
         AstType::Struct(_) => Some(4),
-        // AST enums need both a full NodeId and an enum-local variant tag.
-        AstType::Enum(_) => Some(8),
+        // All typed AST values are represented by a NodeId wrapper.
+        AstType::Enum(_) => Some(4),
         // Vec is represented by an 8-byte SubRange.
         AstType::Vec(_) => Some(8),
         // Optional typed inline AST IDs are 4 bytes.
@@ -38,8 +37,8 @@ pub fn field_byte_size(ty: &AstType, schema: &Schema) -> Option<usize> {
                 AstType::Vec(_) => Some(8),
                 // Option<Struct> uses u32::MAX as its absent sentinel.
                 AstType::Struct(_) => Some(4),
-                // Option<Enum> uses u64::MAX as its absent sentinel.
-                AstType::Enum(_) => Some(8),
+                // Option<Enum> uses u32::MAX as its absent sentinel.
+                AstType::Enum(_) => Some(4),
                 AstType::Primitive(primitive) if matches!(primitive.name, "Atom" | "Wtf8Atom") => {
                     Some(4)
                 }
@@ -163,60 +162,6 @@ pub fn safe_ident(name: &str) -> Ident {
     }
 }
 
-pub fn map_field_type_to_extra_field(ast: &AstType, schema: &Schema) -> String {
-    match ast {
-        AstType::Struct(ast_struct) => {
-            format!("ast_{}", ast_struct.name.to_case(Case::Snake))
-        }
-        AstType::Enum(ast_enum) => {
-            if schema.repr_sizes.contains_key(&ast_enum.name) {
-                "other".to_owned()
-            } else {
-                format!("ast_{}", ast_enum.name.to_case(Case::Snake))
-            }
-        }
-        AstType::Vec(_) => "sub_range".to_owned(),
-        AstType::Option(ast_option) => {
-            let inner_ty = &schema.types[ast_option.inner_type_id];
-            match inner_ty {
-                AstType::Vec(_) => "optional_sub_range".to_owned(),
-                AstType::Enum(ast_enum) => {
-                    if schema.repr_sizes.contains_key(&ast_enum.name) {
-                        "other".to_owned()
-                    } else {
-                        format!("optional_ast_{}", ast_enum.name.to_case(Case::Snake))
-                    }
-                }
-                AstType::Struct(ast_struct) => {
-                    format!("optional_ast_{}", ast_struct.name.to_case(Case::Snake))
-                }
-                AstType::Primitive(primitive) => match primitive.name {
-                    "Atom" => "atom".to_owned(),
-                    "Wtf8Atom" => "wtf8_atom".to_owned(),
-                    "ScopeId" => "optional_scope_id".to_owned(),
-                    "SymbolId" => "optional_symbol_id".to_owned(),
-                    "Span" => "optional_span".to_owned(),
-                    _ => "optional_node".to_owned(),
-                },
-                _ => unreachable!("unsupported optional extra-data type"),
-            }
-        }
-        AstType::Primitive(ast_primitive) => {
-            let name = match ast_primitive.name {
-                "Span" => "span",
-                "Atom" => "atom",
-                "Wtf8Atom" => "wtf8_atom",
-                "ScopeId" => "scope_id",
-                "SymbolId" => "symbol_id",
-                "bool" => "bool",
-                "f64" => "number",
-                _ => "other",
-            };
-            name.to_owned()
-        }
-    }
-}
-
 /// Generate expression to convert a field value to u32 (for inline storage)
 pub fn generate_field_to_u32(
     field_ty: &AstType,
@@ -225,11 +170,11 @@ pub fn generate_field_to_u32(
     schema: &Schema,
 ) -> TokenStream {
     match field_ty {
-        AstType::Struct(_) => {
+        AstType::Struct(_) | AstType::Enum(_) => {
             quote!(#field_name.node_id().index() as u32)
         }
         AstType::Option(ast_option) => match &schema.types[ast_option.inner_type_id] {
-            AstType::Struct(_) => {
+            AstType::Struct(_) | AstType::Enum(_) => {
                 quote!(#field_name.map_or(u32::MAX, |node| node.node_id().index() as u32))
             }
             AstType::Primitive(primitive) if matches!(primitive.name, "ScopeId" | "SymbolId") => {
@@ -287,7 +232,7 @@ pub fn generate_field_to_u64(
 /// Generate expression to convert u32 to a field type (for inline storage)
 pub fn generate_u32_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream {
     match field_ty {
-        AstType::Struct(_) => {
+        AstType::Struct(_) | AstType::Enum(_) => {
             let field_inner_ty = field_ty.repr_ident(schema);
             quote! {
                 #field_inner_ty(NodeId::from_raw_unchecked(raw))
@@ -297,7 +242,7 @@ pub fn generate_u32_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream
             let inner_ty = &schema.types[ast_option.inner_type_id];
             let field_inner_ident = inner_ty.repr_ident(schema);
             match inner_ty {
-                AstType::Struct(_) => quote! {
+                AstType::Struct(_) | AstType::Enum(_) => quote! {
                     (raw != u32::MAX).then(|| {
                         #field_inner_ident(NodeId::from_raw_unchecked(raw))
                     })

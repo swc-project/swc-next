@@ -20,6 +20,7 @@ pub fn run(src: &'static str) {
     // let semantic = run_semantic(&program);
     // let semi = run_collect_semicolons(&program, &tokens);
     // let idents = run_scan_dependencies(&program);
+    // drop((tokens, semantic, semi, idents));
     drop((program, tokens));
 }
 

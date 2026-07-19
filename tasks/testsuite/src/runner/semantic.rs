@@ -2,7 +2,8 @@ use colored::Colorize;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use swc_experimental_allocator::Allocator;
 use swc_experimental_ecma_ast::{
-    Ast, BlockStmt, ExportSpecifier, GetSpan, Ident, ImportNamedSpecifier, Visit, VisitWith,
+    Ast, BlockStmt, ExportSpecifier, ExportSpecifierData, GetSpan, Ident, ImportNamedSpecifier,
+    Visit, VisitWith,
 };
 use swc_experimental_ecma_semantic::resolver::resolver;
 
@@ -79,7 +80,9 @@ impl<'ast> Visit<'ast> for SemanticIdsCollector<'_, 'ast> {
     fn visit_export_specifier(&mut self, node: ExportSpecifier) {
         // swc_core does not treat every export specifier name as a local semantic
         // identifier; semantic conformance checks the exact swc_core boundary.
-        if let ExportSpecifier::Default(export_default_specifier) = node {
+        if let ExportSpecifierData::Default(export_default_specifier) =
+            self.ast.export_specifier_data(node)
+        {
             export_default_specifier.visit_with(self);
         }
     }

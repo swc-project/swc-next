@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{Expr, ExprLit, Item, ItemEnum, ItemStruct, Lit, LitInt, token::Eq};
 
 pub fn expand_ast(repr: bool, item: Item) -> TokenStream {
@@ -20,6 +20,10 @@ fn expand_struct(item: ItemStruct) -> TokenStream {
 }
 
 fn expand_enum(repr: bool, mut item: ItemEnum) -> TokenStream {
+    let name = item.ident.clone();
+    let data_name = format_ident!("{name}Data");
+    item.ident = data_name;
+
     let repr_attr = repr.then(|| quote!(#[repr(C, u32)]));
     if repr {
         for (index, variant) in item.variants.iter_mut().enumerate() {
@@ -38,9 +42,33 @@ fn expand_enum(repr: bool, mut item: ItemEnum) -> TokenStream {
         }
     }
 
+    let constructors = item.variants.iter().map(|variant| {
+        let variant_name = &variant.ident;
+        let field = variant
+            .fields
+            .iter()
+            .next()
+            .expect("AST enum variants must contain one field");
+        let field_ty = &field.ty;
+        quote! {
+            #[allow(non_snake_case)]
+            #[inline]
+            pub fn #variant_name(node: #field_ty) -> Self {
+                Self(node.node_id())
+            }
+        }
+    });
+
     quote! {
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+        pub struct #name(pub(crate) crate::NodeId);
+
         #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
         #repr_attr
         #item
+
+        impl #name {
+            #(#constructors)*
+        }
     }
 }

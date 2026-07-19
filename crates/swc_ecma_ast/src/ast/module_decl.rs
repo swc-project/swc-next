@@ -143,12 +143,12 @@ pub struct ExportAll {
 impl ImportNamedSpecifier {
     #[inline]
     pub fn is_shorthand(self, ast: &Ast<'_>) -> bool {
-        match self.imported(ast) {
-            ModuleExportName::Ident(imported) => {
+        match ast.module_export_name_data(self.imported(ast)) {
+            ModuleExportNameData::Ident(imported) => {
                 let local = self.local(ast);
                 imported.span(ast) == local.span(ast) && imported.sym(ast) == local.sym(ast)
             }
-            ModuleExportName::Str(_) => false,
+            ModuleExportNameData::Str(_) => false,
         }
     }
 }
@@ -156,11 +156,14 @@ impl ImportNamedSpecifier {
 impl ExportNamedSpecifier {
     #[inline]
     pub fn is_shorthand(self, ast: &Ast<'_>) -> bool {
-        match (self.orig(ast), self.exported(ast)) {
-            (ModuleExportName::Ident(orig), ModuleExportName::Ident(exported)) => {
+        match (
+            ast.module_export_name_data(self.orig(ast)),
+            ast.module_export_name_data(self.exported(ast)),
+        ) {
+            (ModuleExportNameData::Ident(orig), ModuleExportNameData::Ident(exported)) => {
                 orig.span(ast) == exported.span(ast) && orig.sym(ast) == exported.sym(ast)
             }
-            (ModuleExportName::Str(orig), ModuleExportName::Str(exported)) => {
+            (ModuleExportNameData::Str(orig), ModuleExportNameData::Str(exported)) => {
                 orig.span(ast) == exported.span(ast) && orig.value(ast) == exported.value(ast)
             }
             _ => false,

@@ -13,7 +13,7 @@ impl IsSimpleParameterList for TypedSubRange<Param> {
     fn is_simple_parameter_list(self, ast: &Ast) -> bool {
         self.iter().all(|param| {
             let param = ast.get_node_in_sub_range(param);
-            matches!(param.pat(ast), Pat::Ident(_))
+            matches!(ast.pat_data(param.pat(ast)), PatData::Ident(_))
         })
     }
 }
@@ -23,7 +23,7 @@ impl IsSimpleParameterList for TypedSubRange<Pat> {
     fn is_simple_parameter_list(self, ast: &Ast) -> bool {
         self.iter().all(|pat| {
             let pat = ast.get_node_in_sub_range(pat);
-            matches!(pat, Pat::Ident(_))
+            matches!(ast.pat_data(pat), PatData::Ident(_))
         })
     }
 }
@@ -33,8 +33,10 @@ impl IsSimpleParameterList for TypedSubRange<ParamOrTsParamProp> {
     fn is_simple_parameter_list(self, ast: &Ast) -> bool {
         self.iter().all(|param| {
             let param = ast.get_node_in_sub_range(param);
-            match param {
-                ParamOrTsParamProp::Param(param) => matches!(param.pat(ast), Pat::Ident(_)),
+            match ast.param_or_ts_param_prop_data(param) {
+                ParamOrTsParamPropData::Param(param) => {
+                    matches!(ast.pat_data(param.pat(ast)), PatData::Ident(_))
+                }
             }
         })
     }
@@ -66,68 +68,63 @@ pub trait ExprExt {
 impl ExprExt for Expr {
     /// "IsValidSimpleAssignmentTarget" from spec.
     fn is_valid_simple_assignment_target(&self, ast: &Ast, strict: bool) -> bool {
-        match self {
-            Expr::Ident(ident) => {
+        match ast.expr_data(*self) {
+            ExprData::Ident(ident) => {
                 if strict && ident.is_reserved_in_strict_bind(ast) {
                     return false;
                 }
                 true
             }
 
-            Expr::This(..)
-            | Expr::Str(..)
-            | Expr::Bool(..)
-            | Expr::Null(..)
-            | Expr::Num(..)
-            | Expr::BigInt(..)
-            | Expr::Regex(..)
-            | Expr::Array(..)
-            | Expr::Object(..)
-            | Expr::Fn(..)
-            | Expr::Class(..)
-            | Expr::Tpl(..)
-            | Expr::TaggedTpl(..) => false,
-            Expr::Paren(paren) => paren
+            ExprData::This(..)
+            | ExprData::Lit(..)
+            | ExprData::Array(..)
+            | ExprData::Object(..)
+            | ExprData::Fn(..)
+            | ExprData::Class(..)
+            | ExprData::Tpl(..)
+            | ExprData::TaggedTpl(..) => false,
+            ExprData::Paren(paren) => paren
                 .expr(ast)
                 .is_valid_simple_assignment_target(ast, strict),
-            Expr::Member(member) => {
+            ExprData::Member(member) => {
                 let obj = member.obj(ast);
-                match obj {
-                    Expr::Member(..) => obj.is_valid_simple_assignment_target(ast, strict),
-                    Expr::OptChain(..) => false,
+                match ast.expr_data(obj) {
+                    ExprData::Member(..) => obj.is_valid_simple_assignment_target(ast, strict),
+                    ExprData::OptChain(..) => false,
                     _ => true,
                 }
             }
 
-            Expr::SuperProp(..) => true,
+            ExprData::SuperProp(..) => true,
 
-            Expr::New(..) | Expr::Call(..) | Expr::Import(..) => false,
+            ExprData::New(..) | ExprData::Call(..) | ExprData::Import(..) => false,
             // TODO: Spec only mentions `new.target`
-            Expr::MetaProp(..) => false,
+            ExprData::MetaProp(..) => false,
 
-            Expr::Update(..) => false,
+            ExprData::Update(..) => false,
 
-            Expr::Unary(..) | Expr::Await(..) => false,
+            ExprData::Unary(..) | ExprData::Await(..) => false,
 
-            Expr::Bin(..) => false,
+            ExprData::Bin(..) => false,
 
-            Expr::Cond(..) => false,
+            ExprData::Cond(..) => false,
 
-            Expr::Yield(..) | Expr::Arrow(..) | Expr::Assign(..) => false,
+            ExprData::Yield(..) | ExprData::Arrow(..) | ExprData::Assign(..) => false,
 
-            Expr::Seq(..) => false,
+            ExprData::Seq(..) => false,
 
-            Expr::OptChain(..) => false,
+            ExprData::OptChain(..) => false,
 
             // MemberExpression is valid assignment target
-            Expr::PrivateName(..) => false,
+            ExprData::PrivateName(..) => false,
 
             // jsx
-            Expr::JSXMember(..)
-            | Expr::JSXNamespacedName(..)
-            | Expr::JSXEmpty(..)
-            | Expr::JSXElement(..)
-            | Expr::JSXFragment(..) => false,
+            ExprData::JSXMember(..)
+            | ExprData::JSXNamespacedName(..)
+            | ExprData::JSXEmpty(..)
+            | ExprData::JSXElement(..)
+            | ExprData::JSXFragment(..) => false,
 
             // // typescript
             // Expr::TsNonNull(TsNonNullExpr { ref expr, .. })
@@ -139,7 +136,7 @@ impl ExprExt for Expr {
             // }
 
             // Expr::TsConstAssertion(..) => false,
-            Expr::Invalid(..) => false,
+            ExprData::Invalid(..) => false,
             #[cfg(swc_ast_unknown)]
             _ => unreachable!(),
         }

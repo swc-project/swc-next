@@ -1,9 +1,9 @@
 use rustc_hash::FxHashSet;
 use swc_experimental_allocator::{Allocator, vec::Vec as ArenaVec};
 use swc_experimental_ecma_ast::{
-    Ast, BreakStmt, ClassMember, ContinueStmt, DebuggerStmt, ExportAll, ExportDefaultExpr,
-    ExprStmt, GetSpan, ImportDecl, NamedExport, Program, ReturnStmt, Span, ThrowStmt, UpdateExpr,
-    VarDecl, Visit, VisitWith, YieldExpr,
+    Ast, BreakStmt, ClassMember, ClassMemberData, ContinueStmt, DebuggerStmt, ExportAll,
+    ExportDefaultExpr, ExprStmt, GetSpan, ImportDecl, NamedExport, Program, ReturnStmt, Span,
+    ThrowStmt, UpdateExpr, VarDecl, Visit, VisitWith, YieldExpr,
 };
 use swc_experimental_ecma_ast_compat::{AstCompat, UnsafeArenaAstCompat};
 use swc_experimental_ecma_parser::{
@@ -252,9 +252,9 @@ impl<'ast> Visit<'ast> for InsertedSemicolons<'_, 'ast, '_> {
     }
 
     fn visit_class_member(&mut self, n: ClassMember) {
-        match n {
-            ClassMember::ClassProp(prop) => self.post_semi(&prop.span(self.ast)),
-            ClassMember::PrivateProp(prop) => self.post_semi(&prop.span(self.ast)),
+        match self.ast.class_member_data(n) {
+            ClassMemberData::ClassProp(prop) => self.post_semi(&prop.span(self.ast)),
+            ClassMemberData::PrivateProp(prop) => self.post_semi(&prop.span(self.ast)),
             _ => {}
         };
         n.visit_children_with(self);

@@ -97,7 +97,7 @@ macro_rules! return_if_arrow {
         //     None => false
         // };
         // if is_cur {
-        if $expr.is_arrow() {
+        if $expr.is_arrow($p.ast) {
             return Ok($expr);
         }
         // }

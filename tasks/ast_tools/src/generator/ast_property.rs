@@ -315,6 +315,8 @@ fn generate_extra_data_property_accessors_partial(
 
 fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
     let name = format_ident!("{}", ast.name);
+    let data_name = format_ident!("{}Data", ast.name);
+    let data_fn_name = format_ident!("{}_data", ast.name.to_case(Case::Snake));
 
     let mut is_variant = TokenStream::new();
     let mut as_variant = TokenStream::new();
@@ -324,18 +326,18 @@ fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
         let is_fn_name = format_ident!("is_{}", variant.name.to_case(Case::Snake));
         is_variant.extend(quote! {
             #[inline]
-            pub fn #is_fn_name(self) -> bool {
-                matches!(self, Self::#variant_name(_))
+            pub fn #is_fn_name(self, ast: &Ast<'_>) -> bool {
+                matches!(ast.#data_fn_name(self), #data_name::#variant_name(_))
             }
         });
 
         let as_fn_name = format_ident!("as_{}", variant.name.to_case(Case::Snake));
-        let struct_name = format_ident!("{}", schema.types[variant.type_id.unwrap()].name());
+        let variant_type = schema.types[variant.type_id.unwrap()].repr_ident(schema);
         as_variant.extend(quote! {
             #[inline]
-            pub fn #as_fn_name(self) -> Option<#struct_name> {
-                match self {
-                    Self::#variant_name(it) => Some(it),
+            pub fn #as_fn_name(self, ast: &Ast<'_>) -> Option<#variant_type> {
+                match ast.#data_fn_name(self) {
+                    #data_name::#variant_name(it) => Some(it),
                     _ => None,
                 }
             }

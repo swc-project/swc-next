@@ -1,32 +1,41 @@
 #![allow(unused)]
-use crate::{Ast, GetSpan, SetSpan};
+use crate::{Ast, GetSpan, NodeKind, SetSpan};
 use crate::{ast::*, node_id::*};
 impl Program {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Module(it) => it.node_id(),
-            Self::Script(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for Program {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for Program {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for Program {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl Module {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for Module {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -50,6 +59,12 @@ impl Script {
         self.0
     }
 }
+impl AstNode for Script {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for Script {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -67,82 +82,64 @@ impl SetSpan for Script {
 impl ModuleItem {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::ModuleDeclImport(it) => it.node_id(),
-            Self::ModuleDeclExportDecl(it) => it.node_id(),
-            Self::ModuleDeclExportNamed(it) => it.node_id(),
-            Self::ModuleDeclExportDefaultDecl(it) => it.node_id(),
-            Self::ModuleDeclExportDefaultExpr(it) => it.node_id(),
-            Self::ModuleDeclExportAll(it) => it.node_id(),
-            Self::StmtBlock(it) => it.node_id(),
-            Self::StmtEmpty(it) => it.node_id(),
-            Self::StmtDebugger(it) => it.node_id(),
-            Self::StmtWith(it) => it.node_id(),
-            Self::StmtReturn(it) => it.node_id(),
-            Self::StmtLabeled(it) => it.node_id(),
-            Self::StmtBreak(it) => it.node_id(),
-            Self::StmtContinue(it) => it.node_id(),
-            Self::StmtIf(it) => it.node_id(),
-            Self::StmtSwitch(it) => it.node_id(),
-            Self::StmtThrow(it) => it.node_id(),
-            Self::StmtTry(it) => it.node_id(),
-            Self::StmtWhile(it) => it.node_id(),
-            Self::StmtDoWhile(it) => it.node_id(),
-            Self::StmtFor(it) => it.node_id(),
-            Self::StmtForIn(it) => it.node_id(),
-            Self::StmtForOf(it) => it.node_id(),
-            Self::StmtDeclClass(it) => it.node_id(),
-            Self::StmtDeclFn(it) => it.node_id(),
-            Self::StmtDeclVar(it) => it.node_id(),
-            Self::StmtDeclUsing(it) => it.node_id(),
-            Self::StmtExpr(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for ModuleItem {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for ModuleItem {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for ModuleItem {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl ModuleDecl {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Import(it) => it.node_id(),
-            Self::ExportDecl(it) => it.node_id(),
-            Self::ExportNamed(it) => it.node_id(),
-            Self::ExportDefaultDecl(it) => it.node_id(),
-            Self::ExportDefaultExpr(it) => it.node_id(),
-            Self::ExportAll(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for ModuleDecl {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for ModuleDecl {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for ModuleDecl {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl ImportDecl {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for ImportDecl {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -163,30 +160,38 @@ impl SetSpan for ImportDecl {
 impl ImportSpecifier {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Named(it) => it.node_id(),
-            Self::Default(it) => it.node_id(),
-            Self::Namespace(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for ImportSpecifier {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for ImportSpecifier {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for ImportSpecifier {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl ImportNamedSpecifier {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for ImportNamedSpecifier {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -210,6 +215,12 @@ impl ImportDefaultSpecifier {
         self.0
     }
 }
+impl AstNode for ImportDefaultSpecifier {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for ImportDefaultSpecifier {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -227,6 +238,12 @@ impl SetSpan for ImportDefaultSpecifier {
 impl ImportStarAsSpecifier {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for ImportStarAsSpecifier {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -250,6 +267,12 @@ impl ExportDecl {
         self.0
     }
 }
+impl AstNode for ExportDecl {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for ExportDecl {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -270,6 +293,12 @@ impl NamedExport {
         self.0
     }
 }
+impl AstNode for NamedExport {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for NamedExport {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -287,30 +316,38 @@ impl SetSpan for NamedExport {
 impl ExportSpecifier {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Namespace(it) => it.node_id(),
-            Self::Default(it) => it.node_id(),
-            Self::Named(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for ExportSpecifier {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for ExportSpecifier {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for ExportSpecifier {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl ExportNamespaceSpecifier {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for ExportNamespaceSpecifier {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -331,29 +368,38 @@ impl SetSpan for ExportNamespaceSpecifier {
 impl ModuleExportName {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Ident(it) => it.node_id(),
-            Self::Str(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for ModuleExportName {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for ModuleExportName {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for ModuleExportName {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl ExportDefaultSpecifier {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for ExportDefaultSpecifier {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -377,6 +423,12 @@ impl ExportNamedSpecifier {
         self.0
     }
 }
+impl AstNode for ExportNamedSpecifier {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for ExportNamedSpecifier {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -397,6 +449,12 @@ impl ExportDefaultDecl {
         self.0
     }
 }
+impl AstNode for ExportDefaultDecl {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for ExportDefaultDecl {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -414,29 +472,38 @@ impl SetSpan for ExportDefaultDecl {
 impl DefaultDecl {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Class(it) => it.node_id(),
-            Self::Fn(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for DefaultDecl {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for DefaultDecl {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for DefaultDecl {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl ExportDefaultExpr {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for ExportDefaultExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -460,6 +527,12 @@ impl ExportAll {
         self.0
     }
 }
+impl AstNode for ExportAll {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for ExportAll {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -480,6 +553,12 @@ impl BlockStmt {
         self.0
     }
 }
+impl AstNode for BlockStmt {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for BlockStmt {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -497,49 +576,38 @@ impl SetSpan for BlockStmt {
 impl Stmt {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Class(it) => it.node_id(),
-            Self::Fn(it) => it.node_id(),
-            Self::Var(it) => it.node_id(),
-            Self::Using(it) => it.node_id(),
-            Self::Block(it) => it.node_id(),
-            Self::Empty(it) => it.node_id(),
-            Self::Debugger(it) => it.node_id(),
-            Self::With(it) => it.node_id(),
-            Self::Return(it) => it.node_id(),
-            Self::Labeled(it) => it.node_id(),
-            Self::Break(it) => it.node_id(),
-            Self::Continue(it) => it.node_id(),
-            Self::If(it) => it.node_id(),
-            Self::Switch(it) => it.node_id(),
-            Self::Throw(it) => it.node_id(),
-            Self::Try(it) => it.node_id(),
-            Self::While(it) => it.node_id(),
-            Self::DoWhile(it) => it.node_id(),
-            Self::For(it) => it.node_id(),
-            Self::ForIn(it) => it.node_id(),
-            Self::ForOf(it) => it.node_id(),
-            Self::Expr(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for Stmt {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for Stmt {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for Stmt {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl ExprStmt {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for ExprStmt {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -563,6 +631,12 @@ impl EmptyStmt {
         self.0
     }
 }
+impl AstNode for EmptyStmt {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for EmptyStmt {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -580,6 +654,12 @@ impl SetSpan for EmptyStmt {
 impl DebuggerStmt {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for DebuggerStmt {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -603,6 +683,12 @@ impl WithStmt {
         self.0
     }
 }
+impl AstNode for WithStmt {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for WithStmt {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -620,6 +706,12 @@ impl SetSpan for WithStmt {
 impl ReturnStmt {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for ReturnStmt {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -643,6 +735,12 @@ impl LabeledStmt {
         self.0
     }
 }
+impl AstNode for LabeledStmt {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for LabeledStmt {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -660,6 +758,12 @@ impl SetSpan for LabeledStmt {
 impl BreakStmt {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for BreakStmt {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -683,6 +787,12 @@ impl ContinueStmt {
         self.0
     }
 }
+impl AstNode for ContinueStmt {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for ContinueStmt {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -700,6 +810,12 @@ impl SetSpan for ContinueStmt {
 impl IfStmt {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for IfStmt {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -723,6 +839,12 @@ impl SwitchStmt {
         self.0
     }
 }
+impl AstNode for SwitchStmt {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for SwitchStmt {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -740,6 +862,12 @@ impl SetSpan for SwitchStmt {
 impl ThrowStmt {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for ThrowStmt {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -763,6 +891,12 @@ impl TryStmt {
         self.0
     }
 }
+impl AstNode for TryStmt {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for TryStmt {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -780,6 +914,12 @@ impl SetSpan for TryStmt {
 impl WhileStmt {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for WhileStmt {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -803,6 +943,12 @@ impl DoWhileStmt {
         self.0
     }
 }
+impl AstNode for DoWhileStmt {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for DoWhileStmt {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -820,6 +966,12 @@ impl SetSpan for DoWhileStmt {
 impl ForStmt {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for ForStmt {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -843,6 +995,12 @@ impl ForInStmt {
         self.0
     }
 }
+impl AstNode for ForInStmt {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for ForInStmt {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -860,6 +1018,12 @@ impl SetSpan for ForInStmt {
 impl ForOfStmt {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for ForOfStmt {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -883,6 +1047,12 @@ impl SwitchCase {
         self.0
     }
 }
+impl AstNode for SwitchCase {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for SwitchCase {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -903,6 +1073,12 @@ impl CatchClause {
         self.0
     }
 }
+impl AstNode for CatchClause {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for CatchClause {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -920,158 +1096,90 @@ impl SetSpan for CatchClause {
 impl ForHead {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::ExprThis(it) => it.node_id(),
-            Self::ExprArray(it) => it.node_id(),
-            Self::ExprObject(it) => it.node_id(),
-            Self::ExprFn(it) => it.node_id(),
-            Self::ExprUnary(it) => it.node_id(),
-            Self::ExprUpdate(it) => it.node_id(),
-            Self::ExprBin(it) => it.node_id(),
-            Self::ExprAssign(it) => it.node_id(),
-            Self::ExprMember(it) => it.node_id(),
-            Self::ExprSuperProp(it) => it.node_id(),
-            Self::ExprCond(it) => it.node_id(),
-            Self::ExprImport(it) => it.node_id(),
-            Self::ExprCall(it) => it.node_id(),
-            Self::ExprNew(it) => it.node_id(),
-            Self::ExprSeq(it) => it.node_id(),
-            Self::ExprIdent(it) => it.node_id(),
-            Self::ExprStr(it) => it.node_id(),
-            Self::ExprBool(it) => it.node_id(),
-            Self::ExprNull(it) => it.node_id(),
-            Self::ExprNum(it) => it.node_id(),
-            Self::ExprBigInt(it) => it.node_id(),
-            Self::ExprRegex(it) => it.node_id(),
-            Self::ExprTpl(it) => it.node_id(),
-            Self::ExprTaggedTpl(it) => it.node_id(),
-            Self::ExprArrow(it) => it.node_id(),
-            Self::ExprClass(it) => it.node_id(),
-            Self::ExprYield(it) => it.node_id(),
-            Self::ExprMetaProp(it) => it.node_id(),
-            Self::ExprAwait(it) => it.node_id(),
-            Self::ExprParen(it) => it.node_id(),
-            Self::ExprJSXMember(it) => it.node_id(),
-            Self::ExprJSXNamespacedName(it) => it.node_id(),
-            Self::ExprJSXEmpty(it) => it.node_id(),
-            Self::ExprJSXElement(it) => it.node_id(),
-            Self::ExprJSXFragment(it) => it.node_id(),
-            Self::ExprPrivateName(it) => it.node_id(),
-            Self::ExprOptChain(it) => it.node_id(),
-            Self::ExprInvalid(it) => it.node_id(),
-            Self::Ident(it) => it.node_id(),
-            Self::Array(it) => it.node_id(),
-            Self::Rest(it) => it.node_id(),
-            Self::Object(it) => it.node_id(),
-            Self::Assign(it) => it.node_id(),
-            Self::Invalid(it) => it.node_id(),
-            Self::VarDecl(it) => it.node_id(),
-            Self::UsingDecl(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for ForHead {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for ForHead {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for ForHead {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl VarDeclOrExpr {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::This(it) => it.node_id(),
-            Self::Array(it) => it.node_id(),
-            Self::Object(it) => it.node_id(),
-            Self::Fn(it) => it.node_id(),
-            Self::Unary(it) => it.node_id(),
-            Self::Update(it) => it.node_id(),
-            Self::Bin(it) => it.node_id(),
-            Self::Assign(it) => it.node_id(),
-            Self::Member(it) => it.node_id(),
-            Self::SuperProp(it) => it.node_id(),
-            Self::Cond(it) => it.node_id(),
-            Self::Import(it) => it.node_id(),
-            Self::Call(it) => it.node_id(),
-            Self::New(it) => it.node_id(),
-            Self::Seq(it) => it.node_id(),
-            Self::Ident(it) => it.node_id(),
-            Self::Str(it) => it.node_id(),
-            Self::Bool(it) => it.node_id(),
-            Self::Null(it) => it.node_id(),
-            Self::Num(it) => it.node_id(),
-            Self::BigInt(it) => it.node_id(),
-            Self::Regex(it) => it.node_id(),
-            Self::Tpl(it) => it.node_id(),
-            Self::TaggedTpl(it) => it.node_id(),
-            Self::Arrow(it) => it.node_id(),
-            Self::Class(it) => it.node_id(),
-            Self::Yield(it) => it.node_id(),
-            Self::MetaProp(it) => it.node_id(),
-            Self::Await(it) => it.node_id(),
-            Self::Paren(it) => it.node_id(),
-            Self::JSXMember(it) => it.node_id(),
-            Self::JSXNamespacedName(it) => it.node_id(),
-            Self::JSXEmpty(it) => it.node_id(),
-            Self::JSXElement(it) => it.node_id(),
-            Self::JSXFragment(it) => it.node_id(),
-            Self::PrivateName(it) => it.node_id(),
-            Self::OptChain(it) => it.node_id(),
-            Self::Invalid(it) => it.node_id(),
-            Self::VarDecl(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for VarDeclOrExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for VarDeclOrExpr {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for VarDeclOrExpr {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl Decl {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Class(it) => it.node_id(),
-            Self::Fn(it) => it.node_id(),
-            Self::Var(it) => it.node_id(),
-            Self::Using(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for Decl {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for Decl {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for Decl {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl FnDecl {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for FnDecl {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -1095,6 +1203,12 @@ impl ClassDecl {
         self.0
     }
 }
+impl AstNode for ClassDecl {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for ClassDecl {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -1112,6 +1226,12 @@ impl SetSpan for ClassDecl {
 impl VarDecl {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for VarDecl {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -1135,6 +1255,12 @@ impl VarDeclarator {
         self.0
     }
 }
+impl AstNode for VarDeclarator {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for VarDeclarator {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -1155,6 +1281,12 @@ impl UsingDecl {
         self.0
     }
 }
+impl AstNode for UsingDecl {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for UsingDecl {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -1172,65 +1304,38 @@ impl SetSpan for UsingDecl {
 impl Expr {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::This(it) => it.node_id(),
-            Self::Array(it) => it.node_id(),
-            Self::Object(it) => it.node_id(),
-            Self::Fn(it) => it.node_id(),
-            Self::Unary(it) => it.node_id(),
-            Self::Update(it) => it.node_id(),
-            Self::Bin(it) => it.node_id(),
-            Self::Assign(it) => it.node_id(),
-            Self::Member(it) => it.node_id(),
-            Self::SuperProp(it) => it.node_id(),
-            Self::Cond(it) => it.node_id(),
-            Self::Import(it) => it.node_id(),
-            Self::Call(it) => it.node_id(),
-            Self::New(it) => it.node_id(),
-            Self::Seq(it) => it.node_id(),
-            Self::Ident(it) => it.node_id(),
-            Self::Str(it) => it.node_id(),
-            Self::Bool(it) => it.node_id(),
-            Self::Null(it) => it.node_id(),
-            Self::Num(it) => it.node_id(),
-            Self::BigInt(it) => it.node_id(),
-            Self::Regex(it) => it.node_id(),
-            Self::Tpl(it) => it.node_id(),
-            Self::TaggedTpl(it) => it.node_id(),
-            Self::Arrow(it) => it.node_id(),
-            Self::Class(it) => it.node_id(),
-            Self::Yield(it) => it.node_id(),
-            Self::MetaProp(it) => it.node_id(),
-            Self::Await(it) => it.node_id(),
-            Self::Paren(it) => it.node_id(),
-            Self::JSXMember(it) => it.node_id(),
-            Self::JSXNamespacedName(it) => it.node_id(),
-            Self::JSXEmpty(it) => it.node_id(),
-            Self::JSXElement(it) => it.node_id(),
-            Self::JSXFragment(it) => it.node_id(),
-            Self::PrivateName(it) => it.node_id(),
-            Self::OptChain(it) => it.node_id(),
-            Self::Invalid(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for Expr {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for Expr {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for Expr {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl ThisExpr {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for ThisExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -1254,6 +1359,12 @@ impl ArrayLit {
         self.0
     }
 }
+impl AstNode for ArrayLit {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for ArrayLit {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -1274,6 +1385,12 @@ impl ObjectLit {
         self.0
     }
 }
+impl AstNode for ObjectLit {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for ObjectLit {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -1291,34 +1408,38 @@ impl SetSpan for ObjectLit {
 impl PropOrSpread {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Shorthand(it) => it.node_id(),
-            Self::KeyValue(it) => it.node_id(),
-            Self::Assign(it) => it.node_id(),
-            Self::Getter(it) => it.node_id(),
-            Self::Setter(it) => it.node_id(),
-            Self::Method(it) => it.node_id(),
-            Self::Spread(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for PropOrSpread {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for PropOrSpread {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for PropOrSpread {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl SpreadElement {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for SpreadElement {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -1342,6 +1463,12 @@ impl UnaryExpr {
         self.0
     }
 }
+impl AstNode for UnaryExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for UnaryExpr {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -1359,6 +1486,12 @@ impl SetSpan for UnaryExpr {
 impl UpdateExpr {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for UpdateExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -1382,6 +1515,12 @@ impl BinExpr {
         self.0
     }
 }
+impl AstNode for BinExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for BinExpr {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -1399,6 +1538,12 @@ impl SetSpan for BinExpr {
 impl FnExpr {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for FnExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -1422,6 +1567,12 @@ impl ClassExpr {
         self.0
     }
 }
+impl AstNode for ClassExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for ClassExpr {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -1439,6 +1590,12 @@ impl SetSpan for ClassExpr {
 impl AssignExpr {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for AssignExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -1462,6 +1619,12 @@ impl MemberExpr {
         self.0
     }
 }
+impl AstNode for MemberExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for MemberExpr {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -1479,30 +1642,38 @@ impl SetSpan for MemberExpr {
 impl MemberProp {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Ident(it) => it.node_id(),
-            Self::PrivateName(it) => it.node_id(),
-            Self::Computed(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for MemberProp {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for MemberProp {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for MemberProp {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl SuperPropExpr {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for SuperPropExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -1523,29 +1694,38 @@ impl SetSpan for SuperPropExpr {
 impl SuperProp {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Ident(it) => it.node_id(),
-            Self::Computed(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for SuperProp {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for SuperProp {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for SuperProp {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl CondExpr {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for CondExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -1569,6 +1749,12 @@ impl ImportExpr {
         self.0
     }
 }
+impl AstNode for ImportExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for ImportExpr {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -1586,6 +1772,12 @@ impl SetSpan for ImportExpr {
 impl CallExpr {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for CallExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -1609,6 +1801,12 @@ impl NewExpr {
         self.0
     }
 }
+impl AstNode for NewExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for NewExpr {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -1626,6 +1824,12 @@ impl SetSpan for NewExpr {
 impl SeqExpr {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for SeqExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -1649,6 +1853,12 @@ impl ArrowExpr {
         self.0
     }
 }
+impl AstNode for ArrowExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for ArrowExpr {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -1666,6 +1876,12 @@ impl SetSpan for ArrowExpr {
 impl YieldExpr {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for YieldExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -1689,6 +1905,12 @@ impl MetaPropExpr {
         self.0
     }
 }
+impl AstNode for MetaPropExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for MetaPropExpr {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -1706,6 +1928,12 @@ impl SetSpan for MetaPropExpr {
 impl AwaitExpr {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for AwaitExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -1729,6 +1957,12 @@ impl Tpl {
         self.0
     }
 }
+impl AstNode for Tpl {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for Tpl {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -1746,6 +1980,12 @@ impl SetSpan for Tpl {
 impl TaggedTpl {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for TaggedTpl {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -1769,6 +2009,12 @@ impl TplElement {
         self.0
     }
 }
+impl AstNode for TplElement {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for TplElement {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -1789,6 +2035,12 @@ impl ParenExpr {
         self.0
     }
 }
+impl AstNode for ParenExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for ParenExpr {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -1806,66 +2058,38 @@ impl SetSpan for ParenExpr {
 impl Callee {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::This(it) => it.node_id(),
-            Self::Array(it) => it.node_id(),
-            Self::Object(it) => it.node_id(),
-            Self::Fn(it) => it.node_id(),
-            Self::Unary(it) => it.node_id(),
-            Self::Update(it) => it.node_id(),
-            Self::Bin(it) => it.node_id(),
-            Self::Assign(it) => it.node_id(),
-            Self::Member(it) => it.node_id(),
-            Self::SuperProp(it) => it.node_id(),
-            Self::Cond(it) => it.node_id(),
-            Self::Import(it) => it.node_id(),
-            Self::Call(it) => it.node_id(),
-            Self::New(it) => it.node_id(),
-            Self::Seq(it) => it.node_id(),
-            Self::Ident(it) => it.node_id(),
-            Self::Str(it) => it.node_id(),
-            Self::Bool(it) => it.node_id(),
-            Self::Null(it) => it.node_id(),
-            Self::Num(it) => it.node_id(),
-            Self::BigInt(it) => it.node_id(),
-            Self::Regex(it) => it.node_id(),
-            Self::Tpl(it) => it.node_id(),
-            Self::TaggedTpl(it) => it.node_id(),
-            Self::Arrow(it) => it.node_id(),
-            Self::Class(it) => it.node_id(),
-            Self::Yield(it) => it.node_id(),
-            Self::MetaProp(it) => it.node_id(),
-            Self::Await(it) => it.node_id(),
-            Self::Paren(it) => it.node_id(),
-            Self::JSXMember(it) => it.node_id(),
-            Self::JSXNamespacedName(it) => it.node_id(),
-            Self::JSXEmpty(it) => it.node_id(),
-            Self::JSXElement(it) => it.node_id(),
-            Self::JSXFragment(it) => it.node_id(),
-            Self::PrivateName(it) => it.node_id(),
-            Self::OptChain(it) => it.node_id(),
-            Self::Invalid(it) => it.node_id(),
-            Self::Super(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for Callee {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for Callee {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for Callee {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl Super {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for Super {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -1889,6 +2113,12 @@ impl ExprOrSpread {
         self.0
     }
 }
+impl AstNode for ExprOrSpread {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for ExprOrSpread {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -1906,147 +2136,116 @@ impl SetSpan for ExprOrSpread {
 impl BlockStmtOrExpr {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::This(it) => it.node_id(),
-            Self::Array(it) => it.node_id(),
-            Self::Object(it) => it.node_id(),
-            Self::Fn(it) => it.node_id(),
-            Self::Unary(it) => it.node_id(),
-            Self::Update(it) => it.node_id(),
-            Self::Bin(it) => it.node_id(),
-            Self::Assign(it) => it.node_id(),
-            Self::Member(it) => it.node_id(),
-            Self::SuperProp(it) => it.node_id(),
-            Self::Cond(it) => it.node_id(),
-            Self::Import(it) => it.node_id(),
-            Self::Call(it) => it.node_id(),
-            Self::New(it) => it.node_id(),
-            Self::Seq(it) => it.node_id(),
-            Self::Ident(it) => it.node_id(),
-            Self::Str(it) => it.node_id(),
-            Self::Bool(it) => it.node_id(),
-            Self::Null(it) => it.node_id(),
-            Self::Num(it) => it.node_id(),
-            Self::BigInt(it) => it.node_id(),
-            Self::Regex(it) => it.node_id(),
-            Self::Tpl(it) => it.node_id(),
-            Self::TaggedTpl(it) => it.node_id(),
-            Self::Arrow(it) => it.node_id(),
-            Self::Class(it) => it.node_id(),
-            Self::Yield(it) => it.node_id(),
-            Self::MetaProp(it) => it.node_id(),
-            Self::Await(it) => it.node_id(),
-            Self::Paren(it) => it.node_id(),
-            Self::JSXMember(it) => it.node_id(),
-            Self::JSXNamespacedName(it) => it.node_id(),
-            Self::JSXEmpty(it) => it.node_id(),
-            Self::JSXElement(it) => it.node_id(),
-            Self::JSXFragment(it) => it.node_id(),
-            Self::PrivateName(it) => it.node_id(),
-            Self::OptChain(it) => it.node_id(),
-            Self::Invalid(it) => it.node_id(),
-            Self::BlockStmt(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for BlockStmtOrExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for BlockStmtOrExpr {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for BlockStmtOrExpr {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl AssignTarget {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::SimpleIdent(it) => it.node_id(),
-            Self::SimpleMember(it) => it.node_id(),
-            Self::SimpleSuperProp(it) => it.node_id(),
-            Self::SimpleParen(it) => it.node_id(),
-            Self::SimpleOptChain(it) => it.node_id(),
-            Self::SimpleInvalid(it) => it.node_id(),
-            Self::PatArray(it) => it.node_id(),
-            Self::PatObject(it) => it.node_id(),
-            Self::PatternInvalid(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for AssignTarget {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for AssignTarget {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for AssignTarget {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl AssignTargetPat {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Array(it) => it.node_id(),
-            Self::Object(it) => it.node_id(),
-            Self::Invalid(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for AssignTargetPat {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for AssignTargetPat {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for AssignTargetPat {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl SimpleAssignTarget {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Ident(it) => it.node_id(),
-            Self::Member(it) => it.node_id(),
-            Self::SuperProp(it) => it.node_id(),
-            Self::Paren(it) => it.node_id(),
-            Self::OptChain(it) => it.node_id(),
-            Self::Invalid(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for SimpleAssignTarget {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for SimpleAssignTarget {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for SimpleAssignTarget {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl OptChainExpr {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for OptChainExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -2067,29 +2266,38 @@ impl SetSpan for OptChainExpr {
 impl OptChainBase {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Member(it) => it.node_id(),
-            Self::Call(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for OptChainBase {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for OptChainBase {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for OptChainBase {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl OptCall {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for OptCall {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -2113,6 +2321,12 @@ impl Invalid {
         self.0
     }
 }
+impl AstNode for Invalid {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for Invalid {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -2130,6 +2344,12 @@ impl SetSpan for Invalid {
 impl Function {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for Function {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -2153,6 +2373,12 @@ impl Param {
         self.0
     }
 }
+impl AstNode for Param {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for Param {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -2170,28 +2396,38 @@ impl SetSpan for Param {
 impl ParamOrTsParamProp {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Param(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for ParamOrTsParamProp {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for ParamOrTsParamProp {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for ParamOrTsParamProp {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl Class {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for Class {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -2212,35 +2448,38 @@ impl SetSpan for Class {
 impl ClassMember {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Constructor(it) => it.node_id(),
-            Self::Method(it) => it.node_id(),
-            Self::PrivateMethod(it) => it.node_id(),
-            Self::ClassProp(it) => it.node_id(),
-            Self::PrivateProp(it) => it.node_id(),
-            Self::Empty(it) => it.node_id(),
-            Self::StaticBlock(it) => it.node_id(),
-            Self::AutoAccessor(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for ClassMember {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for ClassMember {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for ClassMember {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl ClassProp {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for ClassProp {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -2264,6 +2503,12 @@ impl PrivateProp {
         self.0
     }
 }
+impl AstNode for PrivateProp {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for PrivateProp {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -2281,6 +2526,12 @@ impl SetSpan for PrivateProp {
 impl ClassMethod {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for ClassMethod {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -2304,6 +2555,12 @@ impl PrivateMethod {
         self.0
     }
 }
+impl AstNode for PrivateMethod {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for PrivateMethod {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -2321,6 +2578,12 @@ impl SetSpan for PrivateMethod {
 impl Constructor {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for Constructor {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -2344,6 +2607,12 @@ impl Decorator {
         self.0
     }
 }
+impl AstNode for Decorator {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for Decorator {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -2364,6 +2633,12 @@ impl StaticBlock {
         self.0
     }
 }
+impl AstNode for StaticBlock {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for StaticBlock {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -2381,33 +2656,38 @@ impl SetSpan for StaticBlock {
 impl Key {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Ident(it) => it.node_id(),
-            Self::Str(it) => it.node_id(),
-            Self::Num(it) => it.node_id(),
-            Self::Computed(it) => it.node_id(),
-            Self::BigInt(it) => it.node_id(),
-            Self::Private(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for Key {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for Key {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for Key {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl AutoAccessor {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for AutoAccessor {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -2428,33 +2708,38 @@ impl SetSpan for AutoAccessor {
 impl Prop {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Shorthand(it) => it.node_id(),
-            Self::KeyValue(it) => it.node_id(),
-            Self::Assign(it) => it.node_id(),
-            Self::Getter(it) => it.node_id(),
-            Self::Setter(it) => it.node_id(),
-            Self::Method(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for Prop {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for Prop {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for Prop {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl KeyValueProp {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for KeyValueProp {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -2478,6 +2763,12 @@ impl AssignProp {
         self.0
     }
 }
+impl AstNode for AssignProp {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for AssignProp {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -2495,6 +2786,12 @@ impl SetSpan for AssignProp {
 impl GetterProp {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for GetterProp {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -2518,6 +2815,12 @@ impl SetterProp {
         self.0
     }
 }
+impl AstNode for SetterProp {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for SetterProp {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -2538,6 +2841,12 @@ impl MethodProp {
         self.0
     }
 }
+impl AstNode for MethodProp {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for MethodProp {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -2555,32 +2864,38 @@ impl SetSpan for MethodProp {
 impl PropName {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Ident(it) => it.node_id(),
-            Self::Str(it) => it.node_id(),
-            Self::Num(it) => it.node_id(),
-            Self::Computed(it) => it.node_id(),
-            Self::BigInt(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for PropName {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for PropName {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for PropName {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl ComputedPropName {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for ComputedPropName {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -2601,71 +2916,38 @@ impl SetSpan for ComputedPropName {
 impl Pat {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::ExprThis(it) => it.node_id(),
-            Self::ExprArray(it) => it.node_id(),
-            Self::ExprObject(it) => it.node_id(),
-            Self::ExprFn(it) => it.node_id(),
-            Self::ExprUnary(it) => it.node_id(),
-            Self::ExprUpdate(it) => it.node_id(),
-            Self::ExprBin(it) => it.node_id(),
-            Self::ExprAssign(it) => it.node_id(),
-            Self::ExprMember(it) => it.node_id(),
-            Self::ExprSuperProp(it) => it.node_id(),
-            Self::ExprCond(it) => it.node_id(),
-            Self::ExprImport(it) => it.node_id(),
-            Self::ExprCall(it) => it.node_id(),
-            Self::ExprNew(it) => it.node_id(),
-            Self::ExprSeq(it) => it.node_id(),
-            Self::ExprIdent(it) => it.node_id(),
-            Self::ExprStr(it) => it.node_id(),
-            Self::ExprBool(it) => it.node_id(),
-            Self::ExprNull(it) => it.node_id(),
-            Self::ExprNum(it) => it.node_id(),
-            Self::ExprBigInt(it) => it.node_id(),
-            Self::ExprRegex(it) => it.node_id(),
-            Self::ExprTpl(it) => it.node_id(),
-            Self::ExprTaggedTpl(it) => it.node_id(),
-            Self::ExprArrow(it) => it.node_id(),
-            Self::ExprClass(it) => it.node_id(),
-            Self::ExprYield(it) => it.node_id(),
-            Self::ExprMetaProp(it) => it.node_id(),
-            Self::ExprAwait(it) => it.node_id(),
-            Self::ExprParen(it) => it.node_id(),
-            Self::ExprJSXMember(it) => it.node_id(),
-            Self::ExprJSXNamespacedName(it) => it.node_id(),
-            Self::ExprJSXEmpty(it) => it.node_id(),
-            Self::ExprJSXElement(it) => it.node_id(),
-            Self::ExprJSXFragment(it) => it.node_id(),
-            Self::ExprPrivateName(it) => it.node_id(),
-            Self::ExprOptChain(it) => it.node_id(),
-            Self::ExprInvalid(it) => it.node_id(),
-            Self::Ident(it) => it.node_id(),
-            Self::Array(it) => it.node_id(),
-            Self::Rest(it) => it.node_id(),
-            Self::Object(it) => it.node_id(),
-            Self::Assign(it) => it.node_id(),
-            Self::Invalid(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for Pat {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for Pat {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for Pat {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl ArrayPat {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for ArrayPat {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -2689,6 +2971,12 @@ impl ObjectPat {
         self.0
     }
 }
+impl AstNode for ObjectPat {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for ObjectPat {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -2706,6 +2994,12 @@ impl SetSpan for ObjectPat {
 impl AssignPat {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for AssignPat {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -2729,6 +3023,12 @@ impl RestPat {
         self.0
     }
 }
+impl AstNode for RestPat {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for RestPat {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -2746,30 +3046,38 @@ impl SetSpan for RestPat {
 impl ObjectPatProp {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::KeyValue(it) => it.node_id(),
-            Self::Assign(it) => it.node_id(),
-            Self::Rest(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for ObjectPatProp {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for ObjectPatProp {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for ObjectPatProp {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl KeyValuePatProp {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for KeyValuePatProp {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -2793,6 +3101,12 @@ impl AssignPatProp {
         self.0
     }
 }
+impl AstNode for AssignPatProp {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for AssignPatProp {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -2810,6 +3124,12 @@ impl SetSpan for AssignPatProp {
 impl Ident {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for Ident {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -2833,6 +3153,12 @@ impl IdentName {
         self.0
     }
 }
+impl AstNode for IdentName {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for IdentName {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -2850,6 +3176,12 @@ impl SetSpan for IdentName {
 impl PrivateName {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for PrivateName {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -2873,6 +3205,12 @@ impl BindingIdent {
         self.0
     }
 }
+impl AstNode for BindingIdent {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for BindingIdent {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -2890,33 +3228,38 @@ impl SetSpan for BindingIdent {
 impl Lit {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Str(it) => it.node_id(),
-            Self::Bool(it) => it.node_id(),
-            Self::Null(it) => it.node_id(),
-            Self::Num(it) => it.node_id(),
-            Self::BigInt(it) => it.node_id(),
-            Self::Regex(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for Lit {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for Lit {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for Lit {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl Str {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for Str {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -2940,6 +3283,12 @@ impl Bool {
         self.0
     }
 }
+impl AstNode for Bool {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for Bool {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -2957,6 +3306,12 @@ impl SetSpan for Bool {
 impl Null {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for Null {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -2980,6 +3335,12 @@ impl Number {
         self.0
     }
 }
+impl AstNode for Number {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for Number {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -2997,6 +3358,12 @@ impl SetSpan for Number {
 impl BigInt {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for BigInt {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -3020,6 +3387,12 @@ impl Regex {
         self.0
     }
 }
+impl AstNode for Regex {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for Regex {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -3037,29 +3410,38 @@ impl SetSpan for Regex {
 impl JSXObject {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::JSXMemberExpr(it) => it.node_id(),
-            Self::Ident(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for JSXObject {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for JSXObject {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for JSXObject {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl JSXMemberExpr {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for JSXMemberExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -3083,6 +3465,12 @@ impl JSXNamespacedName {
         self.0
     }
 }
+impl AstNode for JSXNamespacedName {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for JSXNamespacedName {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -3100,6 +3488,12 @@ impl SetSpan for JSXNamespacedName {
 impl JSXEmptyExpr {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for JSXEmptyExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -3123,6 +3517,12 @@ impl JSXExprContainer {
         self.0
     }
 }
+impl AstNode for JSXExprContainer {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for JSXExprContainer {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -3140,66 +3540,38 @@ impl SetSpan for JSXExprContainer {
 impl JSXExpr {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::This(it) => it.node_id(),
-            Self::Array(it) => it.node_id(),
-            Self::Object(it) => it.node_id(),
-            Self::Fn(it) => it.node_id(),
-            Self::Unary(it) => it.node_id(),
-            Self::Update(it) => it.node_id(),
-            Self::Bin(it) => it.node_id(),
-            Self::Assign(it) => it.node_id(),
-            Self::Member(it) => it.node_id(),
-            Self::SuperProp(it) => it.node_id(),
-            Self::Cond(it) => it.node_id(),
-            Self::Import(it) => it.node_id(),
-            Self::Call(it) => it.node_id(),
-            Self::New(it) => it.node_id(),
-            Self::Seq(it) => it.node_id(),
-            Self::Ident(it) => it.node_id(),
-            Self::Str(it) => it.node_id(),
-            Self::Bool(it) => it.node_id(),
-            Self::Null(it) => it.node_id(),
-            Self::Num(it) => it.node_id(),
-            Self::BigInt(it) => it.node_id(),
-            Self::Regex(it) => it.node_id(),
-            Self::Tpl(it) => it.node_id(),
-            Self::TaggedTpl(it) => it.node_id(),
-            Self::Arrow(it) => it.node_id(),
-            Self::Class(it) => it.node_id(),
-            Self::Yield(it) => it.node_id(),
-            Self::MetaProp(it) => it.node_id(),
-            Self::Await(it) => it.node_id(),
-            Self::Paren(it) => it.node_id(),
-            Self::JSXMember(it) => it.node_id(),
-            Self::JSXNamespacedName(it) => it.node_id(),
-            Self::JSXEmpty(it) => it.node_id(),
-            Self::JSXElement(it) => it.node_id(),
-            Self::JSXFragment(it) => it.node_id(),
-            Self::PrivateName(it) => it.node_id(),
-            Self::OptChain(it) => it.node_id(),
-            Self::Invalid(it) => it.node_id(),
-            Self::JSXEmptyExpr(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for JSXExpr {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for JSXExpr {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for JSXExpr {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl JSXSpreadChild {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for JSXSpreadChild {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -3220,30 +3592,38 @@ impl SetSpan for JSXSpreadChild {
 impl JSXElementName {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Ident(it) => it.node_id(),
-            Self::JSXMemberExpr(it) => it.node_id(),
-            Self::JSXNamespacedName(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for JSXElementName {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for JSXElementName {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for JSXElementName {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl JSXOpeningElement {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for JSXOpeningElement {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -3264,29 +3644,38 @@ impl SetSpan for JSXOpeningElement {
 impl JSXAttrOrSpread {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::JSXAttr(it) => it.node_id(),
-            Self::SpreadElement(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for JSXAttrOrSpread {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for JSXAttrOrSpread {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for JSXAttrOrSpread {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl JSXClosingElement {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for JSXClosingElement {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -3310,6 +3699,12 @@ impl JSXAttr {
         self.0
     }
 }
+impl AstNode for JSXAttr {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for JSXAttr {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -3327,54 +3722,64 @@ impl SetSpan for JSXAttr {
 impl JSXAttrName {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Ident(it) => it.node_id(),
-            Self::JSXNamespacedName(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for JSXAttrName {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for JSXAttrName {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for JSXAttrName {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl JSXAttrValue {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::Str(it) => it.node_id(),
-            Self::JSXExprContainer(it) => it.node_id(),
-            Self::JSXElement(it) => it.node_id(),
-            Self::JSXFragment(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for JSXAttrValue {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for JSXAttrValue {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for JSXAttrValue {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl JSXText {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for JSXText {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -3398,6 +3803,12 @@ impl JSXElement {
         self.0
     }
 }
+impl AstNode for JSXElement {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for JSXElement {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -3415,32 +3826,38 @@ impl SetSpan for JSXElement {
 impl JSXElementChild {
     #[inline]
     pub fn node_id(self) -> NodeId {
-        match self {
-            Self::JSXText(it) => it.node_id(),
-            Self::JSXExprContainer(it) => it.node_id(),
-            Self::JSXSpreadChild(it) => it.node_id(),
-            Self::JSXElement(it) => it.node_id(),
-            Self::JSXFragment(it) => it.node_id(),
-        }
+        self.0
+    }
+}
+impl AstNode for JSXElementChild {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
     }
 }
 impl GetSpan for JSXElementChild {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.node_id()) }
+        unsafe { *ast.nodes.span_unchecked(self.0) }
     }
 }
 impl SetSpan for JSXElementChild {
     #[inline]
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
-            *ast.nodes.span_mut_unchecked(self.node_id()) = span;
+            *ast.nodes.span_mut_unchecked(self.0) = span;
         }
     }
 }
 impl JSXFragment {
     #[inline]
     pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for JSXFragment {
+    #[inline]
+    fn node_id(self) -> NodeId {
         self.0
     }
 }
@@ -3464,6 +3881,12 @@ impl JSXOpeningFragment {
         self.0
     }
 }
+impl AstNode for JSXOpeningFragment {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for JSXOpeningFragment {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -3484,6 +3907,12 @@ impl JSXClosingFragment {
         self.0
     }
 }
+impl AstNode for JSXClosingFragment {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
 impl GetSpan for JSXClosingFragment {
     #[inline]
     fn span(self, ast: &Ast<'_>) -> crate::Span {
@@ -3495,6 +3924,685 @@ impl SetSpan for JSXClosingFragment {
     fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
         unsafe {
             *ast.nodes.span_mut_unchecked(self.0) = span;
+        }
+    }
+}
+impl<'a> Ast<'a> {
+    #[inline]
+    pub fn program_data(&self, node: Program) -> ProgramData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::Module => ProgramData::Module(Module(node.0)),
+            NodeKind::Script => ProgramData::Script(Script(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn module_item_data(&self, node: ModuleItem) -> ModuleItemData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::ImportDecl => ModuleItemData::ModuleDecl(ModuleDecl(node.0)),
+            NodeKind::ExportDecl => ModuleItemData::ModuleDecl(ModuleDecl(node.0)),
+            NodeKind::NamedExport => ModuleItemData::ModuleDecl(ModuleDecl(node.0)),
+            NodeKind::ExportDefaultDecl => ModuleItemData::ModuleDecl(ModuleDecl(node.0)),
+            NodeKind::ExportDefaultExpr => ModuleItemData::ModuleDecl(ModuleDecl(node.0)),
+            NodeKind::ExportAll => ModuleItemData::ModuleDecl(ModuleDecl(node.0)),
+            NodeKind::BlockStmt => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::EmptyStmt => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::DebuggerStmt => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::WithStmt => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::ReturnStmt => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::LabeledStmt => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::BreakStmt => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::ContinueStmt => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::IfStmt => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::SwitchStmt => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::ThrowStmt => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::TryStmt => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::WhileStmt => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::DoWhileStmt => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::ForStmt => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::ForInStmt => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::ForOfStmt => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::ClassDecl => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::FnDecl => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::VarDecl => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::UsingDecl => ModuleItemData::Stmt(Stmt(node.0)),
+            NodeKind::ExprStmt => ModuleItemData::Stmt(Stmt(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn module_decl_data(&self, node: ModuleDecl) -> ModuleDeclData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::ImportDecl => ModuleDeclData::Import(ImportDecl(node.0)),
+            NodeKind::ExportDecl => ModuleDeclData::ExportDecl(ExportDecl(node.0)),
+            NodeKind::NamedExport => ModuleDeclData::ExportNamed(NamedExport(node.0)),
+            NodeKind::ExportDefaultDecl => {
+                ModuleDeclData::ExportDefaultDecl(ExportDefaultDecl(node.0))
+            }
+            NodeKind::ExportDefaultExpr => {
+                ModuleDeclData::ExportDefaultExpr(ExportDefaultExpr(node.0))
+            }
+            NodeKind::ExportAll => ModuleDeclData::ExportAll(ExportAll(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn import_specifier_data(&self, node: ImportSpecifier) -> ImportSpecifierData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::ImportNamedSpecifier => {
+                ImportSpecifierData::Named(ImportNamedSpecifier(node.0))
+            }
+            NodeKind::ImportDefaultSpecifier => {
+                ImportSpecifierData::Default(ImportDefaultSpecifier(node.0))
+            }
+            NodeKind::ImportStarAsSpecifier => {
+                ImportSpecifierData::Namespace(ImportStarAsSpecifier(node.0))
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn export_specifier_data(&self, node: ExportSpecifier) -> ExportSpecifierData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::ExportNamespaceSpecifier => {
+                ExportSpecifierData::Namespace(ExportNamespaceSpecifier(node.0))
+            }
+            NodeKind::ExportDefaultSpecifier => {
+                ExportSpecifierData::Default(ExportDefaultSpecifier(node.0))
+            }
+            NodeKind::ExportNamedSpecifier => {
+                ExportSpecifierData::Named(ExportNamedSpecifier(node.0))
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn module_export_name_data(&self, node: ModuleExportName) -> ModuleExportNameData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::Ident => ModuleExportNameData::Ident(Ident(node.0)),
+            NodeKind::Str => ModuleExportNameData::Str(Str(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn default_decl_data(&self, node: DefaultDecl) -> DefaultDeclData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::ClassExpr => DefaultDeclData::Class(ClassExpr(node.0)),
+            NodeKind::FnExpr => DefaultDeclData::Fn(FnExpr(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn stmt_data(&self, node: Stmt) -> StmtData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::BlockStmt => StmtData::Block(BlockStmt(node.0)),
+            NodeKind::EmptyStmt => StmtData::Empty(EmptyStmt(node.0)),
+            NodeKind::DebuggerStmt => StmtData::Debugger(DebuggerStmt(node.0)),
+            NodeKind::WithStmt => StmtData::With(WithStmt(node.0)),
+            NodeKind::ReturnStmt => StmtData::Return(ReturnStmt(node.0)),
+            NodeKind::LabeledStmt => StmtData::Labeled(LabeledStmt(node.0)),
+            NodeKind::BreakStmt => StmtData::Break(BreakStmt(node.0)),
+            NodeKind::ContinueStmt => StmtData::Continue(ContinueStmt(node.0)),
+            NodeKind::IfStmt => StmtData::If(IfStmt(node.0)),
+            NodeKind::SwitchStmt => StmtData::Switch(SwitchStmt(node.0)),
+            NodeKind::ThrowStmt => StmtData::Throw(ThrowStmt(node.0)),
+            NodeKind::TryStmt => StmtData::Try(TryStmt(node.0)),
+            NodeKind::WhileStmt => StmtData::While(WhileStmt(node.0)),
+            NodeKind::DoWhileStmt => StmtData::DoWhile(DoWhileStmt(node.0)),
+            NodeKind::ForStmt => StmtData::For(ForStmt(node.0)),
+            NodeKind::ForInStmt => StmtData::ForIn(ForInStmt(node.0)),
+            NodeKind::ForOfStmt => StmtData::ForOf(ForOfStmt(node.0)),
+            NodeKind::ClassDecl => StmtData::Decl(Decl(node.0)),
+            NodeKind::FnDecl => StmtData::Decl(Decl(node.0)),
+            NodeKind::VarDecl => StmtData::Decl(Decl(node.0)),
+            NodeKind::UsingDecl => StmtData::Decl(Decl(node.0)),
+            NodeKind::ExprStmt => StmtData::Expr(ExprStmt(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn for_head_data(&self, node: ForHead) -> ForHeadData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::VarDecl => ForHeadData::VarDecl(VarDecl(node.0)),
+            NodeKind::UsingDecl => ForHeadData::UsingDecl(UsingDecl(node.0)),
+            NodeKind::BindingIdent => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::ArrayPat => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::RestPat => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::ObjectPat => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::AssignPat => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::Invalid => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::ThisExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::ArrayLit => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::ObjectLit => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::FnExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::UnaryExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::UpdateExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::BinExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::AssignExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::MemberExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::SuperPropExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::CondExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::ImportExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::CallExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::NewExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::SeqExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::Ident => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::Str => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::Bool => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::Null => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::Number => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::BigInt => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::Regex => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::Tpl => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::TaggedTpl => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::ArrowExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::ClassExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::YieldExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::MetaPropExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::AwaitExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::ParenExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::JSXMemberExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::JSXNamespacedName => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::JSXEmptyExpr => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::JSXElement => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::JSXFragment => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::PrivateName => ForHeadData::Pat(Pat(node.0)),
+            NodeKind::OptChainExpr => ForHeadData::Pat(Pat(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn var_decl_or_expr_data(&self, node: VarDeclOrExpr) -> VarDeclOrExprData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::VarDecl => VarDeclOrExprData::VarDecl(VarDecl(node.0)),
+            NodeKind::ThisExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::ArrayLit => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::ObjectLit => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::FnExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::UnaryExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::UpdateExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::BinExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::AssignExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::MemberExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::SuperPropExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::CondExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::ImportExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::CallExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::NewExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::SeqExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::Ident => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::Str => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::Bool => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::Null => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::Number => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::BigInt => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::Regex => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::Tpl => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::TaggedTpl => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::ArrowExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::ClassExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::YieldExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::MetaPropExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::AwaitExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::ParenExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::JSXMemberExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::JSXNamespacedName => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::JSXEmptyExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::JSXElement => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::JSXFragment => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::PrivateName => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::OptChainExpr => VarDeclOrExprData::Expr(Expr(node.0)),
+            NodeKind::Invalid => VarDeclOrExprData::Expr(Expr(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn decl_data(&self, node: Decl) -> DeclData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::ClassDecl => DeclData::Class(ClassDecl(node.0)),
+            NodeKind::FnDecl => DeclData::Fn(FnDecl(node.0)),
+            NodeKind::VarDecl => DeclData::Var(VarDecl(node.0)),
+            NodeKind::UsingDecl => DeclData::Using(UsingDecl(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn expr_data(&self, node: Expr) -> ExprData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::ThisExpr => ExprData::This(ThisExpr(node.0)),
+            NodeKind::ArrayLit => ExprData::Array(ArrayLit(node.0)),
+            NodeKind::ObjectLit => ExprData::Object(ObjectLit(node.0)),
+            NodeKind::FnExpr => ExprData::Fn(FnExpr(node.0)),
+            NodeKind::UnaryExpr => ExprData::Unary(UnaryExpr(node.0)),
+            NodeKind::UpdateExpr => ExprData::Update(UpdateExpr(node.0)),
+            NodeKind::BinExpr => ExprData::Bin(BinExpr(node.0)),
+            NodeKind::AssignExpr => ExprData::Assign(AssignExpr(node.0)),
+            NodeKind::MemberExpr => ExprData::Member(MemberExpr(node.0)),
+            NodeKind::SuperPropExpr => ExprData::SuperProp(SuperPropExpr(node.0)),
+            NodeKind::CondExpr => ExprData::Cond(CondExpr(node.0)),
+            NodeKind::ImportExpr => ExprData::Import(ImportExpr(node.0)),
+            NodeKind::CallExpr => ExprData::Call(CallExpr(node.0)),
+            NodeKind::NewExpr => ExprData::New(NewExpr(node.0)),
+            NodeKind::SeqExpr => ExprData::Seq(SeqExpr(node.0)),
+            NodeKind::Ident => ExprData::Ident(Ident(node.0)),
+            NodeKind::Str => ExprData::Lit(Lit(node.0)),
+            NodeKind::Bool => ExprData::Lit(Lit(node.0)),
+            NodeKind::Null => ExprData::Lit(Lit(node.0)),
+            NodeKind::Number => ExprData::Lit(Lit(node.0)),
+            NodeKind::BigInt => ExprData::Lit(Lit(node.0)),
+            NodeKind::Regex => ExprData::Lit(Lit(node.0)),
+            NodeKind::Tpl => ExprData::Tpl(Tpl(node.0)),
+            NodeKind::TaggedTpl => ExprData::TaggedTpl(TaggedTpl(node.0)),
+            NodeKind::ArrowExpr => ExprData::Arrow(ArrowExpr(node.0)),
+            NodeKind::ClassExpr => ExprData::Class(ClassExpr(node.0)),
+            NodeKind::YieldExpr => ExprData::Yield(YieldExpr(node.0)),
+            NodeKind::MetaPropExpr => ExprData::MetaProp(MetaPropExpr(node.0)),
+            NodeKind::AwaitExpr => ExprData::Await(AwaitExpr(node.0)),
+            NodeKind::ParenExpr => ExprData::Paren(ParenExpr(node.0)),
+            NodeKind::JSXMemberExpr => ExprData::JSXMember(JSXMemberExpr(node.0)),
+            NodeKind::JSXNamespacedName => ExprData::JSXNamespacedName(JSXNamespacedName(node.0)),
+            NodeKind::JSXEmptyExpr => ExprData::JSXEmpty(JSXEmptyExpr(node.0)),
+            NodeKind::JSXElement => ExprData::JSXElement(JSXElement(node.0)),
+            NodeKind::JSXFragment => ExprData::JSXFragment(JSXFragment(node.0)),
+            NodeKind::PrivateName => ExprData::PrivateName(PrivateName(node.0)),
+            NodeKind::OptChainExpr => ExprData::OptChain(OptChainExpr(node.0)),
+            NodeKind::Invalid => ExprData::Invalid(Invalid(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn prop_or_spread_data(&self, node: PropOrSpread) -> PropOrSpreadData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::SpreadElement => PropOrSpreadData::Spread(SpreadElement(node.0)),
+            NodeKind::Ident => PropOrSpreadData::Prop(Prop(node.0)),
+            NodeKind::KeyValueProp => PropOrSpreadData::Prop(Prop(node.0)),
+            NodeKind::AssignProp => PropOrSpreadData::Prop(Prop(node.0)),
+            NodeKind::GetterProp => PropOrSpreadData::Prop(Prop(node.0)),
+            NodeKind::SetterProp => PropOrSpreadData::Prop(Prop(node.0)),
+            NodeKind::MethodProp => PropOrSpreadData::Prop(Prop(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn member_prop_data(&self, node: MemberProp) -> MemberPropData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::IdentName => MemberPropData::Ident(IdentName(node.0)),
+            NodeKind::PrivateName => MemberPropData::PrivateName(PrivateName(node.0)),
+            NodeKind::ComputedPropName => MemberPropData::Computed(ComputedPropName(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn super_prop_data(&self, node: SuperProp) -> SuperPropData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::IdentName => SuperPropData::Ident(IdentName(node.0)),
+            NodeKind::ComputedPropName => SuperPropData::Computed(ComputedPropName(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn callee_data(&self, node: Callee) -> CalleeData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::Super => CalleeData::Super(Super(node.0)),
+            NodeKind::ThisExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::ArrayLit => CalleeData::Expr(Expr(node.0)),
+            NodeKind::ObjectLit => CalleeData::Expr(Expr(node.0)),
+            NodeKind::FnExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::UnaryExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::UpdateExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::BinExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::AssignExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::MemberExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::SuperPropExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::CondExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::ImportExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::CallExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::NewExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::SeqExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::Ident => CalleeData::Expr(Expr(node.0)),
+            NodeKind::Str => CalleeData::Expr(Expr(node.0)),
+            NodeKind::Bool => CalleeData::Expr(Expr(node.0)),
+            NodeKind::Null => CalleeData::Expr(Expr(node.0)),
+            NodeKind::Number => CalleeData::Expr(Expr(node.0)),
+            NodeKind::BigInt => CalleeData::Expr(Expr(node.0)),
+            NodeKind::Regex => CalleeData::Expr(Expr(node.0)),
+            NodeKind::Tpl => CalleeData::Expr(Expr(node.0)),
+            NodeKind::TaggedTpl => CalleeData::Expr(Expr(node.0)),
+            NodeKind::ArrowExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::ClassExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::YieldExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::MetaPropExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::AwaitExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::ParenExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::JSXMemberExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::JSXNamespacedName => CalleeData::Expr(Expr(node.0)),
+            NodeKind::JSXEmptyExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::JSXElement => CalleeData::Expr(Expr(node.0)),
+            NodeKind::JSXFragment => CalleeData::Expr(Expr(node.0)),
+            NodeKind::PrivateName => CalleeData::Expr(Expr(node.0)),
+            NodeKind::OptChainExpr => CalleeData::Expr(Expr(node.0)),
+            NodeKind::Invalid => CalleeData::Expr(Expr(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn block_stmt_or_expr_data(&self, node: BlockStmtOrExpr) -> BlockStmtOrExprData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::BlockStmt => BlockStmtOrExprData::BlockStmt(BlockStmt(node.0)),
+            NodeKind::ThisExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::ArrayLit => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::ObjectLit => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::FnExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::UnaryExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::UpdateExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::BinExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::AssignExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::MemberExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::SuperPropExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::CondExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::ImportExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::CallExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::NewExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::SeqExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::Ident => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::Str => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::Bool => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::Null => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::Number => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::BigInt => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::Regex => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::Tpl => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::TaggedTpl => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::ArrowExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::ClassExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::YieldExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::MetaPropExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::AwaitExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::ParenExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::JSXMemberExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::JSXNamespacedName => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::JSXEmptyExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::JSXElement => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::JSXFragment => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::PrivateName => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::OptChainExpr => BlockStmtOrExprData::Expr(Expr(node.0)),
+            NodeKind::Invalid => BlockStmtOrExprData::Expr(Expr(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn assign_target_data(&self, node: AssignTarget) -> AssignTargetData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::BindingIdent => AssignTargetData::Simple(SimpleAssignTarget(node.0)),
+            NodeKind::MemberExpr => AssignTargetData::Simple(SimpleAssignTarget(node.0)),
+            NodeKind::SuperPropExpr => AssignTargetData::Simple(SimpleAssignTarget(node.0)),
+            NodeKind::ParenExpr => AssignTargetData::Simple(SimpleAssignTarget(node.0)),
+            NodeKind::OptChainExpr => AssignTargetData::Simple(SimpleAssignTarget(node.0)),
+            NodeKind::Invalid => AssignTargetData::Simple(SimpleAssignTarget(node.0)),
+            NodeKind::ArrayPat => AssignTargetData::Pat(AssignTargetPat(node.0)),
+            NodeKind::ObjectPat => AssignTargetData::Pat(AssignTargetPat(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn assign_target_pat_data(&self, node: AssignTargetPat) -> AssignTargetPatData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::ArrayPat => AssignTargetPatData::Array(ArrayPat(node.0)),
+            NodeKind::ObjectPat => AssignTargetPatData::Object(ObjectPat(node.0)),
+            NodeKind::Invalid => AssignTargetPatData::Invalid(Invalid(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn simple_assign_target_data(&self, node: SimpleAssignTarget) -> SimpleAssignTargetData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::BindingIdent => SimpleAssignTargetData::Ident(BindingIdent(node.0)),
+            NodeKind::MemberExpr => SimpleAssignTargetData::Member(MemberExpr(node.0)),
+            NodeKind::SuperPropExpr => SimpleAssignTargetData::SuperProp(SuperPropExpr(node.0)),
+            NodeKind::ParenExpr => SimpleAssignTargetData::Paren(ParenExpr(node.0)),
+            NodeKind::OptChainExpr => SimpleAssignTargetData::OptChain(OptChainExpr(node.0)),
+            NodeKind::Invalid => SimpleAssignTargetData::Invalid(Invalid(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn opt_chain_base_data(&self, node: OptChainBase) -> OptChainBaseData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::MemberExpr => OptChainBaseData::Member(MemberExpr(node.0)),
+            NodeKind::OptCall => OptChainBaseData::Call(OptCall(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn param_or_ts_param_prop_data(&self, node: ParamOrTsParamProp) -> ParamOrTsParamPropData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::Param => ParamOrTsParamPropData::Param(Param(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn class_member_data(&self, node: ClassMember) -> ClassMemberData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::Constructor => ClassMemberData::Constructor(Constructor(node.0)),
+            NodeKind::ClassMethod => ClassMemberData::Method(ClassMethod(node.0)),
+            NodeKind::PrivateMethod => ClassMemberData::PrivateMethod(PrivateMethod(node.0)),
+            NodeKind::ClassProp => ClassMemberData::ClassProp(ClassProp(node.0)),
+            NodeKind::PrivateProp => ClassMemberData::PrivateProp(PrivateProp(node.0)),
+            NodeKind::EmptyStmt => ClassMemberData::Empty(EmptyStmt(node.0)),
+            NodeKind::StaticBlock => ClassMemberData::StaticBlock(StaticBlock(node.0)),
+            NodeKind::AutoAccessor => ClassMemberData::AutoAccessor(AutoAccessor(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn key_data(&self, node: Key) -> KeyData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::PrivateName => KeyData::Private(PrivateName(node.0)),
+            NodeKind::IdentName => KeyData::Public(PropName(node.0)),
+            NodeKind::Str => KeyData::Public(PropName(node.0)),
+            NodeKind::Number => KeyData::Public(PropName(node.0)),
+            NodeKind::ComputedPropName => KeyData::Public(PropName(node.0)),
+            NodeKind::BigInt => KeyData::Public(PropName(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn prop_data(&self, node: Prop) -> PropData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::Ident => PropData::Shorthand(Ident(node.0)),
+            NodeKind::KeyValueProp => PropData::KeyValue(KeyValueProp(node.0)),
+            NodeKind::AssignProp => PropData::Assign(AssignProp(node.0)),
+            NodeKind::GetterProp => PropData::Getter(GetterProp(node.0)),
+            NodeKind::SetterProp => PropData::Setter(SetterProp(node.0)),
+            NodeKind::MethodProp => PropData::Method(MethodProp(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn prop_name_data(&self, node: PropName) -> PropNameData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::IdentName => PropNameData::Ident(IdentName(node.0)),
+            NodeKind::Str => PropNameData::Str(Str(node.0)),
+            NodeKind::Number => PropNameData::Num(Number(node.0)),
+            NodeKind::ComputedPropName => PropNameData::Computed(ComputedPropName(node.0)),
+            NodeKind::BigInt => PropNameData::BigInt(BigInt(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn pat_data(&self, node: Pat) -> PatData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::BindingIdent => PatData::Ident(BindingIdent(node.0)),
+            NodeKind::ArrayPat => PatData::Array(ArrayPat(node.0)),
+            NodeKind::RestPat => PatData::Rest(RestPat(node.0)),
+            NodeKind::ObjectPat => PatData::Object(ObjectPat(node.0)),
+            NodeKind::AssignPat => PatData::Assign(AssignPat(node.0)),
+            NodeKind::Invalid => PatData::Invalid(Invalid(node.0)),
+            NodeKind::ThisExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::ArrayLit => PatData::Expr(Expr(node.0)),
+            NodeKind::ObjectLit => PatData::Expr(Expr(node.0)),
+            NodeKind::FnExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::UnaryExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::UpdateExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::BinExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::AssignExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::MemberExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::SuperPropExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::CondExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::ImportExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::CallExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::NewExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::SeqExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::Ident => PatData::Expr(Expr(node.0)),
+            NodeKind::Str => PatData::Expr(Expr(node.0)),
+            NodeKind::Bool => PatData::Expr(Expr(node.0)),
+            NodeKind::Null => PatData::Expr(Expr(node.0)),
+            NodeKind::Number => PatData::Expr(Expr(node.0)),
+            NodeKind::BigInt => PatData::Expr(Expr(node.0)),
+            NodeKind::Regex => PatData::Expr(Expr(node.0)),
+            NodeKind::Tpl => PatData::Expr(Expr(node.0)),
+            NodeKind::TaggedTpl => PatData::Expr(Expr(node.0)),
+            NodeKind::ArrowExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::ClassExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::YieldExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::MetaPropExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::AwaitExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::ParenExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::JSXMemberExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::JSXNamespacedName => PatData::Expr(Expr(node.0)),
+            NodeKind::JSXEmptyExpr => PatData::Expr(Expr(node.0)),
+            NodeKind::JSXElement => PatData::Expr(Expr(node.0)),
+            NodeKind::JSXFragment => PatData::Expr(Expr(node.0)),
+            NodeKind::PrivateName => PatData::Expr(Expr(node.0)),
+            NodeKind::OptChainExpr => PatData::Expr(Expr(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn object_pat_prop_data(&self, node: ObjectPatProp) -> ObjectPatPropData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::KeyValuePatProp => ObjectPatPropData::KeyValue(KeyValuePatProp(node.0)),
+            NodeKind::AssignPatProp => ObjectPatPropData::Assign(AssignPatProp(node.0)),
+            NodeKind::RestPat => ObjectPatPropData::Rest(RestPat(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn lit_data(&self, node: Lit) -> LitData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::Str => LitData::Str(Str(node.0)),
+            NodeKind::Bool => LitData::Bool(Bool(node.0)),
+            NodeKind::Null => LitData::Null(Null(node.0)),
+            NodeKind::Number => LitData::Num(Number(node.0)),
+            NodeKind::BigInt => LitData::BigInt(BigInt(node.0)),
+            NodeKind::Regex => LitData::Regex(Regex(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn jsx_object_data(&self, node: JSXObject) -> JSXObjectData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::JSXMemberExpr => JSXObjectData::JSXMemberExpr(JSXMemberExpr(node.0)),
+            NodeKind::Ident => JSXObjectData::Ident(Ident(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn jsx_expr_data(&self, node: JSXExpr) -> JSXExprData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::JSXEmptyExpr => JSXExprData::JSXEmptyExpr(JSXEmptyExpr(node.0)),
+            NodeKind::ThisExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::ArrayLit => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::ObjectLit => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::FnExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::UnaryExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::UpdateExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::BinExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::AssignExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::MemberExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::SuperPropExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::CondExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::ImportExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::CallExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::NewExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::SeqExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::Ident => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::Str => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::Bool => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::Null => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::Number => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::BigInt => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::Regex => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::Tpl => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::TaggedTpl => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::ArrowExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::ClassExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::YieldExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::MetaPropExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::AwaitExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::ParenExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::JSXMemberExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::JSXNamespacedName => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::JSXElement => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::JSXFragment => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::PrivateName => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::OptChainExpr => JSXExprData::Expr(Expr(node.0)),
+            NodeKind::Invalid => JSXExprData::Expr(Expr(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn jsx_element_name_data(&self, node: JSXElementName) -> JSXElementNameData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::Ident => JSXElementNameData::Ident(Ident(node.0)),
+            NodeKind::JSXMemberExpr => JSXElementNameData::JSXMemberExpr(JSXMemberExpr(node.0)),
+            NodeKind::JSXNamespacedName => {
+                JSXElementNameData::JSXNamespacedName(JSXNamespacedName(node.0))
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn jsx_attr_or_spread_data(&self, node: JSXAttrOrSpread) -> JSXAttrOrSpreadData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::JSXAttr => JSXAttrOrSpreadData::JSXAttr(JSXAttr(node.0)),
+            NodeKind::SpreadElement => JSXAttrOrSpreadData::SpreadElement(SpreadElement(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn jsx_attr_name_data(&self, node: JSXAttrName) -> JSXAttrNameData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::IdentName => JSXAttrNameData::Ident(IdentName(node.0)),
+            NodeKind::JSXNamespacedName => {
+                JSXAttrNameData::JSXNamespacedName(JSXNamespacedName(node.0))
+            }
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn jsx_attr_value_data(&self, node: JSXAttrValue) -> JSXAttrValueData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::Str => JSXAttrValueData::Str(Str(node.0)),
+            NodeKind::JSXExprContainer => {
+                JSXAttrValueData::JSXExprContainer(JSXExprContainer(node.0))
+            }
+            NodeKind::JSXElement => JSXAttrValueData::JSXElement(JSXElement(node.0)),
+            NodeKind::JSXFragment => JSXAttrValueData::JSXFragment(JSXFragment(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+    #[inline]
+    pub fn jsx_element_child_data(&self, node: JSXElementChild) -> JSXElementChildData {
+        match unsafe { *self.nodes.kind_unchecked(node.0) } {
+            NodeKind::JSXText => JSXElementChildData::JSXText(JSXText(node.0)),
+            NodeKind::JSXExprContainer => {
+                JSXElementChildData::JSXExprContainer(JSXExprContainer(node.0))
+            }
+            NodeKind::JSXSpreadChild => JSXElementChildData::JSXSpreadChild(JSXSpreadChild(node.0)),
+            NodeKind::JSXElement => JSXElementChildData::JSXElement(JSXElement(node.0)),
+            NodeKind::JSXFragment => JSXElementChildData::JSXFragment(JSXFragment(node.0)),
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }

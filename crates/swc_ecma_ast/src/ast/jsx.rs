@@ -30,67 +30,8 @@ pub struct JSXExprContainer {
 
 #[ast(repr)]
 pub enum JSXExpr {
-    // Expr
-    This(ThisExpr),
-    Array(ArrayLit),
-    Object(ObjectLit),
-    Fn(FnExpr),
-    Unary(UnaryExpr),
-    Update(UpdateExpr),
-    Bin(BinExpr),
-    Assign(AssignExpr),
-    Member(MemberExpr),
-    SuperProp(SuperPropExpr),
-    Cond(CondExpr),
-    Import(ImportExpr),
-    Call(CallExpr),
-    New(NewExpr),
-    Seq(SeqExpr),
-    Ident(Ident),
-    Str(Str),
-    Bool(Bool),
-    Null(Null),
-    Num(Number),
-    BigInt(BigInt),
-    Regex(Regex),
-    Tpl(Tpl),
-    TaggedTpl(TaggedTpl),
-    Arrow(ArrowExpr),
-    Class(ClassExpr),
-    Yield(YieldExpr),
-    MetaProp(MetaPropExpr),
-    Await(AwaitExpr),
-    Paren(ParenExpr),
-    JSXMember(JSXMemberExpr),
-    JSXNamespacedName(JSXNamespacedName),
-    JSXEmpty(JSXEmptyExpr),
-    JSXElement(JSXElement),
-    JSXFragment(JSXFragment),
-    PrivateName(PrivateName),
-    OptChain(OptChainExpr),
-    Invalid(Invalid),
-
-    // JSXExpr
     JSXEmptyExpr(JSXEmptyExpr),
-}
-
-#[allow(non_snake_case)]
-impl JSXExpr {
-    #[inline]
-    pub fn Expr(expr: Expr) -> Self {
-        const {
-            assert!(std::mem::size_of::<Expr>() == std::mem::size_of::<Self>());
-        }
-        unsafe { std::mem::transmute(expr) }
-    }
-
-    #[inline]
-    pub fn into_expr(self) -> Result<Expr, Self> {
-        match self {
-            Self::JSXEmptyExpr(_) => Err(self),
-            _ => unsafe { Ok(std::mem::transmute(self)) },
-        }
-    }
+    Expr(Expr),
 }
 
 #[ast]

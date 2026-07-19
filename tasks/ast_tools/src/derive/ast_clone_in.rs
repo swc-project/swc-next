@@ -77,12 +77,14 @@ fn generate_clone_in_for_struct(ast: &AstStruct, _schema: &Schema) -> TokenStrea
 
 fn generate_clone_in_for_enum(ast: &AstEnum, _schema: &Schema) -> TokenStream {
     let name = format_ident!("{}", ast.name);
+    let data_name = format_ident!("{}Data", ast.name);
+    let data_fn_name = format_ident!("{}_data", ast.name.to_case(Case::Snake));
 
     let mut arms = TokenStream::new();
     for variant in ast.variants.iter() {
         let variant_ident = format_ident!("{}", variant.name);
         arms.extend(quote! {
-            Self::#variant_ident(it) => Self::#variant_ident(it.clone_in(ast)),
+            #data_name::#variant_ident(it) => Self::#variant_ident(it.clone_in(ast)),
         });
     }
 
@@ -92,7 +94,8 @@ fn generate_clone_in_for_enum(ast: &AstEnum, _schema: &Schema) -> TokenStream {
 
             #[inline]
             fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-                match self {
+                let data = ast.#data_fn_name(*self);
+                match data {
                     #arms
                 }
             }

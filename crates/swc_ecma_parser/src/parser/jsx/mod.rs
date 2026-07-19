@@ -40,8 +40,8 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         start: u32,
         node: JSXExprContainer,
     ) -> PResult<JSXAttrValue> {
-        match node.expr(self.ast) {
-            JSXExpr::JSXEmptyExpr(..) => {
+        match self.ast.jsx_expr_data(node.expr(self.ast)) {
+            JSXExprData::JSXEmptyExpr(..) => {
                 syntax_error!(self, self.span(start), SyntaxError::EmptyJSXAttr)
             }
             _ => Ok(JSXAttrValue::JSXExprContainer(node)),
@@ -113,11 +113,12 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         debug_assert!(self.input().syntax().jsx());
         trace_cur!(self, parse_jsx_element_name);
         let start = self.input().cur_pos();
-        let mut node = match self.parse_jsx_tag_name()? {
-            JSXAttrName::Ident(i) => self
+        let attr_name = self.parse_jsx_tag_name()?;
+        let mut node = match self.ast.jsx_attr_name_data(attr_name) {
+            JSXAttrNameData::Ident(i) => self
                 .ast
                 .jsx_element_name_ident(i.span(self.ast), i.sym(self.ast)),
-            JSXAttrName::JSXNamespacedName(i) => JSXElementName::JSXNamespacedName(i),
+            JSXAttrNameData::JSXNamespacedName(i) => JSXElementName::JSXNamespacedName(i),
             #[cfg(swc_ast_unknown)]
             _ => unreachable!(),
         };
@@ -125,9 +126,9 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             self.input_mut().scan_jsx_identifier();
             let (span, sym) = self.parse_jsx_ident()?;
 
-            let obj = match node {
-                JSXElementName::Ident(i) => JSXObject::Ident(i),
-                JSXElementName::JSXMemberExpr(i) => JSXObject::JSXMemberExpr(i),
+            let obj = match self.ast.jsx_element_name_data(node) {
+                JSXElementNameData::Ident(i) => JSXObject::Ident(i),
+                JSXElementNameData::JSXMemberExpr(i) => JSXObject::JSXMemberExpr(i),
                 _ => unreachable!("JSXNamespacedName -> JSXObject"),
             };
 
@@ -451,9 +452,9 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
 fn get_qualified_jsx_name(ast: &Ast<'_>, name: JSXElementName) -> String {
     fn get_qualified_obj_name(ast: &Ast<'_>, obj: JSXObject) -> String {
-        match obj {
-            JSXObject::Ident(i) => i.sym(ast).as_str().to_string(),
-            JSXObject::JSXMemberExpr(member) => format!(
+        match ast.jsx_object_data(obj) {
+            JSXObjectData::Ident(i) => i.sym(ast).as_str().to_string(),
+            JSXObjectData::JSXMemberExpr(member) => format!(
                 "{}.{}",
                 get_qualified_obj_name(ast, member.obj(ast)),
                 member.prop(ast).sym(ast).as_str()
@@ -462,14 +463,14 @@ fn get_qualified_jsx_name(ast: &Ast<'_>, name: JSXElementName) -> String {
             _ => unreachable!(),
         }
     }
-    match name {
-        JSXElementName::Ident(i) => i.sym(ast).as_str().to_string(),
-        JSXElementName::JSXNamespacedName(item) => format!(
+    match ast.jsx_element_name_data(name) {
+        JSXElementNameData::Ident(i) => i.sym(ast).as_str().to_string(),
+        JSXElementNameData::JSXNamespacedName(item) => format!(
             "{}:{}",
             item.ns(ast).sym(ast).as_str(),
             item.name(ast).sym(ast).as_str()
         ),
-        JSXElementName::JSXMemberExpr(item) => format!(
+        JSXElementNameData::JSXMemberExpr(item) => format!(
             "{}.{}",
             get_qualified_obj_name(ast, item.obj(ast)),
             item.prop(ast).sym(ast).as_str()

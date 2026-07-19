@@ -180,10 +180,12 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             return Ok(cond);
         }
 
-        match cond {
+        match self.ast.expr_data(cond) {
             // if cond is conditional expression but not left-hand-side expression,
             // just return it.
-            Expr::Cond(..) | Expr::Bin(..) | Expr::Unary(..) | Expr::Update(..) => return Ok(cond),
+            ExprData::Cond(..) | ExprData::Bin(..) | ExprData::Unary(..) | ExprData::Update(..) => {
+                return Ok(cond);
+            }
             _ => {}
         }
 
@@ -283,7 +285,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 };
 
                 if op == UnaryOp::Delete
-                    && let Expr::Ident(ref i) = arg
+                    && let ExprData::Ident(i) = self.ast.expr_data(arg)
                 {
                     self.emit_strict_mode_err(i.span(self.ast), SyntaxError::TS1102)
                 }
@@ -300,7 +302,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
         // UpdateExpression
         let expr = self.parse_lhs_expr()?;
-        if let Expr::Arrow(_) = expr {
+        if let ExprData::Arrow(_) = self.ast.expr_data(expr) {
             return Ok(expr);
         }
 
@@ -440,15 +442,19 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             let (callee, is_import) = (Callee::Expr(callee), false);
             let args = self.parse_args(is_import)?;
 
-            let call_expr = match callee.into_expr() {
-                Ok(e) if unwrap_ts_non_null(e).is_opt_chain() => {
+            let call_expr = match self.ast.callee_data(callee) {
+                CalleeData::Expr(e) if unwrap_ts_non_null(e).is_opt_chain(self.ast) => {
                     let base = self.ast.opt_chain_base_opt_call(self.span(start), e, args);
                     self.ast.expr_opt_chain_expr(self.span(start), false, base)
                 }
-                Ok(e) => self
-                    .ast
-                    .expr_call_expr(self.span(start), Callee::Expr(e), args),
-                Err(callee) => self.ast.expr_call_expr(self.span(start), callee, args),
+                CalleeData::Expr(e) => {
+                    self.ast
+                        .expr_call_expr(self.span(start), Callee::Expr(e), args)
+                }
+                CalleeData::Super(s) => {
+                    self.ast
+                        .expr_call_expr(self.span(start), Callee::Super(s), args)
+                }
             };
 
             return self.parse_subscripts_expr::<false>(call_expr, false);
@@ -599,7 +605,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
         let span = self.span(tagged_tpl_start);
 
-        if tag.is_opt_chain() {
+        if tag.is_opt_chain(self.ast) {
             self.emit_err(span, SyntaxError::TaggedTplInOptChain);
         }
 
@@ -942,7 +948,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 }
                 if self.input().syntax().typescript()
                     && cond
-                        .as_ident()
+                        .as_ident(self.ast)
                         .map(|i| i.is_reserved_in_strict_bind(self.ast))
                         .unwrap_or(false)
                 {
@@ -1011,16 +1017,15 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         no_computed_member: bool,
     ) -> PResult<Expr> {
         let start = obj.span(self.ast).start;
-        let expr = match obj.into_expr() {
-            Ok(expr) => {
+        let expr = match self.ast.callee_data(obj) {
+            CalleeData::Expr(expr) => {
                 return if no_computed_member {
                     self.parse_subscripts_expr::<true>(expr, no_call)
                 } else {
                     self.parse_subscripts_expr::<false>(expr, no_call)
                 };
             }
-            Err(Callee::Super(s)) => self.parse_subscript_super(start, s, no_call)?,
-            Err(_) => unreachable!(),
+            CalleeData::Super(s) => self.parse_subscript_super(start, s, no_call)?,
             #[cfg(swc_ast_unknown)]
             _ => unreachable!(),
         };
@@ -1212,7 +1217,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             //     None
             // };
 
-            let is_opt_chain = unwrap_ts_non_null(callee).is_opt_chain();
+            let is_opt_chain = unwrap_ts_non_null(callee).is_opt_chain(self.ast);
             let expr = self
                 .ast
                 .member_expr(span, callee, MemberProp::Computed(prop));
@@ -1250,7 +1255,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             let args = self.parse_args(false)?;
 
             let span = self.span(start);
-            return if question_dot || unwrap_ts_non_null(callee).is_opt_chain() {
+            return if question_dot || unwrap_ts_non_null(callee).is_opt_chain(self.ast) {
                 let base = self
                     .ast
                     .opt_chain_base_opt_call(self.span(start), callee, args);
@@ -1286,15 +1291,16 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             // };
 
             let expr = self.ast.member_expr(span, callee, prop);
-            let expr = if unwrap_ts_non_null(expr.obj(self.ast)).is_opt_chain() || question_dot {
-                self.ast.expr_opt_chain_expr(
-                    self.span(start),
-                    question_dot,
-                    OptChainBase::Member(expr),
-                )
-            } else {
-                Expr::Member(expr)
-            };
+            let expr =
+                if unwrap_ts_non_null(expr.obj(self.ast)).is_opt_chain(self.ast) || question_dot {
+                    self.ast.expr_opt_chain_expr(
+                        self.span(start),
+                        question_dot,
+                        OptChainBase::Member(expr),
+                    )
+                } else {
+                    Expr::Member(expr)
+                };
 
             // let expr = if let Some(type_args) = type_args {
             //     Expr::TsInstantiation(TsInstantiation {
@@ -1373,7 +1379,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             debug_assert_eq!(callee.span_lo(self.ast), span.start);
             debug_assert_eq!(prop.span_hi(self.ast), span.end);
 
-            let is_opt_chain = unwrap_ts_non_null(callee).is_opt_chain();
+            let is_opt_chain = unwrap_ts_non_null(callee).is_opt_chain(self.ast);
             let expr = self.ast.member_expr(span, callee, prop);
             let expr = if is_opt_chain {
                 self.ast
@@ -1396,7 +1402,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 .ast
                 .computed_prop_name(Span::new(bracket_lo, self.input().last_pos()), prop);
 
-            let is_opt_chain = unwrap_ts_non_null(callee).is_opt_chain();
+            let is_opt_chain = unwrap_ts_non_null(callee).is_opt_chain(self.ast);
             let expr = self
                 .ast
                 .member_expr(span, callee, MemberProp::Computed(prop));
@@ -1414,7 +1420,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             let args = self.parse_args(false)?;
             let start = callee.span_lo(self.ast);
             let span = self.span(start);
-            return if question_dot || unwrap_ts_non_null(callee).is_opt_chain() {
+            return if question_dot || unwrap_ts_non_null(callee).is_opt_chain(self.ast) {
                 let base = self.ast.opt_chain_base_opt_call(span, callee, args);
                 let expr = self.ast.opt_chain_expr(span, question_dot, base);
                 Ok((Expr::OptChain(expr), true))
@@ -1507,18 +1513,18 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 {
                     syntax_error!(self, lhs.span(self.ast), SyntaxError::InvalidSuper);
                 } else {
-                    let expr = match prop {
-                        MemberProp::Ident(ident) => {
+                    let expr = match self.ast.member_prop_data(prop) {
+                        MemberPropData::Ident(ident) => {
                             self.ast.super_prop_expr(span, lhs, SuperProp::Ident(ident))
                         }
-                        MemberProp::PrivateName(..) => {
+                        MemberPropData::PrivateName(..) => {
                             syntax_error!(
                                 self,
                                 self.input().cur_span(),
                                 SyntaxError::InvalidSuperCall
                             )
                         }
-                        MemberProp::Computed(..) => unreachable!(),
+                        MemberPropData::Computed(..) => unreachable!(),
                         #[cfg(swc_ast_unknown)]
                         _ => unreachable!(),
                     };
@@ -1690,16 +1696,16 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         let callee = self.parse_new_expr()?;
         return_if_arrow!(self, callee);
 
-        match &callee {
-            Expr::OptChain(opt) if opt.optional(self.ast) => {
+        match self.ast.expr_data(callee) {
+            ExprData::OptChain(opt) if opt.optional(self.ast) => {
                 syntax_error!(
                     self,
                     opt.span(self.ast),
                     SyntaxError::OptChainCannotFollowConstructorCall
                 )
             }
-            Expr::Member(member) => {
-                if let Expr::OptChain(opt) = member.obj(self.ast)
+            ExprData::Member(member) => {
+                if let ExprData::OptChain(opt) = self.ast.expr_data(member.obj(self.ast))
                     && opt.optional(self.ast)
                 {
                     syntax_error!(
@@ -1893,7 +1899,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             );
         }
 
-        if op == BinaryOp::Exp && (left.is_unary() || left.is_await()) {
+        if op == BinaryOp::Exp && (left.is_unary(self.ast) || left.is_await(self.ast)) {
             // This is invalid syntax.
             // Correct implementation would be returning Ok(left) and
             // returning "unexpected token '**'" on next.
@@ -1934,7 +1940,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
          * throw it
          */
         if op == BinaryOp::NullishCoalescing {
-            if let Some(left) = left.as_bin() {
+            if let Some(left) = left.as_bin(self.ast) {
                 let op = left.op(self.ast);
                 if op == BinaryOp::LogicalAnd || op == BinaryOp::LogicalOr {
                     self.emit_err(
@@ -1944,7 +1950,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 }
             }
 
-            if let Some(right) = right.as_bin() {
+            if let Some(right) = right.as_bin(self.ast) {
                 let op = right.op(self.ast);
                 if op == BinaryOp::LogicalAnd || op == BinaryOp::LogicalOr {
                     self.emit_err(
@@ -1958,8 +1964,8 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         let span = Span::new(left.span_lo(self.ast), right.span_hi(self.ast));
         if matches!(op, BinaryOp::LogicalAnd | BinaryOp::LogicalOr)
             && matches!(
-                left,
-                Expr::Bin(bin) if bin.op(self.ast) == BinaryOp::NullishCoalescing
+                self.ast.expr_data(left),
+                ExprData::Bin(bin) if bin.op(self.ast) == BinaryOp::NullishCoalescing
             )
         {
             self.emit_err(span, SyntaxError::NullishCoalescingWithLogicalOp);
@@ -2231,11 +2237,13 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 debug_assert_eq!(items.len(), 1);
                 match &items[0] {
                     AssignTargetOrSpread::ExprOrSpread(expr_or_spread) => {
-                        expr_or_spread.expr(self.ast).is_ident()
+                        expr_or_spread.expr(self.ast).is_ident(self.ast)
                     }
-                    AssignTargetOrSpread::Pat(pat) => {
-                        matches!(pat, Pat::Ident(..)) || pat.into_expr().is_ok_and(Expr::is_ident)
-                    }
+                    AssignTargetOrSpread::Pat(pat) => match self.ast.pat_data(*pat) {
+                        PatData::Ident(..) => true,
+                        PatData::Expr(expr) => expr.is_ident(self.ast),
+                        _ => false,
+                    },
                 }
             } {
                 let params = {
@@ -2388,7 +2396,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             let arrow_expr =
                 self.ast
                     .arrow_expr(self.span(expr_start), params, body, async_span.is_some());
-            if arrow_expr.body(self.ast).is_block_stmt() && self.input().cur().is_bin_op() {
+            if arrow_expr.body(self.ast).is_block_stmt(self.ast) && self.input().cur().is_bin_op() {
                 // ) is required
                 self.emit_err(self.input().cur_span(), SyntaxError::TS1005);
                 let errorred_expr = self.parse_bin_op_recursively(Expr::Arrow(arrow_expr), 0)?;
@@ -2407,12 +2415,12 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             // like (a, {b = 1});
             for expr_or_spread in paren_items.iter() {
                 if let AssignTargetOrSpread::ExprOrSpread(e) = expr_or_spread
-                    && let Expr::Object(o) = e.expr(self.ast)
+                    && let ExprData::Object(o) = self.ast.expr_data(e.expr(self.ast))
                 {
                     for prop in o.props(self.ast).iter() {
                         let prop = self.ast.get_node_in_sub_range(prop);
-                        if let Ok(prop) = prop.into_prop()
-                            && prop.is_assign()
+                        if let PropOrSpreadData::Prop(prop) = self.ast.prop_or_spread_data(prop)
+                            && prop.is_assign(self.ast)
                         {
                             self.emit_err(prop.span(self.ast), SyntaxError::AssignProperty);
                         }
@@ -2436,7 +2444,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         if let Some(async_span) = async_span {
             // It's a call expression
             let sym = self.ast.add_atom("async");
-            let callee = self.ast.callee_ident(async_span, sym);
+            let callee = self.ast.callee_expr_ident(async_span, sym);
             return Ok(self.ast.expr_call_expr(
                 self.span(async_span.start),
                 callee,
@@ -2674,7 +2682,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
             self.bump();
             let span = self.span(start);
-            Some(self.ast.expr_regex(span, exp, flags))
+            Some(self.ast.expr_lit_regex(span, exp, flags))
         } else {
             None
         }

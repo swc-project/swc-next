@@ -60,12 +60,8 @@ fn bench_new_mut(b: &mut Bencher, src: &'static str) {
             self.ast
         }
 
-        fn visit_mut_ident(
-            &mut self,
-            node: swc_experimental_ecma_ast::Ident,
-        ) -> swc_experimental_ecma_ast::Ident {
+        fn visit_mut_ident(&mut self, _node: swc_experimental_ecma_ast::Ident) {
             self.count += 1;
-            node
         }
     }
 

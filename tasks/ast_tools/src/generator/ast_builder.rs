@@ -79,6 +79,7 @@ fn generate_build_function_inline(
             pub fn #fn_name(&mut self, span: Span) -> #ret_ty {
                 #ret_ty(self.add_node(
                     span,
+                    NodeKind::#ret_ty,
                     NodePayload(0),
                 ))
             }
@@ -120,6 +121,7 @@ fn generate_build_function_inline(
                 #inline_defaults
                 #ret_ty(self.add_node(
                     span,
+                    NodeKind::#ret_ty,
                     NodePayload(0u128 #pack_u128),
                 ))
             }
@@ -156,6 +158,7 @@ fn generate_build_function_inline(
                     #add_extra_data
                     #ret_ty(self.add_node(
                         span,
+                        NodeKind::#ret_ty,
                         NodePayload(
                             0u128
                             #pack_u128
@@ -204,6 +207,7 @@ fn generate_build_function_extra_data(
             #ret_ty(
                 self.add_node(
                     span,
+                    NodeKind::#ret_ty,
                     #node_payload,
                 )
             )

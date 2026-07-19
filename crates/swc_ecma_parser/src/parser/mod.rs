@@ -247,7 +247,12 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             || body
                 .iter()
                 .map(|id| self.ast.get_node_in_sub_range(id))
-                .any(|item| item.into_module_decl().is_some());
+                .any(|item| {
+                    matches!(
+                        self.ast.module_item_data(item),
+                        ModuleItemData::ModuleDecl(_)
+                    )
+                });
         if has_module_item && !self.ctx().contains(Context::Module) {
             let ctx = self.ctx()
                 | Context::Module
@@ -264,11 +269,10 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             let body = self.scratch_start(|p, stmts| {
                 for item in body.iter() {
                     let item = p.ast.get_node_in_sub_range(item);
-                    stmts.push(
-                        p,
-                        item.into_stmt()
-                            .expect("module declarations are handled above"),
-                    );
+                    let ModuleItemData::Stmt(stmt) = p.ast.module_item_data(item) else {
+                        unreachable!("module declarations are handled above")
+                    };
+                    stmts.push(p, stmt);
                 }
                 Ok(())
             })?;

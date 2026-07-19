@@ -95,12 +95,8 @@ fn test_new_mut(src: &str) -> usize {
             self.ast
         }
 
-        fn visit_mut_ident(
-            &mut self,
-            node: swc_experimental_ecma_ast::Ident,
-        ) -> swc_experimental_ecma_ast::Ident {
+        fn visit_mut_ident(&mut self, _node: swc_experimental_ecma_ast::Ident) {
             self.count += 1;
-            node
         }
     }
 

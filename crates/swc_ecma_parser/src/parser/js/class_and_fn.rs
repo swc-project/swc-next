@@ -271,8 +271,8 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                     // TODO: Search deeply for assignment pattern using a Visitor
 
                     let param = p.ast.get_node_in_sub_range(param);
-                    let span = match param.pat(p.ast) {
-                        Pat::Assign(pat) => Some(pat.span(p.ast)),
+                    let span = match p.ast.pat_data(param.pat(p.ast)) {
+                        PatData::Assign(pat) => Some(pat.span(p.ast)),
                         _ => None,
                     };
 
@@ -506,8 +506,8 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             _ => {}
         }
 
-        match key.into_public() {
-            Err(Key::Private(key)) => {
+        match self.ast.key_data(key) {
+            KeyData::Private(key) => {
                 let span = self.span(start);
                 // if accessibility.is_some() {
                 //     self.emit_err(span.with_hi(key.span_hi()), SyntaxError::TS18010);
@@ -517,7 +517,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                     .ast
                     .class_member_private_method(span, key, function, kind, is_static))
             }
-            Ok(key) => {
+            KeyData::Public(key) => {
                 let span = self.span(start);
                 if is_abstract {
                     self.emit_err(span, SyntaxError::TS1245)
@@ -527,7 +527,6 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                     .ast
                     .class_member_class_method(span, key, function, kind, is_static))
             }
-            Err(_) => unreachable!(),
         }
     }
 
@@ -673,7 +672,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 SyntaxError::PropertyNamedConstructor
             );
         }
-        if key.is_private() {
+        if key.is_private(self.ast) {
             if declare {
                 self.emit_err(
                     key.span(self.ast),
@@ -714,8 +713,8 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 ));
             }
 
-            Ok(match key.into_public() {
-                Err(Key::Private(key)) => {
+            Ok(match p.ast.key_data(key) {
+                KeyData::Private(key) => {
                     // let span = p.span(start);
                     // if accessibility.is_some() {
                     //     p.emit_err(span.with_hi(key.span_hi()), SyntaxError::TS18010);
@@ -729,7 +728,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                         decorators,
                     )
                 }
-                Ok(key) => {
+                KeyData::Public(key) => {
                     let span = p.span(start);
                     if is_abstract && value.is_some() {
                         p.emit_err(span, SyntaxError::TS1267)
@@ -738,7 +737,6 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                     p.ast
                         .class_member_class_prop(span, key, value, is_static, decorators)
                 }
-                Err(_) => unreachable!(),
             })
         })
     }
@@ -916,7 +914,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             && matches!(key_token, Token::Bang | Token::Colon)
         {
             let sym = self.ast.add_atom("readonly");
-            self.ast.key_ident_name(readonly, sym)
+            self.ast.key_prop_name_ident_name(readonly, sym)
         } else {
             self.parse_class_prop_name()?
         };
@@ -1024,9 +1022,9 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                     self.emit_err(span, SyntaxError::TS1242);
                 }
 
-                let key = key
-                    .into_public()
-                    .unwrap_or_else(|_| unreachable!("constructor cannot be a PrivateName"));
+                let KeyData::Public(key) = self.ast.key_data(key) else {
+                    unreachable!("constructor cannot be a PrivateName")
+                };
 
                 return Ok(self
                     .ast
@@ -1176,10 +1174,11 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                         }
 
                         if !params.is_empty()
-                            && let Pat::Rest(rest) = p
-                                .ast
-                                .get_node_in_sub_range(params.get(0).unwrap())
-                                .pat(p.ast)
+                            && let PatData::Rest(rest) = p.ast.pat_data(
+                                p.ast
+                                    .get_node_in_sub_range(params.get(0).unwrap())
+                                    .pat(p.ast),
+                            )
                         {
                             p.emit_err(rest.span(p.ast), SyntaxError::RestPatInSetter);
                         }
@@ -1225,7 +1224,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             // Handle declare(){}
             if self.is_class_method() {
                 let sym = self.ast.add_atom("declare");
-                let key = self.ast.key_ident_name(self.span(start), sym);
+                let key = self.ast.key_prop_name_ident_name(self.span(start), sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
                 return self.make_method(
@@ -1250,7 +1249,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 // Property named `declare`
 
                 let sym = self.ast.add_atom("declare");
-                let key = self.ast.key_ident_name(self.span(start), sym);
+                let key = self.ast.key_prop_name_ident_name(self.span(start), sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
                 return self.make_property(
@@ -1297,7 +1296,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             // Handle accessor(){}
             if self.is_class_method() {
                 let sym = self.ast.add_atom("accessor");
-                let key = self.ast.key_ident_name(accessor_token, sym);
+                let key = self.ast.key_prop_name_ident_name(accessor_token, sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
                 return self.make_method(
@@ -1322,7 +1321,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 // Property named `accessor`
 
                 let sym = self.ast.add_atom("accessor");
-                let key = self.ast.key_ident_name(accessor_token, sym);
+                let key = self.ast.key_prop_name_ident_name(accessor_token, sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
                 let is_static = static_token.is_some();
@@ -1346,7 +1345,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             // Handle static(){}
             if self.is_class_method() {
                 let sym = self.ast.add_atom("static");
-                let key = self.ast.key_ident_name(static_token, sym);
+                let key = self.ast.key_prop_name_ident_name(static_token, sym);
                 let is_optional =
                     self.input().syntax().typescript() && self.input_mut().eat(Token::QuestionMark);
                 return self.make_method(
@@ -1376,7 +1375,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                 let is_parsing_static_blocks = self.input().is(Token::LBrace);
                 if !is_parsing_static_blocks {
                     let sym = self.ast.add_atom("static");
-                    let key = self.ast.key_ident_name(static_token, sym);
+                    let key = self.ast.key_prop_name_ident_name(static_token, sym);
                     let is_optional = self.input().syntax().typescript()
                         && self.input_mut().eat(Token::QuestionMark);
                     return self.make_property(
@@ -1423,7 +1422,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
                     p.do_inside_of_context(Context::AllowDirectSuper, Self::parse_class_member)?;
 
                 if !p.ctx().contains(Context::InDeclare)
-                    && let ClassMember::Constructor(constructor) = elem
+                    && let ClassMemberData::Constructor(constructor) = p.ast.class_member_data(elem)
                 {
                     if constructor.body(p.ast).is_some() && has_constructor_with_body {
                         p.emit_err(constructor.span(p.ast), SyntaxError::DuplicateConstructor);
@@ -1706,11 +1705,12 @@ fn has_use_strict(ast: &Ast, block: BlockStmt) -> Option<Span> {
 }
 
 fn is_constructor(ast: &Ast, key: Key) -> bool {
-    if let Key::Ident(ident_name) = key {
-        ident_name.sym(ast).as_str().eq("constructor")
-    } else if let Key::Str(s) = key {
-        s.value(ast).as_wtf8().eq(Wtf8::from_str("constructor"))
-    } else {
-        false
+    match ast.key_data(key) {
+        KeyData::Public(name) => match ast.prop_name_data(name) {
+            PropNameData::Ident(ident_name) => ident_name.sym(ast).as_str().eq("constructor"),
+            PropNameData::Str(s) => s.value(ast).as_wtf8().eq(Wtf8::from_str("constructor")),
+            _ => false,
+        },
+        KeyData::Private(_) => false,
     }
 }

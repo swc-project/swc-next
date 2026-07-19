@@ -9,13 +9,6 @@ pub struct BlockStmt {
 
 #[ast(repr)]
 pub enum Stmt {
-    // Decl
-    Class(ClassDecl),
-    Fn(FnDecl),
-    Var(VarDecl),
-    Using(UsingDecl),
-
-    // Stmt
     Block(BlockStmt),
     Empty(EmptyStmt),
     Debugger(DebuggerStmt),
@@ -33,18 +26,8 @@ pub enum Stmt {
     For(ForStmt),
     ForIn(ForInStmt),
     ForOf(ForOfStmt),
+    Decl(Decl),
     Expr(ExprStmt),
-}
-
-#[allow(non_snake_case)]
-impl Stmt {
-    #[inline]
-    pub fn Decl(decl: Decl) -> Self {
-        const {
-            assert!(std::mem::size_of::<Decl>() == std::mem::size_of::<Self>());
-        }
-        unsafe { std::mem::transmute(decl) }
-    }
 }
 
 #[ast]
@@ -159,151 +142,28 @@ pub struct CatchClause {
 
 #[ast(repr)]
 pub enum ForHead {
-    // Pat::Expr
-    ExprThis(ThisExpr),
-    ExprArray(ArrayLit),
-    ExprObject(ObjectLit),
-    ExprFn(FnExpr),
-    ExprUnary(UnaryExpr),
-    ExprUpdate(UpdateExpr),
-    ExprBin(BinExpr),
-    ExprAssign(AssignExpr),
-    ExprMember(MemberExpr),
-    ExprSuperProp(SuperPropExpr),
-    ExprCond(CondExpr),
-    ExprImport(ImportExpr),
-    ExprCall(CallExpr),
-    ExprNew(NewExpr),
-    ExprSeq(SeqExpr),
-    ExprIdent(Ident),
-    ExprStr(Str),
-    ExprBool(Bool),
-    ExprNull(Null),
-    ExprNum(Number),
-    ExprBigInt(BigInt),
-    ExprRegex(Regex),
-    ExprTpl(Tpl),
-    ExprTaggedTpl(TaggedTpl),
-    ExprArrow(ArrowExpr),
-    ExprClass(ClassExpr),
-    ExprYield(YieldExpr),
-    ExprMetaProp(MetaPropExpr),
-    ExprAwait(AwaitExpr),
-    ExprParen(ParenExpr),
-    ExprJSXMember(JSXMemberExpr),
-    ExprJSXNamespacedName(JSXNamespacedName),
-    ExprJSXEmpty(JSXEmptyExpr),
-    ExprJSXElement(JSXElement),
-    ExprJSXFragment(JSXFragment),
-    ExprPrivateName(PrivateName),
-    ExprOptChain(OptChainExpr),
-    ExprInvalid(Invalid),
-
-    // Pat
-    Ident(BindingIdent),
-    Array(ArrayPat),
-    Rest(RestPat),
-    Object(ObjectPat),
-    Assign(AssignPat),
-    Invalid(Invalid),
-
-    // ForHead
     VarDecl(VarDecl),
     UsingDecl(UsingDecl),
-}
-
-#[allow(non_snake_case)]
-impl ForHead {
-    #[inline]
-    pub fn Pat(pat: Pat) -> Self {
-        const {
-            assert!(std::mem::size_of::<Pat>() == std::mem::size_of::<Self>());
-        }
-        unsafe { std::mem::transmute(pat) }
-    }
-
-    #[inline]
-    pub fn into_pat(self) -> Result<Pat, Self> {
-        match self {
-            Self::VarDecl(_) | Self::UsingDecl(_) => Err(self),
-            _ => unsafe { Ok(std::mem::transmute(self)) },
-        }
-    }
+    Pat(Pat),
 }
 
 #[ast(repr)]
 pub enum VarDeclOrExpr {
-    // Expr
-    This(ThisExpr),
-    Array(ArrayLit),
-    Object(ObjectLit),
-    Fn(FnExpr),
-    Unary(UnaryExpr),
-    Update(UpdateExpr),
-    Bin(BinExpr),
-    Assign(AssignExpr),
-    Member(MemberExpr),
-    SuperProp(SuperPropExpr),
-    Cond(CondExpr),
-    Import(ImportExpr),
-    Call(CallExpr),
-    New(NewExpr),
-    Seq(SeqExpr),
-    Ident(Ident),
-    Str(Str),
-    Bool(Bool),
-    Null(Null),
-    Num(Number),
-    BigInt(BigInt),
-    Regex(Regex),
-    Tpl(Tpl),
-    TaggedTpl(TaggedTpl),
-    Arrow(ArrowExpr),
-    Class(ClassExpr),
-    Yield(YieldExpr),
-    MetaProp(MetaPropExpr),
-    Await(AwaitExpr),
-    Paren(ParenExpr),
-    JSXMember(JSXMemberExpr),
-    JSXNamespacedName(JSXNamespacedName),
-    JSXEmpty(JSXEmptyExpr),
-    JSXElement(JSXElement),
-    JSXFragment(JSXFragment),
-    PrivateName(PrivateName),
-    OptChain(OptChainExpr),
-    Invalid(Invalid),
-
-    // VarDeclOrExpr
     VarDecl(VarDecl),
-}
-
-#[allow(non_snake_case)]
-impl VarDeclOrExpr {
-    #[inline]
-    pub fn Expr(expr: Expr) -> Self {
-        const {
-            assert!(std::mem::size_of::<Expr>() == std::mem::size_of::<Self>());
-        }
-        unsafe { std::mem::transmute(expr) }
-    }
-
-    #[inline]
-    pub fn into_expr(self) -> Result<Expr, Self> {
-        match self {
-            Self::VarDecl(_) => Err(self),
-            _ => unsafe { Ok(std::mem::transmute(self)) },
-        }
-    }
+    Expr(Expr),
 }
 
 impl Stmt {
     pub fn is_use_strict(self, ast: &Ast<'_>) -> bool {
-        match self {
-            Stmt::Expr(expr) => match expr.expr(ast) {
-                Expr::Str(s) => {
-                    let raw = s.raw(ast);
-                    matches!(raw, Some(value) if value.as_str() == "\"use strict\"" || value.as_str() == "'use strict'")
-                }
+        match ast.stmt_data(self) {
+            StmtData::Expr(expr) => match ast.expr_data(expr.expr(ast)) {
+                ExprData::Lit(lit) => match ast.lit_data(lit) {
+                    LitData::Str(s) => {
+                        let raw = s.raw(ast);
+                        matches!(raw, Some(value) if value.as_str() == "\"use strict\"" || value.as_str() == "'use strict'")
+                    }
+                    _ => false,
+                },
                 _ => false,
             },
             _ => false,
@@ -313,8 +173,11 @@ impl Stmt {
     /// Returns true if the statement does not prevent the directives below
     /// `self` from being directives.
     pub fn can_precede_directive(self, ast: &Ast<'_>) -> bool {
-        match self {
-            Stmt::Expr(expr) => matches!(expr.expr(ast), Expr::Str(_)),
+        match ast.stmt_data(self) {
+            StmtData::Expr(expr) => matches!(
+                ast.expr_data(expr.expr(ast)),
+                ExprData::Lit(lit) if matches!(ast.lit_data(lit), LitData::Str(_))
+            ),
             _ => false,
         }
     }

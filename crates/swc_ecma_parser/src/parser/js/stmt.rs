@@ -55,7 +55,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             let right = self.allow_in_expr(Self::parse_assignment_expr)?;
             Ok(TempForHead::ForOf { left, right })
         } else {
-            if let ForHead::UsingDecl(d) = &left {
+            if let ForHeadData::UsingDecl(d) = self.ast.for_head_data(left) {
                 self.emit_err(
                     d.span(self.ast),
                     SyntaxError::UsingDeclNotAllowedForForInLoop,
@@ -153,8 +153,8 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
                     None
                 } else {
-                    match name {
-                        Pat::Ident(..) => None,
+                    match self.ast.pat_data(name) {
+                        PatData::Ident(..) => None,
                         _ => {
                             syntax_error!(self, self.span(start), SyntaxError::PatVarWithoutInit)
                         }
@@ -319,8 +319,8 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         })?;
         for decl in decls.iter() {
             let decl = self.ast.get_node_in_sub_range(decl);
-            match decl.name(self.ast) {
-                Pat::Ident(..) => {}
+            match self.ast.pat_data(decl.name(self.ast)) {
+                PatData::Ident(..) => {}
                 _ => {
                     self.emit_err(self.span(start), SyntaxError::InvalidNameInUsingDecl);
                 }
@@ -411,7 +411,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             // await using foo
             if !maybe_using_decl
                 && init
-                    .as_await()
+                    .as_await(self.ast)
                     .filter(|e| e.arg(self.ast).is_ident_ref_to(self.ast, "using"))
                     .is_some()
             {
@@ -464,7 +464,10 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
             // for ({} in foo) is invalid
             if self.input().syntax().typescript() && is_in {
-                if !matches!(pat, Pat::Ident(..)) && pat.into_expr().is_err() {
+                if !matches!(
+                    self.ast.pat_data(pat),
+                    PatData::Ident(..) | PatData::Expr(..)
+                ) {
                     self.emit_err(pat.span(self.ast), SyntaxError::TS2491);
                 }
             }
@@ -707,7 +710,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
 
                 let body = if p.input().is(Token::Function) {
                     let f = p.parse_fn_decl(TypedSubRange::empty())?;
-                    if let Decl::Fn(fn_decl) = &f {
+                    if let DeclData::Fn(fn_decl) = p.ast.decl_data(f) {
                         let function = fn_decl.function(p.ast);
                         if p.ctx().contains(Context::Strict) {
                             p.emit_err(function.span(p.ast), SyntaxError::LabelledFunctionInStrict)
@@ -1102,8 +1105,8 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
         let expr_token = self.input().cur();
         let expr = self.allow_in_expr(|p| p.parse_expr_inner())?;
 
-        let expr = match expr {
-            Expr::Ident(ident) => {
+        let expr = match self.ast.expr_data(expr) {
+            ExprData::Ident(ident) => {
                 if self.input_mut().eat(Token::Colon) {
                     return self.parse_labelled_stmt(ident);
                 }
@@ -1112,7 +1115,7 @@ impl<'p, 'a, I: Tokens<'a>> Parser<'p, 'a, I> {
             _ => self.verify_expr(expr)?,
         };
 
-        if let Expr::Ident(ref ident) = expr {
+        if let ExprData::Ident(ident) = self.ast.expr_data(expr) {
             #[allow(clippy::collapsible_if)]
             if expr_token == Token::Interface && self.input().had_line_break_before_cur() {
                 self.emit_strict_mode_err(

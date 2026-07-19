@@ -277,8 +277,8 @@ impl<'visit, 'ast> Resolver<'visit, 'ast> {
     }
 
     fn visit_stmt_within_child_scope(&mut self, s: Stmt) {
-        self.with_child(ScopeKind::Block, |child| match s {
-            Stmt::Block(s) => {
+        self.with_child(ScopeKind::Block, |child| match child.ast.stmt_data(s) {
+            StmtData::Block(s) => {
                 child.mark_block(s);
                 s.visit_children_with(child);
             }
@@ -555,7 +555,7 @@ impl<'visit, 'ast> Visit<'ast> for Resolver<'visit, 'ast> {
                 let mut params = Vec::default();
                 e.params(child.ast())
                     .iter()
-                    .filter(|p| !child.ast().get_node_in_sub_range(*p).is_rest())
+                    .filter(|p| !child.ast().get_node_in_sub_range(*p).is_rest(child.ast()))
                     .for_each(|p| {
                         find_pat_ids(
                             child.ast(),
@@ -573,8 +573,8 @@ impl<'visit, 'ast> Visit<'ast> for Resolver<'visit, 'ast> {
             e.params(child.ast()).visit_with(child);
             child.ident_type = old;
 
-            match e.body(child.ast()).into_expr() {
-                Err(BlockStmtOrExpr::BlockStmt(s)) => {
+            match child.ast().block_stmt_or_expr_data(e.body(child.ast())) {
+                BlockStmtOrExprData::BlockStmt(s) => {
                     child.mark_block(s);
 
                     let old_strict_mode = child.strict_mode;
@@ -595,8 +595,7 @@ impl<'visit, 'ast> Visit<'ast> for Resolver<'visit, 'ast> {
                     s.stmts(child.ast()).visit_with(child);
                     child.strict_mode = old_strict_mode;
                 }
-                Ok(e) => e.visit_with(child),
-                Err(_) => unreachable!(),
+                BlockStmtOrExprData::Expr(e) => e.visit_with(child),
             }
 
             // e.return_type.visit_with(child);
@@ -763,7 +762,7 @@ impl<'visit, 'ast> Visit<'ast> for Resolver<'visit, 'ast> {
 
         // p.decorators.visit_with(self);
 
-        if let PropName::Computed(key) = p.key(self.ast) {
+        if let PropNameData::Computed(key) = self.ast.prop_name_data(p.key(self.ast)) {
             let old = self.ident_type;
             self.ident_type = IdentType::Binding;
             key.expr(self.ast).visit_with(self);
@@ -805,9 +804,11 @@ impl<'visit, 'ast> Visit<'ast> for Resolver<'visit, 'ast> {
                     .iter()
                     .filter(|p| {
                         let p = child.ast().get_node_in_sub_range(*p);
-                        match p {
+                        match child.ast().param_or_ts_param_prop_data(p) {
                             // ParamOrTsParamProp::TsParamProp(_) => false,
-                            ParamOrTsParamProp::Param(p) => !p.pat(child.ast()).is_rest(),
+                            ParamOrTsParamPropData::Param(p) => {
+                                !p.pat(child.ast()).is_rest(child.ast())
+                            }
                         }
                     })
                     .for_each(|p| {
@@ -852,8 +853,8 @@ impl<'visit, 'ast> Visit<'ast> for Resolver<'visit, 'ast> {
 
         // Treat default exported functions and classes as declarations
         // even though they are parsed as expressions.
-        match e.decl(self.ast) {
-            DefaultDecl::Fn(f) => {
+        match self.ast.default_decl_data(e.decl(self.ast)) {
+            DefaultDeclData::Fn(f) => {
                 if f.ident(self.ast).is_some() {
                     self.with_child(ScopeKind::Fn, |child| {
                         f.function(child.ast()).visit_with(child);
@@ -862,7 +863,7 @@ impl<'visit, 'ast> Visit<'ast> for Resolver<'visit, 'ast> {
                     f.visit_with(self)
                 }
             }
-            DefaultDecl::Class(c) => {
+            DefaultDeclData::Class(c) => {
                 // Skip class expression visitor to treat as a declaration.
                 c.class(self.ast).visit_with(self)
             }
@@ -1021,7 +1022,13 @@ impl<'visit, 'ast> Visit<'ast> for Resolver<'visit, 'ast> {
             let mut params = Vec::default();
             f.params(self.ast)
                 .iter()
-                .filter(|p| !self.ast.get_node_in_sub_range(*p).pat(self.ast).is_rest())
+                .filter(|p| {
+                    !self
+                        .ast
+                        .get_node_in_sub_range(*p)
+                        .pat(self.ast)
+                        .is_rest(self.ast)
+                })
                 .for_each(|p| {
                     find_pat_ids(self.ast, self.ast.get_node_in_sub_range(p), &mut params)
                 });
@@ -1169,15 +1176,15 @@ impl<'visit, 'ast> Visit<'ast> for Resolver<'visit, 'ast> {
         let old = self.ident_type;
         self.ident_type = IdentType::Binding;
 
-        match s {
-            ImportSpecifier::Named(named) => {
+        match self.ast.import_specifier_data(s) {
+            ImportSpecifierData::Named(named) => {
                 if named.is_shorthand(self.ast) {
                     s.visit_children_with(self);
                 } else {
                     named.local(self.ast).visit_with(self);
                 }
             }
-            ImportSpecifier::Namespace(..) | ImportSpecifier::Default(..) => {
+            ImportSpecifierData::Namespace(..) | ImportSpecifierData::Default(..) => {
                 s.visit_children_with(self)
             }
         }
@@ -1311,7 +1318,7 @@ impl<'visit, 'ast> Visit<'ast> for Resolver<'visit, 'ast> {
     }
 
     fn visit_prop_name(&mut self, n: PropName) {
-        if let PropName::Computed(c) = n {
+        if let PropNameData::Computed(c) = self.ast.prop_name_data(n) {
             c.visit_with(self);
         }
     }
@@ -1971,15 +1978,19 @@ impl<'resolver, 'visit, 'ast> Visit<'ast> for Hoister<'resolver, 'visit, 'ast> {
     fn visit_export_default_decl(&mut self, node: ExportDefaultDecl) {
         // Treat default exported functions and classes as declarations
         // even though they are parsed as expressions.
-        match node.decl(self.resolver.ast) {
-            DefaultDecl::Fn(f) => {
+        match self
+            .resolver
+            .ast
+            .default_decl_data(node.decl(self.resolver.ast))
+        {
+            DefaultDeclData::Fn(f) => {
                 if let Some(id) = f.ident(self.resolver.ast) {
                     self.resolver.modify(id, DeclKind::Var);
                 }
 
                 f.visit_with(self)
             }
-            DefaultDecl::Class(c) => {
+            DefaultDeclData::Class(c) => {
                 if let Some(id) = c.ident(self.resolver.ast) {
                     self.resolver.modify(id, DeclKind::Lexical);
                 }
@@ -2069,8 +2080,8 @@ impl<'resolver, 'visit, 'ast> Visit<'ast> for Hoister<'resolver, 'visit, 'ast> {
     fn visit_param(&mut self, _: Param) {}
 
     fn visit_pat(&mut self, node: Pat) {
-        match node {
-            Pat::Ident(i) => {
+        match self.resolver.ast.pat_data(node) {
+            PatData::Ident(i) => {
                 self.add_pat_id(i);
             }
 
@@ -2135,7 +2146,7 @@ impl<'resolver, 'visit, 'ast> Visit<'ast> for Hoister<'resolver, 'visit, 'ast> {
     }
 
     fn visit_var_decl_or_expr(&mut self, n: VarDeclOrExpr) {
-        if let VarDeclOrExpr::VarDecl(v) = n {
+        if let VarDeclOrExprData::VarDecl(v) = self.ast().var_decl_or_expr_data(n) {
             let kind = v.kind(self.ast());
             if kind == VarDeclKind::Let || kind == VarDeclKind::Const {
                 return;
@@ -2146,7 +2157,7 @@ impl<'resolver, 'visit, 'ast> Visit<'ast> for Hoister<'resolver, 'visit, 'ast> {
     }
 
     fn visit_for_head(&mut self, n: ForHead) {
-        if let ForHead::VarDecl(v) = n {
+        if let ForHeadData::VarDecl(v) = self.ast().for_head_data(n) {
             let kind = v.kind(self.ast());
             if kind == VarDeclKind::Let || kind == VarDeclKind::Const {
                 return;
@@ -2162,7 +2173,7 @@ impl<'resolver, 'visit, 'ast> Visit<'ast> for Hoister<'resolver, 'visit, 'ast> {
         //     console.log(a);
         //   }
         // }
-        if n.into_pat().is_ok() {
+        if matches!(self.ast().for_head_data(n), ForHeadData::Pat(_)) {
             return;
         }
 
@@ -2197,12 +2208,16 @@ impl<'resolver, 'visit, 'ast> Visit<'ast> for Hoister<'resolver, 'visit, 'ast> {
             .iter()
             .filter_map(|item| {
                 let item = self.ast().get_node_in_sub_range(item);
-                match item {
-                    Stmt::Var(..) => {
+                match self.ast().stmt_data(item) {
+                    StmtData::Decl(decl)
+                        if matches!(self.ast().decl_data(decl), DeclData::Var(..)) =>
+                    {
                         item.visit_with(self);
                         None
                     }
-                    Stmt::Fn(..) => {
+                    StmtData::Decl(decl)
+                        if matches!(self.ast().decl_data(decl), DeclData::Fn(..)) =>
+                    {
                         item.visit_with(self);
                         None
                     }

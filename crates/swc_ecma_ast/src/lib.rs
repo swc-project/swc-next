@@ -15,6 +15,7 @@ mod generated {
     mod ast_clone_in;
     pub(crate) mod ast_extra_compact;
     mod ast_node_id;
+    pub mod ast_node_kind;
     mod ast_property;
     pub(crate) mod ast_visitor;
 }
@@ -27,8 +28,9 @@ pub use ast::*;
 pub use comment::*;
 pub use common::*;
 pub use derive::*;
+pub use generated::ast_node_kind::NodeKind;
 pub use generated::ast_visitor::*;
-pub use node_id::{ExtraDataCompact, ExtraDataId, NodeId, SubRange, TypedSubRange};
+pub use node_id::{AstNode, ExtraDataCompact, ExtraDataId, NodeId, SubRange, TypedSubRange};
 pub use semantic::{ScopeId, SymbolId};
 pub use span::{DUMMY_SP, Span};
 pub use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
@@ -56,6 +58,7 @@ multi_index_vec! {
     /// Arena-backed structure-of-arrays storage for flattening AST nodes.
     pub struct NodeData<'a, NodeId> {
         pub(crate) span => span_mut => span_unchecked => span_mut_unchecked: Span,
+        pub(crate) kind => kind_mut => kind_unchecked => kind_mut_unchecked: NodeKind,
         pub(crate) data => data_mut => data_unchecked => data_mut_unchecked: NodePayload,
     }
 }
@@ -69,7 +72,25 @@ multi_index_vec! {
 #[derive(Clone, Copy)]
 pub struct NodePayload(pub(crate) u128);
 
-include!("generated/ast_extra_data.rs");
+/// Compact values stored in the flattening AST's extra-data table.
+#[derive(Clone, Copy)]
+pub union ExtraData {
+    atom: AtomId,
+    wtf8_atom: Wtf8AtomId,
+    node_id: NodeId,
+
+    span: Span,
+    optional_span: OptionalSpan,
+    bool: bool,
+    number: f64,
+    sub_range: SubRange,
+    optional_sub_range: OptionalSubRange,
+    optional_scope_id: Option<ScopeId>,
+    optional_symbol_id: Option<SymbolId>,
+
+    /// Any scalar enum or other value representable within eight bytes.
+    other: u64,
+}
 
 impl<'a> Ast<'a> {
     /// Create a flattening AST whose atom storage is backed by `allocator`.
@@ -83,15 +104,25 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
-    pub(crate) fn add_node(&mut self, span: Span, data: NodePayload) -> NodeId {
-        self.nodes.push(span, data)
+    pub(crate) fn add_node(&mut self, span: Span, kind: NodeKind, data: NodePayload) -> NodeId {
+        self.nodes.push(span, kind, data)
     }
 
+    /// Replace `old`'s node data with `new`'s while preserving `old`'s node ID.
     #[inline]
-    fn add_extra(&mut self, extra: ExtraData) -> ExtraDataId {
-        let id = self.next_extra_data_id();
-        self.extra_data.push(extra);
-        id
+    pub fn set_data<T: AstNode>(&mut self, old: T, new: T) {
+        let old = old.node_id();
+        let new = new.node_id();
+        if old == new {
+            return;
+        }
+
+        let span = *self.nodes.span(new);
+        let kind = *self.nodes.kind(new);
+        let data = *self.nodes.data(new);
+        *self.nodes.span_mut(old) = span;
+        *self.nodes.kind_mut(old) = kind;
+        *self.nodes.data_mut(old) = data;
     }
 
     #[inline]

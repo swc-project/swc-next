@@ -9,7 +9,7 @@ mod stmt;
 use swc_experimental_ecma_ast::*;
 
 pub(crate) fn is_not_this(ast: &Ast, p: Param) -> bool {
-    let Pat::Ident(ident) = p.pat(ast) else {
+    let PatData::Ident(ident) = ast.pat_data(p.pat(ast)) else {
         return true;
     };
 

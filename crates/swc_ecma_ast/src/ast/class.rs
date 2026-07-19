@@ -121,34 +121,8 @@ pub struct StaticBlock {
 
 #[ast(repr)]
 pub enum Key {
-    // PropName
-    Ident(IdentName),
-    Str(Str),
-    Num(Number),
-    Computed(ComputedPropName),
-    BigInt(BigInt),
-
-    // Key
     Private(PrivateName),
-}
-
-#[allow(non_snake_case)]
-impl Key {
-    #[inline]
-    pub fn Public(name: PropName) -> Self {
-        const {
-            assert!(std::mem::size_of::<PropName>() == std::mem::size_of::<Self>());
-        }
-        unsafe { std::mem::transmute(name) }
-    }
-
-    #[inline]
-    pub fn into_public(self) -> Result<PropName, Self> {
-        match self {
-            Self::Private(_) => Err(self),
-            _ => unsafe { Ok(std::mem::transmute(self)) },
-        }
-    }
+    Public(PropName),
 }
 
 #[ast]
