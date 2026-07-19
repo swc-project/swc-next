@@ -16,7 +16,6 @@ oxc                                   = { workspace = true }
 oxc_allocator                         = { workspace = true }
 swc_experimental_allocator            = { workspace = true }
 swc_experimental_ecma_ast             = { workspace = true }
-swc_experimental_ecma_ast_compat      = { workspace = true }
 swc_experimental_ecma_parser          = { workspace = true, features = ["unstable"] }
 swc_experimental_ecma_semantic        = { workspace = true }
 swc_experimental_ecma_transforms_base = { workspace = true }
@@ -38,10 +37,6 @@ name    = "visit_compare"
 [[bench]]
 harness = false
 name    = "semantic"
-
-[[bench]]
-harness = false
-name    = "ast_compat"
 
 [[bench]]
 harness = false

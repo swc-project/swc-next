@@ -5,7 +5,6 @@ use swc_experimental_ecma_ast::{
     ExportDefaultExpr, ExprStmt, GetSpan, ImportDecl, NamedExport, Program, ReturnStmt, Span,
     ThrowStmt, UpdateExpr, VarDecl, Visit, VisitWith, YieldExpr,
 };
-use swc_experimental_ecma_ast_compat::{AstCompat, UnsafeArenaAstCompat};
 use swc_experimental_ecma_parser::{
     Lexer, Parser, StringSource, Syntax,
     unstable::{Capturing, Token, TokenAndSpan},
@@ -13,22 +12,13 @@ use swc_experimental_ecma_parser::{
 use swc_experimental_ecma_semantic::resolver::{Semantic, resolver};
 use swc_experimental_ecma_transforms_base::remove_paren::remove_paren;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CompatMode {
-    Safe,
-    Unsafe,
-}
-
-pub fn run(src: &'static str, compat: Option<CompatMode>) {
+pub fn run(src: &'static str) {
     let allocator = Allocator::new();
-    let (mut program, mut ast, tokens) = run_parse(src, &allocator);
+    let (program, ast, tokens) = run_parse(src, &allocator);
     // run_remove_paren(&mut program, &mut ast);
     // let semantic = run_resolver(program, &mut ast);
     // let _semi = run_collect_semiconlons(&ast, program, &tokens);
-    // match compat {
-    //     Some(compat) => run_compat_and_scan(program, &ast, &semantic, compat),
-    //     None => run_scan_dependencies(program, &ast),
-    // }
+    // run_scan_dependencies(program, &ast);
     drop((program, ast, tokens));
 }
 
@@ -74,28 +64,6 @@ fn run_scan_dependencies(root: Program, ast: &Ast<'_>) {
         ast,
         idents: Vec::new(),
     });
-}
-
-#[inline(never)]
-fn run_compat_and_scan(root: Program, ast: &Ast<'_>, semantic: &Semantic, compat: CompatMode) {
-    match compat {
-        CompatMode::Safe => {
-            let program = AstCompat::new(ast, semantic).compat_program(root);
-            run_scan_dependencies_legacy(&program);
-        }
-        CompatMode::Unsafe => {
-            let program = UnsafeArenaAstCompat::new(ast, semantic).compat_program(root);
-            program.with_ref(run_scan_dependencies_legacy);
-        }
-    }
-}
-
-#[inline(never)]
-fn run_scan_dependencies_legacy(program: &swc_core::ecma::ast::Program) {
-    swc_core::ecma::visit::VisitWith::visit_with(
-        program,
-        &mut JavascriptParserLegacy { idents: Vec::new() },
-    );
 }
 
 #[inline(never)]
@@ -273,15 +241,5 @@ impl<'ast> Visit<'ast> for JavascriptParser<'_, 'ast> {
 
     fn visit_ident(&mut self, node: swc_experimental_ecma_ast::Ident) {
         self.idents.push(node.sym(self.ast));
-    }
-}
-
-struct JavascriptParserLegacy {
-    idents: Vec<swc_core::atoms::Atom>,
-}
-
-impl swc_core::ecma::visit::Visit for JavascriptParserLegacy {
-    fn visit_ident(&mut self, node: &swc_core::ecma::ast::Ident) {
-        self.idents.push(node.sym.clone());
     }
 }

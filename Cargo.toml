@@ -52,8 +52,6 @@ syn          = { version = "2.0.118", default-features = false }
 swc_experimental_allocator            = { version = "0.11.0", path = "crates/swc_allocator" }
 swc_experimental_ast_macros           = { version = "0.11.0", path = "crates/swc_ast_macros" }
 swc_experimental_ecma_ast             = { version = "0.11.0", path = "crates/swc_ecma_ast" }
-swc_experimental_ecma_ast_compat      = { version = "0.11.0", path = "crates/swc_ecma_ast_compat" }
-swc_experimental_ecma_codegen         = { version = "0.11.0", path = "crates/swc_ecma_codegen" }
 swc_experimental_ecma_parser          = { version = "0.11.0", path = "crates/swc_ecma_parser" }
 swc_experimental_ecma_semantic        = { version = "0.11.0", path = "crates/swc_ecma_semantic" }
 swc_experimental_ecma_transforms_base = { version = "0.11.0", path = "crates/swc_ecma_transforms_base" }
