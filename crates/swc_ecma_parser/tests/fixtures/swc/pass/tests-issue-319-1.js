@@ -1,1 +1,0 @@
-obj(({ async f() { await g(); } }));

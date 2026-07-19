@@ -1,1 +1,0 @@
-import(filePath).then(bar => {})

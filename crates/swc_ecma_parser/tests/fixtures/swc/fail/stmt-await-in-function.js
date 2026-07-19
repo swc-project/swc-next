@@ -1,1 +1,0 @@
-function foo (p) { await p; }

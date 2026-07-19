@@ -1,1 +1,0 @@
-for (async of => {}; i < 10; ++i) { ++counter; }

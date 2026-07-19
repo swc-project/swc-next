@@ -1,1 +1,0 @@
-class Foo { static static { 1 + 1 }; }

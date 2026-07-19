@@ -1,1 +1,0 @@
-fn = function () { Object.setPrototypeOf(this, new.target.prototype); }

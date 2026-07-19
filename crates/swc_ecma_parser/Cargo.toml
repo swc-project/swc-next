@@ -12,17 +12,5 @@ version               = "0.11.0"
 unstable = []
 
 [dependencies]
-bitflags    = { workspace = true }
-either      = { workspace = true }
-miette      = { workspace = true }
-num-bigint  = { workspace = true }
-rustc-hash  = { workspace = true }
-seq-macro   = { workspace = true }
-smartstring = { workspace = true }
-tracing     = { workspace = true }
-
 swc_experimental_allocator = { workspace = true }
 swc_experimental_ecma_ast  = { workspace = true }
-
-[dev-dependencies]
-rstest = { workspace = true }

@@ -1,1 +1,0 @@
-{obj = {$: num = 10, '': sym = '', " ": quote = " ", _: under = [...tail],}}

@@ -1,1 +1,0 @@
-[a as number, b as number, c as string] = [1, 2, '3']

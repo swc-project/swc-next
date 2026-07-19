@@ -1,1 +1,0 @@
-var IS_IE11 = !global.ActiveXObject && 'ActiveXObject' in global;

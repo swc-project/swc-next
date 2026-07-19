@@ -1,1 +1,0 @@
-export type * as bar from 'mod'
