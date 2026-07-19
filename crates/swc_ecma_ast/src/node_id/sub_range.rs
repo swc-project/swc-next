@@ -2,7 +2,7 @@ use std::{marker::PhantomData, ops::Deref};
 
 use crate::{
     Ast,
-    node_id::{ExtraDataCompact, ExtraDataId, ExtraDataLayout},
+    node_id::{ExtraDataCompact, ExtraDataId},
 };
 
 pub const EMPTY_SUB_RANGE: SubRange = SubRange {
@@ -89,7 +89,7 @@ impl<T> Clone for TypedSubRange<T> {
 
 impl<T> Copy for TypedSubRange<T> {}
 
-impl<T: ExtraDataLayout> TypedSubRange<T> {
+impl<T> TypedSubRange<T> {
     pub fn empty() -> Self {
         Self {
             inner: EMPTY_SUB_RANGE,
@@ -98,7 +98,7 @@ impl<T: ExtraDataLayout> TypedSubRange<T> {
     }
 
     pub fn len(self) -> usize {
-        (self.end.index() - self.start.index()) / T::WORDS
+        self.end.index() - self.start.index()
     }
 
     pub fn is_empty(self) -> bool {
@@ -109,7 +109,7 @@ impl<T: ExtraDataLayout> TypedSubRange<T> {
     pub fn remove_first(&mut self) -> NodeExtraDataId<T> {
         assert!(!self.is_empty());
         let start = self.start;
-        self.inner.start += T::WORDS;
+        self.inner.start += 1;
         NodeExtraDataId {
             inner: start,
             _phantom: PhantomData,
@@ -118,7 +118,7 @@ impl<T: ExtraDataLayout> TypedSubRange<T> {
 
     pub fn get(self, index: usize) -> Option<NodeExtraDataId<T>> {
         if index < self.len() {
-            let id = self.start + index * T::WORDS;
+            let id = self.start + index;
             return Some(NodeExtraDataId {
                 inner: id,
                 _phantom: PhantomData,
@@ -144,7 +144,7 @@ impl<T: ExtraDataLayout> TypedSubRange<T> {
         }
 
         Some(NodeExtraDataId {
-            inner: self.end - T::WORDS,
+            inner: self.end - 1,
             _phantom: PhantomData,
         })
     }
@@ -166,7 +166,7 @@ impl<T: ExtraDataLayout> TypedSubRange<T> {
             );
         }
 
-        let at = self.start + at * T::WORDS;
+        let at = self.start + at;
         let original_end = self.inner.end;
 
         self.inner.end = at;
@@ -180,14 +180,14 @@ impl<T: ExtraDataLayout> TypedSubRange<T> {
     }
 }
 
-impl<T: ExtraDataLayout> TypedSubRange<T> {
+impl<T> TypedSubRange<T> {
     #[inline]
     pub fn replace_slot<'a>(self, ast: &mut Ast<'a>, at: NodeExtraDataId<T>, new: T)
     where
         T: ExtraDataCompact<'a>,
     {
-        // SAFETY: `at` was produced by this `TypedSubRange<T>`.
-        unsafe { ast.write_extra_data(at.inner, new) };
+        let data = new.to_extra_data(ast);
+        ast.extra_data[at.inner.index()] = data;
     }
 
     #[inline]
@@ -207,13 +207,13 @@ impl<T> Deref for TypedSubRange<T> {
     }
 }
 
-pub struct TypedSubRangeIterator<T: ExtraDataLayout> {
+pub struct TypedSubRangeIterator<T> {
     cur: ExtraDataId,
     end: ExtraDataId,
     _phantom: PhantomData<T>,
 }
 
-impl<T: ExtraDataLayout> Iterator for TypedSubRangeIterator<T> {
+impl<T> Iterator for TypedSubRangeIterator<T> {
     type Item = NodeExtraDataId<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -224,7 +224,7 @@ impl<T: ExtraDataLayout> Iterator for TypedSubRangeIterator<T> {
         let next = self.cur;
         debug_assert!(next < self.end);
 
-        self.cur = ExtraDataId::from_usize_unchecked(self.cur.index().wrapping_add(T::WORDS));
+        self.cur = ExtraDataId::from_usize_unchecked(self.cur.index().wrapping_add(1));
         debug_assert!(self.cur <= self.end);
 
         Some(NodeExtraDataId {
@@ -234,13 +234,13 @@ impl<T: ExtraDataLayout> Iterator for TypedSubRangeIterator<T> {
     }
 }
 
-impl<T: ExtraDataLayout> DoubleEndedIterator for TypedSubRangeIterator<T> {
+impl<T> DoubleEndedIterator for TypedSubRangeIterator<T> {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.cur == self.end {
             return None;
         }
 
-        self.end = ExtraDataId::from_usize_unchecked(self.end.index().wrapping_sub(T::WORDS));
+        self.end = ExtraDataId::from_usize_unchecked(self.end.index().wrapping_sub(1));
         debug_assert!(self.cur <= self.end);
 
         let next = self.end;
@@ -264,6 +264,11 @@ pub struct NodeExtraDataId<T> {
 impl<'a> Ast<'a> {
     pub fn get_node_in_sub_range<T: ExtraDataCompact<'a>>(&self, id: NodeExtraDataId<T>) -> T {
         // Safety: `NodeExtraDataId<T>` should always be valid
-        unsafe { self.read_extra_data(id.inner) }
+        unsafe {
+            T::from_extra_data(
+                *self.extra_data.as_slice().get_unchecked(id.inner.index()),
+                self,
+            )
+        }
     }
 }

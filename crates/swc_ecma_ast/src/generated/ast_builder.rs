@@ -313,27 +313,18 @@ impl<'a> Ast<'a> {
         phase: ImportPhase,
     ) -> ImportDecl {
         let _extra_data = [
-            (
-                (type_only).to_extra_data(self),
-                <bool as ExtraDataLayout>::WORDS,
-            ),
-            (
-                (with).to_extra_data(self),
-                <Option<ObjectLit> as ExtraDataLayout>::WORDS,
-            ),
-            (
-                (phase).to_extra_data(self),
-                <ImportPhase as ExtraDataLayout>::WORDS,
-            ),
+            type_only.to_extra_data(self),
+            with.to_extra_data(self),
+            phase.to_extra_data(self),
         ];
-        let _extra_data_start = self.add_extra_data(&_extra_data);
+        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         ImportDecl(self.add_node(
             span,
             NodePayload(
                 0u128
                     | ((unsafe { specifiers.to_extra_data(self).other } as u128) << 0usize)
                     | ((src.node_id().index() as u32 as u128) << 64usize)
-                    | ((_extra_data_start.index() as u128) << 96usize),
+                    | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
     }
@@ -414,17 +405,8 @@ impl<'a> Ast<'a> {
         type_only: bool,
         with: Option<ObjectLit>,
     ) -> NamedExport {
-        let _extra_data = [
-            (
-                (type_only).to_extra_data(self),
-                <bool as ExtraDataLayout>::WORDS,
-            ),
-            (
-                (with).to_extra_data(self),
-                <Option<ObjectLit> as ExtraDataLayout>::WORDS,
-            ),
-        ];
-        let _extra_data_start = self.add_extra_data(&_extra_data);
+        let _extra_data = [type_only.to_extra_data(self), with.to_extra_data(self)];
+        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         NamedExport(self.add_node(
             span,
             NodePayload(
@@ -432,7 +414,7 @@ impl<'a> Ast<'a> {
                     | ((unsafe { specifiers.to_extra_data(self).other } as u128) << 0usize)
                     | ((src.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
                         << 64usize)
-                    | ((_extra_data_start.index() as u128) << 96usize),
+                    | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
     }
@@ -508,7 +490,7 @@ impl<'a> Ast<'a> {
         exported: ModuleExportName,
         is_type_only: bool,
     ) -> ExportNamedSpecifier {
-        let _f0 = self.add_extra(exported);
+        let _f0 = self.add_extra(exported.to_extra_data(self));
         ExportNamedSpecifier(self.add_node(
             span,
             NodePayload(
@@ -787,20 +769,14 @@ impl<'a> Ast<'a> {
     }
     #[inline]
     pub fn if_stmt(&mut self, span: Span, test: Expr, cons: Stmt, alt: Option<Stmt>) -> IfStmt {
-        let _extra_data = [
-            ((cons).to_extra_data(self), <Stmt as ExtraDataLayout>::WORDS),
-            (
-                (alt).to_extra_data(self),
-                <Option<Stmt> as ExtraDataLayout>::WORDS,
-            ),
-        ];
-        let _extra_data_start = self.add_extra_data(&_extra_data);
+        let _extra_data = [cons.to_extra_data(self), alt.to_extra_data(self)];
+        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         IfStmt(self.add_node(
             span,
             NodePayload(
                 0u128
                     | ((unsafe { test.to_extra_data(self).other } as u128) << 0usize)
-                    | ((_extra_data_start.index() as u128) << 96usize),
+                    | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
     }
@@ -879,42 +855,30 @@ impl<'a> Ast<'a> {
         body: Stmt,
     ) -> ForStmt {
         let _extra_data = [
-            (
-                (test).to_extra_data(self),
-                <Option<Expr> as ExtraDataLayout>::WORDS,
-            ),
-            (
-                (update).to_extra_data(self),
-                <Option<Expr> as ExtraDataLayout>::WORDS,
-            ),
-            ((body).to_extra_data(self), <Stmt as ExtraDataLayout>::WORDS),
+            test.to_extra_data(self),
+            update.to_extra_data(self),
+            body.to_extra_data(self),
         ];
-        let _extra_data_start = self.add_extra_data(&_extra_data);
+        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         ForStmt(self.add_node(
             span,
             NodePayload(
                 0u128
                     | ((unsafe { init.to_extra_data(self).other } as u128) << 0usize)
-                    | ((_extra_data_start.index() as u128) << 96usize),
+                    | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
     }
     #[inline]
     pub fn for_in_stmt(&mut self, span: Span, left: ForHead, right: Expr, body: Stmt) -> ForInStmt {
-        let _extra_data = [
-            (
-                (right).to_extra_data(self),
-                <Expr as ExtraDataLayout>::WORDS,
-            ),
-            ((body).to_extra_data(self), <Stmt as ExtraDataLayout>::WORDS),
-        ];
-        let _extra_data_start = self.add_extra_data(&_extra_data);
+        let _extra_data = [right.to_extra_data(self), body.to_extra_data(self)];
+        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         ForInStmt(self.add_node(
             span,
             NodePayload(
                 0u128
                     | ((unsafe { left.to_extra_data(self).other } as u128) << 0usize)
-                    | ((_extra_data_start.index() as u128) << 96usize),
+                    | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
     }
@@ -927,21 +891,15 @@ impl<'a> Ast<'a> {
         right: Expr,
         body: Stmt,
     ) -> ForOfStmt {
-        let _extra_data = [
-            (
-                (right).to_extra_data(self),
-                <Expr as ExtraDataLayout>::WORDS,
-            ),
-            ((body).to_extra_data(self), <Stmt as ExtraDataLayout>::WORDS),
-        ];
-        let _extra_data_start = self.add_extra_data(&_extra_data);
+        let _extra_data = [right.to_extra_data(self), body.to_extra_data(self)];
+        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         ForOfStmt(self.add_node(
             span,
             NodePayload(
                 0u128
                     | ((is_await as u32 as u128) << 64usize)
                     | ((unsafe { left.to_extra_data(self).other } as u128) << 0usize)
-                    | ((_extra_data_start.index() as u128) << 96usize),
+                    | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
     }
@@ -2054,7 +2012,7 @@ impl<'a> Ast<'a> {
     }
     #[inline]
     pub fn bin_expr(&mut self, span: Span, op: BinaryOp, left: Expr, right: Expr) -> BinExpr {
-        let _f0 = self.add_extra(right);
+        let _f0 = self.add_extra(right.to_extra_data(self));
         BinExpr(self.add_node(
             span,
             NodePayload(
@@ -2097,7 +2055,7 @@ impl<'a> Ast<'a> {
         left: AssignTarget,
         right: Expr,
     ) -> AssignExpr {
-        let _f0 = self.add_extra(right);
+        let _f0 = self.add_extra(right.to_extra_data(self));
         AssignExpr(self.add_node(
             span,
             NodePayload(
@@ -2152,17 +2110,14 @@ impl<'a> Ast<'a> {
     }
     #[inline]
     pub fn cond_expr(&mut self, span: Span, test: Expr, cons: Expr, alt: Expr) -> CondExpr {
-        let _extra_data = [
-            ((cons).to_extra_data(self), <Expr as ExtraDataLayout>::WORDS),
-            ((alt).to_extra_data(self), <Expr as ExtraDataLayout>::WORDS),
-        ];
-        let _extra_data_start = self.add_extra_data(&_extra_data);
+        let _extra_data = [cons.to_extra_data(self), alt.to_extra_data(self)];
+        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         CondExpr(self.add_node(
             span,
             NodePayload(
                 0u128
                     | ((unsafe { test.to_extra_data(self).other } as u128) << 0usize)
-                    | ((_extra_data_start.index() as u128) << 96usize),
+                    | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
     }
@@ -2175,24 +2130,15 @@ impl<'a> Ast<'a> {
         options: Option<Expr>,
         phase: ImportPhase,
     ) -> ImportExpr {
-        let _extra_data = [
-            (
-                (source).to_extra_data(self),
-                <Expr as ExtraDataLayout>::WORDS,
-            ),
-            (
-                (options).to_extra_data(self),
-                <Option<Expr> as ExtraDataLayout>::WORDS,
-            ),
-        ];
-        let _extra_data_start = self.add_extra_data(&_extra_data);
+        let _extra_data = [source.to_extra_data(self), options.to_extra_data(self)];
+        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         ImportExpr(self.add_node(
             span,
             NodePayload(
                 0u128
                     | ((unsafe { import_span.to_extra_data(self).other } as u128) << 0usize)
                     | ((phase as u32 as u128) << 64usize)
-                    | ((_extra_data_start.index() as u128) << 96usize),
+                    | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
     }
@@ -2243,7 +2189,7 @@ impl<'a> Ast<'a> {
         body: BlockStmtOrExpr,
         is_async: bool,
     ) -> ArrowExpr {
-        let _f0 = self.add_extra(body);
+        let _f0 = self.add_extra(body.to_extra_data(self));
         ArrowExpr(self.add_node(
             span,
             NodePayload(
@@ -3090,27 +3036,18 @@ impl<'a> Ast<'a> {
         is_async: bool,
     ) -> Function {
         let _extra_data = [
-            (
-                (decorators).to_extra_data(self),
-                <TypedSubRange<Decorator> as ExtraDataLayout>::WORDS,
-            ),
-            (
-                (is_generator).to_extra_data(self),
-                <bool as ExtraDataLayout>::WORDS,
-            ),
-            (
-                (is_async).to_extra_data(self),
-                <bool as ExtraDataLayout>::WORDS,
-            ),
+            decorators.to_extra_data(self),
+            is_generator.to_extra_data(self),
+            is_async.to_extra_data(self),
         ];
-        let _extra_data_start = self.add_extra_data(&_extra_data);
+        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         Function(self.add_node(
             span,
             NodePayload(
                 0u128
                     | ((unsafe { params.to_extra_data(self).other } as u128) << 0usize)
                     | ((body.node_id().index() as u32 as u128) << 64usize)
-                    | ((_extra_data_start.index() as u128) << 96usize),
+                    | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
     }
@@ -3143,24 +3080,15 @@ impl<'a> Ast<'a> {
         super_class: Option<Expr>,
         is_abstract: bool,
     ) -> Class {
-        let _extra_data = [
-            (
-                (body).to_extra_data(self),
-                <TypedSubRange<ClassMember> as ExtraDataLayout>::WORDS,
-            ),
-            (
-                (super_class).to_extra_data(self),
-                <Option<Expr> as ExtraDataLayout>::WORDS,
-            ),
-        ];
-        let _extra_data_start = self.add_extra_data(&_extra_data);
+        let _extra_data = [body.to_extra_data(self), super_class.to_extra_data(self)];
+        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         Class(self.add_node(
             span,
             NodePayload(
                 0u128
                     | ((unsafe { decorators.to_extra_data(self).other } as u128) << 0usize)
                     | ((is_abstract as u32 as u128) << 64usize)
-                    | ((_extra_data_start.index() as u128) << 96usize),
+                    | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
     }
@@ -3261,24 +3189,15 @@ impl<'a> Ast<'a> {
         is_static: bool,
         decorators: TypedSubRange<Decorator>,
     ) -> ClassProp {
-        let _extra_data = [
-            (
-                (value).to_extra_data(self),
-                <Option<Expr> as ExtraDataLayout>::WORDS,
-            ),
-            (
-                (decorators).to_extra_data(self),
-                <TypedSubRange<Decorator> as ExtraDataLayout>::WORDS,
-            ),
-        ];
-        let _extra_data_start = self.add_extra_data(&_extra_data);
+        let _extra_data = [value.to_extra_data(self), decorators.to_extra_data(self)];
+        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         ClassProp(self.add_node(
             span,
             NodePayload(
                 0u128
                     | ((unsafe { key.to_extra_data(self).other } as u128) << 0usize)
                     | ((is_static as u32 as u128) << 64usize)
-                    | ((_extra_data_start.index() as u128) << 96usize),
+                    | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
     }
@@ -3292,23 +3211,17 @@ impl<'a> Ast<'a> {
         decorators: TypedSubRange<Decorator>,
     ) -> PrivateProp {
         let _extra_data = [
-            (
-                (is_static).to_extra_data(self),
-                <bool as ExtraDataLayout>::WORDS,
-            ),
-            (
-                (decorators).to_extra_data(self),
-                <TypedSubRange<Decorator> as ExtraDataLayout>::WORDS,
-            ),
+            is_static.to_extra_data(self),
+            decorators.to_extra_data(self),
         ];
-        let _extra_data_start = self.add_extra_data(&_extra_data);
+        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         PrivateProp(self.add_node(
             span,
             NodePayload(
                 0u128
                     | ((key.node_id().index() as u32 as u128) << 64usize)
                     | ((unsafe { value.to_extra_data(self).other } as u128) << 0usize)
-                    | ((_extra_data_start.index() as u128) << 96usize),
+                    | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
     }
@@ -3360,7 +3273,7 @@ impl<'a> Ast<'a> {
         params: TypedSubRange<ParamOrTsParamProp>,
         body: Option<BlockStmt>,
     ) -> Constructor {
-        let _f0 = self.add_extra(params);
+        let _f0 = self.add_extra(params.to_extra_data(self));
         Constructor(self.add_node(
             span,
             NodePayload(
@@ -3419,24 +3332,15 @@ impl<'a> Ast<'a> {
         is_static: bool,
         decorators: TypedSubRange<Decorator>,
     ) -> AutoAccessor {
-        let _extra_data = [
-            (
-                (value).to_extra_data(self),
-                <Option<Expr> as ExtraDataLayout>::WORDS,
-            ),
-            (
-                (decorators).to_extra_data(self),
-                <TypedSubRange<Decorator> as ExtraDataLayout>::WORDS,
-            ),
-        ];
-        let _extra_data_start = self.add_extra_data(&_extra_data);
+        let _extra_data = [value.to_extra_data(self), decorators.to_extra_data(self)];
+        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         AutoAccessor(self.add_node(
             span,
             NodePayload(
                 0u128
                     | ((unsafe { key.to_extra_data(self).other } as u128) << 0usize)
                     | ((is_static as u32 as u128) << 64usize)
-                    | ((_extra_data_start.index() as u128) << 96usize),
+                    | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
     }
@@ -4380,7 +4284,7 @@ impl<'a> Ast<'a> {
         attrs: TypedSubRange<JSXAttrOrSpread>,
         self_closing: bool,
     ) -> JSXOpeningElement {
-        let _f0 = self.add_extra(attrs);
+        let _f0 = self.add_extra(attrs.to_extra_data(self));
         JSXOpeningElement(self.add_node(
             span,
             NodePayload(

@@ -137,13 +137,13 @@ fn generate_build_function_inline(
                 }
 
                 let field_name = format_ident!("{}", field.name);
-                let field_ty = schema.types[field.type_id].repr_ident(schema);
                 let field_value = if should_default_in_builder(ast, &field.name) {
+                    let field_ty = schema.types[field.type_id].repr_ident(schema);
                     quote!(<#field_ty>::default())
                 } else {
                     quote!(#field_name)
                 };
-                extra_data_values.push((field_value, field_ty.to_token_stream()));
+                extra_data_values.push(quote!(#field_value.to_extra_data(self)));
             }
 
             let (add_extra_data, start_id) = generate_add_extra_data(&extra_data_values);
@@ -179,13 +179,13 @@ fn generate_build_function_extra_data(
     let mut extra_data_values = Vec::new();
     for field in &ast.fields {
         let field_name = format_ident!("{}", field.name);
-        let field_ty = schema.types[field.type_id].repr_ident(schema);
         let field_value = if should_default_in_builder(ast, &field.name) {
+            let field_ty = schema.types[field.type_id].repr_ident(schema);
             quote!(<#field_ty>::default())
         } else {
             quote!(#field_name)
         };
-        extra_data_values.push((field_value, field_ty.to_token_stream()));
+        extra_data_values.push(quote!(#field_value.to_extra_data(self)));
     }
 
     let (add_extra_data, start_id) = generate_add_extra_data(&extra_data_values);
@@ -213,31 +213,22 @@ fn generate_build_function_extra_data(
     tokens
 }
 
-fn generate_add_extra_data(
-    values: &[(TokenStream, TokenStream)],
-) -> (TokenStream, Option<TokenStream>) {
+fn generate_add_extra_data(values: &[TokenStream]) -> (TokenStream, Option<TokenStream>) {
     match values {
         [] => (TokenStream::new(), None),
-        [(value, _)] => (
+        [value] => (
             quote! {
                 let _f0 = self.add_extra(#value);
             },
             Some(quote!(_f0)),
         ),
-        values => {
-            let staged = values.iter().map(|(value, ty)| {
-                quote! {
-                    ((#value).to_extra_data(self), <#ty as ExtraDataLayout>::WORDS)
-                }
-            });
-            (
-                quote! {
-                    let _extra_data = [#(#staged),*];
-                    let _extra_data_start = self.add_extra_data(&_extra_data);
-                },
-                Some(quote!(_extra_data_start)),
-            )
-        }
+        values => (
+            quote! {
+                let _extra_data = [#(#values),*];
+                let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
+            },
+            Some(quote!(_extra_data_range.start)),
+        ),
     }
 }
 

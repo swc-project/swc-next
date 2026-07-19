@@ -42,7 +42,7 @@ pub fn ast_extra_data(schema: &Schema) -> RawOutput {
     }
 
     let output = quote! {
-        /// Eight-byte staging representation used to encode compact AST values.
+        /// Compact values stored in the flattening AST's extra-data table.
         #[derive(Clone, Copy)]
         pub union ExtraData {
             atom: AtomId,

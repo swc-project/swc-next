@@ -17,16 +17,10 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
                 let field_ident = format_ident!("{}", map_field_type_to_extra_field(ty, schema));
 
                 impls.extend(quote! {
-                   impl ExtraDataLayout for #ident {
-                        const WORDS: usize = (std::mem::size_of::<Self>() + 3) / 4;
-                   }
-
                    impl<'a> ExtraDataCompact<'a> for #ident {
                         #[inline]
                         fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-                            let mut data = ExtraData { other: 0 };
-                            data.#field_ident = self;
-                            data
+                            ExtraData { #field_ident: self }
                         }
 
                         #[inline]
@@ -55,10 +49,6 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
                    const _: () =
                        assert!(std::mem::size_of::<#ident>() == std::mem::size_of::<u64>());
 
-                   impl ExtraDataLayout for #ident {
-                        const WORDS: usize = 2;
-                   }
-
                    impl<'a> ExtraDataCompact<'a> for #ident {
                         #[inline]
                         fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
@@ -85,8 +75,7 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
 
                 let optional_extra_field = map_field_type_to_extra_field(ty, schema);
                 let opt_field_ident = format_ident!("{}", optional_extra_field);
-                let is_enum = matches!(inner_type, AstType::Enum(_));
-                let (opt_to, opt_from) = if is_enum {
+                let (opt_to, opt_from) = if matches!(inner_type, AstType::Enum(_)) {
                     (
                         quote!(ExtraData {
                             #opt_field_ident: self.map_or(u64::MAX, |node| unsafe {
@@ -102,26 +91,13 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
                     )
                 } else {
                     (
-                        quote!({
-                            let mut data = ExtraData { other: 0 };
-                            data.#opt_field_ident = self;
-                            data
-                        }),
+                        quote!(ExtraData { #opt_field_ident: self }),
                         quote!(unsafe { data.#opt_field_ident }),
                     )
                 };
 
                 let ty_ident = ty.repr_ident(schema);
-                let words = if is_enum {
-                    quote!(2)
-                } else {
-                    quote!((std::mem::size_of::<Self>() + 3) / 4)
-                };
                 impls.extend(quote! {
-                   impl ExtraDataLayout for #ty_ident {
-                        const WORDS: usize = #words;
-                   }
-
                    impl<'a> ExtraDataCompact<'a> for #ty_ident {
                         #[inline]
                         fn to_extra_data(self, ast: &Ast<'a>) -> ExtraData {

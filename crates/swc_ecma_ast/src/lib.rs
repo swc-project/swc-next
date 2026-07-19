@@ -28,9 +28,7 @@ pub use comment::*;
 pub use common::*;
 pub use derive::*;
 pub use generated::ast_visitor::*;
-pub use node_id::{
-    ExtraDataCompact, ExtraDataId, ExtraDataLayout, NodeId, SubRange, TypedSubRange,
-};
+pub use node_id::{ExtraDataCompact, ExtraDataId, NodeId, SubRange, TypedSubRange};
 pub use semantic::{ScopeId, SymbolId};
 pub use span::{DUMMY_SP, Span};
 pub use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
@@ -48,9 +46,9 @@ pub struct Ast<'a> {
     pub(crate) nodes: NodeData<'a>,
 
     /// Flattening AST fields.
-    extra_data: ArenaVec<'a, u32>,
+    extra_data: ArenaVec<'a, ExtraData>,
 
-    /// Borrowed atoms are kept out of the word-oriented extra-data table.
+    /// Borrowed atoms are kept out of `ExtraData` so it remains eight bytes.
     atoms: AtomStore<'a>,
 }
 
@@ -90,113 +88,10 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
-    fn add_extra<T: ExtraDataCompact<'a>>(&mut self, value: T) -> ExtraDataId {
+    fn add_extra(&mut self, extra: ExtraData) -> ExtraDataId {
         let id = self.next_extra_data_id();
-        let data = value.to_extra_data(self);
-        self.push_extra_data::<T>(data);
+        self.extra_data.push(extra);
         id
-    }
-
-    #[inline]
-    fn push_extra_data<T: ExtraDataCompact<'a>>(&mut self, data: ExtraData) {
-        assert!(
-            matches!(T::WORDS, 1 | 2),
-            "extra data values must occupy one or two words"
-        );
-
-        let len = self.extra_data.len();
-        self.extra_data.reserve(T::WORDS);
-        // SAFETY: `reserve` made room for `T::WORDS`; every `to_extra_data`
-        // implementation initializes the complete eight-byte union so reading
-        // either its low u32 or full u64 is valid. `write_unaligned` is needed
-        // because a `Vec<u32>` is not guaranteed to have u64 alignment.
-        unsafe {
-            let raw = data.other;
-            let dst = self.extra_data.as_mut_ptr().add(len);
-            if T::WORDS == 1 {
-                dst.write(raw as u32);
-            } else {
-                dst.cast::<u64>().write_unaligned(raw);
-            }
-            self.extra_data.set_len(len + T::WORDS);
-        }
-    }
-
-    #[inline]
-    fn add_extra_data(&mut self, data: &[(ExtraData, usize)]) -> ExtraDataId {
-        let id = self.next_extra_data_id();
-        let word_len = data.iter().fold(0usize, |total, &(_, words)| {
-            assert!(
-                matches!(words, 1 | 2),
-                "extra data values must occupy one or two words"
-            );
-            total
-                .checked_add(words)
-                .expect("extra data word length overflow")
-        });
-        let old_len = self.extra_data.len();
-        let new_len = old_len
-            .checked_add(word_len)
-            .expect("extra data length overflow");
-        self.extra_data.reserve(word_len);
-
-        // SAFETY: `reserve` made room for every staged value. All validation
-        // and overflow checks happen before writing, and each `ExtraData`
-        // initializes its complete eight-byte union.
-        unsafe {
-            let mut dst = self.extra_data.as_mut_ptr().add(old_len);
-            for &(value, words) in data {
-                let raw = value.other;
-                if words == 1 {
-                    dst.write(raw as u32);
-                } else {
-                    dst.cast::<u64>().write_unaligned(raw);
-                }
-                dst = dst.add(words);
-            }
-            self.extra_data.set_len(new_len);
-        }
-
-        id
-    }
-
-    #[inline]
-    pub(crate) unsafe fn read_extra_data<T: ExtraDataCompact<'a>>(&self, id: ExtraDataId) -> T {
-        let index = id.index();
-        debug_assert!(index + T::WORDS <= self.extra_data.len());
-        // SAFETY: The caller guarantees that `id` points to a value written as
-        // `T`. Two-word values may start at an odd u32 index.
-        let raw = unsafe {
-            let src = self.extra_data.as_ptr().add(index);
-            if T::WORDS == 1 {
-                src.read() as u64
-            } else {
-                src.cast::<u64>().read_unaligned()
-            }
-        };
-        unsafe { T::from_extra_data(ExtraData { other: raw }, self) }
-    }
-
-    #[inline]
-    pub(crate) unsafe fn write_extra_data<T: ExtraDataCompact<'a>>(
-        &mut self,
-        id: ExtraDataId,
-        value: T,
-    ) {
-        let data = value.to_extra_data(self);
-        let index = id.index();
-        debug_assert!(index + T::WORDS <= self.extra_data.len());
-        // SAFETY: The caller guarantees that `id` points to an existing slot
-        // written as `T`; the slot therefore contains exactly `T::WORDS`.
-        unsafe {
-            let raw = data.other;
-            let dst = self.extra_data.as_mut_ptr().add(index);
-            if T::WORDS == 1 {
-                dst.write(raw as u32);
-            } else {
-                dst.cast::<u64>().write_unaligned(raw);
-            }
-        }
     }
 
     #[inline]
@@ -216,7 +111,8 @@ impl<'a> Ast<'a> {
     ) -> TypedSubRange<N> {
         let start = self.next_extra_data_id();
         for node in iter {
-            self.add_extra(node);
+            let data = node.to_extra_data(self);
+            self.extra_data.push(data);
         }
         TypedSubRange {
             inner: SubRange {
@@ -227,48 +123,14 @@ impl<'a> Ast<'a> {
         }
     }
 
-    /// Append a homogeneous slice of staged values to the word-oriented table.
-    pub fn add_extra_data_sub_range<N: ExtraDataCompact<'a>>(
-        &mut self,
-        data: &[ExtraData],
-    ) -> TypedSubRange<N> {
+    /// Append pre-encoded extra data as a single contiguous range.
+    pub fn add_extra_data_sub_range(&mut self, data: &[ExtraData]) -> SubRange {
         let start = self.next_extra_data_id();
-        assert!(
-            matches!(N::WORDS, 1 | 2),
-            "extra data values must occupy one or two words"
-        );
-        let word_len = data
-            .len()
-            .checked_mul(N::WORDS)
-            .expect("extra data word length overflow");
-        let old_len = self.extra_data.len();
-        let new_len = old_len
-            .checked_add(word_len)
-            .expect("extra data length overflow");
-        self.extra_data.reserve(word_len);
-
-        // SAFETY: `reserve` made room for `word_len` initialized u32 values.
-        // Every staged `ExtraData` fully initializes its eight-byte union.
-        // Two-word values have the same native byte representation as two
-        // adjacent u32 words, while one-word values use the low 32 bits.
-        unsafe {
-            let dst = self.extra_data.as_mut_ptr().add(old_len);
-            if N::WORDS == 2 {
-                std::ptr::copy_nonoverlapping(data.as_ptr().cast::<u32>(), dst, word_len);
-            } else {
-                for (index, value) in data.iter().enumerate() {
-                    dst.add(index).write(value.other as u32);
-                }
-            }
-            self.extra_data.set_len(new_len);
-        }
-
-        TypedSubRange {
-            inner: SubRange {
-                start,
-                end: self.next_extra_data_id(),
-            },
-            _phantom: PhantomData,
+        let end = start.index() + data.len();
+        self.extra_data.extend_from_slice_copy(data);
+        SubRange {
+            start,
+            end: ExtraDataId::from_usize_unchecked(end),
         }
     }
 
@@ -315,35 +177,5 @@ impl<'a> Ast<'a> {
     #[inline]
     pub fn node_count(&self) -> usize {
         self.nodes.len()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn mixed_extra_data_batch_uses_word_offsets() {
-        let allocator = Allocator::default();
-        let mut ast = Ast::new(0, &allocator);
-        let data = [
-            (true.to_extra_data(&ast), <bool as ExtraDataLayout>::WORDS),
-            (
-                0x1122_3344_5566_7788_u64.to_extra_data(&ast),
-                <u64 as ExtraDataLayout>::WORDS,
-            ),
-            (false.to_extra_data(&ast), <bool as ExtraDataLayout>::WORDS),
-        ];
-
-        let start = ast.add_extra_data(&data);
-
-        assert_eq!(start.index(), 0);
-        assert_eq!(ast.extra_data.len(), 4);
-        assert!(unsafe { ast.read_extra_data::<bool>(start) });
-        assert_eq!(
-            unsafe { ast.read_extra_data::<u64>(start + 1) },
-            0x1122_3344_5566_7788
-        );
-        assert!(!unsafe { ast.read_extra_data::<bool>(start + 3) });
     }
 }

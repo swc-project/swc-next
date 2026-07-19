@@ -497,30 +497,45 @@ impl ImportDecl {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn with<'a>(self, ast: &crate::Ast<'a>) -> Option<ObjectLit> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <bool as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn phase<'a>(self, ast: &crate::Ast<'a>) -> ImportPhase {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
-                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize).wrapping_add(
-                    0usize
-                        + <bool as ExtraDataLayout>::WORDS
-                        + <Option<ObjectLit> as ExtraDataLayout>::WORDS,
-                ),
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(2usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_specifiers<'a>(
@@ -548,30 +563,42 @@ impl ImportDecl {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, type_only) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = type_only.to_extra_data(ast);
+        };
     }
     #[inline]
     pub fn set_with<'a>(self, ast: &mut crate::Ast<'a>, with: Option<ObjectLit>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <bool as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, with) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = with.to_extra_data(ast);
+        };
     }
     #[inline]
     pub fn set_phase<'a>(self, ast: &mut crate::Ast<'a>, phase: ImportPhase) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
-                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize).wrapping_add(
-                    0usize
-                        + <bool as ExtraDataLayout>::WORDS
-                        + <Option<ObjectLit> as ExtraDataLayout>::WORDS,
-                ),
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(2usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, phase) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = phase.to_extra_data(ast);
+        };
     }
 }
 impl ImportSpecifier {
@@ -712,17 +739,29 @@ impl NamedExport {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn with<'a>(self, ast: &crate::Ast<'a>) -> Option<ObjectLit> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <bool as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_specifiers<'a>(
@@ -750,17 +789,27 @@ impl NamedExport {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, type_only) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = type_only.to_extra_data(ast);
+        };
     }
     #[inline]
     pub fn set_with<'a>(self, ast: &mut crate::Ast<'a>, with: Option<ObjectLit>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <bool as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, with) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = with.to_extra_data(ast);
+        };
     }
 }
 impl ExportSpecifier {
@@ -870,7 +919,13 @@ impl ExportNamedSpecifier {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_orig<'a>(self, ast: &mut crate::Ast<'a>, orig: ModuleExportName) {
@@ -894,7 +949,12 @@ impl ExportNamedSpecifier {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, exported) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = exported.to_extra_data(ast);
+        };
     }
 }
 impl ExportDefaultDecl {
@@ -1389,17 +1449,29 @@ impl IfStmt {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn alt<'a>(self, ast: &crate::Ast<'a>) -> Option<Stmt> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <Stmt as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_test<'a>(self, ast: &mut crate::Ast<'a>, test: Expr) {
@@ -1416,17 +1488,27 @@ impl IfStmt {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, cons) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = cons.to_extra_data(ast);
+        };
     }
     #[inline]
     pub fn set_alt<'a>(self, ast: &mut crate::Ast<'a>, alt: Option<Stmt>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <Stmt as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, alt) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = alt.to_extra_data(ast);
+        };
     }
 }
 impl SwitchStmt {
@@ -1576,30 +1658,45 @@ impl ForStmt {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn update<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <Option<Expr> as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> Stmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
-                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize).wrapping_add(
-                    0usize
-                        + <Option<Expr> as ExtraDataLayout>::WORDS
-                        + <Option<Expr> as ExtraDataLayout>::WORDS,
-                ),
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(2usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_init<'a>(self, ast: &mut crate::Ast<'a>, init: Option<VarDeclOrExpr>) {
@@ -1616,30 +1713,42 @@ impl ForStmt {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, test) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = test.to_extra_data(ast);
+        };
     }
     #[inline]
     pub fn set_update<'a>(self, ast: &mut crate::Ast<'a>, update: Option<Expr>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <Option<Expr> as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, update) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = update.to_extra_data(ast);
+        };
     }
     #[inline]
     pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: Stmt) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
-                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize).wrapping_add(
-                    0usize
-                        + <Option<Expr> as ExtraDataLayout>::WORDS
-                        + <Option<Expr> as ExtraDataLayout>::WORDS,
-                ),
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(2usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, body) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data(ast);
+        };
     }
 }
 impl ForInStmt {
@@ -1656,17 +1765,29 @@ impl ForInStmt {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> Stmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <Expr as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_left<'a>(self, ast: &mut crate::Ast<'a>, left: ForHead) {
@@ -1683,17 +1804,27 @@ impl ForInStmt {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, right) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = right.to_extra_data(ast);
+        };
     }
     #[inline]
     pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: Stmt) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <Expr as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, body) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data(ast);
+        };
     }
 }
 impl ForOfStmt {
@@ -1715,17 +1846,29 @@ impl ForOfStmt {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> Stmt {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <Expr as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_is_await<'a>(self, ast: &mut crate::Ast<'a>, is_await: bool) {
@@ -1749,17 +1892,27 @@ impl ForOfStmt {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, right) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = right.to_extra_data(ast);
+        };
     }
     #[inline]
     pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: Stmt) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <Expr as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, body) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data(ast);
+        };
     }
 }
 impl SwitchCase {
@@ -3611,7 +3764,13 @@ impl BinExpr {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_op<'a>(self, ast: &mut crate::Ast<'a>, op: BinaryOp) {
@@ -3635,7 +3794,12 @@ impl BinExpr {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, right) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = right.to_extra_data(ast);
+        };
     }
 }
 impl FnExpr {
@@ -3713,7 +3877,13 @@ impl AssignExpr {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_op<'a>(self, ast: &mut crate::Ast<'a>, op: AssignOp) {
@@ -3737,7 +3907,12 @@ impl AssignExpr {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, right) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = right.to_extra_data(ast);
+        };
     }
 }
 impl MemberExpr {
@@ -3866,17 +4041,29 @@ impl CondExpr {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn alt<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <Expr as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_test<'a>(self, ast: &mut crate::Ast<'a>, test: Expr) {
@@ -3893,17 +4080,27 @@ impl CondExpr {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, cons) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = cons.to_extra_data(ast);
+        };
     }
     #[inline]
     pub fn set_alt<'a>(self, ast: &mut crate::Ast<'a>, alt: Expr) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <Expr as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, alt) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = alt.to_extra_data(ast);
+        };
     }
 }
 impl ImportExpr {
@@ -3925,17 +4122,29 @@ impl ImportExpr {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn options<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <Expr as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_import_span<'a>(self, ast: &mut crate::Ast<'a>, import_span: Span) {
@@ -3959,17 +4168,27 @@ impl ImportExpr {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, source) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = source.to_extra_data(ast);
+        };
     }
     #[inline]
     pub fn set_options<'a>(self, ast: &mut crate::Ast<'a>, options: Option<Expr>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <Expr as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, options) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = options.to_extra_data(ast);
+        };
     }
 }
 impl CallExpr {
@@ -4057,7 +4276,13 @@ impl ArrowExpr {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: TypedSubRange<Pat>) {
@@ -4081,7 +4306,12 @@ impl ArrowExpr {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, body) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data(ast);
+        };
     }
 }
 impl YieldExpr {
@@ -5449,30 +5679,45 @@ impl Function {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn is_generator<'a>(self, ast: &crate::Ast<'a>) -> bool {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <TypedSubRange<Decorator> as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn is_async<'a>(self, ast: &crate::Ast<'a>) -> bool {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
-                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize).wrapping_add(
-                    0usize
-                        + <TypedSubRange<Decorator> as ExtraDataLayout>::WORDS
-                        + <bool as ExtraDataLayout>::WORDS,
-                ),
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(2usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_params<'a>(self, ast: &mut crate::Ast<'a>, params: TypedSubRange<Param>) {
@@ -5500,30 +5745,42 @@ impl Function {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, decorators) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = decorators.to_extra_data(ast);
+        };
     }
     #[inline]
     pub fn set_is_generator<'a>(self, ast: &mut crate::Ast<'a>, is_generator: bool) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <TypedSubRange<Decorator> as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, is_generator) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = is_generator.to_extra_data(ast);
+        };
     }
     #[inline]
     pub fn set_is_async<'a>(self, ast: &mut crate::Ast<'a>, is_async: bool) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
-                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize).wrapping_add(
-                    0usize
-                        + <TypedSubRange<Decorator> as ExtraDataLayout>::WORDS
-                        + <bool as ExtraDataLayout>::WORDS,
-                ),
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(2usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, is_async) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = is_async.to_extra_data(ast);
+        };
     }
 }
 impl Param {
@@ -5588,17 +5845,29 @@ impl Class {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn super_class<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <TypedSubRange<ClassMember> as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_decorators<'a>(
@@ -5626,17 +5895,27 @@ impl Class {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, body) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data(ast);
+        };
     }
     #[inline]
     pub fn set_super_class<'a>(self, ast: &mut crate::Ast<'a>, super_class: Option<Expr>) {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <TypedSubRange<ClassMember> as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, super_class) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = super_class.to_extra_data(ast);
+        };
     }
 }
 impl ClassMember {
@@ -5748,17 +6027,29 @@ impl ClassProp {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <Option<Expr> as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_key<'a>(self, ast: &mut crate::Ast<'a>, key: PropName) {
@@ -5782,7 +6073,12 @@ impl ClassProp {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, value) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = value.to_extra_data(ast);
+        };
     }
     #[inline]
     pub fn set_decorators<'a>(
@@ -5793,10 +6089,15 @@ impl ClassProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <Option<Expr> as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, decorators) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = decorators.to_extra_data(ast);
+        };
     }
 }
 impl PrivateProp {
@@ -5819,17 +6120,29 @@ impl PrivateProp {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <bool as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_key<'a>(self, ast: &mut crate::Ast<'a>, key: PrivateName) {
@@ -5853,7 +6166,12 @@ impl PrivateProp {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, is_static) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = is_static.to_extra_data(ast);
+        };
     }
     #[inline]
     pub fn set_decorators<'a>(
@@ -5864,10 +6182,15 @@ impl PrivateProp {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <bool as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, decorators) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = decorators.to_extra_data(ast);
+        };
     }
 }
 impl ClassMethod {
@@ -5993,7 +6316,13 @@ impl Constructor {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_key<'a>(self, ast: &mut crate::Ast<'a>, key: PropName) {
@@ -6021,7 +6350,12 @@ impl Constructor {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, params) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = params.to_extra_data(ast);
+        };
     }
 }
 impl Decorator {
@@ -6140,17 +6474,29 @@ impl AutoAccessor {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Decorator> {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <Option<Expr> as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_key<'a>(self, ast: &mut crate::Ast<'a>, key: Key) {
@@ -6174,7 +6520,12 @@ impl AutoAccessor {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, value) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = value.to_extra_data(ast);
+        };
     }
     #[inline]
     pub fn set_decorators<'a>(
@@ -6185,10 +6536,15 @@ impl AutoAccessor {
         let offset = unsafe {
             ExtraDataId::from_usize_unchecked(
                 ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
-                    .wrapping_add(0usize + <Option<Expr> as ExtraDataLayout>::WORDS),
+                    .wrapping_add(1usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, decorators) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = decorators.to_extra_data(ast);
+        };
     }
 }
 impl Prop {
@@ -8074,7 +8430,13 @@ impl JSXOpeningElement {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.read_extra_data(offset) }
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
     }
     #[inline]
     pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: JSXElementName) {
@@ -8098,7 +8460,12 @@ impl JSXOpeningElement {
                     .wrapping_add(0usize),
             )
         };
-        unsafe { ast.write_extra_data(offset, attrs) };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = attrs.to_extra_data(ast);
+        };
     }
 }
 impl JSXAttrOrSpread {
