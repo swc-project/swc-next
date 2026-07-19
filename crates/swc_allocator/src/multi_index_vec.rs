@@ -8,6 +8,7 @@
 ///
 /// As with the other SWC arena collections, field types must not implement
 /// [`Drop`].
+#[macro_export]
 macro_rules! multi_index_vec {
     (
         $(#[$meta:meta])*
@@ -23,7 +24,7 @@ macro_rules! multi_index_vec {
     ) => {
         $(#[$meta])*
         $vis struct $name<$alloc> {
-            allocator: &$alloc ::swc_experimental_allocator::Allocator,
+            allocator: &$alloc $crate::Allocator,
             $( $fname: ::core::ptr::NonNull<$fty>, )*
             len: u32,
             cap: u32,
@@ -56,7 +57,7 @@ macro_rules! multi_index_vec {
 
             #[inline]
             $vis fn new_in(
-                allocator: &$alloc ::swc_experimental_allocator::Allocator,
+                allocator: &$alloc $crate::Allocator,
             ) -> Self {
                 const {
                     $(
@@ -81,7 +82,7 @@ macro_rules! multi_index_vec {
             #[inline]
             $vis fn with_capacity_in(
                 capacity: usize,
-                allocator: &$alloc ::swc_experimental_allocator::Allocator,
+                allocator: &$alloc $crate::Allocator,
             ) -> Self {
                 let mut result = Self::new_in(allocator);
                 result.reserve(capacity);
@@ -238,11 +239,9 @@ macro_rules! multi_index_vec {
     };
 }
 
-pub(crate) use multi_index_vec;
-
 #[cfg(test)]
 mod tests {
-    use swc_experimental_allocator::Allocator;
+    use crate::Allocator;
 
     oxc_index::define_index_type! {
         struct TestId = u32;

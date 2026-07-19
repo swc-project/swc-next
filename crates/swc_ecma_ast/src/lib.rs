@@ -2,10 +2,8 @@ mod assert_layout;
 mod ast;
 mod comment;
 mod derive;
-mod multi_index_vec;
 mod node_id;
 mod semantic;
-mod span;
 mod strings;
 mod visit;
 
@@ -30,13 +28,10 @@ pub use generated::ast_node_kind::NodeKind;
 pub use generated::ast_visitor::*;
 pub use node_id::{AstNode, ExtraDataCompact, ExtraDataId, NodeId, SubRange, TypedSubRange};
 pub use semantic::{ScopeId, SymbolId};
-pub use span::{DUMMY_SP, Span};
 pub use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
 
-use crate::multi_index_vec::multi_index_vec;
-use crate::node_id::OptionalSubRange;
-use crate::span::OptionalSpan;
 use crate::strings::{AtomId, AtomStore, Wtf8AtomId};
+use swc_experimental_allocator::multi_index_vec;
 
 /// AST context that stores everything about the flattening AST.
 pub struct Ast<'a> {
@@ -77,12 +72,7 @@ pub union ExtraData {
     wtf8_atom: Wtf8AtomId,
     node_id: NodeId,
 
-    span: Span,
-    optional_span: OptionalSpan,
-    bool: bool,
-    number: f64,
     sub_range: SubRange,
-    optional_sub_range: OptionalSubRange,
     optional_scope_id: Option<ScopeId>,
     optional_symbol_id: Option<SymbolId>,
 
@@ -213,5 +203,29 @@ impl<'a> Ast<'a> {
     #[inline]
     pub fn node_count(&self) -> usize {
         self.nodes.len()
+    }
+}
+
+pub const DUMMY_SP: Span = Span { start: 0, end: 0 };
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct Span {
+    pub start: u32,
+    pub end: u32,
+}
+
+impl Span {
+    pub fn new(start: u32, end: u32) -> Self {
+        Self { start, end }
+    }
+
+    pub fn is_dummy(self) -> bool {
+        self.start == 0 && self.end == 0
+    }
+}
+
+impl std::fmt::Debug for Span {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}..{}", self.start, self.end)
     }
 }

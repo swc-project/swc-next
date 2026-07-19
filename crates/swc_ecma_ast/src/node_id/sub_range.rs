@@ -30,48 +30,6 @@ impl SubRange {
     }
 }
 
-/// An 8 bytes optimized version of `Option<SubRange>` (12 bytes).
-///
-/// We regard it as `None` if `OptionalSubRange::end` is `u32::MAX`.
-#[derive(Debug, Clone, Copy, Hash)]
-pub struct OptionalSubRange {
-    pub start: ExtraDataId,
-    pub end: ExtraDataId,
-}
-
-impl OptionalSubRange {
-    pub const fn new_some(sub_range: SubRange) -> Self {
-        Self {
-            start: sub_range.start,
-            end: sub_range.end,
-        }
-    }
-
-    pub const fn new_none() -> Self {
-        Self {
-            start: ExtraDataId::from_raw(0),
-            end: ExtraDataId::from_raw(u32::MAX),
-        }
-    }
-
-    pub const fn to_option(self) -> Option<SubRange> {
-        if self.end.raw() == u32::MAX {
-            return None;
-        }
-        Some(SubRange {
-            start: self.start,
-            end: self.end,
-        })
-    }
-
-    /// # Safety:
-    /// 1. The caller should make sure that the nodes in the range are all of type `T`.
-    pub(crate) unsafe fn cast_to_typed<T>(self) -> Option<TypedSubRange<T>> {
-        self.to_option()
-            .map(|sub_range| unsafe { sub_range.cast_to_typed() })
-    }
-}
-
 /// A typed sub range of nodes in an arena.
 ///
 /// See [SubRange]
