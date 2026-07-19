@@ -1,121 +1,130 @@
 use swc_experimental_ast_macros::ast;
 
-use crate::ast::*;
+use super::js::*;
 
 #[ast(repr)]
-pub enum JSXObject {
-    JSXMemberExpr(JSXMemberExpr),
-    Ident(Ident),
-}
-
-#[ast]
-pub struct JSXMemberExpr {
-    obj: JSXObject,
-    prop: IdentName,
-}
-
-#[ast]
-pub struct JSXNamespacedName {
-    ns: IdentName,
-    name: IdentName,
-}
-
-#[ast]
-pub struct JSXEmptyExpr {}
-
-#[ast]
-pub struct JSXExprContainer {
-    expr: JSXExpr,
+pub enum JsxElementName {
+    JsxIdentifier(JsxIdentifier),
+    JsxNamespacedName(JsxNamespacedName),
+    JsxMemberExpression(JsxMemberExpression),
 }
 
 #[ast(repr)]
-pub enum JSXExpr {
-    JSXEmptyExpr(JSXEmptyExpr),
+pub enum JsxMemberExpressionObject {
+    JsxIdentifier(JsxIdentifier),
+    JsxMemberExpression(JsxMemberExpression),
+}
+
+#[ast(repr)]
+pub enum JsxAttributeName {
+    JsxIdentifier(JsxIdentifier),
+    JsxNamespacedName(JsxNamespacedName),
+}
+
+#[ast(repr)]
+pub enum JsxAttributeItem {
+    JsxAttribute(JsxAttribute),
+    JsxSpreadAttribute(JsxSpreadAttribute),
+}
+
+#[ast(repr)]
+pub enum JsxAttributeValue {
+    StringLiteral(StringLiteral),
+    JsxExpressionContainer(JsxExpressionContainer),
+    JsxElement(JsxElement),
+    JsxFragment(JsxFragment),
+}
+
+#[ast(repr)]
+pub enum JsxExpression {
     Expr(Expr),
-}
-
-#[ast]
-pub struct JSXSpreadChild {
-    expr: Expr,
+    JsxEmptyExpression(JsxEmptyExpression),
 }
 
 #[ast(repr)]
-pub enum JSXElementName {
-    Ident(Ident),
-    JSXMemberExpr(JSXMemberExpr),
-    JSXNamespacedName(JSXNamespacedName),
+pub enum JsxChild {
+    JsxText(JsxText),
+    JsxExpressionContainer(JsxExpressionContainer),
+    JsxSpreadChild(JsxSpreadChild),
+    JsxElement(JsxElement),
+    JsxFragment(JsxFragment),
 }
 
 #[ast]
-pub struct JSXOpeningElement {
-    name: JSXElementName,
-    attrs: Vec<JSXAttrOrSpread>,
+pub struct JsxElement {
+    opening_element: JsxOpeningElement,
+    children: Vec<JsxChild>,
+    closing_element: Option<JsxClosingElement>,
+}
+
+#[ast]
+pub struct JsxOpeningElement {
+    name: JsxElementName,
+    attributes: Vec<JsxAttributeItem>,
     self_closing: bool,
-    // type_args: Option<Box<TsTypeParamInstantiation>>,
-}
-
-#[ast(repr)]
-pub enum JSXAttrOrSpread {
-    JSXAttr(JSXAttr),
-    SpreadElement(SpreadElement),
+    type_arguments: Option<TsTypeParameterInstantiation>,
 }
 
 #[ast]
-pub struct JSXClosingElement {
-    name: JSXElementName,
+pub struct JsxClosingElement {
+    name: JsxElementName,
 }
 
 #[ast]
-pub struct JSXAttr {
-    name: JSXAttrName,
-    value: Option<JSXAttrValue>,
-}
-
-#[ast(repr)]
-pub enum JSXAttrName {
-    Ident(IdentName),
-    JSXNamespacedName(JSXNamespacedName),
-}
-
-#[ast(repr)]
-pub enum JSXAttrValue {
-    Str(Str),
-    JSXExprContainer(JSXExprContainer),
-    JSXElement(JSXElement),
-    JSXFragment(JSXFragment),
+pub struct JsxFragment {
+    opening_fragment: JsxOpeningFragment,
+    children: Vec<JsxChild>,
+    closing_fragment: JsxClosingFragment,
 }
 
 #[ast]
-pub struct JSXText {
-    value: Atom,
-    raw: Atom,
+pub struct JsxOpeningFragment {}
+
+#[ast]
+pub struct JsxClosingFragment {}
+
+#[ast]
+pub struct JsxIdentifier {
+    name: Atom,
 }
 
 #[ast]
-pub struct JSXElement {
-    opening: JSXOpeningElement,
-    children: Vec<JSXElementChild>,
-    closing: Option<JSXClosingElement>,
-}
-
-#[ast(repr)]
-pub enum JSXElementChild {
-    JSXText(JSXText),
-    JSXExprContainer(JSXExprContainer),
-    JSXSpreadChild(JSXSpreadChild),
-    JSXElement(JSXElement),
-    JSXFragment(JSXFragment),
+pub struct JsxNamespacedName {
+    namespace: JsxIdentifier,
+    name: JsxIdentifier,
 }
 
 #[ast]
-pub struct JSXFragment {
-    opening: JSXOpeningFragment,
-    children: Vec<JSXElementChild>,
-    closing: JSXClosingFragment,
+pub struct JsxMemberExpression {
+    object: JsxMemberExpressionObject,
+    property: JsxIdentifier,
 }
 
 #[ast]
-pub struct JSXOpeningFragment {}
+pub struct JsxAttribute {
+    name: JsxAttributeName,
+    value: Option<JsxAttributeValue>,
+}
 
 #[ast]
-pub struct JSXClosingFragment {}
+pub struct JsxSpreadAttribute {
+    argument: Expr,
+}
+
+#[ast]
+pub struct JsxExpressionContainer {
+    expression: JsxExpression,
+}
+
+#[ast]
+pub struct JsxEmptyExpression {}
+
+#[ast]
+pub struct JsxText {
+    value: Wtf8Atom,
+}
+
+#[ast]
+pub struct JsxSpreadChild {
+    expression: Expr,
+}

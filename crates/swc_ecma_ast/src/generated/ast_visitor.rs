@@ -8,120 +8,8 @@ pub trait Visit<'a> {
     fn leave_node(&mut self, node_id: NodeId) {}
     #[inline]
     fn visit_program(&mut self, node: Program) {
-        <Program as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_module(&mut self, node: Module) {
         self.enter_node(node.node_id());
-        <Module as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_script(&mut self, node: Script) {
-        self.enter_node(node.node_id());
-        <Script as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_module_item(&mut self, node: ModuleItem) {
-        <ModuleItem as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_module_decl(&mut self, node: ModuleDecl) {
-        <ModuleDecl as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_import_decl(&mut self, node: ImportDecl) {
-        self.enter_node(node.node_id());
-        <ImportDecl as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_import_specifier(&mut self, node: ImportSpecifier) {
-        <ImportSpecifier as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_import_named_specifier(&mut self, node: ImportNamedSpecifier) {
-        self.enter_node(node.node_id());
-        <ImportNamedSpecifier as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_import_default_specifier(&mut self, node: ImportDefaultSpecifier) {
-        self.enter_node(node.node_id());
-        <ImportDefaultSpecifier as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_import_star_as_specifier(&mut self, node: ImportStarAsSpecifier) {
-        self.enter_node(node.node_id());
-        <ImportStarAsSpecifier as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_export_decl(&mut self, node: ExportDecl) {
-        self.enter_node(node.node_id());
-        <ExportDecl as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_named_export(&mut self, node: NamedExport) {
-        self.enter_node(node.node_id());
-        <NamedExport as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_export_specifier(&mut self, node: ExportSpecifier) {
-        <ExportSpecifier as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_export_namespace_specifier(&mut self, node: ExportNamespaceSpecifier) {
-        self.enter_node(node.node_id());
-        <ExportNamespaceSpecifier as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_module_export_name(&mut self, node: ModuleExportName) {
-        <ModuleExportName as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_export_default_specifier(&mut self, node: ExportDefaultSpecifier) {
-        self.enter_node(node.node_id());
-        <ExportDefaultSpecifier as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_export_named_specifier(&mut self, node: ExportNamedSpecifier) {
-        self.enter_node(node.node_id());
-        <ExportNamedSpecifier as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_export_default_decl(&mut self, node: ExportDefaultDecl) {
-        self.enter_node(node.node_id());
-        <ExportDefaultDecl as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_default_decl(&mut self, node: DefaultDecl) {
-        <DefaultDecl as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_export_default_expr(&mut self, node: ExportDefaultExpr) {
-        self.enter_node(node.node_id());
-        <ExportDefaultExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_export_all(&mut self, node: ExportAll) {
-        self.enter_node(node.node_id());
-        <ExportAll as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_block_stmt(&mut self, node: BlockStmt) {
-        self.enter_node(node.node_id());
-        <BlockStmt as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <Program as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
@@ -129,105 +17,255 @@ pub trait Visit<'a> {
         <Stmt as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_expr_stmt(&mut self, node: ExprStmt) {
+    fn visit_statement_list_item(&mut self, node: StatementListItem) {
+        <StatementListItem as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_decl(&mut self, node: Decl) {
+        <Decl as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_expr(&mut self, node: Expr) {
+        <Expr as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_binding_pattern(&mut self, node: BindingPattern) {
+        <BindingPattern as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_assignment_target(&mut self, node: AssignmentTarget) {
+        <AssignmentTarget as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_simple_assignment_target(&mut self, node: SimpleAssignmentTarget) {
+        <SimpleAssignmentTarget as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_property_key(&mut self, node: PropertyKey) {
+        <PropertyKey as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_module_export_name(&mut self, node: ModuleExportName) {
+        <ModuleExportName as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_argument(&mut self, node: Argument) {
+        <Argument as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_object_property_kind(&mut self, node: ObjectPropertyKind) {
+        <ObjectPropertyKind as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_for_statement_init(&mut self, node: ForStatementInit) {
+        <ForStatementInit as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_for_statement_left(&mut self, node: ForStatementLeft) {
+        <ForStatementLeft as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_arrow_function_body(&mut self, node: ArrowFunctionBody) {
+        <ArrowFunctionBody as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_formal_parameter_item(&mut self, node: FormalParameterItem) {
+        <FormalParameterItem as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_formal_parameter_pattern(&mut self, node: FormalParameterPattern) {
+        <FormalParameterPattern as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_class_element(&mut self, node: ClassElement) {
+        <ClassElement as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_import_declaration_specifier(&mut self, node: ImportDeclarationSpecifier) {
+        <ImportDeclarationSpecifier as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_export_default_declaration_kind(&mut self, node: ExportDefaultDeclarationKind) {
+        <ExportDefaultDeclarationKind as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_super(&mut self, node: Super) {
         self.enter_node(node.node_id());
-        <ExprStmt as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <Super as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_empty_stmt(&mut self, node: EmptyStmt) {
+    fn visit_this_expression(&mut self, node: ThisExpression) {
         self.enter_node(node.node_id());
-        <EmptyStmt as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ThisExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_debugger_stmt(&mut self, node: DebuggerStmt) {
+    fn visit_string_literal(&mut self, node: StringLiteral) {
         self.enter_node(node.node_id());
-        <DebuggerStmt as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <StringLiteral as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_with_stmt(&mut self, node: WithStmt) {
+    fn visit_numeric_literal(&mut self, node: NumericLiteral) {
         self.enter_node(node.node_id());
-        <WithStmt as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <NumericLiteral as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_return_stmt(&mut self, node: ReturnStmt) {
+    fn visit_big_int_literal(&mut self, node: BigIntLiteral) {
         self.enter_node(node.node_id());
-        <ReturnStmt as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <BigIntLiteral as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_labeled_stmt(&mut self, node: LabeledStmt) {
+    fn visit_boolean_literal(&mut self, node: BooleanLiteral) {
         self.enter_node(node.node_id());
-        <LabeledStmt as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <BooleanLiteral as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_break_stmt(&mut self, node: BreakStmt) {
+    fn visit_null_literal(&mut self, node: NullLiteral) {
         self.enter_node(node.node_id());
-        <BreakStmt as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <NullLiteral as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_continue_stmt(&mut self, node: ContinueStmt) {
+    fn visit_reg_exp_literal(&mut self, node: RegExpLiteral) {
         self.enter_node(node.node_id());
-        <ContinueStmt as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <RegExpLiteral as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_if_stmt(&mut self, node: IfStmt) {
+    fn visit_template_literal(&mut self, node: TemplateLiteral) {
         self.enter_node(node.node_id());
-        <IfStmt as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <TemplateLiteral as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_switch_stmt(&mut self, node: SwitchStmt) {
+    fn visit_template_element(&mut self, node: TemplateElement) {
         self.enter_node(node.node_id());
-        <SwitchStmt as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <TemplateElement as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_throw_stmt(&mut self, node: ThrowStmt) {
+    fn visit_identifier_reference(&mut self, node: IdentifierReference) {
         self.enter_node(node.node_id());
-        <ThrowStmt as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <IdentifierReference as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_try_stmt(&mut self, node: TryStmt) {
+    fn visit_private_identifier(&mut self, node: PrivateIdentifier) {
         self.enter_node(node.node_id());
-        <TryStmt as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <PrivateIdentifier as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_while_stmt(&mut self, node: WhileStmt) {
+    fn visit_binding_identifier(&mut self, node: BindingIdentifier) {
         self.enter_node(node.node_id());
-        <WhileStmt as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <BindingIdentifier as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_do_while_stmt(&mut self, node: DoWhileStmt) {
+    fn visit_identifier_name(&mut self, node: IdentifierName) {
         self.enter_node(node.node_id());
-        <DoWhileStmt as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <IdentifierName as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_for_stmt(&mut self, node: ForStmt) {
+    fn visit_label_identifier(&mut self, node: LabelIdentifier) {
         self.enter_node(node.node_id());
-        <ForStmt as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <LabelIdentifier as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_for_in_stmt(&mut self, node: ForInStmt) {
+    fn visit_assignment_pattern(&mut self, node: AssignmentPattern) {
         self.enter_node(node.node_id());
-        <ForInStmt as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <AssignmentPattern as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_for_of_stmt(&mut self, node: ForOfStmt) {
+    fn visit_binding_rest_element(&mut self, node: BindingRestElement) {
         self.enter_node(node.node_id());
-        <ForOfStmt as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <BindingRestElement as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_array_pattern(&mut self, node: ArrayPattern) {
+        self.enter_node(node.node_id());
+        <ArrayPattern as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_object_pattern(&mut self, node: ObjectPattern) {
+        self.enter_node(node.node_id());
+        <ObjectPattern as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_binding_property(&mut self, node: BindingProperty) {
+        self.enter_node(node.node_id());
+        <BindingProperty as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_binary_expression(&mut self, node: BinaryExpression) {
+        self.enter_node(node.node_id());
+        <BinaryExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_logical_expression(&mut self, node: LogicalExpression) {
+        self.enter_node(node.node_id());
+        <LogicalExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_conditional_expression(&mut self, node: ConditionalExpression) {
+        self.enter_node(node.node_id());
+        <ConditionalExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_unary_expression(&mut self, node: UnaryExpression) {
+        self.enter_node(node.node_id());
+        <UnaryExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_update_expression(&mut self, node: UpdateExpression) {
+        self.enter_node(node.node_id());
+        <UpdateExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_assignment_expression(&mut self, node: AssignmentExpression) {
+        self.enter_node(node.node_id());
+        <AssignmentExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_variable_declaration(&mut self, node: VariableDeclaration) {
+        self.enter_node(node.node_id());
+        <VariableDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_variable_declarator(&mut self, node: VariableDeclarator) {
+        self.enter_node(node.node_id());
+        <VariableDeclarator as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_if_statement(&mut self, node: IfStatement) {
+        self.enter_node(node.node_id());
+        <IfStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_switch_statement(&mut self, node: SwitchStatement) {
+        self.enter_node(node.node_id());
+        <SwitchStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
@@ -237,327 +275,87 @@ pub trait Visit<'a> {
         self.leave_node(node.node_id());
     }
     #[inline]
+    fn visit_for_statement(&mut self, node: ForStatement) {
+        self.enter_node(node.node_id());
+        <ForStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_for_in_statement(&mut self, node: ForInStatement) {
+        self.enter_node(node.node_id());
+        <ForInStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_for_of_statement(&mut self, node: ForOfStatement) {
+        self.enter_node(node.node_id());
+        <ForOfStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_try_statement(&mut self, node: TryStatement) {
+        self.enter_node(node.node_id());
+        <TryStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
     fn visit_catch_clause(&mut self, node: CatchClause) {
         self.enter_node(node.node_id());
         <CatchClause as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_for_head(&mut self, node: ForHead) {
-        <ForHead as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_var_decl_or_expr(&mut self, node: VarDeclOrExpr) {
-        <VarDeclOrExpr as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_decl(&mut self, node: Decl) {
-        <Decl as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_fn_decl(&mut self, node: FnDecl) {
+    fn visit_break_statement(&mut self, node: BreakStatement) {
         self.enter_node(node.node_id());
-        <FnDecl as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <BreakStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_class_decl(&mut self, node: ClassDecl) {
+    fn visit_continue_statement(&mut self, node: ContinueStatement) {
         self.enter_node(node.node_id());
-        <ClassDecl as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ContinueStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_var_decl(&mut self, node: VarDecl) {
+    fn visit_labeled_statement(&mut self, node: LabeledStatement) {
         self.enter_node(node.node_id());
-        <VarDecl as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <LabeledStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_var_declarator(&mut self, node: VarDeclarator) {
+    fn visit_expression_statement(&mut self, node: ExpressionStatement) {
         self.enter_node(node.node_id());
-        <VarDeclarator as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ExpressionStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_using_decl(&mut self, node: UsingDecl) {
+    fn visit_return_statement(&mut self, node: ReturnStatement) {
         self.enter_node(node.node_id());
-        <UsingDecl as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ReturnStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_expr(&mut self, node: Expr) {
-        <Expr as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_this_expr(&mut self, node: ThisExpr) {
+    fn visit_throw_statement(&mut self, node: ThrowStatement) {
         self.enter_node(node.node_id());
-        <ThisExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ThrowStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_array_lit(&mut self, node: ArrayLit) {
+    fn visit_debugger_statement(&mut self, node: DebuggerStatement) {
         self.enter_node(node.node_id());
-        <ArrayLit as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <DebuggerStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_object_lit(&mut self, node: ObjectLit) {
+    fn visit_empty_statement(&mut self, node: EmptyStatement) {
         self.enter_node(node.node_id());
-        <ObjectLit as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <EmptyStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_prop_or_spread(&mut self, node: PropOrSpread) {
-        <PropOrSpread as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_spread_element(&mut self, node: SpreadElement) {
+    fn visit_directive(&mut self, node: Directive) {
         self.enter_node(node.node_id());
-        <SpreadElement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_unary_expr(&mut self, node: UnaryExpr) {
-        self.enter_node(node.node_id());
-        <UnaryExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_update_expr(&mut self, node: UpdateExpr) {
-        self.enter_node(node.node_id());
-        <UpdateExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_bin_expr(&mut self, node: BinExpr) {
-        self.enter_node(node.node_id());
-        <BinExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_fn_expr(&mut self, node: FnExpr) {
-        self.enter_node(node.node_id());
-        <FnExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_class_expr(&mut self, node: ClassExpr) {
-        self.enter_node(node.node_id());
-        <ClassExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_assign_expr(&mut self, node: AssignExpr) {
-        self.enter_node(node.node_id());
-        <AssignExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_member_expr(&mut self, node: MemberExpr) {
-        self.enter_node(node.node_id());
-        <MemberExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_member_prop(&mut self, node: MemberProp) {
-        <MemberProp as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_super_prop_expr(&mut self, node: SuperPropExpr) {
-        self.enter_node(node.node_id());
-        <SuperPropExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_super_prop(&mut self, node: SuperProp) {
-        <SuperProp as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_cond_expr(&mut self, node: CondExpr) {
-        self.enter_node(node.node_id());
-        <CondExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_import_expr(&mut self, node: ImportExpr) {
-        self.enter_node(node.node_id());
-        <ImportExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_call_expr(&mut self, node: CallExpr) {
-        self.enter_node(node.node_id());
-        <CallExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_new_expr(&mut self, node: NewExpr) {
-        self.enter_node(node.node_id());
-        <NewExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_seq_expr(&mut self, node: SeqExpr) {
-        self.enter_node(node.node_id());
-        <SeqExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_arrow_expr(&mut self, node: ArrowExpr) {
-        self.enter_node(node.node_id());
-        <ArrowExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_yield_expr(&mut self, node: YieldExpr) {
-        self.enter_node(node.node_id());
-        <YieldExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_meta_prop_expr(&mut self, node: MetaPropExpr) {
-        self.enter_node(node.node_id());
-        <MetaPropExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_await_expr(&mut self, node: AwaitExpr) {
-        self.enter_node(node.node_id());
-        <AwaitExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_tpl(&mut self, node: Tpl) {
-        self.enter_node(node.node_id());
-        <Tpl as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_tagged_tpl(&mut self, node: TaggedTpl) {
-        self.enter_node(node.node_id());
-        <TaggedTpl as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_tpl_element(&mut self, node: TplElement) {
-        self.enter_node(node.node_id());
-        <TplElement as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_paren_expr(&mut self, node: ParenExpr) {
-        self.enter_node(node.node_id());
-        <ParenExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_callee(&mut self, node: Callee) {
-        <Callee as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_super(&mut self, node: Super) {
-        self.enter_node(node.node_id());
-        <Super as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_expr_or_spread(&mut self, node: ExprOrSpread) {
-        self.enter_node(node.node_id());
-        <ExprOrSpread as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_block_stmt_or_expr(&mut self, node: BlockStmtOrExpr) {
-        <BlockStmtOrExpr as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_assign_target(&mut self, node: AssignTarget) {
-        <AssignTarget as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_assign_target_pat(&mut self, node: AssignTargetPat) {
-        <AssignTargetPat as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_simple_assign_target(&mut self, node: SimpleAssignTarget) {
-        <SimpleAssignTarget as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_opt_chain_expr(&mut self, node: OptChainExpr) {
-        self.enter_node(node.node_id());
-        <OptChainExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_opt_chain_base(&mut self, node: OptChainBase) {
-        <OptChainBase as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_opt_call(&mut self, node: OptCall) {
-        self.enter_node(node.node_id());
-        <OptCall as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_invalid(&mut self, node: Invalid) {
-        self.enter_node(node.node_id());
-        <Invalid as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_function(&mut self, node: Function) {
-        self.enter_node(node.node_id());
-        <Function as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_param(&mut self, node: Param) {
-        self.enter_node(node.node_id());
-        <Param as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_param_or_ts_param_prop(&mut self, node: ParamOrTsParamProp) {
-        <ParamOrTsParamProp as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_class(&mut self, node: Class) {
-        self.enter_node(node.node_id());
-        <Class as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_class_member(&mut self, node: ClassMember) {
-        <ClassMember as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_class_prop(&mut self, node: ClassProp) {
-        self.enter_node(node.node_id());
-        <ClassProp as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_private_prop(&mut self, node: PrivateProp) {
-        self.enter_node(node.node_id());
-        <PrivateProp as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_class_method(&mut self, node: ClassMethod) {
-        self.enter_node(node.node_id());
-        <ClassMethod as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_private_method(&mut self, node: PrivateMethod) {
-        self.enter_node(node.node_id());
-        <PrivateMethod as VisitWith<'a, Self>>::visit_children_with(node, self);
-        self.leave_node(node.node_id());
-    }
-    #[inline]
-    fn visit_constructor(&mut self, node: Constructor) {
-        self.enter_node(node.node_id());
-        <Constructor as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <Directive as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
@@ -567,310 +365,884 @@ pub trait Visit<'a> {
         self.leave_node(node.node_id());
     }
     #[inline]
+    fn visit_class(&mut self, node: Class) {
+        self.enter_node(node.node_id());
+        <Class as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_class_body(&mut self, node: ClassBody) {
+        self.enter_node(node.node_id());
+        <ClassBody as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_method_definition(&mut self, node: MethodDefinition) {
+        self.enter_node(node.node_id());
+        <MethodDefinition as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_property_definition(&mut self, node: PropertyDefinition) {
+        self.enter_node(node.node_id());
+        <PropertyDefinition as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
     fn visit_static_block(&mut self, node: StaticBlock) {
         self.enter_node(node.node_id());
         <StaticBlock as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_key(&mut self, node: Key) {
-        <Key as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_auto_accessor(&mut self, node: AutoAccessor) {
+    fn visit_function(&mut self, node: Function) {
         self.enter_node(node.node_id());
-        <AutoAccessor as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <Function as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_prop(&mut self, node: Prop) {
-        <Prop as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_key_value_prop(&mut self, node: KeyValueProp) {
+    fn visit_function_body(&mut self, node: FunctionBody) {
         self.enter_node(node.node_id());
-        <KeyValueProp as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <FunctionBody as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_assign_prop(&mut self, node: AssignProp) {
+    fn visit_block_statement(&mut self, node: BlockStatement) {
         self.enter_node(node.node_id());
-        <AssignProp as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <BlockStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_getter_prop(&mut self, node: GetterProp) {
+    fn visit_while_statement(&mut self, node: WhileStatement) {
         self.enter_node(node.node_id());
-        <GetterProp as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <WhileStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_setter_prop(&mut self, node: SetterProp) {
+    fn visit_do_while_statement(&mut self, node: DoWhileStatement) {
         self.enter_node(node.node_id());
-        <SetterProp as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <DoWhileStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_method_prop(&mut self, node: MethodProp) {
+    fn visit_with_statement(&mut self, node: WithStatement) {
         self.enter_node(node.node_id());
-        <MethodProp as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <WithStatement as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_prop_name(&mut self, node: PropName) {
-        <PropName as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_computed_prop_name(&mut self, node: ComputedPropName) {
+    fn visit_formal_parameters(&mut self, node: FormalParameters) {
         self.enter_node(node.node_id());
-        <ComputedPropName as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <FormalParameters as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_pat(&mut self, node: Pat) {
-        <Pat as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_array_pat(&mut self, node: ArrayPat) {
+    fn visit_formal_parameter(&mut self, node: FormalParameter) {
         self.enter_node(node.node_id());
-        <ArrayPat as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <FormalParameter as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_object_pat(&mut self, node: ObjectPat) {
+    fn visit_array_expression(&mut self, node: ArrayExpression) {
         self.enter_node(node.node_id());
-        <ObjectPat as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ArrayExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_assign_pat(&mut self, node: AssignPat) {
+    fn visit_object_expression(&mut self, node: ObjectExpression) {
         self.enter_node(node.node_id());
-        <AssignPat as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ObjectExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_rest_pat(&mut self, node: RestPat) {
+    fn visit_spread_element(&mut self, node: SpreadElement) {
         self.enter_node(node.node_id());
-        <RestPat as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <SpreadElement as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_object_pat_prop(&mut self, node: ObjectPatProp) {
-        <ObjectPatProp as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_key_value_pat_prop(&mut self, node: KeyValuePatProp) {
+    fn visit_object_property(&mut self, node: ObjectProperty) {
         self.enter_node(node.node_id());
-        <KeyValuePatProp as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ObjectProperty as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_assign_pat_prop(&mut self, node: AssignPatProp) {
+    fn visit_parenthesized_expression(&mut self, node: ParenthesizedExpression) {
         self.enter_node(node.node_id());
-        <AssignPatProp as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ParenthesizedExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_ident(&mut self, node: Ident) {
+    fn visit_arrow_function_expression(&mut self, node: ArrowFunctionExpression) {
         self.enter_node(node.node_id());
-        <Ident as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ArrowFunctionExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_ident_name(&mut self, node: IdentName) {
+    fn visit_sequence_expression(&mut self, node: SequenceExpression) {
         self.enter_node(node.node_id());
-        <IdentName as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <SequenceExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_private_name(&mut self, node: PrivateName) {
+    fn visit_member_expression(&mut self, node: MemberExpression) {
         self.enter_node(node.node_id());
-        <PrivateName as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <MemberExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_binding_ident(&mut self, node: BindingIdent) {
+    fn visit_call_expression(&mut self, node: CallExpression) {
         self.enter_node(node.node_id());
-        <BindingIdent as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <CallExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_lit(&mut self, node: Lit) {
-        <Lit as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_str(&mut self, node: Str) {
+    fn visit_chain_expression(&mut self, node: ChainExpression) {
         self.enter_node(node.node_id());
-        <Str as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ChainExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_bool(&mut self, node: Bool) {
+    fn visit_tagged_template_expression(&mut self, node: TaggedTemplateExpression) {
         self.enter_node(node.node_id());
-        <Bool as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <TaggedTemplateExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_null(&mut self, node: Null) {
+    fn visit_new_expression(&mut self, node: NewExpression) {
         self.enter_node(node.node_id());
-        <Null as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <NewExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_number(&mut self, node: Number) {
+    fn visit_await_expression(&mut self, node: AwaitExpression) {
         self.enter_node(node.node_id());
-        <Number as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <AwaitExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_big_int(&mut self, node: BigInt) {
+    fn visit_yield_expression(&mut self, node: YieldExpression) {
         self.enter_node(node.node_id());
-        <BigInt as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <YieldExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_regex(&mut self, node: Regex) {
+    fn visit_meta_property(&mut self, node: MetaProperty) {
         self.enter_node(node.node_id());
-        <Regex as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <MetaProperty as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_jsx_object(&mut self, node: JSXObject) {
-        <JSXObject as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_jsx_member_expr(&mut self, node: JSXMemberExpr) {
+    fn visit_import_expression(&mut self, node: ImportExpression) {
         self.enter_node(node.node_id());
-        <JSXMemberExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ImportExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_jsx_namespaced_name(&mut self, node: JSXNamespacedName) {
+    fn visit_import_declaration(&mut self, node: ImportDeclaration) {
         self.enter_node(node.node_id());
-        <JSXNamespacedName as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ImportDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_jsx_empty_expr(&mut self, node: JSXEmptyExpr) {
+    fn visit_import_specifier(&mut self, node: ImportSpecifier) {
         self.enter_node(node.node_id());
-        <JSXEmptyExpr as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ImportSpecifier as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_jsx_expr_container(&mut self, node: JSXExprContainer) {
+    fn visit_import_default_specifier(&mut self, node: ImportDefaultSpecifier) {
         self.enter_node(node.node_id());
-        <JSXExprContainer as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ImportDefaultSpecifier as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_jsx_expr(&mut self, node: JSXExpr) {
-        <JSXExpr as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_jsx_spread_child(&mut self, node: JSXSpreadChild) {
+    fn visit_import_namespace_specifier(&mut self, node: ImportNamespaceSpecifier) {
         self.enter_node(node.node_id());
-        <JSXSpreadChild as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ImportNamespaceSpecifier as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_jsx_element_name(&mut self, node: JSXElementName) {
-        <JSXElementName as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_jsx_opening_element(&mut self, node: JSXOpeningElement) {
+    fn visit_import_attribute(&mut self, node: ImportAttribute) {
         self.enter_node(node.node_id());
-        <JSXOpeningElement as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ImportAttribute as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_jsx_attr_or_spread(&mut self, node: JSXAttrOrSpread) {
-        <JSXAttrOrSpread as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_jsx_closing_element(&mut self, node: JSXClosingElement) {
+    fn visit_export_named_declaration(&mut self, node: ExportNamedDeclaration) {
         self.enter_node(node.node_id());
-        <JSXClosingElement as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ExportNamedDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_jsx_attr(&mut self, node: JSXAttr) {
+    fn visit_export_default_declaration(&mut self, node: ExportDefaultDeclaration) {
         self.enter_node(node.node_id());
-        <JSXAttr as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ExportDefaultDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_jsx_attr_name(&mut self, node: JSXAttrName) {
-        <JSXAttrName as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_jsx_attr_value(&mut self, node: JSXAttrValue) {
-        <JSXAttrValue as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_jsx_text(&mut self, node: JSXText) {
+    fn visit_export_all_declaration(&mut self, node: ExportAllDeclaration) {
         self.enter_node(node.node_id());
-        <JSXText as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ExportAllDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_jsx_element(&mut self, node: JSXElement) {
+    fn visit_export_specifier(&mut self, node: ExportSpecifier) {
         self.enter_node(node.node_id());
-        <JSXElement as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <ExportSpecifier as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_jsx_element_child(&mut self, node: JSXElementChild) {
-        <JSXElementChild as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_jsx_fragment(&mut self, node: JSXFragment) {
+    fn visit_hashbang(&mut self, node: Hashbang) {
         self.enter_node(node.node_id());
-        <JSXFragment as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <Hashbang as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_jsx_opening_fragment(&mut self, node: JSXOpeningFragment) {
+    fn visit_ts_type(&mut self, node: TsType) {
+        <TsType as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_ts_type_name(&mut self, node: TsTypeName) {
+        <TsTypeName as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_ts_qualified_name_left(&mut self, node: TsQualifiedNameLeft) {
+        <TsQualifiedNameLeft as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_ts_import_type_qualifier(&mut self, node: TsImportTypeQualifier) {
+        <TsImportTypeQualifier as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_ts_type_query_expr_name(&mut self, node: TsTypeQueryExprName) {
+        <TsTypeQueryExprName as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_ts_literal(&mut self, node: TsLiteral) {
+        <TsLiteral as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_ts_tuple_element(&mut self, node: TsTupleElement) {
+        <TsTupleElement as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_ts_type_element(&mut self, node: TsTypeElement) {
+        <TsTypeElement as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_ts_type_predicate_name(&mut self, node: TsTypePredicateName) {
+        <TsTypePredicateName as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_ts_enum_member_name(&mut self, node: TsEnumMemberName) {
+        <TsEnumMemberName as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_ts_module_name(&mut self, node: TsModuleName) {
+        <TsModuleName as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_ts_module_body(&mut self, node: TsModuleBody) {
+        <TsModuleBody as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_ts_module_reference(&mut self, node: TsModuleReference) {
+        <TsModuleReference as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_ts_type_annotation(&mut self, node: TsTypeAnnotation) {
         self.enter_node(node.node_id());
-        <JSXOpeningFragment as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <TsTypeAnnotation as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_jsx_closing_fragment(&mut self, node: JSXClosingFragment) {
+    fn visit_ts_any_keyword(&mut self, node: TsAnyKeyword) {
         self.enter_node(node.node_id());
-        <JSXClosingFragment as VisitWith<'a, Self>>::visit_children_with(node, self);
+        <TsAnyKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_module_items(&mut self, node: TypedSubRange<ModuleItem>) {
-        <TypedSubRange<ModuleItem> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_ts_unknown_keyword(&mut self, node: TsUnknownKeyword) {
+        self.enter_node(node.node_id());
+        <TsUnknownKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_stmts(&mut self, node: TypedSubRange<Stmt>) {
-        <TypedSubRange<Stmt> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_ts_never_keyword(&mut self, node: TsNeverKeyword) {
+        self.enter_node(node.node_id());
+        <TsNeverKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_import_specifiers(&mut self, node: TypedSubRange<ImportSpecifier>) {
-        <TypedSubRange<ImportSpecifier> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_ts_void_keyword(&mut self, node: TsVoidKeyword) {
+        self.enter_node(node.node_id());
+        <TsVoidKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_opt_object_lit(&mut self, node: Option<ObjectLit>) {
-        <Option<ObjectLit> as VisitWith<'a, Self>>::visit_children_with(node, self);
+    fn visit_ts_null_keyword(&mut self, node: TsNullKeyword) {
+        self.enter_node(node.node_id());
+        <TsNullKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_export_specifiers(&mut self, node: TypedSubRange<ExportSpecifier>) {
-        <TypedSubRange<ExportSpecifier> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_ts_undefined_keyword(&mut self, node: TsUndefinedKeyword) {
+        self.enter_node(node.node_id());
+        <TsUndefinedKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_opt_str(&mut self, node: Option<Str>) {
-        <Option<Str> as VisitWith<'a, Self>>::visit_children_with(node, self);
+    fn visit_ts_string_keyword(&mut self, node: TsStringKeyword) {
+        self.enter_node(node.node_id());
+        <TsStringKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_number_keyword(&mut self, node: TsNumberKeyword) {
+        self.enter_node(node.node_id());
+        <TsNumberKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_big_int_keyword(&mut self, node: TsBigIntKeyword) {
+        self.enter_node(node.node_id());
+        <TsBigIntKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_boolean_keyword(&mut self, node: TsBooleanKeyword) {
+        self.enter_node(node.node_id());
+        <TsBooleanKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_symbol_keyword(&mut self, node: TsSymbolKeyword) {
+        self.enter_node(node.node_id());
+        <TsSymbolKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_object_keyword(&mut self, node: TsObjectKeyword) {
+        self.enter_node(node.node_id());
+        <TsObjectKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_intrinsic_keyword(&mut self, node: TsIntrinsicKeyword) {
+        self.enter_node(node.node_id());
+        <TsIntrinsicKeyword as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_this_type(&mut self, node: TsThisType) {
+        self.enter_node(node.node_id());
+        <TsThisType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_type_reference(&mut self, node: TsTypeReference) {
+        self.enter_node(node.node_id());
+        <TsTypeReference as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_qualified_name(&mut self, node: TsQualifiedName) {
+        self.enter_node(node.node_id());
+        <TsQualifiedName as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_type_query(&mut self, node: TsTypeQuery) {
+        self.enter_node(node.node_id());
+        <TsTypeQuery as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_import_type(&mut self, node: TsImportType) {
+        self.enter_node(node.node_id());
+        <TsImportType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_type_parameter(&mut self, node: TsTypeParameter) {
+        self.enter_node(node.node_id());
+        <TsTypeParameter as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_type_parameter_declaration(&mut self, node: TsTypeParameterDeclaration) {
+        self.enter_node(node.node_id());
+        <TsTypeParameterDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_type_parameter_instantiation(&mut self, node: TsTypeParameterInstantiation) {
+        self.enter_node(node.node_id());
+        <TsTypeParameterInstantiation as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_literal_type(&mut self, node: TsLiteralType) {
+        self.enter_node(node.node_id());
+        <TsLiteralType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_template_literal_type(&mut self, node: TsTemplateLiteralType) {
+        self.enter_node(node.node_id());
+        <TsTemplateLiteralType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_array_type(&mut self, node: TsArrayType) {
+        self.enter_node(node.node_id());
+        <TsArrayType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_indexed_access_type(&mut self, node: TsIndexedAccessType) {
+        self.enter_node(node.node_id());
+        <TsIndexedAccessType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_tuple_type(&mut self, node: TsTupleType) {
+        self.enter_node(node.node_id());
+        <TsTupleType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_named_tuple_member(&mut self, node: TsNamedTupleMember) {
+        self.enter_node(node.node_id());
+        <TsNamedTupleMember as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_optional_type(&mut self, node: TsOptionalType) {
+        self.enter_node(node.node_id());
+        <TsOptionalType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_rest_type(&mut self, node: TsRestType) {
+        self.enter_node(node.node_id());
+        <TsRestType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_js_doc_nullable_type(&mut self, node: TsJsDocNullableType) {
+        self.enter_node(node.node_id());
+        <TsJsDocNullableType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_js_doc_non_nullable_type(&mut self, node: TsJsDocNonNullableType) {
+        self.enter_node(node.node_id());
+        <TsJsDocNonNullableType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_js_doc_unknown_type(&mut self, node: TsJsDocUnknownType) {
+        self.enter_node(node.node_id());
+        <TsJsDocUnknownType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_union_type(&mut self, node: TsUnionType) {
+        self.enter_node(node.node_id());
+        <TsUnionType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_intersection_type(&mut self, node: TsIntersectionType) {
+        self.enter_node(node.node_id());
+        <TsIntersectionType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_conditional_type(&mut self, node: TsConditionalType) {
+        self.enter_node(node.node_id());
+        <TsConditionalType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_infer_type(&mut self, node: TsInferType) {
+        self.enter_node(node.node_id());
+        <TsInferType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_type_operator(&mut self, node: TsTypeOperator) {
+        self.enter_node(node.node_id());
+        <TsTypeOperator as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_parenthesized_type(&mut self, node: TsParenthesizedType) {
+        self.enter_node(node.node_id());
+        <TsParenthesizedType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_function_type(&mut self, node: TsFunctionType) {
+        self.enter_node(node.node_id());
+        <TsFunctionType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_constructor_type(&mut self, node: TsConstructorType) {
+        self.enter_node(node.node_id());
+        <TsConstructorType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_type_predicate(&mut self, node: TsTypePredicate) {
+        self.enter_node(node.node_id());
+        <TsTypePredicate as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_type_literal(&mut self, node: TsTypeLiteral) {
+        self.enter_node(node.node_id());
+        <TsTypeLiteral as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_mapped_type(&mut self, node: TsMappedType) {
+        self.enter_node(node.node_id());
+        <TsMappedType as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_property_signature(&mut self, node: TsPropertySignature) {
+        self.enter_node(node.node_id());
+        <TsPropertySignature as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_method_signature(&mut self, node: TsMethodSignature) {
+        self.enter_node(node.node_id());
+        <TsMethodSignature as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_call_signature_declaration(&mut self, node: TsCallSignatureDeclaration) {
+        self.enter_node(node.node_id());
+        <TsCallSignatureDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_construct_signature_declaration(&mut self, node: TsConstructSignatureDeclaration) {
+        self.enter_node(node.node_id());
+        <TsConstructSignatureDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_index_signature(&mut self, node: TsIndexSignature) {
+        self.enter_node(node.node_id());
+        <TsIndexSignature as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_type_alias_declaration(&mut self, node: TsTypeAliasDeclaration) {
+        self.enter_node(node.node_id());
+        <TsTypeAliasDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_interface_declaration(&mut self, node: TsInterfaceDeclaration) {
+        self.enter_node(node.node_id());
+        <TsInterfaceDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_interface_body(&mut self, node: TsInterfaceBody) {
+        self.enter_node(node.node_id());
+        <TsInterfaceBody as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_interface_heritage(&mut self, node: TsInterfaceHeritage) {
+        self.enter_node(node.node_id());
+        <TsInterfaceHeritage as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_class_implements(&mut self, node: TsClassImplements) {
+        self.enter_node(node.node_id());
+        <TsClassImplements as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_enum_declaration(&mut self, node: TsEnumDeclaration) {
+        self.enter_node(node.node_id());
+        <TsEnumDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_enum_body(&mut self, node: TsEnumBody) {
+        self.enter_node(node.node_id());
+        <TsEnumBody as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_enum_member(&mut self, node: TsEnumMember) {
+        self.enter_node(node.node_id());
+        <TsEnumMember as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_module_declaration(&mut self, node: TsModuleDeclaration) {
+        self.enter_node(node.node_id());
+        <TsModuleDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_module_block(&mut self, node: TsModuleBlock) {
+        self.enter_node(node.node_id());
+        <TsModuleBlock as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_global_declaration(&mut self, node: TsGlobalDeclaration) {
+        self.enter_node(node.node_id());
+        <TsGlobalDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_parameter_property(&mut self, node: TsParameterProperty) {
+        self.enter_node(node.node_id());
+        <TsParameterProperty as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_this_parameter(&mut self, node: TsThisParameter) {
+        self.enter_node(node.node_id());
+        <TsThisParameter as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_as_expression(&mut self, node: TsAsExpression) {
+        self.enter_node(node.node_id());
+        <TsAsExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_satisfies_expression(&mut self, node: TsSatisfiesExpression) {
+        self.enter_node(node.node_id());
+        <TsSatisfiesExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_type_assertion(&mut self, node: TsTypeAssertion) {
+        self.enter_node(node.node_id());
+        <TsTypeAssertion as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_non_null_expression(&mut self, node: TsNonNullExpression) {
+        self.enter_node(node.node_id());
+        <TsNonNullExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_instantiation_expression(&mut self, node: TsInstantiationExpression) {
+        self.enter_node(node.node_id());
+        <TsInstantiationExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_export_assignment(&mut self, node: TsExportAssignment) {
+        self.enter_node(node.node_id());
+        <TsExportAssignment as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_namespace_export_declaration(&mut self, node: TsNamespaceExportDeclaration) {
+        self.enter_node(node.node_id());
+        <TsNamespaceExportDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_import_equals_declaration(&mut self, node: TsImportEqualsDeclaration) {
+        self.enter_node(node.node_id());
+        <TsImportEqualsDeclaration as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_external_module_reference(&mut self, node: TsExternalModuleReference) {
+        self.enter_node(node.node_id());
+        <TsExternalModuleReference as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_jsx_element_name(&mut self, node: JsxElementName) {
+        <JsxElementName as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_jsx_member_expression_object(&mut self, node: JsxMemberExpressionObject) {
+        <JsxMemberExpressionObject as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_jsx_attribute_name(&mut self, node: JsxAttributeName) {
+        <JsxAttributeName as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_jsx_attribute_item(&mut self, node: JsxAttributeItem) {
+        <JsxAttributeItem as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_jsx_attribute_value(&mut self, node: JsxAttributeValue) {
+        <JsxAttributeValue as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_jsx_expression(&mut self, node: JsxExpression) {
+        <JsxExpression as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_jsx_child(&mut self, node: JsxChild) {
+        <JsxChild as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_jsx_element(&mut self, node: JsxElement) {
+        self.enter_node(node.node_id());
+        <JsxElement as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_jsx_opening_element(&mut self, node: JsxOpeningElement) {
+        self.enter_node(node.node_id());
+        <JsxOpeningElement as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_jsx_closing_element(&mut self, node: JsxClosingElement) {
+        self.enter_node(node.node_id());
+        <JsxClosingElement as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_jsx_fragment(&mut self, node: JsxFragment) {
+        self.enter_node(node.node_id());
+        <JsxFragment as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_jsx_opening_fragment(&mut self, node: JsxOpeningFragment) {
+        self.enter_node(node.node_id());
+        <JsxOpeningFragment as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_jsx_closing_fragment(&mut self, node: JsxClosingFragment) {
+        self.enter_node(node.node_id());
+        <JsxClosingFragment as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_jsx_identifier(&mut self, node: JsxIdentifier) {
+        self.enter_node(node.node_id());
+        <JsxIdentifier as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_jsx_namespaced_name(&mut self, node: JsxNamespacedName) {
+        self.enter_node(node.node_id());
+        <JsxNamespacedName as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_jsx_member_expression(&mut self, node: JsxMemberExpression) {
+        self.enter_node(node.node_id());
+        <JsxMemberExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_jsx_attribute(&mut self, node: JsxAttribute) {
+        self.enter_node(node.node_id());
+        <JsxAttribute as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_jsx_spread_attribute(&mut self, node: JsxSpreadAttribute) {
+        self.enter_node(node.node_id());
+        <JsxSpreadAttribute as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_jsx_expression_container(&mut self, node: JsxExpressionContainer) {
+        self.enter_node(node.node_id());
+        <JsxExpressionContainer as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_jsx_empty_expression(&mut self, node: JsxEmptyExpression) {
+        self.enter_node(node.node_id());
+        <JsxEmptyExpression as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_jsx_text(&mut self, node: JsxText) {
+        self.enter_node(node.node_id());
+        <JsxText as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_jsx_spread_child(&mut self, node: JsxSpreadChild) {
+        self.enter_node(node.node_id());
+        <JsxSpreadChild as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_statement_list_items(&mut self, node: TypedSubRange<StatementListItem>) {
+        <TypedSubRange<StatementListItem> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_opt_hashbang(&mut self, node: Option<Hashbang>) {
+        <Option<Hashbang> as VisitWith<'a, Self>>::visit_children_with(node, self);
+    }
+    #[inline]
+    fn visit_template_elements(&mut self, node: TypedSubRange<TemplateElement>) {
+        <TypedSubRange<TemplateElement> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_exprs(&mut self, node: TypedSubRange<Expr>) {
+        <TypedSubRange<Expr> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_decorators(&mut self, node: TypedSubRange<Decorator>) {
+        <TypedSubRange<Decorator> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_opt_ts_type_annotation(&mut self, node: Option<TsTypeAnnotation>) {
+        <Option<TsTypeAnnotation> as VisitWith<'a, Self>>::visit_children_with(node, self);
+    }
+    #[inline]
+    fn visit_opt_binding_pattern(&mut self, node: Option<BindingPattern>) {
+        <Option<BindingPattern> as VisitWith<'a, Self>>::visit_children_with(node, self);
+    }
+    #[inline]
+    fn visit_opt_vec_binding_patterns(&mut self, node: TypedSubRange<Option<BindingPattern>>) {
+        <TypedSubRange<Option<BindingPattern>> as VisitWith<'a, Self>>::visit_children_with(
+            node, self,
+        )
+    }
+    #[inline]
+    fn visit_opt_binding_rest_element(&mut self, node: Option<BindingRestElement>) {
+        <Option<BindingRestElement> as VisitWith<'a, Self>>::visit_children_with(node, self);
+    }
+    #[inline]
+    fn visit_binding_propertys(&mut self, node: TypedSubRange<BindingProperty>) {
+        <TypedSubRange<BindingProperty> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_variable_declarators(&mut self, node: TypedSubRange<VariableDeclarator>) {
+        <TypedSubRange<VariableDeclarator> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
     fn visit_opt_expr(&mut self, node: Option<Expr>) {
         <Option<Expr> as VisitWith<'a, Self>>::visit_children_with(node, self);
-    }
-    #[inline]
-    fn visit_opt_ident(&mut self, node: Option<Ident>) {
-        <Option<Ident> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
     fn visit_opt_stmt(&mut self, node: Option<Stmt>) {
@@ -881,94 +1253,163 @@ pub trait Visit<'a> {
         <TypedSubRange<SwitchCase> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
+    fn visit_stmts(&mut self, node: TypedSubRange<Stmt>) {
+        <TypedSubRange<Stmt> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_opt_for_statement_init(&mut self, node: Option<ForStatementInit>) {
+        <Option<ForStatementInit> as VisitWith<'a, Self>>::visit_children_with(node, self);
+    }
+    #[inline]
     fn visit_opt_catch_clause(&mut self, node: Option<CatchClause>) {
         <Option<CatchClause> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
-    fn visit_opt_block_stmt(&mut self, node: Option<BlockStmt>) {
-        <Option<BlockStmt> as VisitWith<'a, Self>>::visit_children_with(node, self);
+    fn visit_opt_block_statement(&mut self, node: Option<BlockStatement>) {
+        <Option<BlockStatement> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
-    fn visit_opt_var_decl_or_expr(&mut self, node: Option<VarDeclOrExpr>) {
-        <Option<VarDeclOrExpr> as VisitWith<'a, Self>>::visit_children_with(node, self);
+    fn visit_opt_label_identifier(&mut self, node: Option<LabelIdentifier>) {
+        <Option<LabelIdentifier> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
-    fn visit_opt_pat(&mut self, node: Option<Pat>) {
-        <Option<Pat> as VisitWith<'a, Self>>::visit_children_with(node, self);
+    fn visit_opt_binding_identifier(&mut self, node: Option<BindingIdentifier>) {
+        <Option<BindingIdentifier> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
-    fn visit_var_declarators(&mut self, node: TypedSubRange<VarDeclarator>) {
-        <TypedSubRange<VarDeclarator> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_opt_ts_type_parameter_declaration(
+        &mut self,
+        node: Option<TsTypeParameterDeclaration>,
+    ) {
+        <Option<TsTypeParameterDeclaration> as VisitWith<'a, Self>>::visit_children_with(
+            node, self,
+        );
     }
     #[inline]
-    fn visit_opt_expr_or_spread(&mut self, node: Option<ExprOrSpread>) {
-        <Option<ExprOrSpread> as VisitWith<'a, Self>>::visit_children_with(node, self);
+    fn visit_opt_ts_type_parameter_instantiation(
+        &mut self,
+        node: Option<TsTypeParameterInstantiation>,
+    ) {
+        <Option<TsTypeParameterInstantiation> as VisitWith<'a, Self>>::visit_children_with(
+            node, self,
+        );
     }
     #[inline]
-    fn visit_opt_vec_expr_or_spreads(&mut self, node: TypedSubRange<Option<ExprOrSpread>>) {
-        <TypedSubRange<Option<ExprOrSpread>> as VisitWith<'a, Self>>::visit_children_with(
+    fn visit_ts_class_implementss(&mut self, node: TypedSubRange<TsClassImplements>) {
+        <TypedSubRange<TsClassImplements> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_class_elements(&mut self, node: TypedSubRange<ClassElement>) {
+        <TypedSubRange<ClassElement> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_opt_function_body(&mut self, node: Option<FunctionBody>) {
+        <Option<FunctionBody> as VisitWith<'a, Self>>::visit_children_with(node, self);
+    }
+    #[inline]
+    fn visit_formal_parameter_items(&mut self, node: TypedSubRange<FormalParameterItem>) {
+        <TypedSubRange<FormalParameterItem> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_opt_argument(&mut self, node: Option<Argument>) {
+        <Option<Argument> as VisitWith<'a, Self>>::visit_children_with(node, self);
+    }
+    #[inline]
+    fn visit_opt_vec_arguments(&mut self, node: TypedSubRange<Option<Argument>>) {
+        <TypedSubRange<Option<Argument>> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_object_property_kinds(&mut self, node: TypedSubRange<ObjectPropertyKind>) {
+        <TypedSubRange<ObjectPropertyKind> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_arguments(&mut self, node: TypedSubRange<Argument>) {
+        <TypedSubRange<Argument> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_import_declaration_specifiers(
+        &mut self,
+        node: TypedSubRange<ImportDeclarationSpecifier>,
+    ) {
+        <TypedSubRange<ImportDeclarationSpecifier> as VisitWith<'a, Self>>::visit_children_with(
             node, self,
         )
     }
     #[inline]
-    fn visit_prop_or_spreads(&mut self, node: TypedSubRange<PropOrSpread>) {
-        <TypedSubRange<PropOrSpread> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_import_attributes(&mut self, node: TypedSubRange<ImportAttribute>) {
+        <TypedSubRange<ImportAttribute> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_expr_or_spreads(&mut self, node: TypedSubRange<ExprOrSpread>) {
-        <TypedSubRange<ExprOrSpread> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_opt_decl(&mut self, node: Option<Decl>) {
+        <Option<Decl> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
-    fn visit_exprs(&mut self, node: TypedSubRange<Expr>) {
-        <TypedSubRange<Expr> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_export_specifiers(&mut self, node: TypedSubRange<ExportSpecifier>) {
+        <TypedSubRange<ExportSpecifier> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_pats(&mut self, node: TypedSubRange<Pat>) {
-        <TypedSubRange<Pat> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_opt_string_literal(&mut self, node: Option<StringLiteral>) {
+        <Option<StringLiteral> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
-    fn visit_tpl_elements(&mut self, node: TypedSubRange<TplElement>) {
-        <TypedSubRange<TplElement> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_opt_module_export_name(&mut self, node: Option<ModuleExportName>) {
+        <Option<ModuleExportName> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
-    fn visit_params(&mut self, node: TypedSubRange<Param>) {
-        <TypedSubRange<Param> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_opt_ts_import_type_qualifier(&mut self, node: Option<TsImportTypeQualifier>) {
+        <Option<TsImportTypeQualifier> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
-    fn visit_decorators(&mut self, node: TypedSubRange<Decorator>) {
-        <TypedSubRange<Decorator> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_opt_ts_type(&mut self, node: Option<TsType>) {
+        <Option<TsType> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
-    fn visit_class_members(&mut self, node: TypedSubRange<ClassMember>) {
-        <TypedSubRange<ClassMember> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_ts_type_parameters(&mut self, node: TypedSubRange<TsTypeParameter>) {
+        <TypedSubRange<TsTypeParameter> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_param_or_ts_param_props(&mut self, node: TypedSubRange<ParamOrTsParamProp>) {
-        <TypedSubRange<ParamOrTsParamProp> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_ts_types(&mut self, node: TypedSubRange<TsType>) {
+        <TypedSubRange<TsType> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_opt_vec_pats(&mut self, node: TypedSubRange<Option<Pat>>) {
-        <TypedSubRange<Option<Pat>> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_ts_tuple_elements(&mut self, node: TypedSubRange<TsTupleElement>) {
+        <TypedSubRange<TsTupleElement> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_object_pat_props(&mut self, node: TypedSubRange<ObjectPatProp>) {
-        <TypedSubRange<ObjectPatProp> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_ts_type_elements(&mut self, node: TypedSubRange<TsTypeElement>) {
+        <TypedSubRange<TsTypeElement> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_jsx_attr_or_spreads(&mut self, node: TypedSubRange<JSXAttrOrSpread>) {
-        <TypedSubRange<JSXAttrOrSpread> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_binding_identifiers(&mut self, node: TypedSubRange<BindingIdentifier>) {
+        <TypedSubRange<BindingIdentifier> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_opt_jsx_attr_value(&mut self, node: Option<JSXAttrValue>) {
-        <Option<JSXAttrValue> as VisitWith<'a, Self>>::visit_children_with(node, self);
+    fn visit_ts_interface_heritages(&mut self, node: TypedSubRange<TsInterfaceHeritage>) {
+        <TypedSubRange<TsInterfaceHeritage> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_jsx_element_childs(&mut self, node: TypedSubRange<JSXElementChild>) {
-        <TypedSubRange<JSXElementChild> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_ts_enum_members(&mut self, node: TypedSubRange<TsEnumMember>) {
+        <TypedSubRange<TsEnumMember> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_opt_jsx_closing_element(&mut self, node: Option<JSXClosingElement>) {
-        <Option<JSXClosingElement> as VisitWith<'a, Self>>::visit_children_with(node, self);
+    fn visit_opt_ts_module_body(&mut self, node: Option<TsModuleBody>) {
+        <Option<TsModuleBody> as VisitWith<'a, Self>>::visit_children_with(node, self);
+    }
+    #[inline]
+    fn visit_jsx_childs(&mut self, node: TypedSubRange<JsxChild>) {
+        <TypedSubRange<JsxChild> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_opt_jsx_closing_element(&mut self, node: Option<JsxClosingElement>) {
+        <Option<JsxClosingElement> as VisitWith<'a, Self>>::visit_children_with(node, self);
+    }
+    #[inline]
+    fn visit_jsx_attribute_items(&mut self, node: TypedSubRange<JsxAttributeItem>) {
+        <TypedSubRange<JsxAttributeItem> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_opt_jsx_attribute_value(&mut self, node: Option<JsxAttributeValue>) {
+        <Option<JsxAttributeValue> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
 }
 pub trait VisitWith<'a, V: ?Sized + Visit<'a>> {
@@ -982,297 +1423,10 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Program {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().program_data(self) {
-            ProgramData::Module(it) => <Module as VisitWith<'a, V>>::visit_with(it, visitor),
-            ProgramData::Script(it) => <Script as VisitWith<'a, V>>::visit_with(it, visitor),
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Module {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_module(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.body(visitor.ast());
-        <TypedSubRange<ModuleItem> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Script {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_script(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.body(visitor.ast());
-        <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ModuleItem {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_module_item(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().module_item_data(self) {
-            ModuleItemData::ModuleDecl(it) => {
-                <ModuleDecl as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ModuleItemData::Stmt(it) => <Stmt as VisitWith<'a, V>>::visit_with(it, visitor),
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ModuleDecl {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_module_decl(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().module_decl_data(self) {
-            ModuleDeclData::Import(it) => <ImportDecl as VisitWith<'a, V>>::visit_with(it, visitor),
-            ModuleDeclData::ExportDecl(it) => {
-                <ExportDecl as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ModuleDeclData::ExportNamed(it) => {
-                <NamedExport as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ModuleDeclData::ExportDefaultDecl(it) => {
-                <ExportDefaultDecl as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ModuleDeclData::ExportDefaultExpr(it) => {
-                <ExportDefaultExpr as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ModuleDeclData::ExportAll(it) => {
-                <ExportAll as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportDecl {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_import_decl(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.specifiers(visitor.ast());
-        let field_value_1 = self.src(visitor.ast());
-        let field_value_3 = self.with(visitor.ast());
-        <TypedSubRange<ImportSpecifier> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Str as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Option<ObjectLit> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportSpecifier {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_import_specifier(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().import_specifier_data(self) {
-            ImportSpecifierData::Named(it) => {
-                <ImportNamedSpecifier as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ImportSpecifierData::Default(it) => {
-                <ImportDefaultSpecifier as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ImportSpecifierData::Namespace(it) => {
-                <ImportStarAsSpecifier as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportNamedSpecifier {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_import_named_specifier(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.local(visitor.ast());
-        let field_value_1 = self.imported(visitor.ast());
-        <Ident as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <ModuleExportName as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportDefaultSpecifier {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_import_default_specifier(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.local(visitor.ast());
-        <Ident as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportStarAsSpecifier {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_import_star_as_specifier(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.local(visitor.ast());
-        <Ident as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportDecl {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_export_decl(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.decl(visitor.ast());
-        <Decl as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for NamedExport {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_named_export(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.specifiers(visitor.ast());
-        let field_value_1 = self.src(visitor.ast());
-        let field_value_3 = self.with(visitor.ast());
-        <TypedSubRange<ExportSpecifier> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Option<Str> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Option<ObjectLit> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportSpecifier {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_export_specifier(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().export_specifier_data(self) {
-            ExportSpecifierData::Namespace(it) => {
-                <ExportNamespaceSpecifier as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ExportSpecifierData::Default(it) => {
-                <ExportDefaultSpecifier as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ExportSpecifierData::Named(it) => {
-                <ExportNamedSpecifier as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportNamespaceSpecifier {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_export_namespace_specifier(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.name(visitor.ast());
-        <ModuleExportName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ModuleExportName {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_module_export_name(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().module_export_name_data(self) {
-            ModuleExportNameData::Ident(it) => <Ident as VisitWith<'a, V>>::visit_with(it, visitor),
-            ModuleExportNameData::Str(it) => <Str as VisitWith<'a, V>>::visit_with(it, visitor),
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportDefaultSpecifier {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_export_default_specifier(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.exported(visitor.ast());
-        <Ident as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportNamedSpecifier {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_export_named_specifier(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.orig(visitor.ast());
-        let field_value_1 = self.exported(visitor.ast());
-        <ModuleExportName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <ModuleExportName as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportDefaultDecl {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_export_default_decl(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.decl(visitor.ast());
-        <DefaultDecl as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for DefaultDecl {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_default_decl(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().default_decl_data(self) {
-            DefaultDeclData::Class(it) => <ClassExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            DefaultDeclData::Fn(it) => <FnExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportDefaultExpr {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_export_default_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.expr(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportAll {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_export_all(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.src(visitor.ast());
-        let field_value_2 = self.with(visitor.ast());
-        <Str as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Option<ObjectLit> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BlockStmt {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_block_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.stmts(visitor.ast());
-        <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        let field_value_1 = self.body(visitor.ast());
+        let field_value_2 = self.hashbang(visitor.ast());
+        <TypedSubRange<StatementListItem> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<Hashbang> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Stmt {
@@ -1283,293 +1437,95 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Stmt {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match visitor.ast().stmt_data(self) {
-            StmtData::Block(it) => <BlockStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::Empty(it) => <EmptyStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::Debugger(it) => <DebuggerStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::With(it) => <WithStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::Return(it) => <ReturnStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::Labeled(it) => <LabeledStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::Break(it) => <BreakStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::Continue(it) => <ContinueStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::If(it) => <IfStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::Switch(it) => <SwitchStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::Throw(it) => <ThrowStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::Try(it) => <TryStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::While(it) => <WhileStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::DoWhile(it) => <DoWhileStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::For(it) => <ForStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::ForIn(it) => <ForInStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::ForOf(it) => <ForOfStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::Decl(it) => <Decl as VisitWith<'a, V>>::visit_with(it, visitor),
-            StmtData::Expr(it) => <ExprStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExprStmt {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_expr_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.expr(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for EmptyStmt {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_empty_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for DebuggerStmt {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_debugger_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for WithStmt {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_with_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.obj(visitor.ast());
-        let field_value_1 = self.body(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Stmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ReturnStmt {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_return_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.arg(visitor.ast());
-        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for LabeledStmt {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_labeled_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.label(visitor.ast());
-        let field_value_1 = self.body(visitor.ast());
-        <Ident as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Stmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BreakStmt {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_break_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.label(visitor.ast());
-        <Option<Ident> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ContinueStmt {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_continue_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.label(visitor.ast());
-        <Option<Ident> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for IfStmt {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_if_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.test(visitor.ast());
-        let field_value_1 = self.cons(visitor.ast());
-        let field_value_2 = self.alt(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Stmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Option<Stmt> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SwitchStmt {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_switch_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.discriminant(visitor.ast());
-        let field_value_1 = self.cases(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<SwitchCase> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ThrowStmt {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_throw_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.arg(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TryStmt {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_try_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.block(visitor.ast());
-        let field_value_1 = self.handler(visitor.ast());
-        let field_value_2 = self.finalizer(visitor.ast());
-        <BlockStmt as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Option<CatchClause> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Option<BlockStmt> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for WhileStmt {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_while_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.test(visitor.ast());
-        let field_value_1 = self.body(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Stmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for DoWhileStmt {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_do_while_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.test(visitor.ast());
-        let field_value_1 = self.body(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Stmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForStmt {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_for_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.init(visitor.ast());
-        let field_value_1 = self.test(visitor.ast());
-        let field_value_2 = self.update(visitor.ast());
-        let field_value_3 = self.body(visitor.ast());
-        <Option<VarDeclOrExpr> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
-        <Stmt as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForInStmt {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_for_in_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.left(visitor.ast());
-        let field_value_1 = self.right(visitor.ast());
-        let field_value_2 = self.body(visitor.ast());
-        <ForHead as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Stmt as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForOfStmt {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_for_of_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_1 = self.left(visitor.ast());
-        let field_value_2 = self.right(visitor.ast());
-        let field_value_3 = self.body(visitor.ast());
-        <ForHead as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
-        <Stmt as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SwitchCase {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_switch_case(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.test(visitor.ast());
-        let field_value_1 = self.cons(visitor.ast());
-        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for CatchClause {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_catch_clause(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.param(visitor.ast());
-        let field_value_1 = self.body(visitor.ast());
-        <Option<Pat> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <BlockStmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForHead {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_for_head(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().for_head_data(self) {
-            ForHeadData::VarDecl(it) => <VarDecl as VisitWith<'a, V>>::visit_with(it, visitor),
-            ForHeadData::UsingDecl(it) => <UsingDecl as VisitWith<'a, V>>::visit_with(it, visitor),
-            ForHeadData::Pat(it) => <Pat as VisitWith<'a, V>>::visit_with(it, visitor),
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for VarDeclOrExpr {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_var_decl_or_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().var_decl_or_expr_data(self) {
-            VarDeclOrExprData::VarDecl(it) => {
-                <VarDecl as VisitWith<'a, V>>::visit_with(it, visitor)
+            StmtData::BlockStatement(it) => {
+                <BlockStatement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            VarDeclOrExprData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
+            StmtData::BreakStatement(it) => {
+                <BreakStatement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::ContinueStatement(it) => {
+                <ContinueStatement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::DebuggerStatement(it) => {
+                <DebuggerStatement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::DoWhileStatement(it) => {
+                <DoWhileStatement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::EmptyStatement(it) => {
+                <EmptyStatement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::ExpressionStatement(it) => {
+                <ExpressionStatement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::ForInStatement(it) => {
+                <ForInStatement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::ForOfStatement(it) => {
+                <ForOfStatement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::ForStatement(it) => {
+                <ForStatement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::IfStatement(it) => <IfStatement as VisitWith<'a, V>>::visit_with(it, visitor),
+            StmtData::LabeledStatement(it) => {
+                <LabeledStatement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::ReturnStatement(it) => {
+                <ReturnStatement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::SwitchStatement(it) => {
+                <SwitchStatement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::ThrowStatement(it) => {
+                <ThrowStatement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::TryStatement(it) => {
+                <TryStatement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::WhileStatement(it) => {
+                <WhileStatement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::WithStatement(it) => {
+                <WithStatement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::Declaration(it) => <Decl as VisitWith<'a, V>>::visit_with(it, visitor),
+            StmtData::ImportDeclaration(it) => {
+                <ImportDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::ExportNamedDeclaration(it) => {
+                <ExportNamedDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::ExportDefaultDeclaration(it) => {
+                <ExportDefaultDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::ExportAllDeclaration(it) => {
+                <ExportAllDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::TsExportAssignment(it) => {
+                <TsExportAssignment as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::TsNamespaceExportDeclaration(it) => {
+                <TsNamespaceExportDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            StmtData::TsImportEqualsDeclaration(it) => {
+                <TsImportEqualsDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for StatementListItem {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_statement_list_item(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().statement_list_item_data(self) {
+            StatementListItemData::Stmt(it) => <Stmt as VisitWith<'a, V>>::visit_with(it, visitor),
+            StatementListItemData::Directive(it) => {
+                <Directive as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
         }
     }
 }
@@ -1581,72 +1537,27 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Decl {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match visitor.ast().decl_data(self) {
-            DeclData::Class(it) => <ClassDecl as VisitWith<'a, V>>::visit_with(it, visitor),
-            DeclData::Fn(it) => <FnDecl as VisitWith<'a, V>>::visit_with(it, visitor),
-            DeclData::Var(it) => <VarDecl as VisitWith<'a, V>>::visit_with(it, visitor),
-            DeclData::Using(it) => <UsingDecl as VisitWith<'a, V>>::visit_with(it, visitor),
+            DeclData::VariableDeclaration(it) => {
+                <VariableDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            DeclData::Function(it) => <Function as VisitWith<'a, V>>::visit_with(it, visitor),
+            DeclData::Class(it) => <Class as VisitWith<'a, V>>::visit_with(it, visitor),
+            DeclData::TsTypeAliasDeclaration(it) => {
+                <TsTypeAliasDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            DeclData::TsInterfaceDeclaration(it) => {
+                <TsInterfaceDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            DeclData::TsEnumDeclaration(it) => {
+                <TsEnumDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            DeclData::TsModuleDeclaration(it) => {
+                <TsModuleDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            DeclData::TsGlobalDeclaration(it) => {
+                <TsGlobalDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
         }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FnDecl {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_fn_decl(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.ident(visitor.ast());
-        let field_value_2 = self.function(visitor.ast());
-        <Ident as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Function as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassDecl {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_class_decl(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.ident(visitor.ast());
-        let field_value_2 = self.class(visitor.ast());
-        <Ident as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Class as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for VarDecl {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_var_decl(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_2 = self.decls(visitor.ast());
-        <TypedSubRange<VarDeclarator> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for VarDeclarator {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_var_declarator(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.name(visitor.ast());
-        let field_value_1 = self.init(visitor.ast());
-        <Pat as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for UsingDecl {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_using_decl(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_1 = self.decls(visitor.ast());
-        <TypedSubRange<VarDeclarator> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Expr {
@@ -1657,399 +1568,409 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Expr {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match visitor.ast().expr_data(self) {
-            ExprData::This(it) => <ThisExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Array(it) => <ArrayLit as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Object(it) => <ObjectLit as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Fn(it) => <FnExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Unary(it) => <UnaryExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Update(it) => <UpdateExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Bin(it) => <BinExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Assign(it) => <AssignExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Member(it) => <MemberExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::SuperProp(it) => <SuperPropExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Cond(it) => <CondExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Import(it) => <ImportExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Call(it) => <CallExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::New(it) => <NewExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Seq(it) => <SeqExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Ident(it) => <Ident as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Lit(it) => <Lit as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Tpl(it) => <Tpl as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::TaggedTpl(it) => <TaggedTpl as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Arrow(it) => <ArrowExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Class(it) => <ClassExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Yield(it) => <YieldExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::MetaProp(it) => <MetaPropExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Await(it) => <AwaitExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Paren(it) => <ParenExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::JSXMember(it) => <JSXMemberExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::JSXNamespacedName(it) => {
-                <JSXNamespacedName as VisitWith<'a, V>>::visit_with(it, visitor)
+            ExprData::IdentifierReference(it) => {
+                <IdentifierReference as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            ExprData::JSXEmpty(it) => <JSXEmptyExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::JSXElement(it) => <JSXElement as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::JSXFragment(it) => <JSXFragment as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::PrivateName(it) => <PrivateName as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::OptChain(it) => <OptChainExpr as VisitWith<'a, V>>::visit_with(it, visitor),
-            ExprData::Invalid(it) => <Invalid as VisitWith<'a, V>>::visit_with(it, visitor),
+            ExprData::ThisExpression(it) => {
+                <ThisExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::Super(it) => <Super as VisitWith<'a, V>>::visit_with(it, visitor),
+            ExprData::MetaProperty(it) => {
+                <MetaProperty as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::StringLiteral(it) => {
+                <StringLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::NumericLiteral(it) => {
+                <NumericLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::BigIntLiteral(it) => {
+                <BigIntLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::BooleanLiteral(it) => {
+                <BooleanLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::NullLiteral(it) => <NullLiteral as VisitWith<'a, V>>::visit_with(it, visitor),
+            ExprData::RegExpLiteral(it) => {
+                <RegExpLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::TemplateLiteral(it) => {
+                <TemplateLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::BinaryExpression(it) => {
+                <BinaryExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::LogicalExpression(it) => {
+                <LogicalExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::UnaryExpression(it) => {
+                <UnaryExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::UpdateExpression(it) => {
+                <UpdateExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::AssignmentExpression(it) => {
+                <AssignmentExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::ConditionalExpression(it) => {
+                <ConditionalExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::SequenceExpression(it) => {
+                <SequenceExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::MemberExpression(it) => {
+                <MemberExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::CallExpression(it) => {
+                <CallExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::ChainExpression(it) => {
+                <ChainExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::NewExpression(it) => {
+                <NewExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::TaggedTemplateExpression(it) => {
+                <TaggedTemplateExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::ArrowFunctionExpression(it) => {
+                <ArrowFunctionExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::ArrayExpression(it) => {
+                <ArrayExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::ObjectExpression(it) => {
+                <ObjectExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::ParenthesizedExpression(it) => {
+                <ParenthesizedExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::Function(it) => <Function as VisitWith<'a, V>>::visit_with(it, visitor),
+            ExprData::Class(it) => <Class as VisitWith<'a, V>>::visit_with(it, visitor),
+            ExprData::ImportExpression(it) => {
+                <ImportExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::AwaitExpression(it) => {
+                <AwaitExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::YieldExpression(it) => {
+                <YieldExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::TsAsExpression(it) => {
+                <TsAsExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::TsSatisfiesExpression(it) => {
+                <TsSatisfiesExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::TsTypeAssertion(it) => {
+                <TsTypeAssertion as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::TsNonNullExpression(it) => {
+                <TsNonNullExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::TsInstantiationExpression(it) => {
+                <TsInstantiationExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExprData::JsxElement(it) => <JsxElement as VisitWith<'a, V>>::visit_with(it, visitor),
+            ExprData::JsxFragment(it) => <JsxFragment as VisitWith<'a, V>>::visit_with(it, visitor),
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ThisExpr {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BindingPattern {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_this_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ArrayLit {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_array_lit(visitor, self)
+        <V as Visit<'a>>::visit_binding_pattern(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.elems(visitor.ast());
-        <TypedSubRange<Option<ExprOrSpread>> as VisitWith<'a, V>>::visit_with(
-            field_value_0,
-            visitor,
-        );
+        match visitor.ast().binding_pattern_data(self) {
+            BindingPatternData::BindingIdentifier(it) => {
+                <BindingIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            BindingPatternData::AssignmentPattern(it) => {
+                <AssignmentPattern as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            BindingPatternData::BindingRestElement(it) => {
+                <BindingRestElement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            BindingPatternData::ArrayPattern(it) => {
+                <ArrayPattern as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            BindingPatternData::ObjectPattern(it) => {
+                <ObjectPattern as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ObjectLit {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignmentTarget {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_object_lit(visitor, self)
+        <V as Visit<'a>>::visit_assignment_target(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.props(visitor.ast());
-        <TypedSubRange<PropOrSpread> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        match visitor.ast().assignment_target_data(self) {
+            AssignmentTargetData::SimpleAssignmentTarget(it) => {
+                <SimpleAssignmentTarget as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            AssignmentTargetData::ArrayAssignmentTarget(it) => {
+                <ArrayPattern as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            AssignmentTargetData::ObjectAssignmentTarget(it) => {
+                <ObjectPattern as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PropOrSpread {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SimpleAssignmentTarget {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_prop_or_spread(visitor, self)
+        <V as Visit<'a>>::visit_simple_assignment_target(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().prop_or_spread_data(self) {
-            PropOrSpreadData::Spread(it) => {
+        match visitor.ast().simple_assignment_target_data(self) {
+            SimpleAssignmentTargetData::IdentifierReference(it) => {
+                <IdentifierReference as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            SimpleAssignmentTargetData::MemberExpression(it) => {
+                <MemberExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            SimpleAssignmentTargetData::TsAsExpression(it) => {
+                <TsAsExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            SimpleAssignmentTargetData::TsSatisfiesExpression(it) => {
+                <TsSatisfiesExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            SimpleAssignmentTargetData::TsTypeAssertion(it) => {
+                <TsTypeAssertion as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            SimpleAssignmentTargetData::TsNonNullExpression(it) => {
+                <TsNonNullExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PropertyKey {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_property_key(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().property_key_data(self) {
+            PropertyKeyData::IdentifierName(it) => {
+                <IdentifierName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            PropertyKeyData::PrivateIdentifier(it) => {
+                <PrivateIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            PropertyKeyData::StringLiteral(it) => {
+                <StringLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            PropertyKeyData::NumericLiteral(it) => {
+                <NumericLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            PropertyKeyData::BigIntLiteral(it) => {
+                <BigIntLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            PropertyKeyData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ModuleExportName {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_module_export_name(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().module_export_name_data(self) {
+            ModuleExportNameData::IdentifierName(it) => {
+                <IdentifierName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ModuleExportNameData::StringLiteral(it) => {
+                <StringLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Argument {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_argument(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().argument_data(self) {
+            ArgumentData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
+            ArgumentData::SpreadElement(it) => {
                 <SpreadElement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            PropOrSpreadData::Prop(it) => <Prop as VisitWith<'a, V>>::visit_with(it, visitor),
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SpreadElement {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ObjectPropertyKind {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_spread_element(visitor, self)
+        <V as Visit<'a>>::visit_object_property_kind(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_1 = self.expr(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for UnaryExpr {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_unary_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_1 = self.arg(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for UpdateExpr {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_update_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_2 = self.arg(visitor.ast());
-        <SimpleAssignTarget as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BinExpr {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_bin_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_1 = self.left(visitor.ast());
-        let field_value_2 = self.right(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FnExpr {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_fn_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.ident(visitor.ast());
-        let field_value_1 = self.function(visitor.ast());
-        <Option<Ident> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Function as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassExpr {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_class_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.ident(visitor.ast());
-        let field_value_1 = self.class(visitor.ast());
-        <Option<Ident> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Class as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignExpr {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_assign_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_1 = self.left(visitor.ast());
-        let field_value_2 = self.right(visitor.ast());
-        <AssignTarget as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for MemberExpr {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_member_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.obj(visitor.ast());
-        let field_value_1 = self.prop(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <MemberProp as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for MemberProp {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_member_prop(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().member_prop_data(self) {
-            MemberPropData::Ident(it) => <IdentName as VisitWith<'a, V>>::visit_with(it, visitor),
-            MemberPropData::PrivateName(it) => {
-                <PrivateName as VisitWith<'a, V>>::visit_with(it, visitor)
+        match visitor.ast().object_property_kind_data(self) {
+            ObjectPropertyKindData::ObjectProperty(it) => {
+                <ObjectProperty as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            MemberPropData::Computed(it) => {
-                <ComputedPropName as VisitWith<'a, V>>::visit_with(it, visitor)
+            ObjectPropertyKindData::SpreadElement(it) => {
+                <SpreadElement as VisitWith<'a, V>>::visit_with(it, visitor)
             }
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SuperPropExpr {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForStatementInit {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_super_prop_expr(visitor, self)
+        <V as Visit<'a>>::visit_for_statement_init(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.obj(visitor.ast());
-        let field_value_1 = self.prop(visitor.ast());
-        <Super as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <SuperProp as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        match visitor.ast().for_statement_init_data(self) {
+            ForStatementInitData::VariableDeclaration(it) => {
+                <VariableDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ForStatementInitData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
+        }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SuperProp {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForStatementLeft {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_super_prop(visitor, self)
+        <V as Visit<'a>>::visit_for_statement_left(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().super_prop_data(self) {
-            SuperPropData::Ident(it) => <IdentName as VisitWith<'a, V>>::visit_with(it, visitor),
-            SuperPropData::Computed(it) => {
-                <ComputedPropName as VisitWith<'a, V>>::visit_with(it, visitor)
+        match visitor.ast().for_statement_left_data(self) {
+            ForStatementLeftData::VariableDeclaration(it) => {
+                <VariableDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ForStatementLeftData::AssignmentTarget(it) => {
+                <AssignmentTarget as VisitWith<'a, V>>::visit_with(it, visitor)
             }
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for CondExpr {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ArrowFunctionBody {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_cond_expr(visitor, self)
+        <V as Visit<'a>>::visit_arrow_function_body(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.test(visitor.ast());
-        let field_value_1 = self.cons(visitor.ast());
-        let field_value_2 = self.alt(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        match visitor.ast().arrow_function_body_data(self) {
+            ArrowFunctionBodyData::FunctionBody(it) => {
+                <FunctionBody as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ArrowFunctionBodyData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
+        }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportExpr {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FormalParameterItem {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_import_expr(visitor, self)
+        <V as Visit<'a>>::visit_formal_parameter_item(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_1 = self.source(visitor.ast());
-        let field_value_2 = self.options(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        match visitor.ast().formal_parameter_item_data(self) {
+            FormalParameterItemData::FormalParameter(it) => {
+                <FormalParameter as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            FormalParameterItemData::TsParameterProperty(it) => {
+                <TsParameterProperty as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for CallExpr {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FormalParameterPattern {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_call_expr(visitor, self)
+        <V as Visit<'a>>::visit_formal_parameter_pattern(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.callee(visitor.ast());
-        let field_value_1 = self.args(visitor.ast());
-        <Callee as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<ExprOrSpread> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        match visitor.ast().formal_parameter_pattern_data(self) {
+            FormalParameterPatternData::BindingPattern(it) => {
+                <BindingPattern as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            FormalParameterPatternData::TsThisParameter(it) => {
+                <TsThisParameter as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for NewExpr {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassElement {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_new_expr(visitor, self)
+        <V as Visit<'a>>::visit_class_element(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.callee(visitor.ast());
-        let field_value_1 = self.args(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<ExprOrSpread> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        match visitor.ast().class_element_data(self) {
+            ClassElementData::MethodDefinition(it) => {
+                <MethodDefinition as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ClassElementData::PropertyDefinition(it) => {
+                <PropertyDefinition as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ClassElementData::StaticBlock(it) => {
+                <StaticBlock as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ClassElementData::TsIndexSignature(it) => {
+                <TsIndexSignature as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SeqExpr {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportDeclarationSpecifier {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_seq_expr(visitor, self)
+        <V as Visit<'a>>::visit_import_declaration_specifier(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.exprs(visitor.ast());
-        <TypedSubRange<Expr> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        match visitor.ast().import_declaration_specifier_data(self) {
+            ImportDeclarationSpecifierData::ImportSpecifier(it) => {
+                <ImportSpecifier as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ImportDeclarationSpecifierData::ImportDefaultSpecifier(it) => {
+                <ImportDefaultSpecifier as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ImportDeclarationSpecifierData::ImportNamespaceSpecifier(it) => {
+                <ImportNamespaceSpecifier as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ArrowExpr {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportDefaultDeclarationKind {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_arrow_expr(visitor, self)
+        <V as Visit<'a>>::visit_export_default_declaration_kind(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.params(visitor.ast());
-        let field_value_1 = self.body(visitor.ast());
-        <TypedSubRange<Pat> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <BlockStmtOrExpr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for YieldExpr {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_yield_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.arg(visitor.ast());
-        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for MetaPropExpr {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_meta_prop_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AwaitExpr {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_await_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.arg(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Tpl {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_tpl(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.exprs(visitor.ast());
-        let field_value_1 = self.quasis(visitor.ast());
-        <TypedSubRange<Expr> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<TplElement> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TaggedTpl {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_tagged_tpl(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.tag(visitor.ast());
-        let field_value_1 = self.tpl(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Tpl as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TplElement {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_tpl_element(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ParenExpr {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_paren_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.expr(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Callee {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_callee(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().callee_data(self) {
-            CalleeData::Super(it) => <Super as VisitWith<'a, V>>::visit_with(it, visitor),
-            CalleeData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
+        match visitor.ast().export_default_declaration_kind_data(self) {
+            ExportDefaultDeclarationKindData::Expr(it) => {
+                <Expr as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExportDefaultDeclarationKindData::Function(it) => {
+                <Function as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExportDefaultDeclarationKindData::Class(it) => {
+                <Class as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExportDefaultDeclarationKindData::TsInterfaceDeclaration(it) => {
+                <TsInterfaceDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
         }
     }
 }
@@ -2061,304 +1982,519 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Super {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {}
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExprOrSpread {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ThisExpression {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_expr_or_spread(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_1 = self.expr(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BlockStmtOrExpr {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_block_stmt_or_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().block_stmt_or_expr_data(self) {
-            BlockStmtOrExprData::BlockStmt(it) => {
-                <BlockStmt as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            BlockStmtOrExprData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignTarget {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_assign_target(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().assign_target_data(self) {
-            AssignTargetData::Simple(it) => {
-                <SimpleAssignTarget as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            AssignTargetData::Pat(it) => {
-                <AssignTargetPat as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignTargetPat {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_assign_target_pat(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().assign_target_pat_data(self) {
-            AssignTargetPatData::Array(it) => {
-                <ArrayPat as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            AssignTargetPatData::Object(it) => {
-                <ObjectPat as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            AssignTargetPatData::Invalid(it) => {
-                <Invalid as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SimpleAssignTarget {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_simple_assign_target(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().simple_assign_target_data(self) {
-            SimpleAssignTargetData::Ident(it) => {
-                <BindingIdent as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            SimpleAssignTargetData::Member(it) => {
-                <MemberExpr as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            SimpleAssignTargetData::SuperProp(it) => {
-                <SuperPropExpr as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            SimpleAssignTargetData::Paren(it) => {
-                <ParenExpr as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            SimpleAssignTargetData::OptChain(it) => {
-                <OptChainExpr as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            SimpleAssignTargetData::Invalid(it) => {
-                <Invalid as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for OptChainExpr {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_opt_chain_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_1 = self.base(visitor.ast());
-        <OptChainBase as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for OptChainBase {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_opt_chain_base(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().opt_chain_base_data(self) {
-            OptChainBaseData::Member(it) => {
-                <MemberExpr as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            OptChainBaseData::Call(it) => <OptCall as VisitWith<'a, V>>::visit_with(it, visitor),
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for OptCall {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_opt_call(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.callee(visitor.ast());
-        let field_value_1 = self.args(visitor.ast());
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<ExprOrSpread> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Invalid {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_invalid(visitor, self)
+        <V as Visit<'a>>::visit_this_expression(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {}
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Function {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for StringLiteral {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_function(visitor, self)
+        <V as Visit<'a>>::visit_string_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for NumericLiteral {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_numeric_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BigIntLiteral {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_big_int_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BooleanLiteral {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_boolean_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for NullLiteral {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_null_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for RegExpLiteral {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_reg_exp_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TemplateLiteral {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_template_literal(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.params(visitor.ast());
+        let field_value_0 = self.quasis(visitor.ast());
+        let field_value_1 = self.expressions(visitor.ast());
+        <TypedSubRange<TemplateElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TypedSubRange<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TemplateElement {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_template_element(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for IdentifierReference {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_identifier_reference(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PrivateIdentifier {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_private_identifier(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BindingIdentifier {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_binding_identifier(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
         let field_value_1 = self.decorators(visitor.ast());
-        let field_value_2 = self.body(visitor.ast());
-        <TypedSubRange<Param> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        let field_value_2 = self.type_annotation(visitor.ast());
         <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <BlockStmt as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Param {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for IdentifierName {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_param(visitor, self)
+        <V as Visit<'a>>::visit_identifier_name(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for LabelIdentifier {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_label_identifier(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignmentPattern {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_assignment_pattern(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.decorators(visitor.ast());
-        let field_value_1 = self.pat(visitor.ast());
-        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Pat as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        let field_value_0 = self.left(visitor.ast());
+        let field_value_1 = self.right(visitor.ast());
+        let field_value_2 = self.decorators(visitor.ast());
+        let field_value_3 = self.type_annotation(visitor.ast());
+        <BindingPattern as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ParamOrTsParamProp {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BindingRestElement {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_param_or_ts_param_prop(visitor, self)
+        <V as Visit<'a>>::visit_binding_rest_element(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().param_or_ts_param_prop_data(self) {
-            ParamOrTsParamPropData::Param(it) => {
-                <Param as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-        }
+        let field_value_0 = self.argument(visitor.ast());
+        let field_value_1 = self.decorators(visitor.ast());
+        let field_value_2 = self.type_annotation(visitor.ast());
+        <BindingPattern as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Class {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ArrayPattern {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_class(visitor, self)
+        <V as Visit<'a>>::visit_array_pattern(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.decorators(visitor.ast());
-        let field_value_1 = self.body(visitor.ast());
-        let field_value_2 = self.super_class(visitor.ast());
-        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<ClassMember> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        let field_value_0 = self.elements(visitor.ast());
+        let field_value_1 = self.rest(visitor.ast());
+        let field_value_2 = self.decorators(visitor.ast());
+        let field_value_3 = self.type_annotation(visitor.ast());
+        <TypedSubRange<Option<BindingPattern>> as VisitWith<'a, V>>::visit_with(
+            field_value_0,
+            visitor,
+        );
+        <Option<BindingRestElement> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ObjectPattern {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_object_pattern(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.properties(visitor.ast());
+        let field_value_1 = self.rest(visitor.ast());
+        let field_value_2 = self.decorators(visitor.ast());
+        let field_value_3 = self.type_annotation(visitor.ast());
+        <TypedSubRange<BindingProperty> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<BindingRestElement> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BindingProperty {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_binding_property(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.key(visitor.ast());
+        let field_value_1 = self.value(visitor.ast());
+        <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <BindingPattern as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BinaryExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_binary_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.left(visitor.ast());
+        let field_value_1 = self.right(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for LogicalExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_logical_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.left(visitor.ast());
+        let field_value_1 = self.right(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ConditionalExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_conditional_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.test(visitor.ast());
+        let field_value_1 = self.consequent(visitor.ast());
+        let field_value_2 = self.alternate(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for UnaryExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_unary_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.argument(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for UpdateExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_update_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.argument(visitor.ast());
+        <SimpleAssignmentTarget as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignmentExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_assignment_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.left(visitor.ast());
+        let field_value_1 = self.right(visitor.ast());
+        <AssignmentTarget as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for VariableDeclaration {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_variable_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_1 = self.declarators(visitor.ast());
+        <TypedSubRange<VariableDeclarator> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for VariableDeclarator {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_variable_declarator(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.id(visitor.ast());
+        let field_value_1 = self.init(visitor.ast());
+        <BindingPattern as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for IfStatement {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_if_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.test(visitor.ast());
+        let field_value_1 = self.consequent(visitor.ast());
+        let field_value_2 = self.alternate(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Stmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<Stmt> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SwitchStatement {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_switch_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.discriminant(visitor.ast());
+        let field_value_1 = self.cases(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TypedSubRange<SwitchCase> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SwitchCase {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_switch_case(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.test(visitor.ast());
+        let field_value_1 = self.consequent(visitor.ast());
+        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForStatement {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_for_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.init(visitor.ast());
+        let field_value_1 = self.test(visitor.ast());
+        let field_value_2 = self.update(visitor.ast());
+        let field_value_3 = self.body(visitor.ast());
+        <Option<ForStatementInit> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <Stmt as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassMember {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForInStatement {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_class_member(visitor, self)
+        <V as Visit<'a>>::visit_for_in_statement(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().class_member_data(self) {
-            ClassMemberData::Constructor(it) => {
-                <Constructor as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ClassMemberData::Method(it) => {
-                <ClassMethod as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ClassMemberData::PrivateMethod(it) => {
-                <PrivateMethod as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ClassMemberData::ClassProp(it) => {
-                <ClassProp as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ClassMemberData::PrivateProp(it) => {
-                <PrivateProp as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ClassMemberData::Empty(it) => <EmptyStmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            ClassMemberData::StaticBlock(it) => {
-                <StaticBlock as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ClassMemberData::AutoAccessor(it) => {
-                <AutoAccessor as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassProp {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_class_prop(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.key(visitor.ast());
-        let field_value_1 = self.value(visitor.ast());
-        let field_value_3 = self.decorators(visitor.ast());
-        <PropName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PrivateProp {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_private_prop(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.key(visitor.ast());
-        let field_value_1 = self.value(visitor.ast());
-        let field_value_3 = self.decorators(visitor.ast());
-        <PrivateName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassMethod {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_class_method(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.key(visitor.ast());
-        let field_value_1 = self.function(visitor.ast());
-        <PropName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Function as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PrivateMethod {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_private_method(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.key(visitor.ast());
-        let field_value_1 = self.function(visitor.ast());
-        <PrivateName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Function as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Constructor {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_constructor(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.key(visitor.ast());
-        let field_value_1 = self.params(visitor.ast());
+        let field_value_0 = self.left(visitor.ast());
+        let field_value_1 = self.right(visitor.ast());
         let field_value_2 = self.body(visitor.ast());
-        <PropName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<ParamOrTsParamProp> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Option<BlockStmt> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <ForStatementLeft as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Stmt as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ForOfStatement {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_for_of_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.left(visitor.ast());
+        let field_value_1 = self.right(visitor.ast());
+        let field_value_2 = self.body(visitor.ast());
+        <ForStatementLeft as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Stmt as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TryStatement {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_try_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.block(visitor.ast());
+        let field_value_1 = self.handler(visitor.ast());
+        let field_value_2 = self.finalizer(visitor.ast());
+        <BlockStatement as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<CatchClause> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<BlockStatement> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for CatchClause {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_catch_clause(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.param(visitor.ast());
+        let field_value_1 = self.body(visitor.ast());
+        <Option<BindingPattern> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <BlockStatement as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BreakStatement {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_break_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.label(visitor.ast());
+        <Option<LabelIdentifier> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ContinueStatement {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_continue_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.label(visitor.ast());
+        <Option<LabelIdentifier> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for LabeledStatement {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_labeled_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.label(visitor.ast());
+        let field_value_1 = self.body(visitor.ast());
+        <LabelIdentifier as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Stmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExpressionStatement {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_expression_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.expression(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ReturnStatement {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_return_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.argument(visitor.ast());
+        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ThrowStatement {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_throw_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.argument(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for DebuggerStatement {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_debugger_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for EmptyStatement {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_empty_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Directive {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_directive(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.expression(visitor.ast());
+        <StringLiteral as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Decorator {
@@ -2368,8 +2504,80 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Decorator {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.expr(visitor.ast());
+        let field_value_0 = self.expression(visitor.ast());
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Class {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_class(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_1 = self.decorators(visitor.ast());
+        let field_value_2 = self.id(visitor.ast());
+        let field_value_3 = self.super_class(visitor.ast());
+        let field_value_4 = self.body(visitor.ast());
+        let field_value_5 = self.type_parameters(visitor.ast());
+        let field_value_6 = self.super_type_arguments(visitor.ast());
+        let field_value_7 = self.implements(visitor.ast());
+        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<BindingIdentifier> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
+        <ClassBody as VisitWith<'a, V>>::visit_with(field_value_4, visitor);
+        <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
+            field_value_5,
+            visitor,
+        );
+        <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
+            field_value_6,
+            visitor,
+        );
+        <TypedSubRange<TsClassImplements> as VisitWith<'a, V>>::visit_with(field_value_7, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassBody {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_class_body(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.body(visitor.ast());
+        <TypedSubRange<ClassElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for MethodDefinition {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_method_definition(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.decorators(visitor.ast());
+        let field_value_1 = self.key(visitor.ast());
+        let field_value_2 = self.value(visitor.ast());
+        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Function as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PropertyDefinition {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_property_definition(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.decorators(visitor.ast());
+        let field_value_1 = self.key(visitor.ast());
+        let field_value_2 = self.value(visitor.ast());
+        let field_value_6 = self.type_annotation(visitor.ast());
+        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_6, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for StaticBlock {
@@ -2380,443 +2588,1704 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for StaticBlock {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.body(visitor.ast());
-        <BlockStmt as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Key {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Function {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_key(visitor, self)
+        <V as Visit<'a>>::visit_function(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().key_data(self) {
-            KeyData::Private(it) => <PrivateName as VisitWith<'a, V>>::visit_with(it, visitor),
-            KeyData::Public(it) => <PropName as VisitWith<'a, V>>::visit_with(it, visitor),
-        }
+        let field_value_1 = self.id(visitor.ast());
+        let field_value_5 = self.params(visitor.ast());
+        let field_value_6 = self.body(visitor.ast());
+        let field_value_7 = self.type_parameters(visitor.ast());
+        let field_value_8 = self.return_type(visitor.ast());
+        <Option<BindingIdentifier> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <FormalParameters as VisitWith<'a, V>>::visit_with(field_value_5, visitor);
+        <Option<FunctionBody> as VisitWith<'a, V>>::visit_with(field_value_6, visitor);
+        <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
+            field_value_7,
+            visitor,
+        );
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_8, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AutoAccessor {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FunctionBody {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_auto_accessor(visitor, self)
+        <V as Visit<'a>>::visit_function_body(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.key(visitor.ast());
-        let field_value_1 = self.value(visitor.ast());
-        let field_value_3 = self.decorators(visitor.ast());
-        <Key as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
+        let field_value_0 = self.body(visitor.ast());
+        <TypedSubRange<StatementListItem> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Prop {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BlockStatement {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_prop(visitor, self)
+        <V as Visit<'a>>::visit_block_statement(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().prop_data(self) {
-            PropData::Shorthand(it) => <Ident as VisitWith<'a, V>>::visit_with(it, visitor),
-            PropData::KeyValue(it) => <KeyValueProp as VisitWith<'a, V>>::visit_with(it, visitor),
-            PropData::Assign(it) => <AssignProp as VisitWith<'a, V>>::visit_with(it, visitor),
-            PropData::Getter(it) => <GetterProp as VisitWith<'a, V>>::visit_with(it, visitor),
-            PropData::Setter(it) => <SetterProp as VisitWith<'a, V>>::visit_with(it, visitor),
-            PropData::Method(it) => <MethodProp as VisitWith<'a, V>>::visit_with(it, visitor),
-        }
+        let field_value_0 = self.body(visitor.ast());
+        <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for KeyValueProp {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for WhileStatement {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_key_value_prop(visitor, self)
+        <V as Visit<'a>>::visit_while_statement(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.key(visitor.ast());
-        let field_value_1 = self.value(visitor.ast());
-        <PropName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        let field_value_0 = self.test(visitor.ast());
+        let field_value_1 = self.body(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Stmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for DoWhileStatement {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_do_while_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.body(visitor.ast());
+        let field_value_1 = self.test(visitor.ast());
+        <Stmt as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignProp {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for WithStatement {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_assign_prop(visitor, self)
+        <V as Visit<'a>>::visit_with_statement(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.key(visitor.ast());
-        let field_value_1 = self.value(visitor.ast());
-        <Ident as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        let field_value_0 = self.object(visitor.ast());
+        let field_value_1 = self.body(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Stmt as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for GetterProp {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FormalParameters {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_getter_prop(visitor, self)
+        <V as Visit<'a>>::visit_formal_parameters(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.key(visitor.ast());
-        let field_value_1 = self.function(visitor.ast());
-        <PropName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Function as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        let field_value_0 = self.items(visitor.ast());
+        let field_value_1 = self.rest(visitor.ast());
+        <TypedSubRange<FormalParameterItem> as VisitWith<'a, V>>::visit_with(
+            field_value_0,
+            visitor,
+        );
+        <Option<BindingRestElement> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SetterProp {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FormalParameter {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_setter_prop(visitor, self)
+        <V as Visit<'a>>::visit_formal_parameter(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.key(visitor.ast());
-        let field_value_1 = self.function(visitor.ast());
-        <PropName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Function as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        let field_value_0 = self.pattern(visitor.ast());
+        <FormalParameterPattern as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for MethodProp {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ArrayExpression {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_method_prop(visitor, self)
+        <V as Visit<'a>>::visit_array_expression(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.key(visitor.ast());
-        let field_value_1 = self.function(visitor.ast());
-        <PropName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Function as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        let field_value_0 = self.elements(visitor.ast());
+        <TypedSubRange<Option<Argument>> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PropName {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ObjectExpression {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_prop_name(visitor, self)
+        <V as Visit<'a>>::visit_object_expression(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().prop_name_data(self) {
-            PropNameData::Ident(it) => <IdentName as VisitWith<'a, V>>::visit_with(it, visitor),
-            PropNameData::Str(it) => <Str as VisitWith<'a, V>>::visit_with(it, visitor),
-            PropNameData::Num(it) => <Number as VisitWith<'a, V>>::visit_with(it, visitor),
-            PropNameData::Computed(it) => {
-                <ComputedPropName as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            PropNameData::BigInt(it) => <BigInt as VisitWith<'a, V>>::visit_with(it, visitor),
-        }
+        let field_value_0 = self.properties(visitor.ast());
+        <TypedSubRange<ObjectPropertyKind> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ComputedPropName {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SpreadElement {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_computed_prop_name(visitor, self)
+        <V as Visit<'a>>::visit_spread_element(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.expr(visitor.ast());
+        let field_value_0 = self.argument(visitor.ast());
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Pat {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ObjectProperty {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_pat(visitor, self)
+        <V as Visit<'a>>::visit_object_property(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().pat_data(self) {
-            PatData::Ident(it) => <BindingIdent as VisitWith<'a, V>>::visit_with(it, visitor),
-            PatData::Array(it) => <ArrayPat as VisitWith<'a, V>>::visit_with(it, visitor),
-            PatData::Rest(it) => <RestPat as VisitWith<'a, V>>::visit_with(it, visitor),
-            PatData::Object(it) => <ObjectPat as VisitWith<'a, V>>::visit_with(it, visitor),
-            PatData::Assign(it) => <AssignPat as VisitWith<'a, V>>::visit_with(it, visitor),
-            PatData::Invalid(it) => <Invalid as VisitWith<'a, V>>::visit_with(it, visitor),
-            PatData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
+        let field_value_0 = self.key(visitor.ast());
+        let field_value_1 = self.value(visitor.ast());
+        <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ParenthesizedExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_parenthesized_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.expression(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ArrowFunctionExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_arrow_function_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_2 = self.params(visitor.ast());
+        let field_value_3 = self.body(visitor.ast());
+        let field_value_4 = self.type_parameters(visitor.ast());
+        let field_value_5 = self.return_type(visitor.ast());
+        <FormalParameters as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <ArrowFunctionBody as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
+        <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
+            field_value_4,
+            visitor,
+        );
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_5, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SequenceExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_sequence_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.expressions(visitor.ast());
+        <TypedSubRange<Expr> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for MemberExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_member_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.object(visitor.ast());
+        let field_value_1 = self.property(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for CallExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_call_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.callee(visitor.ast());
+        let field_value_1 = self.arguments(visitor.ast());
+        let field_value_3 = self.type_arguments(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TypedSubRange<Argument> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
+            field_value_3,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ChainExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_chain_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.expression(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TaggedTemplateExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_tagged_template_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.tag(visitor.ast());
+        let field_value_1 = self.quasi(visitor.ast());
+        let field_value_2 = self.type_arguments(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TemplateLiteral as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
+            field_value_2,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for NewExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_new_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.callee(visitor.ast());
+        let field_value_1 = self.arguments(visitor.ast());
+        let field_value_2 = self.type_arguments(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TypedSubRange<Argument> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
+            field_value_2,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AwaitExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_await_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.argument(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for YieldExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_yield_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.argument(visitor.ast());
+        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for MetaProperty {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_meta_property(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.meta(visitor.ast());
+        let field_value_1 = self.property(visitor.ast());
+        <IdentifierName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <IdentifierName as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_import_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.source(visitor.ast());
+        let field_value_1 = self.options(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportDeclaration {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_import_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.specifiers(visitor.ast());
+        let field_value_1 = self.source(visitor.ast());
+        let field_value_2 = self.attributes(visitor.ast());
+        <TypedSubRange<ImportDeclarationSpecifier> as VisitWith<'a, V>>::visit_with(
+            field_value_0,
+            visitor,
+        );
+        <StringLiteral as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <TypedSubRange<ImportAttribute> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportSpecifier {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_import_specifier(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.imported(visitor.ast());
+        let field_value_1 = self.local(visitor.ast());
+        <ModuleExportName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <BindingIdentifier as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportDefaultSpecifier {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_import_default_specifier(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.local(visitor.ast());
+        <BindingIdentifier as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportNamespaceSpecifier {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_import_namespace_specifier(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.local(visitor.ast());
+        <BindingIdentifier as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ImportAttribute {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_import_attribute(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.key(visitor.ast());
+        let field_value_1 = self.value(visitor.ast());
+        <ModuleExportName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <StringLiteral as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportNamedDeclaration {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_export_named_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.declaration(visitor.ast());
+        let field_value_1 = self.specifiers(visitor.ast());
+        let field_value_2 = self.source(visitor.ast());
+        let field_value_3 = self.attributes(visitor.ast());
+        <Option<Decl> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TypedSubRange<ExportSpecifier> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<StringLiteral> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <TypedSubRange<ImportAttribute> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportDefaultDeclaration {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_export_default_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.declaration(visitor.ast());
+        <ExportDefaultDeclarationKind as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportAllDeclaration {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_export_all_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.exported(visitor.ast());
+        let field_value_1 = self.source(visitor.ast());
+        let field_value_2 = self.attributes(visitor.ast());
+        <Option<ModuleExportName> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <StringLiteral as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <TypedSubRange<ImportAttribute> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportSpecifier {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_export_specifier(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.local(visitor.ast());
+        let field_value_1 = self.exported(visitor.ast());
+        <ModuleExportName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <ModuleExportName as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Hashbang {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_hashbang(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsType {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_type(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().ts_type_data(self) {
+            TsTypeData::TsAnyKeyword(it) => {
+                <TsAnyKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsUnknownKeyword(it) => {
+                <TsUnknownKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsNeverKeyword(it) => {
+                <TsNeverKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsVoidKeyword(it) => {
+                <TsVoidKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsNullKeyword(it) => {
+                <TsNullKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsUndefinedKeyword(it) => {
+                <TsUndefinedKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsStringKeyword(it) => {
+                <TsStringKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsNumberKeyword(it) => {
+                <TsNumberKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsBigIntKeyword(it) => {
+                <TsBigIntKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsBooleanKeyword(it) => {
+                <TsBooleanKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsSymbolKeyword(it) => {
+                <TsSymbolKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsObjectKeyword(it) => {
+                <TsObjectKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsIntrinsicKeyword(it) => {
+                <TsIntrinsicKeyword as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsThisType(it) => <TsThisType as VisitWith<'a, V>>::visit_with(it, visitor),
+            TsTypeData::TsTypeReference(it) => {
+                <TsTypeReference as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsTypeQuery(it) => {
+                <TsTypeQuery as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsImportType(it) => {
+                <TsImportType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsLiteralType(it) => {
+                <TsLiteralType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsTemplateLiteralType(it) => {
+                <TsTemplateLiteralType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsArrayType(it) => {
+                <TsArrayType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsIndexedAccessType(it) => {
+                <TsIndexedAccessType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsTupleType(it) => {
+                <TsTupleType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsOptionalType(it) => {
+                <TsOptionalType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsRestType(it) => <TsRestType as VisitWith<'a, V>>::visit_with(it, visitor),
+            TsTypeData::TsJsDocNullableType(it) => {
+                <TsJsDocNullableType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsJsDocNonNullableType(it) => {
+                <TsJsDocNonNullableType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsJsDocUnknownType(it) => {
+                <TsJsDocUnknownType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsUnionType(it) => {
+                <TsUnionType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsIntersectionType(it) => {
+                <TsIntersectionType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsConditionalType(it) => {
+                <TsConditionalType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsInferType(it) => {
+                <TsInferType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsTypeOperator(it) => {
+                <TsTypeOperator as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsParenthesizedType(it) => {
+                <TsParenthesizedType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsFunctionType(it) => {
+                <TsFunctionType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsConstructorType(it) => {
+                <TsConstructorType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsTypePredicate(it) => {
+                <TsTypePredicate as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsTypeLiteral(it) => {
+                <TsTypeLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeData::TsMappedType(it) => {
+                <TsMappedType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ArrayPat {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeName {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_array_pat(visitor, self)
+        <V as Visit<'a>>::visit_ts_type_name(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.elems(visitor.ast());
-        <TypedSubRange<Option<Pat>> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        match visitor.ast().ts_type_name_data(self) {
+            TsTypeNameData::IdentifierReference(it) => {
+                <IdentifierReference as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeNameData::TsQualifiedName(it) => {
+                <TsQualifiedName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ObjectPat {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsQualifiedNameLeft {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_object_pat(visitor, self)
+        <V as Visit<'a>>::visit_ts_qualified_name_left(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.props(visitor.ast());
-        <TypedSubRange<ObjectPatProp> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        match visitor.ast().ts_qualified_name_left_data(self) {
+            TsQualifiedNameLeftData::IdentifierReference(it) => {
+                <IdentifierReference as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsQualifiedNameLeftData::IdentifierName(it) => {
+                <IdentifierName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsQualifiedNameLeftData::BindingIdentifier(it) => {
+                <BindingIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsQualifiedNameLeftData::ThisExpression(it) => {
+                <ThisExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsQualifiedNameLeftData::TsQualifiedName(it) => {
+                <TsQualifiedName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignPat {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsImportTypeQualifier {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_assign_pat(visitor, self)
+        <V as Visit<'a>>::visit_ts_import_type_qualifier(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().ts_import_type_qualifier_data(self) {
+            TsImportTypeQualifierData::IdentifierName(it) => {
+                <IdentifierName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsImportTypeQualifierData::TsQualifiedName(it) => {
+                <TsQualifiedName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeQueryExprName {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_type_query_expr_name(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().ts_type_query_expr_name_data(self) {
+            TsTypeQueryExprNameData::TsTypeName(it) => {
+                <TsTypeName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeQueryExprNameData::ThisExpression(it) => {
+                <ThisExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeQueryExprNameData::TsImportType(it) => {
+                <TsImportType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsLiteral {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().ts_literal_data(self) {
+            TsLiteralData::StringLiteral(it) => {
+                <StringLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsLiteralData::NumericLiteral(it) => {
+                <NumericLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsLiteralData::BigIntLiteral(it) => {
+                <BigIntLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsLiteralData::BooleanLiteral(it) => {
+                <BooleanLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsLiteralData::TemplateLiteral(it) => {
+                <TemplateLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsLiteralData::UnaryExpression(it) => {
+                <UnaryExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTupleElement {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_tuple_element(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().ts_tuple_element_data(self) {
+            TsTupleElementData::TsType(it) => <TsType as VisitWith<'a, V>>::visit_with(it, visitor),
+            TsTupleElementData::TsNamedTupleMember(it) => {
+                <TsNamedTupleMember as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTupleElementData::TsOptionalType(it) => {
+                <TsOptionalType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTupleElementData::TsRestType(it) => {
+                <TsRestType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeElement {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_type_element(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().ts_type_element_data(self) {
+            TsTypeElementData::TsPropertySignature(it) => {
+                <TsPropertySignature as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeElementData::TsMethodSignature(it) => {
+                <TsMethodSignature as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeElementData::TsCallSignatureDeclaration(it) => {
+                <TsCallSignatureDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeElementData::TsConstructSignatureDeclaration(it) => {
+                <TsConstructSignatureDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypeElementData::TsIndexSignature(it) => {
+                <TsIndexSignature as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypePredicateName {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_type_predicate_name(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().ts_type_predicate_name_data(self) {
+            TsTypePredicateNameData::IdentifierName(it) => {
+                <IdentifierName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsTypePredicateNameData::TsThisType(it) => {
+                <TsThisType as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsEnumMemberName {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_enum_member_name(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().ts_enum_member_name_data(self) {
+            TsEnumMemberNameData::IdentifierName(it) => {
+                <IdentifierName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsEnumMemberNameData::StringLiteral(it) => {
+                <StringLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsEnumMemberNameData::TemplateLiteral(it) => {
+                <TemplateLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsEnumMemberNameData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsModuleName {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_module_name(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().ts_module_name_data(self) {
+            TsModuleNameData::BindingIdentifier(it) => {
+                <BindingIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsModuleNameData::StringLiteral(it) => {
+                <StringLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsModuleNameData::TsQualifiedName(it) => {
+                <TsQualifiedName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsModuleBody {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_module_body(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().ts_module_body_data(self) {
+            TsModuleBodyData::TsModuleBlock(it) => {
+                <TsModuleBlock as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsModuleBodyData::TsModuleDeclaration(it) => {
+                <TsModuleDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsModuleReference {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_module_reference(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().ts_module_reference_data(self) {
+            TsModuleReferenceData::TsTypeName(it) => {
+                <TsTypeName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            TsModuleReferenceData::TsExternalModuleReference(it) => {
+                <TsExternalModuleReference as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeAnnotation {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_type_annotation(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.type_annotation(visitor.ast());
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsAnyKeyword {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_any_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsUnknownKeyword {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_unknown_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsNeverKeyword {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_never_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsVoidKeyword {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_void_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsNullKeyword {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_null_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsUndefinedKeyword {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_undefined_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsStringKeyword {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_string_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsNumberKeyword {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_number_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsBigIntKeyword {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_big_int_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsBooleanKeyword {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_boolean_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsSymbolKeyword {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_symbol_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsObjectKeyword {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_object_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsIntrinsicKeyword {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_intrinsic_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsThisType {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_this_type(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeReference {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_type_reference(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.type_name(visitor.ast());
+        let field_value_1 = self.type_arguments(visitor.ast());
+        <TsTypeName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
+            field_value_1,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsQualifiedName {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_qualified_name(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.left(visitor.ast());
         let field_value_1 = self.right(visitor.ast());
-        <Pat as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <TsQualifiedNameLeft as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <IdentifierName as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for RestPat {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeQuery {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_rest_pat(visitor, self)
+        <V as Visit<'a>>::visit_ts_type_query(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_1 = self.arg(visitor.ast());
-        <Pat as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        let field_value_0 = self.expr_name(visitor.ast());
+        let field_value_1 = self.type_arguments(visitor.ast());
+        <TsTypeQueryExprName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
+            field_value_1,
+            visitor,
+        );
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ObjectPatProp {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsImportType {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_object_pat_prop(visitor, self)
+        <V as Visit<'a>>::visit_ts_import_type(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().object_pat_prop_data(self) {
-            ObjectPatPropData::KeyValue(it) => {
-                <KeyValuePatProp as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ObjectPatPropData::Assign(it) => {
-                <AssignPatProp as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            ObjectPatPropData::Rest(it) => <RestPat as VisitWith<'a, V>>::visit_with(it, visitor),
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for KeyValuePatProp {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_key_value_pat_prop(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.key(visitor.ast());
-        let field_value_1 = self.value(visitor.ast());
-        <PropName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Pat as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignPatProp {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_assign_pat_prop(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.key(visitor.ast());
-        let field_value_1 = self.value(visitor.ast());
-        <BindingIdent as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        let field_value_0 = self.source(visitor.ast());
+        let field_value_1 = self.options(visitor.ast());
+        let field_value_2 = self.qualifier(visitor.ast());
+        let field_value_3 = self.type_arguments(visitor.ast());
+        <StringLiteral as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<TsImportTypeQualifier> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
+            field_value_3,
+            visitor,
+        );
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Ident {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeParameter {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_ident(visitor, self)
+        <V as Visit<'a>>::visit_ts_type_parameter(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.name(visitor.ast());
+        let field_value_1 = self.constraint(visitor.ast());
+        let field_value_2 = self.default(visitor.ast());
+        <BindingIdentifier as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<TsType> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<TsType> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeParameterDeclaration {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_type_parameter_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.params(visitor.ast());
+        <TypedSubRange<TsTypeParameter> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeParameterInstantiation {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_type_parameter_instantiation(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.params(visitor.ast());
+        <TypedSubRange<TsType> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsLiteralType {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_literal_type(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.literal(visitor.ast());
+        <TsLiteral as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTemplateLiteralType {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_template_literal_type(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.quasis(visitor.ast());
+        let field_value_1 = self.types(visitor.ast());
+        <TypedSubRange<TemplateElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TypedSubRange<TsType> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsArrayType {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_array_type(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.element_type(visitor.ast());
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsIndexedAccessType {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_indexed_access_type(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.object_type(visitor.ast());
+        let field_value_1 = self.index_type(visitor.ast());
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTupleType {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_tuple_type(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.element_types(visitor.ast());
+        <TypedSubRange<TsTupleElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsNamedTupleMember {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_named_tuple_member(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.label(visitor.ast());
+        let field_value_1 = self.element_type(visitor.ast());
+        <IdentifierName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsOptionalType {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_optional_type(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.type_annotation(visitor.ast());
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsRestType {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_rest_type(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.type_annotation(visitor.ast());
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsJsDocNullableType {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_js_doc_nullable_type(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.type_annotation(visitor.ast());
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsJsDocNonNullableType {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_js_doc_non_nullable_type(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.type_annotation(visitor.ast());
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsJsDocUnknownType {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_js_doc_unknown_type(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {}
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for IdentName {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsUnionType {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_ident_name(visitor, self)
+        <V as Visit<'a>>::visit_ts_union_type(visitor, self)
     }
     #[inline]
-    fn visit_children_with(self, visitor: &mut V) {}
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.types(visitor.ast());
+        <TypedSubRange<TsType> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for PrivateName {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsIntersectionType {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_private_name(visitor, self)
+        <V as Visit<'a>>::visit_ts_intersection_type(visitor, self)
     }
     #[inline]
-    fn visit_children_with(self, visitor: &mut V) {}
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.types(visitor.ast());
+        <TypedSubRange<TsType> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BindingIdent {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsConditionalType {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_binding_ident(visitor, self)
+        <V as Visit<'a>>::visit_ts_conditional_type(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.check_type(visitor.ast());
+        let field_value_1 = self.extends_type(visitor.ast());
+        let field_value_2 = self.true_type(visitor.ast());
+        let field_value_3 = self.false_type(visitor.ast());
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsInferType {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_infer_type(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.type_parameter(visitor.ast());
+        <TsTypeParameter as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeOperator {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_type_operator(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_1 = self.type_annotation(visitor.ast());
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsParenthesizedType {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_parenthesized_type(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.type_annotation(visitor.ast());
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsFunctionType {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_function_type(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.type_parameters(visitor.ast());
+        let field_value_1 = self.params(visitor.ast());
+        let field_value_2 = self.return_type(visitor.ast());
+        <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
+            field_value_0,
+            visitor,
+        );
+        <FormalParameters as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <TsTypeAnnotation as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsConstructorType {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_constructor_type(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.type_parameters(visitor.ast());
+        let field_value_1 = self.params(visitor.ast());
+        let field_value_2 = self.return_type(visitor.ast());
+        <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
+            field_value_0,
+            visitor,
+        );
+        <FormalParameters as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <TsTypeAnnotation as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypePredicate {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_type_predicate(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.parameter_name(visitor.ast());
+        let field_value_1 = self.type_annotation(visitor.ast());
+        <TsTypePredicateName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeLiteral {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_type_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.members(visitor.ast());
+        <TypedSubRange<TsTypeElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsMappedType {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_mapped_type(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.key(visitor.ast());
+        let field_value_1 = self.constraint(visitor.ast());
+        let field_value_2 = self.name_type(visitor.ast());
+        let field_value_3 = self.type_annotation(visitor.ast());
+        <BindingIdentifier as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<TsType> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <Option<TsType> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsPropertySignature {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_property_signature(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.key(visitor.ast());
+        let field_value_1 = self.type_annotation(visitor.ast());
+        <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsMethodSignature {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_method_signature(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.key(visitor.ast());
+        let field_value_1 = self.type_parameters(visitor.ast());
+        let field_value_2 = self.params(visitor.ast());
+        let field_value_3 = self.return_type(visitor.ast());
+        <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
+            field_value_1,
+            visitor,
+        );
+        <FormalParameters as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsCallSignatureDeclaration {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_call_signature_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.type_parameters(visitor.ast());
+        let field_value_1 = self.params(visitor.ast());
+        let field_value_2 = self.return_type(visitor.ast());
+        <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
+            field_value_0,
+            visitor,
+        );
+        <FormalParameters as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsConstructSignatureDeclaration {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_construct_signature_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.type_parameters(visitor.ast());
+        let field_value_1 = self.params(visitor.ast());
+        let field_value_2 = self.return_type(visitor.ast());
+        <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
+            field_value_0,
+            visitor,
+        );
+        <FormalParameters as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsIndexSignature {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_index_signature(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.parameters(visitor.ast());
+        let field_value_1 = self.type_annotation(visitor.ast());
+        <TypedSubRange<BindingIdentifier> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TsTypeAnnotation as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeAliasDeclaration {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_type_alias_declaration(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.id(visitor.ast());
-        <Ident as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        let field_value_1 = self.type_parameters(visitor.ast());
+        let field_value_2 = self.type_annotation(visitor.ast());
+        <BindingIdentifier as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
+            field_value_1,
+            visitor,
+        );
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Lit {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsInterfaceDeclaration {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_lit(visitor, self)
+        <V as Visit<'a>>::visit_ts_interface_declaration(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().lit_data(self) {
-            LitData::Str(it) => <Str as VisitWith<'a, V>>::visit_with(it, visitor),
-            LitData::Bool(it) => <Bool as VisitWith<'a, V>>::visit_with(it, visitor),
-            LitData::Null(it) => <Null as VisitWith<'a, V>>::visit_with(it, visitor),
-            LitData::Num(it) => <Number as VisitWith<'a, V>>::visit_with(it, visitor),
-            LitData::BigInt(it) => <BigInt as VisitWith<'a, V>>::visit_with(it, visitor),
-            LitData::Regex(it) => <Regex as VisitWith<'a, V>>::visit_with(it, visitor),
-        }
+        let field_value_0 = self.id(visitor.ast());
+        let field_value_1 = self.type_parameters(visitor.ast());
+        let field_value_2 = self.extends(visitor.ast());
+        let field_value_3 = self.body(visitor.ast());
+        <BindingIdentifier as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
+            field_value_1,
+            visitor,
+        );
+        <TypedSubRange<TsInterfaceHeritage> as VisitWith<'a, V>>::visit_with(
+            field_value_2,
+            visitor,
+        );
+        <TsInterfaceBody as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Str {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsInterfaceBody {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_str(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Bool {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_bool(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Null {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_null(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Number {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_number(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BigInt {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_big_int(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Regex {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_regex(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXObject {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_jsx_object(visitor, self)
+        <V as Visit<'a>>::visit_ts_interface_body(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().jsx_object_data(self) {
-            JSXObjectData::JSXMemberExpr(it) => {
-                <JSXMemberExpr as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            JSXObjectData::Ident(it) => <Ident as VisitWith<'a, V>>::visit_with(it, visitor),
-        }
+        let field_value_0 = self.body(visitor.ast());
+        <TypedSubRange<TsTypeElement> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXMemberExpr {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsInterfaceHeritage {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_jsx_member_expr(visitor, self)
+        <V as Visit<'a>>::visit_ts_interface_heritage(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.obj(visitor.ast());
-        let field_value_1 = self.prop(visitor.ast());
-        <JSXObject as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <IdentName as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        let field_value_0 = self.expression(visitor.ast());
+        let field_value_1 = self.type_arguments(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
+            field_value_1,
+            visitor,
+        );
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXNamespacedName {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsClassImplements {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_jsx_namespaced_name(visitor, self)
+        <V as Visit<'a>>::visit_ts_class_implements(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.ns(visitor.ast());
-        let field_value_1 = self.name(visitor.ast());
-        <IdentName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <IdentName as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        let field_value_0 = self.expression(visitor.ast());
+        let field_value_1 = self.type_arguments(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
+            field_value_1,
+            visitor,
+        );
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXEmptyExpr {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsEnumDeclaration {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_jsx_empty_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXExprContainer {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_jsx_expr_container(visitor, self)
+        <V as Visit<'a>>::visit_ts_enum_declaration(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.expr(visitor.ast());
-        <JSXExpr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        let field_value_0 = self.id(visitor.ast());
+        let field_value_1 = self.body(visitor.ast());
+        <BindingIdentifier as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TsEnumBody as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXExpr {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsEnumBody {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_jsx_expr(visitor, self)
+        <V as Visit<'a>>::visit_ts_enum_body(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().jsx_expr_data(self) {
-            JSXExprData::JSXEmptyExpr(it) => {
-                <JSXEmptyExpr as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            JSXExprData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
-        }
+        let field_value_0 = self.members(visitor.ast());
+        <TypedSubRange<TsEnumMember> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXSpreadChild {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsEnumMember {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_jsx_spread_child(visitor, self)
+        <V as Visit<'a>>::visit_ts_enum_member(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.expr(visitor.ast());
+        let field_value_0 = self.id(visitor.ast());
+        let field_value_1 = self.initializer(visitor.ast());
+        <TsEnumMemberName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsModuleDeclaration {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_module_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.id(visitor.ast());
+        let field_value_1 = self.body(visitor.ast());
+        <TsModuleName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<TsModuleBody> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsModuleBlock {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_module_block(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.body(visitor.ast());
+        <TypedSubRange<StatementListItem> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsGlobalDeclaration {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_global_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.id(visitor.ast());
+        let field_value_1 = self.body(visitor.ast());
+        <IdentifierName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TsModuleBlock as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsParameterProperty {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_parameter_property(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.decorators(visitor.ast());
+        let field_value_1 = self.parameter(visitor.ast());
+        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <BindingPattern as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsThisParameter {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_this_parameter(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.type_annotation(visitor.ast());
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsAsExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_as_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.expression(visitor.ast());
+        let field_value_1 = self.type_annotation(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsSatisfiesExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_satisfies_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.expression(visitor.ast());
+        let field_value_1 = self.type_annotation(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeAssertion {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_type_assertion(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.type_annotation(visitor.ast());
+        let field_value_1 = self.expression(visitor.ast());
+        <TsType as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsNonNullExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_non_null_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.expression(visitor.ast());
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXElementName {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsInstantiationExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_instantiation_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.expression(visitor.ast());
+        let field_value_1 = self.type_arguments(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TsTypeParameterInstantiation as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsExportAssignment {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_export_assignment(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.expression(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsNamespaceExportDeclaration {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_namespace_export_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.id(visitor.ast());
+        <IdentifierName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsImportEqualsDeclaration {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_import_equals_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.id(visitor.ast());
+        let field_value_1 = self.module_reference(visitor.ast());
+        <BindingIdentifier as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TsModuleReference as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsExternalModuleReference {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_external_module_reference(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.expression(visitor.ast());
+        <StringLiteral as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxElementName {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_jsx_element_name(visitor, self)
@@ -2824,17 +4293,147 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXElementName {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match visitor.ast().jsx_element_name_data(self) {
-            JSXElementNameData::Ident(it) => <Ident as VisitWith<'a, V>>::visit_with(it, visitor),
-            JSXElementNameData::JSXMemberExpr(it) => {
-                <JSXMemberExpr as VisitWith<'a, V>>::visit_with(it, visitor)
+            JsxElementNameData::JsxIdentifier(it) => {
+                <JsxIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            JSXElementNameData::JSXNamespacedName(it) => {
-                <JSXNamespacedName as VisitWith<'a, V>>::visit_with(it, visitor)
+            JsxElementNameData::JsxNamespacedName(it) => {
+                <JsxNamespacedName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            JsxElementNameData::JsxMemberExpression(it) => {
+                <JsxMemberExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXOpeningElement {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxMemberExpressionObject {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_jsx_member_expression_object(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().jsx_member_expression_object_data(self) {
+            JsxMemberExpressionObjectData::JsxIdentifier(it) => {
+                <JsxIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            JsxMemberExpressionObjectData::JsxMemberExpression(it) => {
+                <JsxMemberExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxAttributeName {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_jsx_attribute_name(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().jsx_attribute_name_data(self) {
+            JsxAttributeNameData::JsxIdentifier(it) => {
+                <JsxIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            JsxAttributeNameData::JsxNamespacedName(it) => {
+                <JsxNamespacedName as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxAttributeItem {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_jsx_attribute_item(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().jsx_attribute_item_data(self) {
+            JsxAttributeItemData::JsxAttribute(it) => {
+                <JsxAttribute as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            JsxAttributeItemData::JsxSpreadAttribute(it) => {
+                <JsxSpreadAttribute as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxAttributeValue {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_jsx_attribute_value(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().jsx_attribute_value_data(self) {
+            JsxAttributeValueData::StringLiteral(it) => {
+                <StringLiteral as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            JsxAttributeValueData::JsxExpressionContainer(it) => {
+                <JsxExpressionContainer as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            JsxAttributeValueData::JsxElement(it) => {
+                <JsxElement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            JsxAttributeValueData::JsxFragment(it) => {
+                <JsxFragment as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_jsx_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().jsx_expression_data(self) {
+            JsxExpressionData::Expr(it) => <Expr as VisitWith<'a, V>>::visit_with(it, visitor),
+            JsxExpressionData::JsxEmptyExpression(it) => {
+                <JsxEmptyExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxChild {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_jsx_child(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match visitor.ast().jsx_child_data(self) {
+            JsxChildData::JsxText(it) => <JsxText as VisitWith<'a, V>>::visit_with(it, visitor),
+            JsxChildData::JsxExpressionContainer(it) => {
+                <JsxExpressionContainer as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            JsxChildData::JsxSpreadChild(it) => {
+                <JsxSpreadChild as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            JsxChildData::JsxElement(it) => {
+                <JsxElement as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            JsxChildData::JsxFragment(it) => {
+                <JsxFragment as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxElement {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_jsx_element(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.opening_element(visitor.ast());
+        let field_value_1 = self.children(visitor.ast());
+        let field_value_2 = self.closing_element(visitor.ast());
+        <JsxOpeningElement as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TypedSubRange<JsxChild> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<JsxClosingElement> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxOpeningElement {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_jsx_opening_element(visitor, self)
@@ -2842,29 +4441,17 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXOpeningElement {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.name(visitor.ast());
-        let field_value_1 = self.attrs(visitor.ast());
-        <JSXElementName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<JSXAttrOrSpread> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        let field_value_1 = self.attributes(visitor.ast());
+        let field_value_3 = self.type_arguments(visitor.ast());
+        <JsxElementName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TypedSubRange<JsxAttributeItem> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<TsTypeParameterInstantiation> as VisitWith<'a, V>>::visit_with(
+            field_value_3,
+            visitor,
+        );
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXAttrOrSpread {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_jsx_attr_or_spread(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().jsx_attr_or_spread_data(self) {
-            JSXAttrOrSpreadData::JSXAttr(it) => {
-                <JSXAttr as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            JSXAttrOrSpreadData::SpreadElement(it) => {
-                <SpreadElement as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXClosingElement {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxClosingElement {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_jsx_closing_element(visitor, self)
@@ -2872,123 +4459,25 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXClosingElement {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.name(visitor.ast());
-        <JSXElementName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <JsxElementName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXAttr {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_jsx_attr(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.name(visitor.ast());
-        let field_value_1 = self.value(visitor.ast());
-        <JSXAttrName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Option<JSXAttrValue> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXAttrName {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_jsx_attr_name(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().jsx_attr_name_data(self) {
-            JSXAttrNameData::Ident(it) => <IdentName as VisitWith<'a, V>>::visit_with(it, visitor),
-            JSXAttrNameData::JSXNamespacedName(it) => {
-                <JSXNamespacedName as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXAttrValue {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_jsx_attr_value(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().jsx_attr_value_data(self) {
-            JSXAttrValueData::Str(it) => <Str as VisitWith<'a, V>>::visit_with(it, visitor),
-            JSXAttrValueData::JSXExprContainer(it) => {
-                <JSXExprContainer as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            JSXAttrValueData::JSXElement(it) => {
-                <JSXElement as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            JSXAttrValueData::JSXFragment(it) => {
-                <JSXFragment as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXText {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_jsx_text(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXElement {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_jsx_element(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.opening(visitor.ast());
-        let field_value_1 = self.children(visitor.ast());
-        let field_value_2 = self.closing(visitor.ast());
-        <JSXOpeningElement as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<JSXElementChild> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Option<JSXClosingElement> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXElementChild {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_jsx_element_child(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().jsx_element_child_data(self) {
-            JSXElementChildData::JSXText(it) => {
-                <JSXText as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            JSXElementChildData::JSXExprContainer(it) => {
-                <JSXExprContainer as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            JSXElementChildData::JSXSpreadChild(it) => {
-                <JSXSpreadChild as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            JSXElementChildData::JSXElement(it) => {
-                <JSXElement as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            JSXElementChildData::JSXFragment(it) => {
-                <JSXFragment as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXFragment {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxFragment {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_jsx_fragment(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.opening(visitor.ast());
+        let field_value_0 = self.opening_fragment(visitor.ast());
         let field_value_1 = self.children(visitor.ast());
-        let field_value_2 = self.closing(visitor.ast());
-        <JSXOpeningFragment as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <TypedSubRange<JSXElementChild> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <JSXClosingFragment as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        let field_value_2 = self.closing_fragment(visitor.ast());
+        <JsxOpeningFragment as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TypedSubRange<JsxChild> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <JsxClosingFragment as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXOpeningFragment {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxOpeningFragment {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_jsx_opening_fragment(visitor, self)
@@ -2996,7 +4485,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXOpeningFragment {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {}
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXClosingFragment {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxClosingFragment {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_jsx_closing_fragment(visitor, self)
@@ -3004,10 +4493,106 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JSXClosingFragment {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {}
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ModuleItem> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxIdentifier {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_module_items(visitor, self)
+        <V as Visit<'a>>::visit_jsx_identifier(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxNamespacedName {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_jsx_namespaced_name(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.namespace(visitor.ast());
+        let field_value_1 = self.name(visitor.ast());
+        <JsxIdentifier as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <JsxIdentifier as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxMemberExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_jsx_member_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.object(visitor.ast());
+        let field_value_1 = self.property(visitor.ast());
+        <JsxMemberExpressionObject as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <JsxIdentifier as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxAttribute {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_jsx_attribute(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.name(visitor.ast());
+        let field_value_1 = self.value(visitor.ast());
+        <JsxAttributeName as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <Option<JsxAttributeValue> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxSpreadAttribute {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_jsx_spread_attribute(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.argument(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxExpressionContainer {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_jsx_expression_container(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.expression(visitor.ast());
+        <JsxExpression as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxEmptyExpression {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_jsx_empty_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxText {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_jsx_text(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxSpreadChild {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_jsx_spread_child(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.expression(visitor.ast());
+        <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<StatementListItem> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_statement_list_items(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
@@ -3017,36 +4602,10 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ModuleItem> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Stmt> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Hashbang> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_stmts(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ImportSpecifier> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_import_specifiers(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<ObjectLit> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_opt_object_lit(visitor, self)
+        <V as Visit<'a>>::visit_opt_hashbang(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
@@ -3056,10 +4615,10 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<ObjectLit> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ExportSpecifier> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TemplateElement> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_export_specifiers(visitor, self)
+        <V as Visit<'a>>::visit_template_elements(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
@@ -3069,16 +4628,107 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ExportSpecifi
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Str> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Expr> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_opt_str(visitor, self)
+        <V as Visit<'a>>::visit_exprs(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Decorator> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_decorators(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<TsTypeAnnotation> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_ts_type_annotation(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         match self {
             Some(it) => it.visit_with(visitor),
             None => {}
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<BindingPattern> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_binding_pattern(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match self {
+            Some(it) => it.visit_with(visitor),
+            None => {}
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Option<BindingPattern>> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_vec_binding_patterns(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<BindingRestElement> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_binding_rest_element(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match self {
+            Some(it) => it.visit_with(visitor),
+            None => {}
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<BindingProperty> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_binding_propertys(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<VariableDeclarator> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_variable_declarators(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
         }
     }
 }
@@ -3086,19 +4736,6 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Expr> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_opt_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match self {
-            Some(it) => it.visit_with(visitor),
-            None => {}
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Ident> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_opt_ident(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
@@ -3134,6 +4771,32 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<SwitchCase> {
         }
     }
 }
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Stmt> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_stmts(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<ForStatementInit> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_for_statement_init(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match self {
+            Some(it) => it.visit_with(visitor),
+            None => {}
+        }
+    }
+}
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<CatchClause> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
@@ -3147,10 +4810,10 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<CatchClause> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<BlockStmt> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<BlockStatement> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_opt_block_stmt(visitor, self)
+        <V as Visit<'a>>::visit_opt_block_statement(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
@@ -3160,10 +4823,10 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<BlockStmt> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<VarDeclOrExpr> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<LabelIdentifier> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_opt_var_decl_or_expr(visitor, self)
+        <V as Visit<'a>>::visit_opt_label_identifier(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
@@ -3173,10 +4836,10 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<VarDeclOrExpr> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Pat> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<BindingIdentifier> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_opt_pat(visitor, self)
+        <V as Visit<'a>>::visit_opt_binding_identifier(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
@@ -3186,23 +4849,10 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Pat> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<VarDeclarator> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<TsTypeParameterDeclaration> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_var_declarators(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<ExprOrSpread> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_opt_expr_or_spread(visitor, self)
+        <V as Visit<'a>>::visit_opt_ts_type_parameter_declaration(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
@@ -3212,179 +4862,10 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<ExprOrSpread> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Option<ExprOrSpread>> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<TsTypeParameterInstantiation> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_opt_vec_expr_or_spreads(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<PropOrSpread> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_prop_or_spreads(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ExprOrSpread> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_expr_or_spreads(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Expr> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_exprs(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Pat> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_pats(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TplElement> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_tpl_elements(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Param> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_params(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Decorator> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_decorators(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ClassMember> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_class_members(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ParamOrTsParamProp> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_param_or_ts_param_props(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Option<Pat>> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_opt_vec_pats(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ObjectPatProp> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_object_pat_props(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<JSXAttrOrSpread> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_jsx_attr_or_spreads(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<JSXAttrValue> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_opt_jsx_attr_value(visitor, self)
+        <V as Visit<'a>>::visit_opt_ts_type_parameter_instantiation(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
@@ -3394,10 +4875,10 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<JSXAttrValue> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<JSXElementChild> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsClassImplements> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_jsx_element_childs(visitor, self)
+        <V as Visit<'a>>::visit_ts_class_implementss(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
@@ -3407,10 +4888,348 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<JSXElementChi
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<JSXClosingElement> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ClassElement> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_class_elements(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<FunctionBody> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_function_body(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match self {
+            Some(it) => it.visit_with(visitor),
+            None => {}
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<FormalParameterItem> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_formal_parameter_items(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Argument> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_argument(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match self {
+            Some(it) => it.visit_with(visitor),
+            None => {}
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Option<Argument>> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_vec_arguments(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ObjectPropertyKind> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_object_property_kinds(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Argument> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_arguments(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ImportDeclarationSpecifier> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_import_declaration_specifiers(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ImportAttribute> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_import_attributes(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<Decl> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_decl(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match self {
+            Some(it) => it.visit_with(visitor),
+            None => {}
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ExportSpecifier> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_export_specifiers(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<StringLiteral> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_string_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match self {
+            Some(it) => it.visit_with(visitor),
+            None => {}
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<ModuleExportName> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_module_export_name(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match self {
+            Some(it) => it.visit_with(visitor),
+            None => {}
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<TsImportTypeQualifier> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_ts_import_type_qualifier(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match self {
+            Some(it) => it.visit_with(visitor),
+            None => {}
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<TsType> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_ts_type(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match self {
+            Some(it) => it.visit_with(visitor),
+            None => {}
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsTypeParameter> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_type_parameters(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsType> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_types(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsTupleElement> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_tuple_elements(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsTypeElement> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_type_elements(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<BindingIdentifier> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_binding_identifiers(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsInterfaceHeritage> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_interface_heritages(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<TsEnumMember> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_enum_members(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<TsModuleBody> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_ts_module_body(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match self {
+            Some(it) => it.visit_with(visitor),
+            None => {}
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<JsxChild> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_jsx_childs(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<JsxClosingElement> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_opt_jsx_closing_element(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match self {
+            Some(it) => it.visit_with(visitor),
+            None => {}
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<JsxAttributeItem> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_jsx_attribute_items(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<JsxAttributeValue> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_jsx_attribute_value(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
@@ -3427,640 +5246,913 @@ pub trait VisitMut<'a> {
         <Program as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_module(&mut self, node: Module) {
-        <Module as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_script(&mut self, node: Script) {
-        <Script as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_module_item(&mut self, node: ModuleItem) {
-        <ModuleItem as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_module_decl(&mut self, node: ModuleDecl) {
-        <ModuleDecl as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_import_decl(&mut self, node: ImportDecl) {
-        <ImportDecl as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_import_specifier(&mut self, node: ImportSpecifier) {
-        <ImportSpecifier as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_import_named_specifier(&mut self, node: ImportNamedSpecifier) {
-        <ImportNamedSpecifier as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_import_default_specifier(&mut self, node: ImportDefaultSpecifier) {
-        <ImportDefaultSpecifier as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_import_star_as_specifier(&mut self, node: ImportStarAsSpecifier) {
-        <ImportStarAsSpecifier as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_export_decl(&mut self, node: ExportDecl) {
-        <ExportDecl as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_named_export(&mut self, node: NamedExport) {
-        <NamedExport as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_export_specifier(&mut self, node: ExportSpecifier) {
-        <ExportSpecifier as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_export_namespace_specifier(&mut self, node: ExportNamespaceSpecifier) {
-        <ExportNamespaceSpecifier as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_module_export_name(&mut self, node: ModuleExportName) {
-        <ModuleExportName as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_export_default_specifier(&mut self, node: ExportDefaultSpecifier) {
-        <ExportDefaultSpecifier as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_export_named_specifier(&mut self, node: ExportNamedSpecifier) {
-        <ExportNamedSpecifier as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_export_default_decl(&mut self, node: ExportDefaultDecl) {
-        <ExportDefaultDecl as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_default_decl(&mut self, node: DefaultDecl) {
-        <DefaultDecl as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_export_default_expr(&mut self, node: ExportDefaultExpr) {
-        <ExportDefaultExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_export_all(&mut self, node: ExportAll) {
-        <ExportAll as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_block_stmt(&mut self, node: BlockStmt) {
-        <BlockStmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
     fn visit_mut_stmt(&mut self, node: Stmt) {
         <Stmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_expr_stmt(&mut self, node: ExprStmt) {
-        <ExprStmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_empty_stmt(&mut self, node: EmptyStmt) {
-        <EmptyStmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_debugger_stmt(&mut self, node: DebuggerStmt) {
-        <DebuggerStmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_with_stmt(&mut self, node: WithStmt) {
-        <WithStmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_return_stmt(&mut self, node: ReturnStmt) {
-        <ReturnStmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_labeled_stmt(&mut self, node: LabeledStmt) {
-        <LabeledStmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_break_stmt(&mut self, node: BreakStmt) {
-        <BreakStmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_continue_stmt(&mut self, node: ContinueStmt) {
-        <ContinueStmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_if_stmt(&mut self, node: IfStmt) {
-        <IfStmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_switch_stmt(&mut self, node: SwitchStmt) {
-        <SwitchStmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_throw_stmt(&mut self, node: ThrowStmt) {
-        <ThrowStmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_try_stmt(&mut self, node: TryStmt) {
-        <TryStmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_while_stmt(&mut self, node: WhileStmt) {
-        <WhileStmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_do_while_stmt(&mut self, node: DoWhileStmt) {
-        <DoWhileStmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_for_stmt(&mut self, node: ForStmt) {
-        <ForStmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_for_in_stmt(&mut self, node: ForInStmt) {
-        <ForInStmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_for_of_stmt(&mut self, node: ForOfStmt) {
-        <ForOfStmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_switch_case(&mut self, node: SwitchCase) {
-        <SwitchCase as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_catch_clause(&mut self, node: CatchClause) {
-        <CatchClause as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_for_head(&mut self, node: ForHead) {
-        <ForHead as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_var_decl_or_expr(&mut self, node: VarDeclOrExpr) {
-        <VarDeclOrExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_statement_list_item(&mut self, node: StatementListItem) {
+        <StatementListItem as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_decl(&mut self, node: Decl) {
         <Decl as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_fn_decl(&mut self, node: FnDecl) {
-        <FnDecl as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_class_decl(&mut self, node: ClassDecl) {
-        <ClassDecl as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_var_decl(&mut self, node: VarDecl) {
-        <VarDecl as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_var_declarator(&mut self, node: VarDeclarator) {
-        <VarDeclarator as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_using_decl(&mut self, node: UsingDecl) {
-        <UsingDecl as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
     fn visit_mut_expr(&mut self, node: Expr) {
         <Expr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_this_expr(&mut self, node: ThisExpr) {
-        <ThisExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_binding_pattern(&mut self, node: BindingPattern) {
+        <BindingPattern as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_array_lit(&mut self, node: ArrayLit) {
-        <ArrayLit as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_assignment_target(&mut self, node: AssignmentTarget) {
+        <AssignmentTarget as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_object_lit(&mut self, node: ObjectLit) {
-        <ObjectLit as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_simple_assignment_target(&mut self, node: SimpleAssignmentTarget) {
+        <SimpleAssignmentTarget as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_prop_or_spread(&mut self, node: PropOrSpread) {
-        <PropOrSpread as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_property_key(&mut self, node: PropertyKey) {
+        <PropertyKey as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_spread_element(&mut self, node: SpreadElement) {
-        <SpreadElement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_module_export_name(&mut self, node: ModuleExportName) {
+        <ModuleExportName as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_unary_expr(&mut self, node: UnaryExpr) {
-        <UnaryExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_argument(&mut self, node: Argument) {
+        <Argument as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_update_expr(&mut self, node: UpdateExpr) {
-        <UpdateExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_object_property_kind(&mut self, node: ObjectPropertyKind) {
+        <ObjectPropertyKind as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_bin_expr(&mut self, node: BinExpr) {
-        <BinExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_for_statement_init(&mut self, node: ForStatementInit) {
+        <ForStatementInit as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_fn_expr(&mut self, node: FnExpr) {
-        <FnExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_for_statement_left(&mut self, node: ForStatementLeft) {
+        <ForStatementLeft as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_class_expr(&mut self, node: ClassExpr) {
-        <ClassExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_arrow_function_body(&mut self, node: ArrowFunctionBody) {
+        <ArrowFunctionBody as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_assign_expr(&mut self, node: AssignExpr) {
-        <AssignExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_formal_parameter_item(&mut self, node: FormalParameterItem) {
+        <FormalParameterItem as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_member_expr(&mut self, node: MemberExpr) {
-        <MemberExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_formal_parameter_pattern(&mut self, node: FormalParameterPattern) {
+        <FormalParameterPattern as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_member_prop(&mut self, node: MemberProp) {
-        <MemberProp as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_class_element(&mut self, node: ClassElement) {
+        <ClassElement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_super_prop_expr(&mut self, node: SuperPropExpr) {
-        <SuperPropExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_import_declaration_specifier(&mut self, node: ImportDeclarationSpecifier) {
+        <ImportDeclarationSpecifier as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_super_prop(&mut self, node: SuperProp) {
-        <SuperProp as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_cond_expr(&mut self, node: CondExpr) {
-        <CondExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_import_expr(&mut self, node: ImportExpr) {
-        <ImportExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_call_expr(&mut self, node: CallExpr) {
-        <CallExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_new_expr(&mut self, node: NewExpr) {
-        <NewExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_seq_expr(&mut self, node: SeqExpr) {
-        <SeqExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_arrow_expr(&mut self, node: ArrowExpr) {
-        <ArrowExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_yield_expr(&mut self, node: YieldExpr) {
-        <YieldExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_meta_prop_expr(&mut self, node: MetaPropExpr) {
-        <MetaPropExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_await_expr(&mut self, node: AwaitExpr) {
-        <AwaitExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_tpl(&mut self, node: Tpl) {
-        <Tpl as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_tagged_tpl(&mut self, node: TaggedTpl) {
-        <TaggedTpl as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_tpl_element(&mut self, node: TplElement) {
-        <TplElement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_paren_expr(&mut self, node: ParenExpr) {
-        <ParenExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_callee(&mut self, node: Callee) {
-        <Callee as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_export_default_declaration_kind(&mut self, node: ExportDefaultDeclarationKind) {
+        <ExportDefaultDeclarationKind as VisitMutWith<'a, Self>>::visit_mut_children_with(
+            node, self,
+        )
     }
     #[inline]
     fn visit_mut_super(&mut self, node: Super) {
         <Super as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_expr_or_spread(&mut self, node: ExprOrSpread) {
-        <ExprOrSpread as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_this_expression(&mut self, node: ThisExpression) {
+        <ThisExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_block_stmt_or_expr(&mut self, node: BlockStmtOrExpr) {
-        <BlockStmtOrExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_string_literal(&mut self, node: StringLiteral) {
+        <StringLiteral as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_assign_target(&mut self, node: AssignTarget) {
-        <AssignTarget as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_numeric_literal(&mut self, node: NumericLiteral) {
+        <NumericLiteral as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_assign_target_pat(&mut self, node: AssignTargetPat) {
-        <AssignTargetPat as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_big_int_literal(&mut self, node: BigIntLiteral) {
+        <BigIntLiteral as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_simple_assign_target(&mut self, node: SimpleAssignTarget) {
-        <SimpleAssignTarget as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_boolean_literal(&mut self, node: BooleanLiteral) {
+        <BooleanLiteral as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_opt_chain_expr(&mut self, node: OptChainExpr) {
-        <OptChainExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_null_literal(&mut self, node: NullLiteral) {
+        <NullLiteral as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_opt_chain_base(&mut self, node: OptChainBase) {
-        <OptChainBase as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_reg_exp_literal(&mut self, node: RegExpLiteral) {
+        <RegExpLiteral as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_opt_call(&mut self, node: OptCall) {
-        <OptCall as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_template_literal(&mut self, node: TemplateLiteral) {
+        <TemplateLiteral as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_invalid(&mut self, node: Invalid) {
-        <Invalid as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_template_element(&mut self, node: TemplateElement) {
+        <TemplateElement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_function(&mut self, node: Function) {
-        <Function as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_identifier_reference(&mut self, node: IdentifierReference) {
+        <IdentifierReference as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_param(&mut self, node: Param) {
-        <Param as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_private_identifier(&mut self, node: PrivateIdentifier) {
+        <PrivateIdentifier as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_param_or_ts_param_prop(&mut self, node: ParamOrTsParamProp) {
-        <ParamOrTsParamProp as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_binding_identifier(&mut self, node: BindingIdentifier) {
+        <BindingIdentifier as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_class(&mut self, node: Class) {
-        <Class as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_identifier_name(&mut self, node: IdentifierName) {
+        <IdentifierName as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_class_member(&mut self, node: ClassMember) {
-        <ClassMember as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_label_identifier(&mut self, node: LabelIdentifier) {
+        <LabelIdentifier as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_class_prop(&mut self, node: ClassProp) {
-        <ClassProp as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_assignment_pattern(&mut self, node: AssignmentPattern) {
+        <AssignmentPattern as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_private_prop(&mut self, node: PrivateProp) {
-        <PrivateProp as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_binding_rest_element(&mut self, node: BindingRestElement) {
+        <BindingRestElement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_class_method(&mut self, node: ClassMethod) {
-        <ClassMethod as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_array_pattern(&mut self, node: ArrayPattern) {
+        <ArrayPattern as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_private_method(&mut self, node: PrivateMethod) {
-        <PrivateMethod as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_object_pattern(&mut self, node: ObjectPattern) {
+        <ObjectPattern as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_constructor(&mut self, node: Constructor) {
-        <Constructor as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_binding_property(&mut self, node: BindingProperty) {
+        <BindingProperty as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_binary_expression(&mut self, node: BinaryExpression) {
+        <BinaryExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_logical_expression(&mut self, node: LogicalExpression) {
+        <LogicalExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_conditional_expression(&mut self, node: ConditionalExpression) {
+        <ConditionalExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_unary_expression(&mut self, node: UnaryExpression) {
+        <UnaryExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_update_expression(&mut self, node: UpdateExpression) {
+        <UpdateExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_assignment_expression(&mut self, node: AssignmentExpression) {
+        <AssignmentExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_variable_declaration(&mut self, node: VariableDeclaration) {
+        <VariableDeclaration as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_variable_declarator(&mut self, node: VariableDeclarator) {
+        <VariableDeclarator as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_if_statement(&mut self, node: IfStatement) {
+        <IfStatement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_switch_statement(&mut self, node: SwitchStatement) {
+        <SwitchStatement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_switch_case(&mut self, node: SwitchCase) {
+        <SwitchCase as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_for_statement(&mut self, node: ForStatement) {
+        <ForStatement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_for_in_statement(&mut self, node: ForInStatement) {
+        <ForInStatement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_for_of_statement(&mut self, node: ForOfStatement) {
+        <ForOfStatement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_try_statement(&mut self, node: TryStatement) {
+        <TryStatement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_catch_clause(&mut self, node: CatchClause) {
+        <CatchClause as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_break_statement(&mut self, node: BreakStatement) {
+        <BreakStatement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_continue_statement(&mut self, node: ContinueStatement) {
+        <ContinueStatement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_labeled_statement(&mut self, node: LabeledStatement) {
+        <LabeledStatement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_expression_statement(&mut self, node: ExpressionStatement) {
+        <ExpressionStatement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_return_statement(&mut self, node: ReturnStatement) {
+        <ReturnStatement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_throw_statement(&mut self, node: ThrowStatement) {
+        <ThrowStatement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_debugger_statement(&mut self, node: DebuggerStatement) {
+        <DebuggerStatement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_empty_statement(&mut self, node: EmptyStatement) {
+        <EmptyStatement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_directive(&mut self, node: Directive) {
+        <Directive as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_decorator(&mut self, node: Decorator) {
         <Decorator as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
+    fn visit_mut_class(&mut self, node: Class) {
+        <Class as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_class_body(&mut self, node: ClassBody) {
+        <ClassBody as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_method_definition(&mut self, node: MethodDefinition) {
+        <MethodDefinition as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_property_definition(&mut self, node: PropertyDefinition) {
+        <PropertyDefinition as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
     fn visit_mut_static_block(&mut self, node: StaticBlock) {
         <StaticBlock as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_key(&mut self, node: Key) {
-        <Key as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_function(&mut self, node: Function) {
+        <Function as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_auto_accessor(&mut self, node: AutoAccessor) {
-        <AutoAccessor as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_function_body(&mut self, node: FunctionBody) {
+        <FunctionBody as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_prop(&mut self, node: Prop) {
-        <Prop as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_block_statement(&mut self, node: BlockStatement) {
+        <BlockStatement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_key_value_prop(&mut self, node: KeyValueProp) {
-        <KeyValueProp as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_while_statement(&mut self, node: WhileStatement) {
+        <WhileStatement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_assign_prop(&mut self, node: AssignProp) {
-        <AssignProp as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_do_while_statement(&mut self, node: DoWhileStatement) {
+        <DoWhileStatement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_getter_prop(&mut self, node: GetterProp) {
-        <GetterProp as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_with_statement(&mut self, node: WithStatement) {
+        <WithStatement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_setter_prop(&mut self, node: SetterProp) {
-        <SetterProp as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_formal_parameters(&mut self, node: FormalParameters) {
+        <FormalParameters as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_method_prop(&mut self, node: MethodProp) {
-        <MethodProp as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_formal_parameter(&mut self, node: FormalParameter) {
+        <FormalParameter as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_prop_name(&mut self, node: PropName) {
-        <PropName as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_array_expression(&mut self, node: ArrayExpression) {
+        <ArrayExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_computed_prop_name(&mut self, node: ComputedPropName) {
-        <ComputedPropName as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_object_expression(&mut self, node: ObjectExpression) {
+        <ObjectExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_pat(&mut self, node: Pat) {
-        <Pat as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_spread_element(&mut self, node: SpreadElement) {
+        <SpreadElement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_array_pat(&mut self, node: ArrayPat) {
-        <ArrayPat as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_object_property(&mut self, node: ObjectProperty) {
+        <ObjectProperty as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_object_pat(&mut self, node: ObjectPat) {
-        <ObjectPat as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_parenthesized_expression(&mut self, node: ParenthesizedExpression) {
+        <ParenthesizedExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_assign_pat(&mut self, node: AssignPat) {
-        <AssignPat as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_arrow_function_expression(&mut self, node: ArrowFunctionExpression) {
+        <ArrowFunctionExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_rest_pat(&mut self, node: RestPat) {
-        <RestPat as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_sequence_expression(&mut self, node: SequenceExpression) {
+        <SequenceExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_object_pat_prop(&mut self, node: ObjectPatProp) {
-        <ObjectPatProp as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_member_expression(&mut self, node: MemberExpression) {
+        <MemberExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_key_value_pat_prop(&mut self, node: KeyValuePatProp) {
-        <KeyValuePatProp as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_call_expression(&mut self, node: CallExpression) {
+        <CallExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_assign_pat_prop(&mut self, node: AssignPatProp) {
-        <AssignPatProp as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_chain_expression(&mut self, node: ChainExpression) {
+        <ChainExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_ident(&mut self, node: Ident) {
-        <Ident as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_tagged_template_expression(&mut self, node: TaggedTemplateExpression) {
+        <TaggedTemplateExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_ident_name(&mut self, node: IdentName) {
-        <IdentName as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_new_expression(&mut self, node: NewExpression) {
+        <NewExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_private_name(&mut self, node: PrivateName) {
-        <PrivateName as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_await_expression(&mut self, node: AwaitExpression) {
+        <AwaitExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_binding_ident(&mut self, node: BindingIdent) {
-        <BindingIdent as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_yield_expression(&mut self, node: YieldExpression) {
+        <YieldExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_lit(&mut self, node: Lit) {
-        <Lit as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_meta_property(&mut self, node: MetaProperty) {
+        <MetaProperty as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_str(&mut self, node: Str) {
-        <Str as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_import_expression(&mut self, node: ImportExpression) {
+        <ImportExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_bool(&mut self, node: Bool) {
-        <Bool as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_import_declaration(&mut self, node: ImportDeclaration) {
+        <ImportDeclaration as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_null(&mut self, node: Null) {
-        <Null as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_import_specifier(&mut self, node: ImportSpecifier) {
+        <ImportSpecifier as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_number(&mut self, node: Number) {
-        <Number as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_import_default_specifier(&mut self, node: ImportDefaultSpecifier) {
+        <ImportDefaultSpecifier as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_big_int(&mut self, node: BigInt) {
-        <BigInt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_import_namespace_specifier(&mut self, node: ImportNamespaceSpecifier) {
+        <ImportNamespaceSpecifier as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_regex(&mut self, node: Regex) {
-        <Regex as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_import_attribute(&mut self, node: ImportAttribute) {
+        <ImportAttribute as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_object(&mut self, node: JSXObject) {
-        <JSXObject as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_export_named_declaration(&mut self, node: ExportNamedDeclaration) {
+        <ExportNamedDeclaration as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_member_expr(&mut self, node: JSXMemberExpr) {
-        <JSXMemberExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_export_default_declaration(&mut self, node: ExportDefaultDeclaration) {
+        <ExportDefaultDeclaration as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_namespaced_name(&mut self, node: JSXNamespacedName) {
-        <JSXNamespacedName as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_export_all_declaration(&mut self, node: ExportAllDeclaration) {
+        <ExportAllDeclaration as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_empty_expr(&mut self, node: JSXEmptyExpr) {
-        <JSXEmptyExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_export_specifier(&mut self, node: ExportSpecifier) {
+        <ExportSpecifier as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_expr_container(&mut self, node: JSXExprContainer) {
-        <JSXExprContainer as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_hashbang(&mut self, node: Hashbang) {
+        <Hashbang as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_expr(&mut self, node: JSXExpr) {
-        <JSXExpr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_ts_type(&mut self, node: TsType) {
+        <TsType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_spread_child(&mut self, node: JSXSpreadChild) {
-        <JSXSpreadChild as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_ts_type_name(&mut self, node: TsTypeName) {
+        <TsTypeName as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_element_name(&mut self, node: JSXElementName) {
-        <JSXElementName as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_ts_qualified_name_left(&mut self, node: TsQualifiedNameLeft) {
+        <TsQualifiedNameLeft as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_opening_element(&mut self, node: JSXOpeningElement) {
-        <JSXOpeningElement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_ts_import_type_qualifier(&mut self, node: TsImportTypeQualifier) {
+        <TsImportTypeQualifier as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_attr_or_spread(&mut self, node: JSXAttrOrSpread) {
-        <JSXAttrOrSpread as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_ts_type_query_expr_name(&mut self, node: TsTypeQueryExprName) {
+        <TsTypeQueryExprName as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_closing_element(&mut self, node: JSXClosingElement) {
-        <JSXClosingElement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_ts_literal(&mut self, node: TsLiteral) {
+        <TsLiteral as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_attr(&mut self, node: JSXAttr) {
-        <JSXAttr as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_ts_tuple_element(&mut self, node: TsTupleElement) {
+        <TsTupleElement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_attr_name(&mut self, node: JSXAttrName) {
-        <JSXAttrName as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_ts_type_element(&mut self, node: TsTypeElement) {
+        <TsTypeElement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_attr_value(&mut self, node: JSXAttrValue) {
-        <JSXAttrValue as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_ts_type_predicate_name(&mut self, node: TsTypePredicateName) {
+        <TsTypePredicateName as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_text(&mut self, node: JSXText) {
-        <JSXText as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_ts_enum_member_name(&mut self, node: TsEnumMemberName) {
+        <TsEnumMemberName as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_element(&mut self, node: JSXElement) {
-        <JSXElement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_ts_module_name(&mut self, node: TsModuleName) {
+        <TsModuleName as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_element_child(&mut self, node: JSXElementChild) {
-        <JSXElementChild as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_ts_module_body(&mut self, node: TsModuleBody) {
+        <TsModuleBody as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_fragment(&mut self, node: JSXFragment) {
-        <JSXFragment as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_ts_module_reference(&mut self, node: TsModuleReference) {
+        <TsModuleReference as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_opening_fragment(&mut self, node: JSXOpeningFragment) {
-        <JSXOpeningFragment as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_ts_type_annotation(&mut self, node: TsTypeAnnotation) {
+        <TsTypeAnnotation as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_closing_fragment(&mut self, node: JSXClosingFragment) {
-        <JSXClosingFragment as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_ts_any_keyword(&mut self, node: TsAnyKeyword) {
+        <TsAnyKeyword as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_module_items(&mut self, node: TypedSubRange<ModuleItem>) {
-        <TypedSubRange<ModuleItem> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
+    fn visit_mut_ts_unknown_keyword(&mut self, node: TsUnknownKeyword) {
+        <TsUnknownKeyword as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_stmts(&mut self, node: TypedSubRange<Stmt>) {
-        <TypedSubRange<Stmt> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
+    fn visit_mut_ts_never_keyword(&mut self, node: TsNeverKeyword) {
+        <TsNeverKeyword as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_import_specifiers(&mut self, node: TypedSubRange<ImportSpecifier>) {
-        <TypedSubRange<ImportSpecifier> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+    fn visit_mut_ts_void_keyword(&mut self, node: TsVoidKeyword) {
+        <TsVoidKeyword as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_null_keyword(&mut self, node: TsNullKeyword) {
+        <TsNullKeyword as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_undefined_keyword(&mut self, node: TsUndefinedKeyword) {
+        <TsUndefinedKeyword as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_string_keyword(&mut self, node: TsStringKeyword) {
+        <TsStringKeyword as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_number_keyword(&mut self, node: TsNumberKeyword) {
+        <TsNumberKeyword as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_big_int_keyword(&mut self, node: TsBigIntKeyword) {
+        <TsBigIntKeyword as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_boolean_keyword(&mut self, node: TsBooleanKeyword) {
+        <TsBooleanKeyword as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_symbol_keyword(&mut self, node: TsSymbolKeyword) {
+        <TsSymbolKeyword as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_object_keyword(&mut self, node: TsObjectKeyword) {
+        <TsObjectKeyword as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_intrinsic_keyword(&mut self, node: TsIntrinsicKeyword) {
+        <TsIntrinsicKeyword as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_this_type(&mut self, node: TsThisType) {
+        <TsThisType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_type_reference(&mut self, node: TsTypeReference) {
+        <TsTypeReference as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_qualified_name(&mut self, node: TsQualifiedName) {
+        <TsQualifiedName as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_type_query(&mut self, node: TsTypeQuery) {
+        <TsTypeQuery as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_import_type(&mut self, node: TsImportType) {
+        <TsImportType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_type_parameter(&mut self, node: TsTypeParameter) {
+        <TsTypeParameter as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_type_parameter_declaration(&mut self, node: TsTypeParameterDeclaration) {
+        <TsTypeParameterDeclaration as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_type_parameter_instantiation(&mut self, node: TsTypeParameterInstantiation) {
+        <TsTypeParameterInstantiation as VisitMutWith<'a, Self>>::visit_mut_children_with(
+            node, self,
+        )
+    }
+    #[inline]
+    fn visit_mut_ts_literal_type(&mut self, node: TsLiteralType) {
+        <TsLiteralType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_template_literal_type(&mut self, node: TsTemplateLiteralType) {
+        <TsTemplateLiteralType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_array_type(&mut self, node: TsArrayType) {
+        <TsArrayType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_indexed_access_type(&mut self, node: TsIndexedAccessType) {
+        <TsIndexedAccessType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_tuple_type(&mut self, node: TsTupleType) {
+        <TsTupleType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_named_tuple_member(&mut self, node: TsNamedTupleMember) {
+        <TsNamedTupleMember as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_optional_type(&mut self, node: TsOptionalType) {
+        <TsOptionalType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_rest_type(&mut self, node: TsRestType) {
+        <TsRestType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_js_doc_nullable_type(&mut self, node: TsJsDocNullableType) {
+        <TsJsDocNullableType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_js_doc_non_nullable_type(&mut self, node: TsJsDocNonNullableType) {
+        <TsJsDocNonNullableType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_js_doc_unknown_type(&mut self, node: TsJsDocUnknownType) {
+        <TsJsDocUnknownType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_union_type(&mut self, node: TsUnionType) {
+        <TsUnionType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_intersection_type(&mut self, node: TsIntersectionType) {
+        <TsIntersectionType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_conditional_type(&mut self, node: TsConditionalType) {
+        <TsConditionalType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_infer_type(&mut self, node: TsInferType) {
+        <TsInferType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_type_operator(&mut self, node: TsTypeOperator) {
+        <TsTypeOperator as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_parenthesized_type(&mut self, node: TsParenthesizedType) {
+        <TsParenthesizedType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_function_type(&mut self, node: TsFunctionType) {
+        <TsFunctionType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_constructor_type(&mut self, node: TsConstructorType) {
+        <TsConstructorType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_type_predicate(&mut self, node: TsTypePredicate) {
+        <TsTypePredicate as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_type_literal(&mut self, node: TsTypeLiteral) {
+        <TsTypeLiteral as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_mapped_type(&mut self, node: TsMappedType) {
+        <TsMappedType as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_property_signature(&mut self, node: TsPropertySignature) {
+        <TsPropertySignature as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_method_signature(&mut self, node: TsMethodSignature) {
+        <TsMethodSignature as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_call_signature_declaration(&mut self, node: TsCallSignatureDeclaration) {
+        <TsCallSignatureDeclaration as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_construct_signature_declaration(
+        &mut self,
+        node: TsConstructSignatureDeclaration,
+    ) {
+        <TsConstructSignatureDeclaration as VisitMutWith<'a, Self>>::visit_mut_children_with(
+            node, self,
+        )
+    }
+    #[inline]
+    fn visit_mut_ts_index_signature(&mut self, node: TsIndexSignature) {
+        <TsIndexSignature as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_type_alias_declaration(&mut self, node: TsTypeAliasDeclaration) {
+        <TsTypeAliasDeclaration as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_interface_declaration(&mut self, node: TsInterfaceDeclaration) {
+        <TsInterfaceDeclaration as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_interface_body(&mut self, node: TsInterfaceBody) {
+        <TsInterfaceBody as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_interface_heritage(&mut self, node: TsInterfaceHeritage) {
+        <TsInterfaceHeritage as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_class_implements(&mut self, node: TsClassImplements) {
+        <TsClassImplements as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_enum_declaration(&mut self, node: TsEnumDeclaration) {
+        <TsEnumDeclaration as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_enum_body(&mut self, node: TsEnumBody) {
+        <TsEnumBody as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_enum_member(&mut self, node: TsEnumMember) {
+        <TsEnumMember as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_module_declaration(&mut self, node: TsModuleDeclaration) {
+        <TsModuleDeclaration as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_module_block(&mut self, node: TsModuleBlock) {
+        <TsModuleBlock as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_global_declaration(&mut self, node: TsGlobalDeclaration) {
+        <TsGlobalDeclaration as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_parameter_property(&mut self, node: TsParameterProperty) {
+        <TsParameterProperty as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_this_parameter(&mut self, node: TsThisParameter) {
+        <TsThisParameter as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_as_expression(&mut self, node: TsAsExpression) {
+        <TsAsExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_satisfies_expression(&mut self, node: TsSatisfiesExpression) {
+        <TsSatisfiesExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_type_assertion(&mut self, node: TsTypeAssertion) {
+        <TsTypeAssertion as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_non_null_expression(&mut self, node: TsNonNullExpression) {
+        <TsNonNullExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_instantiation_expression(&mut self, node: TsInstantiationExpression) {
+        <TsInstantiationExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_export_assignment(&mut self, node: TsExportAssignment) {
+        <TsExportAssignment as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_namespace_export_declaration(&mut self, node: TsNamespaceExportDeclaration) {
+        <TsNamespaceExportDeclaration as VisitMutWith<'a, Self>>::visit_mut_children_with(
+            node, self,
+        )
+    }
+    #[inline]
+    fn visit_mut_ts_import_equals_declaration(&mut self, node: TsImportEqualsDeclaration) {
+        <TsImportEqualsDeclaration as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_external_module_reference(&mut self, node: TsExternalModuleReference) {
+        <TsExternalModuleReference as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_element_name(&mut self, node: JsxElementName) {
+        <JsxElementName as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_member_expression_object(&mut self, node: JsxMemberExpressionObject) {
+        <JsxMemberExpressionObject as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_attribute_name(&mut self, node: JsxAttributeName) {
+        <JsxAttributeName as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_attribute_item(&mut self, node: JsxAttributeItem) {
+        <JsxAttributeItem as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_attribute_value(&mut self, node: JsxAttributeValue) {
+        <JsxAttributeValue as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_expression(&mut self, node: JsxExpression) {
+        <JsxExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_child(&mut self, node: JsxChild) {
+        <JsxChild as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_element(&mut self, node: JsxElement) {
+        <JsxElement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_opening_element(&mut self, node: JsxOpeningElement) {
+        <JsxOpeningElement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_closing_element(&mut self, node: JsxClosingElement) {
+        <JsxClosingElement as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_fragment(&mut self, node: JsxFragment) {
+        <JsxFragment as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_opening_fragment(&mut self, node: JsxOpeningFragment) {
+        <JsxOpeningFragment as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_closing_fragment(&mut self, node: JsxClosingFragment) {
+        <JsxClosingFragment as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_identifier(&mut self, node: JsxIdentifier) {
+        <JsxIdentifier as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_namespaced_name(&mut self, node: JsxNamespacedName) {
+        <JsxNamespacedName as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_member_expression(&mut self, node: JsxMemberExpression) {
+        <JsxMemberExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_attribute(&mut self, node: JsxAttribute) {
+        <JsxAttribute as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_spread_attribute(&mut self, node: JsxSpreadAttribute) {
+        <JsxSpreadAttribute as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_expression_container(&mut self, node: JsxExpressionContainer) {
+        <JsxExpressionContainer as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_empty_expression(&mut self, node: JsxEmptyExpression) {
+        <JsxEmptyExpression as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_text(&mut self, node: JsxText) {
+        <JsxText as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_spread_child(&mut self, node: JsxSpreadChild) {
+        <JsxSpreadChild as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_statement_list_items(&mut self, node: TypedSubRange<StatementListItem>) {
+        <TypedSubRange<StatementListItem> as VisitMutWith<'a, Self>>::visit_mut_children_with(
             node, self,
         );
     }
     #[inline]
-    fn visit_mut_opt_object_lit(&mut self, node: Option<ObjectLit>) {
-        <Option<ObjectLit> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_opt_hashbang(&mut self, node: Option<Hashbang>) {
+        <Option<Hashbang> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_export_specifiers(&mut self, node: TypedSubRange<ExportSpecifier>) {
-        <TypedSubRange<ExportSpecifier> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+    fn visit_mut_template_elements(&mut self, node: TypedSubRange<TemplateElement>) {
+        <TypedSubRange<TemplateElement> as VisitMutWith<'a, Self>>::visit_mut_children_with(
             node, self,
         );
     }
     #[inline]
-    fn visit_mut_opt_str(&mut self, node: Option<Str>) {
-        <Option<Str> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_exprs(&mut self, node: TypedSubRange<Expr>) {
+        <TypedSubRange<Expr> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
+    }
+    #[inline]
+    fn visit_mut_decorators(&mut self, node: TypedSubRange<Decorator>) {
+        <TypedSubRange<Decorator> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
+    }
+    #[inline]
+    fn visit_mut_opt_ts_type_annotation(&mut self, node: Option<TsTypeAnnotation>) {
+        <Option<TsTypeAnnotation> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_opt_binding_pattern(&mut self, node: Option<BindingPattern>) {
+        <Option<BindingPattern> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_opt_vec_binding_patterns(&mut self, node: TypedSubRange<Option<BindingPattern>>) {
+        <TypedSubRange<Option<BindingPattern>> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+            node, self,
+        );
+    }
+    #[inline]
+    fn visit_mut_opt_binding_rest_element(&mut self, node: Option<BindingRestElement>) {
+        <Option<BindingRestElement> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_binding_propertys(&mut self, node: TypedSubRange<BindingProperty>) {
+        <TypedSubRange<BindingProperty> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+            node, self,
+        );
+    }
+    #[inline]
+    fn visit_mut_variable_declarators(&mut self, node: TypedSubRange<VariableDeclarator>) {
+        <TypedSubRange<VariableDeclarator> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+            node, self,
+        );
     }
     #[inline]
     fn visit_mut_opt_expr(&mut self, node: Option<Expr>) {
         <Option<Expr> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_opt_ident(&mut self, node: Option<Ident>) {
-        <Option<Ident> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_opt_stmt(&mut self, node: Option<Stmt>) {
@@ -4071,108 +6163,193 @@ pub trait VisitMut<'a> {
         <TypedSubRange<SwitchCase> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
     }
     #[inline]
+    fn visit_mut_stmts(&mut self, node: TypedSubRange<Stmt>) {
+        <TypedSubRange<Stmt> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
+    }
+    #[inline]
+    fn visit_mut_opt_for_statement_init(&mut self, node: Option<ForStatementInit>) {
+        <Option<ForStatementInit> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
     fn visit_mut_opt_catch_clause(&mut self, node: Option<CatchClause>) {
         <Option<CatchClause> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_opt_block_stmt(&mut self, node: Option<BlockStmt>) {
-        <Option<BlockStmt> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_opt_block_statement(&mut self, node: Option<BlockStatement>) {
+        <Option<BlockStatement> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_opt_var_decl_or_expr(&mut self, node: Option<VarDeclOrExpr>) {
-        <Option<VarDeclOrExpr> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_opt_label_identifier(&mut self, node: Option<LabelIdentifier>) {
+        <Option<LabelIdentifier> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_opt_pat(&mut self, node: Option<Pat>) {
-        <Option<Pat> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_opt_binding_identifier(&mut self, node: Option<BindingIdentifier>) {
+        <Option<BindingIdentifier> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_var_declarators(&mut self, node: TypedSubRange<VarDeclarator>) {
-        <TypedSubRange<VarDeclarator> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+    fn visit_mut_opt_ts_type_parameter_declaration(
+        &mut self,
+        node: Option<TsTypeParameterDeclaration>,
+    ) {
+        <Option<TsTypeParameterDeclaration> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+            node, self,
+        )
+    }
+    #[inline]
+    fn visit_mut_opt_ts_type_parameter_instantiation(
+        &mut self,
+        node: Option<TsTypeParameterInstantiation>,
+    ) {
+        <Option<TsTypeParameterInstantiation> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+            node, self,
+        )
+    }
+    #[inline]
+    fn visit_mut_ts_class_implementss(&mut self, node: TypedSubRange<TsClassImplements>) {
+        <TypedSubRange<TsClassImplements> as VisitMutWith<'a, Self>>::visit_mut_children_with(
             node, self,
         );
     }
     #[inline]
-    fn visit_mut_opt_expr_or_spread(&mut self, node: Option<ExprOrSpread>) {
-        <Option<ExprOrSpread> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_opt_vec_expr_or_spreads(&mut self, node: TypedSubRange<Option<ExprOrSpread>>) {
-        <TypedSubRange<Option<ExprOrSpread>> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+    fn visit_mut_class_elements(&mut self, node: TypedSubRange<ClassElement>) {
+        <TypedSubRange<ClassElement> as VisitMutWith<'a, Self>>::visit_mut_children_with(
             node, self,
         );
     }
     #[inline]
-    fn visit_mut_prop_or_spreads(&mut self, node: TypedSubRange<PropOrSpread>) {
-        <TypedSubRange<PropOrSpread> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+    fn visit_mut_opt_function_body(&mut self, node: Option<FunctionBody>) {
+        <Option<FunctionBody> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_formal_parameter_items(&mut self, node: TypedSubRange<FormalParameterItem>) {
+        <TypedSubRange<FormalParameterItem> as VisitMutWith<'a, Self>>::visit_mut_children_with(
             node, self,
         );
     }
     #[inline]
-    fn visit_mut_expr_or_spreads(&mut self, node: TypedSubRange<ExprOrSpread>) {
-        <TypedSubRange<ExprOrSpread> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+    fn visit_mut_opt_argument(&mut self, node: Option<Argument>) {
+        <Option<Argument> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_opt_vec_arguments(&mut self, node: TypedSubRange<Option<Argument>>) {
+        <TypedSubRange<Option<Argument>> as VisitMutWith<'a, Self>>::visit_mut_children_with(
             node, self,
         );
     }
     #[inline]
-    fn visit_mut_exprs(&mut self, node: TypedSubRange<Expr>) {
-        <TypedSubRange<Expr> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
-    }
-    #[inline]
-    fn visit_mut_pats(&mut self, node: TypedSubRange<Pat>) {
-        <TypedSubRange<Pat> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
-    }
-    #[inline]
-    fn visit_mut_tpl_elements(&mut self, node: TypedSubRange<TplElement>) {
-        <TypedSubRange<TplElement> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
-    }
-    #[inline]
-    fn visit_mut_params(&mut self, node: TypedSubRange<Param>) {
-        <TypedSubRange<Param> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
-    }
-    #[inline]
-    fn visit_mut_decorators(&mut self, node: TypedSubRange<Decorator>) {
-        <TypedSubRange<Decorator> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
-    }
-    #[inline]
-    fn visit_mut_class_members(&mut self, node: TypedSubRange<ClassMember>) {
-        <TypedSubRange<ClassMember> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
-    }
-    #[inline]
-    fn visit_mut_param_or_ts_param_props(&mut self, node: TypedSubRange<ParamOrTsParamProp>) {
-        <TypedSubRange<ParamOrTsParamProp> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+    fn visit_mut_object_property_kinds(&mut self, node: TypedSubRange<ObjectPropertyKind>) {
+        <TypedSubRange<ObjectPropertyKind> as VisitMutWith<'a, Self>>::visit_mut_children_with(
             node, self,
         );
     }
     #[inline]
-    fn visit_mut_opt_vec_pats(&mut self, node: TypedSubRange<Option<Pat>>) {
-        <TypedSubRange<Option<Pat>> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
+    fn visit_mut_arguments(&mut self, node: TypedSubRange<Argument>) {
+        <TypedSubRange<Argument> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
     }
     #[inline]
-    fn visit_mut_object_pat_props(&mut self, node: TypedSubRange<ObjectPatProp>) {
-        <TypedSubRange<ObjectPatProp> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+    fn visit_mut_import_declaration_specifiers(
+        &mut self,
+        node: TypedSubRange<ImportDeclarationSpecifier>,
+    ) {
+        <TypedSubRange<
+            ImportDeclarationSpecifier,
+        > as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
+    }
+    #[inline]
+    fn visit_mut_import_attributes(&mut self, node: TypedSubRange<ImportAttribute>) {
+        <TypedSubRange<ImportAttribute> as VisitMutWith<'a, Self>>::visit_mut_children_with(
             node, self,
         );
     }
     #[inline]
-    fn visit_mut_jsx_attr_or_spreads(&mut self, node: TypedSubRange<JSXAttrOrSpread>) {
-        <TypedSubRange<JSXAttrOrSpread> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+    fn visit_mut_opt_decl(&mut self, node: Option<Decl>) {
+        <Option<Decl> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_export_specifiers(&mut self, node: TypedSubRange<ExportSpecifier>) {
+        <TypedSubRange<ExportSpecifier> as VisitMutWith<'a, Self>>::visit_mut_children_with(
             node, self,
         );
     }
     #[inline]
-    fn visit_mut_opt_jsx_attr_value(&mut self, node: Option<JSXAttrValue>) {
-        <Option<JSXAttrValue> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_opt_string_literal(&mut self, node: Option<StringLiteral>) {
+        <Option<StringLiteral> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_jsx_element_childs(&mut self, node: TypedSubRange<JSXElementChild>) {
-        <TypedSubRange<JSXElementChild> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+    fn visit_mut_opt_module_export_name(&mut self, node: Option<ModuleExportName>) {
+        <Option<ModuleExportName> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_opt_ts_import_type_qualifier(&mut self, node: Option<TsImportTypeQualifier>) {
+        <Option<TsImportTypeQualifier> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+            node, self,
+        )
+    }
+    #[inline]
+    fn visit_mut_opt_ts_type(&mut self, node: Option<TsType>) {
+        <Option<TsType> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_type_parameters(&mut self, node: TypedSubRange<TsTypeParameter>) {
+        <TypedSubRange<TsTypeParameter> as VisitMutWith<'a, Self>>::visit_mut_children_with(
             node, self,
         );
     }
     #[inline]
-    fn visit_mut_opt_jsx_closing_element(&mut self, node: Option<JSXClosingElement>) {
-        <Option<JSXClosingElement> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    fn visit_mut_ts_types(&mut self, node: TypedSubRange<TsType>) {
+        <TypedSubRange<TsType> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
+    }
+    #[inline]
+    fn visit_mut_ts_tuple_elements(&mut self, node: TypedSubRange<TsTupleElement>) {
+        <TypedSubRange<TsTupleElement> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+            node, self,
+        );
+    }
+    #[inline]
+    fn visit_mut_ts_type_elements(&mut self, node: TypedSubRange<TsTypeElement>) {
+        <TypedSubRange<TsTypeElement> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+            node, self,
+        );
+    }
+    #[inline]
+    fn visit_mut_binding_identifiers(&mut self, node: TypedSubRange<BindingIdentifier>) {
+        <TypedSubRange<BindingIdentifier> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+            node, self,
+        );
+    }
+    #[inline]
+    fn visit_mut_ts_interface_heritages(&mut self, node: TypedSubRange<TsInterfaceHeritage>) {
+        <TypedSubRange<TsInterfaceHeritage> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+            node, self,
+        );
+    }
+    #[inline]
+    fn visit_mut_ts_enum_members(&mut self, node: TypedSubRange<TsEnumMember>) {
+        <TypedSubRange<TsEnumMember> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+            node, self,
+        );
+    }
+    #[inline]
+    fn visit_mut_opt_ts_module_body(&mut self, node: Option<TsModuleBody>) {
+        <Option<TsModuleBody> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_childs(&mut self, node: TypedSubRange<JsxChild>) {
+        <TypedSubRange<JsxChild> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
+    }
+    #[inline]
+    fn visit_mut_opt_jsx_closing_element(&mut self, node: Option<JsxClosingElement>) {
+        <Option<JsxClosingElement> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_jsx_attribute_items(&mut self, node: TypedSubRange<JsxAttributeItem>) {
+        <TypedSubRange<JsxAttributeItem> as VisitMutWith<'a, Self>>::visit_mut_children_with(
+            node, self,
+        );
+    }
+    #[inline]
+    fn visit_mut_opt_jsx_attribute_value(&mut self, node: Option<JsxAttributeValue>) {
+        <Option<JsxAttributeValue> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
 }
 pub trait VisitMutWith<'a, V: ?Sized + VisitMut<'a>> {
@@ -4186,318 +6363,13 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Program {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().program_data(self);
-        match data {
-            ProgramData::Module(it) => <Module as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ProgramData::Script(it) => <Script as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Module {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_module(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
         let field_value = self.body(visitor.ast());
-        <TypedSubRange<ModuleItem> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Script {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_script(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.body(visitor.ast());
-        <TypedSubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ModuleItem {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_module_item(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().module_item_data(self);
-        match data {
-            ModuleItemData::ModuleDecl(it) => {
-                <ModuleDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ModuleItemData::Stmt(it) => <Stmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ModuleDecl {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_module_decl(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().module_decl_data(self);
-        match data {
-            ModuleDeclData::Import(it) => {
-                <ImportDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ModuleDeclData::ExportDecl(it) => {
-                <ExportDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ModuleDeclData::ExportNamed(it) => {
-                <NamedExport as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ModuleDeclData::ExportDefaultDecl(it) => {
-                <ExportDefaultDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ModuleDeclData::ExportDefaultExpr(it) => {
-                <ExportDefaultExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ModuleDeclData::ExportAll(it) => {
-                <ExportAll as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ImportDecl {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_import_decl(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.specifiers(visitor.ast());
-        <TypedSubRange<ImportSpecifier> as VisitMutWith<'a, V>>::visit_mut_with(
+        <TypedSubRange<StatementListItem> as VisitMutWith<'a, V>>::visit_mut_with(
             field_value,
             visitor,
         );
-        let field_value = self.src(visitor.ast());
-        <Str as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.with(visitor.ast());
-        <Option<ObjectLit> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ImportSpecifier {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_import_specifier(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().import_specifier_data(self);
-        match data {
-            ImportSpecifierData::Named(it) => {
-                <ImportNamedSpecifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ImportSpecifierData::Default(it) => {
-                <ImportDefaultSpecifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ImportSpecifierData::Namespace(it) => {
-                <ImportStarAsSpecifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ImportNamedSpecifier {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_import_named_specifier(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.local(visitor.ast());
-        <Ident as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.imported(visitor.ast());
-        <ModuleExportName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ImportDefaultSpecifier {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_import_default_specifier(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.local(visitor.ast());
-        <Ident as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ImportStarAsSpecifier {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_import_star_as_specifier(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.local(visitor.ast());
-        <Ident as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportDecl {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_export_decl(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.decl(visitor.ast());
-        <Decl as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for NamedExport {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_named_export(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.specifiers(visitor.ast());
-        <TypedSubRange<ExportSpecifier> as VisitMutWith<'a, V>>::visit_mut_with(
-            field_value,
-            visitor,
-        );
-        let field_value = self.src(visitor.ast());
-        <Option<Str> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.with(visitor.ast());
-        <Option<ObjectLit> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportSpecifier {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_export_specifier(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().export_specifier_data(self);
-        match data {
-            ExportSpecifierData::Namespace(it) => {
-                <ExportNamespaceSpecifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ExportSpecifierData::Default(it) => {
-                <ExportDefaultSpecifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ExportSpecifierData::Named(it) => {
-                <ExportNamedSpecifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportNamespaceSpecifier {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_export_namespace_specifier(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.name(visitor.ast());
-        <ModuleExportName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ModuleExportName {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_module_export_name(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().module_export_name_data(self);
-        match data {
-            ModuleExportNameData::Ident(it) => {
-                <Ident as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ModuleExportNameData::Str(it) => {
-                <Str as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportDefaultSpecifier {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_export_default_specifier(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.exported(visitor.ast());
-        <Ident as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportNamedSpecifier {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_export_named_specifier(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.orig(visitor.ast());
-        <ModuleExportName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.exported(visitor.ast());
-        <ModuleExportName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportDefaultDecl {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_export_default_decl(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.decl(visitor.ast());
-        <DefaultDecl as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for DefaultDecl {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_default_decl(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().default_decl_data(self);
-        match data {
-            DefaultDeclData::Class(it) => {
-                <ClassExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            DefaultDeclData::Fn(it) => <FnExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportDefaultExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_export_default_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.expr(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportAll {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_export_all(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.src(visitor.ast());
-        <Str as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.with(visitor.ast());
-        <Option<ObjectLit> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BlockStmt {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_block_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.stmts(visitor.ast());
-        <TypedSubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.hashbang(visitor.ast());
+        <Option<Hashbang> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
     }
 }
 impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Stmt {
@@ -4509,312 +6381,99 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Stmt {
     fn visit_mut_children_with(self, visitor: &mut V) {
         let data = visitor.ast().stmt_data(self);
         match data {
-            StmtData::Block(it) => <BlockStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            StmtData::Empty(it) => <EmptyStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            StmtData::Debugger(it) => {
-                <DebuggerStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            StmtData::BlockStatement(it) => {
+                <BlockStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            StmtData::With(it) => <WithStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            StmtData::Return(it) => {
-                <ReturnStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            StmtData::BreakStatement(it) => {
+                <BreakStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            StmtData::Labeled(it) => {
-                <LabeledStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            StmtData::ContinueStatement(it) => {
+                <ContinueStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            StmtData::Break(it) => <BreakStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            StmtData::Continue(it) => {
-                <ContinueStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            StmtData::DebuggerStatement(it) => {
+                <DebuggerStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            StmtData::If(it) => <IfStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            StmtData::Switch(it) => {
-                <SwitchStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            StmtData::DoWhileStatement(it) => {
+                <DoWhileStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            StmtData::Throw(it) => <ThrowStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            StmtData::Try(it) => <TryStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            StmtData::While(it) => <WhileStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            StmtData::DoWhile(it) => {
-                <DoWhileStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            StmtData::EmptyStatement(it) => {
+                <EmptyStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            StmtData::For(it) => <ForStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            StmtData::ForIn(it) => <ForInStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            StmtData::ForOf(it) => <ForOfStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            StmtData::Decl(it) => <Decl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            StmtData::Expr(it) => <ExprStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            StmtData::ExpressionStatement(it) => {
+                <ExpressionStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            StmtData::ForInStatement(it) => {
+                <ForInStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            StmtData::ForOfStatement(it) => {
+                <ForOfStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            StmtData::ForStatement(it) => {
+                <ForStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            StmtData::IfStatement(it) => {
+                <IfStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            StmtData::LabeledStatement(it) => {
+                <LabeledStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            StmtData::ReturnStatement(it) => {
+                <ReturnStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            StmtData::SwitchStatement(it) => {
+                <SwitchStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            StmtData::ThrowStatement(it) => {
+                <ThrowStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            StmtData::TryStatement(it) => {
+                <TryStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            StmtData::WhileStatement(it) => {
+                <WhileStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            StmtData::WithStatement(it) => {
+                <WithStatement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            StmtData::Declaration(it) => <Decl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            StmtData::ImportDeclaration(it) => {
+                <ImportDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            StmtData::ExportNamedDeclaration(it) => {
+                <ExportNamedDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            StmtData::ExportDefaultDeclaration(it) => {
+                <ExportDefaultDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            StmtData::ExportAllDeclaration(it) => {
+                <ExportAllDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            StmtData::TsExportAssignment(it) => {
+                <TsExportAssignment as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            StmtData::TsNamespaceExportDeclaration(it) => {
+                <TsNamespaceExportDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            StmtData::TsImportEqualsDeclaration(it) => {
+                <TsImportEqualsDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExprStmt {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for StatementListItem {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_expr_stmt(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_statement_list_item(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.expr(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for EmptyStmt {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_empty_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for DebuggerStmt {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_debugger_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for WithStmt {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_with_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.obj(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.body(visitor.ast());
-        <Stmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ReturnStmt {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_return_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.arg(visitor.ast());
-        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for LabeledStmt {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_labeled_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.label(visitor.ast());
-        <Ident as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.body(visitor.ast());
-        <Stmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BreakStmt {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_break_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.label(visitor.ast());
-        <Option<Ident> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ContinueStmt {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_continue_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.label(visitor.ast());
-        <Option<Ident> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for IfStmt {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_if_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.test(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.cons(visitor.ast());
-        <Stmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.alt(visitor.ast());
-        <Option<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SwitchStmt {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_switch_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.discriminant(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.cases(visitor.ast());
-        <TypedSubRange<SwitchCase> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ThrowStmt {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_throw_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.arg(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TryStmt {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_try_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.block(visitor.ast());
-        <BlockStmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.handler(visitor.ast());
-        <Option<CatchClause> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.finalizer(visitor.ast());
-        <Option<BlockStmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for WhileStmt {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_while_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.test(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.body(visitor.ast());
-        <Stmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for DoWhileStmt {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_do_while_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.test(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.body(visitor.ast());
-        <Stmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ForStmt {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_for_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.init(visitor.ast());
-        <Option<VarDeclOrExpr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.test(visitor.ast());
-        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.update(visitor.ast());
-        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.body(visitor.ast());
-        <Stmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ForInStmt {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_for_in_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.left(visitor.ast());
-        <ForHead as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.right(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.body(visitor.ast());
-        <Stmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ForOfStmt {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_for_of_stmt(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.left(visitor.ast());
-        <ForHead as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.right(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.body(visitor.ast());
-        <Stmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SwitchCase {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_switch_case(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.test(visitor.ast());
-        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.cons(visitor.ast());
-        <TypedSubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for CatchClause {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_catch_clause(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.param(visitor.ast());
-        <Option<Pat> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.body(visitor.ast());
-        <BlockStmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ForHead {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_for_head(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().for_head_data(self);
+        let data = visitor.ast().statement_list_item_data(self);
         match data {
-            ForHeadData::VarDecl(it) => {
-                <VarDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            StatementListItemData::Stmt(it) => {
+                <Stmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            ForHeadData::UsingDecl(it) => {
-                <UsingDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ForHeadData::Pat(it) => <Pat as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for VarDeclOrExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_var_decl_or_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().var_decl_or_expr_data(self);
-        match data {
-            VarDeclOrExprData::VarDecl(it) => {
-                <VarDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            VarDeclOrExprData::Expr(it) => {
-                <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            StatementListItemData::Directive(it) => {
+                <Directive as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
         }
     }
@@ -4828,72 +6487,29 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Decl {
     fn visit_mut_children_with(self, visitor: &mut V) {
         let data = visitor.ast().decl_data(self);
         match data {
-            DeclData::Class(it) => <ClassDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            DeclData::Fn(it) => <FnDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            DeclData::Var(it) => <VarDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            DeclData::Using(it) => <UsingDecl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            DeclData::VariableDeclaration(it) => {
+                <VariableDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            DeclData::Function(it) => {
+                <Function as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            DeclData::Class(it) => <Class as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            DeclData::TsTypeAliasDeclaration(it) => {
+                <TsTypeAliasDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            DeclData::TsInterfaceDeclaration(it) => {
+                <TsInterfaceDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            DeclData::TsEnumDeclaration(it) => {
+                <TsEnumDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            DeclData::TsModuleDeclaration(it) => {
+                <TsModuleDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            DeclData::TsGlobalDeclaration(it) => {
+                <TsGlobalDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
         }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for FnDecl {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_fn_decl(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.ident(visitor.ast());
-        <Ident as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.function(visitor.ast());
-        <Function as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ClassDecl {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_class_decl(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.ident(visitor.ast());
-        <Ident as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.class(visitor.ast());
-        <Class as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for VarDecl {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_var_decl(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.decls(visitor.ast());
-        <TypedSubRange<VarDeclarator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for VarDeclarator {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_var_declarator(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.name(visitor.ast());
-        <Pat as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.init(visitor.ast());
-        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for UsingDecl {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_using_decl(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.decls(visitor.ast());
-        <TypedSubRange<VarDeclarator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
     }
 }
 impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Expr {
@@ -4905,435 +6521,436 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Expr {
     fn visit_mut_children_with(self, visitor: &mut V) {
         let data = visitor.ast().expr_data(self);
         match data {
-            ExprData::This(it) => <ThisExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ExprData::Array(it) => <ArrayLit as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ExprData::Object(it) => <ObjectLit as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ExprData::Fn(it) => <FnExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ExprData::Unary(it) => <UnaryExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ExprData::Update(it) => {
-                <UpdateExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            ExprData::IdentifierReference(it) => {
+                <IdentifierReference as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            ExprData::Bin(it) => <BinExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ExprData::Assign(it) => {
-                <AssignExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            ExprData::ThisExpression(it) => {
+                <ThisExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            ExprData::Member(it) => {
-                <MemberExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            ExprData::Super(it) => <Super as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ExprData::MetaProperty(it) => {
+                <MetaProperty as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            ExprData::SuperProp(it) => {
-                <SuperPropExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            ExprData::StringLiteral(it) => {
+                <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            ExprData::Cond(it) => <CondExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ExprData::Import(it) => {
-                <ImportExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            ExprData::NumericLiteral(it) => {
+                <NumericLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            ExprData::Call(it) => <CallExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ExprData::New(it) => <NewExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ExprData::Seq(it) => <SeqExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ExprData::Ident(it) => <Ident as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ExprData::Lit(it) => <Lit as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ExprData::Tpl(it) => <Tpl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ExprData::TaggedTpl(it) => {
-                <TaggedTpl as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            ExprData::BigIntLiteral(it) => {
+                <BigIntLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            ExprData::Arrow(it) => <ArrowExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ExprData::Class(it) => <ClassExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ExprData::Yield(it) => <YieldExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ExprData::MetaProp(it) => {
-                <MetaPropExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            ExprData::BooleanLiteral(it) => {
+                <BooleanLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            ExprData::Await(it) => <AwaitExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ExprData::Paren(it) => <ParenExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            ExprData::JSXMember(it) => {
-                <JSXMemberExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            ExprData::NullLiteral(it) => {
+                <NullLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            ExprData::JSXNamespacedName(it) => {
-                <JSXNamespacedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            ExprData::RegExpLiteral(it) => {
+                <RegExpLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            ExprData::JSXEmpty(it) => {
-                <JSXEmptyExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            ExprData::TemplateLiteral(it) => {
+                <TemplateLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            ExprData::JSXElement(it) => {
-                <JSXElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            ExprData::BinaryExpression(it) => {
+                <BinaryExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            ExprData::JSXFragment(it) => {
-                <JSXFragment as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            ExprData::LogicalExpression(it) => {
+                <LogicalExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            ExprData::PrivateName(it) => {
-                <PrivateName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            ExprData::UnaryExpression(it) => {
+                <UnaryExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            ExprData::OptChain(it) => {
-                <OptChainExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            ExprData::UpdateExpression(it) => {
+                <UpdateExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            ExprData::Invalid(it) => <Invalid as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ExprData::AssignmentExpression(it) => {
+                <AssignmentExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::ConditionalExpression(it) => {
+                <ConditionalExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::SequenceExpression(it) => {
+                <SequenceExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::MemberExpression(it) => {
+                <MemberExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::CallExpression(it) => {
+                <CallExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::ChainExpression(it) => {
+                <ChainExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::NewExpression(it) => {
+                <NewExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::TaggedTemplateExpression(it) => {
+                <TaggedTemplateExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::ArrowFunctionExpression(it) => {
+                <ArrowFunctionExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::ArrayExpression(it) => {
+                <ArrayExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::ObjectExpression(it) => {
+                <ObjectExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::ParenthesizedExpression(it) => {
+                <ParenthesizedExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::Function(it) => {
+                <Function as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::Class(it) => <Class as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ExprData::ImportExpression(it) => {
+                <ImportExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::AwaitExpression(it) => {
+                <AwaitExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::YieldExpression(it) => {
+                <YieldExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::TsAsExpression(it) => {
+                <TsAsExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::TsSatisfiesExpression(it) => {
+                <TsSatisfiesExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::TsTypeAssertion(it) => {
+                <TsTypeAssertion as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::TsNonNullExpression(it) => {
+                <TsNonNullExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::TsInstantiationExpression(it) => {
+                <TsInstantiationExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::JsxElement(it) => {
+                <JsxElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExprData::JsxFragment(it) => {
+                <JsxFragment as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ThisExpr {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BindingPattern {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_this_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ArrayLit {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_array_lit(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_binding_pattern(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.elems(visitor.ast());
-        <TypedSubRange<Option<ExprOrSpread>> as VisitMutWith<'a, V>>::visit_mut_with(
-            field_value,
-            visitor,
-        );
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ObjectLit {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_object_lit(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.props(visitor.ast());
-        <TypedSubRange<PropOrSpread> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for PropOrSpread {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_prop_or_spread(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().prop_or_spread_data(self);
+        let data = visitor.ast().binding_pattern_data(self);
         match data {
-            PropOrSpreadData::Spread(it) => {
+            BindingPatternData::BindingIdentifier(it) => {
+                <BindingIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            BindingPatternData::AssignmentPattern(it) => {
+                <AssignmentPattern as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            BindingPatternData::BindingRestElement(it) => {
+                <BindingRestElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            BindingPatternData::ArrayPattern(it) => {
+                <ArrayPattern as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            BindingPatternData::ObjectPattern(it) => {
+                <ObjectPattern as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for AssignmentTarget {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_assignment_target(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().assignment_target_data(self);
+        match data {
+            AssignmentTargetData::SimpleAssignmentTarget(it) => {
+                <SimpleAssignmentTarget as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            AssignmentTargetData::ArrayAssignmentTarget(it) => {
+                <ArrayPattern as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            AssignmentTargetData::ObjectAssignmentTarget(it) => {
+                <ObjectPattern as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SimpleAssignmentTarget {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_simple_assignment_target(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().simple_assignment_target_data(self);
+        match data {
+            SimpleAssignmentTargetData::IdentifierReference(it) => {
+                <IdentifierReference as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            SimpleAssignmentTargetData::MemberExpression(it) => {
+                <MemberExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            SimpleAssignmentTargetData::TsAsExpression(it) => {
+                <TsAsExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            SimpleAssignmentTargetData::TsSatisfiesExpression(it) => {
+                <TsSatisfiesExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            SimpleAssignmentTargetData::TsTypeAssertion(it) => {
+                <TsTypeAssertion as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            SimpleAssignmentTargetData::TsNonNullExpression(it) => {
+                <TsNonNullExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for PropertyKey {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_property_key(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().property_key_data(self);
+        match data {
+            PropertyKeyData::IdentifierName(it) => {
+                <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            PropertyKeyData::PrivateIdentifier(it) => {
+                <PrivateIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            PropertyKeyData::StringLiteral(it) => {
+                <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            PropertyKeyData::NumericLiteral(it) => {
+                <NumericLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            PropertyKeyData::BigIntLiteral(it) => {
+                <BigIntLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            PropertyKeyData::Expr(it) => <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ModuleExportName {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_module_export_name(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().module_export_name_data(self);
+        match data {
+            ModuleExportNameData::IdentifierName(it) => {
+                <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ModuleExportNameData::StringLiteral(it) => {
+                <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Argument {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_argument(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().argument_data(self);
+        match data {
+            ArgumentData::Expr(it) => <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ArgumentData::SpreadElement(it) => {
                 <SpreadElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            PropOrSpreadData::Prop(it) => {
-                <Prop as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ObjectPropertyKind {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_object_property_kind(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().object_property_kind_data(self);
+        match data {
+            ObjectPropertyKindData::ObjectProperty(it) => {
+                <ObjectProperty as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ObjectPropertyKindData::SpreadElement(it) => {
+                <SpreadElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SpreadElement {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ForStatementInit {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_spread_element(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_for_statement_init(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.expr(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for UnaryExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_unary_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.arg(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for UpdateExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_update_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.arg(visitor.ast());
-        <SimpleAssignTarget as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BinExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_bin_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.left(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.right(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for FnExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_fn_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.ident(visitor.ast());
-        <Option<Ident> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.function(visitor.ast());
-        <Function as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ClassExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_class_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.ident(visitor.ast());
-        <Option<Ident> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.class(visitor.ast());
-        <Class as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for AssignExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_assign_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.left(visitor.ast());
-        <AssignTarget as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.right(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for MemberExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_member_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.obj(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.prop(visitor.ast());
-        <MemberProp as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for MemberProp {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_member_prop(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().member_prop_data(self);
+        let data = visitor.ast().for_statement_init_data(self);
         match data {
-            MemberPropData::Ident(it) => {
-                <IdentName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            ForStatementInitData::VariableDeclaration(it) => {
+                <VariableDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            MemberPropData::PrivateName(it) => {
-                <PrivateName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            MemberPropData::Computed(it) => {
-                <ComputedPropName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            ForStatementInitData::Expr(it) => {
+                <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SuperPropExpr {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ForStatementLeft {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_super_prop_expr(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_for_statement_left(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.obj(visitor.ast());
-        <Super as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.prop(visitor.ast());
-        <SuperProp as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SuperProp {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_super_prop(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().super_prop_data(self);
+        let data = visitor.ast().for_statement_left_data(self);
         match data {
-            SuperPropData::Ident(it) => {
-                <IdentName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            ForStatementLeftData::VariableDeclaration(it) => {
+                <VariableDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            SuperPropData::Computed(it) => {
-                <ComputedPropName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            ForStatementLeftData::AssignmentTarget(it) => {
+                <AssignmentTarget as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for CondExpr {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ArrowFunctionBody {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_cond_expr(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_arrow_function_body(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.test(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.cons(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.alt(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ImportExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_import_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.source(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.options(visitor.ast());
-        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for CallExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_call_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.callee(visitor.ast());
-        <Callee as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.args(visitor.ast());
-        <TypedSubRange<ExprOrSpread> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for NewExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_new_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.callee(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.args(visitor.ast());
-        <TypedSubRange<ExprOrSpread> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SeqExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_seq_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.exprs(visitor.ast());
-        <TypedSubRange<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ArrowExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_arrow_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.params(visitor.ast());
-        <TypedSubRange<Pat> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.body(visitor.ast());
-        <BlockStmtOrExpr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for YieldExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_yield_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.arg(visitor.ast());
-        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for MetaPropExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_meta_prop_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for AwaitExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_await_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.arg(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Tpl {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_tpl(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.exprs(visitor.ast());
-        <TypedSubRange<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.quasis(visitor.ast());
-        <TypedSubRange<TplElement> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TaggedTpl {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_tagged_tpl(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.tag(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.tpl(visitor.ast());
-        <Tpl as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TplElement {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_tpl_element(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ParenExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_paren_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.expr(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Callee {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_callee(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().callee_data(self);
+        let data = visitor.ast().arrow_function_body_data(self);
         match data {
-            CalleeData::Super(it) => <Super as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            CalleeData::Expr(it) => <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            ArrowFunctionBodyData::FunctionBody(it) => {
+                <FunctionBody as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ArrowFunctionBodyData::Expr(it) => {
+                <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for FormalParameterItem {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_formal_parameter_item(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().formal_parameter_item_data(self);
+        match data {
+            FormalParameterItemData::FormalParameter(it) => {
+                <FormalParameter as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            FormalParameterItemData::TsParameterProperty(it) => {
+                <TsParameterProperty as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for FormalParameterPattern {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_formal_parameter_pattern(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().formal_parameter_pattern_data(self);
+        match data {
+            FormalParameterPatternData::BindingPattern(it) => {
+                <BindingPattern as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            FormalParameterPatternData::TsThisParameter(it) => {
+                <TsThisParameter as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ClassElement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_class_element(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().class_element_data(self);
+        match data {
+            ClassElementData::MethodDefinition(it) => {
+                <MethodDefinition as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ClassElementData::PropertyDefinition(it) => {
+                <PropertyDefinition as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ClassElementData::StaticBlock(it) => {
+                <StaticBlock as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ClassElementData::TsIndexSignature(it) => {
+                <TsIndexSignature as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ImportDeclarationSpecifier {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_import_declaration_specifier(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().import_declaration_specifier_data(self);
+        match data {
+            ImportDeclarationSpecifierData::ImportSpecifier(it) => {
+                <ImportSpecifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ImportDeclarationSpecifierData::ImportDefaultSpecifier(it) => {
+                <ImportDefaultSpecifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ImportDeclarationSpecifierData::ImportNamespaceSpecifier(it) => {
+                <ImportNamespaceSpecifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportDefaultDeclarationKind {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_export_default_declaration_kind(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().export_default_declaration_kind_data(self);
+        match data {
+            ExportDefaultDeclarationKindData::Expr(it) => {
+                <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExportDefaultDeclarationKindData::Function(it) => {
+                <Function as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExportDefaultDeclarationKindData::Class(it) => {
+                <Class as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExportDefaultDeclarationKindData::TsInterfaceDeclaration(it) => {
+                <TsInterfaceDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
         }
     }
 }
@@ -5345,195 +6962,539 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Super {
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {}
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExprOrSpread {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ThisExpression {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_expr_or_spread(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.expr(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BlockStmtOrExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_block_stmt_or_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().block_stmt_or_expr_data(self);
-        match data {
-            BlockStmtOrExprData::BlockStmt(it) => {
-                <BlockStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            BlockStmtOrExprData::Expr(it) => {
-                <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for AssignTarget {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_assign_target(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().assign_target_data(self);
-        match data {
-            AssignTargetData::Simple(it) => {
-                <SimpleAssignTarget as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            AssignTargetData::Pat(it) => {
-                <AssignTargetPat as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for AssignTargetPat {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_assign_target_pat(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().assign_target_pat_data(self);
-        match data {
-            AssignTargetPatData::Array(it) => {
-                <ArrayPat as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            AssignTargetPatData::Object(it) => {
-                <ObjectPat as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            AssignTargetPatData::Invalid(it) => {
-                <Invalid as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SimpleAssignTarget {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_simple_assign_target(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().simple_assign_target_data(self);
-        match data {
-            SimpleAssignTargetData::Ident(it) => {
-                <BindingIdent as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            SimpleAssignTargetData::Member(it) => {
-                <MemberExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            SimpleAssignTargetData::SuperProp(it) => {
-                <SuperPropExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            SimpleAssignTargetData::Paren(it) => {
-                <ParenExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            SimpleAssignTargetData::OptChain(it) => {
-                <OptChainExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            SimpleAssignTargetData::Invalid(it) => {
-                <Invalid as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for OptChainExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_opt_chain_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.base(visitor.ast());
-        <OptChainBase as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for OptChainBase {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_opt_chain_base(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().opt_chain_base_data(self);
-        match data {
-            OptChainBaseData::Member(it) => {
-                <MemberExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            OptChainBaseData::Call(it) => {
-                <OptCall as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for OptCall {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_opt_call(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.callee(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.args(visitor.ast());
-        <TypedSubRange<ExprOrSpread> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Invalid {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_invalid(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_this_expression(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {}
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Function {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for StringLiteral {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_function(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_string_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for NumericLiteral {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_numeric_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BigIntLiteral {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_big_int_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BooleanLiteral {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_boolean_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for NullLiteral {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_null_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for RegExpLiteral {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_reg_exp_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TemplateLiteral {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_template_literal(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.params(visitor.ast());
-        <TypedSubRange<Param> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.quasis(visitor.ast());
+        <TypedSubRange<TemplateElement> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.expressions(visitor.ast());
+        <TypedSubRange<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TemplateElement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_template_element(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for IdentifierReference {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_identifier_reference(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for PrivateIdentifier {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_private_identifier(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BindingIdentifier {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_binding_identifier(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
         let field_value = self.decorators(visitor.ast());
         <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_annotation(visitor.ast());
+        <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for IdentifierName {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_identifier_name(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for LabelIdentifier {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_label_identifier(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for AssignmentPattern {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_assignment_pattern(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.left(visitor.ast());
+        <BindingPattern as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.right(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.decorators(visitor.ast());
+        <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_annotation(visitor.ast());
+        <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BindingRestElement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_binding_rest_element(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.argument(visitor.ast());
+        <BindingPattern as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.decorators(visitor.ast());
+        <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_annotation(visitor.ast());
+        <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ArrayPattern {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_array_pattern(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.elements(visitor.ast());
+        <TypedSubRange<Option<BindingPattern>> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.rest(visitor.ast());
+        <Option<BindingRestElement> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.decorators(visitor.ast());
+        <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_annotation(visitor.ast());
+        <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ObjectPattern {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_object_pattern(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.properties(visitor.ast());
+        <TypedSubRange<BindingProperty> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.rest(visitor.ast());
+        <Option<BindingRestElement> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.decorators(visitor.ast());
+        <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_annotation(visitor.ast());
+        <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BindingProperty {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_binding_property(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.key(visitor.ast());
+        <PropertyKey as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.value(visitor.ast());
+        <BindingPattern as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BinaryExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_binary_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.left(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.right(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for LogicalExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_logical_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.left(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.right(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ConditionalExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_conditional_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.test(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.consequent(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.alternate(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for UnaryExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_unary_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.argument(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for UpdateExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_update_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.argument(visitor.ast());
+        <SimpleAssignmentTarget as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for AssignmentExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_assignment_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.left(visitor.ast());
+        <AssignmentTarget as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.right(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for VariableDeclaration {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_variable_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.declarators(visitor.ast());
+        <TypedSubRange<VariableDeclarator> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for VariableDeclarator {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_variable_declarator(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.id(visitor.ast());
+        <BindingPattern as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.init(visitor.ast());
+        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for IfStatement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_if_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.test(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.consequent(visitor.ast());
+        <Stmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.alternate(visitor.ast());
+        <Option<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SwitchStatement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_switch_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.discriminant(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.cases(visitor.ast());
+        <TypedSubRange<SwitchCase> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SwitchCase {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_switch_case(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.test(visitor.ast());
+        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.consequent(visitor.ast());
+        <TypedSubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ForStatement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_for_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.init(visitor.ast());
+        <Option<ForStatementInit> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.test(visitor.ast());
+        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.update(visitor.ast());
+        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
         let field_value = self.body(visitor.ast());
-        <BlockStmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        <Stmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Param {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ForInStatement {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_param(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_for_in_statement(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.decorators(visitor.ast());
-        <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.pat(visitor.ast());
-        <Pat as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.left(visitor.ast());
+        <ForStatementLeft as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.right(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.body(visitor.ast());
+        <Stmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ParamOrTsParamProp {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ForOfStatement {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_param_or_ts_param_prop(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_for_of_statement(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().param_or_ts_param_prop_data(self);
-        match data {
-            ParamOrTsParamPropData::Param(it) => {
-                <Param as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-        }
+        let field_value = self.left(visitor.ast());
+        <ForStatementLeft as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.right(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.body(visitor.ast());
+        <Stmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TryStatement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_try_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.block(visitor.ast());
+        <BlockStatement as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.handler(visitor.ast());
+        <Option<CatchClause> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.finalizer(visitor.ast());
+        <Option<BlockStatement> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for CatchClause {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_catch_clause(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.param(visitor.ast());
+        <Option<BindingPattern> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.body(visitor.ast());
+        <BlockStatement as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BreakStatement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_break_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.label(visitor.ast());
+        <Option<LabelIdentifier> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ContinueStatement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_continue_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.label(visitor.ast());
+        <Option<LabelIdentifier> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for LabeledStatement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_labeled_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.label(visitor.ast());
+        <LabelIdentifier as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.body(visitor.ast());
+        <Stmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExpressionStatement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_expression_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.expression(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ReturnStatement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_return_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.argument(visitor.ast());
+        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ThrowStatement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_throw_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.argument(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for DebuggerStatement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_debugger_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for EmptyStatement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_empty_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Directive {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_directive(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.expression(visitor.ast());
+        <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Decorator {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_decorator(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.expression(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
     }
 }
 impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Class {
@@ -5545,131 +7506,70 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Class {
     fn visit_mut_children_with(self, visitor: &mut V) {
         let field_value = self.decorators(visitor.ast());
         <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.body(visitor.ast());
-        <TypedSubRange<ClassMember> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.id(visitor.ast());
+        <Option<BindingIdentifier> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
         let field_value = self.super_class(visitor.ast());
         <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ClassMember {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_class_member(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().class_member_data(self);
-        match data {
-            ClassMemberData::Constructor(it) => {
-                <Constructor as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ClassMemberData::Method(it) => {
-                <ClassMethod as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ClassMemberData::PrivateMethod(it) => {
-                <PrivateMethod as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ClassMemberData::ClassProp(it) => {
-                <ClassProp as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ClassMemberData::PrivateProp(it) => {
-                <PrivateProp as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ClassMemberData::Empty(it) => {
-                <EmptyStmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ClassMemberData::StaticBlock(it) => {
-                <StaticBlock as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ClassMemberData::AutoAccessor(it) => {
-                <AutoAccessor as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ClassProp {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_class_prop(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.key(visitor.ast());
-        <PropName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.value(visitor.ast());
-        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.decorators(visitor.ast());
-        <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for PrivateProp {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_private_prop(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.key(visitor.ast());
-        <PrivateName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.value(visitor.ast());
-        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.decorators(visitor.ast());
-        <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ClassMethod {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_class_method(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.key(visitor.ast());
-        <PropName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.function(visitor.ast());
-        <Function as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for PrivateMethod {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_private_method(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.key(visitor.ast());
-        <PrivateName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.function(visitor.ast());
-        <Function as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Constructor {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_constructor(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.key(visitor.ast());
-        <PropName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.params(visitor.ast());
-        <TypedSubRange<ParamOrTsParamProp> as VisitMutWith<'a, V>>::visit_mut_with(
+        let field_value = self.body(visitor.ast());
+        <ClassBody as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_parameters(visitor.ast());
+        <Option<TsTypeParameterDeclaration> as VisitMutWith<'a, V>>::visit_mut_with(
             field_value,
             visitor,
         );
-        let field_value = self.body(visitor.ast());
-        <Option<BlockStmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.super_type_arguments(visitor.ast());
+        <Option<TsTypeParameterInstantiation> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.implements(visitor.ast());
+        <TypedSubRange<TsClassImplements> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Decorator {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ClassBody {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_decorator(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_class_body(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.expr(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.body(visitor.ast());
+        <TypedSubRange<ClassElement> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for MethodDefinition {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_method_definition(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.decorators(visitor.ast());
+        <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.key(visitor.ast());
+        <PropertyKey as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.value(visitor.ast());
+        <Function as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for PropertyDefinition {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_property_definition(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.decorators(visitor.ast());
+        <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.key(visitor.ast());
+        <PropertyKey as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.value(visitor.ast());
+        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_annotation(visitor.ast());
+        <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
     }
 }
 impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for StaticBlock {
@@ -5680,471 +7580,1766 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for StaticBlock {
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
         let field_value = self.body(visitor.ast());
-        <BlockStmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        <TypedSubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Key {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Function {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_key(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().key_data(self);
-        match data {
-            KeyData::Private(it) => {
-                <PrivateName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            KeyData::Public(it) => <PropName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for AutoAccessor {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_auto_accessor(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.key(visitor.ast());
-        <Key as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.value(visitor.ast());
-        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.decorators(visitor.ast());
-        <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Prop {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_prop(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().prop_data(self);
-        match data {
-            PropData::Shorthand(it) => <Ident as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            PropData::KeyValue(it) => {
-                <KeyValueProp as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            PropData::Assign(it) => {
-                <AssignProp as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            PropData::Getter(it) => {
-                <GetterProp as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            PropData::Setter(it) => {
-                <SetterProp as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            PropData::Method(it) => {
-                <MethodProp as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for KeyValueProp {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_key_value_prop(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.key(visitor.ast());
-        <PropName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.value(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for AssignProp {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_assign_prop(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.key(visitor.ast());
-        <Ident as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.value(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for GetterProp {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_getter_prop(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.key(visitor.ast());
-        <PropName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.function(visitor.ast());
-        <Function as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SetterProp {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_setter_prop(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.key(visitor.ast());
-        <PropName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.function(visitor.ast());
-        <Function as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for MethodProp {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_method_prop(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.key(visitor.ast());
-        <PropName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.function(visitor.ast());
-        <Function as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for PropName {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_prop_name(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().prop_name_data(self);
-        match data {
-            PropNameData::Ident(it) => {
-                <IdentName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            PropNameData::Str(it) => <Str as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            PropNameData::Num(it) => <Number as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            PropNameData::Computed(it) => {
-                <ComputedPropName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            PropNameData::BigInt(it) => {
-                <BigInt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ComputedPropName {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_computed_prop_name(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.expr(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Pat {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_pat(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().pat_data(self);
-        match data {
-            PatData::Ident(it) => {
-                <BindingIdent as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            PatData::Array(it) => <ArrayPat as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            PatData::Rest(it) => <RestPat as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            PatData::Object(it) => <ObjectPat as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            PatData::Assign(it) => <AssignPat as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            PatData::Invalid(it) => <Invalid as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            PatData::Expr(it) => <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ArrayPat {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_array_pat(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.elems(visitor.ast());
-        <TypedSubRange<Option<Pat>> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ObjectPat {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_object_pat(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.props(visitor.ast());
-        <TypedSubRange<ObjectPatProp> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for AssignPat {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_assign_pat(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.left(visitor.ast());
-        <Pat as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.right(visitor.ast());
-        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for RestPat {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_rest_pat(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.arg(visitor.ast());
-        <Pat as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ObjectPatProp {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_object_pat_prop(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().object_pat_prop_data(self);
-        match data {
-            ObjectPatPropData::KeyValue(it) => {
-                <KeyValuePatProp as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ObjectPatPropData::Assign(it) => {
-                <AssignPatProp as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            ObjectPatPropData::Rest(it) => {
-                <RestPat as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for KeyValuePatProp {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_key_value_pat_prop(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.key(visitor.ast());
-        <PropName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.value(visitor.ast());
-        <Pat as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for AssignPatProp {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_assign_pat_prop(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.key(visitor.ast());
-        <BindingIdent as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.value(visitor.ast());
-        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Ident {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_ident(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for IdentName {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_ident_name(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for PrivateName {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_private_name(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BindingIdent {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_binding_ident(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_function(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
         let field_value = self.id(visitor.ast());
-        <Ident as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        <Option<BindingIdentifier> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.params(visitor.ast());
+        <FormalParameters as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.body(visitor.ast());
+        <Option<FunctionBody> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_parameters(visitor.ast());
+        <Option<TsTypeParameterDeclaration> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.return_type(visitor.ast());
+        <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Lit {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for FunctionBody {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_lit(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_function_body(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().lit_data(self);
-        match data {
-            LitData::Str(it) => <Str as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            LitData::Bool(it) => <Bool as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            LitData::Null(it) => <Null as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            LitData::Num(it) => <Number as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            LitData::BigInt(it) => <BigInt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            LitData::Regex(it) => <Regex as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-        }
+        let field_value = self.body(visitor.ast());
+        <TypedSubRange<StatementListItem> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Str {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BlockStatement {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_str(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Bool {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_bool(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Null {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_null(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Number {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_number(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BigInt {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_big_int(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Regex {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_regex(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXObject {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_jsx_object(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_block_statement(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().jsx_object_data(self);
-        match data {
-            JSXObjectData::JSXMemberExpr(it) => {
-                <JSXMemberExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            JSXObjectData::Ident(it) => <Ident as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-        }
+        let field_value = self.body(visitor.ast());
+        <TypedSubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXMemberExpr {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for WhileStatement {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_jsx_member_expr(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_while_statement(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.obj(visitor.ast());
-        <JSXObject as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.prop(visitor.ast());
-        <IdentName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.test(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.body(visitor.ast());
+        <Stmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXNamespacedName {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for DoWhileStatement {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_jsx_namespaced_name(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_do_while_statement(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.ns(visitor.ast());
-        <IdentName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.name(visitor.ast());
-        <IdentName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXEmptyExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_jsx_empty_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXExprContainer {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_jsx_expr_container(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.expr(visitor.ast());
-        <JSXExpr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXExpr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_jsx_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().jsx_expr_data(self);
-        match data {
-            JSXExprData::JSXEmptyExpr(it) => {
-                <JSXEmptyExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            JSXExprData::Expr(it) => <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXSpreadChild {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_jsx_spread_child(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.expr(visitor.ast());
+        let field_value = self.body(visitor.ast());
+        <Stmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.test(visitor.ast());
         <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXElementName {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for WithStatement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_with_statement(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.object(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.body(visitor.ast());
+        <Stmt as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for FormalParameters {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_formal_parameters(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.items(visitor.ast());
+        <TypedSubRange<FormalParameterItem> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.rest(visitor.ast());
+        <Option<BindingRestElement> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for FormalParameter {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_formal_parameter(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.pattern(visitor.ast());
+        <FormalParameterPattern as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ArrayExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_array_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.elements(visitor.ast());
+        <TypedSubRange<Option<Argument>> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ObjectExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_object_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.properties(visitor.ast());
+        <TypedSubRange<ObjectPropertyKind> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SpreadElement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_spread_element(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.argument(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ObjectProperty {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_object_property(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.key(visitor.ast());
+        <PropertyKey as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.value(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ParenthesizedExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_parenthesized_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.expression(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ArrowFunctionExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_arrow_function_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.params(visitor.ast());
+        <FormalParameters as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.body(visitor.ast());
+        <ArrowFunctionBody as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_parameters(visitor.ast());
+        <Option<TsTypeParameterDeclaration> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.return_type(visitor.ast());
+        <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SequenceExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_sequence_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.expressions(visitor.ast());
+        <TypedSubRange<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for MemberExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_member_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.object(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.property(visitor.ast());
+        <PropertyKey as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for CallExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_call_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.callee(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.arguments(visitor.ast());
+        <TypedSubRange<Argument> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_arguments(visitor.ast());
+        <Option<TsTypeParameterInstantiation> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ChainExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_chain_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.expression(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TaggedTemplateExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_tagged_template_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.tag(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.quasi(visitor.ast());
+        <TemplateLiteral as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_arguments(visitor.ast());
+        <Option<TsTypeParameterInstantiation> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for NewExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_new_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.callee(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.arguments(visitor.ast());
+        <TypedSubRange<Argument> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_arguments(visitor.ast());
+        <Option<TsTypeParameterInstantiation> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for AwaitExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_await_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.argument(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for YieldExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_yield_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.argument(visitor.ast());
+        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for MetaProperty {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_meta_property(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.meta(visitor.ast());
+        <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.property(visitor.ast());
+        <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ImportExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_import_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.source(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.options(visitor.ast());
+        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ImportDeclaration {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_import_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.specifiers(visitor.ast());
+        <TypedSubRange<ImportDeclarationSpecifier> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.source(visitor.ast());
+        <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.attributes(visitor.ast());
+        <TypedSubRange<ImportAttribute> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ImportSpecifier {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_import_specifier(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.imported(visitor.ast());
+        <ModuleExportName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.local(visitor.ast());
+        <BindingIdentifier as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ImportDefaultSpecifier {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_import_default_specifier(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.local(visitor.ast());
+        <BindingIdentifier as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ImportNamespaceSpecifier {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_import_namespace_specifier(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.local(visitor.ast());
+        <BindingIdentifier as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ImportAttribute {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_import_attribute(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.key(visitor.ast());
+        <ModuleExportName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.value(visitor.ast());
+        <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportNamedDeclaration {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_export_named_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.declaration(visitor.ast());
+        <Option<Decl> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.specifiers(visitor.ast());
+        <TypedSubRange<ExportSpecifier> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.source(visitor.ast());
+        <Option<StringLiteral> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.attributes(visitor.ast());
+        <TypedSubRange<ImportAttribute> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportDefaultDeclaration {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_export_default_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.declaration(visitor.ast());
+        <ExportDefaultDeclarationKind as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportAllDeclaration {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_export_all_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.exported(visitor.ast());
+        <Option<ModuleExportName> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.source(visitor.ast());
+        <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.attributes(visitor.ast());
+        <TypedSubRange<ImportAttribute> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportSpecifier {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_export_specifier(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.local(visitor.ast());
+        <ModuleExportName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.exported(visitor.ast());
+        <ModuleExportName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Hashbang {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_hashbang(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().ts_type_data(self);
+        match data {
+            TsTypeData::TsAnyKeyword(it) => {
+                <TsAnyKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsUnknownKeyword(it) => {
+                <TsUnknownKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsNeverKeyword(it) => {
+                <TsNeverKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsVoidKeyword(it) => {
+                <TsVoidKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsNullKeyword(it) => {
+                <TsNullKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsUndefinedKeyword(it) => {
+                <TsUndefinedKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsStringKeyword(it) => {
+                <TsStringKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsNumberKeyword(it) => {
+                <TsNumberKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsBigIntKeyword(it) => {
+                <TsBigIntKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsBooleanKeyword(it) => {
+                <TsBooleanKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsSymbolKeyword(it) => {
+                <TsSymbolKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsObjectKeyword(it) => {
+                <TsObjectKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsIntrinsicKeyword(it) => {
+                <TsIntrinsicKeyword as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsThisType(it) => {
+                <TsThisType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsTypeReference(it) => {
+                <TsTypeReference as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsTypeQuery(it) => {
+                <TsTypeQuery as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsImportType(it) => {
+                <TsImportType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsLiteralType(it) => {
+                <TsLiteralType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsTemplateLiteralType(it) => {
+                <TsTemplateLiteralType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsArrayType(it) => {
+                <TsArrayType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsIndexedAccessType(it) => {
+                <TsIndexedAccessType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsTupleType(it) => {
+                <TsTupleType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsOptionalType(it) => {
+                <TsOptionalType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsRestType(it) => {
+                <TsRestType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsJsDocNullableType(it) => {
+                <TsJsDocNullableType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsJsDocNonNullableType(it) => {
+                <TsJsDocNonNullableType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsJsDocUnknownType(it) => {
+                <TsJsDocUnknownType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsUnionType(it) => {
+                <TsUnionType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsIntersectionType(it) => {
+                <TsIntersectionType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsConditionalType(it) => {
+                <TsConditionalType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsInferType(it) => {
+                <TsInferType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsTypeOperator(it) => {
+                <TsTypeOperator as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsParenthesizedType(it) => {
+                <TsParenthesizedType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsFunctionType(it) => {
+                <TsFunctionType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsConstructorType(it) => {
+                <TsConstructorType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsTypePredicate(it) => {
+                <TsTypePredicate as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsTypeLiteral(it) => {
+                <TsTypeLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeData::TsMappedType(it) => {
+                <TsMappedType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeName {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_type_name(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().ts_type_name_data(self);
+        match data {
+            TsTypeNameData::IdentifierReference(it) => {
+                <IdentifierReference as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeNameData::TsQualifiedName(it) => {
+                <TsQualifiedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsQualifiedNameLeft {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_qualified_name_left(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().ts_qualified_name_left_data(self);
+        match data {
+            TsQualifiedNameLeftData::IdentifierReference(it) => {
+                <IdentifierReference as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsQualifiedNameLeftData::IdentifierName(it) => {
+                <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsQualifiedNameLeftData::BindingIdentifier(it) => {
+                <BindingIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsQualifiedNameLeftData::ThisExpression(it) => {
+                <ThisExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsQualifiedNameLeftData::TsQualifiedName(it) => {
+                <TsQualifiedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsImportTypeQualifier {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_import_type_qualifier(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().ts_import_type_qualifier_data(self);
+        match data {
+            TsImportTypeQualifierData::IdentifierName(it) => {
+                <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsImportTypeQualifierData::TsQualifiedName(it) => {
+                <TsQualifiedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeQueryExprName {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_type_query_expr_name(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().ts_type_query_expr_name_data(self);
+        match data {
+            TsTypeQueryExprNameData::TsTypeName(it) => {
+                <TsTypeName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeQueryExprNameData::ThisExpression(it) => {
+                <ThisExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeQueryExprNameData::TsImportType(it) => {
+                <TsImportType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsLiteral {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().ts_literal_data(self);
+        match data {
+            TsLiteralData::StringLiteral(it) => {
+                <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsLiteralData::NumericLiteral(it) => {
+                <NumericLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsLiteralData::BigIntLiteral(it) => {
+                <BigIntLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsLiteralData::BooleanLiteral(it) => {
+                <BooleanLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsLiteralData::TemplateLiteral(it) => {
+                <TemplateLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsLiteralData::UnaryExpression(it) => {
+                <UnaryExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTupleElement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_tuple_element(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().ts_tuple_element_data(self);
+        match data {
+            TsTupleElementData::TsType(it) => {
+                <TsType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTupleElementData::TsNamedTupleMember(it) => {
+                <TsNamedTupleMember as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTupleElementData::TsOptionalType(it) => {
+                <TsOptionalType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTupleElementData::TsRestType(it) => {
+                <TsRestType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeElement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_type_element(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().ts_type_element_data(self);
+        match data {
+            TsTypeElementData::TsPropertySignature(it) => {
+                <TsPropertySignature as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeElementData::TsMethodSignature(it) => {
+                <TsMethodSignature as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeElementData::TsCallSignatureDeclaration(it) => {
+                <TsCallSignatureDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypeElementData::TsConstructSignatureDeclaration(it) => {
+                <TsConstructSignatureDeclaration as VisitMutWith<'a, V>>::visit_mut_with(
+                    it, visitor,
+                )
+            }
+            TsTypeElementData::TsIndexSignature(it) => {
+                <TsIndexSignature as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypePredicateName {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_type_predicate_name(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().ts_type_predicate_name_data(self);
+        match data {
+            TsTypePredicateNameData::IdentifierName(it) => {
+                <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsTypePredicateNameData::TsThisType(it) => {
+                <TsThisType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsEnumMemberName {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_enum_member_name(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().ts_enum_member_name_data(self);
+        match data {
+            TsEnumMemberNameData::IdentifierName(it) => {
+                <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsEnumMemberNameData::StringLiteral(it) => {
+                <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsEnumMemberNameData::TemplateLiteral(it) => {
+                <TemplateLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsEnumMemberNameData::Expr(it) => {
+                <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsModuleName {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_module_name(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().ts_module_name_data(self);
+        match data {
+            TsModuleNameData::BindingIdentifier(it) => {
+                <BindingIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsModuleNameData::StringLiteral(it) => {
+                <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsModuleNameData::TsQualifiedName(it) => {
+                <TsQualifiedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsModuleBody {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_module_body(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().ts_module_body_data(self);
+        match data {
+            TsModuleBodyData::TsModuleBlock(it) => {
+                <TsModuleBlock as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsModuleBodyData::TsModuleDeclaration(it) => {
+                <TsModuleDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsModuleReference {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_module_reference(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().ts_module_reference_data(self);
+        match data {
+            TsModuleReferenceData::TsTypeName(it) => {
+                <TsTypeName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            TsModuleReferenceData::TsExternalModuleReference(it) => {
+                <TsExternalModuleReference as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeAnnotation {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_type_annotation(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.type_annotation(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsAnyKeyword {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_any_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsUnknownKeyword {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_unknown_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsNeverKeyword {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_never_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsVoidKeyword {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_void_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsNullKeyword {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_null_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsUndefinedKeyword {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_undefined_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsStringKeyword {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_string_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsNumberKeyword {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_number_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsBigIntKeyword {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_big_int_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsBooleanKeyword {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_boolean_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsSymbolKeyword {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_symbol_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsObjectKeyword {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_object_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsIntrinsicKeyword {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_intrinsic_keyword(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsThisType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_this_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeReference {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_type_reference(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.type_name(visitor.ast());
+        <TsTypeName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_arguments(visitor.ast());
+        <Option<TsTypeParameterInstantiation> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsQualifiedName {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_qualified_name(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.left(visitor.ast());
+        <TsQualifiedNameLeft as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.right(visitor.ast());
+        <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeQuery {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_type_query(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.expr_name(visitor.ast());
+        <TsTypeQueryExprName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_arguments(visitor.ast());
+        <Option<TsTypeParameterInstantiation> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsImportType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_import_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.source(visitor.ast());
+        <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.options(visitor.ast());
+        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.qualifier(visitor.ast());
+        <Option<TsImportTypeQualifier> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.type_arguments(visitor.ast());
+        <Option<TsTypeParameterInstantiation> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeParameter {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_type_parameter(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.name(visitor.ast());
+        <BindingIdentifier as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.constraint(visitor.ast());
+        <Option<TsType> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.default(visitor.ast());
+        <Option<TsType> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeParameterDeclaration {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_type_parameter_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.params(visitor.ast());
+        <TypedSubRange<TsTypeParameter> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeParameterInstantiation {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_type_parameter_instantiation(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.params(visitor.ast());
+        <TypedSubRange<TsType> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsLiteralType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_literal_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.literal(visitor.ast());
+        <TsLiteral as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTemplateLiteralType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_template_literal_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.quasis(visitor.ast());
+        <TypedSubRange<TemplateElement> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.types(visitor.ast());
+        <TypedSubRange<TsType> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsArrayType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_array_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.element_type(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsIndexedAccessType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_indexed_access_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.object_type(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.index_type(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTupleType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_tuple_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.element_types(visitor.ast());
+        <TypedSubRange<TsTupleElement> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsNamedTupleMember {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_named_tuple_member(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.label(visitor.ast());
+        <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.element_type(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsOptionalType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_optional_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.type_annotation(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsRestType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_rest_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.type_annotation(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsJsDocNullableType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_js_doc_nullable_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.type_annotation(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsJsDocNonNullableType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_js_doc_non_nullable_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.type_annotation(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsJsDocUnknownType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_js_doc_unknown_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsUnionType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_union_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.types(visitor.ast());
+        <TypedSubRange<TsType> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsIntersectionType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_intersection_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.types(visitor.ast());
+        <TypedSubRange<TsType> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsConditionalType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_conditional_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.check_type(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.extends_type(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.true_type(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.false_type(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsInferType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_infer_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.type_parameter(visitor.ast());
+        <TsTypeParameter as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeOperator {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_type_operator(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.type_annotation(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsParenthesizedType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_parenthesized_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.type_annotation(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsFunctionType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_function_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.type_parameters(visitor.ast());
+        <Option<TsTypeParameterDeclaration> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.params(visitor.ast());
+        <FormalParameters as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.return_type(visitor.ast());
+        <TsTypeAnnotation as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsConstructorType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_constructor_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.type_parameters(visitor.ast());
+        <Option<TsTypeParameterDeclaration> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.params(visitor.ast());
+        <FormalParameters as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.return_type(visitor.ast());
+        <TsTypeAnnotation as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypePredicate {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_type_predicate(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.parameter_name(visitor.ast());
+        <TsTypePredicateName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_annotation(visitor.ast());
+        <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeLiteral {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_type_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.members(visitor.ast());
+        <TypedSubRange<TsTypeElement> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsMappedType {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_mapped_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.key(visitor.ast());
+        <BindingIdentifier as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.constraint(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.name_type(visitor.ast());
+        <Option<TsType> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_annotation(visitor.ast());
+        <Option<TsType> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsPropertySignature {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_property_signature(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.key(visitor.ast());
+        <PropertyKey as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_annotation(visitor.ast());
+        <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsMethodSignature {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_method_signature(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.key(visitor.ast());
+        <PropertyKey as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_parameters(visitor.ast());
+        <Option<TsTypeParameterDeclaration> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.params(visitor.ast());
+        <FormalParameters as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.return_type(visitor.ast());
+        <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsCallSignatureDeclaration {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_call_signature_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.type_parameters(visitor.ast());
+        <Option<TsTypeParameterDeclaration> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.params(visitor.ast());
+        <FormalParameters as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.return_type(visitor.ast());
+        <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsConstructSignatureDeclaration {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_construct_signature_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.type_parameters(visitor.ast());
+        <Option<TsTypeParameterDeclaration> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.params(visitor.ast());
+        <FormalParameters as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.return_type(visitor.ast());
+        <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsIndexSignature {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_index_signature(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.parameters(visitor.ast());
+        <TypedSubRange<BindingIdentifier> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.type_annotation(visitor.ast());
+        <TsTypeAnnotation as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeAliasDeclaration {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_type_alias_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.id(visitor.ast());
+        <BindingIdentifier as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_parameters(visitor.ast());
+        <Option<TsTypeParameterDeclaration> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.type_annotation(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsInterfaceDeclaration {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_interface_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.id(visitor.ast());
+        <BindingIdentifier as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_parameters(visitor.ast());
+        <Option<TsTypeParameterDeclaration> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.extends(visitor.ast());
+        <TypedSubRange<TsInterfaceHeritage> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.body(visitor.ast());
+        <TsInterfaceBody as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsInterfaceBody {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_interface_body(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.body(visitor.ast());
+        <TypedSubRange<TsTypeElement> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsInterfaceHeritage {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_interface_heritage(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.expression(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_arguments(visitor.ast());
+        <Option<TsTypeParameterInstantiation> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsClassImplements {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_class_implements(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.expression(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_arguments(visitor.ast());
+        <Option<TsTypeParameterInstantiation> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsEnumDeclaration {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_enum_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.id(visitor.ast());
+        <BindingIdentifier as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.body(visitor.ast());
+        <TsEnumBody as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsEnumBody {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_enum_body(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.members(visitor.ast());
+        <TypedSubRange<TsEnumMember> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsEnumMember {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_enum_member(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.id(visitor.ast());
+        <TsEnumMemberName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.initializer(visitor.ast());
+        <Option<Expr> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsModuleDeclaration {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_module_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.id(visitor.ast());
+        <TsModuleName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.body(visitor.ast());
+        <Option<TsModuleBody> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsModuleBlock {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_module_block(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.body(visitor.ast());
+        <TypedSubRange<StatementListItem> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsGlobalDeclaration {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_global_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.id(visitor.ast());
+        <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.body(visitor.ast());
+        <TsModuleBlock as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsParameterProperty {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_parameter_property(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.decorators(visitor.ast());
+        <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.parameter(visitor.ast());
+        <BindingPattern as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsThisParameter {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_this_parameter(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.type_annotation(visitor.ast());
+        <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsAsExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_as_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.expression(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_annotation(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsSatisfiesExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_satisfies_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.expression(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_annotation(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeAssertion {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_type_assertion(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.type_annotation(visitor.ast());
+        <TsType as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.expression(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsNonNullExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_non_null_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.expression(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsInstantiationExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_instantiation_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.expression(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_arguments(visitor.ast());
+        <TsTypeParameterInstantiation as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsExportAssignment {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_export_assignment(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.expression(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsNamespaceExportDeclaration {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_namespace_export_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.id(visitor.ast());
+        <IdentifierName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsImportEqualsDeclaration {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_import_equals_declaration(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.id(visitor.ast());
+        <BindingIdentifier as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.module_reference(visitor.ast());
+        <TsModuleReference as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsExternalModuleReference {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_external_module_reference(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.expression(visitor.ast());
+        <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxElementName {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
         <V as VisitMut<'a>>::visit_mut_jsx_element_name(visitor, self)
@@ -6153,19 +9348,157 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXElementName {
     fn visit_mut_children_with(self, visitor: &mut V) {
         let data = visitor.ast().jsx_element_name_data(self);
         match data {
-            JSXElementNameData::Ident(it) => {
-                <Ident as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            JsxElementNameData::JsxIdentifier(it) => {
+                <JsxIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            JSXElementNameData::JSXMemberExpr(it) => {
-                <JSXMemberExpr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            JsxElementNameData::JsxNamespacedName(it) => {
+                <JsxNamespacedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
-            JSXElementNameData::JSXNamespacedName(it) => {
-                <JSXNamespacedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            JsxElementNameData::JsxMemberExpression(it) => {
+                <JsxMemberExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXOpeningElement {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxMemberExpressionObject {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_jsx_member_expression_object(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().jsx_member_expression_object_data(self);
+        match data {
+            JsxMemberExpressionObjectData::JsxIdentifier(it) => {
+                <JsxIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            JsxMemberExpressionObjectData::JsxMemberExpression(it) => {
+                <JsxMemberExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxAttributeName {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_jsx_attribute_name(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().jsx_attribute_name_data(self);
+        match data {
+            JsxAttributeNameData::JsxIdentifier(it) => {
+                <JsxIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            JsxAttributeNameData::JsxNamespacedName(it) => {
+                <JsxNamespacedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxAttributeItem {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_jsx_attribute_item(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().jsx_attribute_item_data(self);
+        match data {
+            JsxAttributeItemData::JsxAttribute(it) => {
+                <JsxAttribute as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            JsxAttributeItemData::JsxSpreadAttribute(it) => {
+                <JsxSpreadAttribute as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxAttributeValue {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_jsx_attribute_value(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().jsx_attribute_value_data(self);
+        match data {
+            JsxAttributeValueData::StringLiteral(it) => {
+                <StringLiteral as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            JsxAttributeValueData::JsxExpressionContainer(it) => {
+                <JsxExpressionContainer as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            JsxAttributeValueData::JsxElement(it) => {
+                <JsxElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            JsxAttributeValueData::JsxFragment(it) => {
+                <JsxFragment as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_jsx_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().jsx_expression_data(self);
+        match data {
+            JsxExpressionData::Expr(it) => {
+                <Expr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            JsxExpressionData::JsxEmptyExpression(it) => {
+                <JsxEmptyExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxChild {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_jsx_child(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let data = visitor.ast().jsx_child_data(self);
+        match data {
+            JsxChildData::JsxText(it) => {
+                <JsxText as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            JsxChildData::JsxExpressionContainer(it) => {
+                <JsxExpressionContainer as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            JsxChildData::JsxSpreadChild(it) => {
+                <JsxSpreadChild as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            JsxChildData::JsxElement(it) => {
+                <JsxElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            JsxChildData::JsxFragment(it) => {
+                <JsxFragment as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxElement {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_jsx_element(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.opening_element(visitor.ast());
+        <JsxOpeningElement as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.children(visitor.ast());
+        <TypedSubRange<JsxChild> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.closing_element(visitor.ast());
+        <Option<JsxClosingElement> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxOpeningElement {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
         <V as VisitMut<'a>>::visit_mut_jsx_opening_element(visitor, self)
@@ -6173,33 +9506,20 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXOpeningElement {
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
         let field_value = self.name(visitor.ast());
-        <JSXElementName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.attrs(visitor.ast());
-        <TypedSubRange<JSXAttrOrSpread> as VisitMutWith<'a, V>>::visit_mut_with(
+        <JsxElementName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.attributes(visitor.ast());
+        <TypedSubRange<JsxAttributeItem> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.type_arguments(visitor.ast());
+        <Option<TsTypeParameterInstantiation> as VisitMutWith<'a, V>>::visit_mut_with(
             field_value,
             visitor,
         );
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXAttrOrSpread {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_jsx_attr_or_spread(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().jsx_attr_or_spread_data(self);
-        match data {
-            JSXAttrOrSpreadData::JSXAttr(it) => {
-                <JSXAttr as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            JSXAttrOrSpreadData::SpreadElement(it) => {
-                <SpreadElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXClosingElement {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxClosingElement {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
         <V as VisitMut<'a>>::visit_mut_jsx_closing_element(visitor, self)
@@ -6207,134 +9527,25 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXClosingElement {
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
         let field_value = self.name(visitor.ast());
-        <JSXElementName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        <JsxElementName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXAttr {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_jsx_attr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.name(visitor.ast());
-        <JSXAttrName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.value(visitor.ast());
-        <Option<JSXAttrValue> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXAttrName {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_jsx_attr_name(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().jsx_attr_name_data(self);
-        match data {
-            JSXAttrNameData::Ident(it) => {
-                <IdentName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            JSXAttrNameData::JSXNamespacedName(it) => {
-                <JSXNamespacedName as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXAttrValue {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_jsx_attr_value(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().jsx_attr_value_data(self);
-        match data {
-            JSXAttrValueData::Str(it) => <Str as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
-            JSXAttrValueData::JSXExprContainer(it) => {
-                <JSXExprContainer as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            JSXAttrValueData::JSXElement(it) => {
-                <JSXElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            JSXAttrValueData::JSXFragment(it) => {
-                <JSXFragment as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXText {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_jsx_text(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {}
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXElement {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_jsx_element(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.opening(visitor.ast());
-        <JSXOpeningElement as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-        let field_value = self.children(visitor.ast());
-        <TypedSubRange<JSXElementChild> as VisitMutWith<'a, V>>::visit_mut_with(
-            field_value,
-            visitor,
-        );
-        let field_value = self.closing(visitor.ast());
-        <Option<JSXClosingElement> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXElementChild {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_jsx_element_child(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().jsx_element_child_data(self);
-        match data {
-            JSXElementChildData::JSXText(it) => {
-                <JSXText as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            JSXElementChildData::JSXExprContainer(it) => {
-                <JSXExprContainer as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            JSXElementChildData::JSXSpreadChild(it) => {
-                <JSXSpreadChild as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            JSXElementChildData::JSXElement(it) => {
-                <JSXElement as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            JSXElementChildData::JSXFragment(it) => {
-                <JSXFragment as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXFragment {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxFragment {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
         <V as VisitMut<'a>>::visit_mut_jsx_fragment(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
-        let field_value = self.opening(visitor.ast());
-        <JSXOpeningFragment as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.opening_fragment(visitor.ast());
+        <JsxOpeningFragment as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
         let field_value = self.children(visitor.ast());
-        <TypedSubRange<JSXElementChild> as VisitMutWith<'a, V>>::visit_mut_with(
-            field_value,
-            visitor,
-        );
-        let field_value = self.closing(visitor.ast());
-        <JSXClosingFragment as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        <TypedSubRange<JsxChild> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.closing_fragment(visitor.ast());
+        <JsxClosingFragment as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXOpeningFragment {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxOpeningFragment {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
         <V as VisitMut<'a>>::visit_mut_jsx_opening_fragment(visitor, self)
@@ -6342,7 +9553,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXOpeningFragment {
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {}
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXClosingFragment {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxClosingFragment {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
         <V as VisitMut<'a>>::visit_mut_jsx_closing_fragment(visitor, self)
@@ -6350,10 +9561,106 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JSXClosingFragment {
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {}
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ModuleItem> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxIdentifier {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_module_items(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_jsx_identifier(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxNamespacedName {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_jsx_namespaced_name(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.namespace(visitor.ast());
+        <JsxIdentifier as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.name(visitor.ast());
+        <JsxIdentifier as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxMemberExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_jsx_member_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.object(visitor.ast());
+        <JsxMemberExpressionObject as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.property(visitor.ast());
+        <JsxIdentifier as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxAttribute {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_jsx_attribute(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.name(visitor.ast());
+        <JsxAttributeName as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.value(visitor.ast());
+        <Option<JsxAttributeValue> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxSpreadAttribute {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_jsx_spread_attribute(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.argument(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxExpressionContainer {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_jsx_expression_container(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.expression(visitor.ast());
+        <JsxExpression as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxEmptyExpression {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_jsx_empty_expression(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxText {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_jsx_text(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {}
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxSpreadChild {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_jsx_spread_child(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.expression(visitor.ast());
+        <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<StatementListItem> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_statement_list_items(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
@@ -6363,36 +9670,10 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ModuleI
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Stmt> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Hashbang> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_stmts(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_mut_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ImportSpecifier> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_import_specifiers(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_mut_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<ObjectLit> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_opt_object_lit(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_opt_hashbang(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
@@ -6401,10 +9682,10 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<ObjectLit> {
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ExportSpecifier> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TemplateElement> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_export_specifiers(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_template_elements(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
@@ -6414,15 +9695,104 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ExportS
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Str> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Expr> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_opt_str(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_exprs(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Decorator> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_decorators(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<TsTypeAnnotation> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_ts_type_annotation(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
         if let Some(it) = self {
             it.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<BindingPattern> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_binding_pattern(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        if let Some(it) = self {
+            it.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Option<BindingPattern>> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_vec_binding_patterns(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<BindingRestElement> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_binding_rest_element(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        if let Some(it) = self {
+            it.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<BindingProperty> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_binding_propertys(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<VariableDeclarator> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_variable_declarators(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
         }
     }
 }
@@ -6430,18 +9800,6 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Expr> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
         <V as VisitMut<'a>>::visit_mut_opt_expr(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        if let Some(it) = self {
-            it.visit_mut_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Ident> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_opt_ident(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
@@ -6475,6 +9833,31 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<SwitchC
         }
     }
 }
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Stmt> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_stmts(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<ForStatementInit> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_for_statement_init(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        if let Some(it) = self {
+            it.visit_mut_with(visitor);
+        }
+    }
+}
 impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<CatchClause> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
@@ -6487,10 +9870,10 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<CatchClause> {
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<BlockStmt> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<BlockStatement> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_opt_block_stmt(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_opt_block_statement(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
@@ -6499,10 +9882,10 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<BlockStmt> {
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<VarDeclOrExpr> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<LabelIdentifier> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_opt_var_decl_or_expr(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_opt_label_identifier(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
@@ -6511,10 +9894,10 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<VarDeclOrExpr>
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Pat> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<BindingIdentifier> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_opt_pat(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_opt_binding_identifier(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
@@ -6523,23 +9906,10 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Pat> {
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<VarDeclarator> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<TsTypeParameterDeclaration> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_var_declarators(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_mut_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<ExprOrSpread> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_opt_expr_or_spread(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_opt_ts_type_parameter_declaration(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
@@ -6548,179 +9918,10 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<ExprOrSpread> 
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Option<ExprOrSpread>> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<TsTypeParameterInstantiation> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_opt_vec_expr_or_spreads(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_mut_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<PropOrSpread> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_prop_or_spreads(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_mut_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ExprOrSpread> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_expr_or_spreads(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_mut_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Expr> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_exprs(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_mut_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Pat> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_pats(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_mut_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TplElement> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_tpl_elements(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_mut_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Param> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_params(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_mut_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Decorator> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_decorators(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_mut_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ClassMember> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_class_members(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_mut_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ParamOrTsParamProp> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_param_or_ts_param_props(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_mut_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Option<Pat>> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_opt_vec_pats(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_mut_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ObjectPatProp> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_object_pat_props(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_mut_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<JSXAttrOrSpread> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_jsx_attr_or_spreads(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_mut_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<JSXAttrValue> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_opt_jsx_attr_value(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_opt_ts_type_parameter_instantiation(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
@@ -6729,10 +9930,10 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<JSXAttrValue> 
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<JSXElementChild> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsClassImplements> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_jsx_element_childs(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_ts_class_implementss(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
@@ -6742,10 +9943,341 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<JSXElem
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<JSXClosingElement> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ClassElement> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_class_elements(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<FunctionBody> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_function_body(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        if let Some(it) = self {
+            it.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<FormalParameterItem> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_formal_parameter_items(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Argument> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_argument(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        if let Some(it) = self {
+            it.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Option<Argument>> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_vec_arguments(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ObjectPropertyKind> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_object_property_kinds(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Argument> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_arguments(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V>
+    for TypedSubRange<ImportDeclarationSpecifier>
+{
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_import_declaration_specifiers(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ImportAttribute> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_import_attributes(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Decl> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_decl(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        if let Some(it) = self {
+            it.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ExportSpecifier> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_export_specifiers(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<StringLiteral> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_string_literal(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        if let Some(it) = self {
+            it.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<ModuleExportName> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_module_export_name(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        if let Some(it) = self {
+            it.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<TsImportTypeQualifier> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_ts_import_type_qualifier(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        if let Some(it) = self {
+            it.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<TsType> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_ts_type(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        if let Some(it) = self {
+            it.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsTypeParameter> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_type_parameters(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsType> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_types(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsTupleElement> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_tuple_elements(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsTypeElement> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_type_elements(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<BindingIdentifier> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_binding_identifiers(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsInterfaceHeritage> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_interface_heritages(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<TsEnumMember> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_enum_members(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<TsModuleBody> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_ts_module_body(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        if let Some(it) = self {
+            it.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<JsxChild> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_jsx_childs(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<JsxClosingElement> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
         <V as VisitMut<'a>>::visit_mut_opt_jsx_closing_element(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        if let Some(it) = self {
+            it.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<JsxAttributeItem> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_jsx_attribute_items(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<JsxAttributeValue> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_opt_jsx_attribute_value(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {

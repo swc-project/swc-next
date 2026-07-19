@@ -15,7 +15,7 @@ impl TypeId {
 pub struct Schema {
     pub types: IndexVec<TypeId, AstType>,
     /// Mapping of enum names to their #[repr(uN)] sizes in bytes
-    /// e.g., "UnaryOp" -> 1 for #[repr(u8)]
+    /// e.g., "UnaryOperator" -> 1 for #[repr(u8)]
     pub repr_sizes: HashMap<String, usize>,
 }
 

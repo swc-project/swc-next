@@ -1,6 +1,9 @@
 use crate::{
-    AssignOp, Atom, BinaryOp, ImportPhase, MetaPropKind, MethodKind, ScopeId, Span, SymbolId,
-    UnaryOp, UpdateOp, VarDeclKind, Visit, VisitMut, VisitMutWith, VisitWith, Wtf8Atom,
+    Accessibility, AssignmentOperator, Atom, BinaryOperator, ClassType, FormalParameterKind,
+    FunctionType, ImportOrExportKind, ImportPhase, LogicalOperator, MethodDefinitionKind,
+    NumericLiteralKind, PropertyKind, ScopeId, SourceType, Span, SymbolId, TsMappedTypeModifier,
+    TsMethodSignatureKind, TsModuleDeclarationKind, TsTypeOperatorKind, UnaryOperator,
+    UpdateOperator, VariableKind, Visit, VisitMut, VisitMutWith, VisitWith, Wtf8Atom,
 };
 
 macro_rules! dummy_visit_mut_impl {
@@ -31,10 +34,22 @@ dummy_visit_mut_impl!(Wtf8Atom<'a>);
 dummy_visit_mut_impl!(ScopeId);
 dummy_visit_mut_impl!(SymbolId);
 dummy_visit_mut_impl!(ImportPhase);
-dummy_visit_mut_impl!(VarDeclKind);
-dummy_visit_mut_impl!(UnaryOp);
-dummy_visit_mut_impl!(UpdateOp);
-dummy_visit_mut_impl!(BinaryOp);
-dummy_visit_mut_impl!(AssignOp);
-dummy_visit_mut_impl!(MetaPropKind);
-dummy_visit_mut_impl!(MethodKind);
+dummy_visit_mut_impl!(SourceType);
+dummy_visit_mut_impl!(MethodDefinitionKind);
+dummy_visit_mut_impl!(Accessibility);
+dummy_visit_mut_impl!(ClassType);
+dummy_visit_mut_impl!(BinaryOperator);
+dummy_visit_mut_impl!(LogicalOperator);
+dummy_visit_mut_impl!(UnaryOperator);
+dummy_visit_mut_impl!(UpdateOperator);
+dummy_visit_mut_impl!(AssignmentOperator);
+dummy_visit_mut_impl!(VariableKind);
+dummy_visit_mut_impl!(FunctionType);
+dummy_visit_mut_impl!(FormalParameterKind);
+dummy_visit_mut_impl!(PropertyKind);
+dummy_visit_mut_impl!(NumericLiteralKind);
+dummy_visit_mut_impl!(ImportOrExportKind);
+dummy_visit_mut_impl!(TsTypeOperatorKind);
+dummy_visit_mut_impl!(TsMethodSignatureKind);
+dummy_visit_mut_impl!(TsModuleDeclarationKind);
+dummy_visit_mut_impl!(TsMappedTypeModifier);

@@ -1,7 +1,6 @@
 mod assert_layout;
 mod ast;
 mod comment;
-mod common;
 mod derive;
 mod multi_index_vec;
 mod node_id;
@@ -26,7 +25,6 @@ use swc_experimental_allocator::{Allocator, vec::Vec as ArenaVec};
 
 pub use ast::*;
 pub use comment::*;
-pub use common::*;
 pub use derive::*;
 pub use generated::ast_node_kind::NodeKind;
 pub use generated::ast_visitor::*;

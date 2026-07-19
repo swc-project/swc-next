@@ -1,6 +1,9 @@
 use crate::{
-    AssignOp, Ast, Atom, BinaryOp, ImportPhase, MetaPropKind, MethodKind, ScopeId, Span, SymbolId,
-    TypedSubRange, UnaryOp, UpdateOp, VarDeclKind, Wtf8Atom, node_id::ExtraDataCompact,
+    Accessibility, AssignmentOperator, Ast, Atom, BinaryOperator, ClassType, FormalParameterKind,
+    FunctionType, ImportOrExportKind, ImportPhase, LogicalOperator, MethodDefinitionKind,
+    NumericLiteralKind, PropertyKind, ScopeId, SourceType, Span, SymbolId, TsMappedTypeModifier,
+    TsMethodSignatureKind, TsModuleDeclarationKind, TsTypeOperatorKind, TypedSubRange,
+    UnaryOperator, UpdateOperator, VariableKind, Wtf8Atom, node_id::ExtraDataCompact,
 };
 
 pub trait CloneIn<'a>: Sized {
@@ -24,14 +27,26 @@ macro_rules! impl_clone_in_trivial {
 impl_clone_in_trivial!(Span);
 impl_clone_in_trivial!(bool);
 impl_clone_in_trivial!(f64);
-impl_clone_in_trivial!(UnaryOp);
-impl_clone_in_trivial!(UpdateOp);
-impl_clone_in_trivial!(BinaryOp);
-impl_clone_in_trivial!(AssignOp);
-impl_clone_in_trivial!(MetaPropKind);
+impl_clone_in_trivial!(UnaryOperator);
+impl_clone_in_trivial!(UpdateOperator);
+impl_clone_in_trivial!(BinaryOperator);
+impl_clone_in_trivial!(LogicalOperator);
+impl_clone_in_trivial!(AssignmentOperator);
 impl_clone_in_trivial!(ImportPhase);
-impl_clone_in_trivial!(VarDeclKind);
-impl_clone_in_trivial!(MethodKind);
+impl_clone_in_trivial!(SourceType);
+impl_clone_in_trivial!(MethodDefinitionKind);
+impl_clone_in_trivial!(Accessibility);
+impl_clone_in_trivial!(ClassType);
+impl_clone_in_trivial!(VariableKind);
+impl_clone_in_trivial!(FunctionType);
+impl_clone_in_trivial!(FormalParameterKind);
+impl_clone_in_trivial!(PropertyKind);
+impl_clone_in_trivial!(NumericLiteralKind);
+impl_clone_in_trivial!(ImportOrExportKind);
+impl_clone_in_trivial!(TsTypeOperatorKind);
+impl_clone_in_trivial!(TsMethodSignatureKind);
+impl_clone_in_trivial!(TsModuleDeclarationKind);
+impl_clone_in_trivial!(TsMappedTypeModifier);
 impl_clone_in_trivial!(ScopeId);
 impl_clone_in_trivial!(SymbolId);
 
