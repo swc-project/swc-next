@@ -29,6 +29,7 @@ pub use generated::ast_visitor::*;
 pub use node_id::{AstNode, ExtraDataCompact, ExtraDataId, NodeId, SubRange, TypedSubRange};
 pub use semantic::{ScopeId, SymbolId};
 pub use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
+pub use visit::{TraverseAction, TraverseCtx};
 
 use crate::strings::{AtomId, AtomStore, Wtf8AtomId};
 use swc_experimental_allocator::multi_index_vec;
@@ -98,7 +99,7 @@ impl<'a> Ast<'a> {
 
     /// Replace `old`'s node data with `new`'s while preserving `old`'s node ID.
     #[inline]
-    pub fn set_data<T: AstNode>(&mut self, old: T, new: T) {
+    pub fn set_data<Old: AstNode, New: AstNode>(&mut self, old: Old, new: New) {
         let old = old.node_id();
         let new = new.node_id();
         if old == new {
@@ -203,6 +204,12 @@ impl<'a> Ast<'a> {
     #[inline]
     pub fn node_count(&self) -> usize {
         self.nodes.len()
+    }
+
+    /// Returns the concrete type stored at `node_id`.
+    #[inline]
+    pub fn node_kind(&self, node_id: NodeId) -> NodeKind {
+        *self.nodes.kind(node_id)
     }
 }
 

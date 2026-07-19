@@ -14,6 +14,11 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
     let mut visit_with_impls = TokenStream::new();
     let mut visit_mut_functions = TokenStream::new();
     let mut visit_mut_with_impls = TokenStream::new();
+    let mut traverse_functions = TokenStream::new();
+    let mut traverse_with_impls = TokenStream::new();
+    let mut traverse_enter_arms = TokenStream::new();
+    let mut traverse_exit_arms = TokenStream::new();
+    let mut traverse_children_arms = TokenStream::new();
 
     visit_functions.extend(quote! {
         fn ast(&self) -> &Ast<'a>;
@@ -33,6 +38,8 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
             AstType::Struct(ast) => {
                 let fn_name = format_ident!("visit_{}", &ast.name.to_case(Case::Snake));
                 let fn_mut_name = format_ident!("visit_mut_{}", &ast.name.to_case(Case::Snake));
+                let enter_fn_name = format_ident!("enter_{}", &ast.name.to_case(Case::Snake));
+                let exit_fn_name = format_ident!("exit_{}", &ast.name.to_case(Case::Snake));
                 let ty_ident = ty.repr_ident(schema);
 
                 // Visit/VisitMut
@@ -49,6 +56,35 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     #[inline]
                     fn #fn_mut_name(&mut self, node: #ty_ident) {
                         <#ty_ident as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+                    }
+                });
+                traverse_functions.extend(quote! {
+                    #[inline]
+                    fn #enter_fn_name(
+                        &mut self,
+                        node: #ty_ident,
+                        ctx: &mut TraverseCtx<'_, 'a>,
+                    ) -> TraverseAction {
+                        TraverseAction::Proceed
+                    }
+
+                    #[inline]
+                    fn #exit_fn_name(
+                        &mut self,
+                        node: #ty_ident,
+                        ctx: &mut TraverseCtx<'_, 'a>,
+                    ) {
+                    }
+                });
+                let kind_ident = format_ident!("{}", ast.name);
+                traverse_enter_arms.extend(quote! {
+                    NodeKind::#kind_ident => {
+                        traverser.#enter_fn_name(#ty_ident(node_id), ctx)
+                    }
+                });
+                traverse_exit_arms.extend(quote! {
+                    NodeKind::#kind_ident => {
+                        traverser.#exit_fn_name(#ty_ident(node_id), ctx)
                     }
                 });
 
@@ -141,6 +177,47 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                         }
                     }
                 });
+
+                let mut traverse_children = TokenStream::new();
+                for field in ast.fields.iter() {
+                    if !should_visit_type(field.type_id, schema) {
+                        continue;
+                    }
+
+                    let field_ty = &schema.types[field.type_id];
+                    let field_ty_ident = field_ty.repr_ident(schema);
+                    let getter_name = safe_ident(&field.name.to_case(Case::Snake));
+                    traverse_children.extend(quote! {
+                        let child = node.#getter_name(ctx.ast());
+                        if <#field_ty_ident as TraverseWith<'a>>::traverse_with(
+                            child,
+                            traverser,
+                            ctx,
+                        ) == TraverseAction::Stop {
+                            break 'traverse_children TraverseAction::Stop;
+                        }
+                    });
+                }
+
+                traverse_children_arms.extend(quote! {
+                    NodeKind::#kind_ident => 'traverse_children: {
+                        let node = #ty_ident(node_id);
+                        #traverse_children
+                        TraverseAction::Proceed
+                    },
+                });
+                traverse_with_impls.extend(quote! {
+                    impl<'a> TraverseWith<'a> for #ty_ident {
+                        #[inline]
+                        fn traverse_with<T: ?Sized + Traverse<'a>>(
+                            self,
+                            traverser: &mut T,
+                            ctx: &mut TraverseCtx<'_, 'a>,
+                        ) -> TraverseAction {
+                            walk_node(self.node_id(), traverser, ctx)
+                        }
+                    }
+                });
             }
             AstType::Enum(ast) => {
                 let fn_name = format_ident!("visit_{}", &ast.name.to_case(Case::Snake));
@@ -162,7 +239,6 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                         <#ty_ident as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
                     }
                 });
-
                 // VisitWith/VisitMutWith
                 let mut visit_children_arms = TokenStream::new();
                 let mut visit_mut_children_arms = TokenStream::new();
@@ -216,6 +292,19 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                         }
                     }
                 });
+
+                traverse_with_impls.extend(quote! {
+                    impl<'a> TraverseWith<'a> for #ty_ident {
+                        #[inline]
+                        fn traverse_with<T: ?Sized + Traverse<'a>>(
+                            self,
+                            traverser: &mut T,
+                            ctx: &mut TraverseCtx<'_, 'a>,
+                        ) -> TraverseAction {
+                            walk_node(self.node_id(), traverser, ctx)
+                        }
+                    }
+                });
             }
             AstType::Option(ast) => {
                 if !should_visit_type(ast.inner_type_id, schema) {
@@ -223,6 +312,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 }
 
                 let inner_type = &schema.types[ast.inner_type_id];
+                let inner_ty_ident = inner_type.repr_ident(schema);
                 let (fn_name, fn_mut_name) = match inner_type {
                     AstType::Vec(vec) => {
                         let inner_type = &schema.types[vec.inner_type_id];
@@ -293,6 +383,26 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                         }
                     }
                 });
+
+                traverse_with_impls.extend(quote! {
+                    impl<'a> TraverseWith<'a> for #ty_ident {
+                        #[inline]
+                        fn traverse_with<T: ?Sized + Traverse<'a>>(
+                            self,
+                            traverser: &mut T,
+                            ctx: &mut TraverseCtx<'_, 'a>,
+                        ) -> TraverseAction {
+                            if let Some(it) = self {
+                                return <#inner_ty_ident as TraverseWith<'a>>::traverse_with(
+                                    it,
+                                    traverser,
+                                    ctx,
+                                );
+                            }
+                            TraverseAction::Proceed
+                        }
+                    }
+                });
             }
             AstType::Vec(ast) => {
                 if !should_visit_type(ast.inner_type_id, schema) {
@@ -300,6 +410,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 }
 
                 let inner_type = &schema.types[ast.inner_type_id];
+                let inner_ty_ident = inner_type.repr_ident(schema);
                 let (fn_name, fn_mut_name) = match inner_type {
                     AstType::Option(opt) => {
                         let inner_type = &schema.types[opt.inner_type_id];
@@ -372,14 +483,38 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                         }
                     }
                 });
+
+                traverse_with_impls.extend(quote! {
+                    impl<'a> TraverseWith<'a> for #ty_ident {
+                        #[inline]
+                        fn traverse_with<T: ?Sized + Traverse<'a>>(
+                            self,
+                            traverser: &mut T,
+                            ctx: &mut TraverseCtx<'_, 'a>,
+                        ) -> TraverseAction {
+                            for child_idx in self.iter() {
+                                let child = ctx.ast().get_node_in_sub_range(child_idx);
+                                if <#inner_ty_ident as TraverseWith<'a>>::traverse_with(
+                                    child,
+                                    traverser,
+                                    ctx,
+                                ) == TraverseAction::Stop {
+                                    return TraverseAction::Stop;
+                                }
+                            }
+                            TraverseAction::Proceed
+                        }
+                    }
+                });
             }
             _ => continue,
         };
     }
 
     let output = quote! {
-            #![allow(unused, clippy::useless_conversion, clippy::single_match)]
-            use crate::*;
+        #![allow(unused, clippy::useless_conversion, clippy::single_match)]
+        use crate::*;
+        use crate::visit::{TraverseAction, TraverseCtx};
 
             pub trait Visit<'a> {
                 #visit_functions
@@ -402,6 +537,84 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
             }
 
             #visit_mut_with_impls
+
+            pub trait Traverse<'a> {
+                #[inline]
+                fn enter_node(
+                    &mut self,
+                    node_id: NodeId,
+                    kind: NodeKind,
+                    ctx: &mut TraverseCtx<'_, 'a>,
+                ) -> TraverseAction {
+                    TraverseAction::Proceed
+                }
+
+                #[inline]
+                fn exit_node(
+                    &mut self,
+                    node_id: NodeId,
+                    kind: NodeKind,
+                    ctx: &mut TraverseCtx<'_, 'a>,
+                ) {
+                }
+
+                #traverse_functions
+            }
+
+            pub trait TraverseWith<'a> {
+                fn traverse_with<T: ?Sized + Traverse<'a>>(
+                    self,
+                    traverser: &mut T,
+                    ctx: &mut TraverseCtx<'_, 'a>,
+                ) -> TraverseAction;
+            }
+
+            #traverse_with_impls
+
+            fn walk_node<'a, T: ?Sized + Traverse<'a>>(
+                node_id: NodeId,
+                traverser: &mut T,
+                ctx: &mut TraverseCtx<'_, 'a>,
+            ) -> TraverseAction {
+                ctx.push_node(node_id);
+
+                let entered_kind = ctx.node_kind(node_id);
+                let mut action = traverser.enter_node(node_id, entered_kind, ctx);
+                if action == TraverseAction::Proceed {
+                    action = match entered_kind {
+                        #traverse_enter_arms
+                    };
+                }
+
+                match action {
+                    TraverseAction::Skip => {
+                        ctx.pop_node(node_id);
+                        return TraverseAction::Proceed;
+                    }
+                    TraverseAction::Stop => {
+                        ctx.pop_node(node_id);
+                        return TraverseAction::Stop;
+                    }
+                    TraverseAction::Proceed => {}
+                }
+
+                // Enter hooks may replace this node's data while preserving its NodeId.
+                let current_kind = ctx.node_kind(node_id);
+                let action = match current_kind {
+                    #traverse_children_arms
+                };
+                if action == TraverseAction::Stop {
+                    ctx.pop_node(node_id);
+                    return TraverseAction::Stop;
+                }
+
+                match current_kind {
+                    #traverse_exit_arms
+                }
+                traverser.exit_node(node_id, current_kind, ctx);
+                ctx.pop_node(node_id);
+                TraverseAction::Proceed
+            }
     };
 
     RustOutput {

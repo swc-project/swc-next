@@ -1,10 +1,106 @@
 use crate::{
-    Accessibility, AssignmentOperator, Atom, BinaryOperator, ClassType, FormalParameterKind,
-    FunctionType, ImportOrExportKind, ImportPhase, LogicalOperator, MethodDefinitionKind,
-    NumericLiteralKind, PropertyKind, ScopeId, SourceType, Span, SymbolId, TsMappedTypeModifier,
-    TsMethodSignatureKind, TsModuleDeclarationKind, TsTypeOperatorKind, UnaryOperator,
-    UpdateOperator, VariableKind, Visit, VisitMut, VisitMutWith, VisitWith, Wtf8Atom,
+    Accessibility, AssignmentOperator, Ast, Atom, BinaryOperator, ClassType, FormalParameterKind,
+    FunctionType, ImportOrExportKind, ImportPhase, LogicalOperator, MethodDefinitionKind, NodeId,
+    NodeKind, NumericLiteralKind, PropertyKind, ScopeId, SourceType, Span, SymbolId,
+    TsMappedTypeModifier, TsMethodSignatureKind, TsModuleDeclarationKind, TsTypeOperatorKind,
+    UnaryOperator, UpdateOperator, VariableKind, Visit, VisitMut, VisitMutWith, VisitWith,
+    Wtf8Atom,
 };
+
+/// Controls how traversal continues after an enter hook.
+#[must_use]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum TraverseAction {
+    /// Visit this node's children and invoke its exit hooks.
+    #[default]
+    Proceed,
+    /// Skip this node's children and exit hooks, then continue with its siblings.
+    Skip,
+    /// Stop the entire traversal immediately without invoking pending exit hooks.
+    Stop,
+}
+
+/// Mutable AST state passed to every [`Traverse`] hook.
+pub struct TraverseCtx<'traverse, 'ast> {
+    ast: &'traverse mut Ast<'ast>,
+    path: Vec<NodeId>,
+}
+
+impl<'traverse, 'ast> TraverseCtx<'traverse, 'ast> {
+    #[inline]
+    pub fn new(ast: &'traverse mut Ast<'ast>) -> Self {
+        Self {
+            ast,
+            path: Vec::new(),
+        }
+    }
+
+    #[inline]
+    pub fn ast(&self) -> &Ast<'ast> {
+        self.ast
+    }
+
+    #[inline]
+    pub fn ast_mut(&mut self) -> &mut Ast<'ast> {
+        self.ast
+    }
+
+    /// Returns the concrete kind currently stored for `node_id`.
+    #[inline]
+    pub fn node_kind(&self, node_id: NodeId) -> NodeKind {
+        self.ast.node_kind(node_id)
+    }
+
+    /// Returns the path from the traversal root to the current node.
+    #[inline]
+    pub fn path(&self) -> &[NodeId] {
+        &self.path
+    }
+
+    /// Returns the current node, or `None` outside an enter/exit hook.
+    #[inline]
+    pub fn current_node(&self) -> Option<NodeId> {
+        self.ancestor(0)
+    }
+
+    /// Returns the current node's parent.
+    #[inline]
+    pub fn parent(&self) -> Option<NodeId> {
+        self.ancestor(1)
+    }
+
+    /// Returns an ancestor by distance, where zero is the current node.
+    #[inline]
+    pub fn ancestor(&self, distance: usize) -> Option<NodeId> {
+        distance
+            .checked_add(1)
+            .and_then(|offset| self.path.len().checked_sub(offset))
+            .map(|index| self.path[index])
+    }
+
+    /// Iterates from the current node toward the traversal root.
+    #[inline]
+    pub fn ancestors(&self) -> impl DoubleEndedIterator<Item = NodeId> + '_ {
+        self.path.iter().rev().copied()
+    }
+
+    /// Returns zero for the root node, one for its direct children, and so on.
+    #[inline]
+    pub fn depth(&self) -> usize {
+        self.path.len().saturating_sub(1)
+    }
+
+    #[inline]
+    pub(crate) fn push_node(&mut self, node_id: NodeId) {
+        self.path.push(node_id);
+    }
+
+    #[inline]
+    pub(crate) fn pop_node(&mut self, expected: NodeId) {
+        let actual = self.path.pop();
+        debug_assert_eq!(actual, Some(expected));
+    }
+}
 
 macro_rules! dummy_visit_mut_impl {
     ($ty:ty) => {

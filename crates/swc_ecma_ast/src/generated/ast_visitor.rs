@@ -1,4 +1,5 @@
 #![allow(unused, clippy::useless_conversion, clippy::single_match)]
+use crate::visit::{TraverseAction, TraverseCtx};
 use crate::*;
 pub trait Visit<'a> {
     fn ast(&self) -> &Ast<'a>;
@@ -10285,4 +10286,8054 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<JsxAttributeVa
             it.visit_mut_with(visitor);
         }
     }
+}
+pub trait Traverse<'a> {
+    #[inline]
+    fn enter_node(
+        &mut self,
+        node_id: NodeId,
+        kind: NodeKind,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_node(&mut self, node_id: NodeId, kind: NodeKind, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_program(&mut self, node: Program, ctx: &mut TraverseCtx<'_, 'a>) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_program(&mut self, node: Program, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_super(&mut self, node: Super, ctx: &mut TraverseCtx<'_, 'a>) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_super(&mut self, node: Super, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_this_expression(
+        &mut self,
+        node: ThisExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_this_expression(&mut self, node: ThisExpression, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_string_literal(
+        &mut self,
+        node: StringLiteral,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_string_literal(&mut self, node: StringLiteral, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_numeric_literal(
+        &mut self,
+        node: NumericLiteral,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_numeric_literal(&mut self, node: NumericLiteral, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_big_int_literal(
+        &mut self,
+        node: BigIntLiteral,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_big_int_literal(&mut self, node: BigIntLiteral, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_boolean_literal(
+        &mut self,
+        node: BooleanLiteral,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_boolean_literal(&mut self, node: BooleanLiteral, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_null_literal(
+        &mut self,
+        node: NullLiteral,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_null_literal(&mut self, node: NullLiteral, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_reg_exp_literal(
+        &mut self,
+        node: RegExpLiteral,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_reg_exp_literal(&mut self, node: RegExpLiteral, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_template_literal(
+        &mut self,
+        node: TemplateLiteral,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_template_literal(&mut self, node: TemplateLiteral, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_template_element(
+        &mut self,
+        node: TemplateElement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_template_element(&mut self, node: TemplateElement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_identifier_reference(
+        &mut self,
+        node: IdentifierReference,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_identifier_reference(
+        &mut self,
+        node: IdentifierReference,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_private_identifier(
+        &mut self,
+        node: PrivateIdentifier,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_private_identifier(&mut self, node: PrivateIdentifier, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_binding_identifier(
+        &mut self,
+        node: BindingIdentifier,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_binding_identifier(&mut self, node: BindingIdentifier, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_identifier_name(
+        &mut self,
+        node: IdentifierName,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_identifier_name(&mut self, node: IdentifierName, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_label_identifier(
+        &mut self,
+        node: LabelIdentifier,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_label_identifier(&mut self, node: LabelIdentifier, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_assignment_pattern(
+        &mut self,
+        node: AssignmentPattern,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_assignment_pattern(&mut self, node: AssignmentPattern, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_binding_rest_element(
+        &mut self,
+        node: BindingRestElement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_binding_rest_element(
+        &mut self,
+        node: BindingRestElement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_array_pattern(
+        &mut self,
+        node: ArrayPattern,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_array_pattern(&mut self, node: ArrayPattern, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_object_pattern(
+        &mut self,
+        node: ObjectPattern,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_object_pattern(&mut self, node: ObjectPattern, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_binding_property(
+        &mut self,
+        node: BindingProperty,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_binding_property(&mut self, node: BindingProperty, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_binary_expression(
+        &mut self,
+        node: BinaryExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_binary_expression(&mut self, node: BinaryExpression, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_logical_expression(
+        &mut self,
+        node: LogicalExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_logical_expression(&mut self, node: LogicalExpression, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_conditional_expression(
+        &mut self,
+        node: ConditionalExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_conditional_expression(
+        &mut self,
+        node: ConditionalExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_unary_expression(
+        &mut self,
+        node: UnaryExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_unary_expression(&mut self, node: UnaryExpression, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_update_expression(
+        &mut self,
+        node: UpdateExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_update_expression(&mut self, node: UpdateExpression, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_assignment_expression(
+        &mut self,
+        node: AssignmentExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_assignment_expression(
+        &mut self,
+        node: AssignmentExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_variable_declaration(
+        &mut self,
+        node: VariableDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_variable_declaration(
+        &mut self,
+        node: VariableDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_variable_declarator(
+        &mut self,
+        node: VariableDeclarator,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_variable_declarator(
+        &mut self,
+        node: VariableDeclarator,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_if_statement(
+        &mut self,
+        node: IfStatement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_if_statement(&mut self, node: IfStatement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_switch_statement(
+        &mut self,
+        node: SwitchStatement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_switch_statement(&mut self, node: SwitchStatement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_switch_case(
+        &mut self,
+        node: SwitchCase,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_switch_case(&mut self, node: SwitchCase, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_for_statement(
+        &mut self,
+        node: ForStatement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_for_statement(&mut self, node: ForStatement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_for_in_statement(
+        &mut self,
+        node: ForInStatement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_for_in_statement(&mut self, node: ForInStatement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_for_of_statement(
+        &mut self,
+        node: ForOfStatement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_for_of_statement(&mut self, node: ForOfStatement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_try_statement(
+        &mut self,
+        node: TryStatement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_try_statement(&mut self, node: TryStatement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_catch_clause(
+        &mut self,
+        node: CatchClause,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_catch_clause(&mut self, node: CatchClause, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_break_statement(
+        &mut self,
+        node: BreakStatement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_break_statement(&mut self, node: BreakStatement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_continue_statement(
+        &mut self,
+        node: ContinueStatement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_continue_statement(&mut self, node: ContinueStatement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_labeled_statement(
+        &mut self,
+        node: LabeledStatement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_labeled_statement(&mut self, node: LabeledStatement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_expression_statement(
+        &mut self,
+        node: ExpressionStatement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_expression_statement(
+        &mut self,
+        node: ExpressionStatement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_return_statement(
+        &mut self,
+        node: ReturnStatement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_return_statement(&mut self, node: ReturnStatement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_throw_statement(
+        &mut self,
+        node: ThrowStatement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_throw_statement(&mut self, node: ThrowStatement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_debugger_statement(
+        &mut self,
+        node: DebuggerStatement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_debugger_statement(&mut self, node: DebuggerStatement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_empty_statement(
+        &mut self,
+        node: EmptyStatement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_empty_statement(&mut self, node: EmptyStatement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_directive(
+        &mut self,
+        node: Directive,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_directive(&mut self, node: Directive, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_decorator(
+        &mut self,
+        node: Decorator,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_decorator(&mut self, node: Decorator, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_class(&mut self, node: Class, ctx: &mut TraverseCtx<'_, 'a>) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_class(&mut self, node: Class, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_class_body(
+        &mut self,
+        node: ClassBody,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_class_body(&mut self, node: ClassBody, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_method_definition(
+        &mut self,
+        node: MethodDefinition,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_method_definition(&mut self, node: MethodDefinition, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_property_definition(
+        &mut self,
+        node: PropertyDefinition,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_property_definition(
+        &mut self,
+        node: PropertyDefinition,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_static_block(
+        &mut self,
+        node: StaticBlock,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_static_block(&mut self, node: StaticBlock, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_function(&mut self, node: Function, ctx: &mut TraverseCtx<'_, 'a>) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_function(&mut self, node: Function, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_function_body(
+        &mut self,
+        node: FunctionBody,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_function_body(&mut self, node: FunctionBody, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_block_statement(
+        &mut self,
+        node: BlockStatement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_block_statement(&mut self, node: BlockStatement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_while_statement(
+        &mut self,
+        node: WhileStatement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_while_statement(&mut self, node: WhileStatement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_do_while_statement(
+        &mut self,
+        node: DoWhileStatement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_do_while_statement(&mut self, node: DoWhileStatement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_with_statement(
+        &mut self,
+        node: WithStatement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_with_statement(&mut self, node: WithStatement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_formal_parameters(
+        &mut self,
+        node: FormalParameters,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_formal_parameters(&mut self, node: FormalParameters, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_formal_parameter(
+        &mut self,
+        node: FormalParameter,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_formal_parameter(&mut self, node: FormalParameter, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_array_expression(
+        &mut self,
+        node: ArrayExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_array_expression(&mut self, node: ArrayExpression, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_object_expression(
+        &mut self,
+        node: ObjectExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_object_expression(&mut self, node: ObjectExpression, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_spread_element(
+        &mut self,
+        node: SpreadElement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_spread_element(&mut self, node: SpreadElement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_object_property(
+        &mut self,
+        node: ObjectProperty,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_object_property(&mut self, node: ObjectProperty, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_parenthesized_expression(
+        &mut self,
+        node: ParenthesizedExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_parenthesized_expression(
+        &mut self,
+        node: ParenthesizedExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_arrow_function_expression(
+        &mut self,
+        node: ArrowFunctionExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_arrow_function_expression(
+        &mut self,
+        node: ArrowFunctionExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_sequence_expression(
+        &mut self,
+        node: SequenceExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_sequence_expression(
+        &mut self,
+        node: SequenceExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_member_expression(
+        &mut self,
+        node: MemberExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_member_expression(&mut self, node: MemberExpression, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_call_expression(
+        &mut self,
+        node: CallExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_call_expression(&mut self, node: CallExpression, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_chain_expression(
+        &mut self,
+        node: ChainExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_chain_expression(&mut self, node: ChainExpression, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_tagged_template_expression(
+        &mut self,
+        node: TaggedTemplateExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_tagged_template_expression(
+        &mut self,
+        node: TaggedTemplateExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_new_expression(
+        &mut self,
+        node: NewExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_new_expression(&mut self, node: NewExpression, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_await_expression(
+        &mut self,
+        node: AwaitExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_await_expression(&mut self, node: AwaitExpression, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_yield_expression(
+        &mut self,
+        node: YieldExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_yield_expression(&mut self, node: YieldExpression, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_meta_property(
+        &mut self,
+        node: MetaProperty,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_meta_property(&mut self, node: MetaProperty, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_import_expression(
+        &mut self,
+        node: ImportExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_import_expression(&mut self, node: ImportExpression, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_import_declaration(
+        &mut self,
+        node: ImportDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_import_declaration(&mut self, node: ImportDeclaration, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_import_specifier(
+        &mut self,
+        node: ImportSpecifier,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_import_specifier(&mut self, node: ImportSpecifier, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_import_default_specifier(
+        &mut self,
+        node: ImportDefaultSpecifier,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_import_default_specifier(
+        &mut self,
+        node: ImportDefaultSpecifier,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_import_namespace_specifier(
+        &mut self,
+        node: ImportNamespaceSpecifier,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_import_namespace_specifier(
+        &mut self,
+        node: ImportNamespaceSpecifier,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_import_attribute(
+        &mut self,
+        node: ImportAttribute,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_import_attribute(&mut self, node: ImportAttribute, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_export_named_declaration(
+        &mut self,
+        node: ExportNamedDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_export_named_declaration(
+        &mut self,
+        node: ExportNamedDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_export_default_declaration(
+        &mut self,
+        node: ExportDefaultDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_export_default_declaration(
+        &mut self,
+        node: ExportDefaultDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_export_all_declaration(
+        &mut self,
+        node: ExportAllDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_export_all_declaration(
+        &mut self,
+        node: ExportAllDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_export_specifier(
+        &mut self,
+        node: ExportSpecifier,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_export_specifier(&mut self, node: ExportSpecifier, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_hashbang(&mut self, node: Hashbang, ctx: &mut TraverseCtx<'_, 'a>) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_hashbang(&mut self, node: Hashbang, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_type_annotation(
+        &mut self,
+        node: TsTypeAnnotation,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_type_annotation(&mut self, node: TsTypeAnnotation, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_any_keyword(
+        &mut self,
+        node: TsAnyKeyword,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_any_keyword(&mut self, node: TsAnyKeyword, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_unknown_keyword(
+        &mut self,
+        node: TsUnknownKeyword,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_unknown_keyword(&mut self, node: TsUnknownKeyword, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_never_keyword(
+        &mut self,
+        node: TsNeverKeyword,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_never_keyword(&mut self, node: TsNeverKeyword, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_void_keyword(
+        &mut self,
+        node: TsVoidKeyword,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_void_keyword(&mut self, node: TsVoidKeyword, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_null_keyword(
+        &mut self,
+        node: TsNullKeyword,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_null_keyword(&mut self, node: TsNullKeyword, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_undefined_keyword(
+        &mut self,
+        node: TsUndefinedKeyword,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_undefined_keyword(
+        &mut self,
+        node: TsUndefinedKeyword,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_string_keyword(
+        &mut self,
+        node: TsStringKeyword,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_string_keyword(&mut self, node: TsStringKeyword, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_number_keyword(
+        &mut self,
+        node: TsNumberKeyword,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_number_keyword(&mut self, node: TsNumberKeyword, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_big_int_keyword(
+        &mut self,
+        node: TsBigIntKeyword,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_big_int_keyword(&mut self, node: TsBigIntKeyword, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_boolean_keyword(
+        &mut self,
+        node: TsBooleanKeyword,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_boolean_keyword(&mut self, node: TsBooleanKeyword, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_symbol_keyword(
+        &mut self,
+        node: TsSymbolKeyword,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_symbol_keyword(&mut self, node: TsSymbolKeyword, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_object_keyword(
+        &mut self,
+        node: TsObjectKeyword,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_object_keyword(&mut self, node: TsObjectKeyword, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_intrinsic_keyword(
+        &mut self,
+        node: TsIntrinsicKeyword,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_intrinsic_keyword(
+        &mut self,
+        node: TsIntrinsicKeyword,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_this_type(
+        &mut self,
+        node: TsThisType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_this_type(&mut self, node: TsThisType, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_type_reference(
+        &mut self,
+        node: TsTypeReference,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_type_reference(&mut self, node: TsTypeReference, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_qualified_name(
+        &mut self,
+        node: TsQualifiedName,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_qualified_name(&mut self, node: TsQualifiedName, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_type_query(
+        &mut self,
+        node: TsTypeQuery,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_type_query(&mut self, node: TsTypeQuery, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_import_type(
+        &mut self,
+        node: TsImportType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_import_type(&mut self, node: TsImportType, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_type_parameter(
+        &mut self,
+        node: TsTypeParameter,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_type_parameter(&mut self, node: TsTypeParameter, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_type_parameter_declaration(
+        &mut self,
+        node: TsTypeParameterDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_type_parameter_declaration(
+        &mut self,
+        node: TsTypeParameterDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_type_parameter_instantiation(
+        &mut self,
+        node: TsTypeParameterInstantiation,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_type_parameter_instantiation(
+        &mut self,
+        node: TsTypeParameterInstantiation,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_literal_type(
+        &mut self,
+        node: TsLiteralType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_literal_type(&mut self, node: TsLiteralType, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_template_literal_type(
+        &mut self,
+        node: TsTemplateLiteralType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_template_literal_type(
+        &mut self,
+        node: TsTemplateLiteralType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_array_type(
+        &mut self,
+        node: TsArrayType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_array_type(&mut self, node: TsArrayType, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_indexed_access_type(
+        &mut self,
+        node: TsIndexedAccessType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_indexed_access_type(
+        &mut self,
+        node: TsIndexedAccessType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_tuple_type(
+        &mut self,
+        node: TsTupleType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_tuple_type(&mut self, node: TsTupleType, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_named_tuple_member(
+        &mut self,
+        node: TsNamedTupleMember,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_named_tuple_member(
+        &mut self,
+        node: TsNamedTupleMember,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_optional_type(
+        &mut self,
+        node: TsOptionalType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_optional_type(&mut self, node: TsOptionalType, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_rest_type(
+        &mut self,
+        node: TsRestType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_rest_type(&mut self, node: TsRestType, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_js_doc_nullable_type(
+        &mut self,
+        node: TsJsDocNullableType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_js_doc_nullable_type(
+        &mut self,
+        node: TsJsDocNullableType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_js_doc_non_nullable_type(
+        &mut self,
+        node: TsJsDocNonNullableType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_js_doc_non_nullable_type(
+        &mut self,
+        node: TsJsDocNonNullableType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_js_doc_unknown_type(
+        &mut self,
+        node: TsJsDocUnknownType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_js_doc_unknown_type(
+        &mut self,
+        node: TsJsDocUnknownType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_union_type(
+        &mut self,
+        node: TsUnionType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_union_type(&mut self, node: TsUnionType, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_intersection_type(
+        &mut self,
+        node: TsIntersectionType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_intersection_type(
+        &mut self,
+        node: TsIntersectionType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_conditional_type(
+        &mut self,
+        node: TsConditionalType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_conditional_type(&mut self, node: TsConditionalType, ctx: &mut TraverseCtx<'_, 'a>) {
+    }
+    #[inline]
+    fn enter_ts_infer_type(
+        &mut self,
+        node: TsInferType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_infer_type(&mut self, node: TsInferType, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_type_operator(
+        &mut self,
+        node: TsTypeOperator,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_type_operator(&mut self, node: TsTypeOperator, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_parenthesized_type(
+        &mut self,
+        node: TsParenthesizedType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_parenthesized_type(
+        &mut self,
+        node: TsParenthesizedType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_function_type(
+        &mut self,
+        node: TsFunctionType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_function_type(&mut self, node: TsFunctionType, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_constructor_type(
+        &mut self,
+        node: TsConstructorType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_constructor_type(&mut self, node: TsConstructorType, ctx: &mut TraverseCtx<'_, 'a>) {
+    }
+    #[inline]
+    fn enter_ts_type_predicate(
+        &mut self,
+        node: TsTypePredicate,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_type_predicate(&mut self, node: TsTypePredicate, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_type_literal(
+        &mut self,
+        node: TsTypeLiteral,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_type_literal(&mut self, node: TsTypeLiteral, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_mapped_type(
+        &mut self,
+        node: TsMappedType,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_mapped_type(&mut self, node: TsMappedType, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_property_signature(
+        &mut self,
+        node: TsPropertySignature,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_property_signature(
+        &mut self,
+        node: TsPropertySignature,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_method_signature(
+        &mut self,
+        node: TsMethodSignature,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_method_signature(&mut self, node: TsMethodSignature, ctx: &mut TraverseCtx<'_, 'a>) {
+    }
+    #[inline]
+    fn enter_ts_call_signature_declaration(
+        &mut self,
+        node: TsCallSignatureDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_call_signature_declaration(
+        &mut self,
+        node: TsCallSignatureDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_construct_signature_declaration(
+        &mut self,
+        node: TsConstructSignatureDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_construct_signature_declaration(
+        &mut self,
+        node: TsConstructSignatureDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_index_signature(
+        &mut self,
+        node: TsIndexSignature,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_index_signature(&mut self, node: TsIndexSignature, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_type_alias_declaration(
+        &mut self,
+        node: TsTypeAliasDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_type_alias_declaration(
+        &mut self,
+        node: TsTypeAliasDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_interface_declaration(
+        &mut self,
+        node: TsInterfaceDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_interface_declaration(
+        &mut self,
+        node: TsInterfaceDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_interface_body(
+        &mut self,
+        node: TsInterfaceBody,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_interface_body(&mut self, node: TsInterfaceBody, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_interface_heritage(
+        &mut self,
+        node: TsInterfaceHeritage,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_interface_heritage(
+        &mut self,
+        node: TsInterfaceHeritage,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_class_implements(
+        &mut self,
+        node: TsClassImplements,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_class_implements(&mut self, node: TsClassImplements, ctx: &mut TraverseCtx<'_, 'a>) {
+    }
+    #[inline]
+    fn enter_ts_enum_declaration(
+        &mut self,
+        node: TsEnumDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_enum_declaration(&mut self, node: TsEnumDeclaration, ctx: &mut TraverseCtx<'_, 'a>) {
+    }
+    #[inline]
+    fn enter_ts_enum_body(
+        &mut self,
+        node: TsEnumBody,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_enum_body(&mut self, node: TsEnumBody, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_enum_member(
+        &mut self,
+        node: TsEnumMember,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_enum_member(&mut self, node: TsEnumMember, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_module_declaration(
+        &mut self,
+        node: TsModuleDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_module_declaration(
+        &mut self,
+        node: TsModuleDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_module_block(
+        &mut self,
+        node: TsModuleBlock,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_module_block(&mut self, node: TsModuleBlock, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_global_declaration(
+        &mut self,
+        node: TsGlobalDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_global_declaration(
+        &mut self,
+        node: TsGlobalDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_parameter_property(
+        &mut self,
+        node: TsParameterProperty,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_parameter_property(
+        &mut self,
+        node: TsParameterProperty,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_this_parameter(
+        &mut self,
+        node: TsThisParameter,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_this_parameter(&mut self, node: TsThisParameter, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_as_expression(
+        &mut self,
+        node: TsAsExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_as_expression(&mut self, node: TsAsExpression, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_satisfies_expression(
+        &mut self,
+        node: TsSatisfiesExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_satisfies_expression(
+        &mut self,
+        node: TsSatisfiesExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_type_assertion(
+        &mut self,
+        node: TsTypeAssertion,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_type_assertion(&mut self, node: TsTypeAssertion, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_ts_non_null_expression(
+        &mut self,
+        node: TsNonNullExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_non_null_expression(
+        &mut self,
+        node: TsNonNullExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_instantiation_expression(
+        &mut self,
+        node: TsInstantiationExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_instantiation_expression(
+        &mut self,
+        node: TsInstantiationExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_export_assignment(
+        &mut self,
+        node: TsExportAssignment,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_export_assignment(
+        &mut self,
+        node: TsExportAssignment,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_namespace_export_declaration(
+        &mut self,
+        node: TsNamespaceExportDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_namespace_export_declaration(
+        &mut self,
+        node: TsNamespaceExportDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_import_equals_declaration(
+        &mut self,
+        node: TsImportEqualsDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_import_equals_declaration(
+        &mut self,
+        node: TsImportEqualsDeclaration,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_ts_external_module_reference(
+        &mut self,
+        node: TsExternalModuleReference,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_external_module_reference(
+        &mut self,
+        node: TsExternalModuleReference,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_jsx_element(
+        &mut self,
+        node: JsxElement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_jsx_element(&mut self, node: JsxElement, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_jsx_opening_element(
+        &mut self,
+        node: JsxOpeningElement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_jsx_opening_element(&mut self, node: JsxOpeningElement, ctx: &mut TraverseCtx<'_, 'a>) {
+    }
+    #[inline]
+    fn enter_jsx_closing_element(
+        &mut self,
+        node: JsxClosingElement,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_jsx_closing_element(&mut self, node: JsxClosingElement, ctx: &mut TraverseCtx<'_, 'a>) {
+    }
+    #[inline]
+    fn enter_jsx_fragment(
+        &mut self,
+        node: JsxFragment,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_jsx_fragment(&mut self, node: JsxFragment, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_jsx_opening_fragment(
+        &mut self,
+        node: JsxOpeningFragment,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_jsx_opening_fragment(
+        &mut self,
+        node: JsxOpeningFragment,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_jsx_closing_fragment(
+        &mut self,
+        node: JsxClosingFragment,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_jsx_closing_fragment(
+        &mut self,
+        node: JsxClosingFragment,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_jsx_identifier(
+        &mut self,
+        node: JsxIdentifier,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_jsx_identifier(&mut self, node: JsxIdentifier, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_jsx_namespaced_name(
+        &mut self,
+        node: JsxNamespacedName,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_jsx_namespaced_name(&mut self, node: JsxNamespacedName, ctx: &mut TraverseCtx<'_, 'a>) {
+    }
+    #[inline]
+    fn enter_jsx_member_expression(
+        &mut self,
+        node: JsxMemberExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_jsx_member_expression(
+        &mut self,
+        node: JsxMemberExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_jsx_attribute(
+        &mut self,
+        node: JsxAttribute,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_jsx_attribute(&mut self, node: JsxAttribute, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_jsx_spread_attribute(
+        &mut self,
+        node: JsxSpreadAttribute,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_jsx_spread_attribute(
+        &mut self,
+        node: JsxSpreadAttribute,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_jsx_expression_container(
+        &mut self,
+        node: JsxExpressionContainer,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_jsx_expression_container(
+        &mut self,
+        node: JsxExpressionContainer,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_jsx_empty_expression(
+        &mut self,
+        node: JsxEmptyExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_jsx_empty_expression(
+        &mut self,
+        node: JsxEmptyExpression,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+    }
+    #[inline]
+    fn enter_jsx_text(&mut self, node: JsxText, ctx: &mut TraverseCtx<'_, 'a>) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_jsx_text(&mut self, node: JsxText, ctx: &mut TraverseCtx<'_, 'a>) {}
+    #[inline]
+    fn enter_jsx_spread_child(
+        &mut self,
+        node: JsxSpreadChild,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_jsx_spread_child(&mut self, node: JsxSpreadChild, ctx: &mut TraverseCtx<'_, 'a>) {}
+}
+pub trait TraverseWith<'a> {
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction;
+}
+impl<'a> TraverseWith<'a> for Program {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for Stmt {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for StatementListItem {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for Decl {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for Expr {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for BindingPattern {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for AssignmentTarget {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for SimpleAssignmentTarget {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for PropertyKey {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ModuleExportName {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for Argument {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ObjectPropertyKind {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ForStatementInit {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ForStatementLeft {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ArrowFunctionBody {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for FormalParameterItem {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for FormalParameterPattern {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ClassElement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ImportDeclarationSpecifier {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ExportDefaultDeclarationKind {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for Super {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ThisExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for StringLiteral {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for NumericLiteral {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for BigIntLiteral {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for BooleanLiteral {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for NullLiteral {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for RegExpLiteral {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TemplateLiteral {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TemplateElement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for IdentifierReference {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for PrivateIdentifier {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for BindingIdentifier {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for IdentifierName {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for LabelIdentifier {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for AssignmentPattern {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for BindingRestElement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ArrayPattern {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ObjectPattern {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for BindingProperty {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for BinaryExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for LogicalExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ConditionalExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for UnaryExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for UpdateExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for AssignmentExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for VariableDeclaration {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for VariableDeclarator {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for IfStatement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for SwitchStatement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for SwitchCase {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ForStatement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ForInStatement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ForOfStatement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TryStatement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for CatchClause {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for BreakStatement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ContinueStatement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for LabeledStatement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ExpressionStatement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ReturnStatement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ThrowStatement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for DebuggerStatement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for EmptyStatement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for Directive {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for Decorator {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for Class {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ClassBody {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for MethodDefinition {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for PropertyDefinition {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for StaticBlock {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for Function {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for FunctionBody {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for BlockStatement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for WhileStatement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for DoWhileStatement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for WithStatement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for FormalParameters {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for FormalParameter {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ArrayExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ObjectExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for SpreadElement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ObjectProperty {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ParenthesizedExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ArrowFunctionExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for SequenceExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for MemberExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for CallExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ChainExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TaggedTemplateExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for NewExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for AwaitExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for YieldExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for MetaProperty {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ImportExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ImportDeclaration {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ImportSpecifier {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ImportDefaultSpecifier {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ImportNamespaceSpecifier {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ImportAttribute {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ExportNamedDeclaration {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ExportDefaultDeclaration {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ExportAllDeclaration {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for ExportSpecifier {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for Hashbang {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsTypeName {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsQualifiedNameLeft {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsImportTypeQualifier {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsTypeQueryExprName {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsLiteral {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsTupleElement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsTypeElement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsTypePredicateName {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsEnumMemberName {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsModuleName {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsModuleBody {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsModuleReference {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsTypeAnnotation {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsAnyKeyword {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsUnknownKeyword {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsNeverKeyword {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsVoidKeyword {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsNullKeyword {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsUndefinedKeyword {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsStringKeyword {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsNumberKeyword {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsBigIntKeyword {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsBooleanKeyword {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsSymbolKeyword {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsObjectKeyword {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsIntrinsicKeyword {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsThisType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsTypeReference {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsQualifiedName {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsTypeQuery {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsImportType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsTypeParameter {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsTypeParameterDeclaration {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsTypeParameterInstantiation {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsLiteralType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsTemplateLiteralType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsArrayType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsIndexedAccessType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsTupleType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsNamedTupleMember {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsOptionalType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsRestType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsJsDocNullableType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsJsDocNonNullableType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsJsDocUnknownType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsUnionType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsIntersectionType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsConditionalType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsInferType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsTypeOperator {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsParenthesizedType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsFunctionType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsConstructorType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsTypePredicate {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsTypeLiteral {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsMappedType {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsPropertySignature {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsMethodSignature {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsCallSignatureDeclaration {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsConstructSignatureDeclaration {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsIndexSignature {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsTypeAliasDeclaration {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsInterfaceDeclaration {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsInterfaceBody {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsInterfaceHeritage {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsClassImplements {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsEnumDeclaration {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsEnumBody {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsEnumMember {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsModuleDeclaration {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsModuleBlock {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsGlobalDeclaration {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsParameterProperty {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsThisParameter {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsAsExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsSatisfiesExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsTypeAssertion {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsNonNullExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsInstantiationExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsExportAssignment {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsNamespaceExportDeclaration {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsImportEqualsDeclaration {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TsExternalModuleReference {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxElementName {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxMemberExpressionObject {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxAttributeName {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxAttributeItem {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxAttributeValue {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxChild {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxElement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxOpeningElement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxClosingElement {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxFragment {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxOpeningFragment {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxClosingFragment {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxIdentifier {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxNamespacedName {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxMemberExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxAttribute {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxSpreadAttribute {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxExpressionContainer {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxEmptyExpression {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxText {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for JsxSpreadChild {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<StatementListItem> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <StatementListItem as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<Hashbang> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <Hashbang as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<TemplateElement> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <TemplateElement as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<Expr> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<Decorator> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <Decorator as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<TsTypeAnnotation> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <TsTypeAnnotation as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<BindingPattern> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <BindingPattern as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<Option<BindingPattern>> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <Option<BindingPattern> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<BindingRestElement> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <BindingRestElement as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<BindingProperty> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <BindingProperty as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<VariableDeclarator> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <VariableDeclarator as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<Expr> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <Expr as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<Stmt> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <Stmt as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<SwitchCase> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <SwitchCase as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<Stmt> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <Stmt as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<ForStatementInit> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <ForStatementInit as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<CatchClause> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <CatchClause as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<BlockStatement> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <BlockStatement as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<LabelIdentifier> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <LabelIdentifier as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<BindingIdentifier> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <BindingIdentifier as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<TsTypeParameterDeclaration> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <TsTypeParameterDeclaration as TraverseWith<'a>>::traverse_with(
+                it, traverser, ctx,
+            );
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<TsTypeParameterInstantiation> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <TsTypeParameterInstantiation as TraverseWith<'a>>::traverse_with(
+                it, traverser, ctx,
+            );
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<TsClassImplements> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <TsClassImplements as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<ClassElement> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <ClassElement as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<FunctionBody> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <FunctionBody as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<FormalParameterItem> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <FormalParameterItem as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<Argument> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <Argument as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<Option<Argument>> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <Option<Argument> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<ObjectPropertyKind> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <ObjectPropertyKind as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<Argument> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <Argument as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<ImportDeclarationSpecifier> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <ImportDeclarationSpecifier as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<ImportAttribute> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <ImportAttribute as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<Decl> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <Decl as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<ExportSpecifier> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <ExportSpecifier as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<StringLiteral> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <StringLiteral as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<ModuleExportName> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <ModuleExportName as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<TsImportTypeQualifier> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <TsImportTypeQualifier as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<TsType> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <TsType as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<TsTypeParameter> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <TsTypeParameter as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<TsType> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<TsTupleElement> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <TsTupleElement as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<TsTypeElement> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <TsTypeElement as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<BindingIdentifier> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <BindingIdentifier as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<TsInterfaceHeritage> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <TsInterfaceHeritage as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<TsEnumMember> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <TsEnumMember as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<TsModuleBody> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <TsModuleBody as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<JsxChild> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <JsxChild as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<JsxClosingElement> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <JsxClosingElement as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for TypedSubRange<JsxAttributeItem> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast().get_node_in_sub_range(child_idx);
+            if <JsxAttributeItem as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a> TraverseWith<'a> for Option<JsxAttributeValue> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if let Some(it) = self {
+            return <JsxAttributeValue as TraverseWith<'a>>::traverse_with(it, traverser, ctx);
+        }
+        TraverseAction::Proceed
+    }
+}
+fn walk_node<'a, T: ?Sized + Traverse<'a>>(
+    node_id: NodeId,
+    traverser: &mut T,
+    ctx: &mut TraverseCtx<'_, 'a>,
+) -> TraverseAction {
+    ctx.push_node(node_id);
+    let entered_kind = ctx.node_kind(node_id);
+    let mut action = traverser.enter_node(node_id, entered_kind, ctx);
+    if action == TraverseAction::Proceed {
+        action = match entered_kind {
+            NodeKind::Program => traverser.enter_program(Program(node_id), ctx),
+            NodeKind::Super => traverser.enter_super(Super(node_id), ctx),
+            NodeKind::ThisExpression => {
+                traverser.enter_this_expression(ThisExpression(node_id), ctx)
+            }
+            NodeKind::StringLiteral => traverser.enter_string_literal(StringLiteral(node_id), ctx),
+            NodeKind::NumericLiteral => {
+                traverser.enter_numeric_literal(NumericLiteral(node_id), ctx)
+            }
+            NodeKind::BigIntLiteral => traverser.enter_big_int_literal(BigIntLiteral(node_id), ctx),
+            NodeKind::BooleanLiteral => {
+                traverser.enter_boolean_literal(BooleanLiteral(node_id), ctx)
+            }
+            NodeKind::NullLiteral => traverser.enter_null_literal(NullLiteral(node_id), ctx),
+            NodeKind::RegExpLiteral => traverser.enter_reg_exp_literal(RegExpLiteral(node_id), ctx),
+            NodeKind::TemplateLiteral => {
+                traverser.enter_template_literal(TemplateLiteral(node_id), ctx)
+            }
+            NodeKind::TemplateElement => {
+                traverser.enter_template_element(TemplateElement(node_id), ctx)
+            }
+            NodeKind::IdentifierReference => {
+                traverser.enter_identifier_reference(IdentifierReference(node_id), ctx)
+            }
+            NodeKind::PrivateIdentifier => {
+                traverser.enter_private_identifier(PrivateIdentifier(node_id), ctx)
+            }
+            NodeKind::BindingIdentifier => {
+                traverser.enter_binding_identifier(BindingIdentifier(node_id), ctx)
+            }
+            NodeKind::IdentifierName => {
+                traverser.enter_identifier_name(IdentifierName(node_id), ctx)
+            }
+            NodeKind::LabelIdentifier => {
+                traverser.enter_label_identifier(LabelIdentifier(node_id), ctx)
+            }
+            NodeKind::AssignmentPattern => {
+                traverser.enter_assignment_pattern(AssignmentPattern(node_id), ctx)
+            }
+            NodeKind::BindingRestElement => {
+                traverser.enter_binding_rest_element(BindingRestElement(node_id), ctx)
+            }
+            NodeKind::ArrayPattern => traverser.enter_array_pattern(ArrayPattern(node_id), ctx),
+            NodeKind::ObjectPattern => traverser.enter_object_pattern(ObjectPattern(node_id), ctx),
+            NodeKind::BindingProperty => {
+                traverser.enter_binding_property(BindingProperty(node_id), ctx)
+            }
+            NodeKind::BinaryExpression => {
+                traverser.enter_binary_expression(BinaryExpression(node_id), ctx)
+            }
+            NodeKind::LogicalExpression => {
+                traverser.enter_logical_expression(LogicalExpression(node_id), ctx)
+            }
+            NodeKind::ConditionalExpression => {
+                traverser.enter_conditional_expression(ConditionalExpression(node_id), ctx)
+            }
+            NodeKind::UnaryExpression => {
+                traverser.enter_unary_expression(UnaryExpression(node_id), ctx)
+            }
+            NodeKind::UpdateExpression => {
+                traverser.enter_update_expression(UpdateExpression(node_id), ctx)
+            }
+            NodeKind::AssignmentExpression => {
+                traverser.enter_assignment_expression(AssignmentExpression(node_id), ctx)
+            }
+            NodeKind::VariableDeclaration => {
+                traverser.enter_variable_declaration(VariableDeclaration(node_id), ctx)
+            }
+            NodeKind::VariableDeclarator => {
+                traverser.enter_variable_declarator(VariableDeclarator(node_id), ctx)
+            }
+            NodeKind::IfStatement => traverser.enter_if_statement(IfStatement(node_id), ctx),
+            NodeKind::SwitchStatement => {
+                traverser.enter_switch_statement(SwitchStatement(node_id), ctx)
+            }
+            NodeKind::SwitchCase => traverser.enter_switch_case(SwitchCase(node_id), ctx),
+            NodeKind::ForStatement => traverser.enter_for_statement(ForStatement(node_id), ctx),
+            NodeKind::ForInStatement => {
+                traverser.enter_for_in_statement(ForInStatement(node_id), ctx)
+            }
+            NodeKind::ForOfStatement => {
+                traverser.enter_for_of_statement(ForOfStatement(node_id), ctx)
+            }
+            NodeKind::TryStatement => traverser.enter_try_statement(TryStatement(node_id), ctx),
+            NodeKind::CatchClause => traverser.enter_catch_clause(CatchClause(node_id), ctx),
+            NodeKind::BreakStatement => {
+                traverser.enter_break_statement(BreakStatement(node_id), ctx)
+            }
+            NodeKind::ContinueStatement => {
+                traverser.enter_continue_statement(ContinueStatement(node_id), ctx)
+            }
+            NodeKind::LabeledStatement => {
+                traverser.enter_labeled_statement(LabeledStatement(node_id), ctx)
+            }
+            NodeKind::ExpressionStatement => {
+                traverser.enter_expression_statement(ExpressionStatement(node_id), ctx)
+            }
+            NodeKind::ReturnStatement => {
+                traverser.enter_return_statement(ReturnStatement(node_id), ctx)
+            }
+            NodeKind::ThrowStatement => {
+                traverser.enter_throw_statement(ThrowStatement(node_id), ctx)
+            }
+            NodeKind::DebuggerStatement => {
+                traverser.enter_debugger_statement(DebuggerStatement(node_id), ctx)
+            }
+            NodeKind::EmptyStatement => {
+                traverser.enter_empty_statement(EmptyStatement(node_id), ctx)
+            }
+            NodeKind::Directive => traverser.enter_directive(Directive(node_id), ctx),
+            NodeKind::Decorator => traverser.enter_decorator(Decorator(node_id), ctx),
+            NodeKind::Class => traverser.enter_class(Class(node_id), ctx),
+            NodeKind::ClassBody => traverser.enter_class_body(ClassBody(node_id), ctx),
+            NodeKind::MethodDefinition => {
+                traverser.enter_method_definition(MethodDefinition(node_id), ctx)
+            }
+            NodeKind::PropertyDefinition => {
+                traverser.enter_property_definition(PropertyDefinition(node_id), ctx)
+            }
+            NodeKind::StaticBlock => traverser.enter_static_block(StaticBlock(node_id), ctx),
+            NodeKind::Function => traverser.enter_function(Function(node_id), ctx),
+            NodeKind::FunctionBody => traverser.enter_function_body(FunctionBody(node_id), ctx),
+            NodeKind::BlockStatement => {
+                traverser.enter_block_statement(BlockStatement(node_id), ctx)
+            }
+            NodeKind::WhileStatement => {
+                traverser.enter_while_statement(WhileStatement(node_id), ctx)
+            }
+            NodeKind::DoWhileStatement => {
+                traverser.enter_do_while_statement(DoWhileStatement(node_id), ctx)
+            }
+            NodeKind::WithStatement => traverser.enter_with_statement(WithStatement(node_id), ctx),
+            NodeKind::FormalParameters => {
+                traverser.enter_formal_parameters(FormalParameters(node_id), ctx)
+            }
+            NodeKind::FormalParameter => {
+                traverser.enter_formal_parameter(FormalParameter(node_id), ctx)
+            }
+            NodeKind::ArrayExpression => {
+                traverser.enter_array_expression(ArrayExpression(node_id), ctx)
+            }
+            NodeKind::ObjectExpression => {
+                traverser.enter_object_expression(ObjectExpression(node_id), ctx)
+            }
+            NodeKind::SpreadElement => traverser.enter_spread_element(SpreadElement(node_id), ctx),
+            NodeKind::ObjectProperty => {
+                traverser.enter_object_property(ObjectProperty(node_id), ctx)
+            }
+            NodeKind::ParenthesizedExpression => {
+                traverser.enter_parenthesized_expression(ParenthesizedExpression(node_id), ctx)
+            }
+            NodeKind::ArrowFunctionExpression => {
+                traverser.enter_arrow_function_expression(ArrowFunctionExpression(node_id), ctx)
+            }
+            NodeKind::SequenceExpression => {
+                traverser.enter_sequence_expression(SequenceExpression(node_id), ctx)
+            }
+            NodeKind::MemberExpression => {
+                traverser.enter_member_expression(MemberExpression(node_id), ctx)
+            }
+            NodeKind::CallExpression => {
+                traverser.enter_call_expression(CallExpression(node_id), ctx)
+            }
+            NodeKind::ChainExpression => {
+                traverser.enter_chain_expression(ChainExpression(node_id), ctx)
+            }
+            NodeKind::TaggedTemplateExpression => {
+                traverser.enter_tagged_template_expression(TaggedTemplateExpression(node_id), ctx)
+            }
+            NodeKind::NewExpression => traverser.enter_new_expression(NewExpression(node_id), ctx),
+            NodeKind::AwaitExpression => {
+                traverser.enter_await_expression(AwaitExpression(node_id), ctx)
+            }
+            NodeKind::YieldExpression => {
+                traverser.enter_yield_expression(YieldExpression(node_id), ctx)
+            }
+            NodeKind::MetaProperty => traverser.enter_meta_property(MetaProperty(node_id), ctx),
+            NodeKind::ImportExpression => {
+                traverser.enter_import_expression(ImportExpression(node_id), ctx)
+            }
+            NodeKind::ImportDeclaration => {
+                traverser.enter_import_declaration(ImportDeclaration(node_id), ctx)
+            }
+            NodeKind::ImportSpecifier => {
+                traverser.enter_import_specifier(ImportSpecifier(node_id), ctx)
+            }
+            NodeKind::ImportDefaultSpecifier => {
+                traverser.enter_import_default_specifier(ImportDefaultSpecifier(node_id), ctx)
+            }
+            NodeKind::ImportNamespaceSpecifier => {
+                traverser.enter_import_namespace_specifier(ImportNamespaceSpecifier(node_id), ctx)
+            }
+            NodeKind::ImportAttribute => {
+                traverser.enter_import_attribute(ImportAttribute(node_id), ctx)
+            }
+            NodeKind::ExportNamedDeclaration => {
+                traverser.enter_export_named_declaration(ExportNamedDeclaration(node_id), ctx)
+            }
+            NodeKind::ExportDefaultDeclaration => {
+                traverser.enter_export_default_declaration(ExportDefaultDeclaration(node_id), ctx)
+            }
+            NodeKind::ExportAllDeclaration => {
+                traverser.enter_export_all_declaration(ExportAllDeclaration(node_id), ctx)
+            }
+            NodeKind::ExportSpecifier => {
+                traverser.enter_export_specifier(ExportSpecifier(node_id), ctx)
+            }
+            NodeKind::Hashbang => traverser.enter_hashbang(Hashbang(node_id), ctx),
+            NodeKind::TsTypeAnnotation => {
+                traverser.enter_ts_type_annotation(TsTypeAnnotation(node_id), ctx)
+            }
+            NodeKind::TsAnyKeyword => traverser.enter_ts_any_keyword(TsAnyKeyword(node_id), ctx),
+            NodeKind::TsUnknownKeyword => {
+                traverser.enter_ts_unknown_keyword(TsUnknownKeyword(node_id), ctx)
+            }
+            NodeKind::TsNeverKeyword => {
+                traverser.enter_ts_never_keyword(TsNeverKeyword(node_id), ctx)
+            }
+            NodeKind::TsVoidKeyword => traverser.enter_ts_void_keyword(TsVoidKeyword(node_id), ctx),
+            NodeKind::TsNullKeyword => traverser.enter_ts_null_keyword(TsNullKeyword(node_id), ctx),
+            NodeKind::TsUndefinedKeyword => {
+                traverser.enter_ts_undefined_keyword(TsUndefinedKeyword(node_id), ctx)
+            }
+            NodeKind::TsStringKeyword => {
+                traverser.enter_ts_string_keyword(TsStringKeyword(node_id), ctx)
+            }
+            NodeKind::TsNumberKeyword => {
+                traverser.enter_ts_number_keyword(TsNumberKeyword(node_id), ctx)
+            }
+            NodeKind::TsBigIntKeyword => {
+                traverser.enter_ts_big_int_keyword(TsBigIntKeyword(node_id), ctx)
+            }
+            NodeKind::TsBooleanKeyword => {
+                traverser.enter_ts_boolean_keyword(TsBooleanKeyword(node_id), ctx)
+            }
+            NodeKind::TsSymbolKeyword => {
+                traverser.enter_ts_symbol_keyword(TsSymbolKeyword(node_id), ctx)
+            }
+            NodeKind::TsObjectKeyword => {
+                traverser.enter_ts_object_keyword(TsObjectKeyword(node_id), ctx)
+            }
+            NodeKind::TsIntrinsicKeyword => {
+                traverser.enter_ts_intrinsic_keyword(TsIntrinsicKeyword(node_id), ctx)
+            }
+            NodeKind::TsThisType => traverser.enter_ts_this_type(TsThisType(node_id), ctx),
+            NodeKind::TsTypeReference => {
+                traverser.enter_ts_type_reference(TsTypeReference(node_id), ctx)
+            }
+            NodeKind::TsQualifiedName => {
+                traverser.enter_ts_qualified_name(TsQualifiedName(node_id), ctx)
+            }
+            NodeKind::TsTypeQuery => traverser.enter_ts_type_query(TsTypeQuery(node_id), ctx),
+            NodeKind::TsImportType => traverser.enter_ts_import_type(TsImportType(node_id), ctx),
+            NodeKind::TsTypeParameter => {
+                traverser.enter_ts_type_parameter(TsTypeParameter(node_id), ctx)
+            }
+            NodeKind::TsTypeParameterDeclaration => traverser
+                .enter_ts_type_parameter_declaration(TsTypeParameterDeclaration(node_id), ctx),
+            NodeKind::TsTypeParameterInstantiation => traverser
+                .enter_ts_type_parameter_instantiation(TsTypeParameterInstantiation(node_id), ctx),
+            NodeKind::TsLiteralType => traverser.enter_ts_literal_type(TsLiteralType(node_id), ctx),
+            NodeKind::TsTemplateLiteralType => {
+                traverser.enter_ts_template_literal_type(TsTemplateLiteralType(node_id), ctx)
+            }
+            NodeKind::TsArrayType => traverser.enter_ts_array_type(TsArrayType(node_id), ctx),
+            NodeKind::TsIndexedAccessType => {
+                traverser.enter_ts_indexed_access_type(TsIndexedAccessType(node_id), ctx)
+            }
+            NodeKind::TsTupleType => traverser.enter_ts_tuple_type(TsTupleType(node_id), ctx),
+            NodeKind::TsNamedTupleMember => {
+                traverser.enter_ts_named_tuple_member(TsNamedTupleMember(node_id), ctx)
+            }
+            NodeKind::TsOptionalType => {
+                traverser.enter_ts_optional_type(TsOptionalType(node_id), ctx)
+            }
+            NodeKind::TsRestType => traverser.enter_ts_rest_type(TsRestType(node_id), ctx),
+            NodeKind::TsJsDocNullableType => {
+                traverser.enter_ts_js_doc_nullable_type(TsJsDocNullableType(node_id), ctx)
+            }
+            NodeKind::TsJsDocNonNullableType => {
+                traverser.enter_ts_js_doc_non_nullable_type(TsJsDocNonNullableType(node_id), ctx)
+            }
+            NodeKind::TsJsDocUnknownType => {
+                traverser.enter_ts_js_doc_unknown_type(TsJsDocUnknownType(node_id), ctx)
+            }
+            NodeKind::TsUnionType => traverser.enter_ts_union_type(TsUnionType(node_id), ctx),
+            NodeKind::TsIntersectionType => {
+                traverser.enter_ts_intersection_type(TsIntersectionType(node_id), ctx)
+            }
+            NodeKind::TsConditionalType => {
+                traverser.enter_ts_conditional_type(TsConditionalType(node_id), ctx)
+            }
+            NodeKind::TsInferType => traverser.enter_ts_infer_type(TsInferType(node_id), ctx),
+            NodeKind::TsTypeOperator => {
+                traverser.enter_ts_type_operator(TsTypeOperator(node_id), ctx)
+            }
+            NodeKind::TsParenthesizedType => {
+                traverser.enter_ts_parenthesized_type(TsParenthesizedType(node_id), ctx)
+            }
+            NodeKind::TsFunctionType => {
+                traverser.enter_ts_function_type(TsFunctionType(node_id), ctx)
+            }
+            NodeKind::TsConstructorType => {
+                traverser.enter_ts_constructor_type(TsConstructorType(node_id), ctx)
+            }
+            NodeKind::TsTypePredicate => {
+                traverser.enter_ts_type_predicate(TsTypePredicate(node_id), ctx)
+            }
+            NodeKind::TsTypeLiteral => traverser.enter_ts_type_literal(TsTypeLiteral(node_id), ctx),
+            NodeKind::TsMappedType => traverser.enter_ts_mapped_type(TsMappedType(node_id), ctx),
+            NodeKind::TsPropertySignature => {
+                traverser.enter_ts_property_signature(TsPropertySignature(node_id), ctx)
+            }
+            NodeKind::TsMethodSignature => {
+                traverser.enter_ts_method_signature(TsMethodSignature(node_id), ctx)
+            }
+            NodeKind::TsCallSignatureDeclaration => traverser
+                .enter_ts_call_signature_declaration(TsCallSignatureDeclaration(node_id), ctx),
+            NodeKind::TsConstructSignatureDeclaration => traverser
+                .enter_ts_construct_signature_declaration(
+                    TsConstructSignatureDeclaration(node_id),
+                    ctx,
+                ),
+            NodeKind::TsIndexSignature => {
+                traverser.enter_ts_index_signature(TsIndexSignature(node_id), ctx)
+            }
+            NodeKind::TsTypeAliasDeclaration => {
+                traverser.enter_ts_type_alias_declaration(TsTypeAliasDeclaration(node_id), ctx)
+            }
+            NodeKind::TsInterfaceDeclaration => {
+                traverser.enter_ts_interface_declaration(TsInterfaceDeclaration(node_id), ctx)
+            }
+            NodeKind::TsInterfaceBody => {
+                traverser.enter_ts_interface_body(TsInterfaceBody(node_id), ctx)
+            }
+            NodeKind::TsInterfaceHeritage => {
+                traverser.enter_ts_interface_heritage(TsInterfaceHeritage(node_id), ctx)
+            }
+            NodeKind::TsClassImplements => {
+                traverser.enter_ts_class_implements(TsClassImplements(node_id), ctx)
+            }
+            NodeKind::TsEnumDeclaration => {
+                traverser.enter_ts_enum_declaration(TsEnumDeclaration(node_id), ctx)
+            }
+            NodeKind::TsEnumBody => traverser.enter_ts_enum_body(TsEnumBody(node_id), ctx),
+            NodeKind::TsEnumMember => traverser.enter_ts_enum_member(TsEnumMember(node_id), ctx),
+            NodeKind::TsModuleDeclaration => {
+                traverser.enter_ts_module_declaration(TsModuleDeclaration(node_id), ctx)
+            }
+            NodeKind::TsModuleBlock => traverser.enter_ts_module_block(TsModuleBlock(node_id), ctx),
+            NodeKind::TsGlobalDeclaration => {
+                traverser.enter_ts_global_declaration(TsGlobalDeclaration(node_id), ctx)
+            }
+            NodeKind::TsParameterProperty => {
+                traverser.enter_ts_parameter_property(TsParameterProperty(node_id), ctx)
+            }
+            NodeKind::TsThisParameter => {
+                traverser.enter_ts_this_parameter(TsThisParameter(node_id), ctx)
+            }
+            NodeKind::TsAsExpression => {
+                traverser.enter_ts_as_expression(TsAsExpression(node_id), ctx)
+            }
+            NodeKind::TsSatisfiesExpression => {
+                traverser.enter_ts_satisfies_expression(TsSatisfiesExpression(node_id), ctx)
+            }
+            NodeKind::TsTypeAssertion => {
+                traverser.enter_ts_type_assertion(TsTypeAssertion(node_id), ctx)
+            }
+            NodeKind::TsNonNullExpression => {
+                traverser.enter_ts_non_null_expression(TsNonNullExpression(node_id), ctx)
+            }
+            NodeKind::TsInstantiationExpression => {
+                traverser.enter_ts_instantiation_expression(TsInstantiationExpression(node_id), ctx)
+            }
+            NodeKind::TsExportAssignment => {
+                traverser.enter_ts_export_assignment(TsExportAssignment(node_id), ctx)
+            }
+            NodeKind::TsNamespaceExportDeclaration => traverser
+                .enter_ts_namespace_export_declaration(TsNamespaceExportDeclaration(node_id), ctx),
+            NodeKind::TsImportEqualsDeclaration => traverser
+                .enter_ts_import_equals_declaration(TsImportEqualsDeclaration(node_id), ctx),
+            NodeKind::TsExternalModuleReference => traverser
+                .enter_ts_external_module_reference(TsExternalModuleReference(node_id), ctx),
+            NodeKind::JsxElement => traverser.enter_jsx_element(JsxElement(node_id), ctx),
+            NodeKind::JsxOpeningElement => {
+                traverser.enter_jsx_opening_element(JsxOpeningElement(node_id), ctx)
+            }
+            NodeKind::JsxClosingElement => {
+                traverser.enter_jsx_closing_element(JsxClosingElement(node_id), ctx)
+            }
+            NodeKind::JsxFragment => traverser.enter_jsx_fragment(JsxFragment(node_id), ctx),
+            NodeKind::JsxOpeningFragment => {
+                traverser.enter_jsx_opening_fragment(JsxOpeningFragment(node_id), ctx)
+            }
+            NodeKind::JsxClosingFragment => {
+                traverser.enter_jsx_closing_fragment(JsxClosingFragment(node_id), ctx)
+            }
+            NodeKind::JsxIdentifier => traverser.enter_jsx_identifier(JsxIdentifier(node_id), ctx),
+            NodeKind::JsxNamespacedName => {
+                traverser.enter_jsx_namespaced_name(JsxNamespacedName(node_id), ctx)
+            }
+            NodeKind::JsxMemberExpression => {
+                traverser.enter_jsx_member_expression(JsxMemberExpression(node_id), ctx)
+            }
+            NodeKind::JsxAttribute => traverser.enter_jsx_attribute(JsxAttribute(node_id), ctx),
+            NodeKind::JsxSpreadAttribute => {
+                traverser.enter_jsx_spread_attribute(JsxSpreadAttribute(node_id), ctx)
+            }
+            NodeKind::JsxExpressionContainer => {
+                traverser.enter_jsx_expression_container(JsxExpressionContainer(node_id), ctx)
+            }
+            NodeKind::JsxEmptyExpression => {
+                traverser.enter_jsx_empty_expression(JsxEmptyExpression(node_id), ctx)
+            }
+            NodeKind::JsxText => traverser.enter_jsx_text(JsxText(node_id), ctx),
+            NodeKind::JsxSpreadChild => {
+                traverser.enter_jsx_spread_child(JsxSpreadChild(node_id), ctx)
+            }
+        };
+    }
+    match action {
+        TraverseAction::Skip => {
+            ctx.pop_node(node_id);
+            return TraverseAction::Proceed;
+        }
+        TraverseAction::Stop => {
+            ctx.pop_node(node_id);
+            return TraverseAction::Stop;
+        }
+        TraverseAction::Proceed => {}
+    }
+    let current_kind = ctx.node_kind(node_id);
+    let action = match current_kind {
+        NodeKind::Program => 'traverse_children: {
+            let node = Program(node_id);
+            let child = node.body(ctx.ast());
+            if <TypedSubRange<StatementListItem> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.hashbang(ctx.ast());
+            if <Option<Hashbang> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::Super => 'traverse_children: {
+            let node = Super(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::ThisExpression => 'traverse_children: {
+            let node = ThisExpression(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::StringLiteral => 'traverse_children: {
+            let node = StringLiteral(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::NumericLiteral => 'traverse_children: {
+            let node = NumericLiteral(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::BigIntLiteral => 'traverse_children: {
+            let node = BigIntLiteral(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::BooleanLiteral => 'traverse_children: {
+            let node = BooleanLiteral(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::NullLiteral => 'traverse_children: {
+            let node = NullLiteral(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::RegExpLiteral => 'traverse_children: {
+            let node = RegExpLiteral(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::TemplateLiteral => 'traverse_children: {
+            let node = TemplateLiteral(node_id);
+            let child = node.quasis(ctx.ast());
+            if <TypedSubRange<TemplateElement> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.expressions(ctx.ast());
+            if <TypedSubRange<Expr> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TemplateElement => 'traverse_children: {
+            let node = TemplateElement(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::IdentifierReference => 'traverse_children: {
+            let node = IdentifierReference(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::PrivateIdentifier => 'traverse_children: {
+            let node = PrivateIdentifier(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::BindingIdentifier => 'traverse_children: {
+            let node = BindingIdentifier(node_id);
+            let child = node.decorators(ctx.ast());
+            if <TypedSubRange<Decorator> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_annotation(ctx.ast());
+            if <Option<TsTypeAnnotation> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::IdentifierName => 'traverse_children: {
+            let node = IdentifierName(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::LabelIdentifier => 'traverse_children: {
+            let node = LabelIdentifier(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::AssignmentPattern => 'traverse_children: {
+            let node = AssignmentPattern(node_id);
+            let child = node.left(ctx.ast());
+            if <BindingPattern as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.right(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.decorators(ctx.ast());
+            if <TypedSubRange<Decorator> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_annotation(ctx.ast());
+            if <Option<TsTypeAnnotation> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::BindingRestElement => 'traverse_children: {
+            let node = BindingRestElement(node_id);
+            let child = node.argument(ctx.ast());
+            if <BindingPattern as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.decorators(ctx.ast());
+            if <TypedSubRange<Decorator> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_annotation(ctx.ast());
+            if <Option<TsTypeAnnotation> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ArrayPattern => 'traverse_children: {
+            let node = ArrayPattern(node_id);
+            let child = node.elements(ctx.ast());
+            if <TypedSubRange<Option<BindingPattern>> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.rest(ctx.ast());
+            if <Option<BindingRestElement> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.decorators(ctx.ast());
+            if <TypedSubRange<Decorator> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_annotation(ctx.ast());
+            if <Option<TsTypeAnnotation> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ObjectPattern => 'traverse_children: {
+            let node = ObjectPattern(node_id);
+            let child = node.properties(ctx.ast());
+            if <TypedSubRange<BindingProperty> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.rest(ctx.ast());
+            if <Option<BindingRestElement> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.decorators(ctx.ast());
+            if <TypedSubRange<Decorator> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_annotation(ctx.ast());
+            if <Option<TsTypeAnnotation> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::BindingProperty => 'traverse_children: {
+            let node = BindingProperty(node_id);
+            let child = node.key(ctx.ast());
+            if <PropertyKey as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.value(ctx.ast());
+            if <BindingPattern as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::BinaryExpression => 'traverse_children: {
+            let node = BinaryExpression(node_id);
+            let child = node.left(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.right(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::LogicalExpression => 'traverse_children: {
+            let node = LogicalExpression(node_id);
+            let child = node.left(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.right(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ConditionalExpression => 'traverse_children: {
+            let node = ConditionalExpression(node_id);
+            let child = node.test(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.consequent(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.alternate(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::UnaryExpression => 'traverse_children: {
+            let node = UnaryExpression(node_id);
+            let child = node.argument(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::UpdateExpression => 'traverse_children: {
+            let node = UpdateExpression(node_id);
+            let child = node.argument(ctx.ast());
+            if <SimpleAssignmentTarget as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::AssignmentExpression => 'traverse_children: {
+            let node = AssignmentExpression(node_id);
+            let child = node.left(ctx.ast());
+            if <AssignmentTarget as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.right(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::VariableDeclaration => 'traverse_children: {
+            let node = VariableDeclaration(node_id);
+            let child = node.declarators(ctx.ast());
+            if <TypedSubRange<VariableDeclarator> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::VariableDeclarator => 'traverse_children: {
+            let node = VariableDeclarator(node_id);
+            let child = node.id(ctx.ast());
+            if <BindingPattern as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.init(ctx.ast());
+            if <Option<Expr> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::IfStatement => 'traverse_children: {
+            let node = IfStatement(node_id);
+            let child = node.test(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.consequent(ctx.ast());
+            if <Stmt as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.alternate(ctx.ast());
+            if <Option<Stmt> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::SwitchStatement => 'traverse_children: {
+            let node = SwitchStatement(node_id);
+            let child = node.discriminant(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.cases(ctx.ast());
+            if <TypedSubRange<SwitchCase> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::SwitchCase => 'traverse_children: {
+            let node = SwitchCase(node_id);
+            let child = node.test(ctx.ast());
+            if <Option<Expr> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.consequent(ctx.ast());
+            if <TypedSubRange<Stmt> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ForStatement => 'traverse_children: {
+            let node = ForStatement(node_id);
+            let child = node.init(ctx.ast());
+            if <Option<ForStatementInit> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.test(ctx.ast());
+            if <Option<Expr> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.update(ctx.ast());
+            if <Option<Expr> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.body(ctx.ast());
+            if <Stmt as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ForInStatement => 'traverse_children: {
+            let node = ForInStatement(node_id);
+            let child = node.left(ctx.ast());
+            if <ForStatementLeft as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.right(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.body(ctx.ast());
+            if <Stmt as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ForOfStatement => 'traverse_children: {
+            let node = ForOfStatement(node_id);
+            let child = node.left(ctx.ast());
+            if <ForStatementLeft as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.right(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.body(ctx.ast());
+            if <Stmt as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TryStatement => 'traverse_children: {
+            let node = TryStatement(node_id);
+            let child = node.block(ctx.ast());
+            if <BlockStatement as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.handler(ctx.ast());
+            if <Option<CatchClause> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.finalizer(ctx.ast());
+            if <Option<BlockStatement> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::CatchClause => 'traverse_children: {
+            let node = CatchClause(node_id);
+            let child = node.param(ctx.ast());
+            if <Option<BindingPattern> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.body(ctx.ast());
+            if <BlockStatement as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::BreakStatement => 'traverse_children: {
+            let node = BreakStatement(node_id);
+            let child = node.label(ctx.ast());
+            if <Option<LabelIdentifier> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ContinueStatement => 'traverse_children: {
+            let node = ContinueStatement(node_id);
+            let child = node.label(ctx.ast());
+            if <Option<LabelIdentifier> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::LabeledStatement => 'traverse_children: {
+            let node = LabeledStatement(node_id);
+            let child = node.label(ctx.ast());
+            if <LabelIdentifier as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.body(ctx.ast());
+            if <Stmt as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ExpressionStatement => 'traverse_children: {
+            let node = ExpressionStatement(node_id);
+            let child = node.expression(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ReturnStatement => 'traverse_children: {
+            let node = ReturnStatement(node_id);
+            let child = node.argument(ctx.ast());
+            if <Option<Expr> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ThrowStatement => 'traverse_children: {
+            let node = ThrowStatement(node_id);
+            let child = node.argument(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::DebuggerStatement => 'traverse_children: {
+            let node = DebuggerStatement(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::EmptyStatement => 'traverse_children: {
+            let node = EmptyStatement(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::Directive => 'traverse_children: {
+            let node = Directive(node_id);
+            let child = node.expression(ctx.ast());
+            if <StringLiteral as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::Decorator => 'traverse_children: {
+            let node = Decorator(node_id);
+            let child = node.expression(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::Class => 'traverse_children: {
+            let node = Class(node_id);
+            let child = node.decorators(ctx.ast());
+            if <TypedSubRange<Decorator> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.id(ctx.ast());
+            if <Option<BindingIdentifier> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.super_class(ctx.ast());
+            if <Option<Expr> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.body(ctx.ast());
+            if <ClassBody as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_parameters(ctx.ast());
+            if <Option<TsTypeParameterDeclaration> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.super_type_arguments(ctx.ast());
+            if <Option<TsTypeParameterInstantiation> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.implements(ctx.ast());
+            if <TypedSubRange<TsClassImplements> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ClassBody => 'traverse_children: {
+            let node = ClassBody(node_id);
+            let child = node.body(ctx.ast());
+            if <TypedSubRange<ClassElement> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::MethodDefinition => 'traverse_children: {
+            let node = MethodDefinition(node_id);
+            let child = node.decorators(ctx.ast());
+            if <TypedSubRange<Decorator> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.key(ctx.ast());
+            if <PropertyKey as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.value(ctx.ast());
+            if <Function as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::PropertyDefinition => 'traverse_children: {
+            let node = PropertyDefinition(node_id);
+            let child = node.decorators(ctx.ast());
+            if <TypedSubRange<Decorator> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.key(ctx.ast());
+            if <PropertyKey as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.value(ctx.ast());
+            if <Option<Expr> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_annotation(ctx.ast());
+            if <Option<TsTypeAnnotation> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::StaticBlock => 'traverse_children: {
+            let node = StaticBlock(node_id);
+            let child = node.body(ctx.ast());
+            if <TypedSubRange<Stmt> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::Function => 'traverse_children: {
+            let node = Function(node_id);
+            let child = node.id(ctx.ast());
+            if <Option<BindingIdentifier> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.params(ctx.ast());
+            if <FormalParameters as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.body(ctx.ast());
+            if <Option<FunctionBody> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_parameters(ctx.ast());
+            if <Option<TsTypeParameterDeclaration> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.return_type(ctx.ast());
+            if <Option<TsTypeAnnotation> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::FunctionBody => 'traverse_children: {
+            let node = FunctionBody(node_id);
+            let child = node.body(ctx.ast());
+            if <TypedSubRange<StatementListItem> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::BlockStatement => 'traverse_children: {
+            let node = BlockStatement(node_id);
+            let child = node.body(ctx.ast());
+            if <TypedSubRange<Stmt> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::WhileStatement => 'traverse_children: {
+            let node = WhileStatement(node_id);
+            let child = node.test(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.body(ctx.ast());
+            if <Stmt as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::DoWhileStatement => 'traverse_children: {
+            let node = DoWhileStatement(node_id);
+            let child = node.body(ctx.ast());
+            if <Stmt as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.test(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::WithStatement => 'traverse_children: {
+            let node = WithStatement(node_id);
+            let child = node.object(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.body(ctx.ast());
+            if <Stmt as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::FormalParameters => 'traverse_children: {
+            let node = FormalParameters(node_id);
+            let child = node.items(ctx.ast());
+            if <TypedSubRange<FormalParameterItem> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.rest(ctx.ast());
+            if <Option<BindingRestElement> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::FormalParameter => 'traverse_children: {
+            let node = FormalParameter(node_id);
+            let child = node.pattern(ctx.ast());
+            if <FormalParameterPattern as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ArrayExpression => 'traverse_children: {
+            let node = ArrayExpression(node_id);
+            let child = node.elements(ctx.ast());
+            if <TypedSubRange<Option<Argument>> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ObjectExpression => 'traverse_children: {
+            let node = ObjectExpression(node_id);
+            let child = node.properties(ctx.ast());
+            if <TypedSubRange<ObjectPropertyKind> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::SpreadElement => 'traverse_children: {
+            let node = SpreadElement(node_id);
+            let child = node.argument(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ObjectProperty => 'traverse_children: {
+            let node = ObjectProperty(node_id);
+            let child = node.key(ctx.ast());
+            if <PropertyKey as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.value(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ParenthesizedExpression => 'traverse_children: {
+            let node = ParenthesizedExpression(node_id);
+            let child = node.expression(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ArrowFunctionExpression => 'traverse_children: {
+            let node = ArrowFunctionExpression(node_id);
+            let child = node.params(ctx.ast());
+            if <FormalParameters as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.body(ctx.ast());
+            if <ArrowFunctionBody as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_parameters(ctx.ast());
+            if <Option<TsTypeParameterDeclaration> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.return_type(ctx.ast());
+            if <Option<TsTypeAnnotation> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::SequenceExpression => 'traverse_children: {
+            let node = SequenceExpression(node_id);
+            let child = node.expressions(ctx.ast());
+            if <TypedSubRange<Expr> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::MemberExpression => 'traverse_children: {
+            let node = MemberExpression(node_id);
+            let child = node.object(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.property(ctx.ast());
+            if <PropertyKey as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::CallExpression => 'traverse_children: {
+            let node = CallExpression(node_id);
+            let child = node.callee(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.arguments(ctx.ast());
+            if <TypedSubRange<Argument> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_arguments(ctx.ast());
+            if <Option<TsTypeParameterInstantiation> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ChainExpression => 'traverse_children: {
+            let node = ChainExpression(node_id);
+            let child = node.expression(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TaggedTemplateExpression => 'traverse_children: {
+            let node = TaggedTemplateExpression(node_id);
+            let child = node.tag(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.quasi(ctx.ast());
+            if <TemplateLiteral as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_arguments(ctx.ast());
+            if <Option<TsTypeParameterInstantiation> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::NewExpression => 'traverse_children: {
+            let node = NewExpression(node_id);
+            let child = node.callee(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.arguments(ctx.ast());
+            if <TypedSubRange<Argument> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_arguments(ctx.ast());
+            if <Option<TsTypeParameterInstantiation> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::AwaitExpression => 'traverse_children: {
+            let node = AwaitExpression(node_id);
+            let child = node.argument(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::YieldExpression => 'traverse_children: {
+            let node = YieldExpression(node_id);
+            let child = node.argument(ctx.ast());
+            if <Option<Expr> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::MetaProperty => 'traverse_children: {
+            let node = MetaProperty(node_id);
+            let child = node.meta(ctx.ast());
+            if <IdentifierName as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.property(ctx.ast());
+            if <IdentifierName as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ImportExpression => 'traverse_children: {
+            let node = ImportExpression(node_id);
+            let child = node.source(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.options(ctx.ast());
+            if <Option<Expr> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ImportDeclaration => 'traverse_children: {
+            let node = ImportDeclaration(node_id);
+            let child = node.specifiers(ctx.ast());
+            if <TypedSubRange<ImportDeclarationSpecifier> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.source(ctx.ast());
+            if <StringLiteral as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.attributes(ctx.ast());
+            if <TypedSubRange<ImportAttribute> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ImportSpecifier => 'traverse_children: {
+            let node = ImportSpecifier(node_id);
+            let child = node.imported(ctx.ast());
+            if <ModuleExportName as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.local(ctx.ast());
+            if <BindingIdentifier as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ImportDefaultSpecifier => 'traverse_children: {
+            let node = ImportDefaultSpecifier(node_id);
+            let child = node.local(ctx.ast());
+            if <BindingIdentifier as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ImportNamespaceSpecifier => 'traverse_children: {
+            let node = ImportNamespaceSpecifier(node_id);
+            let child = node.local(ctx.ast());
+            if <BindingIdentifier as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ImportAttribute => 'traverse_children: {
+            let node = ImportAttribute(node_id);
+            let child = node.key(ctx.ast());
+            if <ModuleExportName as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.value(ctx.ast());
+            if <StringLiteral as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ExportNamedDeclaration => 'traverse_children: {
+            let node = ExportNamedDeclaration(node_id);
+            let child = node.declaration(ctx.ast());
+            if <Option<Decl> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.specifiers(ctx.ast());
+            if <TypedSubRange<ExportSpecifier> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.source(ctx.ast());
+            if <Option<StringLiteral> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.attributes(ctx.ast());
+            if <TypedSubRange<ImportAttribute> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ExportDefaultDeclaration => 'traverse_children: {
+            let node = ExportDefaultDeclaration(node_id);
+            let child = node.declaration(ctx.ast());
+            if <ExportDefaultDeclarationKind as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ExportAllDeclaration => 'traverse_children: {
+            let node = ExportAllDeclaration(node_id);
+            let child = node.exported(ctx.ast());
+            if <Option<ModuleExportName> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.source(ctx.ast());
+            if <StringLiteral as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.attributes(ctx.ast());
+            if <TypedSubRange<ImportAttribute> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::ExportSpecifier => 'traverse_children: {
+            let node = ExportSpecifier(node_id);
+            let child = node.local(ctx.ast());
+            if <ModuleExportName as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.exported(ctx.ast());
+            if <ModuleExportName as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::Hashbang => 'traverse_children: {
+            let node = Hashbang(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::TsTypeAnnotation => 'traverse_children: {
+            let node = TsTypeAnnotation(node_id);
+            let child = node.type_annotation(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsAnyKeyword => 'traverse_children: {
+            let node = TsAnyKeyword(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::TsUnknownKeyword => 'traverse_children: {
+            let node = TsUnknownKeyword(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::TsNeverKeyword => 'traverse_children: {
+            let node = TsNeverKeyword(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::TsVoidKeyword => 'traverse_children: {
+            let node = TsVoidKeyword(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::TsNullKeyword => 'traverse_children: {
+            let node = TsNullKeyword(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::TsUndefinedKeyword => 'traverse_children: {
+            let node = TsUndefinedKeyword(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::TsStringKeyword => 'traverse_children: {
+            let node = TsStringKeyword(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::TsNumberKeyword => 'traverse_children: {
+            let node = TsNumberKeyword(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::TsBigIntKeyword => 'traverse_children: {
+            let node = TsBigIntKeyword(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::TsBooleanKeyword => 'traverse_children: {
+            let node = TsBooleanKeyword(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::TsSymbolKeyword => 'traverse_children: {
+            let node = TsSymbolKeyword(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::TsObjectKeyword => 'traverse_children: {
+            let node = TsObjectKeyword(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::TsIntrinsicKeyword => 'traverse_children: {
+            let node = TsIntrinsicKeyword(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::TsThisType => 'traverse_children: {
+            let node = TsThisType(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::TsTypeReference => 'traverse_children: {
+            let node = TsTypeReference(node_id);
+            let child = node.type_name(ctx.ast());
+            if <TsTypeName as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_arguments(ctx.ast());
+            if <Option<TsTypeParameterInstantiation> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsQualifiedName => 'traverse_children: {
+            let node = TsQualifiedName(node_id);
+            let child = node.left(ctx.ast());
+            if <TsQualifiedNameLeft as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.right(ctx.ast());
+            if <IdentifierName as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsTypeQuery => 'traverse_children: {
+            let node = TsTypeQuery(node_id);
+            let child = node.expr_name(ctx.ast());
+            if <TsTypeQueryExprName as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_arguments(ctx.ast());
+            if <Option<TsTypeParameterInstantiation> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsImportType => 'traverse_children: {
+            let node = TsImportType(node_id);
+            let child = node.source(ctx.ast());
+            if <StringLiteral as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.options(ctx.ast());
+            if <Option<Expr> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.qualifier(ctx.ast());
+            if <Option<TsImportTypeQualifier> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_arguments(ctx.ast());
+            if <Option<TsTypeParameterInstantiation> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsTypeParameter => 'traverse_children: {
+            let node = TsTypeParameter(node_id);
+            let child = node.name(ctx.ast());
+            if <BindingIdentifier as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.constraint(ctx.ast());
+            if <Option<TsType> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.default(ctx.ast());
+            if <Option<TsType> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsTypeParameterDeclaration => 'traverse_children: {
+            let node = TsTypeParameterDeclaration(node_id);
+            let child = node.params(ctx.ast());
+            if <TypedSubRange<TsTypeParameter> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsTypeParameterInstantiation => 'traverse_children: {
+            let node = TsTypeParameterInstantiation(node_id);
+            let child = node.params(ctx.ast());
+            if <TypedSubRange<TsType> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsLiteralType => 'traverse_children: {
+            let node = TsLiteralType(node_id);
+            let child = node.literal(ctx.ast());
+            if <TsLiteral as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsTemplateLiteralType => 'traverse_children: {
+            let node = TsTemplateLiteralType(node_id);
+            let child = node.quasis(ctx.ast());
+            if <TypedSubRange<TemplateElement> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.types(ctx.ast());
+            if <TypedSubRange<TsType> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsArrayType => 'traverse_children: {
+            let node = TsArrayType(node_id);
+            let child = node.element_type(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsIndexedAccessType => 'traverse_children: {
+            let node = TsIndexedAccessType(node_id);
+            let child = node.object_type(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.index_type(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsTupleType => 'traverse_children: {
+            let node = TsTupleType(node_id);
+            let child = node.element_types(ctx.ast());
+            if <TypedSubRange<TsTupleElement> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsNamedTupleMember => 'traverse_children: {
+            let node = TsNamedTupleMember(node_id);
+            let child = node.label(ctx.ast());
+            if <IdentifierName as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.element_type(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsOptionalType => 'traverse_children: {
+            let node = TsOptionalType(node_id);
+            let child = node.type_annotation(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsRestType => 'traverse_children: {
+            let node = TsRestType(node_id);
+            let child = node.type_annotation(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsJsDocNullableType => 'traverse_children: {
+            let node = TsJsDocNullableType(node_id);
+            let child = node.type_annotation(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsJsDocNonNullableType => 'traverse_children: {
+            let node = TsJsDocNonNullableType(node_id);
+            let child = node.type_annotation(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsJsDocUnknownType => 'traverse_children: {
+            let node = TsJsDocUnknownType(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::TsUnionType => 'traverse_children: {
+            let node = TsUnionType(node_id);
+            let child = node.types(ctx.ast());
+            if <TypedSubRange<TsType> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsIntersectionType => 'traverse_children: {
+            let node = TsIntersectionType(node_id);
+            let child = node.types(ctx.ast());
+            if <TypedSubRange<TsType> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsConditionalType => 'traverse_children: {
+            let node = TsConditionalType(node_id);
+            let child = node.check_type(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.extends_type(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.true_type(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.false_type(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsInferType => 'traverse_children: {
+            let node = TsInferType(node_id);
+            let child = node.type_parameter(ctx.ast());
+            if <TsTypeParameter as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsTypeOperator => 'traverse_children: {
+            let node = TsTypeOperator(node_id);
+            let child = node.type_annotation(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsParenthesizedType => 'traverse_children: {
+            let node = TsParenthesizedType(node_id);
+            let child = node.type_annotation(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsFunctionType => 'traverse_children: {
+            let node = TsFunctionType(node_id);
+            let child = node.type_parameters(ctx.ast());
+            if <Option<TsTypeParameterDeclaration> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.params(ctx.ast());
+            if <FormalParameters as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.return_type(ctx.ast());
+            if <TsTypeAnnotation as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsConstructorType => 'traverse_children: {
+            let node = TsConstructorType(node_id);
+            let child = node.type_parameters(ctx.ast());
+            if <Option<TsTypeParameterDeclaration> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.params(ctx.ast());
+            if <FormalParameters as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.return_type(ctx.ast());
+            if <TsTypeAnnotation as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsTypePredicate => 'traverse_children: {
+            let node = TsTypePredicate(node_id);
+            let child = node.parameter_name(ctx.ast());
+            if <TsTypePredicateName as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_annotation(ctx.ast());
+            if <Option<TsTypeAnnotation> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsTypeLiteral => 'traverse_children: {
+            let node = TsTypeLiteral(node_id);
+            let child = node.members(ctx.ast());
+            if <TypedSubRange<TsTypeElement> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsMappedType => 'traverse_children: {
+            let node = TsMappedType(node_id);
+            let child = node.key(ctx.ast());
+            if <BindingIdentifier as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.constraint(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.name_type(ctx.ast());
+            if <Option<TsType> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_annotation(ctx.ast());
+            if <Option<TsType> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsPropertySignature => 'traverse_children: {
+            let node = TsPropertySignature(node_id);
+            let child = node.key(ctx.ast());
+            if <PropertyKey as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_annotation(ctx.ast());
+            if <Option<TsTypeAnnotation> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsMethodSignature => 'traverse_children: {
+            let node = TsMethodSignature(node_id);
+            let child = node.key(ctx.ast());
+            if <PropertyKey as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_parameters(ctx.ast());
+            if <Option<TsTypeParameterDeclaration> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.params(ctx.ast());
+            if <FormalParameters as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.return_type(ctx.ast());
+            if <Option<TsTypeAnnotation> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsCallSignatureDeclaration => 'traverse_children: {
+            let node = TsCallSignatureDeclaration(node_id);
+            let child = node.type_parameters(ctx.ast());
+            if <Option<TsTypeParameterDeclaration> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.params(ctx.ast());
+            if <FormalParameters as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.return_type(ctx.ast());
+            if <Option<TsTypeAnnotation> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsConstructSignatureDeclaration => 'traverse_children: {
+            let node = TsConstructSignatureDeclaration(node_id);
+            let child = node.type_parameters(ctx.ast());
+            if <Option<TsTypeParameterDeclaration> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.params(ctx.ast());
+            if <FormalParameters as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.return_type(ctx.ast());
+            if <Option<TsTypeAnnotation> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsIndexSignature => 'traverse_children: {
+            let node = TsIndexSignature(node_id);
+            let child = node.parameters(ctx.ast());
+            if <TypedSubRange<BindingIdentifier> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_annotation(ctx.ast());
+            if <TsTypeAnnotation as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsTypeAliasDeclaration => 'traverse_children: {
+            let node = TsTypeAliasDeclaration(node_id);
+            let child = node.id(ctx.ast());
+            if <BindingIdentifier as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_parameters(ctx.ast());
+            if <Option<TsTypeParameterDeclaration> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_annotation(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsInterfaceDeclaration => 'traverse_children: {
+            let node = TsInterfaceDeclaration(node_id);
+            let child = node.id(ctx.ast());
+            if <BindingIdentifier as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_parameters(ctx.ast());
+            if <Option<TsTypeParameterDeclaration> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.extends(ctx.ast());
+            if <TypedSubRange<TsInterfaceHeritage> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.body(ctx.ast());
+            if <TsInterfaceBody as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsInterfaceBody => 'traverse_children: {
+            let node = TsInterfaceBody(node_id);
+            let child = node.body(ctx.ast());
+            if <TypedSubRange<TsTypeElement> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsInterfaceHeritage => 'traverse_children: {
+            let node = TsInterfaceHeritage(node_id);
+            let child = node.expression(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_arguments(ctx.ast());
+            if <Option<TsTypeParameterInstantiation> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsClassImplements => 'traverse_children: {
+            let node = TsClassImplements(node_id);
+            let child = node.expression(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_arguments(ctx.ast());
+            if <Option<TsTypeParameterInstantiation> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsEnumDeclaration => 'traverse_children: {
+            let node = TsEnumDeclaration(node_id);
+            let child = node.id(ctx.ast());
+            if <BindingIdentifier as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.body(ctx.ast());
+            if <TsEnumBody as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsEnumBody => 'traverse_children: {
+            let node = TsEnumBody(node_id);
+            let child = node.members(ctx.ast());
+            if <TypedSubRange<TsEnumMember> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsEnumMember => 'traverse_children: {
+            let node = TsEnumMember(node_id);
+            let child = node.id(ctx.ast());
+            if <TsEnumMemberName as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.initializer(ctx.ast());
+            if <Option<Expr> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsModuleDeclaration => 'traverse_children: {
+            let node = TsModuleDeclaration(node_id);
+            let child = node.id(ctx.ast());
+            if <TsModuleName as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.body(ctx.ast());
+            if <Option<TsModuleBody> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsModuleBlock => 'traverse_children: {
+            let node = TsModuleBlock(node_id);
+            let child = node.body(ctx.ast());
+            if <TypedSubRange<StatementListItem> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsGlobalDeclaration => 'traverse_children: {
+            let node = TsGlobalDeclaration(node_id);
+            let child = node.id(ctx.ast());
+            if <IdentifierName as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.body(ctx.ast());
+            if <TsModuleBlock as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsParameterProperty => 'traverse_children: {
+            let node = TsParameterProperty(node_id);
+            let child = node.decorators(ctx.ast());
+            if <TypedSubRange<Decorator> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.parameter(ctx.ast());
+            if <BindingPattern as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsThisParameter => 'traverse_children: {
+            let node = TsThisParameter(node_id);
+            let child = node.type_annotation(ctx.ast());
+            if <Option<TsTypeAnnotation> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsAsExpression => 'traverse_children: {
+            let node = TsAsExpression(node_id);
+            let child = node.expression(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_annotation(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsSatisfiesExpression => 'traverse_children: {
+            let node = TsSatisfiesExpression(node_id);
+            let child = node.expression(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_annotation(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsTypeAssertion => 'traverse_children: {
+            let node = TsTypeAssertion(node_id);
+            let child = node.type_annotation(ctx.ast());
+            if <TsType as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.expression(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsNonNullExpression => 'traverse_children: {
+            let node = TsNonNullExpression(node_id);
+            let child = node.expression(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsInstantiationExpression => 'traverse_children: {
+            let node = TsInstantiationExpression(node_id);
+            let child = node.expression(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_arguments(ctx.ast());
+            if <TsTypeParameterInstantiation as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsExportAssignment => 'traverse_children: {
+            let node = TsExportAssignment(node_id);
+            let child = node.expression(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsNamespaceExportDeclaration => 'traverse_children: {
+            let node = TsNamespaceExportDeclaration(node_id);
+            let child = node.id(ctx.ast());
+            if <IdentifierName as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsImportEqualsDeclaration => 'traverse_children: {
+            let node = TsImportEqualsDeclaration(node_id);
+            let child = node.id(ctx.ast());
+            if <BindingIdentifier as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.module_reference(ctx.ast());
+            if <TsModuleReference as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsExternalModuleReference => 'traverse_children: {
+            let node = TsExternalModuleReference(node_id);
+            let child = node.expression(ctx.ast());
+            if <StringLiteral as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::JsxElement => 'traverse_children: {
+            let node = JsxElement(node_id);
+            let child = node.opening_element(ctx.ast());
+            if <JsxOpeningElement as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.children(ctx.ast());
+            if <TypedSubRange<JsxChild> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.closing_element(ctx.ast());
+            if <Option<JsxClosingElement> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::JsxOpeningElement => 'traverse_children: {
+            let node = JsxOpeningElement(node_id);
+            let child = node.name(ctx.ast());
+            if <JsxElementName as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.attributes(ctx.ast());
+            if <TypedSubRange<JsxAttributeItem> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_arguments(ctx.ast());
+            if <Option<TsTypeParameterInstantiation> as TraverseWith<'a>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::JsxClosingElement => 'traverse_children: {
+            let node = JsxClosingElement(node_id);
+            let child = node.name(ctx.ast());
+            if <JsxElementName as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::JsxFragment => 'traverse_children: {
+            let node = JsxFragment(node_id);
+            let child = node.opening_fragment(ctx.ast());
+            if <JsxOpeningFragment as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.children(ctx.ast());
+            if <TypedSubRange<JsxChild> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.closing_fragment(ctx.ast());
+            if <JsxClosingFragment as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::JsxOpeningFragment => 'traverse_children: {
+            let node = JsxOpeningFragment(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::JsxClosingFragment => 'traverse_children: {
+            let node = JsxClosingFragment(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::JsxIdentifier => 'traverse_children: {
+            let node = JsxIdentifier(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::JsxNamespacedName => 'traverse_children: {
+            let node = JsxNamespacedName(node_id);
+            let child = node.namespace(ctx.ast());
+            if <JsxIdentifier as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.name(ctx.ast());
+            if <JsxIdentifier as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::JsxMemberExpression => 'traverse_children: {
+            let node = JsxMemberExpression(node_id);
+            let child = node.object(ctx.ast());
+            if <JsxMemberExpressionObject as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.property(ctx.ast());
+            if <JsxIdentifier as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::JsxAttribute => 'traverse_children: {
+            let node = JsxAttribute(node_id);
+            let child = node.name(ctx.ast());
+            if <JsxAttributeName as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.value(ctx.ast());
+            if <Option<JsxAttributeValue> as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::JsxSpreadAttribute => 'traverse_children: {
+            let node = JsxSpreadAttribute(node_id);
+            let child = node.argument(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::JsxExpressionContainer => 'traverse_children: {
+            let node = JsxExpressionContainer(node_id);
+            let child = node.expression(ctx.ast());
+            if <JsxExpression as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::JsxEmptyExpression => 'traverse_children: {
+            let node = JsxEmptyExpression(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::JsxText => 'traverse_children: {
+            let node = JsxText(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::JsxSpreadChild => 'traverse_children: {
+            let node = JsxSpreadChild(node_id);
+            let child = node.expression(ctx.ast());
+            if <Expr as TraverseWith<'a>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+    };
+    if action == TraverseAction::Stop {
+        ctx.pop_node(node_id);
+        return TraverseAction::Stop;
+    }
+    match current_kind {
+        NodeKind::Program => traverser.exit_program(Program(node_id), ctx),
+        NodeKind::Super => traverser.exit_super(Super(node_id), ctx),
+        NodeKind::ThisExpression => traverser.exit_this_expression(ThisExpression(node_id), ctx),
+        NodeKind::StringLiteral => traverser.exit_string_literal(StringLiteral(node_id), ctx),
+        NodeKind::NumericLiteral => traverser.exit_numeric_literal(NumericLiteral(node_id), ctx),
+        NodeKind::BigIntLiteral => traverser.exit_big_int_literal(BigIntLiteral(node_id), ctx),
+        NodeKind::BooleanLiteral => traverser.exit_boolean_literal(BooleanLiteral(node_id), ctx),
+        NodeKind::NullLiteral => traverser.exit_null_literal(NullLiteral(node_id), ctx),
+        NodeKind::RegExpLiteral => traverser.exit_reg_exp_literal(RegExpLiteral(node_id), ctx),
+        NodeKind::TemplateLiteral => traverser.exit_template_literal(TemplateLiteral(node_id), ctx),
+        NodeKind::TemplateElement => traverser.exit_template_element(TemplateElement(node_id), ctx),
+        NodeKind::IdentifierReference => {
+            traverser.exit_identifier_reference(IdentifierReference(node_id), ctx)
+        }
+        NodeKind::PrivateIdentifier => {
+            traverser.exit_private_identifier(PrivateIdentifier(node_id), ctx)
+        }
+        NodeKind::BindingIdentifier => {
+            traverser.exit_binding_identifier(BindingIdentifier(node_id), ctx)
+        }
+        NodeKind::IdentifierName => traverser.exit_identifier_name(IdentifierName(node_id), ctx),
+        NodeKind::LabelIdentifier => traverser.exit_label_identifier(LabelIdentifier(node_id), ctx),
+        NodeKind::AssignmentPattern => {
+            traverser.exit_assignment_pattern(AssignmentPattern(node_id), ctx)
+        }
+        NodeKind::BindingRestElement => {
+            traverser.exit_binding_rest_element(BindingRestElement(node_id), ctx)
+        }
+        NodeKind::ArrayPattern => traverser.exit_array_pattern(ArrayPattern(node_id), ctx),
+        NodeKind::ObjectPattern => traverser.exit_object_pattern(ObjectPattern(node_id), ctx),
+        NodeKind::BindingProperty => traverser.exit_binding_property(BindingProperty(node_id), ctx),
+        NodeKind::BinaryExpression => {
+            traverser.exit_binary_expression(BinaryExpression(node_id), ctx)
+        }
+        NodeKind::LogicalExpression => {
+            traverser.exit_logical_expression(LogicalExpression(node_id), ctx)
+        }
+        NodeKind::ConditionalExpression => {
+            traverser.exit_conditional_expression(ConditionalExpression(node_id), ctx)
+        }
+        NodeKind::UnaryExpression => traverser.exit_unary_expression(UnaryExpression(node_id), ctx),
+        NodeKind::UpdateExpression => {
+            traverser.exit_update_expression(UpdateExpression(node_id), ctx)
+        }
+        NodeKind::AssignmentExpression => {
+            traverser.exit_assignment_expression(AssignmentExpression(node_id), ctx)
+        }
+        NodeKind::VariableDeclaration => {
+            traverser.exit_variable_declaration(VariableDeclaration(node_id), ctx)
+        }
+        NodeKind::VariableDeclarator => {
+            traverser.exit_variable_declarator(VariableDeclarator(node_id), ctx)
+        }
+        NodeKind::IfStatement => traverser.exit_if_statement(IfStatement(node_id), ctx),
+        NodeKind::SwitchStatement => traverser.exit_switch_statement(SwitchStatement(node_id), ctx),
+        NodeKind::SwitchCase => traverser.exit_switch_case(SwitchCase(node_id), ctx),
+        NodeKind::ForStatement => traverser.exit_for_statement(ForStatement(node_id), ctx),
+        NodeKind::ForInStatement => traverser.exit_for_in_statement(ForInStatement(node_id), ctx),
+        NodeKind::ForOfStatement => traverser.exit_for_of_statement(ForOfStatement(node_id), ctx),
+        NodeKind::TryStatement => traverser.exit_try_statement(TryStatement(node_id), ctx),
+        NodeKind::CatchClause => traverser.exit_catch_clause(CatchClause(node_id), ctx),
+        NodeKind::BreakStatement => traverser.exit_break_statement(BreakStatement(node_id), ctx),
+        NodeKind::ContinueStatement => {
+            traverser.exit_continue_statement(ContinueStatement(node_id), ctx)
+        }
+        NodeKind::LabeledStatement => {
+            traverser.exit_labeled_statement(LabeledStatement(node_id), ctx)
+        }
+        NodeKind::ExpressionStatement => {
+            traverser.exit_expression_statement(ExpressionStatement(node_id), ctx)
+        }
+        NodeKind::ReturnStatement => traverser.exit_return_statement(ReturnStatement(node_id), ctx),
+        NodeKind::ThrowStatement => traverser.exit_throw_statement(ThrowStatement(node_id), ctx),
+        NodeKind::DebuggerStatement => {
+            traverser.exit_debugger_statement(DebuggerStatement(node_id), ctx)
+        }
+        NodeKind::EmptyStatement => traverser.exit_empty_statement(EmptyStatement(node_id), ctx),
+        NodeKind::Directive => traverser.exit_directive(Directive(node_id), ctx),
+        NodeKind::Decorator => traverser.exit_decorator(Decorator(node_id), ctx),
+        NodeKind::Class => traverser.exit_class(Class(node_id), ctx),
+        NodeKind::ClassBody => traverser.exit_class_body(ClassBody(node_id), ctx),
+        NodeKind::MethodDefinition => {
+            traverser.exit_method_definition(MethodDefinition(node_id), ctx)
+        }
+        NodeKind::PropertyDefinition => {
+            traverser.exit_property_definition(PropertyDefinition(node_id), ctx)
+        }
+        NodeKind::StaticBlock => traverser.exit_static_block(StaticBlock(node_id), ctx),
+        NodeKind::Function => traverser.exit_function(Function(node_id), ctx),
+        NodeKind::FunctionBody => traverser.exit_function_body(FunctionBody(node_id), ctx),
+        NodeKind::BlockStatement => traverser.exit_block_statement(BlockStatement(node_id), ctx),
+        NodeKind::WhileStatement => traverser.exit_while_statement(WhileStatement(node_id), ctx),
+        NodeKind::DoWhileStatement => {
+            traverser.exit_do_while_statement(DoWhileStatement(node_id), ctx)
+        }
+        NodeKind::WithStatement => traverser.exit_with_statement(WithStatement(node_id), ctx),
+        NodeKind::FormalParameters => {
+            traverser.exit_formal_parameters(FormalParameters(node_id), ctx)
+        }
+        NodeKind::FormalParameter => traverser.exit_formal_parameter(FormalParameter(node_id), ctx),
+        NodeKind::ArrayExpression => traverser.exit_array_expression(ArrayExpression(node_id), ctx),
+        NodeKind::ObjectExpression => {
+            traverser.exit_object_expression(ObjectExpression(node_id), ctx)
+        }
+        NodeKind::SpreadElement => traverser.exit_spread_element(SpreadElement(node_id), ctx),
+        NodeKind::ObjectProperty => traverser.exit_object_property(ObjectProperty(node_id), ctx),
+        NodeKind::ParenthesizedExpression => {
+            traverser.exit_parenthesized_expression(ParenthesizedExpression(node_id), ctx)
+        }
+        NodeKind::ArrowFunctionExpression => {
+            traverser.exit_arrow_function_expression(ArrowFunctionExpression(node_id), ctx)
+        }
+        NodeKind::SequenceExpression => {
+            traverser.exit_sequence_expression(SequenceExpression(node_id), ctx)
+        }
+        NodeKind::MemberExpression => {
+            traverser.exit_member_expression(MemberExpression(node_id), ctx)
+        }
+        NodeKind::CallExpression => traverser.exit_call_expression(CallExpression(node_id), ctx),
+        NodeKind::ChainExpression => traverser.exit_chain_expression(ChainExpression(node_id), ctx),
+        NodeKind::TaggedTemplateExpression => {
+            traverser.exit_tagged_template_expression(TaggedTemplateExpression(node_id), ctx)
+        }
+        NodeKind::NewExpression => traverser.exit_new_expression(NewExpression(node_id), ctx),
+        NodeKind::AwaitExpression => traverser.exit_await_expression(AwaitExpression(node_id), ctx),
+        NodeKind::YieldExpression => traverser.exit_yield_expression(YieldExpression(node_id), ctx),
+        NodeKind::MetaProperty => traverser.exit_meta_property(MetaProperty(node_id), ctx),
+        NodeKind::ImportExpression => {
+            traverser.exit_import_expression(ImportExpression(node_id), ctx)
+        }
+        NodeKind::ImportDeclaration => {
+            traverser.exit_import_declaration(ImportDeclaration(node_id), ctx)
+        }
+        NodeKind::ImportSpecifier => traverser.exit_import_specifier(ImportSpecifier(node_id), ctx),
+        NodeKind::ImportDefaultSpecifier => {
+            traverser.exit_import_default_specifier(ImportDefaultSpecifier(node_id), ctx)
+        }
+        NodeKind::ImportNamespaceSpecifier => {
+            traverser.exit_import_namespace_specifier(ImportNamespaceSpecifier(node_id), ctx)
+        }
+        NodeKind::ImportAttribute => traverser.exit_import_attribute(ImportAttribute(node_id), ctx),
+        NodeKind::ExportNamedDeclaration => {
+            traverser.exit_export_named_declaration(ExportNamedDeclaration(node_id), ctx)
+        }
+        NodeKind::ExportDefaultDeclaration => {
+            traverser.exit_export_default_declaration(ExportDefaultDeclaration(node_id), ctx)
+        }
+        NodeKind::ExportAllDeclaration => {
+            traverser.exit_export_all_declaration(ExportAllDeclaration(node_id), ctx)
+        }
+        NodeKind::ExportSpecifier => traverser.exit_export_specifier(ExportSpecifier(node_id), ctx),
+        NodeKind::Hashbang => traverser.exit_hashbang(Hashbang(node_id), ctx),
+        NodeKind::TsTypeAnnotation => {
+            traverser.exit_ts_type_annotation(TsTypeAnnotation(node_id), ctx)
+        }
+        NodeKind::TsAnyKeyword => traverser.exit_ts_any_keyword(TsAnyKeyword(node_id), ctx),
+        NodeKind::TsUnknownKeyword => {
+            traverser.exit_ts_unknown_keyword(TsUnknownKeyword(node_id), ctx)
+        }
+        NodeKind::TsNeverKeyword => traverser.exit_ts_never_keyword(TsNeverKeyword(node_id), ctx),
+        NodeKind::TsVoidKeyword => traverser.exit_ts_void_keyword(TsVoidKeyword(node_id), ctx),
+        NodeKind::TsNullKeyword => traverser.exit_ts_null_keyword(TsNullKeyword(node_id), ctx),
+        NodeKind::TsUndefinedKeyword => {
+            traverser.exit_ts_undefined_keyword(TsUndefinedKeyword(node_id), ctx)
+        }
+        NodeKind::TsStringKeyword => {
+            traverser.exit_ts_string_keyword(TsStringKeyword(node_id), ctx)
+        }
+        NodeKind::TsNumberKeyword => {
+            traverser.exit_ts_number_keyword(TsNumberKeyword(node_id), ctx)
+        }
+        NodeKind::TsBigIntKeyword => {
+            traverser.exit_ts_big_int_keyword(TsBigIntKeyword(node_id), ctx)
+        }
+        NodeKind::TsBooleanKeyword => {
+            traverser.exit_ts_boolean_keyword(TsBooleanKeyword(node_id), ctx)
+        }
+        NodeKind::TsSymbolKeyword => {
+            traverser.exit_ts_symbol_keyword(TsSymbolKeyword(node_id), ctx)
+        }
+        NodeKind::TsObjectKeyword => {
+            traverser.exit_ts_object_keyword(TsObjectKeyword(node_id), ctx)
+        }
+        NodeKind::TsIntrinsicKeyword => {
+            traverser.exit_ts_intrinsic_keyword(TsIntrinsicKeyword(node_id), ctx)
+        }
+        NodeKind::TsThisType => traverser.exit_ts_this_type(TsThisType(node_id), ctx),
+        NodeKind::TsTypeReference => {
+            traverser.exit_ts_type_reference(TsTypeReference(node_id), ctx)
+        }
+        NodeKind::TsQualifiedName => {
+            traverser.exit_ts_qualified_name(TsQualifiedName(node_id), ctx)
+        }
+        NodeKind::TsTypeQuery => traverser.exit_ts_type_query(TsTypeQuery(node_id), ctx),
+        NodeKind::TsImportType => traverser.exit_ts_import_type(TsImportType(node_id), ctx),
+        NodeKind::TsTypeParameter => {
+            traverser.exit_ts_type_parameter(TsTypeParameter(node_id), ctx)
+        }
+        NodeKind::TsTypeParameterDeclaration => {
+            traverser.exit_ts_type_parameter_declaration(TsTypeParameterDeclaration(node_id), ctx)
+        }
+        NodeKind::TsTypeParameterInstantiation => traverser
+            .exit_ts_type_parameter_instantiation(TsTypeParameterInstantiation(node_id), ctx),
+        NodeKind::TsLiteralType => traverser.exit_ts_literal_type(TsLiteralType(node_id), ctx),
+        NodeKind::TsTemplateLiteralType => {
+            traverser.exit_ts_template_literal_type(TsTemplateLiteralType(node_id), ctx)
+        }
+        NodeKind::TsArrayType => traverser.exit_ts_array_type(TsArrayType(node_id), ctx),
+        NodeKind::TsIndexedAccessType => {
+            traverser.exit_ts_indexed_access_type(TsIndexedAccessType(node_id), ctx)
+        }
+        NodeKind::TsTupleType => traverser.exit_ts_tuple_type(TsTupleType(node_id), ctx),
+        NodeKind::TsNamedTupleMember => {
+            traverser.exit_ts_named_tuple_member(TsNamedTupleMember(node_id), ctx)
+        }
+        NodeKind::TsOptionalType => traverser.exit_ts_optional_type(TsOptionalType(node_id), ctx),
+        NodeKind::TsRestType => traverser.exit_ts_rest_type(TsRestType(node_id), ctx),
+        NodeKind::TsJsDocNullableType => {
+            traverser.exit_ts_js_doc_nullable_type(TsJsDocNullableType(node_id), ctx)
+        }
+        NodeKind::TsJsDocNonNullableType => {
+            traverser.exit_ts_js_doc_non_nullable_type(TsJsDocNonNullableType(node_id), ctx)
+        }
+        NodeKind::TsJsDocUnknownType => {
+            traverser.exit_ts_js_doc_unknown_type(TsJsDocUnknownType(node_id), ctx)
+        }
+        NodeKind::TsUnionType => traverser.exit_ts_union_type(TsUnionType(node_id), ctx),
+        NodeKind::TsIntersectionType => {
+            traverser.exit_ts_intersection_type(TsIntersectionType(node_id), ctx)
+        }
+        NodeKind::TsConditionalType => {
+            traverser.exit_ts_conditional_type(TsConditionalType(node_id), ctx)
+        }
+        NodeKind::TsInferType => traverser.exit_ts_infer_type(TsInferType(node_id), ctx),
+        NodeKind::TsTypeOperator => traverser.exit_ts_type_operator(TsTypeOperator(node_id), ctx),
+        NodeKind::TsParenthesizedType => {
+            traverser.exit_ts_parenthesized_type(TsParenthesizedType(node_id), ctx)
+        }
+        NodeKind::TsFunctionType => traverser.exit_ts_function_type(TsFunctionType(node_id), ctx),
+        NodeKind::TsConstructorType => {
+            traverser.exit_ts_constructor_type(TsConstructorType(node_id), ctx)
+        }
+        NodeKind::TsTypePredicate => {
+            traverser.exit_ts_type_predicate(TsTypePredicate(node_id), ctx)
+        }
+        NodeKind::TsTypeLiteral => traverser.exit_ts_type_literal(TsTypeLiteral(node_id), ctx),
+        NodeKind::TsMappedType => traverser.exit_ts_mapped_type(TsMappedType(node_id), ctx),
+        NodeKind::TsPropertySignature => {
+            traverser.exit_ts_property_signature(TsPropertySignature(node_id), ctx)
+        }
+        NodeKind::TsMethodSignature => {
+            traverser.exit_ts_method_signature(TsMethodSignature(node_id), ctx)
+        }
+        NodeKind::TsCallSignatureDeclaration => {
+            traverser.exit_ts_call_signature_declaration(TsCallSignatureDeclaration(node_id), ctx)
+        }
+        NodeKind::TsConstructSignatureDeclaration => traverser
+            .exit_ts_construct_signature_declaration(TsConstructSignatureDeclaration(node_id), ctx),
+        NodeKind::TsIndexSignature => {
+            traverser.exit_ts_index_signature(TsIndexSignature(node_id), ctx)
+        }
+        NodeKind::TsTypeAliasDeclaration => {
+            traverser.exit_ts_type_alias_declaration(TsTypeAliasDeclaration(node_id), ctx)
+        }
+        NodeKind::TsInterfaceDeclaration => {
+            traverser.exit_ts_interface_declaration(TsInterfaceDeclaration(node_id), ctx)
+        }
+        NodeKind::TsInterfaceBody => {
+            traverser.exit_ts_interface_body(TsInterfaceBody(node_id), ctx)
+        }
+        NodeKind::TsInterfaceHeritage => {
+            traverser.exit_ts_interface_heritage(TsInterfaceHeritage(node_id), ctx)
+        }
+        NodeKind::TsClassImplements => {
+            traverser.exit_ts_class_implements(TsClassImplements(node_id), ctx)
+        }
+        NodeKind::TsEnumDeclaration => {
+            traverser.exit_ts_enum_declaration(TsEnumDeclaration(node_id), ctx)
+        }
+        NodeKind::TsEnumBody => traverser.exit_ts_enum_body(TsEnumBody(node_id), ctx),
+        NodeKind::TsEnumMember => traverser.exit_ts_enum_member(TsEnumMember(node_id), ctx),
+        NodeKind::TsModuleDeclaration => {
+            traverser.exit_ts_module_declaration(TsModuleDeclaration(node_id), ctx)
+        }
+        NodeKind::TsModuleBlock => traverser.exit_ts_module_block(TsModuleBlock(node_id), ctx),
+        NodeKind::TsGlobalDeclaration => {
+            traverser.exit_ts_global_declaration(TsGlobalDeclaration(node_id), ctx)
+        }
+        NodeKind::TsParameterProperty => {
+            traverser.exit_ts_parameter_property(TsParameterProperty(node_id), ctx)
+        }
+        NodeKind::TsThisParameter => {
+            traverser.exit_ts_this_parameter(TsThisParameter(node_id), ctx)
+        }
+        NodeKind::TsAsExpression => traverser.exit_ts_as_expression(TsAsExpression(node_id), ctx),
+        NodeKind::TsSatisfiesExpression => {
+            traverser.exit_ts_satisfies_expression(TsSatisfiesExpression(node_id), ctx)
+        }
+        NodeKind::TsTypeAssertion => {
+            traverser.exit_ts_type_assertion(TsTypeAssertion(node_id), ctx)
+        }
+        NodeKind::TsNonNullExpression => {
+            traverser.exit_ts_non_null_expression(TsNonNullExpression(node_id), ctx)
+        }
+        NodeKind::TsInstantiationExpression => {
+            traverser.exit_ts_instantiation_expression(TsInstantiationExpression(node_id), ctx)
+        }
+        NodeKind::TsExportAssignment => {
+            traverser.exit_ts_export_assignment(TsExportAssignment(node_id), ctx)
+        }
+        NodeKind::TsNamespaceExportDeclaration => traverser
+            .exit_ts_namespace_export_declaration(TsNamespaceExportDeclaration(node_id), ctx),
+        NodeKind::TsImportEqualsDeclaration => {
+            traverser.exit_ts_import_equals_declaration(TsImportEqualsDeclaration(node_id), ctx)
+        }
+        NodeKind::TsExternalModuleReference => {
+            traverser.exit_ts_external_module_reference(TsExternalModuleReference(node_id), ctx)
+        }
+        NodeKind::JsxElement => traverser.exit_jsx_element(JsxElement(node_id), ctx),
+        NodeKind::JsxOpeningElement => {
+            traverser.exit_jsx_opening_element(JsxOpeningElement(node_id), ctx)
+        }
+        NodeKind::JsxClosingElement => {
+            traverser.exit_jsx_closing_element(JsxClosingElement(node_id), ctx)
+        }
+        NodeKind::JsxFragment => traverser.exit_jsx_fragment(JsxFragment(node_id), ctx),
+        NodeKind::JsxOpeningFragment => {
+            traverser.exit_jsx_opening_fragment(JsxOpeningFragment(node_id), ctx)
+        }
+        NodeKind::JsxClosingFragment => {
+            traverser.exit_jsx_closing_fragment(JsxClosingFragment(node_id), ctx)
+        }
+        NodeKind::JsxIdentifier => traverser.exit_jsx_identifier(JsxIdentifier(node_id), ctx),
+        NodeKind::JsxNamespacedName => {
+            traverser.exit_jsx_namespaced_name(JsxNamespacedName(node_id), ctx)
+        }
+        NodeKind::JsxMemberExpression => {
+            traverser.exit_jsx_member_expression(JsxMemberExpression(node_id), ctx)
+        }
+        NodeKind::JsxAttribute => traverser.exit_jsx_attribute(JsxAttribute(node_id), ctx),
+        NodeKind::JsxSpreadAttribute => {
+            traverser.exit_jsx_spread_attribute(JsxSpreadAttribute(node_id), ctx)
+        }
+        NodeKind::JsxExpressionContainer => {
+            traverser.exit_jsx_expression_container(JsxExpressionContainer(node_id), ctx)
+        }
+        NodeKind::JsxEmptyExpression => {
+            traverser.exit_jsx_empty_expression(JsxEmptyExpression(node_id), ctx)
+        }
+        NodeKind::JsxText => traverser.exit_jsx_text(JsxText(node_id), ctx),
+        NodeKind::JsxSpreadChild => traverser.exit_jsx_spread_child(JsxSpreadChild(node_id), ctx),
+    }
+    traverser.exit_node(node_id, current_kind, ctx);
+    ctx.pop_node(node_id);
+    TraverseAction::Proceed
 }
