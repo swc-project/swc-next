@@ -26,11 +26,6 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
 
     visit_mut_functions.extend(quote! {
         fn ast(&mut self) -> &mut Ast<'a>;
-
-        #[inline]
-        fn enter_node(&mut self, node_kind: NodeKind) {}
-        #[inline]
-        fn leave_node(&mut self, node_kind: NodeKind) {}
     });
 
     for ty in schema.types.iter() {
@@ -50,14 +45,10 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     }
                 });
 
-                let node_kind = format_ident!("{}", ast.name);
                 visit_mut_functions.extend(quote! {
                     #[inline]
                     fn #fn_mut_name(&mut self, node: #ty_ident) -> #ty_ident {
-                        self.enter_node(NodeKind::#node_kind);
-                        let node = <#ty_ident as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
-                        self.leave_node(NodeKind::#node_kind);
-                        node
+                        <#ty_ident as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
                     }
                 });
 

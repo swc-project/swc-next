@@ -40,7 +40,7 @@ pub fn ast_compare(ast1: &ast::Program, ast2: &ast::Program) -> Option<String> {
     }
     if mismatches.len() > 30 {
         error.push_str(&format!(
-            "\n  ... and {} more NodeKind span mismatches",
+            "\n  ... and {} more node-kind span mismatches",
             mismatches.len() - 30
         ));
     }
