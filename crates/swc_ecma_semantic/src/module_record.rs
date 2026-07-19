@@ -1,0 +1,434 @@
+use rustc_hash::FxHashMap;
+use swc_experimental_ecma_ast::*;
+
+use crate::{
+    diagnostic::Diagnostic,
+    scope::ScopeTree,
+    symbol::{SymbolFlags, SymbolTable},
+};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ModuleRecordNameKind {
+    Named,
+    Star,
+    None,
+    Equals,
+    Global,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ImportRecord {
+    pub symbol_id: Option<SymbolId>,
+    pub name_kind: ModuleRecordNameKind,
+    pub name: String,
+    pub specifier: String,
+    pub kind: ImportOrExportKind,
+    pub phase: Option<ImportPhase>,
+    pub node: NodeId,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ExportRecord {
+    pub name_kind: ModuleRecordNameKind,
+    pub name: String,
+    pub symbol_id: Option<SymbolId>,
+    pub from_kind: ModuleRecordNameKind,
+    pub from_name: String,
+    pub specifier: String,
+    pub kind: ImportOrExportKind,
+    pub node: NodeId,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct ModuleRecord {
+    imports: Vec<ImportRecord>,
+    exports: Vec<ExportRecord>,
+}
+
+impl ModuleRecord {
+    pub fn imports(&self) -> &[ImportRecord] {
+        &self.imports
+    }
+
+    pub fn exports(&self) -> &[ExportRecord] {
+        &self.exports
+    }
+}
+
+pub(crate) fn collect<'a>(
+    program: Program,
+    ast: &mut Ast<'a>,
+    scopes: &ScopeTree,
+    symbols: &SymbolTable<'a>,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> ModuleRecord {
+    let mut collector = Collector {
+        record: ModuleRecord::default(),
+        top_scope: scopes.top_level_scope_id(),
+        symbols,
+        diagnostics,
+        export_names: FxHashMap::default(),
+        default_export_bindings: Vec::new(),
+    };
+
+    let _ = program.traverse_with(&mut collector, &mut TraverseCtx::new(ast));
+    collector.record
+}
+
+struct Collector<'table, 'ast, 'diagnostics> {
+    record: ModuleRecord,
+    top_scope: ScopeId,
+    symbols: &'table SymbolTable<'ast>,
+    diagnostics: &'diagnostics mut Vec<Diagnostic>,
+    export_names: FxHashMap<String, Span>,
+    default_export_bindings: Vec<bool>,
+}
+
+impl Collector<'_, '_, '_> {
+    fn register_export_name(&mut self, name: &str, span: Span) {
+        if let Some(previous) = self.export_names.get(name).copied() {
+            self.diagnostics.push(
+                Diagnostic::error(span, format!("Duplicate export '{}'", name))
+                    .with_label(previous, "previous export is here"),
+            );
+        } else {
+            self.export_names.insert(name.into(), span);
+        }
+    }
+}
+
+impl<'ast> Traverse<'ast> for Collector<'_, 'ast, '_> {
+    fn enter_binding_identifier(
+        &mut self,
+        node: BindingIdentifier,
+        ctx: &mut TraverseCtx<'_, 'ast>,
+    ) -> TraverseAction {
+        let mut ancestors = ctx.ancestors().skip(1);
+        let is_default = loop {
+            let Some(ancestor) = ancestors.next() else {
+                return TraverseAction::Proceed;
+            };
+            match ctx.node_kind(ancestor) {
+                NodeKind::FunctionBody | NodeKind::ClassBody | NodeKind::TsModuleBlock => {
+                    return TraverseAction::Proceed;
+                }
+                NodeKind::ExportNamedDeclaration => break false,
+                NodeKind::ExportDefaultDeclaration => break true,
+                _ => {}
+            }
+        };
+        if !ancestors
+            .next()
+            .is_some_and(|ancestor| ctx.node_kind(ancestor) == NodeKind::Program)
+        {
+            return TraverseAction::Proceed;
+        }
+
+        let ast = ctx.ast();
+        let Some(symbol_id) = node.symbol_id(ast) else {
+            return TraverseAction::Proceed;
+        };
+        let symbol = self.symbols.symbol(symbol_id);
+        if !symbol.flags.intersects(SymbolFlags::EXPORTED) {
+            return TraverseAction::Proceed;
+        }
+        let name: String = if is_default {
+            if let Some(found) = self.default_export_bindings.last_mut() {
+                *found = true;
+            }
+            "default".into()
+        } else {
+            node.name(ast).as_str().into()
+        };
+        let kind = if symbol.flags.in_value_space() {
+            ImportOrExportKind::Value
+        } else {
+            ImportOrExportKind::Type
+        };
+        self.register_export_name(&name, node.span(ast));
+        self.record.exports.push(ExportRecord {
+            name_kind: ModuleRecordNameKind::Named,
+            name,
+            symbol_id: Some(symbol_id),
+            from_kind: ModuleRecordNameKind::None,
+            from_name: String::new(),
+            specifier: String::new(),
+            kind,
+            node: node.node_id(),
+        });
+        TraverseAction::Proceed
+    }
+
+    fn enter_import_declaration(
+        &mut self,
+        node: ImportDeclaration,
+        ctx: &mut TraverseCtx<'_, 'ast>,
+    ) -> TraverseAction {
+        if !is_program_child(ctx) {
+            return TraverseAction::Proceed;
+        }
+        let ast = ctx.ast();
+        let specifier = string_literal(node.source(ast), ast);
+        let specifiers = node.specifiers(ast);
+        if specifiers.is_empty() {
+            self.record.imports.push(ImportRecord {
+                symbol_id: None,
+                name_kind: ModuleRecordNameKind::None,
+                name: String::new(),
+                specifier,
+                kind: node.import_kind(ast),
+                phase: node.phase(ast),
+                node: node.node_id(),
+            });
+            return TraverseAction::Proceed;
+        }
+
+        for specifier_id in specifiers.iter() {
+            let specifier_node = ast.get_node_in_sub_range(specifier_id);
+            let (local, name_kind, name, kind) =
+                match ast.import_declaration_specifier_data(specifier_node) {
+                    ImportDeclarationSpecifierData::ImportSpecifier(spec) => (
+                        spec.local(ast),
+                        ModuleRecordNameKind::Named,
+                        module_export_name(spec.imported(ast), ast),
+                        if node.import_kind(ast) == ImportOrExportKind::Type {
+                            ImportOrExportKind::Type
+                        } else {
+                            spec.import_kind(ast)
+                        },
+                    ),
+                    ImportDeclarationSpecifierData::ImportDefaultSpecifier(spec) => (
+                        spec.local(ast),
+                        ModuleRecordNameKind::Named,
+                        "default".into(),
+                        node.import_kind(ast),
+                    ),
+                    ImportDeclarationSpecifierData::ImportNamespaceSpecifier(spec) => (
+                        spec.local(ast),
+                        ModuleRecordNameKind::Star,
+                        String::new(),
+                        node.import_kind(ast),
+                    ),
+                };
+            self.record.imports.push(ImportRecord {
+                symbol_id: local.symbol_id(ast),
+                name_kind,
+                name,
+                specifier: specifier.clone(),
+                kind,
+                phase: node.phase(ast),
+                node: specifier_node.node_id(),
+            });
+        }
+        TraverseAction::Proceed
+    }
+
+    fn enter_export_named_declaration(
+        &mut self,
+        node: ExportNamedDeclaration,
+        ctx: &mut TraverseCtx<'_, 'ast>,
+    ) -> TraverseAction {
+        if !is_program_child(ctx) {
+            return TraverseAction::Proceed;
+        }
+        let ast = ctx.ast();
+        if node.declaration(ast).is_some() {
+            return TraverseAction::Proceed;
+        }
+        let source = node.source(ast).map(|source| string_literal(source, ast));
+        for specifier_id in node.specifiers(ast).iter() {
+            let specifier = ast.get_node_in_sub_range(specifier_id);
+            let local_name = module_export_name(specifier.local(ast), ast);
+            let exported_name = module_export_name(specifier.exported(ast), ast);
+            let kind = if node.export_kind(ast) == ImportOrExportKind::Type {
+                ImportOrExportKind::Type
+            } else {
+                specifier.export_kind(ast)
+            };
+            let symbol_id = source
+                .is_none()
+                .then(|| self.symbols.find_in_scope(self.top_scope, &local_name))
+                .flatten();
+            if source.is_none() && symbol_id.is_none() {
+                self.diagnostics.push(Diagnostic::error(
+                    specifier.span(ast),
+                    format!("Export '{}' is not defined", local_name),
+                ));
+            }
+            self.register_export_name(&exported_name, specifier.span(ast));
+            self.record.exports.push(ExportRecord {
+                name_kind: ModuleRecordNameKind::Named,
+                name: exported_name,
+                symbol_id,
+                from_kind: if source.is_some() {
+                    ModuleRecordNameKind::Named
+                } else {
+                    ModuleRecordNameKind::None
+                },
+                from_name: if source.is_some() {
+                    local_name
+                } else {
+                    String::new()
+                },
+                specifier: source.clone().unwrap_or_default(),
+                kind,
+                node: specifier.node_id(),
+            });
+        }
+        TraverseAction::Proceed
+    }
+
+    fn enter_export_default_declaration(
+        &mut self,
+        _node: ExportDefaultDeclaration,
+        ctx: &mut TraverseCtx<'_, 'ast>,
+    ) -> TraverseAction {
+        if !is_program_child(ctx) {
+            return TraverseAction::Proceed;
+        }
+        self.default_export_bindings.push(false);
+        TraverseAction::Proceed
+    }
+
+    fn exit_export_default_declaration(
+        &mut self,
+        node: ExportDefaultDeclaration,
+        ctx: &mut TraverseCtx<'_, 'ast>,
+    ) {
+        if !is_program_child(ctx) {
+            return;
+        }
+        let has_binding = self
+            .default_export_bindings
+            .pop()
+            .expect("top-level default export traversal is balanced");
+        if has_binding {
+            return;
+        }
+        self.register_export_name("default", node.span(ctx.ast()));
+        self.record.exports.push(ExportRecord {
+            name_kind: ModuleRecordNameKind::Named,
+            name: "default".into(),
+            symbol_id: None,
+            from_kind: ModuleRecordNameKind::None,
+            from_name: String::new(),
+            specifier: String::new(),
+            kind: ImportOrExportKind::Value,
+            node: node.node_id(),
+        });
+    }
+
+    fn enter_export_all_declaration(
+        &mut self,
+        node: ExportAllDeclaration,
+        ctx: &mut TraverseCtx<'_, 'ast>,
+    ) -> TraverseAction {
+        if !is_program_child(ctx) {
+            return TraverseAction::Proceed;
+        }
+        let ast = ctx.ast();
+        let exported = node.exported(ast);
+        if let Some(name) = exported {
+            self.register_export_name(&module_export_name(name, ast), node.span(ast));
+        }
+        self.record.exports.push(ExportRecord {
+            name_kind: exported.map_or(ModuleRecordNameKind::Star, |_| ModuleRecordNameKind::Named),
+            name: exported
+                .map(|name| module_export_name(name, ast))
+                .unwrap_or_default(),
+            symbol_id: None,
+            from_kind: ModuleRecordNameKind::Star,
+            from_name: String::new(),
+            specifier: string_literal(node.source(ast), ast),
+            kind: node.export_kind(ast),
+            node: node.node_id(),
+        });
+        TraverseAction::Proceed
+    }
+
+    fn enter_ts_import_equals_declaration(
+        &mut self,
+        node: TsImportEqualsDeclaration,
+        ctx: &mut TraverseCtx<'_, 'ast>,
+    ) -> TraverseAction {
+        if !is_program_child(ctx) {
+            return TraverseAction::Proceed;
+        }
+        let ast = ctx.ast();
+        let TsModuleReferenceData::TsExternalModuleReference(reference) =
+            ast.ts_module_reference_data(node.module_reference(ast))
+        else {
+            return TraverseAction::Proceed;
+        };
+        self.record.imports.push(ImportRecord {
+            symbol_id: node.id(ast).symbol_id(ast),
+            name_kind: ModuleRecordNameKind::Star,
+            name: String::new(),
+            specifier: string_literal(reference.expression(ast), ast),
+            kind: node.import_kind(ast),
+            phase: None,
+            node: node.node_id(),
+        });
+        TraverseAction::Proceed
+    }
+
+    fn enter_ts_export_assignment(
+        &mut self,
+        node: TsExportAssignment,
+        ctx: &mut TraverseCtx<'_, 'ast>,
+    ) -> TraverseAction {
+        if !is_program_child(ctx) {
+            return TraverseAction::Proceed;
+        }
+        self.record.exports.push(ExportRecord {
+            name_kind: ModuleRecordNameKind::Equals,
+            name: String::new(),
+            symbol_id: None,
+            from_kind: ModuleRecordNameKind::None,
+            from_name: String::new(),
+            specifier: String::new(),
+            kind: ImportOrExportKind::Value,
+            node: node.node_id(),
+        });
+        let _ = ctx;
+        TraverseAction::Proceed
+    }
+
+    fn enter_ts_namespace_export_declaration(
+        &mut self,
+        node: TsNamespaceExportDeclaration,
+        ctx: &mut TraverseCtx<'_, 'ast>,
+    ) -> TraverseAction {
+        if !is_program_child(ctx) {
+            return TraverseAction::Proceed;
+        }
+        let ast = ctx.ast();
+        self.record.exports.push(ExportRecord {
+            name_kind: ModuleRecordNameKind::Global,
+            name: node.id(ast).name(ast).as_str().into(),
+            symbol_id: None,
+            from_kind: ModuleRecordNameKind::None,
+            from_name: String::new(),
+            specifier: String::new(),
+            kind: ImportOrExportKind::Value,
+            node: node.node_id(),
+        });
+        TraverseAction::Proceed
+    }
+}
+
+fn string_literal(node: StringLiteral, ast: &Ast<'_>) -> String {
+    node.value(ast).to_string_lossy().into_owned()
+}
+
+fn module_export_name(node: ModuleExportName, ast: &Ast<'_>) -> String {
+    match ast.module_export_name_data(node) {
+        ModuleExportNameData::IdentifierName(identifier) => identifier.name(ast).as_str().into(),
+        ModuleExportNameData::StringLiteral(string) => string_literal(string, ast),
+    }
+}
+
+fn is_program_child(ctx: &TraverseCtx<'_, '_>) -> bool {
+    ctx.parent()
+        .is_some_and(|parent| ctx.node_kind(parent) == NodeKind::Program)
+}
