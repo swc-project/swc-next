@@ -106,6 +106,14 @@ macro_rules! multi_index_vec {
                 self.cap as usize
             }
 
+            #[inline]
+            #[allow(dead_code)]
+            $vis fn truncate(&mut self, len: usize) {
+                if len < self.len as usize {
+                    self.len = u32::try_from(len).expect("length exceeds u32");
+                }
+            }
+
             $vis fn reserve(&mut self, additional: usize) {
                 let required = (self.len as usize)
                     .checked_add(additional)

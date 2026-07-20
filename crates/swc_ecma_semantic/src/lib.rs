@@ -9,31 +9,42 @@ mod module_record;
 mod scope;
 mod symbol;
 
+use oxc_index::Idx;
+
 pub use diagnostic::{Diagnostic, Label, Severity};
 pub use module_record::{ExportRecord, ImportRecord, ModuleRecord, ModuleRecordNameKind};
 pub use scope::{Scope, ScopeFlags, ScopeKind, ScopeTree};
 pub use swc_experimental_ecma_ast::{ScopeId, SymbolId};
-pub use symbol::{Reference, ReferenceId, ReferenceKind, Symbol, SymbolFlags, SymbolTable};
+pub use symbol::{
+    Reference, ReferenceFlags, ReferenceId, ReferenceKind, Symbol, SymbolFlags, SymbolTable,
+};
 
-use swc_experimental_ecma_ast::{Ast, NodeId, Program};
+use swc_experimental_ecma_ast::{
+    Ast, NodeId, NodeKind, Program, Traverse, TraverseAction, TraverseCtx, TraverseWith,
+};
 
 /// Complete semantic information for one parsed source file.
 #[derive(Debug)]
-pub struct Semantic<'a> {
-    scope_tree: ScopeTree,
-    symbol_table: SymbolTable<'a>,
-    node_scopes: Vec<ScopeId>,
+pub struct SemanticModel<'a> {
+    pub scopes: ScopeTree,
+    pub symbols: SymbolTable<'a>,
+    pub node_scopes: Vec<ScopeId>,
+    pub node_symbols: Vec<Option<SymbolId>>,
+    pub node_references: Vec<Option<ReferenceId>>,
+    pub node_order: Vec<u64>,
     module_record: ModuleRecord,
     diagnostics: Vec<Diagnostic>,
 }
 
-impl<'a> Semantic<'a> {
+pub type Semantic<'a> = SemanticModel<'a>;
+
+impl<'a> SemanticModel<'a> {
     pub fn scope_tree(&self) -> &ScopeTree {
-        &self.scope_tree
+        &self.scopes
     }
 
     pub fn symbol_table(&self) -> &SymbolTable<'a> {
-        &self.symbol_table
+        &self.symbols
     }
 
     pub fn module_record(&self) -> &ModuleRecord {
@@ -48,13 +59,80 @@ impl<'a> Semantic<'a> {
         self.node_scopes[node.index()]
     }
 
+    pub fn node_symbol(&self, node: NodeId) -> Option<SymbolId> {
+        self.node_symbols[node.index()]
+    }
+
+    pub fn node_reference(&self, node: NodeId) -> Option<ReferenceId> {
+        self.node_references[node.index()]
+    }
+
+    pub fn node_order(&self, node: NodeId) -> u64 {
+        self.node_order[node.index()]
+    }
+
+    pub fn scope_ids(&self) -> impl ExactSizeIterator<Item = ScopeId> + '_ {
+        (0..self.scopes.len()).map(ScopeId::from_usize)
+    }
+
+    pub fn symbol_ids(&self) -> impl ExactSizeIterator<Item = SymbolId> + '_ {
+        (0..self.symbols.symbol_len()).map(SymbolId::from_usize)
+    }
+
+    pub fn reference_ids(&self) -> impl ExactSizeIterator<Item = ReferenceId> + '_ {
+        (0..self.symbols.reference_len()).map(ReferenceId::from_usize)
+    }
+
+    pub fn scope(&self, id: ScopeId) -> &Scope {
+        self.scopes.get(id)
+    }
+
+    pub fn symbol(&self, id: SymbolId) -> &Symbol<'a> {
+        self.symbols.symbol(id)
+    }
+
+    pub fn reference(&self, id: ReferenceId) -> &Reference<'a> {
+        self.symbols.reference(id)
+    }
+
+    pub fn symbol_declarations(&self, id: SymbolId) -> &[NodeId] {
+        &self.symbol(id).declarations
+    }
+
+    pub fn references_of(&self, id: SymbolId) -> &[ReferenceId] {
+        &self.symbol(id).references
+    }
+
+    pub fn resolve_name(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
+        let name = std::str::from_utf8(name).ok()?;
+        self.symbols.resolve(&self.scopes, scope, name)
+    }
+
+    pub fn symbol_rename_safe(&self, id: SymbolId) -> bool {
+        let symbol = self.symbol(id);
+        !self.scope(symbol.scope).rename_unsafe
+            && !symbol.flags.intersects(SymbolFlags::ANNEX_B_FUNCTION)
+    }
+
+    pub fn is_descendant_scope(&self, descendant: ScopeId, ancestor: ScopeId) -> bool {
+        self.scopes
+            .ancestors(descendant)
+            .any(|scope| scope == ancestor)
+    }
+
+    pub fn symbol_used_in_subtree(&self, symbol: SymbolId, scope: ScopeId) -> bool {
+        self.references_of(symbol)
+            .iter()
+            .any(|reference| self.is_descendant_scope(self.reference(*reference).scope, scope))
+    }
+
     pub fn top_level_scope_id(&self) -> ScopeId {
-        self.scope_tree.top_level_scope_id()
+        self.scopes.top_level_scope_id()
     }
 }
 
 /// Analyze a typed flat AST and write resolved symbol IDs back to identifier nodes.
-pub fn analyze<'a>(program: Program, ast: &mut Ast<'a>) -> Semantic<'a> {
+pub fn analyze<'a>(program: Program, ast: &mut Ast<'a>) -> SemanticModel<'a> {
     let mut parts = analyzer::analyze_program(program, ast);
     let module_record = module_record::collect(
         program,
@@ -63,11 +141,55 @@ pub fn analyze<'a>(program: Program, ast: &mut Ast<'a>) -> Semantic<'a> {
         &parts.symbols,
         &mut parts.diagnostics,
     );
-    Semantic {
-        scope_tree: parts.scopes,
-        symbol_table: parts.symbols,
+    let mut node_symbols = vec![None; ast.node_count()];
+    let mut node_references = vec![None; ast.node_count()];
+    for (symbol_id, symbol) in parts.symbols.symbols() {
+        for declaration in &symbol.declarations {
+            node_symbols[declaration.index()] = Some(symbol_id);
+        }
+    }
+    for (reference_id, reference) in parts.symbols.references() {
+        node_references[reference.node.index()] = Some(reference_id);
+        if let Some(symbol_id) = reference.symbol_id {
+            node_symbols[reference.node.index()] = Some(symbol_id);
+        }
+    }
+    let node_order = build_traversal_order(program, ast);
+    SemanticModel {
+        scopes: parts.scopes,
+        symbols: parts.symbols,
         node_scopes: parts.node_scopes,
+        node_symbols,
+        node_references,
+        node_order,
         module_record,
         diagnostics: parts.diagnostics,
     }
+}
+
+fn build_traversal_order(program: Program, ast: &mut Ast<'_>) -> Vec<u64> {
+    struct Order {
+        node_order: Vec<u64>,
+        next: u64,
+    }
+
+    impl<'a> Traverse<'a> for Order {
+        fn enter_node(
+            &mut self,
+            node_id: NodeId,
+            _kind: NodeKind,
+            _ctx: &mut TraverseCtx<'_, 'a>,
+        ) -> TraverseAction {
+            self.node_order[node_id.index()] = self.next;
+            self.next += 1;
+            TraverseAction::Proceed
+        }
+    }
+
+    let mut order = Order {
+        node_order: vec![u64::MAX; ast.node_count()],
+        next: 0,
+    };
+    let _ = program.traverse_with(&mut order, &mut TraverseCtx::new(ast));
+    order.node_order
 }

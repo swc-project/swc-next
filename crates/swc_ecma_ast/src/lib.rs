@@ -38,6 +38,12 @@ use swc_experimental_allocator::multi_index_vec;
 pub struct Ast<'a> {
     allocator: &'a Allocator,
 
+    source_type: SourceType,
+
+    lang: Lang,
+
+    line_starts: Vec<u32>,
+
     /// Flattening AST nodes.
     pub(crate) nodes: NodeData<'a>,
 
@@ -86,6 +92,9 @@ impl<'a> Ast<'a> {
     pub fn new(_source_len: usize, allocator: &'a Allocator) -> Self {
         Self {
             allocator,
+            source_type: SourceType::Module,
+            lang: Lang::Js,
+            line_starts: vec![0],
             nodes: NodeData::new_in(allocator),
             extra_data: ArenaVec::with_capacity_in(0, allocator),
             atoms: AtomStore::new_in(allocator),
@@ -167,6 +176,47 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
+    pub fn set_source_metadata(&mut self, source_type: SourceType, lang: Lang) {
+        self.source_type = source_type;
+        self.lang = lang;
+    }
+
+    pub fn set_line_starts(&mut self, line_starts: Vec<u32>) {
+        debug_assert!(!line_starts.is_empty());
+        debug_assert_eq!(line_starts[0], 0);
+        self.line_starts = line_starts;
+    }
+
+    pub fn line_starts(&self) -> &[u32] {
+        &self.line_starts
+    }
+
+    #[inline]
+    pub fn source_type(&self) -> SourceType {
+        self.source_type
+    }
+
+    #[inline]
+    pub fn lang(&self) -> Lang {
+        self.lang
+    }
+
+    #[inline]
+    pub fn is_ts(&self) -> bool {
+        self.lang.is_typescript()
+    }
+
+    #[inline]
+    pub fn is_jsx(&self) -> bool {
+        self.lang.is_jsx()
+    }
+
+    #[inline]
+    pub fn is_module(&self) -> bool {
+        self.source_type == SourceType::Module
+    }
+
+    #[inline]
     pub fn add_atom(&self, value: &str) -> Atom<'a> {
         Atom::new_in(value, self.allocator)
     }
@@ -204,6 +254,28 @@ impl<'a> Ast<'a> {
     #[inline]
     pub fn node_count(&self) -> usize {
         self.nodes.len()
+    }
+
+    /// Returns the number of entries in the out-of-line field table.
+    #[inline]
+    pub fn extra_data_count(&self) -> usize {
+        self.extra_data.len()
+    }
+
+    /// Reserves storage for parser output without changing logical lengths.
+    #[inline]
+    pub fn reserve(&mut self, additional_nodes: usize, additional_extra_data: usize) {
+        self.nodes.reserve(additional_nodes);
+        self.extra_data.reserve(additional_extra_data);
+    }
+
+    /// Rewinds node and out-of-line field storage to an earlier checkpoint.
+    #[inline]
+    pub fn truncate(&mut self, nodes_len: usize, extra_data_len: usize) {
+        assert!(nodes_len <= self.nodes.len());
+        assert!(extra_data_len <= self.extra_data.len());
+        self.nodes.truncate(nodes_len);
+        self.extra_data.truncate(extra_data_len);
     }
 
     /// Returns the concrete type stored at `node_id`.

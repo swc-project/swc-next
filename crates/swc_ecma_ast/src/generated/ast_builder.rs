@@ -1390,20 +1390,6 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
-    pub fn binding_pattern_simple_assignment_target_call_expression(
-        &mut self,
-        span: Span,
-        callee: Expr,
-        arguments: TypedSubRange<Argument>,
-        optional: bool,
-        type_arguments: Option<TsTypeParameterInstantiation>,
-    ) -> BindingPattern {
-        BindingPattern::SimpleAssignmentTarget(SimpleAssignmentTarget::CallExpression(
-            self.call_expression(span, callee, arguments, optional, type_arguments)
-                .into(),
-        ))
-    }
-    #[inline]
     pub fn binding_pattern_simple_assignment_target_ts_as_expression(
         &mut self,
         span: Span,
@@ -1541,20 +1527,6 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
-    pub fn assignment_target_simple_assignment_target_call_expression(
-        &mut self,
-        span: Span,
-        callee: Expr,
-        arguments: TypedSubRange<Argument>,
-        optional: bool,
-        type_arguments: Option<TsTypeParameterInstantiation>,
-    ) -> AssignmentTarget {
-        AssignmentTarget::SimpleAssignmentTarget(SimpleAssignmentTarget::CallExpression(
-            self.call_expression(span, callee, arguments, optional, type_arguments)
-                .into(),
-        ))
-    }
-    #[inline]
     pub fn assignment_target_simple_assignment_target_ts_as_expression(
         &mut self,
         span: Span,
@@ -1659,20 +1631,6 @@ impl<'a> Ast<'a> {
     ) -> SimpleAssignmentTarget {
         SimpleAssignmentTarget::MemberExpression(
             self.member_expression(span, object, property, computed, optional)
-                .into(),
-        )
-    }
-    #[inline]
-    pub fn simple_assignment_target_call_expression(
-        &mut self,
-        span: Span,
-        callee: Expr,
-        arguments: TypedSubRange<Argument>,
-        optional: bool,
-        type_arguments: Option<TsTypeParameterInstantiation>,
-    ) -> SimpleAssignmentTarget {
-        SimpleAssignmentTarget::CallExpression(
-            self.call_expression(span, callee, arguments, optional, type_arguments)
                 .into(),
         )
     }
@@ -3286,22 +3244,6 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
-    pub fn for_statement_left_assignment_target_simple_assignment_target_call_expression(
-        &mut self,
-        span: Span,
-        callee: Expr,
-        arguments: TypedSubRange<Argument>,
-        optional: bool,
-        type_arguments: Option<TsTypeParameterInstantiation>,
-    ) -> ForStatementLeft {
-        ForStatementLeft::AssignmentTarget(AssignmentTarget::SimpleAssignmentTarget(
-            SimpleAssignmentTarget::CallExpression(
-                self.call_expression(span, callee, arguments, optional, type_arguments)
-                    .into(),
-            ),
-        ))
-    }
-    #[inline]
     pub fn for_statement_left_assignment_target_simple_assignment_target_ts_as_expression(
         &mut self,
         span: Span,
@@ -3957,22 +3899,6 @@ impl<'a> Ast<'a> {
         FormalParameterPattern::BindingPattern(BindingPattern::SimpleAssignmentTarget(
             SimpleAssignmentTarget::MemberExpression(
                 self.member_expression(span, object, property, computed, optional)
-                    .into(),
-            ),
-        ))
-    }
-    #[inline]
-    pub fn formal_parameter_pattern_binding_pattern_simple_assignment_target_call_expression(
-        &mut self,
-        span: Span,
-        callee: Expr,
-        arguments: TypedSubRange<Argument>,
-        optional: bool,
-        type_arguments: Option<TsTypeParameterInstantiation>,
-    ) -> FormalParameterPattern {
-        FormalParameterPattern::BindingPattern(BindingPattern::SimpleAssignmentTarget(
-            SimpleAssignmentTarget::CallExpression(
-                self.call_expression(span, callee, arguments, optional, type_arguments)
                     .into(),
             ),
         ))

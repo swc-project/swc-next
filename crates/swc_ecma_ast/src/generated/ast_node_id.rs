@@ -5683,9 +5683,6 @@ impl<'a> Ast<'a> {
             NodeKind::MemberExpression => {
                 BindingPatternData::SimpleAssignmentTarget(SimpleAssignmentTarget(node.0))
             }
-            NodeKind::CallExpression => {
-                BindingPatternData::SimpleAssignmentTarget(SimpleAssignmentTarget(node.0))
-            }
             NodeKind::TsAsExpression => {
                 BindingPatternData::SimpleAssignmentTarget(SimpleAssignmentTarget(node.0))
             }
@@ -5716,9 +5713,6 @@ impl<'a> Ast<'a> {
                 AssignmentTargetData::SimpleAssignmentTarget(SimpleAssignmentTarget(node.0))
             }
             NodeKind::MemberExpression => {
-                AssignmentTargetData::SimpleAssignmentTarget(SimpleAssignmentTarget(node.0))
-            }
-            NodeKind::CallExpression => {
                 AssignmentTargetData::SimpleAssignmentTarget(SimpleAssignmentTarget(node.0))
             }
             NodeKind::TsAsExpression => {
@@ -5753,9 +5747,6 @@ impl<'a> Ast<'a> {
             }
             NodeKind::MemberExpression => {
                 SimpleAssignmentTargetData::MemberExpression(MemberExpression(node.0))
-            }
-            NodeKind::CallExpression => {
-                SimpleAssignmentTargetData::CallExpression(CallExpression(node.0))
             }
             NodeKind::TsAsExpression => {
                 SimpleAssignmentTargetData::TsAsExpression(TsAsExpression(node.0))
@@ -5949,9 +5940,6 @@ impl<'a> Ast<'a> {
             NodeKind::MemberExpression => {
                 ForStatementLeftData::AssignmentTarget(AssignmentTarget(node.0))
             }
-            NodeKind::CallExpression => {
-                ForStatementLeftData::AssignmentTarget(AssignmentTarget(node.0))
-            }
             NodeKind::TsAsExpression => {
                 ForStatementLeftData::AssignmentTarget(AssignmentTarget(node.0))
             }
@@ -6045,9 +6033,6 @@ impl<'a> Ast<'a> {
                 FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
             }
             NodeKind::MemberExpression => {
-                FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
-            }
-            NodeKind::CallExpression => {
                 FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
             }
             NodeKind::TsAsExpression => {

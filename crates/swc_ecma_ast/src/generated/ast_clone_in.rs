@@ -187,9 +187,6 @@ impl<'a> CloneIn<'a> for SimpleAssignmentTarget {
             SimpleAssignmentTargetData::MemberExpression(it) => {
                 Self::MemberExpression(it.clone_in(ast))
             }
-            SimpleAssignmentTargetData::CallExpression(it) => {
-                Self::CallExpression(it.clone_in(ast))
-            }
             SimpleAssignmentTargetData::TsAsExpression(it) => {
                 Self::TsAsExpression(it.clone_in(ast))
             }

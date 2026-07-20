@@ -1743,9 +1743,6 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SimpleAssignmentTarget {
             SimpleAssignmentTargetData::MemberExpression(it) => {
                 <MemberExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            SimpleAssignmentTargetData::CallExpression(it) => {
-                <CallExpression as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
             SimpleAssignmentTargetData::TsAsExpression(it) => {
                 <TsAsExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
@@ -6715,9 +6712,6 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SimpleAssignmentTarge
             }
             SimpleAssignmentTargetData::MemberExpression(it) => {
                 <MemberExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            SimpleAssignmentTargetData::CallExpression(it) => {
-                <CallExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
             SimpleAssignmentTargetData::TsAsExpression(it) => {
                 <TsAsExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)

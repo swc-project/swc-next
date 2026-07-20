@@ -85,7 +85,7 @@ struct Collector<'table, 'ast, 'diagnostics> {
 }
 
 impl Collector<'_, '_, '_> {
-    fn register_export_name(&mut self, name: &str, span: Span) {
+    fn record_exported_name(&mut self, name: &str, span: Span) {
         if let Some(previous) = self.export_names.get(name).copied() {
             self.diagnostics.push(
                 Diagnostic::error(span, format!("Duplicate export '{}'", name))
@@ -94,6 +94,48 @@ impl Collector<'_, '_, '_> {
         } else {
             self.export_names.insert(name.into(), span);
         }
+    }
+
+    fn check_unresolved_exports(&mut self, name: &str, span: Span) -> Option<SymbolId> {
+        let symbol = self.symbols.find_in_scope(self.top_scope, name);
+        if symbol.is_none() {
+            self.diagnostics.push(Diagnostic::error(
+                span,
+                format!("Export '{name}' is not defined"),
+            ));
+        }
+        symbol
+    }
+
+    fn enter_export_specifier(
+        &mut self,
+        node: ExportSpecifier,
+        local_name: String,
+        exported_name: String,
+        source: Option<String>,
+        kind: ImportOrExportKind,
+        symbol_id: Option<SymbolId>,
+        ast: &Ast<'_>,
+    ) {
+        self.record_exported_name(&exported_name, node.span(ast));
+        self.record.exports.push(ExportRecord {
+            name_kind: ModuleRecordNameKind::Named,
+            name: exported_name,
+            symbol_id,
+            from_kind: if source.is_some() {
+                ModuleRecordNameKind::Named
+            } else {
+                ModuleRecordNameKind::None
+            },
+            from_name: if source.is_some() {
+                local_name
+            } else {
+                String::new()
+            },
+            specifier: source.unwrap_or_default(),
+            kind,
+            node: node.node_id(),
+        });
     }
 }
 
@@ -145,7 +187,7 @@ impl<'ast> Traverse<'ast> for Collector<'_, 'ast, '_> {
         } else {
             ImportOrExportKind::Type
         };
-        self.register_export_name(&name, node.span(ast));
+        self.record_exported_name(&name, node.span(ast));
         self.record.exports.push(ExportRecord {
             name_kind: ModuleRecordNameKind::Named,
             name,
@@ -247,33 +289,17 @@ impl<'ast> Traverse<'ast> for Collector<'_, 'ast, '_> {
             };
             let symbol_id = source
                 .is_none()
-                .then(|| self.symbols.find_in_scope(self.top_scope, &local_name))
+                .then(|| self.check_unresolved_exports(&local_name, specifier.span(ast)))
                 .flatten();
-            if source.is_none() && symbol_id.is_none() {
-                self.diagnostics.push(Diagnostic::error(
-                    specifier.span(ast),
-                    format!("Export '{}' is not defined", local_name),
-                ));
-            }
-            self.register_export_name(&exported_name, specifier.span(ast));
-            self.record.exports.push(ExportRecord {
-                name_kind: ModuleRecordNameKind::Named,
-                name: exported_name,
-                symbol_id,
-                from_kind: if source.is_some() {
-                    ModuleRecordNameKind::Named
-                } else {
-                    ModuleRecordNameKind::None
-                },
-                from_name: if source.is_some() {
-                    local_name
-                } else {
-                    String::new()
-                },
-                specifier: source.clone().unwrap_or_default(),
+            self.enter_export_specifier(
+                specifier,
+                local_name,
+                exported_name,
+                source.clone(),
                 kind,
-                node: specifier.node_id(),
-            });
+                symbol_id,
+                ast,
+            );
         }
         TraverseAction::Proceed
     }
@@ -305,7 +331,7 @@ impl<'ast> Traverse<'ast> for Collector<'_, 'ast, '_> {
         if has_binding {
             return;
         }
-        self.register_export_name("default", node.span(ctx.ast()));
+        self.record_exported_name("default", node.span(ctx.ast()));
         self.record.exports.push(ExportRecord {
             name_kind: ModuleRecordNameKind::Named,
             name: "default".into(),
@@ -329,7 +355,7 @@ impl<'ast> Traverse<'ast> for Collector<'_, 'ast, '_> {
         let ast = ctx.ast();
         let exported = node.exported(ast);
         if let Some(name) = exported {
-            self.register_export_name(&module_export_name(name, ast), node.span(ast));
+            self.record_exported_name(&module_export_name(name, ast), node.span(ast));
         }
         self.record.exports.push(ExportRecord {
             name_kind: exported.map_or(ModuleRecordNameKind::Star, |_| ModuleRecordNameKind::Named),

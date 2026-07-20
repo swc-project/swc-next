@@ -2,7 +2,7 @@ use oxc_index::IndexVec;
 use rustc_hash::FxHashMap;
 use swc_experimental_ecma_ast::{Atom, NodeId, ScopeId, Span, SymbolId};
 
-use crate::scope::ScopeTree;
+use crate::scope::{ScopeKind, ScopeTree};
 
 oxc_index::define_index_type! {
     pub struct ReferenceId = u32;
@@ -31,6 +31,9 @@ impl SymbolFlags {
     pub const CATCH_VAR: Self = Self(1 << 16);
     pub const EXPORTED: Self = Self(1 << 17);
     pub const DEFAULT_EXPORT: Self = Self(1 << 18);
+    pub const ANNEX_B_FUNCTION: Self = Self(1 << 19);
+    pub const CAPTURED: Self = Self(1 << 20);
+    pub const REASSIGNED: Self = Self(1 << 21);
 
     pub const VALUE_SPACE: Self = Self(
         Self::FUNCTION_SCOPED_VAR.0
@@ -54,6 +57,10 @@ impl SymbolFlags {
 
     pub const fn union(self, other: Self) -> Self {
         Self(self.0 | other.0)
+    }
+
+    pub const fn merge(self, other: Self) -> Self {
+        self.union(other)
     }
 
     pub const fn without(self, other: Self) -> Self {
@@ -87,7 +94,95 @@ impl SymbolFlags {
         self.intersects(Self::TYPE_SPACE)
     }
 
-    pub fn description(self) -> &'static str {
+    pub const fn value_space() -> Self {
+        Self::VALUE_SPACE
+    }
+
+    pub const fn type_space() -> Self {
+        Self::TYPE_SPACE
+    }
+
+    pub const fn block_var_excludes() -> Self {
+        Self::value_space()
+    }
+
+    pub const fn function_var_excludes() -> Self {
+        Self::value_space()
+            .without(Self::FUNCTION_SCOPED_VAR)
+            .without(Self::FUNCTION)
+    }
+
+    pub const fn function_excludes(allow_overload: bool) -> Self {
+        if allow_overload {
+            Self::value_space()
+                .without(Self::FUNCTION_SCOPED_VAR)
+                .without(Self::FUNCTION)
+                .without(Self::VALUE_MODULE)
+                .without(Self::CLASS)
+        } else {
+            Self::block_var_excludes()
+        }
+    }
+
+    pub const fn class_excludes() -> Self {
+        Self::value_space()
+            .merge(Self::type_space())
+            .without(Self::VALUE_MODULE)
+            .without(Self::INTERFACE)
+    }
+
+    pub const fn interface_excludes() -> Self {
+        Self::type_space()
+            .without(Self::INTERFACE)
+            .without(Self::CLASS)
+    }
+
+    pub const fn type_alias_excludes() -> Self {
+        Self::type_space()
+    }
+
+    pub const fn regular_enum_excludes() -> Self {
+        Self::value_space()
+            .merge(Self::type_space())
+            .without(Self::REGULAR_ENUM)
+            .without(Self::VALUE_MODULE)
+    }
+
+    pub const fn const_enum_excludes() -> Self {
+        Self::value_space()
+            .merge(Self::type_space())
+            .without(Self::CONST_ENUM)
+    }
+
+    pub const fn value_module_excludes() -> Self {
+        Self::value_space()
+            .without(Self::FUNCTION)
+            .without(Self::CLASS)
+            .without(Self::REGULAR_ENUM)
+            .without(Self::VALUE_MODULE)
+    }
+
+    pub const fn namespace_module_excludes() -> Self {
+        Self(0)
+    }
+
+    pub const fn parameter_excludes() -> Self {
+        Self::value_space().without(Self::FUNCTION_SCOPED_VAR)
+    }
+
+    pub const fn catch_param_excludes() -> Self {
+        Self::value_space()
+    }
+
+    pub const fn import_binding_excludes() -> Self {
+        Self::IMPORT.merge(Self::TYPE_IMPORT)
+    }
+
+    pub const fn type_parameter_excludes() -> Self {
+        Self::type_space().without(Self::TYPE_PARAMETER)
+    }
+
+    pub fn to_kind_string(self) -> &'static str {
         if self.intersects(Self::FUNCTION) {
             "function"
         } else if self.intersects(Self::CLASS) {
@@ -132,13 +227,24 @@ pub enum ReferenceKind {
     Type,
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct ReferenceFlags {
+    pub read: bool,
+    pub write: bool,
+    pub captured: bool,
+    pub dynamic: bool,
+    pub may_throw_tdz: bool,
+}
+
 #[derive(Clone, Debug)]
 pub struct Reference<'a> {
     pub name: Atom<'a>,
     pub scope: ScopeId,
     pub node: NodeId,
+    pub span: Span,
     pub kind: ReferenceKind,
     pub is_write: bool,
+    pub flags: ReferenceFlags,
     pub symbol_id: Option<SymbolId>,
 }
 
@@ -183,8 +289,16 @@ impl<'a> SymbolTable<'a> {
         self.symbols.iter_enumerated()
     }
 
+    pub fn symbol_len(&self) -> usize {
+        self.symbols.len()
+    }
+
     pub fn references(&self) -> impl Iterator<Item = (ReferenceId, &Reference<'a>)> {
         self.references.iter_enumerated()
+    }
+
+    pub fn reference_len(&self) -> usize {
+        self.references.len()
     }
 
     pub fn unresolved_references(&self) -> impl Iterator<Item = (ReferenceId, &Reference<'a>)> {
@@ -281,15 +395,25 @@ impl<'a> SymbolTable<'a> {
         name: Atom<'a>,
         scope: ScopeId,
         node: NodeId,
+        span: Span,
         kind: ReferenceKind,
+        is_read: bool,
         is_write: bool,
+        dynamic: bool,
     ) -> ReferenceId {
         self.references.push(Reference {
             name,
             scope,
             node,
+            span,
             kind,
             is_write,
+            flags: ReferenceFlags {
+                read: is_read,
+                write: is_write,
+                dynamic,
+                ..ReferenceFlags::default()
+            },
             symbol_id: None,
         })
     }
@@ -299,14 +423,60 @@ impl<'a> SymbolTable<'a> {
         scopes: &ScopeTree,
         reference_id: ReferenceId,
     ) -> Option<SymbolId> {
-        let reference = &self.references[reference_id];
-        let symbol_id = self.resolve(scopes, reference.scope, reference.name.as_str());
+        let reference_scope = self.references[reference_id].scope;
+        let reference_span = self.references[reference_id].span;
+        let symbol_id = self.resolve(
+            scopes,
+            reference_scope,
+            self.references[reference_id].name.as_str(),
+        );
         self.references[reference_id].symbol_id = symbol_id;
         if let Some(symbol_id) = symbol_id {
+            let captured = self.crosses_function_boundary(scopes, reference_scope, symbol_id);
+            self.references[reference_id].flags.captured = captured;
+            if captured {
+                self.symbols[symbol_id].flags =
+                    self.symbols[symbol_id].flags.union(SymbolFlags::CAPTURED);
+            }
+            if self.references[reference_id].flags.write {
+                self.symbols[symbol_id].flags =
+                    self.symbols[symbol_id].flags.union(SymbolFlags::REASSIGNED);
+            }
+            let symbol = &self.symbols[symbol_id];
+            let lexical = symbol.flags.intersects(
+                SymbolFlags::BLOCK_SCOPED_VAR
+                    .union(SymbolFlags::CLASS)
+                    .union(SymbolFlags::IMPORT)
+                    .union(SymbolFlags::TYPE_IMPORT),
+            );
+            let before_initialization = symbol
+                .declaration_spans
+                .first()
+                .is_some_and(|declaration| reference_span.start < declaration.start);
+            self.references[reference_id].flags.may_throw_tdz =
+                lexical && (captured || before_initialization);
             self.symbols[symbol_id].references.push(reference_id);
         } else {
             self.unresolved.push(reference_id);
         }
         symbol_id
+    }
+
+    fn crosses_function_boundary(
+        &self,
+        scopes: &ScopeTree,
+        reference_scope: ScopeId,
+        symbol_id: SymbolId,
+    ) -> bool {
+        let symbol_scope = self.symbols[symbol_id].scope;
+        for scope in scopes.ancestors(reference_scope) {
+            if scope == symbol_scope {
+                return false;
+            }
+            if scopes.get(scope).kind == ScopeKind::Function {
+                return true;
+            }
+        }
+        false
     }
 }

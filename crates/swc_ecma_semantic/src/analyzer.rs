@@ -18,6 +18,16 @@ struct BindingContext {
     flags: SymbolFlags,
     excludes: SymbolFlags,
     target: ScopeId,
+    export_state: ExportState,
+    ambient: bool,
+}
+
+#[derive(Clone, Copy, Default, Eq, PartialEq)]
+enum ExportState {
+    #[default]
+    None,
+    Named,
+    Default,
 }
 
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -26,6 +36,13 @@ enum PrivateElementKind {
     Method,
     Getter,
     Setter,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum SuperCallValidity {
+    Valid,
+    NotInConstructor,
+    NoExtends,
 }
 
 struct SemanticBuilder<'a> {
@@ -42,7 +59,7 @@ struct SemanticBuilder<'a> {
     iteration_depth: u32,
     control_frames: Vec<(u32, u32, usize)>,
     labels: Vec<(Atom<'a>, bool, Span)>,
-    is_module: bool,
+    ambient: bool,
     diagnostics: Vec<Diagnostic>,
 }
 
@@ -51,7 +68,7 @@ impl<'a> SemanticBuilder<'a> {
         let scopes = ScopeTree::new(
             program.node_id(),
             program.source_type(ast) == SourceType::Module,
-            body_has_use_strict(program.body(ast), ast),
+            has_use_strict_directive(program.body(ast), ast),
         );
         let current_scope = scopes.top_level_scope_id();
         let mut node_scopes = vec![current_scope; ast.node_count()];
@@ -71,7 +88,7 @@ impl<'a> SemanticBuilder<'a> {
             iteration_depth: 0,
             control_frames: Vec::new(),
             labels: Vec::new(),
-            is_module: program.source_type(ast) == SourceType::Module,
+            ambient: ast.lang() == Lang::Dts,
             diagnostics: Vec::new(),
         }
     }
@@ -93,16 +110,16 @@ impl<'a> SemanticBuilder<'a> {
         }
     }
 
-    fn open_scope(&mut self, node: NodeId, kind: ScopeKind, flags: ScopeFlags) {
+    fn push_scope(&mut self, node: NodeId, kind: ScopeKind, flags: ScopeFlags) {
         self.enter_scope(node, kind, flags, 1);
     }
 
-    fn open_expression_scope(&mut self, node: NodeId, body_kind: ScopeKind, flags: ScopeFlags) {
-        self.open_scope(node, ScopeKind::ExpressionName, flags);
+    fn expr_name_scope(&mut self, node: NodeId, body_kind: ScopeKind, flags: ScopeFlags) {
+        self.push_scope(node, ScopeKind::ExpressionName, flags);
         self.enter_scope(node, body_kind, flags, 2);
     }
 
-    fn close_scope(&mut self, node: NodeId) {
+    fn exit_scope(&mut self, node: NodeId) {
         let Some(&(frame_node, count)) = self.scope_frames.last() else {
             return;
         };
@@ -111,17 +128,32 @@ impl<'a> SemanticBuilder<'a> {
         }
         self.scope_frames.pop();
         for _ in 0..count {
-            self.current_scope = self
-                .scopes
-                .get(self.current_scope)
-                .parent
-                .expect("a semantic child scope always has a parent");
+            self.pop_scope();
         }
+    }
+
+    fn pop_scope(&mut self) {
+        self.current_scope = self
+            .current_scope()
+            .parent
+            .expect("a semantic child scope always has a parent");
+    }
+
+    fn current_scope(&self) -> &crate::scope::Scope {
+        self.scopes.get(self.current_scope)
+    }
+
+    fn current_hoist_scope_id(&self) -> ScopeId {
+        self.current_scope().hoist_target
+    }
+
+    fn is_strict(&self) -> bool {
+        self.current_scope().flags.strict
     }
 
     fn inherited_flags(&self) -> ScopeFlags {
         ScopeFlags {
-            strict: self.scopes.get(self.current_scope).flags.strict,
+            strict: self.is_strict(),
         }
     }
 
@@ -153,27 +185,56 @@ impl<'a> SemanticBuilder<'a> {
         &self.labels[start..]
     }
 
-    fn check_module_declaration_position(
+    fn is_inside_breakable(&self) -> bool {
+        self.breakable_depth > 0
+    }
+
+    fn is_inside_iteration(&self) -> bool {
+        self.iteration_depth > 0
+    }
+
+    fn find_label(&self, name: Atom<'a>) -> bool {
+        self.visible_labels()
+            .iter()
+            .any(|(candidate, _, _)| *candidate == name)
+    }
+
+    fn find_label_for_continue(&self, name: Atom<'a>) -> Option<bool> {
+        self.visible_labels()
+            .iter()
+            .rev()
+            .find(|(candidate, _, _)| *candidate == name)
+            .map(|(_, iteration, _)| *iteration)
+    }
+
+    fn check_label_identifier(&mut self, label: LabelIdentifier, ast: &Ast<'a>) {
+        if self.is_strict() {
+            check_strict_reserved(
+                &mut self.diagnostics,
+                label.name(ast).as_str(),
+                label.span(ast),
+                "a label",
+            );
+        }
+    }
+
+    fn enter_label_identifier(&mut self, label: LabelIdentifier, ast: &Ast<'a>) {
+        self.check_label_identifier(label, ast);
+    }
+
+    fn check_import_export_position(
         &mut self,
         node: impl AstNode + GetSpan,
         description: &str,
         ctx: &TraverseCtx<'_, 'a>,
     ) {
-        let valid_parent = ctx.parent().is_some_and(|parent| {
-            matches!(
-                ctx.node_kind(parent),
-                NodeKind::Program | NodeKind::TsModuleBlock
-            )
-        });
-        if !valid_parent {
+        if !is_at_program_level(ctx) {
             self.diagnostics.push(Diagnostic::error(
                 node.span(ctx.ast()),
                 format!("{description} may only appear at the top level"),
             ));
-        } else if !self.is_module
-            && ctx
-                .parent()
-                .is_some_and(|parent| ctx.node_kind(parent) == NodeKind::Program)
+        } else if self.scopes.get(self.scopes.top_level_scope_id()).kind != ScopeKind::Module
+            && !is_in_ts_namespace(ctx)
         {
             self.diagnostics.push(Diagnostic::error(
                 node.span(ctx.ast()),
@@ -182,7 +243,7 @@ impl<'a> SemanticBuilder<'a> {
         }
     }
 
-    fn check_import_attributes(
+    fn check_duplicate_with_clause_attributes(
         &mut self,
         attributes: TypedSubRange<ImportAttribute>,
         ast: &Ast<'a>,
@@ -192,7 +253,7 @@ impl<'a> SemanticBuilder<'a> {
             let attribute = attributes
                 .get_node(ast, index)
                 .expect("import attribute ranges contain their nodes");
-            let Some(key) = module_export_name_str(attribute.key(ast), ast) else {
+            let Some(key) = get_module_export_name(attribute.key(ast), ast) else {
                 continue;
             };
             if let Some((_, previous)) = seen.iter().find(|(existing, _)| existing == &key) {
@@ -206,12 +267,20 @@ impl<'a> SemanticBuilder<'a> {
         }
     }
 
-    fn push_binding(&mut self, node: NodeId, context: BindingContext) {
+    fn set_binding_context(&mut self, node: NodeId, context: BindingContext) {
+        self.push_saved_context(node, context);
+    }
+
+    fn push_saved_context(&mut self, node: NodeId, context: BindingContext) {
         self.binding_frames.push(node);
         self.binding_contexts.push(context);
     }
 
-    fn pop_binding(&mut self, node: NodeId) {
+    fn exit_binding_context(&mut self, node: NodeId) {
+        self.pop_saved_context(node);
+    }
+
+    fn pop_saved_context(&mut self, node: NodeId) {
         if self.binding_frames.last().copied() == Some(node) {
             self.binding_frames.pop();
             self.binding_contexts.pop();
@@ -225,6 +294,9 @@ impl<'a> SemanticBuilder<'a> {
         let Some(mut binding) = self.binding_contexts.last().copied() else {
             return;
         };
+        if binding.ambient || self.ambient {
+            binding.flags = binding.flags.union(SymbolFlags::AMBIENT);
+        }
         if ctx
             .ancestors()
             .skip(1)
@@ -246,9 +318,14 @@ impl<'a> SemanticBuilder<'a> {
                     NodeKind::ExportDefaultDeclaration => Some(Some(true)),
                     _ => None,
                 });
-        if let Some(Some(is_default)) = export_kind {
+        binding.export_state = match export_kind {
+            Some(Some(true)) => ExportState::Default,
+            Some(Some(false)) => ExportState::Named,
+            _ => binding.export_state,
+        };
+        if binding.export_state != ExportState::None {
             binding.flags = binding.flags.union(SymbolFlags::EXPORTED);
-            if is_default {
+            if binding.export_state == ExportState::Default {
                 binding.flags = binding.flags.union(SymbolFlags::DEFAULT_EXPORT);
             }
         }
@@ -269,25 +346,17 @@ impl<'a> SemanticBuilder<'a> {
             node.span(ctx.ast()),
         );
         if binding.flags.is_hoisting_var() {
-            for scope in self.scopes.ancestors(self.current_scope) {
-                if scope == binding.target {
-                    break;
-                }
-                if let Some(existing) = self.symbols.find_in_scope(scope, name.as_str()) {
-                    let symbol = self.symbols.symbol(existing);
-                    if symbol.flags.is_block_scoped_like() {
-                        self.diagnostics.push(
-                            Diagnostic::error(
-                                node.span(ctx.ast()),
-                                format!(
-                                    "Variable '{}' conflicts with a lexical declaration",
-                                    name.as_str()
-                                ),
-                            )
-                            .with_label(symbol.declaration_spans[0], "lexical declaration is here"),
-                        );
-                    }
-                }
+            if let Some(previous) = self.find_hoisting_conflict(name.as_str(), binding.target) {
+                self.report(
+                    Diagnostic::error(
+                        node.span(ctx.ast()),
+                        format!(
+                            "Variable '{}' conflicts with a lexical declaration",
+                            name.as_str()
+                        ),
+                    )
+                    .with_label(previous, "lexical declaration is here"),
+                );
             }
             self.symbols.register_hoist(
                 &self.scopes,
@@ -329,13 +398,7 @@ impl<'a> SemanticBuilder<'a> {
                 }
             });
         if let Some(previous) = result.conflict.filter(|_| !annex_b_duplicate_function) {
-            self.diagnostics.push(
-                Diagnostic::error(
-                    node.span(ctx.ast()),
-                    format!("Identifier '{}' has already been declared", name.as_str()),
-                )
-                .with_label(previous, "previous declaration is here"),
-            );
+            self.report_redeclaration(name.as_str(), node.span(ctx.ast()), previous);
         }
 
         let strict = self.scopes.get(self.current_scope).flags.strict;
@@ -348,40 +411,76 @@ impl<'a> SemanticBuilder<'a> {
                 ),
             ));
         }
-        if strict && is_strict_reserved(name.as_str()) {
-            self.diagnostics.push(Diagnostic::error(
+        if strict {
+            check_strict_reserved(
+                &mut self.diagnostics,
+                name.as_str(),
                 node.span(ctx.ast()),
-                format!(
-                    "'{}' is reserved in strict mode and cannot be used as a binding identifier",
-                    name.as_str()
-                ),
-            ));
+                "a binding identifier",
+            );
         }
     }
 
+    fn find_hoisting_conflict(&self, name: &str, target: ScopeId) -> Option<Span> {
+        for scope in self.scopes.ancestors(self.current_scope) {
+            if scope == target {
+                break;
+            }
+            if let Some(existing) = self.symbols.find_in_scope(scope, name) {
+                let symbol = self.symbols.symbol(existing);
+                if symbol.flags.is_block_scoped_like() {
+                    return symbol.declaration_spans.first().copied();
+                }
+            }
+        }
+        None
+    }
+
+    fn report_redeclaration(&mut self, name: &str, span: Span, previous: Span) {
+        self.report(
+            Diagnostic::error(
+                span,
+                format!("Identifier '{name}' has already been declared"),
+            )
+            .with_label(previous, "previous declaration is here"),
+        );
+    }
+
+    fn report(&mut self, diagnostic: Diagnostic) {
+        self.diagnostics.push(diagnostic);
+    }
+
+    fn poison_visible_scopes(&mut self, start: ScopeId) {
+        let scopes = self.scopes.ancestors(start).collect::<Vec<_>>();
+        for scope in scopes {
+            self.scopes.get_mut(scope).rename_unsafe = true;
+        }
+    }
+
+    fn mark_direct_eval(&mut self) {
+        self.scopes.get_mut(self.current_scope).has_direct_eval = true;
+        self.poison_visible_scopes(self.current_scope);
+    }
+
     fn function_is_strict(&self, function: Function, ast: &Ast<'a>) -> bool {
-        self.inherited_flags().strict
-            || function
-                .body(ast)
-                .is_some_and(|body| body_has_use_strict(body.body(ast), ast))
+        self.inherited_flags().strict || self.has_retroactive_use_strict(function.body(ast), ast)
+    }
+
+    fn has_retroactive_use_strict(&self, body: Option<FunctionBody>, ast: &Ast<'a>) -> bool {
+        body.is_some_and(|body| has_use_strict_directive(body.body(ast), ast))
     }
 
     fn arrow_is_strict(&self, arrow: ArrowFunctionExpression, ast: &Ast<'a>) -> bool {
         self.inherited_flags().strict
             || match ast.arrow_function_body_data(arrow.body(ast)) {
                 ArrowFunctionBodyData::FunctionBody(body) => {
-                    body_has_use_strict(body.body(ast), ast)
+                    has_use_strict_directive(body.body(ast), ast)
                 }
                 ArrowFunctionBodyData::Expr(_) => false,
             }
     }
 
-    fn check_for_in_of_initializer(
-        &mut self,
-        left: ForStatementLeft,
-        ast: &Ast<'a>,
-        allow_annex_b_var_initializer: bool,
-    ) {
+    fn check_for_in_of_initializer(&mut self, left: ForStatementLeft, ast: &Ast<'a>) {
         let ForStatementLeftData::VariableDeclaration(declaration) =
             ast.for_statement_left_data(left)
         else {
@@ -398,14 +497,7 @@ impl<'a> SemanticBuilder<'a> {
         let declarator = declarators
             .get_node(ast, 0)
             .expect("a one-element declarator range contains its node");
-        if declarator.init(ast).is_some()
-            && !(allow_annex_b_var_initializer
-                && declaration.kind(ast) == VariableKind::Var
-                && matches!(
-                    ast.binding_pattern_data(declarator.id(ast)),
-                    BindingPatternData::BindingIdentifier(_)
-                ))
-        {
+        if declarator.init(ast).is_some() {
             self.diagnostics.push(Diagnostic::error(
                 declarator.span(ast),
                 "A for-in/of variable declaration may not have an initializer",
@@ -413,7 +505,7 @@ impl<'a> SemanticBuilder<'a> {
         }
     }
 
-    fn super_call_is_valid(&self, ctx: &TraverseCtx<'_, 'a>) -> bool {
+    fn super_call_validity(&self, ctx: &TraverseCtx<'_, 'a>) -> SuperCallValidity {
         let mut ancestors = ctx.ancestors().skip(1);
         while let Some(ancestor) = ancestors.next() {
             match ctx.node_kind(ancestor) {
@@ -425,25 +517,29 @@ impl<'a> SemanticBuilder<'a> {
                             .kind(ctx.ast())
                             == MethodDefinitionKind::Constructor
                     {
-                        return ancestors.any(|ancestor| {
+                        return if ancestors.any(|ancestor| {
                             ctx.node_kind(ancestor) == NodeKind::Class
                                 && unsafe { Class::from_node_id_unchecked(ancestor) }
                                     .super_class(ctx.ast())
                                     .is_some()
-                        });
+                        }) {
+                            SuperCallValidity::Valid
+                        } else {
+                            SuperCallValidity::NoExtends
+                        };
                     }
-                    return false;
+                    return SuperCallValidity::NotInConstructor;
                 }
                 NodeKind::PropertyDefinition | NodeKind::StaticBlock | NodeKind::Program => {
-                    return false;
+                    return SuperCallValidity::NotInConstructor;
                 }
                 _ => {}
             }
         }
-        false
+        SuperCallValidity::NotInConstructor
     }
 
-    fn super_property_is_valid(&self, ctx: &TraverseCtx<'_, 'a>) -> bool {
+    fn is_super_property_valid(&self, ctx: &TraverseCtx<'_, 'a>) -> bool {
         let mut ancestors = ctx.ancestors().skip(1);
         while let Some(ancestor) = ancestors.next() {
             match ctx.node_kind(ancestor) {
@@ -467,23 +563,12 @@ impl<'a> SemanticBuilder<'a> {
         false
     }
 
-    fn check_lexical_declaration_statement(&mut self, statement: Stmt, ast: &Ast<'a>) {
-        let StmtData::Declaration(declaration) = ast.stmt_data(statement) else {
-            return;
-        };
-        let invalid = match ast.decl_data(declaration) {
-            DeclData::VariableDeclaration(declaration) => {
-                declaration.kind(ast) != VariableKind::Var
-            }
-            DeclData::Class(_) => true,
-            _ => false,
-        };
-        if invalid {
-            self.diagnostics.push(Diagnostic::error(
-                statement.span(ast),
-                "A lexical declaration is not allowed in a single-statement context",
-            ));
-        }
+    fn enter(&mut self, node_id: NodeId) {
+        self.node_scopes[node_id.index()] = self.current_scope;
+    }
+
+    fn exit(&mut self, node_id: NodeId) {
+        debug_assert!(node_id.index() < self.node_scopes.len());
     }
 }
 
@@ -494,8 +579,12 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         _kind: NodeKind,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.node_scopes[node_id.index()] = self.current_scope;
+        self.enter(node_id);
         TraverseAction::Proceed
+    }
+
+    fn exit_node(&mut self, node_id: NodeId, _kind: NodeKind, _ctx: &mut TraverseCtx<'_, 'a>) {
+        self.exit(node_id);
     }
 
     fn enter_function(&mut self, node: Function, ctx: &mut TraverseCtx<'_, 'a>) -> TraverseAction {
@@ -531,8 +620,9 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                 | NodeKind::BlockStatement
                 | NodeKind::SwitchCase
                 | NodeKind::ExportNamedDeclaration
-                | NodeKind::ExportDefaultDeclaration => !through_label || annex_b_function,
-                NodeKind::IfStatement => annex_b_function && !through_label,
+                | NodeKind::ExportDefaultDeclaration
+                | NodeKind::TsModuleBlock => !strict || !through_label,
+                NodeKind::IfStatement => !strict && !through_label,
                 _ => false,
             });
             if !valid {
@@ -542,28 +632,18 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                 ));
             }
         }
-        if node.body(ctx.ast()).is_some_and(|body| {
-            body_has_use_strict(body.body(ctx.ast()), ctx.ast())
-                && formal_parameters_are_non_simple(node.params(ctx.ast()), ctx.ast())
-        }) {
-            self.diagnostics.push(Diagnostic::error(
-                node.params(ctx.ast()).span(ctx.ast()),
-                "Illegal 'use strict' directive in a function with non-simple parameters",
-            ));
-        }
         let flags = ScopeFlags { strict };
         let function_type = node.function_type(ctx.ast());
-        let binding_target =
-            if function_type == FunctionType::FunctionExpression && node.id(ctx.ast()).is_some() {
-                self.open_expression_scope(node.node_id(), ScopeKind::Function, flags);
-                self.scopes
-                    .get(self.current_scope)
-                    .parent
-                    .expect("named function expression has a name scope")
-            } else {
-                self.open_scope(node.node_id(), ScopeKind::Function, flags);
-                outer_scope
-            };
+        let binding_target = if is_named_function_expression(node, ctx.ast()) {
+            self.expr_name_scope(node.node_id(), ScopeKind::Function, flags);
+            self.scopes
+                .get(self.current_scope)
+                .parent
+                .expect("named function expression has a name scope")
+        } else {
+            self.push_scope(node.node_id(), ScopeKind::Function, flags);
+            outer_scope
+        };
         let block_lexical_function = function_type == FunctionType::FunctionDeclaration
             && (self.scopes.get(outer_scope).kind == ScopeKind::Module
                 || self.scopes.get(outer_scope).kind == ScopeKind::Block);
@@ -576,33 +656,37 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             SymbolFlags::default()
         } else if block_lexical_function {
             if annex_b_block_function {
-                SymbolFlags::VALUE_SPACE.without(SymbolFlags::FUNCTION)
+                SymbolFlags::function_excludes(true)
             } else {
-                SymbolFlags::VALUE_SPACE
+                SymbolFlags::function_excludes(false)
             }
         } else {
-            SymbolFlags::VALUE_SPACE
-                .without(SymbolFlags::FUNCTION_SCOPED_VAR)
-                .without(SymbolFlags::FUNCTION)
+            SymbolFlags::function_var_excludes()
         };
-        self.push_binding(
+        let mut symbol_flags = if block_lexical_function {
+            SymbolFlags::FUNCTION.union(SymbolFlags::BLOCK_SCOPED_VAR)
+        } else {
+            SymbolFlags::FUNCTION
+        };
+        if annex_b_block_function {
+            symbol_flags = symbol_flags.union(SymbolFlags::ANNEX_B_FUNCTION);
+        }
+        self.set_binding_context(
             node.node_id(),
             BindingContext {
-                flags: if block_lexical_function {
-                    SymbolFlags::FUNCTION.union(SymbolFlags::BLOCK_SCOPED_VAR)
-                } else {
-                    SymbolFlags::FUNCTION
-                },
+                flags: symbol_flags,
                 excludes,
                 target: binding_target,
+                export_state: ExportState::None,
+                ambient: node.declare(ctx.ast()) || self.ambient,
             },
         );
         TraverseAction::Proceed
     }
 
     fn exit_function(&mut self, node: Function, _ctx: &mut TraverseCtx<'_, 'a>) {
-        self.pop_binding(node.node_id());
-        self.close_scope(node.node_id());
+        self.exit_binding_context(node.node_id());
+        self.exit_scope(node.node_id());
         self.exit_control_boundary();
     }
 
@@ -613,18 +697,43 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
     ) -> TraverseAction {
         self.enter_control_boundary();
         let strict = self.arrow_is_strict(node, ctx.ast());
-        if matches!(
-            ctx.ast().arrow_function_body_data(node.body(ctx.ast())),
-            ArrowFunctionBodyData::FunctionBody(body)
-                if body_has_use_strict(body.body(ctx.ast()), ctx.ast())
-                    && formal_parameters_are_non_simple(node.params(ctx.ast()), ctx.ast())
-        ) {
-            self.diagnostics.push(Diagnostic::error(
-                node.params(ctx.ast()).span(ctx.ast()),
-                "Illegal 'use strict' directive in an arrow function with non-simple parameters",
-            ));
+        self.push_scope(node.node_id(), ScopeKind::Function, ScopeFlags { strict });
+        TraverseAction::Proceed
+    }
+
+    fn enter_directive(
+        &mut self,
+        node: Directive,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        if node.value(ctx.ast()) != "use strict" {
+            return TraverseAction::Proceed;
         }
-        self.open_scope(node.node_id(), ScopeKind::Function, ScopeFlags { strict });
+        let params = ctx
+            .ancestors()
+            .skip(1)
+            .find_map(|ancestor| match ctx.node_kind(ancestor) {
+                NodeKind::Function => {
+                    Some(unsafe { Function::from_node_id_unchecked(ancestor) }.params(ctx.ast()))
+                }
+                NodeKind::ArrowFunctionExpression => Some(
+                    unsafe { ArrowFunctionExpression::from_node_id_unchecked(ancestor) }
+                        .params(ctx.ast()),
+                ),
+                NodeKind::Program => None,
+                _ => return None,
+            });
+        if let Some(params) =
+            params.filter(|params| formal_parameters_are_non_simple(*params, ctx.ast()))
+        {
+            self.diagnostics.push(
+                Diagnostic::error(
+                    node.span(ctx.ast()),
+                    "Illegal 'use strict' directive in function with non-simple parameter list",
+                )
+                .with_label(params.span(ctx.ast()), "non-simple parameters"),
+            );
+        }
         TraverseAction::Proceed
     }
 
@@ -633,7 +742,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: ArrowFunctionExpression,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) {
-        self.close_scope(node.node_id());
+        self.exit_scope(node.node_id());
         self.exit_control_boundary();
     }
 
@@ -649,23 +758,25 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                 FormalParameterKind::UniqueFormalParameters
                     | FormalParameterKind::ArrowFormalParameters
             ) {
-            SymbolFlags::VALUE_SPACE
+            SymbolFlags::block_var_excludes()
         } else {
-            SymbolFlags::VALUE_SPACE.without(SymbolFlags::FUNCTION_SCOPED_VAR)
+            SymbolFlags::parameter_excludes()
         };
-        self.push_binding(
+        self.set_binding_context(
             node.node_id(),
             BindingContext {
                 flags: SymbolFlags::FUNCTION_SCOPED_VAR.union(SymbolFlags::PARAMETER),
                 excludes,
                 target: self.current_scope,
+                export_state: ExportState::None,
+                ambient: self.ambient,
             },
         );
         TraverseAction::Proceed
     }
 
     fn exit_formal_parameters(&mut self, node: FormalParameters, _ctx: &mut TraverseCtx<'_, 'a>) {
-        self.pop_binding(node.node_id());
+        self.exit_binding_context(node.node_id());
     }
 
     fn enter_block_statement(
@@ -674,22 +785,21 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
         if self.catch_bodies.last().copied() != Some(node.node_id()) {
-            self.open_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
+            self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
         }
         TraverseAction::Proceed
     }
 
     fn exit_block_statement(&mut self, node: BlockStatement, _ctx: &mut TraverseCtx<'_, 'a>) {
-        self.close_scope(node.node_id());
+        self.exit_scope(node.node_id());
     }
 
     fn enter_for_statement(
         &mut self,
         node: ForStatement,
-        ctx: &mut TraverseCtx<'_, 'a>,
+        _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.check_lexical_declaration_statement(node.body(ctx.ast()), ctx.ast());
-        self.open_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
+        self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
         self.breakable_depth += 1;
         self.iteration_depth += 1;
         TraverseAction::Proceed
@@ -698,7 +808,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
     fn exit_for_statement(&mut self, node: ForStatement, _ctx: &mut TraverseCtx<'_, 'a>) {
         self.breakable_depth -= 1;
         self.iteration_depth -= 1;
-        self.close_scope(node.node_id());
+        self.exit_scope(node.node_id());
     }
 
     fn enter_for_in_statement(
@@ -706,21 +816,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: ForInStatement,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        if self.inherited_flags().strict
-            && for_left_is_call_expression(node.left(_ctx.ast()), _ctx.ast())
-        {
-            self.diagnostics.push(Diagnostic::error(
-                node.left(_ctx.ast()).span(_ctx.ast()),
-                "A call expression cannot be used as a for-in target in strict mode",
-            ));
-        }
-        self.check_for_in_of_initializer(
-            node.left(_ctx.ast()),
-            _ctx.ast(),
-            !self.inherited_flags().strict,
-        );
-        self.check_lexical_declaration_statement(node.body(_ctx.ast()), _ctx.ast());
-        self.open_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
+        self.check_for_in_of_initializer(node.left(_ctx.ast()), _ctx.ast());
+        self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
         self.breakable_depth += 1;
         self.iteration_depth += 1;
         self.write_targets
@@ -732,7 +829,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         self.write_targets.pop();
         self.breakable_depth -= 1;
         self.iteration_depth -= 1;
-        self.close_scope(node.node_id());
+        self.exit_scope(node.node_id());
     }
 
     fn enter_for_of_statement(
@@ -740,17 +837,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: ForOfStatement,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        if self.inherited_flags().strict
-            && for_left_is_call_expression(node.left(_ctx.ast()), _ctx.ast())
-        {
-            self.diagnostics.push(Diagnostic::error(
-                node.left(_ctx.ast()).span(_ctx.ast()),
-                "A call expression cannot be used as a for-of target in strict mode",
-            ));
-        }
-        self.check_for_in_of_initializer(node.left(_ctx.ast()), _ctx.ast(), false);
-        self.check_lexical_declaration_statement(node.body(_ctx.ast()), _ctx.ast());
-        self.open_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
+        self.check_for_in_of_initializer(node.left(_ctx.ast()), _ctx.ast());
+        self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
         self.breakable_depth += 1;
         self.iteration_depth += 1;
         self.write_targets
@@ -762,7 +850,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         self.write_targets.pop();
         self.breakable_depth -= 1;
         self.iteration_depth -= 1;
-        self.close_scope(node.node_id());
+        self.exit_scope(node.node_id());
     }
 
     fn enter_switch_statement(
@@ -770,7 +858,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: SwitchStatement,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.open_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
+        self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
         self.breakable_depth += 1;
         let mut default_span = None;
         for case_id in node.cases(_ctx.ast()).iter() {
@@ -795,15 +883,14 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
 
     fn exit_switch_statement(&mut self, node: SwitchStatement, _ctx: &mut TraverseCtx<'_, 'a>) {
         self.breakable_depth -= 1;
-        self.close_scope(node.node_id());
+        self.exit_scope(node.node_id());
     }
 
     fn enter_while_statement(
         &mut self,
-        node: WhileStatement,
-        ctx: &mut TraverseCtx<'_, 'a>,
+        _node: WhileStatement,
+        _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.check_lexical_declaration_statement(node.body(ctx.ast()), ctx.ast());
         self.breakable_depth += 1;
         self.iteration_depth += 1;
         TraverseAction::Proceed
@@ -816,10 +903,9 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
 
     fn enter_do_while_statement(
         &mut self,
-        node: DoWhileStatement,
-        ctx: &mut TraverseCtx<'_, 'a>,
+        _node: DoWhileStatement,
+        _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.check_lexical_declaration_statement(node.body(ctx.ast()), ctx.ast());
         self.breakable_depth += 1;
         self.iteration_depth += 1;
         TraverseAction::Proceed
@@ -835,18 +921,9 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: LabeledStatement,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.check_lexical_declaration_statement(node.body(ctx.ast()), ctx.ast());
         let label = node.label(ctx.ast());
         let name = label.name(ctx.ast());
-        if self.inherited_flags().strict
-            && !is_inside_decorator(ctx)
-            && is_strict_reserved(name.as_str())
-        {
-            self.diagnostics.push(Diagnostic::error(
-                label.span(ctx.ast()),
-                format!("'{}' is reserved in strict mode", name.as_str()),
-            ));
-        }
+        self.enter_label_identifier(label, ctx.ast());
         if let Some((_, _, previous)) = self
             .visible_labels()
             .iter()
@@ -861,14 +938,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                 .with_label(*previous, "previous label is here"),
             );
         }
-        let iteration = matches!(
-            ctx.ast().stmt_data(node.body(ctx.ast())),
-            StmtData::DoWhileStatement(_)
-                | StmtData::ForStatement(_)
-                | StmtData::ForInStatement(_)
-                | StmtData::ForOfStatement(_)
-                | StmtData::WhileStatement(_)
-        );
+        let iteration = is_iteration(node.body(ctx.ast()), ctx.ast());
         self.labels.push((name, iteration, label.span(ctx.ast())));
         TraverseAction::Proceed
     }
@@ -884,17 +954,13 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
     ) -> TraverseAction {
         if let Some(label) = node.label(ctx.ast()) {
             let name = label.name(ctx.ast());
-            if !self
-                .visible_labels()
-                .iter()
-                .any(|(candidate, _, _)| *candidate == name)
-            {
+            if !self.find_label(name) {
                 self.diagnostics.push(Diagnostic::error(
                     node.span(ctx.ast()),
                     format!("Undefined label '{}'", name.as_str()),
                 ));
             }
-        } else if self.breakable_depth == 0 {
+        } else if !self.is_inside_breakable() {
             self.diagnostics.push(Diagnostic::error(
                 node.span(ctx.ast()),
                 "A 'break' statement can only be used within a loop or switch",
@@ -910,14 +976,9 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
     ) -> TraverseAction {
         if let Some(label) = node.label(ctx.ast()) {
             let name = label.name(ctx.ast());
-            match self
-                .visible_labels()
-                .iter()
-                .rev()
-                .find(|(candidate, _, _)| *candidate == name)
-            {
-                Some((_, true, _)) => {}
-                Some(_) => self.diagnostics.push(Diagnostic::error(
+            match self.find_label_for_continue(name) {
+                Some(true) => {}
+                Some(false) => self.diagnostics.push(Diagnostic::error(
                     node.span(ctx.ast()),
                     format!(
                         "Label '{}' does not denote an iteration statement",
@@ -929,7 +990,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                     format!("Undefined label '{}'", name.as_str()),
                 )),
             }
-        } else if self.iteration_depth == 0 {
+        } else if !self.is_inside_iteration() {
             self.diagnostics.push(Diagnostic::error(
                 node.span(ctx.ast()),
                 "A 'continue' statement can only be used within a loop",
@@ -943,25 +1004,14 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: WithStatement,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.check_lexical_declaration_statement(node.body(ctx.ast()), ctx.ast());
         if self.scopes.get(self.current_scope).flags.strict {
             self.diagnostics.push(Diagnostic::error(
                 node.span(ctx.ast()),
                 "'with' statements are not allowed in strict mode",
             ));
         }
-        TraverseAction::Proceed
-    }
-
-    fn enter_if_statement(
-        &mut self,
-        node: IfStatement,
-        ctx: &mut TraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        self.check_lexical_declaration_statement(node.consequent(ctx.ast()), ctx.ast());
-        if let Some(alternate) = node.alternate(ctx.ast()) {
-            self.check_lexical_declaration_statement(alternate, ctx.ast());
-        }
+        self.scopes.get_mut(self.current_scope).has_with = true;
+        self.poison_visible_scopes(self.current_scope);
         TraverseAction::Proceed
     }
 
@@ -970,7 +1020,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: YieldExpression,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        if is_inside_formal_parameters(ctx) {
+        if is_in_formal_parameters(ctx) {
             self.diagnostics.push(Diagnostic::error(
                 node.span(ctx.ast()),
                 "A yield expression is not allowed in formal parameters",
@@ -984,7 +1034,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: AwaitExpression,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        if is_inside_formal_parameters(ctx) {
+        if is_in_formal_parameters(ctx) {
             self.diagnostics.push(Diagnostic::error(
                 node.span(ctx.ast()),
                 "An await expression is not allowed in formal parameters",
@@ -1015,14 +1065,13 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
         let name = node.name(ctx.ast());
-        if self.inherited_flags().strict
-            && !is_inside_decorator(ctx)
-            && is_strict_reserved(name.as_str())
-        {
-            self.diagnostics.push(Diagnostic::error(
+        if self.inherited_flags().strict {
+            check_strict_reserved(
+                &mut self.diagnostics,
+                name.as_str(),
                 node.span(ctx.ast()),
-                format!("'{}' is reserved in strict mode", name.as_str()),
-            ));
+                "an identifier reference",
+            );
         }
         if name == "arguments" && !is_arguments_available(ctx) {
             self.diagnostics.push(Diagnostic::error(
@@ -1038,30 +1087,26 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: CallExpression,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
+        if direct_eval_callee(node, ctx.ast()) {
+            self.mark_direct_eval();
+        }
         if matches!(
             ctx.ast().expr_data(node.callee(ctx.ast())),
             ExprData::Super(_)
-        ) && !self.super_call_is_valid(ctx)
-        {
-            self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
-                "'super()' is only valid in a derived class constructor",
-            ));
-        }
-        TraverseAction::Proceed
-    }
-
-    fn enter_super(&mut self, node: Super, ctx: &mut TraverseCtx<'_, 'a>) -> TraverseAction {
-        if !ctx.parent().is_some_and(|parent| {
-            matches!(
-                ctx.node_kind(parent),
-                NodeKind::CallExpression | NodeKind::MemberExpression
-            )
-        }) {
-            self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
-                "'super' must be used in a call or property access",
-            ));
+        ) {
+            let message = match self.super_call_validity(ctx) {
+                SuperCallValidity::Valid => None,
+                SuperCallValidity::NotInConstructor => {
+                    Some("'super()' is only valid in a derived class constructor")
+                }
+                SuperCallValidity::NoExtends => {
+                    Some("'super()' cannot be used in a class without an extends clause")
+                }
+            };
+            if let Some(message) = message {
+                self.diagnostics
+                    .push(Diagnostic::error(node.span(ctx.ast()), message));
+            }
         }
         TraverseAction::Proceed
     }
@@ -1084,7 +1129,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                     node.span(ctx.ast()),
                     "A private name may not be accessed on 'super'",
                 ));
-            } else if !self.super_property_is_valid(ctx) {
+            } else if !self.is_super_property_valid(ctx) {
                 self.diagnostics.push(Diagnostic::error(
                     node.span(ctx.ast()),
                     "A super property is only valid inside a method or class field",
@@ -1154,6 +1199,13 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: StringLiteral,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
+        if ctx
+            .ancestors()
+            .skip(1)
+            .any(|ancestor| is_type_node(ctx.node_kind(ancestor)))
+        {
+            return TraverseAction::Proceed;
+        }
         if self.inherited_flags().strict && string_has_legacy_escape(node.raw(ctx.ast()).as_str()) {
             self.diagnostics.push(Diagnostic::error(
                 node.span(ctx.ast()),
@@ -1168,13 +1220,16 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: NumericLiteral,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
+        if ctx
+            .ancestors()
+            .skip(1)
+            .any(|ancestor| is_type_node(ctx.node_kind(ancestor)))
+        {
+            return TraverseAction::Proceed;
+        }
         let raw_atom = node.raw(ctx.ast());
         let raw = raw_atom.as_str().as_bytes();
-        if self.inherited_flags().strict
-            && raw.len() > 1
-            && raw[0] == b'0'
-            && raw[1].is_ascii_digit()
-        {
+        if self.inherited_flags().strict && is_legacy_numeric_literal(raw) {
             self.diagnostics.push(Diagnostic::error(
                 node.span(ctx.ast()),
                 "Legacy octal and leading-zero decimal literals are forbidden in strict mode",
@@ -1190,21 +1245,16 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
     ) -> TraverseAction {
         let meta = node.meta(ctx.ast()).name(ctx.ast());
         let property = node.property(ctx.ast()).name(ctx.ast());
-        if meta == "import" && property == "meta" && !self.is_module {
+        if meta == "import"
+            && property == "meta"
+            && self.scopes.get(self.scopes.top_level_scope_id()).kind != ScopeKind::Module
+        {
             self.diagnostics.push(Diagnostic::error(
                 node.span(ctx.ast()),
                 "'import.meta' is only valid in module code",
             ));
         }
-        if meta == "new"
-            && property == "target"
-            && !ctx.ancestors().skip(1).any(|ancestor| {
-                matches!(
-                    ctx.node_kind(ancestor),
-                    NodeKind::Function | NodeKind::PropertyDefinition | NodeKind::StaticBlock
-                )
-            })
-        {
+        if meta == "new" && property == "target" && !is_new_target_available(ctx) {
             self.diagnostics.push(Diagnostic::error(
                 node.span(ctx.ast()),
                 "'new.target' is only valid inside a function or class field initializer",
@@ -1218,23 +1268,25 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: CatchClause,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.open_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
+        self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
         self.catch_bodies.push(node.body(ctx.ast()).node_id());
-        self.push_binding(
+        self.set_binding_context(
             node.node_id(),
             BindingContext {
                 flags: SymbolFlags::FUNCTION_SCOPED_VAR.union(SymbolFlags::CATCH_VAR),
-                excludes: SymbolFlags::VALUE_SPACE,
+                excludes: SymbolFlags::catch_param_excludes(),
                 target: self.current_scope,
+                export_state: ExportState::None,
+                ambient: self.ambient,
             },
         );
         TraverseAction::Proceed
     }
 
     fn exit_catch_clause(&mut self, node: CatchClause, _ctx: &mut TraverseCtx<'_, 'a>) {
-        self.pop_binding(node.node_id());
+        self.exit_binding_context(node.node_id());
         self.catch_bodies.pop();
-        self.close_scope(node.node_id());
+        self.exit_scope(node.node_id());
     }
 
     fn enter_variable_declaration(
@@ -1245,14 +1297,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         let kind = node.kind(ctx.ast());
         if matches!(kind, VariableKind::Using | VariableKind::AwaitUsing) {
             let direct_parent = ctx.ancestors().skip(1).next();
-            if direct_parent.is_some_and(|parent| ctx.node_kind(parent) == NodeKind::SwitchCase) {
-                self.diagnostics.push(Diagnostic::error(
-                    node.span(ctx.ast()),
-                    "A using declaration may not appear directly in a switch case",
-                ));
-            }
             if direct_parent.is_some_and(|parent| ctx.node_kind(parent) == NodeKind::Program)
-                && !self.is_module
+                && self.scopes.get(self.scopes.top_level_scope_id()).kind != ScopeKind::Module
             {
                 self.diagnostics.push(Diagnostic::error(
                     node.span(ctx.ast()),
@@ -1260,41 +1306,31 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                 ));
             }
         }
-        if kind == VariableKind::AwaitUsing
-            && !self.is_module
-            && !is_inside_static_block(ctx)
-            && !is_in_async_function(ctx)
-        {
-            self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
-                "An await using declaration requires an async context",
-            ));
-        }
         let (flags, excludes, target) = match node.kind(ctx.ast()) {
             VariableKind::Var => (
                 SymbolFlags::FUNCTION_SCOPED_VAR,
-                SymbolFlags::VALUE_SPACE
-                    .without(SymbolFlags::FUNCTION_SCOPED_VAR)
-                    .without(SymbolFlags::FUNCTION),
-                self.scopes.get(self.current_scope).hoist_target,
+                SymbolFlags::function_var_excludes(),
+                self.current_hoist_scope_id(),
             ),
             VariableKind::Let | VariableKind::Using | VariableKind::AwaitUsing => (
                 SymbolFlags::BLOCK_SCOPED_VAR,
-                SymbolFlags::VALUE_SPACE,
+                SymbolFlags::block_var_excludes(),
                 self.current_scope,
             ),
             VariableKind::Const => (
                 SymbolFlags::BLOCK_SCOPED_VAR.union(SymbolFlags::CONST_VAR),
-                SymbolFlags::VALUE_SPACE,
+                SymbolFlags::block_var_excludes(),
                 self.current_scope,
             ),
         };
-        self.push_binding(
+        self.set_binding_context(
             node.node_id(),
             BindingContext {
                 flags,
                 excludes,
                 target,
+                export_state: ExportState::None,
+                ambient: node.declare(ctx.ast()) || self.ambient,
             },
         );
         TraverseAction::Proceed
@@ -1305,41 +1341,38 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: VariableDeclaration,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) {
-        self.pop_binding(node.node_id());
+        self.exit_binding_context(node.node_id());
     }
 
     fn enter_class(&mut self, node: Class, ctx: &mut TraverseCtx<'_, 'a>) -> TraverseAction {
         let outer_scope = self.current_scope;
         let flags = ScopeFlags { strict: true };
-        let binding_target = if node.class_type(ctx.ast()) == ClassType::ClassExpression
-            && node.id(ctx.ast()).is_some()
-        {
-            self.open_expression_scope(node.node_id(), ScopeKind::Class, flags);
+        let binding_target = if is_named_class_expression(node, ctx.ast()) {
+            self.expr_name_scope(node.node_id(), ScopeKind::Class, flags);
             self.scopes
                 .get(self.current_scope)
                 .parent
                 .expect("named class expression has a name scope")
         } else {
-            self.open_scope(node.node_id(), ScopeKind::Class, flags);
+            self.push_scope(node.node_id(), ScopeKind::Class, flags);
             outer_scope
         };
-        self.push_binding(
+        self.set_binding_context(
             node.node_id(),
             BindingContext {
                 flags: SymbolFlags::CLASS,
-                excludes: SymbolFlags::VALUE_SPACE
-                    .union(SymbolFlags::TYPE_SPACE)
-                    .without(SymbolFlags::INTERFACE)
-                    .without(SymbolFlags::VALUE_MODULE),
+                excludes: SymbolFlags::class_excludes(),
                 target: binding_target,
+                export_state: ExportState::None,
+                ambient: node.declare(ctx.ast()) || self.ambient,
             },
         );
         TraverseAction::Proceed
     }
 
     fn exit_class(&mut self, node: Class, _ctx: &mut TraverseCtx<'_, 'a>) {
-        self.pop_binding(node.node_id());
-        self.close_scope(node.node_id());
+        self.exit_binding_context(node.node_id());
+        self.exit_scope(node.node_id());
     }
 
     fn enter_class_body(
@@ -1351,46 +1384,30 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         let mut private_elements: Vec<(Atom<'a>, PrivateElementKind, bool, Span)> = Vec::new();
         for id in node.body(ctx.ast()).iter() {
             let element = ctx.ast().get_node_in_sub_range(id);
-            let (key, kind, is_static) = match ctx.ast().class_element_data(element) {
-                ClassElementData::MethodDefinition(method) => {
-                    if method.kind(ctx.ast()) == MethodDefinitionKind::Constructor
-                        && method.value(ctx.ast()).body(ctx.ast()).is_some()
-                    {
-                        if let Some(previous) = first_constructor {
-                            self.diagnostics.push(
-                                Diagnostic::error(
-                                    method.key(ctx.ast()).span(ctx.ast()),
-                                    "A class can only have one constructor",
-                                )
-                                .with_label(previous, "first constructor is here"),
-                            );
-                        } else {
-                            first_constructor = Some(method.span(ctx.ast()));
-                        }
+            if let ClassElementData::MethodDefinition(method) =
+                ctx.ast().class_element_data(element)
+            {
+                if method.kind(ctx.ast()) == MethodDefinitionKind::Constructor
+                    && method.value(ctx.ast()).body(ctx.ast()).is_some()
+                {
+                    if let Some(previous) = first_constructor {
+                        self.diagnostics.push(
+                            Diagnostic::error(
+                                method.key(ctx.ast()).span(ctx.ast()),
+                                "A class can only have one constructor",
+                            )
+                            .with_label(previous, "first constructor is here"),
+                        );
+                    } else {
+                        first_constructor = Some(method.span(ctx.ast()));
                     }
-                    let kind = match method.kind(ctx.ast()) {
-                        MethodDefinitionKind::Get => PrivateElementKind::Getter,
-                        MethodDefinitionKind::Set => PrivateElementKind::Setter,
-                        MethodDefinitionKind::Constructor | MethodDefinitionKind::Method => {
-                            PrivateElementKind::Method
-                        }
-                    };
-                    (method.key(ctx.ast()), kind, method.r#static(ctx.ast()))
                 }
-                ClassElementData::PropertyDefinition(property) => (
-                    property.key(ctx.ast()),
-                    PrivateElementKind::Field,
-                    property.r#static(ctx.ast()),
-                ),
-                ClassElementData::StaticBlock(_) | ClassElementData::TsIndexSignature(_) => {
-                    continue;
-                }
-            };
-            let PropertyKeyData::PrivateIdentifier(private) = ctx.ast().property_key_data(key)
-            else {
+            }
+            let Some((name, key_span)) = private_element_name(element, ctx.ast()) else {
                 continue;
             };
-            let name = private.name(ctx.ast());
+            let kind = private_element_kind(element, ctx.ast());
+            let is_static = private_element_is_static(element, ctx.ast());
             if let Some((_, previous_kind, previous_static, previous_span)) = private_elements
                 .iter()
                 .find(|(previous_name, _, _, _)| previous_name.as_str() == name.as_str())
@@ -1403,14 +1420,14 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                 if !accessor_pair {
                     self.diagnostics.push(
                         Diagnostic::error(
-                            key.span(ctx.ast()),
+                            key_span,
                             format!("Duplicate private name '#{}'", name.as_str()),
                         )
                         .with_label(*previous_span, "first declaration is here"),
                     );
                 }
             } else {
-                private_elements.push((name, kind, is_static, key.span(ctx.ast())));
+                private_elements.push((name, kind, is_static, key_span));
             }
         }
         TraverseAction::Proceed
@@ -1458,7 +1475,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
         self.enter_control_boundary();
-        self.open_scope(
+        self.push_scope(
             node.node_id(),
             ScopeKind::StaticBlock,
             ScopeFlags { strict: true },
@@ -1467,7 +1484,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
     }
 
     fn exit_static_block(&mut self, node: StaticBlock, _ctx: &mut TraverseCtx<'_, 'a>) {
-        self.close_scope(node.node_id());
+        self.exit_scope(node.node_id());
         self.exit_control_boundary();
     }
 
@@ -1476,26 +1493,28 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: ImportDeclaration,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.check_module_declaration_position(node, "An import declaration", ctx);
-        self.check_import_attributes(node.attributes(ctx.ast()), ctx.ast());
+        self.check_import_export_position(node, "An import declaration", ctx);
+        self.check_duplicate_with_clause_attributes(node.attributes(ctx.ast()), ctx.ast());
         let flags = if node.import_kind(ctx.ast()) == ImportOrExportKind::Type {
             SymbolFlags::TYPE_IMPORT
         } else {
             SymbolFlags::IMPORT
         };
-        self.push_binding(
+        self.set_binding_context(
             node.node_id(),
             BindingContext {
                 flags,
-                excludes: SymbolFlags::IMPORT.union(SymbolFlags::TYPE_IMPORT),
+                excludes: SymbolFlags::import_binding_excludes(),
                 target: self.current_scope,
+                export_state: ExportState::None,
+                ambient: self.ambient,
             },
         );
         TraverseAction::Proceed
     }
 
     fn exit_import_declaration(&mut self, node: ImportDeclaration, _ctx: &mut TraverseCtx<'_, 'a>) {
-        self.pop_binding(node.node_id());
+        self.exit_binding_context(node.node_id());
     }
 
     fn enter_ts_import_equals_declaration(
@@ -1503,18 +1522,20 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsImportEqualsDeclaration,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.check_module_declaration_position(node, "An import declaration", ctx);
+        self.check_import_export_position(node, "An import declaration", ctx);
         let flags = if node.import_kind(ctx.ast()) == ImportOrExportKind::Type {
             SymbolFlags::TYPE_IMPORT
         } else {
             SymbolFlags::IMPORT
         };
-        self.push_binding(
+        self.set_binding_context(
             node.node_id(),
             BindingContext {
                 flags,
-                excludes: SymbolFlags::IMPORT.union(SymbolFlags::TYPE_IMPORT),
+                excludes: SymbolFlags::import_binding_excludes(),
                 target: self.current_scope,
+                export_state: ExportState::None,
+                ambient: self.ambient,
             },
         );
         TraverseAction::Proceed
@@ -1525,7 +1546,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsImportEqualsDeclaration,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) {
-        self.pop_binding(node.node_id());
+        self.exit_binding_context(node.node_id());
     }
 
     fn enter_import_specifier(
@@ -1533,19 +1554,15 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: ImportSpecifier,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        if module_export_name_str(node.imported(ctx.ast()), ctx.ast()).is_none() {
-            self.diagnostics.push(Diagnostic::error(
-                node.imported(ctx.ast()).span(ctx.ast()),
-                "Module export names may not contain unpaired surrogates",
-            ));
-        }
         if node.import_kind(ctx.ast()) == ImportOrExportKind::Type {
-            self.push_binding(
+            self.set_binding_context(
                 node.node_id(),
                 BindingContext {
                     flags: SymbolFlags::TYPE_IMPORT,
-                    excludes: SymbolFlags::IMPORT.union(SymbolFlags::TYPE_IMPORT),
+                    excludes: SymbolFlags::import_binding_excludes(),
                     target: self.current_scope,
+                    export_state: ExportState::None,
+                    ambient: self.ambient,
                 },
             );
         }
@@ -1553,7 +1570,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
     }
 
     fn exit_import_specifier(&mut self, node: ImportSpecifier, _ctx: &mut TraverseCtx<'_, 'a>) {
-        self.pop_binding(node.node_id());
+        self.exit_binding_context(node.node_id());
     }
 
     fn enter_export_named_declaration(
@@ -1561,38 +1578,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: ExportNamedDeclaration,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.check_module_declaration_position(node, "An export declaration", ctx);
-        self.check_import_attributes(node.attributes(ctx.ast()), ctx.ast());
-        for index in 0..node.specifiers(ctx.ast()).len() {
-            let specifier = node
-                .specifiers(ctx.ast())
-                .get_node(ctx.ast(), index)
-                .expect("export specifier ranges contain their nodes");
-            if module_export_name_str(specifier.exported(ctx.ast()), ctx.ast()).is_none() {
-                self.diagnostics.push(Diagnostic::error(
-                    specifier.exported(ctx.ast()).span(ctx.ast()),
-                    "Module export names may not contain unpaired surrogates",
-                ));
-            }
-            if module_export_name_str(specifier.local(ctx.ast()), ctx.ast()).is_none() {
-                self.diagnostics.push(Diagnostic::error(
-                    specifier.local(ctx.ast()).span(ctx.ast()),
-                    "Module export names may not contain unpaired surrogates",
-                ));
-            }
-            if node.source(ctx.ast()).is_none()
-                && matches!(
-                    ctx.ast()
-                        .module_export_name_data(specifier.local(ctx.ast())),
-                    ModuleExportNameData::StringLiteral(_)
-                )
-            {
-                self.diagnostics.push(Diagnostic::error(
-                    specifier.local(ctx.ast()).span(ctx.ast()),
-                    "A string export binding requires a source module",
-                ));
-            }
-        }
+        self.check_import_export_position(node, "An export declaration", ctx);
+        self.check_duplicate_with_clause_attributes(node.attributes(ctx.ast()), ctx.ast());
         TraverseAction::Proceed
     }
 
@@ -1601,7 +1588,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: ExportDefaultDeclaration,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.check_module_declaration_position(node, "An export declaration", ctx);
+        self.check_import_export_position(node, "An export declaration", ctx);
         TraverseAction::Proceed
     }
 
@@ -1610,37 +1597,30 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: ExportAllDeclaration,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.check_module_declaration_position(node, "An export declaration", ctx);
-        self.check_import_attributes(node.attributes(ctx.ast()), ctx.ast());
-        if node
-            .exported(ctx.ast())
-            .is_some_and(|name| module_export_name_str(name, ctx.ast()).is_none())
-        {
-            self.diagnostics.push(Diagnostic::error(
-                node.exported(ctx.ast()).unwrap().span(ctx.ast()),
-                "Module export names may not contain unpaired surrogates",
-            ));
-        }
+        self.check_import_export_position(node, "An export declaration", ctx);
+        self.check_duplicate_with_clause_attributes(node.attributes(ctx.ast()), ctx.ast());
         TraverseAction::Proceed
     }
 
     fn enter_ts_type_alias_declaration(
         &mut self,
         node: TsTypeAliasDeclaration,
-        _ctx: &mut TraverseCtx<'_, 'a>,
+        ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.open_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
+        self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
         let target = self
             .scopes
             .get(self.current_scope)
             .parent
             .expect("type alias scope has a parent");
-        self.push_binding(
+        self.set_binding_context(
             node.node_id(),
             BindingContext {
                 flags: SymbolFlags::TYPE_ALIAS,
-                excludes: SymbolFlags::TYPE_SPACE,
+                excludes: SymbolFlags::type_alias_excludes(),
                 target,
+                export_state: ExportState::None,
+                ambient: node.declare(ctx.ast()) || self.ambient,
             },
         );
         TraverseAction::Proceed
@@ -1651,29 +1631,29 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsTypeAliasDeclaration,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) {
-        self.pop_binding(node.node_id());
-        self.close_scope(node.node_id());
+        self.exit_binding_context(node.node_id());
+        self.exit_scope(node.node_id());
     }
 
     fn enter_ts_interface_declaration(
         &mut self,
         node: TsInterfaceDeclaration,
-        _ctx: &mut TraverseCtx<'_, 'a>,
+        ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.open_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
+        self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
         let target = self
             .scopes
             .get(self.current_scope)
             .parent
             .expect("interface scope has a parent");
-        self.push_binding(
+        self.set_binding_context(
             node.node_id(),
             BindingContext {
                 flags: SymbolFlags::INTERFACE,
-                excludes: SymbolFlags::TYPE_SPACE
-                    .without(SymbolFlags::INTERFACE)
-                    .without(SymbolFlags::CLASS),
+                excludes: SymbolFlags::interface_excludes(),
                 target,
+                export_state: ExportState::None,
+                ambient: node.declare(ctx.ast()) || self.ambient,
             },
         );
         TraverseAction::Proceed
@@ -1684,8 +1664,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsInterfaceDeclaration,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) {
-        self.pop_binding(node.node_id());
-        self.close_scope(node.node_id());
+        self.exit_binding_context(node.node_id());
+        self.exit_scope(node.node_id());
     }
 
     fn enter_ts_enum_declaration(
@@ -1698,12 +1678,18 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         } else {
             SymbolFlags::REGULAR_ENUM
         };
-        self.push_binding(
+        self.set_binding_context(
             node.node_id(),
             BindingContext {
                 flags,
-                excludes: SymbolFlags::VALUE_SPACE.union(SymbolFlags::TYPE_SPACE),
+                excludes: if node.is_const(ctx.ast()) {
+                    SymbolFlags::const_enum_excludes()
+                } else {
+                    SymbolFlags::regular_enum_excludes()
+                },
                 target: self.current_scope,
+                export_state: ExportState::None,
+                ambient: node.declare(ctx.ast()) || self.ambient,
             },
         );
         TraverseAction::Proceed
@@ -1714,24 +1700,31 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsEnumDeclaration,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) {
-        self.pop_binding(node.node_id());
+        self.exit_binding_context(node.node_id());
     }
 
     fn enter_ts_module_declaration(
         &mut self,
         node: TsModuleDeclaration,
-        _ctx: &mut TraverseCtx<'_, 'a>,
+        ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.push_binding(
+        let instantiated = is_namespace_instantiated(node.body(ctx.ast()), ctx.ast());
+        self.set_binding_context(
             node.node_id(),
             BindingContext {
-                flags: SymbolFlags::VALUE_MODULE.union(SymbolFlags::NAMESPACE_MODULE),
-                excludes: SymbolFlags::VALUE_SPACE
-                    .without(SymbolFlags::FUNCTION)
-                    .without(SymbolFlags::CLASS)
-                    .without(SymbolFlags::REGULAR_ENUM)
-                    .without(SymbolFlags::VALUE_MODULE),
+                flags: if instantiated {
+                    SymbolFlags::VALUE_MODULE
+                } else {
+                    SymbolFlags::NAMESPACE_MODULE
+                },
+                excludes: if instantiated {
+                    SymbolFlags::value_module_excludes()
+                } else {
+                    SymbolFlags::namespace_module_excludes()
+                },
                 target: self.current_scope,
+                export_state: ExportState::None,
+                ambient: node.declare(ctx.ast()) || self.ambient,
             },
         );
         TraverseAction::Proceed
@@ -1742,7 +1735,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsModuleDeclaration,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) {
-        self.pop_binding(node.node_id());
+        self.exit_binding_context(node.node_id());
     }
 
     fn enter_ts_type_parameter(
@@ -1750,19 +1743,21 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsTypeParameter,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.push_binding(
+        self.set_binding_context(
             node.node_id(),
             BindingContext {
                 flags: SymbolFlags::TYPE_PARAMETER,
-                excludes: SymbolFlags::TYPE_SPACE.without(SymbolFlags::TYPE_PARAMETER),
+                excludes: SymbolFlags::type_parameter_excludes(),
                 target: self.current_scope,
+                export_state: ExportState::None,
+                ambient: self.ambient,
             },
         );
         TraverseAction::Proceed
     }
 
     fn exit_ts_type_parameter(&mut self, node: TsTypeParameter, _ctx: &mut TraverseCtx<'_, 'a>) {
-        self.pop_binding(node.node_id());
+        self.exit_binding_context(node.node_id());
     }
 
     fn enter_binding_identifier(
@@ -1779,14 +1774,6 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: AssignmentExpression,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        if self.inherited_flags().strict
-            && assignment_target_is_call_expression(node.left(ctx.ast()), ctx.ast())
-        {
-            self.diagnostics.push(Diagnostic::error(
-                node.left(ctx.ast()).span(ctx.ast()),
-                "A call expression cannot be used as an assignment target in strict mode",
-            ));
-        }
         self.write_targets
             .push(Some(node.left(ctx.ast()).node_id()));
         TraverseAction::Proceed
@@ -1805,18 +1792,6 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: UpdateExpression,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        if self.inherited_flags().strict
-            && matches!(
-                ctx.ast()
-                    .simple_assignment_target_data(node.argument(ctx.ast())),
-                SimpleAssignmentTargetData::CallExpression(_)
-            )
-        {
-            self.diagnostics.push(Diagnostic::error(
-                node.argument(ctx.ast()).span(ctx.ast()),
-                "A call expression cannot be updated in strict mode",
-            ));
-        }
         self.write_targets
             .push(Some(node.argument(ctx.ast()).node_id()));
         TraverseAction::Proceed
@@ -1831,12 +1806,12 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsFunctionType,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.open_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
+        self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
         TraverseAction::Proceed
     }
 
     fn exit_ts_function_type(&mut self, node: TsFunctionType, _ctx: &mut TraverseCtx<'_, 'a>) {
-        self.close_scope(node.node_id());
+        self.exit_scope(node.node_id());
     }
 
     fn enter_ts_constructor_type(
@@ -1844,7 +1819,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsConstructorType,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.open_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
+        self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
         TraverseAction::Proceed
     }
 
@@ -1853,7 +1828,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsConstructorType,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) {
-        self.close_scope(node.node_id());
+        self.exit_scope(node.node_id());
     }
 
     fn enter_ts_method_signature(
@@ -1861,7 +1836,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsMethodSignature,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.open_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
+        self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
         TraverseAction::Proceed
     }
 
@@ -1870,7 +1845,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsMethodSignature,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) {
-        self.close_scope(node.node_id());
+        self.exit_scope(node.node_id());
     }
 
     fn enter_ts_call_signature_declaration(
@@ -1878,7 +1853,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsCallSignatureDeclaration,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.open_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
+        self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
         TraverseAction::Proceed
     }
 
@@ -1887,7 +1862,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsCallSignatureDeclaration,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) {
-        self.close_scope(node.node_id());
+        self.exit_scope(node.node_id());
     }
 
     fn enter_ts_construct_signature_declaration(
@@ -1895,7 +1870,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsConstructSignatureDeclaration,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.open_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
+        self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
         TraverseAction::Proceed
     }
 
@@ -1904,7 +1879,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsConstructSignatureDeclaration,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) {
-        self.close_scope(node.node_id());
+        self.exit_scope(node.node_id());
     }
 
     fn enter_ts_index_signature(
@@ -1912,12 +1887,12 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsIndexSignature,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.open_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
+        self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
         TraverseAction::Proceed
     }
 
     fn exit_ts_index_signature(&mut self, node: TsIndexSignature, _ctx: &mut TraverseCtx<'_, 'a>) {
-        self.close_scope(node.node_id());
+        self.exit_scope(node.node_id());
     }
 
     fn enter_ts_mapped_type(
@@ -1925,21 +1900,23 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsMappedType,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.open_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
-        self.push_binding(
+        self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
+        self.set_binding_context(
             node.node_id(),
             BindingContext {
                 flags: SymbolFlags::TYPE_PARAMETER,
-                excludes: SymbolFlags::TYPE_SPACE.without(SymbolFlags::TYPE_PARAMETER),
+                excludes: SymbolFlags::type_parameter_excludes(),
                 target: self.current_scope,
+                export_state: ExportState::None,
+                ambient: self.ambient,
             },
         );
         TraverseAction::Proceed
     }
 
     fn exit_ts_mapped_type(&mut self, node: TsMappedType, _ctx: &mut TraverseCtx<'_, 'a>) {
-        self.pop_binding(node.node_id());
-        self.close_scope(node.node_id());
+        self.exit_binding_context(node.node_id());
+        self.exit_scope(node.node_id());
     }
 
     fn enter_ts_conditional_type(
@@ -1947,7 +1924,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsConditionalType,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.open_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
+        self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
         TraverseAction::Proceed
     }
 
@@ -1956,7 +1933,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsConditionalType,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) {
-        self.close_scope(node.node_id());
+        self.exit_scope(node.node_id());
     }
 
     fn enter_ts_module_block(
@@ -1964,12 +1941,12 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsModuleBlock,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.open_scope(node.node_id(), ScopeKind::TsModule, self.inherited_flags());
+        self.push_scope(node.node_id(), ScopeKind::TsModule, self.inherited_flags());
         TraverseAction::Proceed
     }
 
     fn exit_ts_module_block(&mut self, node: TsModuleBlock, _ctx: &mut TraverseCtx<'_, 'a>) {
-        self.close_scope(node.node_id());
+        self.exit_scope(node.node_id());
     }
 }
 
@@ -1998,6 +1975,63 @@ impl<'semantic, 'a> ReferenceResolver<'semantic, 'a> {
             diagnostics,
         }
     }
+
+    fn check_identifier_reference(
+        &mut self,
+        node: IdentifierReference,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) {
+        let name = node.name(ctx.ast());
+        let mut scope = self.node_scopes[node.node_id().index()];
+        if ctx
+            .ancestors()
+            .skip(1)
+            .take_while(|ancestor| ctx.node_kind(*ancestor) != NodeKind::Class)
+            .any(|ancestor| ctx.node_kind(ancestor) == NodeKind::Decorator)
+            && self.scopes.get(scope).kind == ScopeKind::Class
+        {
+            scope = self
+                .scopes
+                .get(scope)
+                .parent
+                .expect("a class scope always has an outer scope");
+        }
+        let is_write = is_write_position(node.node_id(), ctx, &self.write_targets);
+        let is_read = !is_write || is_read_write_position(node.node_id(), ctx);
+        let dynamic = ctx
+            .ancestors()
+            .skip(1)
+            .any(|ancestor| ctx.node_kind(ancestor) == NodeKind::WithStatement);
+        let kind = if self.type_depth > 0 {
+            ReferenceKind::Type
+        } else {
+            ReferenceKind::Value
+        };
+        let reference_id = self.symbols.add_reference(
+            name,
+            scope,
+            node.node_id(),
+            node.span(ctx.ast()),
+            kind,
+            is_read,
+            is_write,
+            dynamic,
+        );
+        let symbol_id = self.symbols.resolve_reference(self.scopes, reference_id);
+        node.set_symbol_id(ctx.ast_mut(), symbol_id);
+        let strict = self.scopes.get(scope).flags.strict;
+        if self.type_depth == 0 && strict {
+            check_strict_reserved(
+                self.diagnostics,
+                name.as_str(),
+                node.span(ctx.ast()),
+                "an identifier reference",
+            );
+        }
+        if is_write && strict {
+            check_assign_target_eval_arguments(self.diagnostics, node, ctx.ast());
+        }
+    }
 }
 
 impl<'a> Traverse<'a> for ReferenceResolver<'_, 'a> {
@@ -2024,45 +2058,7 @@ impl<'a> Traverse<'a> for ReferenceResolver<'_, 'a> {
         node: IdentifierReference,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        let name = node.name(ctx.ast());
-        let mut scope = self.node_scopes[node.node_id().index()];
-        if ctx
-            .ancestors()
-            .skip(1)
-            .take_while(|ancestor| ctx.node_kind(*ancestor) != NodeKind::Class)
-            .any(|ancestor| ctx.node_kind(ancestor) == NodeKind::Decorator)
-            && self.scopes.get(scope).kind == ScopeKind::Class
-        {
-            scope = self
-                .scopes
-                .get(scope)
-                .parent
-                .expect("a class scope always has an outer scope");
-        }
-        let is_write = is_write_position(node.node_id(), ctx, &self.write_targets);
-        let kind = if self.type_depth > 0 {
-            ReferenceKind::Type
-        } else {
-            ReferenceKind::Value
-        };
-        let reference_id = self
-            .symbols
-            .add_reference(name, scope, node.node_id(), kind, is_write);
-        let symbol_id = self.symbols.resolve_reference(self.scopes, reference_id);
-        node.set_symbol_id(ctx.ast_mut(), symbol_id);
-        let strict = self.scopes.get(scope).flags.strict;
-        if self.type_depth == 0 && strict && is_strict_reserved(name.as_str()) {
-            self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
-                format!("'{}' is reserved in strict mode", name.as_str()),
-            ));
-        }
-        if is_write && strict && matches!(name.as_str(), "eval" | "arguments") {
-            self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
-                format!("Cannot assign to '{}' in strict mode", name.as_str()),
-            ));
-        }
+        self.check_identifier_reference(node, ctx);
         TraverseAction::Proceed
     }
 
@@ -2076,9 +2072,16 @@ impl<'a> Traverse<'a> for ReferenceResolver<'_, 'a> {
         }
         let name = node.name(ctx.ast());
         let scope = self.node_scopes[node.node_id().index()];
-        let reference_id =
-            self.symbols
-                .add_reference(name, scope, node.node_id(), ReferenceKind::Value, true);
+        let reference_id = self.symbols.add_reference(
+            name,
+            scope,
+            node.node_id(),
+            node.span(ctx.ast()),
+            ReferenceKind::Value,
+            false,
+            true,
+            false,
+        );
         let symbol_id = self.symbols.resolve_reference(self.scopes, reference_id);
         node.set_symbol_id(ctx.ast_mut(), symbol_id);
         if self.scopes.get(scope).flags.strict && matches!(name.as_str(), "eval" | "arguments") {
@@ -2176,7 +2179,7 @@ pub(crate) fn analyze_program<'a>(program: Program, ast: &mut Ast<'a>) -> Analys
     }
 }
 
-fn body_has_use_strict(body: TypedSubRange<StatementListItem>, ast: &Ast<'_>) -> bool {
+fn has_use_strict_directive(body: TypedSubRange<StatementListItem>, ast: &Ast<'_>) -> bool {
     for index in 0..body.len() {
         let item = body
             .get_node(ast, index)
@@ -2191,6 +2194,59 @@ fn body_has_use_strict(body: TypedSubRange<StatementListItem>, ast: &Ast<'_>) ->
         }
     }
     false
+}
+
+fn is_named_function_expression(function: Function, ast: &Ast<'_>) -> bool {
+    function.function_type(ast) == FunctionType::FunctionExpression && function.id(ast).is_some()
+}
+
+fn is_named_class_expression(class: Class, ast: &Ast<'_>) -> bool {
+    class.class_type(ast) == ClassType::ClassExpression && class.id(ast).is_some()
+}
+
+fn is_namespace_instantiated(body: Option<TsModuleBody>, ast: &Ast<'_>) -> bool {
+    let Some(body) = body else {
+        return true;
+    };
+    match ast.ts_module_body_data(body) {
+        TsModuleBodyData::TsModuleDeclaration(declaration) => {
+            is_namespace_instantiated(declaration.body(ast), ast)
+        }
+        TsModuleBodyData::TsModuleBlock(block) => block
+            .body(ast)
+            .iter()
+            .map(|id| ast.get_node_in_sub_range(id))
+            .any(|item| is_instantiating_statement(item, ast)),
+    }
+}
+
+fn is_instantiating_statement(item: StatementListItem, ast: &Ast<'_>) -> bool {
+    let StatementListItemData::Stmt(statement) = ast.statement_list_item_data(item) else {
+        return true;
+    };
+    match ast.stmt_data(statement) {
+        StmtData::TsImportEqualsDeclaration(_) => false,
+        StmtData::Declaration(declaration) => match ast.decl_data(declaration) {
+            DeclData::TsInterfaceDeclaration(_) | DeclData::TsTypeAliasDeclaration(_) => false,
+            DeclData::TsEnumDeclaration(declaration) => !declaration.is_const(ast),
+            DeclData::TsModuleDeclaration(declaration) => {
+                is_namespace_instantiated(declaration.body(ast), ast)
+            }
+            _ => true,
+        },
+        StmtData::ExportNamedDeclaration(declaration) => {
+            if declaration.export_kind(ast) == ImportOrExportKind::Type {
+                false
+            } else if let Some(declaration) = declaration.declaration(ast) {
+                let statement = Stmt::Declaration(declaration);
+                let item = StatementListItem::Stmt(statement);
+                is_instantiating_statement(item, ast)
+            } else {
+                declaration.source(ast).is_some()
+            }
+        }
+        _ => true,
+    }
 }
 
 fn formal_parameters_are_non_simple(params: FormalParameters, ast: &Ast<'_>) -> bool {
@@ -2223,7 +2279,7 @@ fn property_key_name_is(key: PropertyKey, expected: &str, ast: &Ast<'_>) -> bool
     }
 }
 
-fn module_export_name_str(name: ModuleExportName, ast: &Ast<'_>) -> Option<String> {
+fn get_module_export_name(name: ModuleExportName, ast: &Ast<'_>) -> Option<String> {
     match ast.module_export_name_data(name) {
         ModuleExportNameData::IdentifierName(identifier) => {
             Some(identifier.name(ast).as_str().to_owned())
@@ -2234,35 +2290,54 @@ fn module_export_name_str(name: ModuleExportName, ast: &Ast<'_>) -> Option<Strin
     }
 }
 
-fn is_inside_formal_parameters(ctx: &TraverseCtx<'_, '_>) -> bool {
+fn is_in_formal_parameters(ctx: &TraverseCtx<'_, '_>) -> bool {
     for ancestor in ctx.ancestors().skip(1) {
-        match ctx.node_kind(ancestor) {
+        let kind = ctx.node_kind(ancestor);
+        match kind {
             NodeKind::FormalParameters => return true,
-            NodeKind::Function | NodeKind::ArrowFunctionExpression | NodeKind::Program => {
+            NodeKind::Program => {
                 return false;
             }
             _ => {}
+        }
+        if is_function_boundary(kind) {
+            return false;
         }
     }
     false
 }
 
-fn is_inside_static_block(ctx: &TraverseCtx<'_, '_>) -> bool {
-    ctx.ancestors()
-        .skip(1)
-        .take_while(|ancestor| {
-            !matches!(
-                ctx.node_kind(*ancestor),
-                NodeKind::Function | NodeKind::ArrowFunctionExpression | NodeKind::Program
-            )
-        })
-        .any(|ancestor| ctx.node_kind(ancestor) == NodeKind::StaticBlock)
+fn is_iteration(statement: Stmt, ast: &Ast<'_>) -> bool {
+    matches!(
+        ast.stmt_data(statement),
+        StmtData::DoWhileStatement(_)
+            | StmtData::ForStatement(_)
+            | StmtData::ForInStatement(_)
+            | StmtData::ForOfStatement(_)
+            | StmtData::WhileStatement(_)
+    )
 }
 
-fn is_inside_decorator(ctx: &TraverseCtx<'_, '_>) -> bool {
+fn is_function_boundary(kind: NodeKind) -> bool {
+    matches!(
+        kind,
+        NodeKind::Function | NodeKind::ArrowFunctionExpression | NodeKind::StaticBlock
+    )
+}
+
+fn is_at_program_level(ctx: &TraverseCtx<'_, '_>) -> bool {
+    ctx.parent().is_some_and(|parent| {
+        matches!(
+            ctx.node_kind(parent),
+            NodeKind::Program | NodeKind::TsModuleBlock
+        )
+    })
+}
+
+fn is_in_ts_namespace(ctx: &TraverseCtx<'_, '_>) -> bool {
     ctx.ancestors()
         .skip(1)
-        .any(|ancestor| ctx.node_kind(ancestor) == NodeKind::Decorator)
+        .any(|ancestor| ctx.node_kind(ancestor) == NodeKind::TsModuleBlock)
 }
 
 fn is_arguments_available(ctx: &TraverseCtx<'_, '_>) -> bool {
@@ -2275,23 +2350,6 @@ fn is_arguments_available(ctx: &TraverseCtx<'_, '_>) -> bool {
         }
     }
     true
-}
-
-fn is_in_async_function(ctx: &TraverseCtx<'_, '_>) -> bool {
-    for ancestor in ctx.ancestors().skip(1) {
-        if ctx.node_kind(ancestor) == NodeKind::Function {
-            let function = unsafe { Function::from_node_id_unchecked(ancestor) };
-            return function.r#async(ctx.ast());
-        }
-        if ctx.node_kind(ancestor) == NodeKind::ArrowFunctionExpression {
-            let arrow = unsafe { ArrowFunctionExpression::from_node_id_unchecked(ancestor) };
-            return arrow.r#async(ctx.ast());
-        }
-        if ctx.node_kind(ancestor) == NodeKind::Program {
-            return false;
-        }
-    }
-    false
 }
 
 fn is_private_name_declared(ctx: &TraverseCtx<'_, '_>, name: &str) -> bool {
@@ -2319,8 +2377,46 @@ fn is_private_name_declared(ctx: &TraverseCtx<'_, '_>, name: &str) -> bool {
     false
 }
 
+fn private_element_name<'a>(element: ClassElement, ast: &Ast<'a>) -> Option<(Atom<'a>, Span)> {
+    let key = match ast.class_element_data(element) {
+        ClassElementData::MethodDefinition(method) => method.key(ast),
+        ClassElementData::PropertyDefinition(property) => property.key(ast),
+        ClassElementData::StaticBlock(_) | ClassElementData::TsIndexSignature(_) => return None,
+    };
+    let PropertyKeyData::PrivateIdentifier(private) = ast.property_key_data(key) else {
+        return None;
+    };
+    Some((private.name(ast), key.span(ast)))
+}
+
+fn private_element_kind(element: ClassElement, ast: &Ast<'_>) -> PrivateElementKind {
+    match ast.class_element_data(element) {
+        ClassElementData::MethodDefinition(method) => match method.kind(ast) {
+            MethodDefinitionKind::Get => PrivateElementKind::Getter,
+            MethodDefinitionKind::Set => PrivateElementKind::Setter,
+            MethodDefinitionKind::Constructor | MethodDefinitionKind::Method => {
+                PrivateElementKind::Method
+            }
+        },
+        ClassElementData::PropertyDefinition(_) => PrivateElementKind::Field,
+        ClassElementData::StaticBlock(_) | ClassElementData::TsIndexSignature(_) => {
+            unreachable!("static blocks and index signatures do not have private names")
+        }
+    }
+}
+
+fn private_element_is_static(element: ClassElement, ast: &Ast<'_>) -> bool {
+    match ast.class_element_data(element) {
+        ClassElementData::MethodDefinition(method) => method.r#static(ast),
+        ClassElementData::PropertyDefinition(property) => property.r#static(ast),
+        ClassElementData::StaticBlock(_) | ClassElementData::TsIndexSignature(_) => {
+            unreachable!("static blocks and index signatures do not have private names")
+        }
+    }
+}
+
 fn expression_is_private_reference(expression: Expr, ast: &Ast<'_>) -> bool {
-    match ast.expr_data(expression) {
+    match ast.expr_data(unwrap_parens(expression, ast)) {
         ExprData::MemberExpression(member) => matches!(
             ast.property_key_data(member.property(ast)),
             PropertyKeyData::PrivateIdentifier(_)
@@ -2329,20 +2425,28 @@ fn expression_is_private_reference(expression: Expr, ast: &Ast<'_>) -> bool {
         ExprData::ChainExpression(chain) => {
             expression_is_private_reference(chain.expression(ast), ast)
         }
-        ExprData::ParenthesizedExpression(parenthesized) => {
-            expression_is_private_reference(parenthesized.expression(ast), ast)
-        }
         _ => false,
     }
 }
 
 fn expression_is_identifier_reference(expression: Expr, ast: &Ast<'_>) -> bool {
-    match ast.expr_data(expression) {
-        ExprData::IdentifierReference(_) => true,
-        ExprData::ParenthesizedExpression(parenthesized) => {
-            expression_is_identifier_reference(parenthesized.expression(ast), ast)
+    matches!(
+        ast.expr_data(unwrap_parens(expression, ast)),
+        ExprData::IdentifierReference(_)
+    )
+}
+
+fn unwrap_parens(mut expression: Expr, ast: &Ast<'_>) -> Expr {
+    let mut depth = 0u32;
+    loop {
+        assert!(depth < 1_000_000);
+        depth += 1;
+        match ast.expr_data(expression) {
+            ExprData::ParenthesizedExpression(parenthesized) => {
+                expression = parenthesized.expression(ast);
+            }
+            _ => return expression,
         }
-        _ => false,
     }
 }
 
@@ -2368,18 +2472,77 @@ fn string_has_legacy_escape(raw: &str) -> bool {
     false
 }
 
-fn is_strict_reserved(name: &str) -> bool {
+fn check_strict_reserved(
+    diagnostics: &mut Vec<Diagnostic>,
+    name: &str,
+    span: Span,
+    as_what: &'static str,
+) {
+    let Some(word) = match_strict_reserved(name) else {
+        return;
+    };
+    diagnostics.push(Diagnostic::error(
+        span,
+        format!("'{word}' is reserved in strict mode and cannot be used as {as_what}"),
+    ));
+}
+
+fn match_strict_reserved(name: &str) -> Option<&'static str> {
+    match name.len() {
+        3 => check(name, "let", "let"),
+        5 => check(name, "yield", "yield"),
+        6 => check(name, "static", "static").or_else(|| check(name, "public", "public")),
+        7 => check(name, "private", "private").or_else(|| check(name, "package", "package")),
+        9 => {
+            check(name, "protected", "protected").or_else(|| check(name, "interface", "interface"))
+        }
+        10 => check(name, "implements", "implements"),
+        _ => None,
+    }
+}
+
+fn check(name: &str, keyword: &str, word: &'static str) -> Option<&'static str> {
+    (name == keyword).then_some(word)
+}
+
+fn is_eval_or_arguments(name: &str) -> bool {
+    matches!(name, "eval" | "arguments")
+}
+
+fn is_eval_or_arguments_ref(node: IdentifierReference, ast: &Ast<'_>) -> bool {
+    is_eval_or_arguments(node.name(ast).as_str())
+}
+
+fn check_assign_target_eval_arguments(
+    diagnostics: &mut Vec<Diagnostic>,
+    node: IdentifierReference,
+    ast: &Ast<'_>,
+) {
+    if is_eval_or_arguments_ref(node, ast) {
+        diagnostics.push(Diagnostic::error(
+            node.span(ast),
+            "Cannot assign to 'eval' or 'arguments' in strict mode",
+        ));
+    }
+}
+
+fn is_legacy_numeric_literal(raw: &[u8]) -> bool {
+    raw.len() > 1 && raw[0] == b'0' && raw[1].is_ascii_digit()
+}
+
+fn is_new_target_available(ctx: &TraverseCtx<'_, '_>) -> bool {
+    ctx.ancestors().skip(1).any(|ancestor| {
+        matches!(
+            ctx.node_kind(ancestor),
+            NodeKind::Function | NodeKind::PropertyDefinition | NodeKind::StaticBlock
+        )
+    })
+}
+
+fn direct_eval_callee(call: CallExpression, ast: &Ast<'_>) -> bool {
     matches!(
-        name,
-        "implements"
-            | "interface"
-            | "let"
-            | "package"
-            | "private"
-            | "protected"
-            | "public"
-            | "static"
-            | "yield"
+        ast.expr_data(unwrap_parens(call.callee(ast), ast)),
+        ExprData::IdentifierReference(identifier) if identifier.name(ast) == "eval"
     )
 }
 
@@ -2398,31 +2561,30 @@ fn is_write_position(node: NodeId, ctx: &TraverseCtx<'_, '_>, targets: &[Option<
     false
 }
 
+fn is_read_write_position(node: NodeId, ctx: &TraverseCtx<'_, '_>) -> bool {
+    for ancestor in ctx.ancestors().skip(1) {
+        match ctx.node_kind(ancestor) {
+            NodeKind::UpdateExpression => return true,
+            NodeKind::AssignmentExpression => {
+                let assignment = unsafe { AssignmentExpression::from_node_id_unchecked(ancestor) };
+                return assignment.operator(ctx.ast()) != AssignmentOperator::Assign;
+            }
+            NodeKind::MemberExpression
+            | NodeKind::Function
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::Program => return false,
+            _ if ancestor == node => {}
+            _ => {}
+        }
+    }
+    false
+}
+
 fn for_left_write_target(left: ForStatementLeft, ast: &Ast<'_>) -> Option<NodeId> {
     match ast.for_statement_left_data(left) {
         ForStatementLeftData::AssignmentTarget(target) => Some(target.node_id()),
         ForStatementLeftData::VariableDeclaration(_) => None,
     }
-}
-
-fn for_left_is_call_expression(left: ForStatementLeft, ast: &Ast<'_>) -> bool {
-    match ast.for_statement_left_data(left) {
-        ForStatementLeftData::AssignmentTarget(target) => {
-            assignment_target_is_call_expression(target, ast)
-        }
-        ForStatementLeftData::VariableDeclaration(_) => false,
-    }
-}
-
-fn assignment_target_is_call_expression(target: AssignmentTarget, ast: &Ast<'_>) -> bool {
-    matches!(
-        ast.assignment_target_data(target),
-        AssignmentTargetData::SimpleAssignmentTarget(simple)
-            if matches!(
-                ast.simple_assignment_target_data(simple),
-                SimpleAssignmentTargetData::CallExpression(_)
-            )
-    )
 }
 
 fn scope_function_declaration_is_ordinary(

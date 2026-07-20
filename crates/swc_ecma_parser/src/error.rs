@@ -10,11 +10,25 @@ pub enum Severity {
     Info,
 }
 
+impl Default for Severity {
+    fn default() -> Self {
+        Self::Error
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Label {
+    pub span: Span,
+    pub message: String,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Diagnostic {
     pub severity: Severity,
     pub message: String,
     pub span: Span,
+    pub help: Option<String>,
+    pub labels: Vec<Label>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

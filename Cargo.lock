@@ -113,7 +113,6 @@ dependencies = [
  "swc_experimental_ecma_ast",
  "swc_experimental_ecma_parser",
  "swc_experimental_ecma_semantic",
- "swc_experimental_ecma_transforms_base",
  "swc_experimental_ecma_visit",
  "tracy-client",
 ]
@@ -2115,8 +2114,6 @@ dependencies = [
 name = "swc_experimental_ecma_parser"
 version = "0.11.0"
 dependencies = [
- "oxc_allocator",
- "oxc_regular_expression",
  "swc_experimental_allocator",
  "swc_experimental_ecma_ast",
 ]
@@ -2130,16 +2127,6 @@ dependencies = [
  "swc_experimental_allocator",
  "swc_experimental_ecma_ast",
  "swc_experimental_ecma_parser",
-]
-
-[[package]]
-name = "swc_experimental_ecma_transforms_base"
-version = "0.11.0"
-dependencies = [
- "indexmap",
- "rustc-hash",
- "swc_experimental_allocator",
- "swc_experimental_ecma_ast",
 ]
 
 [[package]]

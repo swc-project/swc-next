@@ -23,13 +23,6 @@ macro_rules! impl_extra_data_compact {
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub enum SourceType {
-    Script,
-    Module,
-}
-
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum MethodDefinitionKind {
     Constructor,
     Method,
@@ -138,6 +131,18 @@ pub enum VariableKind {
     AwaitUsing,
 }
 
+impl VariableKind {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Var => "var",
+            Self::Let => "let",
+            Self::Const => "const",
+            Self::Using => "using",
+            Self::AwaitUsing => "await using",
+        }
+    }
+}
+
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum FunctionType {
@@ -188,7 +193,6 @@ pub enum ImportPhase {
 }
 
 impl_extra_data_compact!(
-    SourceType,
     MethodDefinitionKind,
     Accessibility,
     ClassType,
@@ -339,7 +343,6 @@ pub enum AssignmentTarget {
 pub enum SimpleAssignmentTarget {
     IdentifierReference(IdentifierReference),
     MemberExpression(MemberExpression),
-    CallExpression(CallExpression),
     TsAsExpression(TsAsExpression),
     TsSatisfiesExpression(TsSatisfiesExpression),
     TsTypeAssertion(TsTypeAssertion),

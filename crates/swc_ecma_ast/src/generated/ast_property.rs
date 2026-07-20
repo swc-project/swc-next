@@ -1054,13 +1054,6 @@ impl SimpleAssignmentTarget {
         )
     }
     #[inline]
-    pub fn is_call_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.simple_assignment_target_data(self),
-            SimpleAssignmentTargetData::CallExpression(_)
-        )
-    }
-    #[inline]
     pub fn is_ts_as_expression(self, ast: &Ast<'_>) -> bool {
         matches!(
             ast.simple_assignment_target_data(self),
@@ -1099,13 +1092,6 @@ impl SimpleAssignmentTarget {
     pub fn as_member_expression(self, ast: &Ast<'_>) -> Option<MemberExpression> {
         match ast.simple_assignment_target_data(self) {
             SimpleAssignmentTargetData::MemberExpression(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_call_expression(self, ast: &Ast<'_>) -> Option<CallExpression> {
-        match ast.simple_assignment_target_data(self) {
-            SimpleAssignmentTargetData::CallExpression(it) => Some(it),
             _ => None,
         }
     }

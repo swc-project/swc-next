@@ -32,8 +32,14 @@ pub struct Scope {
     pub node: NodeId,
     pub parent: Option<ScopeId>,
     pub hoist_target: ScopeId,
+    pub first_child: Option<ScopeId>,
+    pub next_sibling: Option<ScopeId>,
     pub kind: ScopeKind,
     pub flags: ScopeFlags,
+    pub strict: bool,
+    pub has_direct_eval: bool,
+    pub has_with: bool,
+    pub rename_unsafe: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -50,10 +56,16 @@ impl ScopeTree {
             node: root_node,
             parent: None,
             hoist_target: ScopeId::from_usize(0),
+            first_child: None,
+            next_sibling: None,
             kind: ScopeKind::Global,
             flags: ScopeFlags {
                 strict: script_strict,
             },
+            strict: script_strict,
+            has_direct_eval: false,
+            has_with: false,
+            rename_unsafe: false,
         });
         debug_assert_eq!(root.index(), 0);
         let top_level = if module {
@@ -61,8 +73,14 @@ impl ScopeTree {
                 node: root_node,
                 parent: Some(root),
                 hoist_target: ScopeId::from_usize(1),
+                first_child: None,
+                next_sibling: None,
                 kind: ScopeKind::Module,
                 flags: ScopeFlags { strict: true },
+                strict: true,
+                has_direct_eval: false,
+                has_with: false,
+                rename_unsafe: false,
             });
             debug_assert_eq!(module_scope.index(), 1);
             module_scope
@@ -96,6 +114,10 @@ impl ScopeTree {
         &self.scopes[id]
     }
 
+    pub(crate) fn get_mut(&mut self, id: ScopeId) -> &mut Scope {
+        &mut self.scopes[id]
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = (ScopeId, &Scope)> {
         self.scopes.iter_enumerated()
     }
@@ -120,13 +142,28 @@ impl ScopeTree {
         } else {
             self.scopes[parent].hoist_target
         };
-        self.scopes.push(Scope {
+        let child = self.scopes.push(Scope {
             node,
             parent: Some(parent),
             hoist_target,
+            first_child: None,
+            next_sibling: None,
             kind,
             flags,
-        })
+            strict: flags.strict,
+            has_direct_eval: false,
+            has_with: false,
+            rename_unsafe: false,
+        });
+        if let Some(mut sibling) = self.scopes[parent].first_child {
+            while let Some(next) = self.scopes[sibling].next_sibling {
+                sibling = next;
+            }
+            self.scopes[sibling].next_sibling = Some(child);
+        } else {
+            self.scopes[parent].first_child = Some(child);
+        }
+        child
     }
 }
 
