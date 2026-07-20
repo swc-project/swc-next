@@ -12,14 +12,13 @@ tracy    = ["dep:tracy-client"]
 tracy-client = { workspace = true, optional = true }
 
 [dev-dependencies]
-oxc                                   = { workspace = true }
-oxc_allocator                         = { workspace = true }
-swc_experimental_allocator            = { workspace = true }
-swc_experimental_ecma_ast             = { workspace = true }
-swc_experimental_ecma_parser          = { workspace = true, features = ["unstable"] }
-swc_experimental_ecma_semantic        = { workspace = true }
-swc_experimental_ecma_transforms_base = { workspace = true }
-swc_experimental_ecma_visit           = { workspace = true }
+oxc                            = { workspace = true }
+oxc_allocator                  = { workspace = true }
+swc_experimental_allocator     = { workspace = true }
+swc_experimental_ecma_ast      = { workspace = true }
+swc_experimental_ecma_parser   = { workspace = true, features = ["unstable"] }
+swc_experimental_ecma_semantic = { workspace = true }
+swc_experimental_ecma_visit    = { workspace = true }
 
 criterion  = { workspace = true }
 mimalloc   = { workspace = true }

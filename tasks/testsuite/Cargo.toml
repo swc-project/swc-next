@@ -15,11 +15,7 @@ similar   = { workspace = true }
 # TODO(flat-ast): Re-enable when the legacy conformance runner is ported.
 # swc_core = { workspace = true, features = ["__ecma_transforms", "ecma_parser_unstable"] }
 
-swc_experimental_allocator            = { workspace = true }
-swc_experimental_ecma_ast             = { workspace = true }
-swc_experimental_ecma_parser          = { workspace = true }
-swc_experimental_ecma_semantic        = { workspace = true }
-
-# TODO(flat-ast): Re-enable with the remove-paren Test262 runner after the
-# transform crate is ported to the current typed AST.
-# swc_experimental_ecma_transforms_base = { workspace = true }
+swc_experimental_allocator     = { workspace = true }
+swc_experimental_ecma_ast      = { workspace = true }
+swc_experimental_ecma_parser   = { workspace = true }
+swc_experimental_ecma_semantic = { workspace = true }
