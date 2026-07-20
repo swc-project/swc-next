@@ -85,7 +85,7 @@ pub struct JsxClosingFragment {}
 
 #[ast]
 pub struct JsxIdentifier {
-    name: Atom,
+    name: String,
 }
 
 #[ast]
@@ -121,7 +121,7 @@ pub struct JsxEmptyExpression {}
 
 #[ast]
 pub struct JsxText {
-    value: Wtf8Atom,
+    value: String,
 }
 
 #[ast]

@@ -1,6 +1,6 @@
 use oxc_index::IndexVec;
 use rustc_hash::FxHashMap;
-use swc_experimental_ecma_ast::{Atom, NodeId, ScopeId, Span, SymbolId};
+use swc_experimental_ecma_ast::{NodeId, ScopeId, Span, String as AstString, SymbolId};
 
 use crate::scope::{ScopeKind, ScopeTree};
 
@@ -212,8 +212,8 @@ impl SymbolFlags {
 }
 
 #[derive(Clone, Debug)]
-pub struct Symbol<'a> {
-    pub name: Atom<'a>,
+pub struct Symbol {
+    pub name: AstString,
     pub flags: SymbolFlags,
     pub scope: ScopeId,
     pub declarations: Vec<NodeId>,
@@ -237,8 +237,8 @@ pub struct ReferenceFlags {
 }
 
 #[derive(Clone, Debug)]
-pub struct Reference<'a> {
-    pub name: Atom<'a>,
+pub struct Reference {
+    pub name: AstString,
     pub scope: ScopeId,
     pub node: NodeId,
     pub span: Span,
@@ -249,11 +249,11 @@ pub struct Reference<'a> {
 }
 
 #[derive(Debug)]
-pub struct SymbolTable<'a> {
-    symbols: IndexVec<SymbolId, Symbol<'a>>,
-    references: IndexVec<ReferenceId, Reference<'a>>,
-    scope_bindings: IndexVec<ScopeId, FxHashMap<Atom<'a>, SymbolId>>,
-    hoisted_bindings: IndexVec<ScopeId, FxHashMap<Atom<'a>, SymbolId>>,
+pub struct SymbolTable {
+    symbols: IndexVec<SymbolId, Symbol>,
+    references: IndexVec<ReferenceId, Reference>,
+    scope_bindings: IndexVec<ScopeId, FxHashMap<Vec<u8>, SymbolId>>,
+    hoisted_bindings: IndexVec<ScopeId, FxHashMap<Vec<u8>, SymbolId>>,
     unresolved: Vec<ReferenceId>,
 }
 
@@ -263,7 +263,7 @@ pub(crate) struct DeclareResult {
     pub conflict: Option<Span>,
 }
 
-impl<'a> SymbolTable<'a> {
+impl SymbolTable {
     pub(crate) fn new(scope_count: usize) -> Self {
         let mut scope_bindings = IndexVec::with_capacity(scope_count);
         let mut hoisted_bindings = IndexVec::with_capacity(scope_count);
@@ -285,7 +285,7 @@ impl<'a> SymbolTable<'a> {
         self.hoisted_bindings.push(FxHashMap::default());
     }
 
-    pub fn symbols(&self) -> impl Iterator<Item = (SymbolId, &Symbol<'a>)> {
+    pub fn symbols(&self) -> impl Iterator<Item = (SymbolId, &Symbol)> {
         self.symbols.iter_enumerated()
     }
 
@@ -293,7 +293,7 @@ impl<'a> SymbolTable<'a> {
         self.symbols.len()
     }
 
-    pub fn references(&self) -> impl Iterator<Item = (ReferenceId, &Reference<'a>)> {
+    pub fn references(&self) -> impl Iterator<Item = (ReferenceId, &Reference)> {
         self.references.iter_enumerated()
     }
 
@@ -301,31 +301,31 @@ impl<'a> SymbolTable<'a> {
         self.references.len()
     }
 
-    pub fn unresolved_references(&self) -> impl Iterator<Item = (ReferenceId, &Reference<'a>)> {
+    pub fn unresolved_references(&self) -> impl Iterator<Item = (ReferenceId, &Reference)> {
         self.unresolved
             .iter()
             .copied()
             .map(|id| (id, &self.references[id]))
     }
 
-    pub fn symbol(&self, id: SymbolId) -> &Symbol<'a> {
+    pub fn symbol(&self, id: SymbolId) -> &Symbol {
         &self.symbols[id]
     }
 
-    pub fn reference(&self, id: ReferenceId) -> &Reference<'a> {
+    pub fn reference(&self, id: ReferenceId) -> &Reference {
         &self.references[id]
     }
 
-    pub fn find_in_scope(&self, scope: ScopeId, name: &str) -> Option<SymbolId> {
+    pub fn find_in_scope(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
         self.scope_bindings[scope].get(name).copied()
     }
 
-    pub fn find_in_scope_or_hoisted(&self, scope: ScopeId, name: &str) -> Option<SymbolId> {
+    pub fn find_in_scope_or_hoisted(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
         self.find_in_scope(scope, name)
             .or_else(|| self.hoisted_bindings[scope].get(name).copied())
     }
 
-    pub fn resolve(&self, scopes: &ScopeTree, scope: ScopeId, name: &str) -> Option<SymbolId> {
+    pub fn resolve(&self, scopes: &ScopeTree, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
         scopes
             .ancestors(scope)
             .find_map(|ancestor| self.find_in_scope_or_hoisted(ancestor, name))
@@ -333,14 +333,15 @@ impl<'a> SymbolTable<'a> {
 
     pub(crate) fn declare(
         &mut self,
-        name: Atom<'a>,
+        name: AstString,
+        name_bytes: &[u8],
         flags: SymbolFlags,
         excludes: SymbolFlags,
         target: ScopeId,
         node: NodeId,
         span: Span,
     ) -> DeclareResult {
-        if let Some(existing) = self.find_in_scope_or_hoisted(target, name.as_str()) {
+        if let Some(existing) = self.find_in_scope_or_hoisted(target, name_bytes) {
             let symbol = &mut self.symbols[existing];
             let conflict = symbol
                 .flags
@@ -365,7 +366,7 @@ impl<'a> SymbolTable<'a> {
             declaration_spans: vec![span],
             references: Vec::new(),
         });
-        self.scope_bindings[target].insert(name, symbol_id);
+        self.scope_bindings[target].insert(name_bytes.to_vec(), symbol_id);
         DeclareResult {
             symbol_id,
             conflict: None,
@@ -377,7 +378,7 @@ impl<'a> SymbolTable<'a> {
         scopes: &ScopeTree,
         current: ScopeId,
         target: ScopeId,
-        name: Atom<'a>,
+        name: &[u8],
         symbol_id: SymbolId,
     ) {
         for scope in scopes.ancestors(current) {
@@ -385,14 +386,14 @@ impl<'a> SymbolTable<'a> {
                 break;
             }
             self.hoisted_bindings[scope]
-                .entry(name)
+                .entry(name.to_vec())
                 .or_insert(symbol_id);
         }
     }
 
     pub(crate) fn add_reference(
         &mut self,
-        name: Atom<'a>,
+        name: AstString,
         scope: ScopeId,
         node: NodeId,
         span: Span,
@@ -422,14 +423,11 @@ impl<'a> SymbolTable<'a> {
         &mut self,
         scopes: &ScopeTree,
         reference_id: ReferenceId,
+        name: &[u8],
     ) -> Option<SymbolId> {
         let reference_scope = self.references[reference_id].scope;
         let reference_span = self.references[reference_id].span;
-        let symbol_id = self.resolve(
-            scopes,
-            reference_scope,
-            self.references[reference_id].name.as_str(),
-        );
+        let symbol_id = self.resolve(scopes, reference_scope, name);
         self.references[reference_id].symbol_id = symbol_id;
         if let Some(symbol_id) = symbol_id {
             let captured = self.crosses_function_boundary(scopes, reference_scope, symbol_id);

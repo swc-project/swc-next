@@ -1,3 +1,6 @@
+use std::{marker::PhantomData, string::String};
+
+use swc_experimental_ecma_ast::String as AstString;
 use swc_experimental_ecma_ast::*;
 
 use crate::{
@@ -6,9 +9,9 @@ use crate::{
     symbol::{ReferenceKind, SymbolFlags, SymbolTable},
 };
 
-pub(crate) struct AnalysisParts<'a> {
+pub(crate) struct AnalysisParts {
     pub scopes: ScopeTree,
-    pub symbols: SymbolTable<'a>,
+    pub symbols: SymbolTable,
     pub node_scopes: Vec<ScopeId>,
     pub diagnostics: Vec<Diagnostic>,
 }
@@ -47,7 +50,7 @@ enum SuperCallValidity {
 
 struct SemanticBuilder<'a> {
     scopes: ScopeTree,
-    symbols: SymbolTable<'a>,
+    symbols: SymbolTable,
     node_scopes: Vec<ScopeId>,
     current_scope: ScopeId,
     scope_frames: Vec<(NodeId, u8)>,
@@ -58,9 +61,10 @@ struct SemanticBuilder<'a> {
     breakable_depth: u32,
     iteration_depth: u32,
     control_frames: Vec<(u32, u32, usize)>,
-    labels: Vec<(Atom<'a>, bool, Span)>,
+    labels: Vec<(AstString, bool, Span)>,
     ambient: bool,
     diagnostics: Vec<Diagnostic>,
+    marker: PhantomData<&'a ()>,
 }
 
 impl<'a> SemanticBuilder<'a> {
@@ -90,6 +94,7 @@ impl<'a> SemanticBuilder<'a> {
             labels: Vec::new(),
             ambient: ast.lang() == Lang::Dts,
             diagnostics: Vec::new(),
+            marker: PhantomData,
         }
     }
 
@@ -177,7 +182,7 @@ impl<'a> SemanticBuilder<'a> {
         self.labels.truncate(labels);
     }
 
-    fn visible_labels(&self) -> &[(Atom<'a>, bool, Span)] {
+    fn visible_labels(&self) -> &[(AstString, bool, Span)] {
         let start = self
             .control_frames
             .last()
@@ -193,17 +198,17 @@ impl<'a> SemanticBuilder<'a> {
         self.iteration_depth > 0
     }
 
-    fn find_label(&self, name: Atom<'a>) -> bool {
+    fn find_label(&self, name: AstString, ast: &Ast<'_>) -> bool {
         self.visible_labels()
             .iter()
-            .any(|(candidate, _, _)| *candidate == name)
+            .any(|(candidate, _, _)| ast.string(*candidate) == ast.string(name))
     }
 
-    fn find_label_for_continue(&self, name: Atom<'a>) -> Option<bool> {
+    fn find_label_for_continue(&self, name: AstString, ast: &Ast<'_>) -> Option<bool> {
         self.visible_labels()
             .iter()
             .rev()
-            .find(|(candidate, _, _)| *candidate == name)
+            .find(|(candidate, _, _)| ast.string(*candidate) == ast.string(name))
             .map(|(_, iteration, _)| *iteration)
     }
 
@@ -211,7 +216,7 @@ impl<'a> SemanticBuilder<'a> {
         if self.is_strict() {
             check_strict_reserved(
                 &mut self.diagnostics,
-                label.name(ast).as_str(),
+                ast.string(label.name(ast)),
                 label.span(ast),
                 "a label",
             );
@@ -331,7 +336,9 @@ impl<'a> SemanticBuilder<'a> {
         }
 
         let name = node.name(ctx.ast());
-        if name == "let" && binding.flags.intersects(SymbolFlags::BLOCK_SCOPED_VAR) {
+        let name_bytes = ctx.ast().string(name);
+        let name_text = String::from_utf8_lossy(name_bytes).into_owned();
+        if name_bytes == b"let" && binding.flags.intersects(SymbolFlags::BLOCK_SCOPED_VAR) {
             self.diagnostics.push(Diagnostic::error(
                 node.span(ctx.ast()),
                 "'let' may not be used as a lexical binding name",
@@ -339,6 +346,7 @@ impl<'a> SemanticBuilder<'a> {
         }
         let result = self.symbols.declare(
             name,
+            name_bytes,
             binding.flags,
             binding.excludes,
             binding.target,
@@ -346,13 +354,13 @@ impl<'a> SemanticBuilder<'a> {
             node.span(ctx.ast()),
         );
         if binding.flags.is_hoisting_var() {
-            if let Some(previous) = self.find_hoisting_conflict(name.as_str(), binding.target) {
+            if let Some(previous) = self.find_hoisting_conflict(name_bytes, binding.target) {
                 self.report(
                     Diagnostic::error(
                         node.span(ctx.ast()),
                         format!(
                             "Variable '{}' conflicts with a lexical declaration",
-                            name.as_str()
+                            name_text
                         ),
                     )
                     .with_label(previous, "lexical declaration is here"),
@@ -362,12 +370,10 @@ impl<'a> SemanticBuilder<'a> {
                 &self.scopes,
                 self.current_scope,
                 binding.target,
-                name,
+                name_bytes,
                 result.symbol_id,
             );
         }
-        node.set_symbol_id(ctx.ast_mut(), Some(result.symbol_id));
-
         let annex_b_duplicate_function = result.conflict.is_some()
             && !self.scopes.get(self.current_scope).flags.strict
             && self.scopes.get(binding.target).kind == ScopeKind::Block
@@ -398,30 +404,31 @@ impl<'a> SemanticBuilder<'a> {
                 }
             });
         if let Some(previous) = result.conflict.filter(|_| !annex_b_duplicate_function) {
-            self.report_redeclaration(name.as_str(), node.span(ctx.ast()), previous);
+            self.report_redeclaration(&name_text, node.span(ctx.ast()), previous);
         }
 
         let strict = self.scopes.get(self.current_scope).flags.strict;
-        if strict && matches!(name.as_str(), "eval" | "arguments") {
+        if strict && is_eval_or_arguments(name_bytes) {
             self.diagnostics.push(Diagnostic::error(
                 node.span(ctx.ast()),
                 format!(
                     "'{}' is not allowed as a binding identifier in strict mode",
-                    name.as_str()
+                    name_text
                 ),
             ));
         }
         if strict {
             check_strict_reserved(
                 &mut self.diagnostics,
-                name.as_str(),
+                name_bytes,
                 node.span(ctx.ast()),
                 "a binding identifier",
             );
         }
+        node.set_symbol_id(ctx.ast_mut(), Some(result.symbol_id));
     }
 
-    fn find_hoisting_conflict(&self, name: &str, target: ScopeId) -> Option<Span> {
+    fn find_hoisting_conflict(&self, name: &[u8], target: ScopeId) -> Option<Span> {
         for scope in self.scopes.ancestors(self.current_scope) {
             if scope == target {
                 break;
@@ -706,7 +713,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: Directive,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        if node.value(ctx.ast()) != "use strict" {
+        if ctx.ast().string(node.value(ctx.ast())) != b"use strict" {
             return TraverseAction::Proceed;
         }
         let params = ctx
@@ -928,12 +935,15 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             .visible_labels()
             .iter()
             .rev()
-            .find(|(existing, _, _)| *existing == name)
+            .find(|(existing, _, _)| ctx.ast().string(*existing) == ctx.ast().string(name))
         {
             self.diagnostics.push(
                 Diagnostic::error(
                     label.span(ctx.ast()),
-                    format!("Label '{}' has already been declared", name.as_str()),
+                    format!(
+                        "Label '{}' has already been declared",
+                        String::from_utf8_lossy(ctx.ast().string(name))
+                    ),
                 )
                 .with_label(*previous, "previous label is here"),
             );
@@ -954,10 +964,13 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
     ) -> TraverseAction {
         if let Some(label) = node.label(ctx.ast()) {
             let name = label.name(ctx.ast());
-            if !self.find_label(name) {
+            if !self.find_label(name, ctx.ast()) {
                 self.diagnostics.push(Diagnostic::error(
                     node.span(ctx.ast()),
-                    format!("Undefined label '{}'", name.as_str()),
+                    format!(
+                        "Undefined label '{}'",
+                        String::from_utf8_lossy(ctx.ast().string(name))
+                    ),
                 ));
             }
         } else if !self.is_inside_breakable() {
@@ -976,18 +989,21 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
     ) -> TraverseAction {
         if let Some(label) = node.label(ctx.ast()) {
             let name = label.name(ctx.ast());
-            match self.find_label_for_continue(name) {
+            match self.find_label_for_continue(name, ctx.ast()) {
                 Some(true) => {}
                 Some(false) => self.diagnostics.push(Diagnostic::error(
                     node.span(ctx.ast()),
                     format!(
                         "Label '{}' does not denote an iteration statement",
-                        name.as_str()
+                        String::from_utf8_lossy(ctx.ast().string(name))
                     ),
                 )),
                 None => self.diagnostics.push(Diagnostic::error(
                     node.span(ctx.ast()),
-                    format!("Undefined label '{}'", name.as_str()),
+                    format!(
+                        "Undefined label '{}'",
+                        String::from_utf8_lossy(ctx.ast().string(name))
+                    ),
                 )),
             }
         } else if !self.is_inside_iteration() {
@@ -1065,15 +1081,16 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
         let name = node.name(ctx.ast());
+        let name = ctx.ast().string(name);
         if self.inherited_flags().strict {
             check_strict_reserved(
                 &mut self.diagnostics,
-                name.as_str(),
+                name,
                 node.span(ctx.ast()),
                 "an identifier reference",
             );
         }
-        if name == "arguments" && !is_arguments_available(ctx) {
+        if name == b"arguments" && !is_arguments_available(ctx) {
             self.diagnostics.push(Diagnostic::error(
                 node.span(ctx.ast()),
                 "'arguments' is not allowed in a class field initializer or static block",
@@ -1140,10 +1157,14 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             ctx.ast().property_key_data(node.property(ctx.ast()))
         {
             let name = private.name(ctx.ast());
-            if !is_private_name_declared(ctx, name.as_str()) {
+            let name = ctx.ast().string(name);
+            if !is_private_name_declared(ctx, name) {
                 self.diagnostics.push(Diagnostic::error(
                     private.span(ctx.ast()),
-                    format!("Private name '#{}' is not declared", name.as_str()),
+                    format!(
+                        "Private name '#{}' is not declared",
+                        String::from_utf8_lossy(name)
+                    ),
                 ));
             }
         }
@@ -1159,10 +1180,14 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             && let ExprData::PrivateIdentifier(private) = ctx.ast().expr_data(node.left(ctx.ast()))
         {
             let name = private.name(ctx.ast());
-            if !is_private_name_declared(ctx, name.as_str()) {
+            let name = ctx.ast().string(name);
+            if !is_private_name_declared(ctx, name) {
                 self.diagnostics.push(Diagnostic::error(
                     private.span(ctx.ast()),
-                    format!("Private name '#{}' is not declared", name.as_str()),
+                    format!(
+                        "Private name '#{}' is not declared",
+                        String::from_utf8_lossy(name)
+                    ),
                 ));
             }
         }
@@ -1206,7 +1231,9 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         {
             return TraverseAction::Proceed;
         }
-        if self.inherited_flags().strict && string_has_legacy_escape(node.raw(ctx.ast()).as_str()) {
+        if self.inherited_flags().strict
+            && string_has_legacy_escape(ctx.ast().string(node.raw(ctx.ast())))
+        {
             self.diagnostics.push(Diagnostic::error(
                 node.span(ctx.ast()),
                 "Legacy octal and non-octal decimal escapes are forbidden in strict mode",
@@ -1227,8 +1254,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         {
             return TraverseAction::Proceed;
         }
-        let raw_atom = node.raw(ctx.ast());
-        let raw = raw_atom.as_str().as_bytes();
+        let raw = ctx.ast().string(node.raw(ctx.ast()));
         if self.inherited_flags().strict && is_legacy_numeric_literal(raw) {
             self.diagnostics.push(Diagnostic::error(
                 node.span(ctx.ast()),
@@ -1245,8 +1271,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
     ) -> TraverseAction {
         let meta = node.meta(ctx.ast()).name(ctx.ast());
         let property = node.property(ctx.ast()).name(ctx.ast());
-        if meta == "import"
-            && property == "meta"
+        if ctx.ast().string(meta) == b"import"
+            && ctx.ast().string(property) == b"meta"
             && self.scopes.get(self.scopes.top_level_scope_id()).kind != ScopeKind::Module
         {
             self.diagnostics.push(Diagnostic::error(
@@ -1254,7 +1280,10 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                 "'import.meta' is only valid in module code",
             ));
         }
-        if meta == "new" && property == "target" && !is_new_target_available(ctx) {
+        if ctx.ast().string(meta) == b"new"
+            && ctx.ast().string(property) == b"target"
+            && !is_new_target_available(ctx)
+        {
             self.diagnostics.push(Diagnostic::error(
                 node.span(ctx.ast()),
                 "'new.target' is only valid inside a function or class field initializer",
@@ -1381,7 +1410,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
         let mut first_constructor = None;
-        let mut private_elements: Vec<(Atom<'a>, PrivateElementKind, bool, Span)> = Vec::new();
+        let mut private_elements: Vec<(AstString, PrivateElementKind, bool, Span)> = Vec::new();
         for id in node.body(ctx.ast()).iter() {
             let element = ctx.ast().get_node_in_sub_range(id);
             if let ClassElementData::MethodDefinition(method) =
@@ -1408,9 +1437,10 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             };
             let kind = private_element_kind(element, ctx.ast());
             let is_static = private_element_is_static(element, ctx.ast());
-            if let Some((_, previous_kind, previous_static, previous_span)) = private_elements
-                .iter()
-                .find(|(previous_name, _, _, _)| previous_name.as_str() == name.as_str())
+            if let Some((_, previous_kind, previous_static, previous_span)) =
+                private_elements.iter().find(|(previous_name, _, _, _)| {
+                    ctx.ast().string(*previous_name) == ctx.ast().string(name)
+                })
             {
                 let accessor_pair = matches!(
                     (*previous_kind, kind),
@@ -1421,7 +1451,10 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                     self.diagnostics.push(
                         Diagnostic::error(
                             key_span,
-                            format!("Duplicate private name '#{}'", name.as_str()),
+                            format!(
+                                "Duplicate private name '#{}'",
+                                String::from_utf8_lossy(ctx.ast().string(name))
+                            ),
                         )
                         .with_label(*previous_span, "first declaration is here"),
                     );
@@ -1950,19 +1983,19 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
     }
 }
 
-struct ReferenceResolver<'semantic, 'a> {
+struct ReferenceResolver<'semantic> {
     scopes: &'semantic ScopeTree,
-    symbols: &'semantic mut SymbolTable<'a>,
+    symbols: &'semantic mut SymbolTable,
     node_scopes: &'semantic [ScopeId],
     type_depth: u32,
     write_targets: Vec<Option<NodeId>>,
     diagnostics: &'semantic mut Vec<Diagnostic>,
 }
 
-impl<'semantic, 'a> ReferenceResolver<'semantic, 'a> {
+impl<'semantic> ReferenceResolver<'semantic> {
     fn new(
         scopes: &'semantic ScopeTree,
-        symbols: &'semantic mut SymbolTable<'a>,
+        symbols: &'semantic mut SymbolTable,
         node_scopes: &'semantic [ScopeId],
         diagnostics: &'semantic mut Vec<Diagnostic>,
     ) -> Self {
@@ -1976,7 +2009,7 @@ impl<'semantic, 'a> ReferenceResolver<'semantic, 'a> {
         }
     }
 
-    fn check_identifier_reference(
+    fn check_identifier_reference<'a>(
         &mut self,
         node: IdentifierReference,
         ctx: &mut TraverseCtx<'_, 'a>,
@@ -2017,13 +2050,15 @@ impl<'semantic, 'a> ReferenceResolver<'semantic, 'a> {
             is_write,
             dynamic,
         );
-        let symbol_id = self.symbols.resolve_reference(self.scopes, reference_id);
+        let symbol_id =
+            self.symbols
+                .resolve_reference(self.scopes, reference_id, ctx.ast().string(name));
         node.set_symbol_id(ctx.ast_mut(), symbol_id);
         let strict = self.scopes.get(scope).flags.strict;
         if self.type_depth == 0 && strict {
             check_strict_reserved(
                 self.diagnostics,
-                name.as_str(),
+                ctx.ast().string(name),
                 node.span(ctx.ast()),
                 "an identifier reference",
             );
@@ -2034,7 +2069,7 @@ impl<'semantic, 'a> ReferenceResolver<'semantic, 'a> {
     }
 }
 
-impl<'a> Traverse<'a> for ReferenceResolver<'_, 'a> {
+impl<'a> Traverse<'a> for ReferenceResolver<'_> {
     fn enter_node(
         &mut self,
         _node_id: NodeId,
@@ -2082,12 +2117,18 @@ impl<'a> Traverse<'a> for ReferenceResolver<'_, 'a> {
             true,
             false,
         );
-        let symbol_id = self.symbols.resolve_reference(self.scopes, reference_id);
+        let symbol_id =
+            self.symbols
+                .resolve_reference(self.scopes, reference_id, ctx.ast().string(name));
         node.set_symbol_id(ctx.ast_mut(), symbol_id);
-        if self.scopes.get(scope).flags.strict && matches!(name.as_str(), "eval" | "arguments") {
+        let name_bytes = ctx.ast().string(name);
+        if self.scopes.get(scope).flags.strict && is_eval_or_arguments(name_bytes) {
             self.diagnostics.push(Diagnostic::error(
                 node.span(ctx.ast()),
-                format!("Cannot assign to '{}' in strict mode", name.as_str()),
+                format!(
+                    "Cannot assign to '{}' in strict mode",
+                    String::from_utf8_lossy(name_bytes)
+                ),
             ));
         }
         TraverseAction::Proceed
@@ -2154,7 +2195,7 @@ impl<'a> Traverse<'a> for ReferenceResolver<'_, 'a> {
     }
 }
 
-pub(crate) fn analyze_program<'a>(program: Program, ast: &mut Ast<'a>) -> AnalysisParts<'a> {
+pub(crate) fn analyze_program<'a>(program: Program, ast: &mut Ast<'a>) -> AnalysisParts {
     let mut builder = SemanticBuilder::new(program, ast);
     let mut traverse_ctx = TraverseCtx::new(ast);
     let _ = program.traverse_with(&mut builder, &mut traverse_ctx);
@@ -2186,7 +2227,7 @@ fn has_use_strict_directive(body: TypedSubRange<StatementListItem>, ast: &Ast<'_
             .expect("typed statement-list ranges contain valid nodes");
         match ast.statement_list_item_data(item) {
             StatementListItemData::Directive(directive) => {
-                if directive.value(ast) == "use strict" {
+                if ast.string(directive.value(ast)) == b"use strict" {
                     return true;
                 }
             }
@@ -2271,9 +2312,11 @@ fn formal_parameters_are_non_simple(params: FormalParameters, ast: &Ast<'_>) -> 
 
 fn property_key_name_is(key: PropertyKey, expected: &str, ast: &Ast<'_>) -> bool {
     match ast.property_key_data(key) {
-        PropertyKeyData::IdentifierName(identifier) => identifier.name(ast).as_str() == expected,
+        PropertyKeyData::IdentifierName(identifier) => {
+            ast.string(identifier.name(ast)) == expected.as_bytes()
+        }
         PropertyKeyData::StringLiteral(string) => {
-            string.value(ast).as_wtf8().as_str() == Some(expected)
+            ast.string(string.value(ast)) == expected.as_bytes()
         }
         _ => false,
     }
@@ -2282,10 +2325,10 @@ fn property_key_name_is(key: PropertyKey, expected: &str, ast: &Ast<'_>) -> bool
 fn get_module_export_name(name: ModuleExportName, ast: &Ast<'_>) -> Option<String> {
     match ast.module_export_name_data(name) {
         ModuleExportNameData::IdentifierName(identifier) => {
-            Some(identifier.name(ast).as_str().to_owned())
+            Some(String::from_utf8_lossy(ast.string(identifier.name(ast))).into_owned())
         }
         ModuleExportNameData::StringLiteral(string) => {
-            string.value(ast).as_wtf8().as_str().map(str::to_owned)
+            Some(String::from_utf8_lossy(ast.string(string.value(ast))).into_owned())
         }
     }
 }
@@ -2352,7 +2395,7 @@ fn is_arguments_available(ctx: &TraverseCtx<'_, '_>) -> bool {
     true
 }
 
-fn is_private_name_declared(ctx: &TraverseCtx<'_, '_>, name: &str) -> bool {
+fn is_private_name_declared(ctx: &TraverseCtx<'_, '_>, name: &[u8]) -> bool {
     for ancestor in ctx.ancestors().skip(1) {
         if ctx.node_kind(ancestor) != NodeKind::ClassBody {
             continue;
@@ -2368,7 +2411,7 @@ fn is_private_name_declared(ctx: &TraverseCtx<'_, '_>, name: &str) -> bool {
                 }
             };
             if let PropertyKeyData::PrivateIdentifier(private) = ctx.ast().property_key_data(key)
-                && private.name(ctx.ast()).as_str() == name
+                && ctx.ast().string(private.name(ctx.ast())) == name
             {
                 return true;
             }
@@ -2377,7 +2420,7 @@ fn is_private_name_declared(ctx: &TraverseCtx<'_, '_>, name: &str) -> bool {
     false
 }
 
-fn private_element_name<'a>(element: ClassElement, ast: &Ast<'a>) -> Option<(Atom<'a>, Span)> {
+fn private_element_name(element: ClassElement, ast: &Ast<'_>) -> Option<(AstString, Span)> {
     let key = match ast.class_element_data(element) {
         ClassElementData::MethodDefinition(method) => method.key(ast),
         ClassElementData::PropertyDefinition(property) => property.key(ast),
@@ -2450,8 +2493,7 @@ fn unwrap_parens(mut expression: Expr, ast: &Ast<'_>) -> Expr {
     }
 }
 
-fn string_has_legacy_escape(raw: &str) -> bool {
-    let bytes = raw.as_bytes();
+fn string_has_legacy_escape(bytes: &[u8]) -> bool {
     let mut index = 1;
     while index + 1 < bytes.len() {
         if bytes[index] != b'\\' {
@@ -2474,7 +2516,7 @@ fn string_has_legacy_escape(raw: &str) -> bool {
 
 fn check_strict_reserved(
     diagnostics: &mut Vec<Diagnostic>,
-    name: &str,
+    name: &[u8],
     span: Span,
     as_what: &'static str,
 ) {
@@ -2487,30 +2529,29 @@ fn check_strict_reserved(
     ));
 }
 
-fn match_strict_reserved(name: &str) -> Option<&'static str> {
+fn match_strict_reserved(name: &[u8]) -> Option<&'static str> {
     match name.len() {
-        3 => check(name, "let", "let"),
-        5 => check(name, "yield", "yield"),
-        6 => check(name, "static", "static").or_else(|| check(name, "public", "public")),
-        7 => check(name, "private", "private").or_else(|| check(name, "package", "package")),
-        9 => {
-            check(name, "protected", "protected").or_else(|| check(name, "interface", "interface"))
-        }
-        10 => check(name, "implements", "implements"),
+        3 => check(name, b"let", "let"),
+        5 => check(name, b"yield", "yield"),
+        6 => check(name, b"static", "static").or_else(|| check(name, b"public", "public")),
+        7 => check(name, b"private", "private").or_else(|| check(name, b"package", "package")),
+        9 => check(name, b"protected", "protected")
+            .or_else(|| check(name, b"interface", "interface")),
+        10 => check(name, b"implements", "implements"),
         _ => None,
     }
 }
 
-fn check(name: &str, keyword: &str, word: &'static str) -> Option<&'static str> {
+fn check(name: &[u8], keyword: &[u8], word: &'static str) -> Option<&'static str> {
     (name == keyword).then_some(word)
 }
 
-fn is_eval_or_arguments(name: &str) -> bool {
-    matches!(name, "eval" | "arguments")
+fn is_eval_or_arguments(name: &[u8]) -> bool {
+    name == b"eval" || name == b"arguments"
 }
 
 fn is_eval_or_arguments_ref(node: IdentifierReference, ast: &Ast<'_>) -> bool {
-    is_eval_or_arguments(node.name(ast).as_str())
+    is_eval_or_arguments(ast.string(node.name(ast)))
 }
 
 fn check_assign_target_eval_arguments(
@@ -2542,7 +2583,8 @@ fn is_new_target_available(ctx: &TraverseCtx<'_, '_>) -> bool {
 fn direct_eval_callee(call: CallExpression, ast: &Ast<'_>) -> bool {
     matches!(
         ast.expr_data(unwrap_parens(call.callee(ast), ast)),
-        ExprData::IdentifierReference(identifier) if identifier.name(ast) == "eval"
+        ExprData::IdentifierReference(identifier)
+            if ast.string(identifier.name(ast)) == b"eval"
     )
 }
 

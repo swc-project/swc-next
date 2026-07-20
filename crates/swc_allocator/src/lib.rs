@@ -2,7 +2,6 @@ use bumpalo::Bump;
 use std::{alloc::Layout, cell::Cell, ptr::NonNull};
 
 mod allocator_api;
-pub mod atom;
 pub mod boxed;
 pub mod hash_map;
 pub mod hash_set;
@@ -149,11 +148,6 @@ impl Allocator {
 
     pub fn alloc_str(&self, s: &str) -> &str {
         self.arena.alloc_str(s)
-    }
-
-    pub fn alloc_wtf8(&self, s: &wtf8::Wtf8) -> &wtf8::Wtf8 {
-        let bytes = self.arena.alloc_slice_copy(s.as_bytes());
-        unsafe { wtf8::Wtf8::from_bytes_unchecked(bytes) }
     }
 
     /// Allocates uninitialized storage with the requested layout.

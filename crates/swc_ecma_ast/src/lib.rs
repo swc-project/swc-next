@@ -28,10 +28,9 @@ pub use generated::ast_node_kind::NodeKind;
 pub use generated::ast_visitor::*;
 pub use node_id::{AstNode, ExtraDataCompact, ExtraDataId, NodeId, SubRange, TypedSubRange};
 pub use semantic::{ScopeId, SymbolId};
-pub use swc_experimental_allocator::atom::{Atom, Wtf8Atom};
+pub use strings::{AstString as String, StringPool};
 pub use visit::{TraverseAction, TraverseCtx};
 
-use crate::strings::{AtomId, AtomStore, Wtf8AtomId};
 use swc_experimental_allocator::multi_index_vec;
 
 /// AST context that stores everything about the flattening AST.
@@ -50,8 +49,8 @@ pub struct Ast<'a> {
     /// Flattening AST fields.
     extra_data: ArenaVec<'a, ExtraData>,
 
-    /// Borrowed atoms are kept out of `ExtraData` so it remains eight bytes.
-    atoms: AtomStore<'a>,
+    /// Source-backed and decoded AST strings.
+    pub strings: StringPool<'a>,
 }
 
 multi_index_vec! {
@@ -75,8 +74,6 @@ pub struct NodePayload(pub(crate) u128);
 /// Compact values stored in the flattening AST's extra-data table.
 #[derive(Clone, Copy)]
 pub union ExtraData {
-    atom: AtomId,
-    wtf8_atom: Wtf8AtomId,
     node_id: NodeId,
 
     sub_range: SubRange,
@@ -88,8 +85,8 @@ pub union ExtraData {
 }
 
 impl<'a> Ast<'a> {
-    /// Create a flattening AST whose atom storage is backed by `allocator`.
-    pub fn new(_source_len: usize, allocator: &'a Allocator) -> Self {
+    /// Create a flattening AST backed by `source` and `allocator`.
+    pub fn new(source: &'a [u8], allocator: &'a Allocator) -> Self {
         Self {
             allocator,
             source_type: SourceType::Module,
@@ -97,7 +94,7 @@ impl<'a> Ast<'a> {
             line_starts: vec![0],
             nodes: NodeData::new_in(allocator),
             extra_data: ArenaVec::with_capacity_in(0, allocator),
-            atoms: AtomStore::new_in(allocator),
+            strings: StringPool::new(source),
         }
     }
 
@@ -217,38 +214,33 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
-    pub fn add_atom(&self, value: &str) -> Atom<'a> {
-        Atom::new_in(value, self.allocator)
+    pub fn source(&self) -> &'a [u8] {
+        self.strings.source
     }
 
     #[inline]
-    pub fn add_wtf8_atom(&self, value: &swc_experimental_allocator::wtf8::Wtf8) -> Wtf8Atom<'a> {
-        Wtf8Atom::new_in(value, self.allocator)
+    pub fn source_slice(&self, start: u32, end: u32) -> String {
+        self.strings.source_slice(start, end)
     }
 
     #[inline]
-    pub fn empty_atom(&self) -> Atom<'a> {
-        Atom::empty()
+    pub fn add_string(&mut self, value: &[u8]) -> String {
+        self.strings.add_string(value)
     }
 
     #[inline]
-    pub(crate) fn store_atom(&self, atom: Atom<'a>) -> AtomId {
-        self.atoms.store_atom(atom)
+    pub fn ensure_unused_string_capacity(&mut self, bytes: u32, entries: u32) {
+        self.strings.ensure_unused_capacity(bytes, entries);
     }
 
     #[inline]
-    pub(crate) fn stored_atom(&self, id: AtomId) -> Atom<'a> {
-        self.atoms.atom(id)
+    pub fn string(&self, id: String) -> &[u8] {
+        self.strings.get(id)
     }
 
     #[inline]
-    pub(crate) fn store_wtf8_atom(&self, atom: Wtf8Atom<'a>) -> Wtf8AtomId {
-        self.atoms.store_wtf8_atom(atom)
-    }
-
-    #[inline]
-    pub(crate) fn stored_wtf8_atom(&self, id: Wtf8AtomId) -> Wtf8Atom<'a> {
-        self.atoms.wtf8_atom(id)
+    pub fn empty_string(&self) -> String {
+        String::EMPTY
     }
 
     #[inline]

@@ -31,20 +31,16 @@ fn test_legacy(src: &str) -> usize {
 }
 
 fn test_new(src: &str) -> usize {
-    use swc_experimental_ecma_ast::Ast;
-    use swc_experimental_ecma_parser::{Parser, StringSource};
+    use swc_experimental_ecma_ast::{
+        Ast, BindingIdentifier, IdentifierName, IdentifierReference, LabelIdentifier,
+        PrivateIdentifier,
+    };
+    use swc_experimental_ecma_parser::{Options, parse};
     use swc_experimental_ecma_visit::VisitWith;
 
-    let input = StringSource::new(src);
     let allocator = Allocator::new();
-    let mut ast = Ast::new(input.source_len(), &allocator);
-    let mut parser = Parser::new(
-        &mut ast,
-        swc_experimental_ecma_parser::Syntax::Es(Default::default()),
-        input,
-        None,
-    );
-    let module = parser.parse_module().unwrap();
+    let mut ast = Ast::new(src.as_bytes(), &allocator);
+    let program = parse(&mut ast, src.as_bytes(), Options::default()).unwrap();
 
     struct Counter<'visit, 'ast> {
         ast: &'visit Ast<'ast>,
@@ -56,7 +52,23 @@ fn test_new(src: &str) -> usize {
             self.ast
         }
 
-        fn visit_ident(&mut self, _node: swc_experimental_ecma_ast::Ident) {
+        fn visit_identifier_reference(&mut self, _node: IdentifierReference) {
+            self.count += 1;
+        }
+
+        fn visit_private_identifier(&mut self, _node: PrivateIdentifier) {
+            self.count += 1;
+        }
+
+        fn visit_binding_identifier(&mut self, _node: BindingIdentifier) {
+            self.count += 1;
+        }
+
+        fn visit_identifier_name(&mut self, _node: IdentifierName) {
+            self.count += 1;
+        }
+
+        fn visit_label_identifier(&mut self, _node: LabelIdentifier) {
             self.count += 1;
         }
     }
@@ -65,25 +77,21 @@ fn test_new(src: &str) -> usize {
         ast: &ast,
         count: 0,
     };
-    module.visit_with(&mut counter);
+    program.visit_with(&mut counter);
     counter.count
 }
 
 fn test_new_mut(src: &str) -> usize {
-    use swc_experimental_ecma_ast::Ast;
-    use swc_experimental_ecma_parser::{Parser, StringSource};
+    use swc_experimental_ecma_ast::{
+        Ast, BindingIdentifier, IdentifierName, IdentifierReference, LabelIdentifier,
+        PrivateIdentifier,
+    };
+    use swc_experimental_ecma_parser::{Options, parse};
     use swc_experimental_ecma_visit::VisitMutWith;
 
-    let input = StringSource::new(src);
     let allocator = Allocator::new();
-    let mut ast = Ast::new(input.source_len(), &allocator);
-    let mut parser = Parser::new(
-        &mut ast,
-        swc_experimental_ecma_parser::Syntax::Es(Default::default()),
-        input,
-        None,
-    );
-    let root = parser.parse_module().unwrap();
+    let mut ast = Ast::new(src.as_bytes(), &allocator);
+    let root = parse(&mut ast, src.as_bytes(), Options::default()).unwrap();
 
     struct Counter<'visit, 'ast> {
         ast: &'visit mut Ast<'ast>,
@@ -95,7 +103,23 @@ fn test_new_mut(src: &str) -> usize {
             self.ast
         }
 
-        fn visit_mut_ident(&mut self, _node: swc_experimental_ecma_ast::Ident) {
+        fn visit_mut_identifier_reference(&mut self, _node: IdentifierReference) {
+            self.count += 1;
+        }
+
+        fn visit_mut_private_identifier(&mut self, _node: PrivateIdentifier) {
+            self.count += 1;
+        }
+
+        fn visit_mut_binding_identifier(&mut self, _node: BindingIdentifier) {
+            self.count += 1;
+        }
+
+        fn visit_mut_identifier_name(&mut self, _node: IdentifierName) {
+            self.count += 1;
+        }
+
+        fn visit_mut_label_identifier(&mut self, _node: LabelIdentifier) {
             self.count += 1;
         }
     }

@@ -10,15 +10,16 @@ impl<'a> Ast<'a> {
         body: TypedSubRange<StatementListItem>,
         hashbang: Option<Hashbang>,
     ) -> Program {
+        let _f0 = self.add_extra(source_type.to_extra_data(self));
         Program(self.add_node(
             span,
             NodeKind::Program,
             NodePayload(
                 0u128
-                    | ((source_type as u32 as u128) << 96usize)
-                    | ((unsafe { body.to_extra_data(self).other } as u128) << 0usize)
+                    | ((unsafe { body.to_extra_data(self).other } as u128) << 32usize)
                     | ((hashbang.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
-                        << 64usize),
+                        << 0usize)
+                    | ((_f0.index() as u128) << 96usize),
             ),
         ))
     }
@@ -794,7 +795,7 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         expression: StringLiteral,
-        value: Wtf8Atom<'a>,
+        value: String,
     ) -> StatementListItem {
         StatementListItem::Directive(self.directive(span, expression, value).into())
     }
@@ -944,7 +945,7 @@ impl<'a> Ast<'a> {
     pub fn expr_identifier_reference(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         symbol_id: Option<SymbolId>,
     ) -> Expr {
         Expr::IdentifierReference(self.identifier_reference(span, name, symbol_id).into())
@@ -967,7 +968,7 @@ impl<'a> Ast<'a> {
         Expr::MetaProperty(self.meta_property(span, meta, property).into())
     }
     #[inline]
-    pub fn expr_string_literal(&mut self, span: Span, value: Wtf8Atom<'a>, raw: Atom<'a>) -> Expr {
+    pub fn expr_string_literal(&mut self, span: Span, value: String, raw: String) -> Expr {
         Expr::StringLiteral(self.string_literal(span, value, raw).into())
     }
     #[inline]
@@ -975,12 +976,12 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         kind: NumericLiteralKind,
-        raw: Atom<'a>,
+        raw: String,
     ) -> Expr {
         Expr::NumericLiteral(self.numeric_literal(span, kind, raw).into())
     }
     #[inline]
-    pub fn expr_big_int_literal(&mut self, span: Span, raw: Atom<'a>) -> Expr {
+    pub fn expr_big_int_literal(&mut self, span: Span, raw: String) -> Expr {
         Expr::BigIntLiteral(self.big_int_literal(span, raw).into())
     }
     #[inline]
@@ -992,7 +993,7 @@ impl<'a> Ast<'a> {
         Expr::NullLiteral(self.null_literal(span).into())
     }
     #[inline]
-    pub fn expr_reg_exp_literal(&mut self, span: Span, pattern: Atom<'a>, flags: Atom<'a>) -> Expr {
+    pub fn expr_reg_exp_literal(&mut self, span: Span, pattern: String, flags: String) -> Expr {
         Expr::RegExpLiteral(self.reg_exp_literal(span, pattern, flags).into())
     }
     #[inline]
@@ -1268,7 +1269,7 @@ impl<'a> Ast<'a> {
         Expr::YieldExpression(self.yield_expression(span, argument, delegate).into())
     }
     #[inline]
-    pub fn expr_private_identifier(&mut self, span: Span, name: Atom<'a>) -> Expr {
+    pub fn expr_private_identifier(&mut self, span: Span, name: String) -> Expr {
         Expr::PrivateIdentifier(self.private_identifier(span, name).into())
     }
     #[inline]
@@ -1353,7 +1354,7 @@ impl<'a> Ast<'a> {
     pub fn binding_pattern_binding_identifier(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
@@ -1368,7 +1369,7 @@ impl<'a> Ast<'a> {
     pub fn binding_pattern_simple_assignment_target_identifier_reference(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         symbol_id: Option<SymbolId>,
     ) -> BindingPattern {
         BindingPattern::SimpleAssignmentTarget(SimpleAssignmentTarget::IdentifierReference(
@@ -1505,7 +1506,7 @@ impl<'a> Ast<'a> {
     pub fn assignment_target_simple_assignment_target_identifier_reference(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         symbol_id: Option<SymbolId>,
     ) -> AssignmentTarget {
         AssignmentTarget::SimpleAssignmentTarget(SimpleAssignmentTarget::IdentifierReference(
@@ -1613,7 +1614,7 @@ impl<'a> Ast<'a> {
     pub fn simple_assignment_target_identifier_reference(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         symbol_id: Option<SymbolId>,
     ) -> SimpleAssignmentTarget {
         SimpleAssignmentTarget::IdentifierReference(
@@ -1681,19 +1682,19 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn property_key_identifier_name(&mut self, span: Span, name: Atom<'a>) -> PropertyKey {
+    pub fn property_key_identifier_name(&mut self, span: Span, name: String) -> PropertyKey {
         PropertyKey::IdentifierName(self.identifier_name(span, name).into())
     }
     #[inline]
-    pub fn property_key_private_identifier(&mut self, span: Span, name: Atom<'a>) -> PropertyKey {
+    pub fn property_key_private_identifier(&mut self, span: Span, name: String) -> PropertyKey {
         PropertyKey::PrivateIdentifier(self.private_identifier(span, name).into())
     }
     #[inline]
     pub fn property_key_string_literal(
         &mut self,
         span: Span,
-        value: Wtf8Atom<'a>,
-        raw: Atom<'a>,
+        value: String,
+        raw: String,
     ) -> PropertyKey {
         PropertyKey::StringLiteral(self.string_literal(span, value, raw).into())
     }
@@ -1702,19 +1703,19 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         kind: NumericLiteralKind,
-        raw: Atom<'a>,
+        raw: String,
     ) -> PropertyKey {
         PropertyKey::NumericLiteral(self.numeric_literal(span, kind, raw).into())
     }
     #[inline]
-    pub fn property_key_big_int_literal(&mut self, span: Span, raw: Atom<'a>) -> PropertyKey {
+    pub fn property_key_big_int_literal(&mut self, span: Span, raw: String) -> PropertyKey {
         PropertyKey::BigIntLiteral(self.big_int_literal(span, raw).into())
     }
     #[inline]
     pub fn property_key_expr_identifier_reference(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         symbol_id: Option<SymbolId>,
     ) -> PropertyKey {
         PropertyKey::Expr(Expr::IdentifierReference(
@@ -1744,8 +1745,8 @@ impl<'a> Ast<'a> {
     pub fn property_key_expr_string_literal(
         &mut self,
         span: Span,
-        value: Wtf8Atom<'a>,
-        raw: Atom<'a>,
+        value: String,
+        raw: String,
     ) -> PropertyKey {
         PropertyKey::Expr(Expr::StringLiteral(
             self.string_literal(span, value, raw).into(),
@@ -1756,14 +1757,14 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         kind: NumericLiteralKind,
-        raw: Atom<'a>,
+        raw: String,
     ) -> PropertyKey {
         PropertyKey::Expr(Expr::NumericLiteral(
             self.numeric_literal(span, kind, raw).into(),
         ))
     }
     #[inline]
-    pub fn property_key_expr_big_int_literal(&mut self, span: Span, raw: Atom<'a>) -> PropertyKey {
+    pub fn property_key_expr_big_int_literal(&mut self, span: Span, raw: String) -> PropertyKey {
         PropertyKey::Expr(Expr::BigIntLiteral(self.big_int_literal(span, raw).into()))
     }
     #[inline]
@@ -1780,8 +1781,8 @@ impl<'a> Ast<'a> {
     pub fn property_key_expr_reg_exp_literal(
         &mut self,
         span: Span,
-        pattern: Atom<'a>,
-        flags: Atom<'a>,
+        pattern: String,
+        flags: String,
     ) -> PropertyKey {
         PropertyKey::Expr(Expr::RegExpLiteral(
             self.reg_exp_literal(span, pattern, flags).into(),
@@ -2099,7 +2100,7 @@ impl<'a> Ast<'a> {
     pub fn property_key_expr_private_identifier(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
     ) -> PropertyKey {
         PropertyKey::Expr(Expr::PrivateIdentifier(
             self.private_identifier(span, name).into(),
@@ -2193,7 +2194,7 @@ impl<'a> Ast<'a> {
     pub fn module_export_name_identifier_name(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
     ) -> ModuleExportName {
         ModuleExportName::IdentifierName(self.identifier_name(span, name).into())
     }
@@ -2201,8 +2202,8 @@ impl<'a> Ast<'a> {
     pub fn module_export_name_string_literal(
         &mut self,
         span: Span,
-        value: Wtf8Atom<'a>,
-        raw: Atom<'a>,
+        value: String,
+        raw: String,
     ) -> ModuleExportName {
         ModuleExportName::StringLiteral(self.string_literal(span, value, raw).into())
     }
@@ -2210,7 +2211,7 @@ impl<'a> Ast<'a> {
     pub fn argument_expr_identifier_reference(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         symbol_id: Option<SymbolId>,
     ) -> Argument {
         Argument::Expr(Expr::IdentifierReference(
@@ -2240,8 +2241,8 @@ impl<'a> Ast<'a> {
     pub fn argument_expr_string_literal(
         &mut self,
         span: Span,
-        value: Wtf8Atom<'a>,
-        raw: Atom<'a>,
+        value: String,
+        raw: String,
     ) -> Argument {
         Argument::Expr(Expr::StringLiteral(
             self.string_literal(span, value, raw).into(),
@@ -2252,14 +2253,14 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         kind: NumericLiteralKind,
-        raw: Atom<'a>,
+        raw: String,
     ) -> Argument {
         Argument::Expr(Expr::NumericLiteral(
             self.numeric_literal(span, kind, raw).into(),
         ))
     }
     #[inline]
-    pub fn argument_expr_big_int_literal(&mut self, span: Span, raw: Atom<'a>) -> Argument {
+    pub fn argument_expr_big_int_literal(&mut self, span: Span, raw: String) -> Argument {
         Argument::Expr(Expr::BigIntLiteral(self.big_int_literal(span, raw).into()))
     }
     #[inline]
@@ -2276,8 +2277,8 @@ impl<'a> Ast<'a> {
     pub fn argument_expr_reg_exp_literal(
         &mut self,
         span: Span,
-        pattern: Atom<'a>,
-        flags: Atom<'a>,
+        pattern: String,
+        flags: String,
     ) -> Argument {
         Argument::Expr(Expr::RegExpLiteral(
             self.reg_exp_literal(span, pattern, flags).into(),
@@ -2584,7 +2585,7 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
-    pub fn argument_expr_private_identifier(&mut self, span: Span, name: Atom<'a>) -> Argument {
+    pub fn argument_expr_private_identifier(&mut self, span: Span, name: String) -> Argument {
         Argument::Expr(Expr::PrivateIdentifier(
             self.private_identifier(span, name).into(),
         ))
@@ -2718,7 +2719,7 @@ impl<'a> Ast<'a> {
     pub fn for_statement_init_expr_identifier_reference(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         symbol_id: Option<SymbolId>,
     ) -> ForStatementInit {
         ForStatementInit::Expr(Expr::IdentifierReference(
@@ -2748,8 +2749,8 @@ impl<'a> Ast<'a> {
     pub fn for_statement_init_expr_string_literal(
         &mut self,
         span: Span,
-        value: Wtf8Atom<'a>,
-        raw: Atom<'a>,
+        value: String,
+        raw: String,
     ) -> ForStatementInit {
         ForStatementInit::Expr(Expr::StringLiteral(
             self.string_literal(span, value, raw).into(),
@@ -2760,7 +2761,7 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         kind: NumericLiteralKind,
-        raw: Atom<'a>,
+        raw: String,
     ) -> ForStatementInit {
         ForStatementInit::Expr(Expr::NumericLiteral(
             self.numeric_literal(span, kind, raw).into(),
@@ -2770,7 +2771,7 @@ impl<'a> Ast<'a> {
     pub fn for_statement_init_expr_big_int_literal(
         &mut self,
         span: Span,
-        raw: Atom<'a>,
+        raw: String,
     ) -> ForStatementInit {
         ForStatementInit::Expr(Expr::BigIntLiteral(self.big_int_literal(span, raw).into()))
     }
@@ -2792,8 +2793,8 @@ impl<'a> Ast<'a> {
     pub fn for_statement_init_expr_reg_exp_literal(
         &mut self,
         span: Span,
-        pattern: Atom<'a>,
-        flags: Atom<'a>,
+        pattern: String,
+        flags: String,
     ) -> ForStatementInit {
         ForStatementInit::Expr(Expr::RegExpLiteral(
             self.reg_exp_literal(span, pattern, flags).into(),
@@ -3111,7 +3112,7 @@ impl<'a> Ast<'a> {
     pub fn for_statement_init_expr_private_identifier(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
     ) -> ForStatementInit {
         ForStatementInit::Expr(Expr::PrivateIdentifier(
             self.private_identifier(span, name).into(),
@@ -3218,7 +3219,7 @@ impl<'a> Ast<'a> {
     pub fn for_statement_left_assignment_target_simple_assignment_target_identifier_reference(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         symbol_id: Option<SymbolId>,
     ) -> ForStatementLeft {
         ForStatementLeft::AssignmentTarget(AssignmentTarget::SimpleAssignmentTarget(
@@ -3346,7 +3347,7 @@ impl<'a> Ast<'a> {
     pub fn arrow_function_body_expr_identifier_reference(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         symbol_id: Option<SymbolId>,
     ) -> ArrowFunctionBody {
         ArrowFunctionBody::Expr(Expr::IdentifierReference(
@@ -3376,8 +3377,8 @@ impl<'a> Ast<'a> {
     pub fn arrow_function_body_expr_string_literal(
         &mut self,
         span: Span,
-        value: Wtf8Atom<'a>,
-        raw: Atom<'a>,
+        value: String,
+        raw: String,
     ) -> ArrowFunctionBody {
         ArrowFunctionBody::Expr(Expr::StringLiteral(
             self.string_literal(span, value, raw).into(),
@@ -3388,7 +3389,7 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         kind: NumericLiteralKind,
-        raw: Atom<'a>,
+        raw: String,
     ) -> ArrowFunctionBody {
         ArrowFunctionBody::Expr(Expr::NumericLiteral(
             self.numeric_literal(span, kind, raw).into(),
@@ -3398,7 +3399,7 @@ impl<'a> Ast<'a> {
     pub fn arrow_function_body_expr_big_int_literal(
         &mut self,
         span: Span,
-        raw: Atom<'a>,
+        raw: String,
     ) -> ArrowFunctionBody {
         ArrowFunctionBody::Expr(Expr::BigIntLiteral(self.big_int_literal(span, raw).into()))
     }
@@ -3420,8 +3421,8 @@ impl<'a> Ast<'a> {
     pub fn arrow_function_body_expr_reg_exp_literal(
         &mut self,
         span: Span,
-        pattern: Atom<'a>,
-        flags: Atom<'a>,
+        pattern: String,
+        flags: String,
     ) -> ArrowFunctionBody {
         ArrowFunctionBody::Expr(Expr::RegExpLiteral(
             self.reg_exp_literal(span, pattern, flags).into(),
@@ -3739,7 +3740,7 @@ impl<'a> Ast<'a> {
     pub fn arrow_function_body_expr_private_identifier(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
     ) -> ArrowFunctionBody {
         ArrowFunctionBody::Expr(Expr::PrivateIdentifier(
             self.private_identifier(span, name).into(),
@@ -3863,7 +3864,7 @@ impl<'a> Ast<'a> {
     pub fn formal_parameter_pattern_binding_pattern_binding_identifier(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
@@ -3878,7 +3879,7 @@ impl<'a> Ast<'a> {
     pub fn formal_parameter_pattern_binding_pattern_simple_assignment_target_identifier_reference(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         symbol_id: Option<SymbolId>,
     ) -> FormalParameterPattern {
         FormalParameterPattern::BindingPattern(BindingPattern::SimpleAssignmentTarget(
@@ -4164,7 +4165,7 @@ impl<'a> Ast<'a> {
     pub fn export_default_declaration_kind_expr_identifier_reference(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         symbol_id: Option<SymbolId>,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::Expr(Expr::IdentifierReference(
@@ -4200,8 +4201,8 @@ impl<'a> Ast<'a> {
     pub fn export_default_declaration_kind_expr_string_literal(
         &mut self,
         span: Span,
-        value: Wtf8Atom<'a>,
-        raw: Atom<'a>,
+        value: String,
+        raw: String,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::Expr(Expr::StringLiteral(
             self.string_literal(span, value, raw).into(),
@@ -4212,7 +4213,7 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         kind: NumericLiteralKind,
-        raw: Atom<'a>,
+        raw: String,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::Expr(Expr::NumericLiteral(
             self.numeric_literal(span, kind, raw).into(),
@@ -4222,7 +4223,7 @@ impl<'a> Ast<'a> {
     pub fn export_default_declaration_kind_expr_big_int_literal(
         &mut self,
         span: Span,
-        raw: Atom<'a>,
+        raw: String,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::Expr(Expr::BigIntLiteral(
             self.big_int_literal(span, raw).into(),
@@ -4249,8 +4250,8 @@ impl<'a> Ast<'a> {
     pub fn export_default_declaration_kind_expr_reg_exp_literal(
         &mut self,
         span: Span,
-        pattern: Atom<'a>,
-        flags: Atom<'a>,
+        pattern: String,
+        flags: String,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::Expr(Expr::RegExpLiteral(
             self.reg_exp_literal(span, pattern, flags).into(),
@@ -4568,7 +4569,7 @@ impl<'a> Ast<'a> {
     pub fn export_default_declaration_kind_expr_private_identifier(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::Expr(Expr::PrivateIdentifier(
             self.private_identifier(span, name).into(),
@@ -4744,19 +4745,14 @@ impl<'a> Ast<'a> {
         ThisExpression(self.add_node(span, NodeKind::ThisExpression, NodePayload(0)))
     }
     #[inline]
-    pub fn string_literal(
-        &mut self,
-        span: Span,
-        value: Wtf8Atom<'a>,
-        raw: Atom<'a>,
-    ) -> StringLiteral {
+    pub fn string_literal(&mut self, span: Span, value: String, raw: String) -> StringLiteral {
         StringLiteral(self.add_node(
             span,
             NodeKind::StringLiteral,
             NodePayload(
                 0u128
-                    | ((unsafe { value.to_extra_data(self).wtf8_atom }.raw() as u128) << 0usize)
-                    | ((unsafe { raw.to_extra_data(self).atom }.raw() as u128) << 32usize),
+                    | ((unsafe { value.to_extra_data(self).other } as u128) << 0usize)
+                    | ((unsafe { raw.to_extra_data(self).other } as u128) << 64usize),
             ),
         ))
     }
@@ -4765,26 +4761,24 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         kind: NumericLiteralKind,
-        raw: Atom<'a>,
+        raw: String,
     ) -> NumericLiteral {
         NumericLiteral(self.add_node(
             span,
             NodeKind::NumericLiteral,
             NodePayload(
                 0u128
-                    | ((kind as u32 as u128) << 32usize)
-                    | ((unsafe { raw.to_extra_data(self).atom }.raw() as u128) << 0usize),
+                    | ((kind as u32 as u128) << 64usize)
+                    | ((unsafe { raw.to_extra_data(self).other } as u128) << 0usize),
             ),
         ))
     }
     #[inline]
-    pub fn big_int_literal(&mut self, span: Span, raw: Atom<'a>) -> BigIntLiteral {
+    pub fn big_int_literal(&mut self, span: Span, raw: String) -> BigIntLiteral {
         BigIntLiteral(self.add_node(
             span,
             NodeKind::BigIntLiteral,
-            NodePayload(
-                0u128 | ((unsafe { raw.to_extra_data(self).atom }.raw() as u128) << 0usize),
-            ),
+            NodePayload(0u128 | ((unsafe { raw.to_extra_data(self).other } as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -4800,19 +4794,14 @@ impl<'a> Ast<'a> {
         NullLiteral(self.add_node(span, NodeKind::NullLiteral, NodePayload(0)))
     }
     #[inline]
-    pub fn reg_exp_literal(
-        &mut self,
-        span: Span,
-        pattern: Atom<'a>,
-        flags: Atom<'a>,
-    ) -> RegExpLiteral {
+    pub fn reg_exp_literal(&mut self, span: Span, pattern: String, flags: String) -> RegExpLiteral {
         RegExpLiteral(self.add_node(
             span,
             NodeKind::RegExpLiteral,
             NodePayload(
                 0u128
-                    | ((unsafe { pattern.to_extra_data(self).atom }.raw() as u128) << 0usize)
-                    | ((unsafe { flags.to_extra_data(self).atom }.raw() as u128) << 32usize),
+                    | ((unsafe { pattern.to_extra_data(self).other } as u128) << 0usize)
+                    | ((unsafe { flags.to_extra_data(self).other } as u128) << 64usize),
             ),
         ))
     }
@@ -4837,20 +4826,21 @@ impl<'a> Ast<'a> {
     pub fn template_element(
         &mut self,
         span: Span,
-        cooked: Atom<'a>,
-        raw: Atom<'a>,
+        cooked: String,
+        raw: String,
         tail: bool,
         is_cooked_undefined: bool,
     ) -> TemplateElement {
+        let _f0 = self.add_extra(raw.to_extra_data(self));
         TemplateElement(self.add_node(
             span,
             NodeKind::TemplateElement,
             NodePayload(
                 0u128
-                    | ((unsafe { cooked.to_extra_data(self).atom }.raw() as u128) << 0usize)
-                    | ((unsafe { raw.to_extra_data(self).atom }.raw() as u128) << 32usize)
-                    | ((tail as u32 as u128) << 64usize)
-                    | ((is_cooked_undefined as u32 as u128) << 72usize),
+                    | ((unsafe { cooked.to_extra_data(self).other } as u128) << 16usize)
+                    | ((tail as u32 as u128) << 0usize)
+                    | ((is_cooked_undefined as u32 as u128) << 8usize)
+                    | ((_f0.index() as u128) << 96usize),
             ),
         ))
     }
@@ -4858,7 +4848,7 @@ impl<'a> Ast<'a> {
     pub fn identifier_reference(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         symbol_id: Option<SymbolId>,
     ) -> IdentifierReference {
         IdentifierReference(self.add_node(
@@ -4866,68 +4856,59 @@ impl<'a> Ast<'a> {
             NodeKind::IdentifierReference,
             NodePayload(
                 0u128
-                    | ((unsafe { name.to_extra_data(self).atom }.raw() as u128) << 0usize)
-                    | ((symbol_id.map_or(0, |id| id.index() as u32 + 1) as u128) << 32usize),
+                    | ((unsafe { name.to_extra_data(self).other } as u128) << 0usize)
+                    | ((symbol_id.map_or(0, |id| id.index() as u32 + 1) as u128) << 64usize),
             ),
         ))
     }
     #[inline]
-    pub fn private_identifier(&mut self, span: Span, name: Atom<'a>) -> PrivateIdentifier {
+    pub fn private_identifier(&mut self, span: Span, name: String) -> PrivateIdentifier {
         PrivateIdentifier(self.add_node(
             span,
             NodeKind::PrivateIdentifier,
-            NodePayload(
-                0u128 | ((unsafe { name.to_extra_data(self).atom }.raw() as u128) << 0usize),
-            ),
+            NodePayload(0u128 | ((unsafe { name.to_extra_data(self).other } as u128) << 0usize)),
         ))
     }
     #[inline]
     pub fn binding_identifier(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
         symbol_id: Option<SymbolId>,
     ) -> BindingIdentifier {
-        let _extra_data = [
-            decorators.to_extra_data(self),
-            symbol_id.to_extra_data(self),
-        ];
+        let _extra_data = [name.to_extra_data(self), decorators.to_extra_data(self)];
         let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         BindingIdentifier(self.add_node(
             span,
             NodeKind::BindingIdentifier,
             NodePayload(
                 0u128
-                    | ((unsafe { name.to_extra_data(self).atom }.raw() as u128) << 8usize)
                     | ((type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32)
                         as u128)
-                        << 40usize)
+                        << 8usize)
                     | ((optional as u32 as u128) << 0usize)
+                    | ((symbol_id.map_or(0, |id| id.index() as u32 + 1) as u128) << 40usize)
                     | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
     }
     #[inline]
-    pub fn identifier_name(&mut self, span: Span, name: Atom<'a>) -> IdentifierName {
+    pub fn identifier_name(&mut self, span: Span, name: String) -> IdentifierName {
         IdentifierName(self.add_node(
             span,
             NodeKind::IdentifierName,
-            NodePayload(
-                0u128 | ((unsafe { name.to_extra_data(self).atom }.raw() as u128) << 0usize),
-            ),
+            NodePayload(0u128 | ((unsafe { name.to_extra_data(self).other } as u128) << 0usize)),
         ))
     }
     #[inline]
-    pub fn label_identifier(&mut self, span: Span, name: Atom<'a>) -> LabelIdentifier {
+    pub fn label_identifier(&mut self, span: Span, name: String) -> LabelIdentifier {
         LabelIdentifier(self.add_node(
             span,
             NodeKind::LabelIdentifier,
-            NodePayload(
-                0u128 | ((unsafe { name.to_extra_data(self).atom }.raw() as u128) << 0usize),
-            ),
+            NodePayload(0u128 | ((unsafe { name.to_extra_data(self).other } as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -5454,19 +5435,14 @@ impl<'a> Ast<'a> {
         EmptyStatement(self.add_node(span, NodeKind::EmptyStatement, NodePayload(0)))
     }
     #[inline]
-    pub fn directive(
-        &mut self,
-        span: Span,
-        expression: StringLiteral,
-        value: Wtf8Atom<'a>,
-    ) -> Directive {
+    pub fn directive(&mut self, span: Span, expression: StringLiteral, value: String) -> Directive {
         Directive(self.add_node(
             span,
             NodeKind::Directive,
             NodePayload(
                 0u128
-                    | ((expression.node_id().index() as u32 as u128) << 0usize)
-                    | ((unsafe { value.to_extra_data(self).wtf8_atom }.raw() as u128) << 32usize),
+                    | ((expression.node_id().index() as u32 as u128) << 64usize)
+                    | ((unsafe { value.to_extra_data(self).other } as u128) << 0usize),
             ),
         ))
     }
@@ -6184,13 +6160,11 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
-    pub fn hashbang(&mut self, span: Span, value: Atom<'a>) -> Hashbang {
+    pub fn hashbang(&mut self, span: Span, value: String) -> Hashbang {
         Hashbang(self.add_node(
             span,
             NodeKind::Hashbang,
-            NodePayload(
-                0u128 | ((unsafe { value.to_extra_data(self).atom }.raw() as u128) << 0usize),
-            ),
+            NodePayload(0u128 | ((unsafe { value.to_extra_data(self).other } as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -6479,7 +6453,7 @@ impl<'a> Ast<'a> {
     pub fn ts_type_name_identifier_reference(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         symbol_id: Option<SymbolId>,
     ) -> TsTypeName {
         TsTypeName::IdentifierReference(self.identifier_reference(span, name, symbol_id).into())
@@ -6497,7 +6471,7 @@ impl<'a> Ast<'a> {
     pub fn ts_qualified_name_left_identifier_reference(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         symbol_id: Option<SymbolId>,
     ) -> TsQualifiedNameLeft {
         TsQualifiedNameLeft::IdentifierReference(
@@ -6508,7 +6482,7 @@ impl<'a> Ast<'a> {
     pub fn ts_qualified_name_left_identifier_name(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
     ) -> TsQualifiedNameLeft {
         TsQualifiedNameLeft::IdentifierName(self.identifier_name(span, name).into())
     }
@@ -6516,7 +6490,7 @@ impl<'a> Ast<'a> {
     pub fn ts_qualified_name_left_binding_identifier(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
@@ -6544,7 +6518,7 @@ impl<'a> Ast<'a> {
     pub fn ts_import_type_qualifier_identifier_name(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
     ) -> TsImportTypeQualifier {
         TsImportTypeQualifier::IdentifierName(self.identifier_name(span, name).into())
     }
@@ -6561,7 +6535,7 @@ impl<'a> Ast<'a> {
     pub fn ts_type_query_expr_name_ts_type_name_identifier_reference(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         symbol_id: Option<SymbolId>,
     ) -> TsTypeQueryExprName {
         TsTypeQueryExprName::TsTypeName(TsTypeName::IdentifierReference(
@@ -6601,8 +6575,8 @@ impl<'a> Ast<'a> {
     pub fn ts_literal_string_literal(
         &mut self,
         span: Span,
-        value: Wtf8Atom<'a>,
-        raw: Atom<'a>,
+        value: String,
+        raw: String,
     ) -> TsLiteral {
         TsLiteral::StringLiteral(self.string_literal(span, value, raw).into())
     }
@@ -6611,12 +6585,12 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         kind: NumericLiteralKind,
-        raw: Atom<'a>,
+        raw: String,
     ) -> TsLiteral {
         TsLiteral::NumericLiteral(self.numeric_literal(span, kind, raw).into())
     }
     #[inline]
-    pub fn ts_literal_big_int_literal(&mut self, span: Span, raw: Atom<'a>) -> TsLiteral {
+    pub fn ts_literal_big_int_literal(&mut self, span: Span, raw: String) -> TsLiteral {
         TsLiteral::BigIntLiteral(self.big_int_literal(span, raw).into())
     }
     #[inline]
@@ -7102,7 +7076,7 @@ impl<'a> Ast<'a> {
     pub fn ts_type_predicate_name_identifier_name(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
     ) -> TsTypePredicateName {
         TsTypePredicateName::IdentifierName(self.identifier_name(span, name).into())
     }
@@ -7114,7 +7088,7 @@ impl<'a> Ast<'a> {
     pub fn ts_enum_member_name_identifier_name(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
     ) -> TsEnumMemberName {
         TsEnumMemberName::IdentifierName(self.identifier_name(span, name).into())
     }
@@ -7122,8 +7096,8 @@ impl<'a> Ast<'a> {
     pub fn ts_enum_member_name_string_literal(
         &mut self,
         span: Span,
-        value: Wtf8Atom<'a>,
-        raw: Atom<'a>,
+        value: String,
+        raw: String,
     ) -> TsEnumMemberName {
         TsEnumMemberName::StringLiteral(self.string_literal(span, value, raw).into())
     }
@@ -7140,7 +7114,7 @@ impl<'a> Ast<'a> {
     pub fn ts_enum_member_name_expr_identifier_reference(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         symbol_id: Option<SymbolId>,
     ) -> TsEnumMemberName {
         TsEnumMemberName::Expr(Expr::IdentifierReference(
@@ -7170,8 +7144,8 @@ impl<'a> Ast<'a> {
     pub fn ts_enum_member_name_expr_string_literal(
         &mut self,
         span: Span,
-        value: Wtf8Atom<'a>,
-        raw: Atom<'a>,
+        value: String,
+        raw: String,
     ) -> TsEnumMemberName {
         TsEnumMemberName::Expr(Expr::StringLiteral(
             self.string_literal(span, value, raw).into(),
@@ -7182,7 +7156,7 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         kind: NumericLiteralKind,
-        raw: Atom<'a>,
+        raw: String,
     ) -> TsEnumMemberName {
         TsEnumMemberName::Expr(Expr::NumericLiteral(
             self.numeric_literal(span, kind, raw).into(),
@@ -7192,7 +7166,7 @@ impl<'a> Ast<'a> {
     pub fn ts_enum_member_name_expr_big_int_literal(
         &mut self,
         span: Span,
-        raw: Atom<'a>,
+        raw: String,
     ) -> TsEnumMemberName {
         TsEnumMemberName::Expr(Expr::BigIntLiteral(self.big_int_literal(span, raw).into()))
     }
@@ -7214,8 +7188,8 @@ impl<'a> Ast<'a> {
     pub fn ts_enum_member_name_expr_reg_exp_literal(
         &mut self,
         span: Span,
-        pattern: Atom<'a>,
-        flags: Atom<'a>,
+        pattern: String,
+        flags: String,
     ) -> TsEnumMemberName {
         TsEnumMemberName::Expr(Expr::RegExpLiteral(
             self.reg_exp_literal(span, pattern, flags).into(),
@@ -7533,7 +7507,7 @@ impl<'a> Ast<'a> {
     pub fn ts_enum_member_name_expr_private_identifier(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
     ) -> TsEnumMemberName {
         TsEnumMemberName::Expr(Expr::PrivateIdentifier(
             self.private_identifier(span, name).into(),
@@ -7627,7 +7601,7 @@ impl<'a> Ast<'a> {
     pub fn ts_module_name_binding_identifier(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
@@ -7642,8 +7616,8 @@ impl<'a> Ast<'a> {
     pub fn ts_module_name_string_literal(
         &mut self,
         span: Span,
-        value: Wtf8Atom<'a>,
-        raw: Atom<'a>,
+        value: String,
+        raw: String,
     ) -> TsModuleName {
         TsModuleName::StringLiteral(self.string_literal(span, value, raw).into())
     }
@@ -7682,7 +7656,7 @@ impl<'a> Ast<'a> {
     pub fn ts_module_reference_ts_type_name_identifier_reference(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         symbol_id: Option<SymbolId>,
     ) -> TsModuleReference {
         TsModuleReference::TsTypeName(TsTypeName::IdentifierReference(
@@ -8718,11 +8692,7 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
-    pub fn jsx_element_name_jsx_identifier(
-        &mut self,
-        span: Span,
-        name: Atom<'a>,
-    ) -> JsxElementName {
+    pub fn jsx_element_name_jsx_identifier(&mut self, span: Span, name: String) -> JsxElementName {
         JsxElementName::JsxIdentifier(self.jsx_identifier(span, name).into())
     }
     #[inline]
@@ -8749,7 +8719,7 @@ impl<'a> Ast<'a> {
     pub fn jsx_member_expression_object_jsx_identifier(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
     ) -> JsxMemberExpressionObject {
         JsxMemberExpressionObject::JsxIdentifier(self.jsx_identifier(span, name).into())
     }
@@ -8768,7 +8738,7 @@ impl<'a> Ast<'a> {
     pub fn jsx_attribute_name_jsx_identifier(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
     ) -> JsxAttributeName {
         JsxAttributeName::JsxIdentifier(self.jsx_identifier(span, name).into())
     }
@@ -8802,8 +8772,8 @@ impl<'a> Ast<'a> {
     pub fn jsx_attribute_value_string_literal(
         &mut self,
         span: Span,
-        value: Wtf8Atom<'a>,
-        raw: Atom<'a>,
+        value: String,
+        raw: String,
     ) -> JsxAttributeValue {
         JsxAttributeValue::StringLiteral(self.string_literal(span, value, raw).into())
     }
@@ -8847,7 +8817,7 @@ impl<'a> Ast<'a> {
     pub fn jsx_expression_expr_identifier_reference(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
         symbol_id: Option<SymbolId>,
     ) -> JsxExpression {
         JsxExpression::Expr(Expr::IdentifierReference(
@@ -8877,8 +8847,8 @@ impl<'a> Ast<'a> {
     pub fn jsx_expression_expr_string_literal(
         &mut self,
         span: Span,
-        value: Wtf8Atom<'a>,
-        raw: Atom<'a>,
+        value: String,
+        raw: String,
     ) -> JsxExpression {
         JsxExpression::Expr(Expr::StringLiteral(
             self.string_literal(span, value, raw).into(),
@@ -8889,7 +8859,7 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         kind: NumericLiteralKind,
-        raw: Atom<'a>,
+        raw: String,
     ) -> JsxExpression {
         JsxExpression::Expr(Expr::NumericLiteral(
             self.numeric_literal(span, kind, raw).into(),
@@ -8899,7 +8869,7 @@ impl<'a> Ast<'a> {
     pub fn jsx_expression_expr_big_int_literal(
         &mut self,
         span: Span,
-        raw: Atom<'a>,
+        raw: String,
     ) -> JsxExpression {
         JsxExpression::Expr(Expr::BigIntLiteral(self.big_int_literal(span, raw).into()))
     }
@@ -8921,8 +8891,8 @@ impl<'a> Ast<'a> {
     pub fn jsx_expression_expr_reg_exp_literal(
         &mut self,
         span: Span,
-        pattern: Atom<'a>,
-        flags: Atom<'a>,
+        pattern: String,
+        flags: String,
     ) -> JsxExpression {
         JsxExpression::Expr(Expr::RegExpLiteral(
             self.reg_exp_literal(span, pattern, flags).into(),
@@ -9240,7 +9210,7 @@ impl<'a> Ast<'a> {
     pub fn jsx_expression_expr_private_identifier(
         &mut self,
         span: Span,
-        name: Atom<'a>,
+        name: String,
     ) -> JsxExpression {
         JsxExpression::Expr(Expr::PrivateIdentifier(
             self.private_identifier(span, name).into(),
@@ -9335,7 +9305,7 @@ impl<'a> Ast<'a> {
         JsxExpression::JsxEmptyExpression(self.jsx_empty_expression(span).into())
     }
     #[inline]
-    pub fn jsx_child_jsx_text(&mut self, span: Span, value: Wtf8Atom<'a>) -> JsxChild {
+    pub fn jsx_child_jsx_text(&mut self, span: Span, value: String) -> JsxChild {
         JsxChild::JsxText(self.jsx_text(span, value).into())
     }
     #[inline]
@@ -9457,13 +9427,11 @@ impl<'a> Ast<'a> {
         JsxClosingFragment(self.add_node(span, NodeKind::JsxClosingFragment, NodePayload(0)))
     }
     #[inline]
-    pub fn jsx_identifier(&mut self, span: Span, name: Atom<'a>) -> JsxIdentifier {
+    pub fn jsx_identifier(&mut self, span: Span, name: String) -> JsxIdentifier {
         JsxIdentifier(self.add_node(
             span,
             NodeKind::JsxIdentifier,
-            NodePayload(
-                0u128 | ((unsafe { name.to_extra_data(self).atom }.raw() as u128) << 0usize),
-            ),
+            NodePayload(0u128 | ((unsafe { name.to_extra_data(self).other } as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -9543,13 +9511,11 @@ impl<'a> Ast<'a> {
         JsxEmptyExpression(self.add_node(span, NodeKind::JsxEmptyExpression, NodePayload(0)))
     }
     #[inline]
-    pub fn jsx_text(&mut self, span: Span, value: Wtf8Atom<'a>) -> JsxText {
+    pub fn jsx_text(&mut self, span: Span, value: String) -> JsxText {
         JsxText(self.add_node(
             span,
             NodeKind::JsxText,
-            NodePayload(
-                0u128 | ((unsafe { value.to_extra_data(self).wtf8_atom }.raw() as u128) << 0usize),
-            ),
+            NodePayload(0u128 | ((unsafe { value.to_extra_data(self).other } as u128) << 0usize)),
         ))
     }
     #[inline]

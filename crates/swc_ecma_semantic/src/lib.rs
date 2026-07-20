@@ -25,9 +25,9 @@ use swc_experimental_ecma_ast::{
 
 /// Complete semantic information for one parsed source file.
 #[derive(Debug)]
-pub struct SemanticModel<'a> {
+pub struct SemanticModel {
     pub scopes: ScopeTree,
-    pub symbols: SymbolTable<'a>,
+    pub symbols: SymbolTable,
     pub node_scopes: Vec<ScopeId>,
     pub node_symbols: Vec<Option<SymbolId>>,
     pub node_references: Vec<Option<ReferenceId>>,
@@ -36,14 +36,14 @@ pub struct SemanticModel<'a> {
     diagnostics: Vec<Diagnostic>,
 }
 
-pub type Semantic<'a> = SemanticModel<'a>;
+pub type Semantic = SemanticModel;
 
-impl<'a> SemanticModel<'a> {
+impl SemanticModel {
     pub fn scope_tree(&self) -> &ScopeTree {
         &self.scopes
     }
 
-    pub fn symbol_table(&self) -> &SymbolTable<'a> {
+    pub fn symbol_table(&self) -> &SymbolTable {
         &self.symbols
     }
 
@@ -87,11 +87,11 @@ impl<'a> SemanticModel<'a> {
         self.scopes.get(id)
     }
 
-    pub fn symbol(&self, id: SymbolId) -> &Symbol<'a> {
+    pub fn symbol(&self, id: SymbolId) -> &Symbol {
         self.symbols.symbol(id)
     }
 
-    pub fn reference(&self, id: ReferenceId) -> &Reference<'a> {
+    pub fn reference(&self, id: ReferenceId) -> &Reference {
         self.symbols.reference(id)
     }
 
@@ -104,7 +104,6 @@ impl<'a> SemanticModel<'a> {
     }
 
     pub fn resolve_name(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
-        let name = std::str::from_utf8(name).ok()?;
         self.symbols.resolve(&self.scopes, scope, name)
     }
 
@@ -132,7 +131,7 @@ impl<'a> SemanticModel<'a> {
 }
 
 /// Analyze a typed flat AST and write resolved symbol IDs back to identifier nodes.
-pub fn analyze<'a>(program: Program, ast: &mut Ast<'a>) -> SemanticModel<'a> {
+pub fn analyze<'a>(program: Program, ast: &mut Ast<'a>) -> SemanticModel {
     let mut parts = analyzer::analyze_program(program, ast);
     let module_record = module_record::collect(
         program,

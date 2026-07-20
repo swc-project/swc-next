@@ -1,3 +1,5 @@
+use std::string::String;
+
 use rustc_hash::FxHashMap;
 use swc_experimental_ecma_ast::*;
 
@@ -59,7 +61,7 @@ pub(crate) fn collect<'a>(
     program: Program,
     ast: &mut Ast<'a>,
     scopes: &ScopeTree,
-    symbols: &SymbolTable<'a>,
+    symbols: &SymbolTable,
     diagnostics: &mut Vec<Diagnostic>,
 ) -> ModuleRecord {
     let mut collector = Collector {
@@ -75,16 +77,16 @@ pub(crate) fn collect<'a>(
     collector.record
 }
 
-struct Collector<'table, 'ast, 'diagnostics> {
+struct Collector<'table, 'diagnostics> {
     record: ModuleRecord,
     top_scope: ScopeId,
-    symbols: &'table SymbolTable<'ast>,
+    symbols: &'table SymbolTable,
     diagnostics: &'diagnostics mut Vec<Diagnostic>,
     export_names: FxHashMap<String, Span>,
     default_export_bindings: Vec<bool>,
 }
 
-impl Collector<'_, '_, '_> {
+impl Collector<'_, '_> {
     fn record_exported_name(&mut self, name: &str, span: Span) {
         if let Some(previous) = self.export_names.get(name).copied() {
             self.diagnostics.push(
@@ -97,7 +99,7 @@ impl Collector<'_, '_, '_> {
     }
 
     fn check_unresolved_exports(&mut self, name: &str, span: Span) -> Option<SymbolId> {
-        let symbol = self.symbols.find_in_scope(self.top_scope, name);
+        let symbol = self.symbols.find_in_scope(self.top_scope, name.as_bytes());
         if symbol.is_none() {
             self.diagnostics.push(Diagnostic::error(
                 span,
@@ -139,7 +141,7 @@ impl Collector<'_, '_, '_> {
     }
 }
 
-impl<'ast> Traverse<'ast> for Collector<'_, 'ast, '_> {
+impl<'ast> Traverse<'ast> for Collector<'_, '_> {
     fn enter_binding_identifier(
         &mut self,
         node: BindingIdentifier,
@@ -180,7 +182,7 @@ impl<'ast> Traverse<'ast> for Collector<'_, 'ast, '_> {
             }
             "default".into()
         } else {
-            node.name(ast).as_str().into()
+            String::from_utf8_lossy(ast.string(node.name(ast))).into_owned()
         };
         let kind = if symbol.flags.in_value_space() {
             ImportOrExportKind::Value
@@ -431,7 +433,7 @@ impl<'ast> Traverse<'ast> for Collector<'_, 'ast, '_> {
         let ast = ctx.ast();
         self.record.exports.push(ExportRecord {
             name_kind: ModuleRecordNameKind::Global,
-            name: node.id(ast).name(ast).as_str().into(),
+            name: String::from_utf8_lossy(ast.string(node.id(ast).name(ast))).into_owned(),
             symbol_id: None,
             from_kind: ModuleRecordNameKind::None,
             from_name: String::new(),
@@ -444,12 +446,14 @@ impl<'ast> Traverse<'ast> for Collector<'_, 'ast, '_> {
 }
 
 fn string_literal(node: StringLiteral, ast: &Ast<'_>) -> String {
-    node.value(ast).to_string_lossy().into_owned()
+    String::from_utf8_lossy(ast.string(node.value(ast))).into_owned()
 }
 
 fn module_export_name(node: ModuleExportName, ast: &Ast<'_>) -> String {
     match ast.module_export_name_data(node) {
-        ModuleExportNameData::IdentifierName(identifier) => identifier.name(ast).as_str().into(),
+        ModuleExportNameData::IdentifierName(identifier) => {
+            String::from_utf8_lossy(ast.string(identifier.name(ast))).into_owned()
+        }
         ModuleExportNameData::StringLiteral(string) => string_literal(string, ast),
     }
 }

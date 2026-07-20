@@ -72,7 +72,7 @@ fn run_source(
     variant: &str,
 ) -> Result<(), String> {
     let allocator = Allocator::new();
-    let mut ast = Ast::new(source.len(), &allocator);
+    let mut ast = Ast::new(source, &allocator);
     let options = Options {
         source_type,
         ..Options::default()

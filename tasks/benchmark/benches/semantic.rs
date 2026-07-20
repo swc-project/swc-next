@@ -5,9 +5,9 @@ use std::hint::black_box;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use swc_experimental_allocator::Allocator;
-use swc_experimental_ecma_ast::{Ast, Program};
-use swc_experimental_ecma_parser::{Parser, StringSource};
-use swc_experimental_ecma_semantic::resolver::resolver;
+use swc_experimental_ecma_ast::Ast;
+use swc_experimental_ecma_parser::{Options, parse};
+use swc_experimental_ecma_semantic::analyze;
 
 fn bench_semantic(c: &mut Criterion) {
     let bench_cases = &[("typescript", include_str!("../files/typescript.js"))];
@@ -17,20 +17,12 @@ fn bench_semantic(c: &mut Criterion) {
             let allocator = Allocator::new();
             b.iter_batched(
                 || {
-                    let input = StringSource::new(source);
-                    let mut ast = Ast::new(input.source_len(), &allocator);
-                    let module = Parser::new(
-                        &mut ast,
-                        swc_experimental_ecma_parser::Syntax::Es(Default::default()),
-                        input,
-                        None,
-                    )
-                    .parse_module()
-                    .unwrap();
-                    (module, ast)
+                    let mut ast = Ast::new(source.as_bytes(), &allocator);
+                    let program = parse(&mut ast, source.as_bytes(), Options::default()).unwrap();
+                    (program, ast)
                 },
-                |(module, mut ast)| {
-                    black_box(resolver(Program::Module(module), &mut ast));
+                |(program, mut ast)| {
+                    black_box(analyze(program, &mut ast));
                 },
                 BatchSize::SmallInput,
             );

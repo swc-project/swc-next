@@ -1,6 +1,6 @@
-use std::{borrow::Cow, str};
+use std::{borrow::Cow, string::String};
 
-use swc_experimental_allocator::wtf8::Wtf8;
+use swc_experimental_ecma_ast::String as AstString;
 use swc_experimental_ecma_ast::*;
 
 use crate::{
@@ -534,6 +534,11 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         options: Options,
     ) -> Self {
         assert!(source.len() <= u32::MAX as usize);
+        assert_eq!(
+            ast.source(),
+            source,
+            "Ast and Parser must be initialized with the same source"
+        );
         ast.set_source_metadata(options.source_type, options.lang);
         build_line_starts(ast, source);
         let lexer = Lexer::init(source, options.source_type, options.comments.collects());
@@ -575,7 +580,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let hashbang = self.lexer.hashbang.map(|hashbang| {
             let start = hashbang.start;
             let end = start + u32::from(hashbang.len);
-            let value = self.atom_from_span(Span::new(start, end));
+            let value = self.ast.source_slice(start, end);
             self.ast.hashbang(Span::new(0, end), value)
         });
         Ok(self
@@ -583,49 +588,38 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             .program(Span::new(0, end), self.source_type, body, hashbang))
     }
 
-    pub fn identifier_name(&self, token: Token) -> ParseResult<Atom<'allocator>> {
+    pub fn identifier_name(&mut self, token: Token) -> ParseResult<AstString> {
         let is_private = token.tag == TokenTag::PrivateIdentifier;
         let start = token.span.start + u32::from(is_private);
         if token.is_escaped() {
             return self.decode_escaped_identifier(start, token.span.end);
         }
-        Ok(self.atom_from_span(Span::new(start, token.span.end)))
+        Ok(self.ast.source_slice(start, token.span.end))
     }
 
-    pub fn string_value(&self, token: Token) -> ParseResult<Wtf8Atom<'allocator>> {
-        let raw = &self.source[token.span.start as usize + 1..token.span.end as usize - 1];
+    pub fn string_value(&mut self, token: Token) -> ParseResult<AstString> {
         if token.is_escaped() {
             let decoded = self.decode_escaped_string(token.span.start + 1, token.span.end - 1);
-            let value = Wtf8::from_bytes(&decoded)
-                .map_err(|_| Error::new(token.span, "string is not valid WTF-8"))?;
-            return Ok(self.ast.add_wtf8_atom(value));
+            return Ok(self.ast.add_string(&decoded));
         }
-        let value = Wtf8::from_bytes(raw)
-            .map_err(|_| Error::new(token.span, "string is not valid WTF-8"))?;
-        Ok(self.ast.add_wtf8_atom(value))
+        Ok(self
+            .ast
+            .source_slice(token.span.start + 1, token.span.end - 1))
     }
 
-    pub fn template_element_value(
-        &self,
-        token: Token,
-        span: Span,
-    ) -> ParseResult<Atom<'allocator>> {
+    pub fn template_element_value(&mut self, token: Token, span: Span) -> ParseResult<AstString> {
         if !token.is_escaped() {
-            return Ok(self.atom_from_span(span));
+            return Ok(self.ast.source_slice(span.start, span.end));
         }
         let decoded = self.decode_escaped_string(span.start, span.end);
-        let value = str::from_utf8(&decoded)
-            .map_err(|_| Error::new(span, "template value is not valid UTF-8"))?;
-        Ok(self.ast.add_atom(value))
+        Ok(self.ast.add_string(&decoded))
     }
 
-    fn decode_escaped_identifier(&self, start: u32, end: u32) -> ParseResult<Atom<'allocator>> {
+    fn decode_escaped_identifier(&mut self, start: u32, end: u32) -> ParseResult<AstString> {
         let mut buffer = [0u8; 256];
         let value =
             decode_identifier_escapes(&self.source[start as usize..end as usize], &mut buffer);
-        let value = str::from_utf8(value)
-            .map_err(|_| Error::new(Span::new(start, end), "identifier is not valid UTF-8"))?;
-        Ok(self.ast.add_atom(value))
+        Ok(self.ast.add_string(value))
     }
 
     fn decode_escaped_string(&self, start: u32, end: u32) -> Vec<u8> {
@@ -1256,13 +1250,11 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         string_literal: StringLiteral,
         span: Span,
     ) -> ParseResult<StatementListItem> {
-        let raw_value =
-            Wtf8::from_bytes(&self.source[span.start as usize + 1..span.end as usize - 1])
-                .map_err(|_| Error::new(span, "directive is not valid WTF-8"))?;
+        let raw_value = self.ast.source_slice(span.start + 1, span.end - 1);
         Ok(StatementListItem::Directive(self.ast.directive(
             statement.span(self.ast),
             string_literal,
-            self.ast.add_wtf8_atom(raw_value),
+            raw_value,
         )))
     }
 
@@ -1405,7 +1397,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             tag if tag.is_identifier_like() && !tag.is_unconditionally_reserved() => {
                 let token = self.current_token;
                 let name = self.identifier_name(token)?;
-                self.validate_identifier(token, name.as_str(), "a binding identifier")?;
+                self.validate_identifier(token, "a binding identifier")?;
                 self.advance()?;
                 let decorators = self.empty_range();
                 Ok(self.ast.binding_pattern_binding_identifier(
@@ -1866,7 +1858,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         if matches!(
             self.ast.property_key_data(key),
             PropertyKeyData::PrivateIdentifier(private)
-                if private.name(self.ast).as_str() == "constructor"
+                if self.ast.string(private.name(self.ast)) == b"constructor"
         ) {
             self.report(
                 key.span(self.ast),
@@ -2183,10 +2175,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     fn prop_name_eq(&self, key: PropertyKey, expected: &str) -> Option<Span> {
         let matches = match self.ast.property_key_data(key) {
             PropertyKeyData::IdentifierName(identifier) => {
-                identifier.name(self.ast).as_str() == expected
+                self.ast.string(identifier.name(self.ast)) == expected.as_bytes()
             }
             PropertyKeyData::StringLiteral(string) => {
-                string.value(self.ast).as_wtf8().as_str() == Some(expected)
+                self.ast.string(string.value(self.ast)) == expected.as_bytes()
             }
             _ => false,
         };
@@ -2571,7 +2563,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             return self.error_at(local_span, "import local binding must be an identifier");
         };
         let name = identifier.name(self.ast);
-        self.validate_identifier(parts.name_token, name.as_str(), "an imported binding")?;
+        self.validate_identifier(parts.name_token, "an imported binding")?;
         let decorators = self.empty_range();
         let local = self
             .ast
@@ -2840,7 +2832,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 (ExportDefaultDeclarationKind::Function(function), false)
             } else {
                 let span = Span::new(function_start, function_start + 5);
-                let name = self.atom_from_span(span);
+                let name = self.ast.source_slice(span.start, span.end);
                 let expression = self.ast.expr_identifier_reference(span, name, None);
                 (ExportDefaultDeclarationKind::Expr(expression), true)
             }
@@ -3186,7 +3178,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                     "an import or export name cannot contain a lone surrogate",
                 );
             }
-            let raw = self.atom_from_span(token.span);
+            let raw = self.ast.source_slice(token.span.start, token.span.end);
             let value = self.string_value(token)?;
             self.advance()?;
             return Ok(self
@@ -5315,7 +5307,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         matches!(
             self.ast.expr_data(expression),
             ExprData::IdentifierReference(identifier)
-                if identifier.name(self.ast) == "async"
+                if self.ast.string(identifier.name(self.ast)) == b"async"
                     && self.span_text(identifier.span(self.ast)) == b"async"
         )
     }
@@ -5656,7 +5648,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     fn parse_identifier(&mut self) -> ParseResult<Expr> {
         let token = self.current_token;
         let name = self.identifier_name(token)?;
-        self.validate_identifier(token, name.as_str(), "an identifier")?;
+        self.validate_identifier(token, "an identifier")?;
         self.advance_without_escape_check()?;
         Ok(self.ast.expr_identifier_reference(token.span, name, None))
     }
@@ -5716,13 +5708,13 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             TokenTag::OctalLiteral => NumericLiteralKind::Octal,
             TokenTag::BinaryLiteral => NumericLiteralKind::Binary,
             TokenTag::BigIntLiteral => {
-                let raw = self.atom_from_span(Span::new(token.span.start, token.span.end - 1));
+                let raw = self.ast.source_slice(token.span.start, token.span.end - 1);
                 self.advance()?;
                 return Ok(self.ast.expr_big_int_literal(token.span, raw));
             }
             _ => unreachable!(),
         };
-        let raw = self.atom_from_span(token.span);
+        let raw = self.ast.source_slice(token.span.start, token.span.end);
         self.advance()?;
         Ok(self.ast.expr_numeric_literal(token.span, kind, raw))
     }
@@ -5732,7 +5724,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         if token.tag != TokenTag::StringLiteral {
             return self.error("expected a string literal");
         }
-        let raw = self.atom_from_span(token.span);
+        let raw = self.ast.source_slice(token.span.start, token.span.end);
         let value = self.string_value(token)?;
         self.advance()?;
         Ok(self.ast.string_literal(token.span, value, raw))
@@ -5743,8 +5735,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             .lexer
             .re_scan_as_regex(self.current_token.span.start)
             .map_err(|error| self.next_token_error(error))?;
-        let pattern = self.atom_from_span(result.pattern);
-        let flags = self.atom_from_span(result.flags);
+        let pattern = self
+            .ast
+            .source_slice(result.pattern.start, result.pattern.end);
+        let flags = self.ast.source_slice(result.flags.start, result.flags.end);
         let expression = self.ast.expr_reg_exp_literal(result.span, pattern, flags);
         self.current_token = Token::eof(result.span.end);
         self.advance()?;
@@ -5819,13 +5813,13 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         tagged: bool,
     ) -> ParseResult<TemplateElement> {
         let span = self.get_template_element_span(token);
-        let raw = self.atom_from_span(span);
+        let raw = self.ast.source_slice(span.start, span.end);
         let is_cooked_undefined = token.has_invalid_escape();
         if is_cooked_undefined && !tagged {
             return self.error_at(span, "invalid escape sequence in template literal");
         }
         let cooked = if is_cooked_undefined {
-            self.ast.empty_atom()
+            AstString::EMPTY
         } else {
             self.template_element_value(token, span)?
         };
@@ -6209,7 +6203,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         };
         let span = identifier.span(self.ast);
         let name = identifier.name(self.ast);
-        if async_function && name == "await" {
+        if async_function && self.ast.string(name) == b"await" {
             return self.error_at(
                 span,
                 "'await' is reserved in an async context and cannot be used as a binding identifier",
@@ -7035,17 +7029,15 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             else {
                 return self.error_at(key.span(self.ast), "expected ':' after property name");
             };
-            if is_unconditionally_reserved_word(identifier.name(self.ast).as_str()) {
+            let name = identifier.name(self.ast);
+            let name = self.ast.string(name);
+            if is_unconditionally_reserved_word(name) {
                 return self.error_at(
                     identifier.span(self.ast),
                     "reserved words may not be used as shorthand properties",
                 );
             }
-            self.validate_identifier_name(
-                identifier.span(self.ast),
-                identifier.name(self.ast).as_str(),
-                "an identifier",
-            )?;
+            self.validate_identifier_name(identifier.span(self.ast), name, "an identifier")?;
             let identifier = self.ast.expr_identifier_reference(
                 identifier.span(self.ast),
                 identifier.name(self.ast),
@@ -7182,7 +7174,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 self.parse_private_identifier()?,
             )),
             TokenTag::StringLiteral => {
-                let raw = self.atom_from_span(token.span);
+                let raw = self.ast.source_slice(token.span.start, token.span.end);
                 let value = self.string_value(token)?;
                 self.advance()?;
                 Ok(self.ast.property_key_string_literal(token.span, value, raw))
@@ -7194,7 +7186,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                     TokenTag::BinaryLiteral => NumericLiteralKind::Binary,
                     _ => NumericLiteralKind::Decimal,
                 };
-                let raw = self.atom_from_span(token.span);
+                let raw = self.ast.source_slice(token.span.start, token.span.end);
                 self.advance()?;
                 Ok(self.ast.property_key_numeric_literal(token.span, kind, raw))
             }
@@ -7679,13 +7671,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         loop {
             let text = self.lexer.re_scan_jsx_text(scan_from);
             if text.span.start < text.span.end {
-                let bytes = &self.source[text.span.start as usize..text.span.end as usize];
-                let value = Wtf8::from_bytes(bytes)
-                    .map_err(|_| Error::new(text.span, "JSX text is not valid WTF-8"))?;
-                children.push(
-                    self.ast
-                        .jsx_child_jsx_text(text.span, self.ast.add_wtf8_atom(value)),
-                );
+                let value = self.ast.source_slice(text.span.start, text.span.end);
+                children.push(self.ast.jsx_child_jsx_text(text.span, value));
             }
             self.current_token = text;
             self.advance()?;
@@ -8352,7 +8339,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             return self.error("expected an identifier");
         }
         let name = self.identifier_name(token)?;
-        self.validate_identifier(token, name.as_str(), "a binding identifier")?;
+        self.validate_identifier(token, "a binding identifier")?;
         self.advance()?;
         let decorators = self.empty_range();
         Ok(self
@@ -8366,27 +8353,25 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             return self.error("expected a label");
         }
         let name = self.identifier_name(token)?;
-        self.validate_identifier(token, name.as_str(), "a label")?;
+        self.validate_identifier(token, "a label")?;
         self.advance()?;
         Ok(self.ast.label_identifier(token.span, name))
     }
 
-    fn validate_identifier(&self, token: Token, name: &str, as_what: &str) -> ParseResult<()> {
-        self.validate_identifier_name(token.span, name, as_what)
-    }
-
-    fn validate_identifier_name(&self, span: Span, name: &str, as_what: &str) -> ParseResult<()> {
-        if name == "yield" && self.context.yield_ {
+    fn validate_identifier(&self, token: Token, as_what: &str) -> ParseResult<()> {
+        if token.tag == TokenTag::Yield && self.context.yield_ {
             return Err(Error::new(
-                span,
+                token.span,
                 format!(
                     "'yield' is reserved in a generator context and cannot be used as {as_what}"
                 ),
             ));
         }
-        if name == "await" && (self.context.await_ || self.source_type == SourceType::Module) {
+        if token.tag == TokenTag::Await
+            && (self.context.await_ || self.source_type == SourceType::Module)
+        {
             return Err(Error::new(
-                span,
+                token.span,
                 format!(
                     "'await' is reserved in an async/module context and cannot be used as {as_what}"
                 ),
@@ -8395,10 +8380,24 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         Ok(())
     }
 
-    fn atom_from_span(&self, span: Span) -> Atom<'allocator> {
-        let bytes = &self.source[span.start as usize..span.end as usize];
-        let value = str::from_utf8(bytes).expect("the lexer only accepts valid UTF-8 text");
-        self.ast.add_atom(value)
+    fn validate_identifier_name(&self, span: Span, name: &[u8], as_what: &str) -> ParseResult<()> {
+        if name == b"yield" && self.context.yield_ {
+            return Err(Error::new(
+                span,
+                format!(
+                    "'yield' is reserved in a generator context and cannot be used as {as_what}"
+                ),
+            ));
+        }
+        if name == b"await" && (self.context.await_ || self.source_type == SourceType::Module) {
+            return Err(Error::new(
+                span,
+                format!(
+                    "'await' is reserved in an async/module context and cannot be used as {as_what}"
+                ),
+            ));
+        }
+        Ok(())
     }
 
     fn empty_range<T: ExtraDataCompact<'allocator>>(&mut self) -> TypedSubRange<T> {
@@ -8945,46 +8944,46 @@ fn logical_expression_mixes_coalesce(
         != (child_operator == LogicalOperator::NullishCoalescing)
 }
 
-fn is_unconditionally_reserved_word(name: &str) -> bool {
-    matches!(
-        name,
-        "break"
-            | "case"
-            | "catch"
-            | "class"
-            | "const"
-            | "continue"
-            | "debugger"
-            | "default"
-            | "delete"
-            | "do"
-            | "else"
-            | "enum"
-            | "export"
-            | "extends"
-            | "false"
-            | "finally"
-            | "for"
-            | "function"
-            | "if"
-            | "import"
-            | "in"
-            | "instanceof"
-            | "new"
-            | "null"
-            | "return"
-            | "super"
-            | "switch"
-            | "this"
-            | "throw"
-            | "true"
-            | "try"
-            | "typeof"
-            | "var"
-            | "void"
-            | "while"
-            | "with"
-    )
+fn is_unconditionally_reserved_word(name: &[u8]) -> bool {
+    const WORDS: &[&[u8]] = &[
+        b"break",
+        b"case",
+        b"catch",
+        b"class",
+        b"const",
+        b"continue",
+        b"debugger",
+        b"default",
+        b"delete",
+        b"do",
+        b"else",
+        b"enum",
+        b"export",
+        b"extends",
+        b"false",
+        b"finally",
+        b"for",
+        b"function",
+        b"if",
+        b"import",
+        b"in",
+        b"instanceof",
+        b"new",
+        b"null",
+        b"return",
+        b"super",
+        b"switch",
+        b"this",
+        b"throw",
+        b"true",
+        b"try",
+        b"typeof",
+        b"var",
+        b"void",
+        b"while",
+        b"with",
+    ];
+    WORDS.contains(&name)
 }
 
 fn binary_operator(tag: TokenTag) -> BinaryOperator {

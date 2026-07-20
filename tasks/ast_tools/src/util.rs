@@ -39,9 +39,6 @@ pub fn field_byte_size(ty: &AstType, schema: &Schema) -> Option<usize> {
                 AstType::Struct(_) => Some(4),
                 // Option<Enum> uses u32::MAX as its absent sentinel.
                 AstType::Enum(_) => Some(4),
-                AstType::Primitive(primitive) if matches!(primitive.name, "Atom" | "Wtf8Atom") => {
-                    Some(4)
-                }
                 AstType::Primitive(primitive) if primitive.name == "Span" => Some(8),
                 AstType::Primitive(primitive)
                     if matches!(primitive.name, "ScopeId" | "SymbolId") =>
@@ -59,8 +56,7 @@ pub fn field_byte_size(ty: &AstType, schema: &Schema) -> Option<usize> {
                 "u8" | "i8" => Some(1),
                 "u16" | "i16" => Some(2),
                 "u32" | "i32" => Some(4),
-                "Atom" | "Wtf8Atom" => Some(4),
-                "u64" | "f64" | "Span" => Some(8),
+                "u64" | "f64" | "Span" | "String" => Some(8),
                 // For other types, check if they have #[repr(uN)] in schema
                 name => schema.repr_sizes.get(name).copied(),
             }
@@ -174,7 +170,7 @@ pub fn safe_ident(name: &str) -> Ident {
 pub fn generate_field_to_u32(
     field_ty: &AstType,
     field_name: &syn::Ident,
-    ast: TokenStream,
+    _ast: TokenStream,
     schema: &Schema,
 ) -> TokenStream {
     match field_ty {
@@ -188,12 +184,6 @@ pub fn generate_field_to_u32(
             AstType::Primitive(primitive) if matches!(primitive.name, "ScopeId" | "SymbolId") => {
                 quote!(#field_name.map_or(0, |id| id.index() as u32 + 1))
             }
-            AstType::Primitive(primitive) if primitive.name == "Atom" => {
-                quote!(unsafe { #field_name.to_extra_data(#ast).atom }.raw())
-            }
-            AstType::Primitive(primitive) if primitive.name == "Wtf8Atom" => {
-                quote!(unsafe { #field_name.to_extra_data(#ast).wtf8_atom }.raw())
-            }
             _ => unreachable!("Unexpected option in u32 conversion"),
         },
         AstType::Primitive(prim) => match prim.name {
@@ -202,10 +192,6 @@ pub fn generate_field_to_u32(
             "u16" | "i16" => quote!(#field_name as u32),
             "bool" => quote!(#field_name as u32),
             "u8" | "i8" => quote!(#field_name as u32),
-            "Atom" => quote!(unsafe { #field_name.to_extra_data(#ast).atom }.raw()),
-            "Wtf8Atom" => {
-                quote!(unsafe { #field_name.to_extra_data(#ast).wtf8_atom }.raw())
-            }
             // Enums with #[repr(uN)] - just cast to u32
             name => {
                 if let Some(&size) = schema.repr_sizes.get(name) {
@@ -266,22 +252,6 @@ pub fn generate_u32_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream
                         })
                     }
                 }
-                AstType::Primitive(primitive) if primitive.name == "Atom" => quote! {
-                    unsafe {
-                        ExtraDataCompact::from_extra_data(
-                            ExtraData { atom: AtomId::from_raw(raw) },
-                            ast,
-                        )
-                    }
-                },
-                AstType::Primitive(primitive) if primitive.name == "Wtf8Atom" => quote! {
-                    unsafe {
-                        ExtraDataCompact::from_extra_data(
-                            ExtraData { wtf8_atom: Wtf8AtomId::from_raw(raw) },
-                            ast,
-                        )
-                    }
-                },
                 _ => unreachable!("Unexpected option in u32 conversion"),
             }
         }
@@ -293,22 +263,6 @@ pub fn generate_u32_to_field(field_ty: &AstType, schema: &Schema) -> TokenStream
             "i16" => quote! { raw as i16 },
             "u32" => quote! { raw },
             "i32" => quote! { raw as i32 },
-            "Atom" => quote! {
-                unsafe {
-                    ExtraDataCompact::from_extra_data(
-                        ExtraData { atom: AtomId::from_raw(raw) },
-                        ast,
-                    )
-                }
-            },
-            "Wtf8Atom" => quote! {
-                unsafe {
-                    ExtraDataCompact::from_extra_data(
-                        ExtraData { wtf8_atom: Wtf8AtomId::from_raw(raw) },
-                        ast,
-                    )
-                }
-            },
             // Enums with #[repr(uN)]
             name => {
                 let prim_ty = format_ident!("{}", name);

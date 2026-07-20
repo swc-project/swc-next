@@ -1,99 +1,117 @@
-use std::cell::UnsafeCell;
+use std::collections::HashMap;
 
-use swc_experimental_allocator::{
-    Allocator,
-    atom::{Atom, Wtf8Atom},
-    vec::Vec as ArenaVec,
-};
-
-/// Compact handles stored in node payloads and `ExtraData`.
-///
-/// Zero is reserved for `None`; table indices are encoded as `index + 1`.
-#[repr(transparent)]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) struct AtomId(u32);
-
-#[repr(transparent)]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) struct Wtf8AtomId(u32);
-
-impl AtomId {
-    #[inline]
-    pub(crate) const fn from_raw(raw: u32) -> Self {
-        Self(raw)
-    }
-
-    #[inline]
-    pub(crate) const fn raw(self) -> u32 {
-        self.0
-    }
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub struct AstString {
+    pub start: u32,
+    pub end: u32,
 }
 
-impl Wtf8AtomId {
+impl AstString {
+    pub const EMPTY: Self = Self { start: 0, end: 0 };
+
     #[inline]
-    pub(crate) const fn from_raw(raw: u32) -> Self {
-        Self(raw)
+    pub const fn len(self) -> u32 {
+        debug_assert!(self.end >= self.start);
+        self.end - self.start
     }
 
     #[inline]
-    pub(crate) const fn raw(self) -> u32 {
-        self.0
+    pub const fn is_empty(self) -> bool {
+        self.start == self.end
     }
-}
 
-/// Append-only side tables for borrowed atoms.
-///
-/// Mutation through `UnsafeCell` is safe because `Ast` is single-threaded and
-/// the tables only append. Existing `Atom` values point to source or arena
-/// storage, not into these vectors.
-pub(crate) struct AtomStore<'a> {
-    atoms: UnsafeCell<ArenaVec<'a, Atom<'a>>>,
-    wtf8_atoms: UnsafeCell<ArenaVec<'a, Wtf8Atom<'a>>>,
-}
-
-impl<'a> AtomStore<'a> {
-    pub(crate) fn new_in(allocator: &'a Allocator) -> Self {
+    #[inline]
+    pub(crate) const fn from_raw(raw: u64) -> Self {
         Self {
-            atoms: UnsafeCell::new(ArenaVec::new_in(allocator)),
-            wtf8_atoms: UnsafeCell::new(ArenaVec::new_in(allocator)),
+            start: raw as u32,
+            end: (raw >> 32) as u32,
         }
     }
 
     #[inline]
-    pub(crate) fn store_atom(&self, atom: Atom<'a>) -> AtomId {
-        // SAFETY: The store is append-only and Ast is !Sync.
-        let atoms = unsafe { &mut *self.atoms.get() };
-        let index = atoms.len();
-        let id = index as u32 + 1;
-        atoms.push(atom);
-        AtomId(id)
+    pub(crate) const fn raw(self) -> u64 {
+        self.start as u64 | ((self.end as u64) << 32)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct StringPool<'a> {
+    pub source: &'a [u8],
+    pub extra: Vec<u8>,
+    dedup: HashMap<Vec<u8>, AstString>,
+}
+
+impl Default for StringPool<'_> {
+    fn default() -> Self {
+        Self {
+            source: &[],
+            extra: Vec::new(),
+            dedup: HashMap::new(),
+        }
+    }
+}
+
+impl<'a> StringPool<'a> {
+    pub fn new(source: &'a [u8]) -> Self {
+        assert!(source.len() <= u32::MAX as usize);
+        Self {
+            source,
+            extra: Vec::new(),
+            dedup: HashMap::new(),
+        }
     }
 
     #[inline]
-    pub(crate) fn atom(&self, id: AtomId) -> Atom<'a> {
-        debug_assert_ne!(id.0, 0);
-        let index = usize::try_from(id.0 - 1).expect("atom id exceeds usize");
-        // SAFETY: AtomIds are only created immediately after appending the
-        // corresponding table entry.
-        unsafe { *(&*self.atoms.get()).as_slice().get_unchecked(index) }
+    pub fn get(&self, id: AstString) -> &[u8] {
+        debug_assert!(id.end >= id.start);
+        if id.start == id.end {
+            return b"";
+        }
+        let source_len = self.source.len() as u32;
+        if id.start < source_len {
+            debug_assert!(id.end <= source_len);
+            &self.source[id.start as usize..id.end as usize]
+        } else {
+            let start = (id.start - source_len) as usize;
+            let end = (id.end - source_len) as usize;
+            &self.extra[start..end]
+        }
     }
 
     #[inline]
-    pub(crate) fn store_wtf8_atom(&self, atom: Wtf8Atom<'a>) -> Wtf8AtomId {
-        // SAFETY: The store is append-only and Ast is !Sync.
-        let atoms = unsafe { &mut *self.wtf8_atoms.get() };
-        let index = atoms.len();
-        let id = index as u32 + 1;
-        atoms.push(atom);
-        Wtf8AtomId(id)
+    pub fn source_slice(&self, start: u32, end: u32) -> AstString {
+        debug_assert!(start <= end);
+        debug_assert!(end <= self.source.len() as u32);
+        AstString { start, end }
     }
 
-    #[inline]
-    pub(crate) fn wtf8_atom(&self, id: Wtf8AtomId) -> Wtf8Atom<'a> {
-        debug_assert_ne!(id.0, 0);
-        let index = usize::try_from(id.0 - 1).expect("WTF-8 atom id exceeds usize");
-        // SAFETY: Wtf8AtomIds are only created immediately after appending the
-        // corresponding table entry.
-        unsafe { *(&*self.wtf8_atoms.get()).as_slice().get_unchecked(index) }
+    pub fn ensure_unused_capacity(&mut self, bytes: u32, entries: u32) {
+        self.extra.reserve(bytes as usize);
+        self.dedup.reserve(entries as usize);
+    }
+
+    pub fn add_string(&mut self, text: &[u8]) -> AstString {
+        if text.is_empty() {
+            return AstString::EMPTY;
+        }
+        if let Some(&id) = self.dedup.get(text) {
+            return id;
+        }
+        let start = self
+            .source
+            .len()
+            .checked_add(self.extra.len())
+            .expect("string pool offset overflow");
+        let end = start
+            .checked_add(text.len())
+            .expect("string pool offset overflow");
+        assert!(end <= u32::MAX as usize, "string pool exceeds u32 range");
+        self.extra.extend_from_slice(text);
+        let id = AstString {
+            start: start as u32,
+            end: end as u32,
+        };
+        self.dedup.insert(text.to_vec(), id);
+        id
     }
 }

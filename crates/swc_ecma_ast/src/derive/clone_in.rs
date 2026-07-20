@@ -1,9 +1,9 @@
 use crate::{
-    Accessibility, AssignmentOperator, Ast, Atom, BinaryOperator, ClassType, FormalParameterKind,
+    Accessibility, AssignmentOperator, Ast, BinaryOperator, ClassType, FormalParameterKind,
     FunctionType, ImportOrExportKind, ImportPhase, LogicalOperator, MethodDefinitionKind,
-    NumericLiteralKind, PropertyKind, ScopeId, SourceType, Span, SymbolId, TsMappedTypeModifier,
-    TsMethodSignatureKind, TsModuleDeclarationKind, TsTypeOperatorKind, TypedSubRange,
-    UnaryOperator, UpdateOperator, VariableKind, Wtf8Atom, node_id::ExtraDataCompact,
+    NumericLiteralKind, PropertyKind, ScopeId, SourceType, Span, String as AstString, SymbolId,
+    TsMappedTypeModifier, TsMethodSignatureKind, TsModuleDeclarationKind, TsTypeOperatorKind,
+    TypedSubRange, UnaryOperator, UpdateOperator, VariableKind, node_id::ExtraDataCompact,
 };
 
 pub trait CloneIn<'a>: Sized {
@@ -87,15 +87,7 @@ where
     }
 }
 
-impl<'a> CloneIn<'a> for Atom<'a> {
-    type Cloned = Self;
-
-    fn clone_in(&self, _ast: &mut Ast<'a>) -> Self::Cloned {
-        *self
-    }
-}
-
-impl<'a> CloneIn<'a> for Wtf8Atom<'a> {
+impl<'a> CloneIn<'a> for AstString {
     type Cloned = Self;
 
     fn clone_in(&self, _ast: &mut Ast<'a>) -> Self::Cloned {

@@ -9,7 +9,7 @@ pub fn run(src: &'static str) {
     // run_scan_dependencies(program, &ast);
     // drop((program, ast, tokens));
 
-    let mut ast = swc_experimental_ecma_ast::Ast::new(src.len(), &allocator);
+    let mut ast = swc_experimental_ecma_ast::Ast::new(src.as_bytes(), &allocator);
     let program = swc_experimental_ecma_parser::parse(
         &mut ast,
         src.as_bytes(),
@@ -23,7 +23,7 @@ pub fn run(src: &'static str) {
 //     src: &'a str,
 //     allocator: &'a Allocator,
 // ) -> (Program, Ast<'a>, ArenaVec<'a, TokenAndSpan>) {
-//     let mut ast = Ast::new(src.len(), allocator);
+//     let mut ast = Ast::new(src.as_bytes(), allocator);
 //     let (program, tokens) = {
 //         let parser_lexer = Lexer::new(
 //             &ast,
@@ -227,7 +227,7 @@ pub fn run(src: &'static str) {
 
 // struct JavascriptParser<'visit, 'ast> {
 //     ast: &'visit Ast<'ast>,
-//     idents: Vec<swc_experimental_ecma_ast::Atom<'ast>>,
+//     idents: Vec<swc_experimental_ecma_ast::String>,
 // }
 
 // impl<'ast> Visit<'ast> for JavascriptParser<'_, 'ast> {

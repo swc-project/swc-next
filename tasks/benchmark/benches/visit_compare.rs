@@ -5,20 +5,13 @@ use criterion::{Bencher, Criterion, criterion_group, criterion_main};
 use swc_experimental_allocator::Allocator;
 
 fn bench_new(b: &mut Bencher, src: &'static str) {
-    use swc_experimental_ecma_ast::Ast;
-    use swc_experimental_ecma_parser::{Parser, StringSource};
+    use swc_experimental_ecma_ast::{Ast, NodeKind};
+    use swc_experimental_ecma_parser::{Options, parse};
     use swc_experimental_ecma_visit::VisitWith;
 
-    let input = StringSource::new(src);
     let allocator = Allocator::new();
-    let mut ast = Ast::new(input.source_len(), &allocator);
-    let mut parser = Parser::new(
-        &mut ast,
-        swc_experimental_ecma_parser::Syntax::Es(Default::default()),
-        input,
-        None,
-    );
-    let module = parser.parse_module().unwrap();
+    let mut ast = Ast::new(src.as_bytes(), &allocator);
+    let program = parse(&mut ast, src.as_bytes(), Options::default()).unwrap();
 
     struct Counter<'visit, 'ast> {
         ast: &'visit Ast<'ast>,
@@ -30,8 +23,17 @@ fn bench_new(b: &mut Bencher, src: &'static str) {
             self.ast
         }
 
-        fn visit_ident(&mut self, _node: swc_experimental_ecma_ast::Ident) {
-            self.count += 1;
+        fn enter_node(&mut self, node_id: swc_experimental_ecma_ast::NodeId) {
+            if matches!(
+                self.ast.node_kind(node_id),
+                NodeKind::IdentifierReference
+                    | NodeKind::PrivateIdentifier
+                    | NodeKind::BindingIdentifier
+                    | NodeKind::IdentifierName
+                    | NodeKind::LabelIdentifier
+            ) {
+                self.count += 1;
+            }
         }
     }
 
@@ -40,14 +42,17 @@ fn bench_new(b: &mut Bencher, src: &'static str) {
             ast: &ast,
             count: 0,
         };
-        module.visit_with(&mut counter);
+        program.visit_with(&mut counter);
         std::hint::black_box(counter.count);
     });
 }
 
 fn bench_new_mut(b: &mut Bencher, src: &'static str) {
-    use swc_experimental_ecma_ast::Ast;
-    use swc_experimental_ecma_parser::{Parser, StringSource};
+    use swc_experimental_ecma_ast::{
+        Ast, BindingIdentifier, IdentifierName, IdentifierReference, LabelIdentifier,
+        PrivateIdentifier,
+    };
+    use swc_experimental_ecma_parser::{Options, parse};
     use swc_experimental_ecma_visit::VisitMutWith;
 
     struct Counter<'visit, 'ast> {
@@ -60,28 +65,37 @@ fn bench_new_mut(b: &mut Bencher, src: &'static str) {
             self.ast
         }
 
-        fn visit_mut_ident(&mut self, _node: swc_experimental_ecma_ast::Ident) {
+        fn visit_mut_identifier_reference(&mut self, _node: IdentifierReference) {
+            self.count += 1;
+        }
+
+        fn visit_mut_private_identifier(&mut self, _node: PrivateIdentifier) {
+            self.count += 1;
+        }
+
+        fn visit_mut_binding_identifier(&mut self, _node: BindingIdentifier) {
+            self.count += 1;
+        }
+
+        fn visit_mut_identifier_name(&mut self, _node: IdentifierName) {
+            self.count += 1;
+        }
+
+        fn visit_mut_label_identifier(&mut self, _node: LabelIdentifier) {
             self.count += 1;
         }
     }
 
-    let input = StringSource::new(src);
     let allocator = Allocator::new();
-    let mut ast = Ast::new(input.source_len(), &allocator);
-    let mut parser = Parser::new(
-        &mut ast,
-        swc_experimental_ecma_parser::Syntax::Es(Default::default()),
-        input,
-        None,
-    );
-    let module = parser.parse_module().unwrap();
+    let mut ast = Ast::new(src.as_bytes(), &allocator);
+    let program = parse(&mut ast, src.as_bytes(), Options::default()).unwrap();
 
     b.iter(|| {
         let mut counter = Counter {
             ast: &mut ast,
             count: 0,
         };
-        module.visit_mut_with(&mut counter);
+        program.visit_mut_with(&mut counter);
         std::hint::black_box(counter.count);
     });
 }

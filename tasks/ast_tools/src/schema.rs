@@ -53,11 +53,7 @@ impl AstType {
                 let inner_name = schema.types[ast.inner_type_id].repr_ident(schema);
                 quote!( #name<#inner_name> )
             }
-            AstType::Primitive(ast) => match ast.name {
-                "Atom" => quote!(Atom<'a>),
-                "Wtf8Atom" => quote!(Wtf8Atom<'a>),
-                _ => format_ident!("{}", &ast.name).into_token_stream(),
-            },
+            AstType::Primitive(ast) => format_ident!("{}", &ast.name).into_token_stream(),
         }
     }
 

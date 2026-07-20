@@ -438,19 +438,19 @@ pub struct ThisExpression {}
 
 #[ast]
 pub struct StringLiteral {
-    value: Wtf8Atom,
-    raw: Atom,
+    value: String,
+    raw: String,
 }
 
 #[ast]
 pub struct NumericLiteral {
     kind: NumericLiteralKind,
-    raw: Atom,
+    raw: String,
 }
 
 #[ast]
 pub struct BigIntLiteral {
-    raw: Atom,
+    raw: String,
 }
 
 #[ast]
@@ -463,8 +463,8 @@ pub struct NullLiteral {}
 
 #[ast]
 pub struct RegExpLiteral {
-    pattern: Atom,
-    flags: Atom,
+    pattern: String,
+    flags: String,
 }
 
 #[ast]
@@ -475,26 +475,26 @@ pub struct TemplateLiteral {
 
 #[ast]
 pub struct TemplateElement {
-    cooked: Atom,
-    raw: Atom,
+    cooked: String,
+    raw: String,
     tail: bool,
     is_cooked_undefined: bool,
 }
 
 #[ast]
 pub struct IdentifierReference {
-    name: Atom,
+    name: String,
     symbol_id: Cell<Option<SymbolId>>,
 }
 
 #[ast]
 pub struct PrivateIdentifier {
-    name: Atom,
+    name: String,
 }
 
 #[ast]
 pub struct BindingIdentifier {
-    name: Atom,
+    name: String,
     decorators: Vec<Decorator>,
     type_annotation: Option<TsTypeAnnotation>,
     optional: bool,
@@ -503,12 +503,12 @@ pub struct BindingIdentifier {
 
 #[ast]
 pub struct IdentifierName {
-    name: Atom,
+    name: String,
 }
 
 #[ast]
 pub struct LabelIdentifier {
-    name: Atom,
+    name: String,
 }
 
 #[ast]
@@ -704,7 +704,7 @@ pub struct EmptyStatement {}
 #[ast]
 pub struct Directive {
     expression: StringLiteral,
-    value: Wtf8Atom,
+    value: String,
 }
 
 #[ast]
@@ -988,5 +988,5 @@ pub struct ExportSpecifier {
 
 #[ast]
 pub struct Hashbang {
-    value: Atom,
+    value: String,
 }

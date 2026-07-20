@@ -6,6 +6,8 @@ pub use js::*;
 pub use jsx::*;
 pub use ts::*;
 
+use crate::{Ast, ExtraData, ExtraDataCompact};
+
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash)]
 pub enum SourceType {
@@ -28,6 +30,16 @@ impl SourceType {
         } else {
             Self::Module
         }
+    }
+}
+
+impl<'a> ExtraDataCompact<'a> for SourceType {
+    fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
+        ExtraData { other: self as u64 }
+    }
+
+    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
+        unsafe { std::mem::transmute(data.other as u8) }
     }
 }
 

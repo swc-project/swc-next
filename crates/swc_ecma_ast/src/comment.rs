@@ -1,4 +1,4 @@
-use crate::{Atom, Span};
+use crate::{Span, String};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum CommentType {
@@ -16,9 +16,9 @@ impl CommentType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Comment<'a> {
+pub struct Comment {
     pub comment_type: CommentType,
-    pub value: Atom<'a>,
+    pub value: String,
     pub span: Span,
 }
 
@@ -30,9 +30,9 @@ pub enum AttachedCommentPosition {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct AttachedComment<'a> {
+pub struct AttachedComment {
     pub comment_type: CommentType,
     pub position: AttachedCommentPosition,
     pub same_line: bool,
-    pub value: Atom<'a>,
+    pub value: String,
 }

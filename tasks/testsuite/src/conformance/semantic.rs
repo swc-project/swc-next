@@ -15,7 +15,7 @@ use swc_core::{
 };
 use swc_experimental_allocator::Allocator;
 use swc_experimental_ecma_ast::{
-    Ast, Atom as ExperimentalAtom, BlockStmt, GetSpan, Ident, Program, ScopeId, Visit, VisitWith,
+    Ast, BlockStmt, GetSpan, Ident, Program, ScopeId, String as AstString, Visit, VisitWith,
 };
 use swc_experimental_ecma_semantic::resolver::{Semantic, resolver};
 
@@ -29,7 +29,7 @@ use crate::{
 
 type LegacySymbolSpans = HashMap<(LegacyAtom, SyntaxContext), Vec<SymbolSpan>>;
 type LegacyBlockSpans = HashMap<SyntaxContext, Vec<SymbolSpan>>;
-type ExperimentalSymbolSpans<'a> = HashMap<(ExperimentalAtom<'a>, ScopeId), Vec<SymbolSpan>>;
+type ExperimentalSymbolSpans = HashMap<(AstString, ScopeId), Vec<SymbolSpan>>;
 type ExperimentalBlockSpans = HashMap<ScopeId, Vec<SymbolSpan>>;
 type SymbolGroups = HashMap<String, Vec<Vec<SymbolSpan>>>;
 type ScopeGroups = Vec<Vec<SymbolSpan>>;
@@ -116,7 +116,9 @@ fn check_symbol_conformance<'a, C: Case>(
         experimental_collector
             .symbols
             .into_iter()
-            .map(|((sym, _), spans)| (sym.as_str().to_string(), spans)),
+            .map(|((sym, _), spans)| {
+                (String::from_utf8_lossy(ast.string(sym)).into_owned(), spans)
+            }),
     );
     let experimental_blocks = normalize_scope_groups(experimental_collector.blocks.into_values());
 
@@ -230,7 +232,7 @@ struct ExperimentalSymbolsCollector<'visit, 'ast> {
     ast: &'visit Ast<'ast>,
     semantic: &'visit Semantic,
     comparable_symbol_spans: &'visit HashSet<SymbolSpan>,
-    symbols: ExperimentalSymbolSpans<'ast>,
+    symbols: ExperimentalSymbolSpans,
     blocks: ExperimentalBlockSpans,
 }
 

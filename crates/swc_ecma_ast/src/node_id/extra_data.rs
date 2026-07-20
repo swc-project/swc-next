@@ -1,4 +1,4 @@
-use crate::{Ast, Atom, ExtraData, TypedSubRange, Wtf8Atom};
+use crate::{Ast, ExtraData, String, TypedSubRange};
 
 oxc_index::define_index_type! {
     pub struct ExtraDataId = u32;
@@ -46,30 +46,14 @@ impl<'a, T> ExtraDataCompact<'a> for TypedSubRange<T> {
     }
 }
 
-impl<'a> ExtraDataCompact<'a> for Atom<'a> {
+impl<'a> ExtraDataCompact<'a> for String {
     #[inline]
-    fn to_extra_data(self, ast: &Ast<'a>) -> ExtraData {
-        ExtraData {
-            atom: ast.store_atom(self),
-        }
+    fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
+        ExtraData { other: self.raw() }
     }
 
     #[inline]
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast<'a>) -> Self {
-        ast.stored_atom(unsafe { data.atom })
-    }
-}
-
-impl<'a> ExtraDataCompact<'a> for Wtf8Atom<'a> {
-    #[inline]
-    fn to_extra_data(self, ast: &Ast<'a>) -> ExtraData {
-        ExtraData {
-            wtf8_atom: ast.store_wtf8_atom(self),
-        }
-    }
-
-    #[inline]
-    unsafe fn from_extra_data(data: ExtraData, ast: &Ast<'a>) -> Self {
-        ast.stored_wtf8_atom(unsafe { data.wtf8_atom })
+    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
+        Self::from_raw(unsafe { data.other })
     }
 }
