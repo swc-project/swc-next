@@ -583,22 +583,6 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             .program(Span::new(0, end), self.source_type, body, hashbang))
     }
 
-    pub fn comments(&self) -> Vec<Comment<'allocator>> {
-        self.lexer
-            .comments
-            .iter()
-            .map(|comment| {
-                let bytes = &self.source[comment.value.start as usize..comment.value.end as usize];
-                let value = String::from_utf8_lossy(bytes);
-                Comment {
-                    comment_type: comment.comment_type,
-                    value: self.ast.add_atom(&value),
-                    span: comment.span,
-                }
-            })
-            .collect()
-    }
-
     pub fn identifier_name(&self, token: Token) -> ParseResult<Atom<'allocator>> {
         let is_private = token.tag == TokenTag::PrivateIdentifier;
         let start = token.span.start + u32::from(is_private);

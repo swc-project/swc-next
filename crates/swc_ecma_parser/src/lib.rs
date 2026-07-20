@@ -21,21 +21,9 @@ pub use parser::{
 pub use swc_experimental_ecma_ast::Lang;
 pub use token::{Precedence, Token, TokenFlag, TokenTag};
 
-use swc_experimental_ecma_ast::{Ast, Comment, Program};
+use swc_experimental_ecma_ast::{Ast, Program};
 
 /// Parse one source file into `ast`.
 pub fn parse<'a>(ast: &mut Ast<'a>, source: &[u8], options: Options) -> Result<Program, Error> {
     Parser::new(ast, source, options).parse()
-}
-
-/// Parse one source file and return its flat comments alongside the program.
-pub fn parse_with_comments<'a>(
-    ast: &mut Ast<'a>,
-    source: &[u8],
-    options: Options,
-) -> Result<(Program, Vec<Comment<'a>>), Error> {
-    let mut parser = Parser::new(ast, source, options);
-    let program = parser.parse()?;
-    let comments = parser.comments();
-    Ok((program, comments))
 }
