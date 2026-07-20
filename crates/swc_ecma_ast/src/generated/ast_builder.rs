@@ -1268,6 +1268,10 @@ impl<'a> Ast<'a> {
         Expr::YieldExpression(self.yield_expression(span, argument, delegate).into())
     }
     #[inline]
+    pub fn expr_private_identifier(&mut self, span: Span, name: Atom<'a>) -> Expr {
+        Expr::PrivateIdentifier(self.private_identifier(span, name).into())
+    }
+    #[inline]
     pub fn expr_ts_as_expression(
         &mut self,
         span: Span,
@@ -1361,6 +1365,91 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
+    pub fn binding_pattern_simple_assignment_target_identifier_reference(
+        &mut self,
+        span: Span,
+        name: Atom<'a>,
+        symbol_id: Option<SymbolId>,
+    ) -> BindingPattern {
+        BindingPattern::SimpleAssignmentTarget(SimpleAssignmentTarget::IdentifierReference(
+            self.identifier_reference(span, name, symbol_id).into(),
+        ))
+    }
+    #[inline]
+    pub fn binding_pattern_simple_assignment_target_member_expression(
+        &mut self,
+        span: Span,
+        object: Expr,
+        property: PropertyKey,
+        computed: bool,
+        optional: bool,
+    ) -> BindingPattern {
+        BindingPattern::SimpleAssignmentTarget(SimpleAssignmentTarget::MemberExpression(
+            self.member_expression(span, object, property, computed, optional)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn binding_pattern_simple_assignment_target_call_expression(
+        &mut self,
+        span: Span,
+        callee: Expr,
+        arguments: TypedSubRange<Argument>,
+        optional: bool,
+        type_arguments: Option<TsTypeParameterInstantiation>,
+    ) -> BindingPattern {
+        BindingPattern::SimpleAssignmentTarget(SimpleAssignmentTarget::CallExpression(
+            self.call_expression(span, callee, arguments, optional, type_arguments)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn binding_pattern_simple_assignment_target_ts_as_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+        type_annotation: TsType,
+    ) -> BindingPattern {
+        BindingPattern::SimpleAssignmentTarget(SimpleAssignmentTarget::TsAsExpression(
+            self.ts_as_expression(span, expression, type_annotation)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn binding_pattern_simple_assignment_target_ts_satisfies_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+        type_annotation: TsType,
+    ) -> BindingPattern {
+        BindingPattern::SimpleAssignmentTarget(SimpleAssignmentTarget::TsSatisfiesExpression(
+            self.ts_satisfies_expression(span, expression, type_annotation)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn binding_pattern_simple_assignment_target_ts_type_assertion(
+        &mut self,
+        span: Span,
+        type_annotation: TsType,
+        expression: Expr,
+    ) -> BindingPattern {
+        BindingPattern::SimpleAssignmentTarget(SimpleAssignmentTarget::TsTypeAssertion(
+            self.ts_type_assertion(span, type_annotation, expression)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn binding_pattern_simple_assignment_target_ts_non_null_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+    ) -> BindingPattern {
+        BindingPattern::SimpleAssignmentTarget(SimpleAssignmentTarget::TsNonNullExpression(
+            self.ts_non_null_expression(span, expression).into(),
+        ))
+    }
+    #[inline]
     pub fn binding_pattern_assignment_pattern(
         &mut self,
         span: Span,
@@ -1448,6 +1537,20 @@ impl<'a> Ast<'a> {
     ) -> AssignmentTarget {
         AssignmentTarget::SimpleAssignmentTarget(SimpleAssignmentTarget::MemberExpression(
             self.member_expression(span, object, property, computed, optional)
+                .into(),
+        ))
+    }
+    #[inline]
+    pub fn assignment_target_simple_assignment_target_call_expression(
+        &mut self,
+        span: Span,
+        callee: Expr,
+        arguments: TypedSubRange<Argument>,
+        optional: bool,
+        type_arguments: Option<TsTypeParameterInstantiation>,
+    ) -> AssignmentTarget {
+        AssignmentTarget::SimpleAssignmentTarget(SimpleAssignmentTarget::CallExpression(
+            self.call_expression(span, callee, arguments, optional, type_arguments)
                 .into(),
         ))
     }
@@ -1556,6 +1659,20 @@ impl<'a> Ast<'a> {
     ) -> SimpleAssignmentTarget {
         SimpleAssignmentTarget::MemberExpression(
             self.member_expression(span, object, property, computed, optional)
+                .into(),
+        )
+    }
+    #[inline]
+    pub fn simple_assignment_target_call_expression(
+        &mut self,
+        span: Span,
+        callee: Expr,
+        arguments: TypedSubRange<Argument>,
+        optional: bool,
+        type_arguments: Option<TsTypeParameterInstantiation>,
+    ) -> SimpleAssignmentTarget {
+        SimpleAssignmentTarget::CallExpression(
+            self.call_expression(span, callee, arguments, optional, type_arguments)
                 .into(),
         )
     }
@@ -2018,6 +2135,16 @@ impl<'a> Ast<'a> {
     ) -> PropertyKey {
         PropertyKey::Expr(Expr::YieldExpression(
             self.yield_expression(span, argument, delegate).into(),
+        ))
+    }
+    #[inline]
+    pub fn property_key_expr_private_identifier(
+        &mut self,
+        span: Span,
+        name: Atom<'a>,
+    ) -> PropertyKey {
+        PropertyKey::Expr(Expr::PrivateIdentifier(
+            self.private_identifier(span, name).into(),
         ))
     }
     #[inline]
@@ -2496,6 +2623,12 @@ impl<'a> Ast<'a> {
     ) -> Argument {
         Argument::Expr(Expr::YieldExpression(
             self.yield_expression(span, argument, delegate).into(),
+        ))
+    }
+    #[inline]
+    pub fn argument_expr_private_identifier(&mut self, span: Span, name: Atom<'a>) -> Argument {
+        Argument::Expr(Expr::PrivateIdentifier(
+            self.private_identifier(span, name).into(),
         ))
     }
     #[inline]
@@ -3017,6 +3150,16 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
+    pub fn for_statement_init_expr_private_identifier(
+        &mut self,
+        span: Span,
+        name: Atom<'a>,
+    ) -> ForStatementInit {
+        ForStatementInit::Expr(Expr::PrivateIdentifier(
+            self.private_identifier(span, name).into(),
+        ))
+    }
+    #[inline]
     pub fn for_statement_init_expr_ts_as_expression(
         &mut self,
         span: Span,
@@ -3138,6 +3281,22 @@ impl<'a> Ast<'a> {
         ForStatementLeft::AssignmentTarget(AssignmentTarget::SimpleAssignmentTarget(
             SimpleAssignmentTarget::MemberExpression(
                 self.member_expression(span, object, property, computed, optional)
+                    .into(),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn for_statement_left_assignment_target_simple_assignment_target_call_expression(
+        &mut self,
+        span: Span,
+        callee: Expr,
+        arguments: TypedSubRange<Argument>,
+        optional: bool,
+        type_arguments: Option<TsTypeParameterInstantiation>,
+    ) -> ForStatementLeft {
+        ForStatementLeft::AssignmentTarget(AssignmentTarget::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::CallExpression(
+                self.call_expression(span, callee, arguments, optional, type_arguments)
                     .into(),
             ),
         ))
@@ -3635,6 +3794,16 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
+    pub fn arrow_function_body_expr_private_identifier(
+        &mut self,
+        span: Span,
+        name: Atom<'a>,
+    ) -> ArrowFunctionBody {
+        ArrowFunctionBody::Expr(Expr::PrivateIdentifier(
+            self.private_identifier(span, name).into(),
+        ))
+    }
+    #[inline]
     pub fn arrow_function_body_expr_ts_as_expression(
         &mut self,
         span: Span,
@@ -3761,6 +3930,105 @@ impl<'a> Ast<'a> {
         FormalParameterPattern::BindingPattern(BindingPattern::BindingIdentifier(
             self.binding_identifier(span, name, decorators, type_annotation, optional, symbol_id)
                 .into(),
+        ))
+    }
+    #[inline]
+    pub fn formal_parameter_pattern_binding_pattern_simple_assignment_target_identifier_reference(
+        &mut self,
+        span: Span,
+        name: Atom<'a>,
+        symbol_id: Option<SymbolId>,
+    ) -> FormalParameterPattern {
+        FormalParameterPattern::BindingPattern(BindingPattern::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::IdentifierReference(
+                self.identifier_reference(span, name, symbol_id).into(),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn formal_parameter_pattern_binding_pattern_simple_assignment_target_member_expression(
+        &mut self,
+        span: Span,
+        object: Expr,
+        property: PropertyKey,
+        computed: bool,
+        optional: bool,
+    ) -> FormalParameterPattern {
+        FormalParameterPattern::BindingPattern(BindingPattern::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::MemberExpression(
+                self.member_expression(span, object, property, computed, optional)
+                    .into(),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn formal_parameter_pattern_binding_pattern_simple_assignment_target_call_expression(
+        &mut self,
+        span: Span,
+        callee: Expr,
+        arguments: TypedSubRange<Argument>,
+        optional: bool,
+        type_arguments: Option<TsTypeParameterInstantiation>,
+    ) -> FormalParameterPattern {
+        FormalParameterPattern::BindingPattern(BindingPattern::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::CallExpression(
+                self.call_expression(span, callee, arguments, optional, type_arguments)
+                    .into(),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn formal_parameter_pattern_binding_pattern_simple_assignment_target_ts_as_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+        type_annotation: TsType,
+    ) -> FormalParameterPattern {
+        FormalParameterPattern::BindingPattern(BindingPattern::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::TsAsExpression(
+                self.ts_as_expression(span, expression, type_annotation)
+                    .into(),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn formal_parameter_pattern_binding_pattern_simple_assignment_target_ts_satisfies_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+        type_annotation: TsType,
+    ) -> FormalParameterPattern {
+        FormalParameterPattern::BindingPattern(BindingPattern::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::TsSatisfiesExpression(
+                self.ts_satisfies_expression(span, expression, type_annotation)
+                    .into(),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn formal_parameter_pattern_binding_pattern_simple_assignment_target_ts_type_assertion(
+        &mut self,
+        span: Span,
+        type_annotation: TsType,
+        expression: Expr,
+    ) -> FormalParameterPattern {
+        FormalParameterPattern::BindingPattern(BindingPattern::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::TsTypeAssertion(
+                self.ts_type_assertion(span, type_annotation, expression)
+                    .into(),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn formal_parameter_pattern_binding_pattern_simple_assignment_target_ts_non_null_expression(
+        &mut self,
+        span: Span,
+        expression: Expr,
+    ) -> FormalParameterPattern {
+        FormalParameterPattern::BindingPattern(BindingPattern::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::TsNonNullExpression(
+                self.ts_non_null_expression(span, expression).into(),
+            ),
         ))
     }
     #[inline]
@@ -4368,6 +4636,16 @@ impl<'a> Ast<'a> {
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::Expr(Expr::YieldExpression(
             self.yield_expression(span, argument, delegate).into(),
+        ))
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_expr_private_identifier(
+        &mut self,
+        span: Span,
+        name: Atom<'a>,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::Expr(Expr::PrivateIdentifier(
+            self.private_identifier(span, name).into(),
         ))
     }
     #[inline]
@@ -7326,6 +7604,16 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
+    pub fn ts_enum_member_name_expr_private_identifier(
+        &mut self,
+        span: Span,
+        name: Atom<'a>,
+    ) -> TsEnumMemberName {
+        TsEnumMemberName::Expr(Expr::PrivateIdentifier(
+            self.private_identifier(span, name).into(),
+        ))
+    }
+    #[inline]
     pub fn ts_enum_member_name_expr_ts_as_expression(
         &mut self,
         span: Span,
@@ -9020,6 +9308,16 @@ impl<'a> Ast<'a> {
     ) -> JsxExpression {
         JsxExpression::Expr(Expr::YieldExpression(
             self.yield_expression(span, argument, delegate).into(),
+        ))
+    }
+    #[inline]
+    pub fn jsx_expression_expr_private_identifier(
+        &mut self,
+        span: Span,
+        name: Atom<'a>,
+    ) -> JsxExpression {
+        JsxExpression::Expr(Expr::PrivateIdentifier(
+            self.private_identifier(span, name).into(),
         ))
     }
     #[inline]

@@ -5654,6 +5654,7 @@ impl<'a> Ast<'a> {
             NodeKind::ImportExpression => ExprData::ImportExpression(ImportExpression(node.0)),
             NodeKind::AwaitExpression => ExprData::AwaitExpression(AwaitExpression(node.0)),
             NodeKind::YieldExpression => ExprData::YieldExpression(YieldExpression(node.0)),
+            NodeKind::PrivateIdentifier => ExprData::PrivateIdentifier(PrivateIdentifier(node.0)),
             NodeKind::TsAsExpression => ExprData::TsAsExpression(TsAsExpression(node.0)),
             NodeKind::TsSatisfiesExpression => {
                 ExprData::TsSatisfiesExpression(TsSatisfiesExpression(node.0))
@@ -5676,6 +5677,27 @@ impl<'a> Ast<'a> {
             NodeKind::BindingIdentifier => {
                 BindingPatternData::BindingIdentifier(BindingIdentifier(node.0))
             }
+            NodeKind::IdentifierReference => {
+                BindingPatternData::SimpleAssignmentTarget(SimpleAssignmentTarget(node.0))
+            }
+            NodeKind::MemberExpression => {
+                BindingPatternData::SimpleAssignmentTarget(SimpleAssignmentTarget(node.0))
+            }
+            NodeKind::CallExpression => {
+                BindingPatternData::SimpleAssignmentTarget(SimpleAssignmentTarget(node.0))
+            }
+            NodeKind::TsAsExpression => {
+                BindingPatternData::SimpleAssignmentTarget(SimpleAssignmentTarget(node.0))
+            }
+            NodeKind::TsSatisfiesExpression => {
+                BindingPatternData::SimpleAssignmentTarget(SimpleAssignmentTarget(node.0))
+            }
+            NodeKind::TsTypeAssertion => {
+                BindingPatternData::SimpleAssignmentTarget(SimpleAssignmentTarget(node.0))
+            }
+            NodeKind::TsNonNullExpression => {
+                BindingPatternData::SimpleAssignmentTarget(SimpleAssignmentTarget(node.0))
+            }
             NodeKind::AssignmentPattern => {
                 BindingPatternData::AssignmentPattern(AssignmentPattern(node.0))
             }
@@ -5694,6 +5716,9 @@ impl<'a> Ast<'a> {
                 AssignmentTargetData::SimpleAssignmentTarget(SimpleAssignmentTarget(node.0))
             }
             NodeKind::MemberExpression => {
+                AssignmentTargetData::SimpleAssignmentTarget(SimpleAssignmentTarget(node.0))
+            }
+            NodeKind::CallExpression => {
                 AssignmentTargetData::SimpleAssignmentTarget(SimpleAssignmentTarget(node.0))
             }
             NodeKind::TsAsExpression => {
@@ -5728,6 +5753,9 @@ impl<'a> Ast<'a> {
             }
             NodeKind::MemberExpression => {
                 SimpleAssignmentTargetData::MemberExpression(MemberExpression(node.0))
+            }
+            NodeKind::CallExpression => {
+                SimpleAssignmentTargetData::CallExpression(CallExpression(node.0))
             }
             NodeKind::TsAsExpression => {
                 SimpleAssignmentTargetData::TsAsExpression(TsAsExpression(node.0))
@@ -5838,6 +5866,7 @@ impl<'a> Ast<'a> {
             NodeKind::ImportExpression => ArgumentData::Expr(Expr(node.0)),
             NodeKind::AwaitExpression => ArgumentData::Expr(Expr(node.0)),
             NodeKind::YieldExpression => ArgumentData::Expr(Expr(node.0)),
+            NodeKind::PrivateIdentifier => ArgumentData::Expr(Expr(node.0)),
             NodeKind::TsAsExpression => ArgumentData::Expr(Expr(node.0)),
             NodeKind::TsSatisfiesExpression => ArgumentData::Expr(Expr(node.0)),
             NodeKind::TsTypeAssertion => ArgumentData::Expr(Expr(node.0)),
@@ -5897,6 +5926,7 @@ impl<'a> Ast<'a> {
             NodeKind::ImportExpression => ForStatementInitData::Expr(Expr(node.0)),
             NodeKind::AwaitExpression => ForStatementInitData::Expr(Expr(node.0)),
             NodeKind::YieldExpression => ForStatementInitData::Expr(Expr(node.0)),
+            NodeKind::PrivateIdentifier => ForStatementInitData::Expr(Expr(node.0)),
             NodeKind::TsAsExpression => ForStatementInitData::Expr(Expr(node.0)),
             NodeKind::TsSatisfiesExpression => ForStatementInitData::Expr(Expr(node.0)),
             NodeKind::TsTypeAssertion => ForStatementInitData::Expr(Expr(node.0)),
@@ -5917,6 +5947,9 @@ impl<'a> Ast<'a> {
                 ForStatementLeftData::AssignmentTarget(AssignmentTarget(node.0))
             }
             NodeKind::MemberExpression => {
+                ForStatementLeftData::AssignmentTarget(AssignmentTarget(node.0))
+            }
+            NodeKind::CallExpression => {
                 ForStatementLeftData::AssignmentTarget(AssignmentTarget(node.0))
             }
             NodeKind::TsAsExpression => {
@@ -5976,6 +6009,7 @@ impl<'a> Ast<'a> {
             NodeKind::ImportExpression => ArrowFunctionBodyData::Expr(Expr(node.0)),
             NodeKind::AwaitExpression => ArrowFunctionBodyData::Expr(Expr(node.0)),
             NodeKind::YieldExpression => ArrowFunctionBodyData::Expr(Expr(node.0)),
+            NodeKind::PrivateIdentifier => ArrowFunctionBodyData::Expr(Expr(node.0)),
             NodeKind::TsAsExpression => ArrowFunctionBodyData::Expr(Expr(node.0)),
             NodeKind::TsSatisfiesExpression => ArrowFunctionBodyData::Expr(Expr(node.0)),
             NodeKind::TsTypeAssertion => ArrowFunctionBodyData::Expr(Expr(node.0)),
@@ -6005,6 +6039,27 @@ impl<'a> Ast<'a> {
     ) -> FormalParameterPatternData {
         match unsafe { *self.nodes.kind_unchecked(node.0) } {
             NodeKind::BindingIdentifier => {
+                FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
+            }
+            NodeKind::IdentifierReference => {
+                FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
+            }
+            NodeKind::MemberExpression => {
+                FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
+            }
+            NodeKind::CallExpression => {
+                FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
+            }
+            NodeKind::TsAsExpression => {
+                FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
+            }
+            NodeKind::TsSatisfiesExpression => {
+                FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
+            }
+            NodeKind::TsTypeAssertion => {
+                FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
+            }
+            NodeKind::TsNonNullExpression => {
                 FormalParameterPatternData::BindingPattern(BindingPattern(node.0))
             }
             NodeKind::AssignmentPattern => {
@@ -6107,6 +6162,7 @@ impl<'a> Ast<'a> {
             NodeKind::ImportExpression => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
             NodeKind::AwaitExpression => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
             NodeKind::YieldExpression => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
+            NodeKind::PrivateIdentifier => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
             NodeKind::TsAsExpression => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
             NodeKind::TsSatisfiesExpression => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
             NodeKind::TsTypeAssertion => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
@@ -6387,6 +6443,7 @@ impl<'a> Ast<'a> {
             NodeKind::ImportExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::AwaitExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::YieldExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
+            NodeKind::PrivateIdentifier => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::TsAsExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::TsSatisfiesExpression => TsEnumMemberNameData::Expr(Expr(node.0)),
             NodeKind::TsTypeAssertion => TsEnumMemberNameData::Expr(Expr(node.0)),
@@ -6524,6 +6581,7 @@ impl<'a> Ast<'a> {
             NodeKind::ImportExpression => JsxExpressionData::Expr(Expr(node.0)),
             NodeKind::AwaitExpression => JsxExpressionData::Expr(Expr(node.0)),
             NodeKind::YieldExpression => JsxExpressionData::Expr(Expr(node.0)),
+            NodeKind::PrivateIdentifier => JsxExpressionData::Expr(Expr(node.0)),
             NodeKind::TsAsExpression => JsxExpressionData::Expr(Expr(node.0)),
             NodeKind::TsSatisfiesExpression => JsxExpressionData::Expr(Expr(node.0)),
             NodeKind::TsTypeAssertion => JsxExpressionData::Expr(Expr(node.0)),

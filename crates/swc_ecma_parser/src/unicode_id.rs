@@ -7,11 +7,17 @@ const LEAF_CHUNK_WIDTH: usize = 16;
 include!("unicode_id_tables.rs");
 
 pub fn can_start_id(cp: u32) -> bool {
-    query_bit_table(cp, &ID_START_ROOT, &ID_START_LEAF)
+    cp == u32::from(b'$')
+        || cp == u32::from(b'_')
+        || query_bit_table(cp, &ID_START_ROOT, &ID_START_LEAF)
 }
 
 pub fn can_continue_id(cp: u32) -> bool {
-    query_bit_table(cp, &ID_CONTINUE_ROOT, &ID_CONTINUE_LEAF)
+    cp == u32::from(b'$')
+        || cp == u32::from(b'_')
+        || cp == 0x200c
+        || cp == 0x200d
+        || query_bit_table(cp, &ID_CONTINUE_ROOT, &ID_CONTINUE_LEAF)
 }
 
 fn query_bit_table(cp: u32, root: &[u8], leaf: &[u64]) -> bool {

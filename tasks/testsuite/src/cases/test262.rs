@@ -19,6 +19,10 @@ pub struct Test262Case {
 #[derive(Debug, Default)]
 struct Meta {
     negative: Option<MetaNegative>,
+    module: bool,
+    only_strict: bool,
+    no_strict: bool,
+    raw: bool,
 }
 
 #[derive(Debug)]
@@ -92,6 +96,13 @@ fn parse_meta(source: &str) -> Option<Meta> {
         return Some(Meta::default());
     };
 
+    let flags = yaml
+        .as_mapping_get("flags")
+        .and_then(Yaml::as_sequence)
+        .map(Vec::as_slice)
+        .unwrap_or_default();
+    let has_flag = |expected| flags.iter().any(|flag| flag.as_str() == Some(expected));
+
     Some(Meta {
         negative: yaml
             .as_mapping_get("negative")
@@ -110,7 +121,32 @@ fn parse_meta(source: &str) -> Option<Meta> {
                         .unwrap_or(Phase::Parse),
                 }
             }),
+        module: has_flag("module"),
+        only_strict: has_flag("onlyStrict"),
+        no_strict: has_flag("noStrict"),
+        raw: has_flag("raw"),
     })
+}
+
+impl Test262Case {
+    pub fn expects_error(&self) -> bool {
+        self.meta
+            .negative
+            .as_ref()
+            .is_some_and(|negative| matches!(negative.phase, Phase::Parse | Phase::Early))
+    }
+
+    pub fn is_module(&self) -> bool {
+        self.meta.module
+    }
+
+    pub fn runs_strict(&self) -> bool {
+        !self.meta.module && !self.meta.no_strict && !self.meta.raw
+    }
+
+    pub fn runs_sloppy(&self) -> bool {
+        !self.meta.module && !self.meta.only_strict
+    }
 }
 
 impl Case for Test262Case {
@@ -121,28 +157,4 @@ impl Case for Test262Case {
     fn code(&self) -> &str {
         &self.code
     }
-
-    fn should_ignore(&self) -> bool {
-        IGNORED_TESTS.iter().any(|ignore| {
-            self.path
-                .to_string_lossy()
-                .replace('\\', "/")
-                .contains(ignore)
-        })
-    }
-
-    fn should_fail(&self) -> bool {
-        self.meta
-            .negative
-            .as_ref()
-            .map(|neg| neg.phase == Phase::Parse)
-            .unwrap_or(false)
-    }
 }
-
-const IGNORED_TESTS: &[&str] = &[
-    // Should be fixed
-    "fixtures/test262/test/language/literals/bigint/numeric-separators/numeric-separator-literal-hil-hd-nsl-hd-err.js",
-    "fixtures/test262/test/language/literals/bigint/numeric-separators/numeric-separator-literal-oil-od-nsl-od-err.js",
-    "fixtures/test262/test/language/literals/bigint/numeric-separators/numeric-separator-literal-bil-bd-nsl-bd-err.js",
-];

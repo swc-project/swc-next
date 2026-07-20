@@ -1657,6 +1657,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Expr {
             ExprData::YieldExpression(it) => {
                 <YieldExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            ExprData::PrivateIdentifier(it) => {
+                <PrivateIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
             ExprData::TsAsExpression(it) => {
                 <TsAsExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
@@ -1687,6 +1690,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BindingPattern {
         match visitor.ast().binding_pattern_data(self) {
             BindingPatternData::BindingIdentifier(it) => {
                 <BindingIdentifier as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            BindingPatternData::SimpleAssignmentTarget(it) => {
+                <SimpleAssignmentTarget as VisitWith<'a, V>>::visit_with(it, visitor)
             }
             BindingPatternData::AssignmentPattern(it) => {
                 <AssignmentPattern as VisitWith<'a, V>>::visit_with(it, visitor)
@@ -1736,6 +1742,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SimpleAssignmentTarget {
             }
             SimpleAssignmentTargetData::MemberExpression(it) => {
                 <MemberExpression as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            SimpleAssignmentTargetData::CallExpression(it) => {
+                <CallExpression as VisitWith<'a, V>>::visit_with(it, visitor)
             }
             SimpleAssignmentTargetData::TsAsExpression(it) => {
                 <TsAsExpression as VisitWith<'a, V>>::visit_with(it, visitor)
@@ -6614,6 +6623,9 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Expr {
             ExprData::YieldExpression(it) => {
                 <YieldExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
+            ExprData::PrivateIdentifier(it) => {
+                <PrivateIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
             ExprData::TsAsExpression(it) => {
                 <TsAsExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
@@ -6649,6 +6661,9 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BindingPattern {
         match data {
             BindingPatternData::BindingIdentifier(it) => {
                 <BindingIdentifier as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            BindingPatternData::SimpleAssignmentTarget(it) => {
+                <SimpleAssignmentTarget as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
             BindingPatternData::AssignmentPattern(it) => {
                 <AssignmentPattern as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
@@ -6700,6 +6715,9 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SimpleAssignmentTarge
             }
             SimpleAssignmentTargetData::MemberExpression(it) => {
                 <MemberExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            SimpleAssignmentTargetData::CallExpression(it) => {
+                <CallExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
             SimpleAssignmentTargetData::TsAsExpression(it) => {
                 <TsAsExpression as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)

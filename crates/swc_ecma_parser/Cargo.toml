@@ -12,5 +12,7 @@ version               = "0.11.0"
 unstable = []
 
 [dependencies]
+oxc_allocator                       = { workspace = true }
+oxc_regular_expression              = { workspace = true }
 swc_experimental_allocator = { workspace = true }
 swc_experimental_ecma_ast  = { workspace = true }

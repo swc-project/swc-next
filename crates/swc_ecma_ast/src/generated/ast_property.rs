@@ -593,6 +593,10 @@ impl Expr {
         matches!(ast.expr_data(self), ExprData::YieldExpression(_))
     }
     #[inline]
+    pub fn is_private_identifier(self, ast: &Ast<'_>) -> bool {
+        matches!(ast.expr_data(self), ExprData::PrivateIdentifier(_))
+    }
+    #[inline]
     pub fn is_ts_as_expression(self, ast: &Ast<'_>) -> bool {
         matches!(ast.expr_data(self), ExprData::TsAsExpression(_))
     }
@@ -845,6 +849,13 @@ impl Expr {
         }
     }
     #[inline]
+    pub fn as_private_identifier(self, ast: &Ast<'_>) -> Option<PrivateIdentifier> {
+        match ast.expr_data(self) {
+            ExprData::PrivateIdentifier(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
     pub fn as_ts_as_expression(self, ast: &Ast<'_>) -> Option<TsAsExpression> {
         match ast.expr_data(self) {
             ExprData::TsAsExpression(it) => Some(it),
@@ -906,6 +917,13 @@ impl BindingPattern {
         )
     }
     #[inline]
+    pub fn is_simple_assignment_target(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.binding_pattern_data(self),
+            BindingPatternData::SimpleAssignmentTarget(_)
+        )
+    }
+    #[inline]
     pub fn is_assignment_pattern(self, ast: &Ast<'_>) -> bool {
         matches!(
             ast.binding_pattern_data(self),
@@ -937,6 +955,13 @@ impl BindingPattern {
     pub fn as_binding_identifier(self, ast: &Ast<'_>) -> Option<BindingIdentifier> {
         match ast.binding_pattern_data(self) {
             BindingPatternData::BindingIdentifier(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_simple_assignment_target(self, ast: &Ast<'_>) -> Option<SimpleAssignmentTarget> {
+        match ast.binding_pattern_data(self) {
+            BindingPatternData::SimpleAssignmentTarget(it) => Some(it),
             _ => None,
         }
     }
@@ -1029,6 +1054,13 @@ impl SimpleAssignmentTarget {
         )
     }
     #[inline]
+    pub fn is_call_expression(self, ast: &Ast<'_>) -> bool {
+        matches!(
+            ast.simple_assignment_target_data(self),
+            SimpleAssignmentTargetData::CallExpression(_)
+        )
+    }
+    #[inline]
     pub fn is_ts_as_expression(self, ast: &Ast<'_>) -> bool {
         matches!(
             ast.simple_assignment_target_data(self),
@@ -1067,6 +1099,13 @@ impl SimpleAssignmentTarget {
     pub fn as_member_expression(self, ast: &Ast<'_>) -> Option<MemberExpression> {
         match ast.simple_assignment_target_data(self) {
             SimpleAssignmentTargetData::MemberExpression(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_call_expression(self, ast: &Ast<'_>) -> Option<CallExpression> {
+        match ast.simple_assignment_target_data(self) {
+            SimpleAssignmentTargetData::CallExpression(it) => Some(it),
             _ => None,
         }
     }

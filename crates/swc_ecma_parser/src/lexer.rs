@@ -120,6 +120,7 @@ impl<'a> Lexer<'a> {
             while (end as usize) < self.source.len()
                 && self.source[end as usize] != b'\n'
                 && self.source[end as usize] != b'\r'
+                && unicode_separator_len(self.source, end as usize) == 0
             {
                 end += 1;
             }

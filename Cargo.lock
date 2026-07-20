@@ -2115,6 +2115,8 @@ dependencies = [
 name = "swc_experimental_ecma_parser"
 version = "0.11.0"
 dependencies = [
+ "oxc_allocator",
+ "oxc_regular_expression",
  "swc_experimental_allocator",
  "swc_experimental_ecma_ast",
 ]
@@ -2200,12 +2202,10 @@ dependencies = [
  "rayon",
  "saphyr",
  "similar",
- "swc_core",
  "swc_experimental_allocator",
  "swc_experimental_ecma_ast",
  "swc_experimental_ecma_parser",
  "swc_experimental_ecma_semantic",
- "swc_experimental_ecma_transforms_base",
 ]
 
 [[package]]

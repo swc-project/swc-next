@@ -125,6 +125,7 @@ impl<'a> CloneIn<'a> for Expr {
             ExprData::ImportExpression(it) => Self::ImportExpression(it.clone_in(ast)),
             ExprData::AwaitExpression(it) => Self::AwaitExpression(it.clone_in(ast)),
             ExprData::YieldExpression(it) => Self::YieldExpression(it.clone_in(ast)),
+            ExprData::PrivateIdentifier(it) => Self::PrivateIdentifier(it.clone_in(ast)),
             ExprData::TsAsExpression(it) => Self::TsAsExpression(it.clone_in(ast)),
             ExprData::TsSatisfiesExpression(it) => Self::TsSatisfiesExpression(it.clone_in(ast)),
             ExprData::TsTypeAssertion(it) => Self::TsTypeAssertion(it.clone_in(ast)),
@@ -144,6 +145,9 @@ impl<'a> CloneIn<'a> for BindingPattern {
         let data = ast.binding_pattern_data(*self);
         match data {
             BindingPatternData::BindingIdentifier(it) => Self::BindingIdentifier(it.clone_in(ast)),
+            BindingPatternData::SimpleAssignmentTarget(it) => {
+                Self::SimpleAssignmentTarget(it.clone_in(ast))
+            }
             BindingPatternData::AssignmentPattern(it) => Self::AssignmentPattern(it.clone_in(ast)),
             BindingPatternData::BindingRestElement(it) => {
                 Self::BindingRestElement(it.clone_in(ast))
@@ -182,6 +186,9 @@ impl<'a> CloneIn<'a> for SimpleAssignmentTarget {
             }
             SimpleAssignmentTargetData::MemberExpression(it) => {
                 Self::MemberExpression(it.clone_in(ast))
+            }
+            SimpleAssignmentTargetData::CallExpression(it) => {
+                Self::CallExpression(it.clone_in(ast))
             }
             SimpleAssignmentTargetData::TsAsExpression(it) => {
                 Self::TsAsExpression(it.clone_in(ast))

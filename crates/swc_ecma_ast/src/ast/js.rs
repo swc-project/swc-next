@@ -308,6 +308,7 @@ pub enum Expr {
     ImportExpression(ImportExpression),
     AwaitExpression(AwaitExpression),
     YieldExpression(YieldExpression),
+    PrivateIdentifier(PrivateIdentifier),
     TsAsExpression(TsAsExpression),
     TsSatisfiesExpression(TsSatisfiesExpression),
     TsTypeAssertion(TsTypeAssertion),
@@ -320,6 +321,7 @@ pub enum Expr {
 #[ast(repr)]
 pub enum BindingPattern {
     BindingIdentifier(BindingIdentifier),
+    SimpleAssignmentTarget(SimpleAssignmentTarget),
     AssignmentPattern(AssignmentPattern),
     BindingRestElement(BindingRestElement),
     ArrayPattern(ArrayPattern),
@@ -337,6 +339,7 @@ pub enum AssignmentTarget {
 pub enum SimpleAssignmentTarget {
     IdentifierReference(IdentifierReference),
     MemberExpression(MemberExpression),
+    CallExpression(CallExpression),
     TsAsExpression(TsAsExpression),
     TsSatisfiesExpression(TsSatisfiesExpression),
     TsTypeAssertion(TsTypeAssertion),

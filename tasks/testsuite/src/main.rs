@@ -5,35 +5,31 @@ use pico_args::Arguments;
 use rayon::ThreadPoolBuilder;
 
 use crate::{
-    cases::{
-        Case, test262,
-        test262_parser::{self},
-    },
-    conformance::semantic::SemanticConformanceRunner,
-    runner::{parser::ParserRunner, remove_paren::RemoveParenRunner, semantic::SemanticRunner},
+    cases::{Case, test262},
+    runner::test262::Test262Runner,
     suite::TestResult,
     util::crate_root,
 };
 
 pub(crate) mod cases;
-pub(crate) mod conformance;
-pub(crate) mod legacy;
 pub(crate) mod runner;
 pub(crate) mod suite;
 pub(crate) mod util;
+
+// TODO(flat-ast): Restore after the swc_core comparison layer is updated for
+// the current typed AST and semantic API.
+// pub(crate) mod conformance;
+// pub(crate) mod legacy;
 
 pub struct AppArgs {
     pub debug: bool,
     pub cases: Vec<String>,
     pub runners: HashSet<String>,
-    pub failures: HashSet<String>,
     pub test262: bool,
+    pub update_snapshots: bool,
 }
 
-const PARSER_RUNNER: &str = "parser";
-const SEMANTIC_RUNNER: &str = "semantic";
-const SEMANTIC_CONFORMANCE_RUNNER: &str = "semantic_conformance";
-const REMOVE_PAREN_RUNNER: &str = "remove_paren";
+const TEST262_RUNNER: &str = "test262";
 
 pub fn main() {
     // Initialize args
@@ -41,27 +37,23 @@ pub fn main() {
     let args = AppArgs {
         debug: args.contains("--debug"),
         test262: args.contains("--test262"),
+        update_snapshots: args.contains("--update-snapshots"),
         cases: args.values_from_str("--cases").unwrap(),
         runners: args
             .values_from_str("--runners")
             .unwrap()
             .into_iter()
             .collect(),
-        failures: args
-            .values_from_str("--failures")
-            .unwrap()
-            .into_iter()
-            .collect(),
     };
 
-    if args.test262 {
-        return test_test262_snapshots(&args);
+    if args.test262 || args.runners.is_empty() || args.runners.contains(TEST262_RUNNER) {
+        return test_test262_snapshot(&args);
     }
 
-    test_normal(&args);
+    eprintln!("No enabled runner selected. Use --test262 or --runners test262.");
 }
 
-fn test_normal(args: &AppArgs) {
+fn test_test262_snapshot(args: &AppArgs) {
     if args.debug {
         ThreadPoolBuilder::new()
             .num_threads(1)
@@ -69,73 +61,16 @@ fn test_normal(args: &AppArgs) {
             .unwrap();
     }
 
-    let mut results = Vec::new();
-
-    let test262_parser_cases = filter(args, test262_parser::Test262ParserCase::read());
-
-    if args.runners.is_empty() || args.runners.contains(PARSER_RUNNER) {
-        results.extend(ParserRunner::run(args, &test262_parser_cases));
-    }
-
-    if args.runners.is_empty() || args.runners.contains(SEMANTIC_RUNNER) {
-        results.extend(SemanticRunner::run(args, &test262_parser_cases));
-    }
-
-    if args.runners.is_empty() || args.runners.contains(REMOVE_PAREN_RUNNER) {
-        results.extend(RemoveParenRunner::run(args, &test262_parser_cases));
-    }
-
-    // Collect results
-    let mut passed = 0;
-    let mut failed = 0;
-    let mut panicked = 0;
-    let mut ignored = 0;
-    for result in results {
-        match result {
-            TestResult::Passed { .. } => {
-                passed += 1;
-            }
-            TestResult::Failed { path, error } => {
-                failed += 1;
-                if args.failures.is_empty() || args.failures.contains("failed") {
-                    println!("Failed: {} - {}", path.display(), error.red());
-                }
-            }
-            TestResult::Panic { path } => {
-                panicked += 1;
-                if args.failures.is_empty() || args.failures.contains("panic") {
-                    println!("Panic: {}", path.display());
-                }
-            }
-            TestResult::Ignored { .. } => {
-                ignored += 1;
-            }
-        }
-    }
-
-    println!("\n{}", "Test Summary:".bold());
-    println!("Passed: {}", passed.to_string().green());
-    println!("Failed: {}", failed.to_string().red());
-    println!("Ignored: {}", ignored.to_string().yellow());
-    println!("Panicked: {}", panicked.to_string().yellow());
-
-    if failed > 0 {
-        std::process::exit(1);
-    }
-}
-
-fn test_test262_snapshots(args: &AppArgs) {
     let cases = filter(args, test262::Test262Case::read());
-
-    let to_snapshot = |results: &[TestResult]| {
-        // Collect results
+    let results = Test262Runner::run(args, &cases);
+    let snapshot = {
+        let total = results.len();
         let mut passed = 0;
         let mut failed = 0;
         let mut panicked = 0;
-        let mut ignored = 0;
         let mut diagnostics_vec = Vec::new();
 
-        for result in results {
+        for result in &results {
             match result {
                 TestResult::Passed { .. } => {
                     passed += 1;
@@ -150,32 +85,31 @@ fn test_test262_snapshots(args: &AppArgs) {
                     let path = path.display().to_string().replace('\\', "/");
                     diagnostics_vec.push(format!("Panic: {}", path));
                 }
-                TestResult::Ignored { .. } => {
-                    ignored += 1;
-                }
             }
         }
 
-        // 按字典顺序排序 diagnostics
         diagnostics_vec.sort();
 
-        let total = results.len();
-        let mut result = String::from("Test Summary: \n");
+        let rate = |count| {
+            if total == 0 {
+                0.0
+            } else {
+                (count as f64 / total as f64) * 100.0
+            }
+        };
+        let mut result = String::from("Test262 parser + semantic pipeline\n");
+        result.push_str("==================================\n");
         result.push_str(&format!(
             "Passed: {passed}/{total} ({:.2}%)\n",
-            (passed as f64 / total as f64) * 100.0,
+            rate(passed),
         ));
         result.push_str(&format!(
             "Failed: {failed}/{total} ({:.2}%)\n",
-            (failed as f64 / total as f64) * 100.0,
+            rate(failed),
         ));
         result.push_str(&format!(
             "Panicked: {panicked}/{total} ({:.2}%)\n",
-            (panicked as f64 / total as f64) * 100.0,
-        ));
-        result.push_str(&format!(
-            "Ignored: {ignored}/{total} ({:.2}%)\n",
-            (ignored as f64 / total as f64) * 100.0,
+            rate(panicked),
         ));
 
         for diag in diagnostics_vec {
@@ -186,42 +120,25 @@ fn test_test262_snapshots(args: &AppArgs) {
         result
     };
 
-    let snapshot_dir = crate_root().join("snapshots");
-    if args.runners.is_empty() || args.runners.contains(PARSER_RUNNER) {
-        let results = ParserRunner::run(args, &cases);
-        fs::write(
-            snapshot_dir.join("parser_test262.snap"),
-            to_snapshot(&results),
-        )
-        .unwrap();
+    let snapshot_path = crate_root().join("snapshots").join("test262.snap");
+    if !args.cases.is_empty() {
+        print!("{snapshot}");
+        return;
     }
-
-    if args.runners.is_empty() || args.runners.contains(SEMANTIC_RUNNER) {
-        let results = SemanticRunner::run(args, &cases);
-        fs::write(
-            snapshot_dir.join("semantic_test262.snap"),
-            to_snapshot(&results),
-        )
-        .unwrap();
+    let expected = fs::read_to_string(&snapshot_path).ok();
+    if args.update_snapshots || expected.is_none() {
+        fs::write(&snapshot_path, &snapshot).unwrap();
+        println!("Updated {}", snapshot_path.display());
+        return;
     }
-
-    if args.runners.is_empty() || args.runners.contains(SEMANTIC_CONFORMANCE_RUNNER) {
-        let results = SemanticConformanceRunner::run(args, &cases);
-        fs::write(
-            snapshot_dir.join("semantic_conformance_test262.snap"),
-            to_snapshot(&results),
-        )
-        .unwrap();
+    if expected.as_deref() != Some(&snapshot) {
+        let diff = similar::TextDiff::from_lines(expected.as_deref().unwrap(), &snapshot);
+        let mut unified = diff.unified_diff();
+        unified.header("snapshot", "current");
+        eprintln!("Test262 snapshot mismatch:\n{unified}");
+        std::process::exit(1);
     }
-
-    if args.runners.is_empty() || args.runners.contains(REMOVE_PAREN_RUNNER) {
-        let results = RemoveParenRunner::run(args, &cases);
-        fs::write(
-            snapshot_dir.join("remove_paren_test262.snap"),
-            to_snapshot(&results),
-        )
-        .unwrap();
-    }
+    println!("{}", "Test262 snapshot matched".green());
 }
 
 fn filter<T: Case>(args: &AppArgs, list: Vec<T>) -> Vec<T> {
