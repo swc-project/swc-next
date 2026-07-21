@@ -1350,7 +1350,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
     ) -> TraverseAction {
         let kind = node.kind(ctx.ast());
         if matches!(kind, VariableKind::Using | VariableKind::AwaitUsing) {
-            let direct_parent = ctx.ancestors().skip(1).next();
+            let direct_parent = ctx.ancestors().nth(1);
             if direct_parent.is_some_and(|parent| ctx.node_kind(parent) == NodeKind::Program)
                 && self.scopes.get(self.scopes.top_level_scope_id()).kind != ScopeKind::Module
             {
@@ -1440,24 +1440,22 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             let element = ctx.ast().get_node_in_sub_range(id);
             if let ClassElementData::MethodDefinition(method) =
                 ctx.ast().class_element_data(element)
+                && method.kind(ctx.ast()) == MethodDefinitionKind::Constructor
+                && method.value(ctx.ast()).body(ctx.ast()).is_some()
             {
-                if method.kind(ctx.ast()) == MethodDefinitionKind::Constructor
-                    && method.value(ctx.ast()).body(ctx.ast()).is_some()
-                {
-                    if let Some(previous) = first_constructor {
-                        self.diagnostics.push(Diagnostic {
-                            severity: Severity::Error,
-                            message: Cow::Borrowed("A class can only have one constructor"),
-                            span: method.key(ctx.ast()).span(ctx.ast()),
-                            help: None,
-                            labels: vec![Label {
-                                span: previous,
-                                message: Cow::Borrowed("first constructor is here"),
-                            }],
-                        });
-                    } else {
-                        first_constructor = Some(method.span(ctx.ast()));
-                    }
+                if let Some(previous) = first_constructor {
+                    self.diagnostics.push(Diagnostic {
+                        severity: Severity::Error,
+                        message: Cow::Borrowed("A class can only have one constructor"),
+                        span: method.key(ctx.ast()).span(ctx.ast()),
+                        help: None,
+                        labels: vec![Label {
+                            span: previous,
+                            message: Cow::Borrowed("first constructor is here"),
+                        }],
+                    });
+                } else {
+                    first_constructor = Some(method.span(ctx.ast()));
                 }
             }
             let Some((name, key_span)) = private_element_name(element, ctx.ast()) else {

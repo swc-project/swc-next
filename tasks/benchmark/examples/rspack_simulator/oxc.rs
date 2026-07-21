@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use oxc::{
     ast::ast::{
         BreakStatement, ClassElement, ContinueStatement, DebuggerStatement, ExportAllDeclaration,
@@ -6,7 +8,7 @@ use oxc::{
         VariableDeclaration, YieldExpression,
     },
     ast_visit::{Visit, walk},
-    parser::{Kind, ParseOptions, Parser, Token, config::TokensParserConfig},
+    parser::{Kind, ParseOptions, Parser, Token},
     semantic::{Semantic, SemanticBuilder},
     span::{GetSpan, SourceType, Span},
 };
@@ -21,7 +23,7 @@ pub fn run(src: &'static str) {
     // let semi = run_collect_semicolons(&program, &tokens);
     // let idents = run_scan_dependencies(&program);
     // drop((tokens, semantic, semi, idents));
-    drop((program, tokens));
+    std::hint::black_box((program, tokens));
 }
 
 #[inline(never)]

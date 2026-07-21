@@ -34,21 +34,11 @@ impl AstString {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct StringPool<'a> {
     pub source: &'a [u8],
     pub extra: Vec<u8>,
     dedup: HashMap<Vec<u8>, AstString>,
-}
-
-impl Default for StringPool<'_> {
-    fn default() -> Self {
-        Self {
-            source: &[],
-            extra: Vec::new(),
-            dedup: HashMap::new(),
-        }
-    }
 }
 
 impl<'a> StringPool<'a> {

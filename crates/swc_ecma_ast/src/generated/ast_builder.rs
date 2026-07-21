@@ -1,4 +1,9 @@
-#![allow(unused, clippy::useless_conversion, clippy::identity_op)]
+#![allow(
+    unused,
+    clippy::useless_conversion,
+    clippy::identity_op,
+    clippy::too_many_arguments
+)]
 use crate::*;
 use oxc_index::Idx;
 impl<'a> Ast<'a> {

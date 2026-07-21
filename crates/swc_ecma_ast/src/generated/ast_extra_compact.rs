@@ -2544,7 +2544,7 @@ impl<'a> ExtraDataCompact<'a> for Option<Hashbang> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| Hashbang(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(Hashbang(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<TsTypeAnnotation> {
@@ -2557,7 +2557,7 @@ impl<'a> ExtraDataCompact<'a> for Option<TsTypeAnnotation> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| TsTypeAnnotation(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(TsTypeAnnotation(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<BindingPattern> {
@@ -2570,7 +2570,7 @@ impl<'a> ExtraDataCompact<'a> for Option<BindingPattern> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| BindingPattern(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(BindingPattern(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<BindingRestElement> {
@@ -2583,7 +2583,7 @@ impl<'a> ExtraDataCompact<'a> for Option<BindingRestElement> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| BindingRestElement(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(BindingRestElement(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<Expr> {
@@ -2596,7 +2596,7 @@ impl<'a> ExtraDataCompact<'a> for Option<Expr> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| Expr(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(Expr(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<Stmt> {
@@ -2609,7 +2609,7 @@ impl<'a> ExtraDataCompact<'a> for Option<Stmt> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| Stmt(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(Stmt(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<ForStatementInit> {
@@ -2622,7 +2622,7 @@ impl<'a> ExtraDataCompact<'a> for Option<ForStatementInit> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| ForStatementInit(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(ForStatementInit(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<CatchClause> {
@@ -2635,7 +2635,7 @@ impl<'a> ExtraDataCompact<'a> for Option<CatchClause> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| CatchClause(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(CatchClause(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<BlockStatement> {
@@ -2648,7 +2648,7 @@ impl<'a> ExtraDataCompact<'a> for Option<BlockStatement> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| BlockStatement(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(BlockStatement(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<LabelIdentifier> {
@@ -2661,7 +2661,7 @@ impl<'a> ExtraDataCompact<'a> for Option<LabelIdentifier> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| LabelIdentifier(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(LabelIdentifier(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<BindingIdentifier> {
@@ -2674,7 +2674,7 @@ impl<'a> ExtraDataCompact<'a> for Option<BindingIdentifier> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| BindingIdentifier(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(BindingIdentifier(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<TsTypeParameterDeclaration> {
@@ -2687,7 +2687,7 @@ impl<'a> ExtraDataCompact<'a> for Option<TsTypeParameterDeclaration> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| TsTypeParameterDeclaration(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(TsTypeParameterDeclaration(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<TsTypeParameterInstantiation> {
@@ -2700,7 +2700,7 @@ impl<'a> ExtraDataCompact<'a> for Option<TsTypeParameterInstantiation> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| TsTypeParameterInstantiation(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(TsTypeParameterInstantiation(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<FunctionBody> {
@@ -2713,7 +2713,7 @@ impl<'a> ExtraDataCompact<'a> for Option<FunctionBody> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| FunctionBody(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(FunctionBody(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<Argument> {
@@ -2726,7 +2726,7 @@ impl<'a> ExtraDataCompact<'a> for Option<Argument> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| Argument(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(Argument(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<Decl> {
@@ -2739,7 +2739,7 @@ impl<'a> ExtraDataCompact<'a> for Option<Decl> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| Decl(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(Decl(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<StringLiteral> {
@@ -2752,7 +2752,7 @@ impl<'a> ExtraDataCompact<'a> for Option<StringLiteral> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| StringLiteral(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(StringLiteral(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<ModuleExportName> {
@@ -2765,7 +2765,7 @@ impl<'a> ExtraDataCompact<'a> for Option<ModuleExportName> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| ModuleExportName(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(ModuleExportName(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<TsImportTypeQualifier> {
@@ -2778,7 +2778,7 @@ impl<'a> ExtraDataCompact<'a> for Option<TsImportTypeQualifier> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| TsImportTypeQualifier(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(TsImportTypeQualifier(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<TsType> {
@@ -2791,7 +2791,7 @@ impl<'a> ExtraDataCompact<'a> for Option<TsType> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| TsType(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(TsType(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<TsModuleBody> {
@@ -2804,7 +2804,7 @@ impl<'a> ExtraDataCompact<'a> for Option<TsModuleBody> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| TsModuleBody(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(TsModuleBody(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<JsxClosingElement> {
@@ -2817,7 +2817,7 @@ impl<'a> ExtraDataCompact<'a> for Option<JsxClosingElement> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| JsxClosingElement(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(JsxClosingElement(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<JsxAttributeValue> {
@@ -2830,6 +2830,6 @@ impl<'a> ExtraDataCompact<'a> for Option<JsxAttributeValue> {
     #[inline]
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then(|| JsxAttributeValue(node_id))
+        (node_id.index() != u32::MAX as usize).then_some(JsxAttributeValue(node_id))
     }
 }

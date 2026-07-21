@@ -117,6 +117,7 @@ impl Collector<'_, '_> {
         symbol
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn enter_export_specifier(
         &mut self,
         node: ExportSpecifier,

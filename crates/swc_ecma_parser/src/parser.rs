@@ -11,18 +11,13 @@ use crate::{
     util::{decode_identifier_escapes, decode_string_escapes},
 };
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum CommentMode {
     None,
+    #[default]
     Flat,
     Attached,
     Both,
-}
-
-impl Default for CommentMode {
-    fn default() -> Self {
-        Self::Flat
-    }
 }
 
 impl CommentMode {
@@ -170,23 +165,12 @@ enum PatternContext {
     Assignment,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 struct ParseFunctionOpts {
     is_async: bool,
     is_expression: bool,
     is_declare: bool,
     is_default_export: bool,
-}
-
-impl Default for ParseFunctionOpts {
-    fn default() -> Self {
-        Self {
-            is_async: false,
-            is_expression: false,
-            is_declare: false,
-            is_default_export: false,
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -532,13 +516,6 @@ pub struct Peek<'peek, 'parser, 'allocator, 'source> {
 }
 
 impl<'parser, 'allocator, 'source> Peek<'_, 'parser, 'allocator, 'source> {
-    pub fn next(&mut self) -> Option<Token> {
-        debug_assert!(self.active);
-        let mut token = Token::eof(self.parser.lexer.cursor);
-        self.parser.lexer.next_token(&mut token).ok()?;
-        Some(token)
-    }
-
     pub fn end(mut self) {
         self.restore();
     }
@@ -550,6 +527,17 @@ impl<'parser, 'allocator, 'source> Peek<'_, 'parser, 'allocator, 'source> {
         self.parser.lexer.cursor = self.cursor;
         self.parser.lexer.comments.truncate(self.comments_len);
         self.active = false;
+    }
+}
+
+impl Iterator for Peek<'_, '_, '_, '_> {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        debug_assert!(self.active);
+        let mut token = Token::eof(self.parser.lexer.cursor);
+        self.parser.lexer.next_token(&mut token).ok()?;
+        Some(token)
     }
 }
 
@@ -694,10 +682,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 .iter()
                 .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
         );
-        debug_assert_eq!(
-            range.len() as usize,
-            scratch.items.len() - scratch_checkpoint
-        );
+        debug_assert_eq!(range.len(), scratch.items.len() - scratch_checkpoint);
         range
     }
 
@@ -712,10 +697,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 .iter()
                 .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
         );
-        debug_assert_eq!(
-            range.len() as usize,
-            self.scratch_a.items.len() - scratch_checkpoint
-        );
+        debug_assert_eq!(range.len(), self.scratch_a.items.len() - scratch_checkpoint);
         range
     }
 
@@ -729,10 +711,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 .iter()
                 .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
         );
-        debug_assert_eq!(
-            range.len() as usize,
-            self.scratch_b.items.len() - scratch_checkpoint
-        );
+        debug_assert_eq!(range.len(), self.scratch_b.items.len() - scratch_checkpoint);
         range
     }
 
@@ -747,7 +726,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
         );
         debug_assert_eq!(
-            range.len() as usize,
+            range.len(),
             self.scratch_cover.items.len() - scratch_checkpoint
         );
         range
@@ -767,7 +746,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
         );
         debug_assert_eq!(
-            range.len() as usize,
+            range.len(),
             self.scratch_decorators.items.len() - scratch_checkpoint
         );
         range
@@ -787,7 +766,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
         );
         debug_assert_eq!(
-            range.len() as usize,
+            range.len(),
             self.scratch_statements.items.len() - scratch_checkpoint
         );
         range
@@ -983,13 +962,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     ) -> Option<Stmt> {
         let export_start = self.current_token.span.start;
         self.advance()?;
-        let is_default = {
-            let matched = self.current_token.tag == TokenTag::Default;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        };
+        let is_default = self.eat(TokenTag::Default)?;
         let class = self.parse_class_decorated(
             ParseClassOpts {
                 is_default_export: is_default,
@@ -1186,13 +1159,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let consequent = self.parse_statement(ParseStatementOpts {
             can_be_single_statement_context: true,
         })?;
-        let alternate = if {
-            let matched = self.current_token.tag == TokenTag::Else;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        let alternate = if self.eat(TokenTag::Else)? {
             Some(self.parse_statement(ParseStatementOpts {
                 can_be_single_statement_context: true,
             })?)
@@ -1259,13 +1226,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         ) {
             return None;
         }
-        {
-            let matched = self.current_token.tag == TokenTag::Semicolon;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        };
+        self.eat(TokenTag::Semicolon)?;
         let end = self.prev_token_end;
         Some(
             self.ast
@@ -1482,13 +1443,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             let first = self.parse_variable_declarator(kind, context)?;
             let mut declaration_end = first.span(self.ast).end;
             self.scratch_a.append(first);
-            while {
-                let matched = self.current_token.tag == TokenTag::Comma;
-                if matched {
-                    self.advance()?;
-                }
-                matched
-            } {
+            while self.eat(TokenTag::Comma)? {
                 let declarator = self.parse_variable_declarator(kind, context)?;
                 declaration_end = declarator.span(self.ast).end;
                 self.scratch_a.append(declarator);
@@ -1559,14 +1514,9 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 ReportOptions::default(),
             );
         }
-        let definite =
-            self.lang.is_typescript() && !self.current_token.has_line_terminator_before() && {
-                let matched = self.current_token.tag == TokenTag::LogicalNot;
-                if matched {
-                    self.advance()?;
-                }
-                matched
-            };
+        let definite = self.lang.is_typescript()
+            && !self.current_token.has_line_terminator_before()
+            && self.eat(TokenTag::LogicalNot)?;
         let mut end = if definite {
             self.prev_token_end
         } else {
@@ -1577,13 +1527,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             end = annotation.span(self.ast).end;
             self.apply_type_annotation_to_pattern(id, annotation);
         }
-        let init = if {
-            let matched = self.current_token.tag == TokenTag::Assign;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        let init = if self.eat(TokenTag::Assign)? {
             let expression = self.parse_expression(
                 Precedence::ASSIGNMENT,
                 ParseExpressionOpts {
@@ -1678,13 +1622,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_assignment_pattern(&mut self, left: BindingPattern) -> Option<BindingPattern> {
-        if !{
-            let matched = self.current_token.tag == TokenTag::Assign;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        if !self.eat(TokenTag::Assign)? {
             return Some(left);
         }
         let right =
@@ -1742,13 +1680,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         if !self.expect(TokenTag::Function, "Expected 'function' keyword", None) {
             return None;
         }
-        let generator = {
-            let matched = self.current_token.tag == TokenTag::Star;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        };
+        let generator = self.eat(TokenTag::Star)?;
         let outer_yield = self.context.yield_;
         let outer_await = self.context.await_;
         let is_function_expression = opts.is_expression && !opts.is_default_export;
@@ -1925,13 +1857,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         } else {
             None
         };
-        let (super_class, super_type_arguments) = if {
-            let matched = self.current_token.tag == TokenTag::Extends;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        let (super_class, super_type_arguments) = if self.eat(TokenTag::Extends)? {
             let mut super_class =
                 self.parse_left_hand_side_expression(LhsContext::ExtendsClause)?;
             let type_arguments = if self.lang.is_typescript() {
@@ -2015,13 +1941,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let checkpoint = self.scratch_a.begin();
         let result = (|| {
             while !matches!(self.current_token.tag, TokenTag::RightBrace | TokenTag::Eof) {
-                if {
-                    let matched = self.current_token.tag == TokenTag::Semicolon;
-                    if matched {
-                        self.advance()?;
-                    }
-                    matched
-                } {
+                if self.eat(TokenTag::Semicolon)? {
                     continue;
                 }
                 let element = self.parse_class_element()?;
@@ -2069,13 +1989,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             }
         }
 
-        if key.is_none() && {
-            let matched = self.current_token.tag == TokenTag::Star;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        if key.is_none() && self.eat(TokenTag::Star)? {
             modifiers.is_generator = true;
         }
 
@@ -2278,20 +2192,19 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         self.context.await_ = true;
         self.context.directive_prologue = false;
         let checkpoint = self.scratch_statements.begin();
-        let body = (|| {
+        let body = {
             while !matches!(self.current_token.tag, TokenTag::RightBrace | TokenTag::Eof) {
                 match self.parse_statement(ParseStatementOpts::default()) {
                     Some(statement) => self.scratch_statements.append(statement),
                     None => self.recover(Some(TokenTag::RightBrace)),
                 }
             }
-            Some(self.add_extra_from_scratch_statements(checkpoint))
-        })();
+            self.add_extra_from_scratch_statements(checkpoint)
+        };
         self.context.await_ = old_await;
         self.context.yield_ = old_yield;
         self.context.return_ = old_return;
         self.scratch_statements.reset(checkpoint);
-        let body = body?;
         let end = self.current_token.span.end;
         if !self.expect(
             TokenTag::RightBrace,
@@ -2541,13 +2454,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 None
             };
 
-        let value = if {
-            let matched = self.current_token.tag == TokenTag::Assign;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        let value = if self.eat(TokenTag::Assign)? {
             let old_await = self.context.await_;
             let old_yield = self.context.yield_;
             self.context.await_ = false;
@@ -2755,13 +2662,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
                 if self.current_token.tag == TokenTag::Spread {
                     rest = Some(self.parse_binding_rest_element(decorators)?);
-                    if {
-                        let matched = self.current_token.tag == TokenTag::Comma;
-                        if matched {
-                            self.advance()?;
-                        }
-                        matched
-                    } {
+                    if self.eat(TokenTag::Comma)? {
                         return {
                             let span = self.current_token.span;
                             self.report(
@@ -2781,13 +2682,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                     parameter_start,
                 )?;
                 self.scratch_a.append(parameter);
-                if !{
-                    let matched = self.current_token.tag == TokenTag::Comma;
-                    if matched {
-                        self.advance()?;
-                    }
-                    matched
-                } {
+                if !self.eat(TokenTag::Comma)? {
                     break;
                 }
             }
@@ -2831,13 +2726,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             ParameterPropertyModifiers::default()
         };
         let mut pattern = self.parse_binding_pattern()?;
-        if self.lang.is_typescript() && {
-            let matched = self.current_token.tag == TokenTag::Question;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        if self.lang.is_typescript() && self.eat(TokenTag::Question)? {
             self.mark_pattern_optional(pattern, self.prev_token_end);
         }
         if self.lang.is_typescript() && self.current_token.tag == TokenTag::Colon {
@@ -3112,13 +3001,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 .append(ImportDeclarationSpecifier::ImportDefaultSpecifier(
                     specifier,
                 ));
-            if {
-                let matched = self.current_token.tag == TokenTag::Comma;
-                if matched {
-                    self.advance()?;
-                }
-                matched
-            } {
+            if self.eat(TokenTag::Comma)? {
                 if self.current_token.tag == TokenTag::Star {
                     let specifier = self.parse_import_namespace_specifier()?;
                     self.scratch_a
@@ -3196,13 +3079,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 let specifier = self.parse_import_specifier()?;
                 self.scratch_a
                     .append(ImportDeclarationSpecifier::ImportSpecifier(specifier));
-                if !{
-                    let matched = self.current_token.tag == TokenTag::Comma;
-                    if matched {
-                        self.advance()?;
-                    }
-                    matched
-                } {
+                if !self.eat(TokenTag::Comma)? {
                     break;
                 }
             }
@@ -3277,13 +3154,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         } else {
             TypeTailResult::NoTypeModifier
         };
-        if tail != TypeTailResult::ConsumedRename && {
-            let matched = self.current_token.tag == TokenTag::As;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        if tail != TypeTailResult::ConsumedRename && self.eat(TokenTag::As)? {
             parts.property_name = Some(parts.name);
             parts.name_token = self.current_token;
             parts.name = self.parse_module_export_name()?;
@@ -3659,13 +3530,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         export_kind: ImportOrExportKind,
     ) -> Option<Stmt> {
         self.advance()?;
-        let exported = if {
-            let matched = self.current_token.tag == TokenTag::As;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        let exported = if self.eat(TokenTag::As)? {
             Some(self.parse_module_export_name()?)
         } else {
             None
@@ -3872,13 +3737,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         export_kind: ImportOrExportKind,
     ) -> Option<Stmt> {
         let result = self.parse_export_specifiers()?;
-        let (source, attributes) = if {
-            let matched = self.current_token.tag == TokenTag::From;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        let (source, attributes) = if self.eat(TokenTag::From)? {
             let source = self.parse_module_specifier()?;
             let attributes = self.parse_with_clause();
             (Some(source), attributes)
@@ -3914,13 +3773,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 local_tags.push(self.current_token.tag);
                 let specifier = self.parse_export_specifier()?;
                 self.scratch_a.append(specifier);
-                if !{
-                    let matched = self.current_token.tag == TokenTag::Comma;
-                    if matched {
-                        self.advance()?;
-                    }
-                    matched
-                } {
+                if !self.eat(TokenTag::Comma)? {
                     break;
                 }
             }
@@ -4200,22 +4053,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     fn parse_ts_declaration(&mut self) -> Option<Stmt> {
         let start = self.current_token.span.start;
         let mut modifiers = TsDeclarationModifiers::default();
-        if {
-            let matched = self.current_token.tag == TokenTag::Declare;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        if self.eat(TokenTag::Declare)? {
             modifiers.declare = true;
         }
-        if {
-            let matched = self.current_token.tag == TokenTag::Abstract;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        if self.eat(TokenTag::Abstract)? {
             modifiers.r#abstract = true;
         }
         if self.current_token.tag == TokenTag::Const {
@@ -4349,13 +4190,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         keyword: TokenTag,
         kind: HeritageKind,
     ) -> Option<HeritageClause> {
-        if !{
-            let matched = self.current_token.tag == keyword;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        if !self.eat(keyword)? {
             return Some(match kind {
                 HeritageKind::Interface => HeritageClause::Interface(TypedSubRange::empty()),
                 HeritageKind::Class => HeritageClause::Class(TypedSubRange::empty()),
@@ -4368,13 +4203,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                     HeritageEntry::Interface(node) => self.scratch_a.append(node),
                     HeritageEntry::Class(node) => self.scratch_a.append(node),
                 }
-                if !{
-                    let matched = self.current_token.tag == TokenTag::Comma;
-                    if matched {
-                        self.advance()?;
-                    }
-                    matched
-                } {
+                if !self.eat(TokenTag::Comma)? {
                     break;
                 }
             }
@@ -4473,13 +4302,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             {
                 let member = self.parse_enum_member()?;
                 self.scratch_a.append(member);
-                if !{
-                    let matched = self.current_token.tag == TokenTag::Comma;
-                    if matched {
-                        self.advance()?;
-                    }
-                    matched
-                } {
+                if !self.eat(TokenTag::Comma)? {
                     break;
                 }
             }
@@ -4501,13 +4324,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     fn parse_enum_member(&mut self) -> Option<TsEnumMember> {
         let (id, computed) = self.parse_enum_member_name()?;
         let start = id.span(self.ast).start;
-        let initializer = if {
-            let matched = self.current_token.tag == TokenTag::Assign;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        let initializer = if self.eat(TokenTag::Assign)? {
             Some(self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?)
         } else {
             None
@@ -4530,13 +4347,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_enum_member_name(&mut self) -> Option<(TsEnumMemberName, bool)> {
         let token = self.current_token;
-        if {
-            let matched = self.current_token.tag == TokenTag::LeftBracket;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        if self.eat(TokenTag::LeftBracket)? {
             let expression =
                 self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
             if !self.expect(
@@ -4893,13 +4704,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         self.scratch_a.append(first);
         let result = (|| {
             let mut last = first;
-            while {
-                let matched = self.current_token.tag == separator;
-                if matched {
-                    self.advance()?;
-                }
-                matched
-            } {
+            while self.eat(separator)? {
                 last = match kind {
                     BinaryTypeKind::Union => self.parse_intersection_type()?,
                     BinaryTypeKind::Intersection => self.parse_postfix_type()?,
@@ -5095,13 +4900,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             {
                 let element = self.parse_tuple_element()?;
                 self.scratch_a.append(element);
-                if !{
-                    let matched = self.current_token.tag == TokenTag::Comma;
-                    if matched {
-                        self.advance()?;
-                    }
-                    matched
-                } {
+                if !self.eat(TokenTag::Comma)? {
                     break;
                 }
             }
@@ -5191,13 +4990,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     fn parse_named_tuple_member(&mut self) -> Option<TsTupleElement> {
         let start = self.current_token.span.start;
         let label = self.parse_identifier_name()?;
-        let optional = {
-            let matched = self.current_token.tag == TokenTag::Question;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        };
+        let optional = self.eat(TokenTag::Question)?;
         if !self.expect(
             TokenTag::Colon,
             "Expected ':' after named tuple element label",
@@ -5353,20 +5146,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_function_or_constructor_type(&mut self) -> Option<TsType> {
         let start = self.current_token.span.start;
-        let is_abstract = {
-            let matched = self.current_token.tag == TokenTag::Abstract;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        };
-        let is_constructor = {
-            let matched = self.current_token.tag == TokenTag::New;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        };
+        let is_abstract = self.eat(TokenTag::Abstract)?;
+        let is_constructor = self.eat(TokenTag::New)?;
         let type_parameters = if is_angle_open(self.current_token.tag) {
             Some(self.parse_type_parameters()?)
         } else {
@@ -5468,13 +5249,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         ) {
             return None;
         }
-        let qualifier = if {
-            let matched = self.current_token.tag == TokenTag::Dot;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        let qualifier = if self.eat(TokenTag::Dot)? {
             Some(self.parse_import_type_qualifier()?)
         } else {
             None
@@ -5498,13 +5273,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_import_type_options(&mut self) -> Option<Option<Expr>> {
-        if !{
-            let matched = self.current_token.tag == TokenTag::Comma;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        if !self.eat(TokenTag::Comma)? {
             return Some(None);
         }
         if self.current_token.tag == TokenTag::RightParen {
@@ -5512,13 +5281,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         }
         let options =
             self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
-        {
-            let matched = self.current_token.tag == TokenTag::Comma;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        };
+        self.eat(TokenTag::Comma)?;
         Some(Some(options))
     }
 
@@ -5793,13 +5556,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             return None;
         }
         let constraint = self.parse_type()?;
-        let name_type = if {
-            let matched = self.current_token.tag == TokenTag::As;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        let name_type = if self.eat(TokenTag::As)? {
             Some(self.parse_type()?)
         } else {
             None
@@ -5812,13 +5569,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             return None;
         }
         let optional = self.parse_mapped_modifier(TokenTag::Question)?;
-        let type_annotation = if {
-            let matched = self.current_token.tag == TokenTag::Colon;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        let type_annotation = if self.eat(TokenTag::Colon)? {
             Some(self.parse_type()?)
         } else {
             None
@@ -6301,13 +6052,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 };
                 self.scratch_a.items.push(node);
                 parsed_any = true;
-                if !{
-                    let matched = self.current_token.tag == TokenTag::Comma;
-                    if matched {
-                        self.advance()?;
-                    }
-                    matched
-                } {
+                if !self.eat(TokenTag::Comma)? {
                     break;
                 }
             }
@@ -6388,24 +6133,12 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         }
 
         let name = self.parse_binding_identifier()?;
-        let constraint = if {
-            let matched = self.current_token.tag == TokenTag::Extends;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        let constraint = if self.eat(TokenTag::Extends)? {
             Some(self.parse_type()?)
         } else {
             None
         };
-        let default = if {
-            let matched = self.current_token.tag == TokenTag::Assign;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        let default = if self.eat(TokenTag::Assign)? {
             Some(self.parse_type()?)
         } else {
             None
@@ -6579,13 +6312,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             let first = self.parse_variable_declarator(kind, DeclaratorCtx::ForLoop)?;
             let mut declaration_end = first.span(self.ast).end;
             self.scratch_a.append(first);
-            while {
-                let matched = self.current_token.tag == TokenTag::Comma;
-                if matched {
-                    self.advance()?;
-                }
-                matched
-            } {
+            while self.eat(TokenTag::Comma)? {
                 let declarator = self.parse_variable_declarator(kind, DeclaratorCtx::ForLoop)?;
                 declaration_end = declarator.span(self.ast).end;
                 self.scratch_a.append(declarator);
@@ -6902,13 +6629,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             TokenTag::Case | TokenTag::Default
         ));
         let case_start = self.current_token.span.start;
-        let test = if {
-            let matched = self.current_token.tag == TokenTag::Case;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        let test = if self.eat(TokenTag::Case)? {
             Some(self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?)
         } else {
             self.advance()?;
@@ -6976,13 +6697,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         } else {
             None
         };
-        let finalizer = if {
-            let matched = self.current_token.tag == TokenTag::Finally;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        let finalizer = if self.eat(TokenTag::Finally)? {
             Some(self.parse_block_statement()?)
         } else {
             None
@@ -7012,13 +6727,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         debug_assert_eq!(self.current_token.tag, TokenTag::Catch);
         let start = self.current_token.span.start;
         self.advance()?;
-        let param = if {
-            let matched = self.current_token.tag == TokenTag::LeftParen;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        let param = if self.eat(TokenTag::LeftParen)? {
             let param = self.parse_binding_pattern()?;
             if self.lang.is_typescript() && self.current_token.tag == TokenTag::Colon {
                 let annotation = self.parse_type_annotation()?;
@@ -7609,13 +7318,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             while self.current_token.tag != TokenTag::RightParen
                 && self.current_token.tag != TokenTag::Eof
             {
-                let element = if {
-                    let matched = self.current_token.tag == TokenTag::Spread;
-                    if matched {
-                        self.advance()?;
-                    }
-                    matched
-                } {
+                let element = if self.eat(TokenTag::Spread)? {
                     let spread_start = self.prev_token_end - 3;
                     let argument = self.parse_expression(
                         Precedence::ASSIGNMENT,
@@ -7639,13 +7342,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 };
                 end = element.span(self.ast).end;
                 self.scratch_cover.append(element);
-                if {
-                    let matched = self.current_token.tag == TokenTag::Comma;
-                    if matched {
-                        self.advance()?;
-                    }
-                    matched
-                } {
+                if self.eat(TokenTag::Comma)? {
                     has_trailing_comma = self.current_token.tag == TokenTag::RightParen;
                 } else if self.current_token.tag != TokenTag::RightParen {
                     self.report_expected(
@@ -8335,8 +8032,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 let pattern = self.ast.replace_data(assignment, pattern);
                 Some(BindingPattern::AssignmentPattern(pattern))
             }
-            ExprData::ArrayExpression(array) => self.to_array_pattern(array, context),
-            ExprData::ObjectExpression(object) => self.to_object_pattern(object, context),
+            ExprData::ArrayExpression(array) => self.convert_array_pattern(array, context),
+            ExprData::ObjectExpression(object) => self.convert_object_pattern(object, context),
             ExprData::ParenthesizedExpression(_) if context == PatternContext::Binding => {
                 self.report(
                     expression.span(self.ast),
@@ -8410,18 +8107,18 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         context: PatternContext,
     ) -> Option<BindingPattern> {
         match self.ast.expr_data(expression) {
-            ExprData::ArrayExpression(array) => self.to_array_pattern(array, context),
-            ExprData::ObjectExpression(object) => self.to_object_pattern(object, context),
+            ExprData::ArrayExpression(array) => self.convert_array_pattern(array, context),
+            ExprData::ObjectExpression(object) => self.convert_object_pattern(object, context),
             _ => self.expression_to_pattern(expression, context),
         }
     }
 
-    fn to_array_pattern(
+    fn convert_array_pattern(
         &mut self,
         array: ArrayExpression,
         context: PatternContext,
     ) -> Option<BindingPattern> {
-        self.to_array_pattern_impl(
+        self.convert_array_pattern_impl(
             Some(array),
             array.elements(self.ast),
             array.span(self.ast),
@@ -8434,7 +8131,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         cover: ArrayCover,
         context: PatternContext,
     ) -> Option<BindingPattern> {
-        self.to_array_pattern_impl(
+        self.convert_array_pattern_impl(
             None,
             cover.elements,
             Span::new(cover.start, cover.end),
@@ -8442,7 +8139,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         )
     }
 
-    fn to_array_pattern_impl(
+    fn convert_array_pattern_impl(
         &mut self,
         mutate_node: Option<ArrayExpression>,
         elements_range: TypedSubRange<Option<Argument>>,
@@ -8539,12 +8236,12 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         result
     }
 
-    fn to_object_pattern(
+    fn convert_object_pattern(
         &mut self,
         object: ObjectExpression,
         context: PatternContext,
     ) -> Option<BindingPattern> {
-        self.to_object_pattern_impl(
+        self.convert_object_pattern_impl(
             Some(object),
             object.properties(self.ast),
             object.span(self.ast),
@@ -8557,7 +8254,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         cover: ObjectCover,
         context: PatternContext,
     ) -> Option<BindingPattern> {
-        self.to_object_pattern_impl(
+        self.convert_object_pattern_impl(
             None,
             cover.properties,
             Span::new(cover.start, cover.end),
@@ -8565,7 +8262,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         )
     }
 
-    fn to_object_pattern_impl(
+    fn convert_object_pattern_impl(
         &mut self,
         mutate_node: Option<ObjectExpression>,
         properties_range: TypedSubRange<ObjectPropertyKind>,
@@ -8876,25 +8573,13 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 while self.current_token.tag != TokenTag::RightBracket
                     && self.current_token.tag != TokenTag::Eof
                 {
-                    if {
-                        let matched = self.current_token.tag == TokenTag::Comma;
-                        if matched {
-                            self.advance()?;
-                        }
-                        matched
-                    } {
+                    if self.eat(TokenTag::Comma)? {
                         self.scratch_cover
                             .items
                             .push(NodeId::from_raw_unchecked(u32::MAX));
                         continue;
                     }
-                    let argument = if {
-                        let matched = self.current_token.tag == TokenTag::Spread;
-                        if matched {
-                            self.advance()?;
-                        }
-                        matched
-                    } {
+                    let argument = if self.eat(TokenTag::Spread)? {
                         let spread_start = self.prev_token_end - 3;
                         let expression = self.parse_assignment_expression_in_cover()?;
                         let span = Span::new(spread_start, expression.span(self.ast).end);
@@ -8904,13 +8589,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                     };
                     end = argument.span(self.ast).end;
                     self.scratch_cover.append(argument);
-                    if {
-                        let matched = self.current_token.tag == TokenTag::Comma;
-                        if matched {
-                            self.advance()?;
-                        }
-                        matched
-                    } {
+                    if self.eat(TokenTag::Comma)? {
                         if self.current_token.tag == TokenTag::RightBracket {
                             self.state.cover_has_trailing_comma = Some(start);
                         }
@@ -8968,13 +8647,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             while self.current_token.tag != TokenTag::RightBrace
                 && self.current_token.tag != TokenTag::Eof
             {
-                let property = if {
-                    let matched = self.current_token.tag == TokenTag::Spread;
-                    if matched {
-                        self.advance()?;
-                    }
-                    matched
-                } {
+                let property = if self.eat(TokenTag::Spread)? {
                     let spread_start = self.prev_token_end - 3;
                     let expression = self.parse_expression(
                         Precedence::ASSIGNMENT,
@@ -8993,13 +8666,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 };
                 end = property.span(self.ast).end;
                 self.scratch_cover.append(property);
-                if {
-                    let matched = self.current_token.tag == TokenTag::Comma;
-                    if matched {
-                        self.advance()?;
-                    }
-                    matched
-                } {
+                if self.eat(TokenTag::Comma)? {
                     if self.current_token.tag == TokenTag::RightBrace {
                         self.state.cover_has_trailing_comma = Some(start);
                     }
@@ -9084,13 +8751,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             }
         }
 
-        if key.is_none() && {
-            let matched = self.current_token.tag == TokenTag::Star;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        if key.is_none() && self.eat(TokenTag::Star)? {
             generator = true;
         }
 
@@ -9705,9 +9366,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             TokenTag::LeftBracket => self.parse_computed_member_expression(object, optional),
             TokenTag::LeftParen => self.parse_call_expression(object, optional, None),
             TokenTag::LessThan | TokenTag::LeftShift if self.lang.is_typescript() => {
-                let Some(type_arguments) = self.try_parse_type_arguments_in_expression()? else {
-                    return None;
-                };
+                let type_arguments = self.try_parse_type_arguments_in_expression()??;
                 self.parse_call_expression(object, optional, Some(type_arguments))
             }
             TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => {
@@ -9747,13 +9406,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             while self.current_token.tag != TokenTag::RightParen
                 && self.current_token.tag != TokenTag::Eof
             {
-                let argument = if {
-                    let matched = self.current_token.tag == TokenTag::Spread;
-                    if matched {
-                        self.advance()?;
-                    }
-                    matched
-                } {
+                let argument = if self.eat(TokenTag::Spread)? {
                     let start = self.prev_token_end - 3;
                     let expression = self
                         .parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
@@ -9770,13 +9423,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                     )
                 };
                 self.scratch_a.append(argument);
-                if !{
-                    let matched = self.current_token.tag == TokenTag::Comma;
-                    if matched {
-                        self.advance()?;
-                    }
-                    matched
-                } {
+                if !self.eat(TokenTag::Comma)? {
                     break;
                 }
             }
@@ -9915,25 +9562,13 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         }
         let source =
             self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
-        let options = if phase.is_none() && {
-            let matched = self.current_token.tag == TokenTag::Comma;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        let options = if phase.is_none() && self.eat(TokenTag::Comma)? {
             let options = if self.current_token.tag == TokenTag::RightParen {
                 None
             } else {
                 Some(self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?)
             };
-            {
-                let matched = self.current_token.tag == TokenTag::Comma;
-                if matched {
-                    self.advance()?;
-                }
-                matched
-            };
+            self.eat(TokenTag::Comma)?;
             options
         } else {
             None
@@ -10035,13 +9670,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         };
 
         let attributes = self.parse_jsx_attributes()?;
-        let self_closing = {
-            let matched = self.current_token.tag == TokenTag::Slash;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        };
+        let self_closing = self.eat(TokenTag::Slash)?;
         if self.current_token.tag != TokenTag::GreaterThan {
             self.report_expected(
                 self.current_token.span,
@@ -10265,13 +9894,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                     .jsx_child_jsx_expression_container(Span::new(start, end), expression),
             );
         }
-        if {
-            let matched = self.current_token.tag == TokenTag::Spread;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        if self.eat(TokenTag::Spread)? {
             let expression =
                 self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?;
             let end = self.expect_jsx_child_right_brace("JSX spread")?;
@@ -10331,13 +9954,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let mut member_object = JsxMemberExpressionObject::JsxIdentifier(identifier);
         let mut is_member = false;
 
-        while {
-            let matched = self.current_token.tag == TokenTag::Dot;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        while self.eat(TokenTag::Dot)? {
             if self.current_token.tag != TokenTag::JsxIdentifier {
                 self.report_expected(
                     self.current_token.span,
@@ -10365,13 +9982,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             element_name = JsxElementName::JsxMemberExpression(member);
         }
 
-        if !is_member && {
-            let matched = self.current_token.tag == TokenTag::Colon;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        if !is_member && self.eat(TokenTag::Colon)? {
             if self.current_token.tag != TokenTag::JsxIdentifier {
                 self.report_expected(
                     self.current_token.span,
@@ -10420,13 +10031,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         }
         let name = self.parse_jsx_attribute_name()?;
         let start = name.span(self.ast).start;
-        let value = if {
-            let matched = self.current_token.tag == TokenTag::Assign;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        let value = if self.eat(TokenTag::Assign)? {
             Some(self.parse_jsx_attribute_value()?)
         } else {
             None
@@ -10444,13 +10049,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let name = self.identifier_name(token);
         self.advance()?;
         let namespace = self.ast.jsx_identifier(token.span, name);
-        if !{
-            let matched = self.current_token.tag == TokenTag::Colon;
-            if matched {
-                self.advance()?;
-            }
-            matched
-        } {
+        if !self.eat(TokenTag::Colon)? {
             return Some(JsxAttributeName::JsxIdentifier(namespace));
         }
         if self.current_token.tag != TokenTag::JsxIdentifier {
@@ -10982,13 +10581,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         self.scratch_a.append(left);
         let result = (|| {
             let mut end = left.span(self.ast).end;
-            while {
-                let matched = self.current_token.tag == TokenTag::Comma;
-                if matched {
-                    self.advance()?;
-                }
-                matched
-            } {
+            while self.eat(TokenTag::Comma)? {
                 let expression =
                     self.parse_expression(precedence + 1, ParseExpressionOpts::default())?;
                 end = expression.span(self.ast).end;
@@ -11218,6 +10811,15 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         self.check_escaped_keyword();
         self.prev_token_end = self.current_token.span.end;
         self.next_token()
+    }
+
+    #[inline]
+    fn eat(&mut self, tag: TokenTag) -> Option<bool> {
+        let matched = self.current_token.tag == tag;
+        if matched {
+            self.advance()?;
+        }
+        Some(matched)
     }
 
     pub fn advance_without_escape_check(&mut self) -> Option<()> {

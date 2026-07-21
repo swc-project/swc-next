@@ -331,6 +331,7 @@ impl SymbolTable {
             .find_map(|ancestor| self.find_in_scope_or_hoisted(ancestor, name))
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn declare(
         &mut self,
         name: AstString,
@@ -391,6 +392,7 @@ impl SymbolTable {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn add_reference(
         &mut self,
         name: AstString,
