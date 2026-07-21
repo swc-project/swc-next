@@ -502,10 +502,6 @@ impl Token {
         self.span.end - self.span.start
     }
 
-    pub fn is_empty(self) -> bool {
-        self.len() == 0
-    }
-
     pub fn text(self, source: &[u8]) -> &[u8] {
         &source[self.span.start as usize..self.span.end as usize]
     }

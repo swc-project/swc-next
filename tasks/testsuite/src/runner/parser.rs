@@ -72,9 +72,10 @@ fn run_source(
     };
 
     match parse_result {
-        Err(error) => Some(format!("parser: {error:?}")),
-        Ok(_) if parser_diagnostic.is_some() => parser_diagnostic,
-        Ok(program) => {
+        None => parser_diagnostic
+            .or_else(|| Some("parser: parsing stopped without producing a diagnostic".to_string())),
+        Some(_) if parser_diagnostic.is_some() => parser_diagnostic,
+        Some(program) => {
             let semantic = analyze(program, &mut ast);
             semantic.diagnostics().first().map(|diagnostic| {
                 format!(

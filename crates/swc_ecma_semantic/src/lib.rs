@@ -4,17 +4,15 @@
 #![deny(unused)]
 
 mod analyzer;
-mod diagnostic;
 mod module_record;
 mod scope;
 mod symbol;
 
 use oxc_index::Idx;
 
-pub use diagnostic::{Diagnostic, Label, Severity};
 pub use module_record::{ExportRecord, ImportRecord, ModuleRecord, ModuleRecordNameKind};
 pub use scope::{Scope, ScopeFlags, ScopeKind, ScopeTree};
-pub use swc_experimental_ecma_ast::{ScopeId, SymbolId};
+pub use swc_experimental_ecma_ast::{Diagnostic, Label, ScopeId, Severity, SymbolId};
 pub use symbol::{
     Reference, ReferenceFlags, ReferenceId, ReferenceKind, Symbol, SymbolFlags, SymbolTable,
 };
@@ -33,7 +31,7 @@ pub struct SemanticModel {
     pub node_references: Vec<Option<ReferenceId>>,
     pub node_order: Vec<u64>,
     module_record: ModuleRecord,
-    diagnostics: Vec<Diagnostic>,
+    diagnostics: Vec<Diagnostic<'static>>,
 }
 
 pub type Semantic = SemanticModel;
@@ -51,7 +49,7 @@ impl SemanticModel {
         &self.module_record
     }
 
-    pub fn diagnostics(&self) -> &[Diagnostic] {
+    pub fn diagnostics(&self) -> &[Diagnostic<'static>] {
         &self.diagnostics
     }
 

@@ -1,8 +1,8 @@
 parser * typescript
 ========================
 Passed: 23246/25471 (91.26%)
-Failed: 2225/25471 (8.74%)
-Panicked: 0/25471 (0.00%)
+Failed: 2224/25471 (8.73%)
+Panicked: 1/25471 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration13.ts - ClassDeclaration13.ts: expected a parse or early error, but pipeline succeeded
@@ -55,6 +55,7 @@ Failed: fixtures/typescript/tests/cases/compiler/anyIdenticalToItself.ts - anyId
 Failed: fixtures/typescript/tests/cases/compiler/argumentsBindsToFunctionScopeArgumentList.ts - argumentsBindsToFunctionScopeArgumentList.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/argumentsReferenceInObjectLiteral_Js.ts - /a.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/arrayConcatMap.ts - arrayConcatMap.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/arrowFunctionErrorSpan.ts - arrowFunctionErrorSpan.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/asiAbstract.ts - asiAbstract.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/asiPublicPrivateProtected.ts - asiPublicPrivateProtected.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/assignmentCompatFunctionsWithOptionalArgs.ts - assignmentCompatFunctionsWithOptionalArgs.ts: expected a parse or early error, but pipeline succeeded
@@ -113,7 +114,6 @@ Failed: fixtures/typescript/tests/cases/compiler/classFunctionMerging2.ts - clas
 Failed: fixtures/typescript/tests/cases/compiler/classImplementsClass6.ts - classImplementsClass6.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/classStaticPropertyAccess.ts - classStaticPropertyAccess.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/classWithDuplicateIdentifier.ts - classWithDuplicateIdentifier.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/classWithEmptyTypeParameter.ts - classWithEmptyTypeParameter.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/classWithOverloadImplementationOfWrongName.ts - classWithOverloadImplementationOfWrongName.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/classWithOverloadImplementationOfWrongName2.ts - classWithOverloadImplementationOfWrongName2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/cloduleTest2.ts - cloduleTest2.ts: expected a parse or early error, but pipeline succeeded
@@ -273,6 +273,7 @@ Failed: fixtures/typescript/tests/cases/compiler/deleteExpressionMustBeOptional_
 Failed: fixtures/typescript/tests/cases/compiler/deleteOperator1.ts - deleteOperator1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/destructureCatchClause.ts - destructureCatchClause.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/destructuredLateBoundNameHasCorrectTypes.ts - destructuredLateBoundNameHasCorrectTypes.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/destructuringControlFlowNoCrash.ts - destructuringControlFlowNoCrash.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/destructuringFromUnionSpread.ts - destructuringFromUnionSpread.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/destructuringUnspreadableIntoRest.ts - destructuringUnspreadableIntoRest.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/detachedCommentAtStartOfFunctionBody1.ts - detachedCommentAtStartOfFunctionBody1.ts: expected a parse or early error, but pipeline succeeded
@@ -308,7 +309,7 @@ Failed: fixtures/typescript/tests/cases/compiler/duplicateObjectLiteralProperty_
 Failed: fixtures/typescript/tests/cases/compiler/duplicateObjectLiteralProperty_computedName3.ts - a.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/duplicateObjectLiteralProperty_computedName3.ts - b.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/duplicatePackage.ts - /node_modules/b/index.d.ts: parser: 'const' declarations must be initialized at 32..33
-Failed: fixtures/typescript/tests/cases/compiler/duplicatePackage.ts - /node_modules/b/node_modules/x/index.d.ts: parser: expected ';' at 8..11
+Failed: fixtures/typescript/tests/cases/compiler/duplicatePackage.ts - /node_modules/b/node_modules/x/index.d.ts: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'not' at 8..11
 Failed: fixtures/typescript/tests/cases/compiler/duplicatePackage.ts - /node_modules/c/index.d.ts: parser: 'const' declarations must be initialized at 32..33
 Failed: fixtures/typescript/tests/cases/compiler/duplicatePackage_globalMerge.ts - /node_modules/@types/react/index.d.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/duplicatePackage_globalMerge.ts - /src/bug25410.ts: expected a parse or early error, but pipeline succeeded
@@ -441,8 +442,8 @@ Failed: fixtures/typescript/tests/cases/compiler/extendGlobalThis.ts - extension
 Failed: fixtures/typescript/tests/cases/compiler/extendGlobalThis.ts - index.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/extendGlobalThis2.ts - extendGlobalThis2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/extendedInterfacesWithDuplicateTypeParameters.ts - extendedInterfacesWithDuplicateTypeParameters.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/extendsUntypedModule.ts - /node_modules/bar/index.js: parser: expected ';' at 4..6
-Failed: fixtures/typescript/tests/cases/compiler/extendsUntypedModule.ts - /node_modules/foo/index.js: parser: expected ';' at 92..96
+Failed: fixtures/typescript/tests/cases/compiler/extendsUntypedModule.ts - /node_modules/bar/index.js: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'is' at 4..6
+Failed: fixtures/typescript/tests/cases/compiler/extendsUntypedModule.ts - /node_modules/foo/index.js: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'file' at 92..96
 Failed: fixtures/typescript/tests/cases/compiler/externSemantics.ts - externSemantics.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/externSyntax.ts - externSyntax.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/externalModuleImmutableBindings.ts - f1.ts: expected a parse or early error, but pipeline succeeded
@@ -627,7 +628,7 @@ Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceGlobalReexportMissi
 Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceImplicitImportJSXNamespace.tsx - /node_modules/preact/index.d.ts: parser: 'const' declarations must be initialized at 992..1000
 Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceImplicitImportJSXNamespace.tsx - /node_modules/preact/jsx-runtime/index.d.ts: parser: expected an import-equals declaration after 'export' at 1259..1284
 Failed: fixtures/typescript/tests/cases/compiler/jsxNamespacePrefixIntrinsics.tsx - jsxNamespacePrefixIntrinsics.tsx: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/jsxPreserveWithJsInput.ts - c.js: parser: expected an expression at 12..13
+Failed: fixtures/typescript/tests/cases/compiler/jsxPreserveWithJsInput.ts - c.js: parser: Unexpected token '<' at 12..13
 Failed: fixtures/typescript/tests/cases/compiler/keyofIsLiteralContexualType.ts - keyofIsLiteralContexualType.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/knockout.ts - knockout.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/lambdaParamTypes.ts - lambdaParamTypes.ts: expected a parse or early error, but pipeline succeeded
@@ -748,8 +749,8 @@ Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionWithSymlinks_pr
 Failed: fixtures/typescript/tests/cases/compiler/moduleResolution_packageJson_notAtPackageRoot.ts - /node_modules/foo/bar/types.d.ts: parser: 'const' declarations must be initialized at 13..14
 Failed: fixtures/typescript/tests/cases/compiler/moduleResolution_packageJson_notAtPackageRoot_fakeScopedPackage.ts - /node_modules/foo/@bar/types.d.ts: parser: 'const' declarations must be initialized at 13..14
 Failed: fixtures/typescript/tests/cases/compiler/moduleResolution_packageJson_scopedPackage.ts - /node_modules/@foo/bar/types.d.ts: parser: 'const' declarations must be initialized at 13..14
-Failed: fixtures/typescript/tests/cases/compiler/moduleResolution_packageJson_yesAtPackageRoot.ts - /node_modules/foo/bar/index.js: parser: expected ';' at 4..8
-Failed: fixtures/typescript/tests/cases/compiler/moduleResolution_packageJson_yesAtPackageRoot_fakeScopedPackage.ts - /node_modules/foo/@bar/index.js: parser: expected ';' at 129..133
+Failed: fixtures/typescript/tests/cases/compiler/moduleResolution_packageJson_yesAtPackageRoot.ts - /node_modules/foo/bar/index.js: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'read' at 4..8
+Failed: fixtures/typescript/tests/cases/compiler/moduleResolution_packageJson_yesAtPackageRoot_fakeScopedPackage.ts - /node_modules/foo/@bar/index.js: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'read' at 129..133
 Failed: fixtures/typescript/tests/cases/compiler/moduleResolution_packageJson_yesAtPackageRoot_mainFieldInSubDirectory.ts - /node_modules/foo/src/index.d.ts: parser: 'const' declarations must be initialized at 13..14
 Failed: fixtures/typescript/tests/cases/compiler/moduleSharesNameWithImportDeclarationInsideIt2.ts - moduleSharesNameWithImportDeclarationInsideIt2.ts: parser: expected an import-equals declaration after 'export' at 120..135
 Failed: fixtures/typescript/tests/cases/compiler/moduleVariableArrayIndexer.ts - moduleVariableArrayIndexer.ts: expected a parse or early error, but pipeline succeeded
@@ -885,7 +886,7 @@ Failed: fixtures/typescript/tests/cases/compiler/reExportGlobalDeclaration2.ts -
 Failed: fixtures/typescript/tests/cases/compiler/reExportGlobalDeclaration3.ts - file2.ts: semantic: Export 'NS1' is not defined at 8..11
 Failed: fixtures/typescript/tests/cases/compiler/reExportGlobalDeclaration4.ts - file2.ts: semantic: Export 'Cls1' is not defined at 8..12
 Failed: fixtures/typescript/tests/cases/compiler/reExportUndefined1.ts - a.ts: semantic: Export 'undefined' is not defined at 9..18
-Failed: fixtures/typescript/tests/cases/compiler/reactImportDropped.ts - src/modules/navigation/NavigationView.js: parser: expected an expression at 128..129
+Failed: fixtures/typescript/tests/cases/compiler/reactImportDropped.ts - src/modules/navigation/NavigationView.js: parser: Unexpected token '<' at 128..129
 Failed: fixtures/typescript/tests/cases/compiler/reassignStaticProp.ts - reassignStaticProp.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/reboundIdentifierOnImportAlias.ts - reboundIdentifierOnImportAlias.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/recursiveBaseCheck3.ts - recursiveBaseCheck3.ts: expected a parse or early error, but pipeline succeeded
@@ -900,7 +901,6 @@ Failed: fixtures/typescript/tests/cases/compiler/recursiveTupleTypeInference.ts 
 Failed: fixtures/typescript/tests/cases/compiler/recursiveTypeAliasWithSpreadConditionalReturnNotCircular.ts - recursiveTypeAliasWithSpreadConditionalReturnNotCircular.ts: semantic: Duplicate export 'O' at 135..136
 Failed: fixtures/typescript/tests/cases/compiler/recursiveTypeRelations.ts - recursiveTypeRelations.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/reexportedMissingAlias.ts - second.d.ts: parser: expected an import-equals declaration after 'export' at 23..60
-Failed: fixtures/typescript/tests/cases/compiler/referenceSatisfiesExpression.ts - referenceSatisfiesExpression.ts: parser: a parenthesized assignment target must be an identifier or member expression at 170..188
 Failed: fixtures/typescript/tests/cases/compiler/regExpWithOpenBracketInCharClass.ts - regExpWithOpenBracketInCharClass.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/regularExpressionAnnexB.ts - regularExpressionAnnexB.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/regularExpressionCharacterClassRangeOrder.ts - regularExpressionCharacterClassRangeOrder.ts: expected a parse or early error, but pipeline succeeded
@@ -1024,7 +1024,7 @@ Failed: fixtures/typescript/tests/cases/compiler/unknownSymbolOffContextualType1
 Failed: fixtures/typescript/tests/cases/compiler/unknownSymbols1.ts - unknownSymbols1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/unreachableDeclarations.ts - unreachableDeclarations.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/untypedModuleImport_withAugmentation2.ts - /node_modules/augmenter/index.d.ts: parser: 'const' declarations must be initialized at 180..181
-Failed: fixtures/typescript/tests/cases/compiler/untypedModuleImport_withAugmentation2.ts - /node_modules/js/index.js: parser: expected ';' at 5..9
+Failed: fixtures/typescript/tests/cases/compiler/untypedModuleImport_withAugmentation2.ts - /node_modules/js/index.js: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'file' at 5..9
 Failed: fixtures/typescript/tests/cases/compiler/unwitnessedTypeParameterVariance.ts - unwitnessedTypeParameterVariance.ts: semantic: Duplicate export 'O' at 117..118
 Failed: fixtures/typescript/tests/cases/compiler/useBeforeDeclaration_classDecorators.2.ts - useBeforeDeclaration_classDecorators.2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/useBeforeDefinitionInDeclarationFiles.ts - declaration.d.ts: parser: 'const' declarations must be initialized at 209..236
@@ -1687,7 +1687,7 @@ Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxElementResolution1.ts
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxElementResolution6.tsx - file.tsx: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxElementResolution7.tsx - file.tsx: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxLibraryManagedAttributes.tsx - tsxLibraryManagedAttributes.tsx: parser: 'const' declarations must be initialized at 698..704
-Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxOpeningClosingNames.tsx - file.tsx: parser: JSX closing tag does not match at 107..118
+Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxOpeningClosingNames.tsx - file.tsx: parser: Expected closing tag for '<A.B.C.D>' but found '</A . B . C.D>' at 107..118
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxStatelessFunctionComponents2.tsx - file.tsx: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/bundler/bundlerConditionsExcludesNode.ts - /main.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/bundler/bundlerConditionsExcludesNode.ts - /node_modules/conditions/index.node.js: expected a parse or early error, but pipeline succeeded
@@ -1740,18 +1740,18 @@ Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/resolvesWit
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/scopedPackages.ts - /node_modules/@cow/boy/index.d.ts: parser: 'const' declarations must be initialized at 13..14
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/scopedPackages.ts - /node_modules/@types/be__bop/e/z.d.ts: parser: 'const' declarations must be initialized at 13..14
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/scopedPackages.ts - /node_modules/@types/be__bop/index.d.ts: parser: 'const' declarations must be initialized at 13..14
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport.ts - /node_modules/foo/index.js: parser: expected ';' at 146..150
+Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport.ts - /node_modules/foo/index.js: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'file' at 146..150
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_allowJs.ts - /a.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_allowJs.ts - /node_modules/foo/index.js: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_noImplicitAny.ts - /node_modules/foo/index.js: parser: expected ';' at 5..9
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_noImplicitAny_relativePath.ts - /node_modules/foo/index.js: parser: expected ';' at 5..9
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_noImplicitAny_scoped.ts - /node_modules/@foo/bar/index.js: parser: expected ';' at 5..9
+Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_noImplicitAny.ts - /node_modules/foo/index.js: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'file' at 5..9
+Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_noImplicitAny_relativePath.ts - /node_modules/foo/index.js: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'file' at 5..9
+Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_noImplicitAny_scoped.ts - /node_modules/@foo/bar/index.js: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'file' at 5..9
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_noImplicitAny_typesForPackageExist.ts - /node_modules/@types/foo/index.d.ts: parser: 'const' declarations must be initialized at 13..16
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_noImplicitAny_typesForPackageExist.ts - /node_modules/@types/scope__foo/index.d.ts: parser: 'const' declarations must be initialized at 13..16
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_vsAmbient.ts - /declarations.d.ts: parser: 'const' declarations must be initialized at 40..41
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_vsAmbient.ts - /node_modules/foo/index.js: parser: expected ';' at 84..88
+Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_vsAmbient.ts - /node_modules/foo/index.js: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'file' at 84..88
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_withAugmentation.ts - /a.ts: parser: 'const' declarations must be initialized at 40..41
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_withAugmentation.ts - /node_modules/foo/index.js: parser: expected ';' at 68..72
+Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_withAugmentation.ts - /node_modules/foo/index.js: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'file' at 68..72
 Failed: fixtures/typescript/tests/cases/conformance/node/allowJs/nodeAllowJsPackageSelfName.ts - index.cjs: semantic: An import declaration is only valid in module code at 19..51
 Failed: fixtures/typescript/tests/cases/conformance/node/allowJs/nodeAllowJsPackageSelfName2.ts - /types/src/foo.d.ts: parser: 'const' declarations must be initialized at 13..16
 Failed: fixtures/typescript/tests/cases/conformance/node/allowJs/nodeModulesAllowJs1.ts - subfolder/index.js: expected a parse or early error, but pipeline succeeded
@@ -1996,7 +1996,6 @@ Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ClassDecl
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ComputedPropertyNames/parserES5ComputedPropertyName4.ts - parserES5ComputedPropertyName4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ComputedPropertyNames/parserES5ComputedPropertyName6.ts - parserES5ComputedPropertyName6.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ConstructorDeclarations/parserConstructorDeclaration10.ts - parserConstructorDeclaration10.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ConstructorDeclarations/parserConstructorDeclaration11.ts - parserConstructorDeclaration11.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ConstructorDeclarations/parserConstructorDeclaration2.ts - parserConstructorDeclaration2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ConstructorDeclarations/parserConstructorDeclaration4.ts - parserConstructorDeclaration4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ConstructorDeclarations/parserConstructorDeclaration9.ts - parserConstructorDeclaration9.ts: expected a parse or early error, but pipeline succeeded
@@ -2004,7 +2003,7 @@ Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/EnumDecla
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/AccessibilityAfterStatic/parserAccessibilityAfterStatic1.ts - parserAccessibilityAfterStatic1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/AccessibilityAfterStatic/parserAccessibilityAfterStatic10.ts - parserAccessibilityAfterStatic10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/AccessibilityAfterStatic/parserAccessibilityAfterStatic7.ts - parserAccessibilityAfterStatic7.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/ParameterLists/parserErrorRecovery_ParameterList6.ts - parserErrorRecovery_ParameterList6.ts: parser: expected a TypeScript type at 34..39
+Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/ParameterLists/parserErrorRecovery_ParameterList6.ts - parserErrorRecovery_ParameterList6.ts: parser: Expected a type, but found 'break' at 34..39
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/parserCommaInTypeMemberList2.ts - parserCommaInTypeMemberList2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/parserModifierOnStatementInBlock2.ts - parserModifierOnStatementInBlock2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ExportAssignments/parserExportAssignment5.ts - parserExportAssignment5.ts: expected a parse or early error, but pipeline succeeded
@@ -2220,11 +2219,12 @@ Failed: fixtures/typescript/tests/cases/conformance/typings/typingsLookup4.ts - 
 Failed: fixtures/typescript/tests/cases/conformance/typings/typingsLookup4.ts - /node_modules/@types/kquery/kquery.d.ts: parser: 'const' declarations must be initialized at 13..14
 Failed: fixtures/typescript/tests/cases/fourslash/fourslash.ts - lib.d.ts: parser: 'const' declarations must be initialized at 1939..1950
 Failed: fixtures/typescript/tests/cases/fourslash/jsFileJsdocTypedefTagTypeExpressionCompletion.ts - jsFileJsdocTypedefTagTypeExpressionCompletion_typedef.js: parser: 'const' declarations must be initialized at 451..456
-Failed: fixtures/typescript/tests/cases/fourslash/jsFileJsdocTypedefTagTypeExpressionCompletion2.ts - jsFileJsdocTypedefTagTypeExpressionCompletion2_typedef.js: parser: expected ')', found ':' at 494..495
-Failed: fixtures/typescript/tests/cases/fourslash/jsFileJsdocTypedefTagTypeExpressionCompletion3.ts - jsFileJsdocTypedefTagTypeExpressionCompletion3_typedef.js: parser: expected ')', found ':' at 744..745
-Failed: fixtures/typescript/tests/cases/fourslash/server/importSuggestionsCache_coreNodeModules.ts - /home/src/workspaces/project/a.js: parser: expected ')', found ':' at 211..212
+Failed: fixtures/typescript/tests/cases/fourslash/jsFileJsdocTypedefTagTypeExpressionCompletion2.ts - jsFileJsdocTypedefTagTypeExpressionCompletion2_typedef.js: parser: Expected ')' to close parameter list, but found ':' at 494..495
+Failed: fixtures/typescript/tests/cases/fourslash/jsFileJsdocTypedefTagTypeExpressionCompletion3.ts - jsFileJsdocTypedefTagTypeExpressionCompletion3_typedef.js: parser: Expected ',' or ')' in parenthesized expression, but found ':' at 744..745
+Failed: fixtures/typescript/tests/cases/fourslash/server/importSuggestionsCache_coreNodeModules.ts - /home/src/workspaces/project/a.js: parser: Expected ')' to close parameter list, but found ':' at 211..212
 Failed: fixtures/typescript/tests/cases/projects/baseline/emit.ts - emit.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/projects/privacyCheck-ImportInParent/test.ts - test.ts: parser: expected an import-equals declaration after 'export' at 33..73
 Failed: fixtures/typescript/tests/cases/projects/privacyCheck-InsideModule/test.ts - test.ts: parser: expected an import-equals declaration after 'export' at 51..91
 Failed: fixtures/typescript/tests/cases/projects/privacyCheck-InsideModule/testGlo.ts - testGlo.ts: parser: expected an import-equals declaration after 'export' at 26..66
 Failed: fixtures/typescript/tests/cases/projects/privacyCheck-SimpleReference/test.ts - test.ts: parser: expected an import-equals declaration after 'export' at 7..47
+Panic: fixtures/typescript/tests/cases/conformance/types/typeParameters/typeArgumentLists/instantiationExpressionErrors.ts

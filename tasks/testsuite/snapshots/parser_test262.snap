@@ -1,15 +1,15 @@
 parser * test262
 ========================
-Passed: 98944/99747 (99.19%)
-Failed: 803/99747 (0.81%)
+Passed: 98942/99747 (99.19%)
+Failed: 805/99747 (0.81%)
 Panicked: 0/99747 (0.00%)
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-in-lhs.js - sloppy: parser: invalid assignment target at 821..824
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-of-lhs.js - sloppy: parser: invalid assignment target at 821..824
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-compound-assignment.js - sloppy: parser: invalid assignment target at 898..901
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-postfix-update.js - sloppy: parser: invalid assignment target at 831..834
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-prefix-update.js - sloppy: parser: invalid assignment target at 832..835
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression.js - sloppy: parser: invalid assignment target at 893..896
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/cover-callexpression-and-asyncarrowhead.js - sloppy: parser: invalid assignment target at 730..737
+Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-in-lhs.js - sloppy: parser: Invalid assignment target at 821..824
+Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-of-lhs.js - sloppy: parser: Invalid assignment target at 821..824
+Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-compound-assignment.js - sloppy: parser: Invalid assignment target at 898..901
+Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-postfix-update.js - sloppy: parser: Invalid operand for increment/decrement operator at 831..834
+Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-prefix-update.js - sloppy: parser: Invalid operand for increment/decrement operator at 832..835
+Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression.js - sloppy: parser: Invalid assignment target at 893..896
+Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/cover-callexpression-and-asyncarrowhead.js - sloppy: parser: Invalid assignment target at 730..737
 Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-a-func-no-skip-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1812..1813
 Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-a-func-skip-early-err-block.js - sloppy: semantic: Identifier 'f' has already been declared at 1545..1546
 Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-a-func-skip-early-err-switch.js - sloppy: semantic: Identifier 'f' has already been declared at 1569..1570
@@ -443,6 +443,8 @@ Failed: fixtures/test262/test/built-ins/RegExp/prototype/unicodeSets/breaking-ch
 Failed: fixtures/test262/test/built-ins/RegExp/prototype/unicodeSets/breaking-change-from-u-to-v-27.js - strict: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/built-ins/RegExp/prototype/unicodeSets/breaking-change-from-u-to-v-28.js - sloppy: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/built-ins/RegExp/prototype/unicodeSets/breaking-change-from-u-to-v-28.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/comments/hashbang/line-terminator-line-separator.js - sloppy: parser: Unexpected token '}' at 56..57
+Failed: fixtures/test262/test/language/comments/hashbang/line-terminator-paragraph-separator.js - sloppy: parser: Unexpected token '}' at 61..62
 Failed: fixtures/test262/test/language/expressions/class/decorator/syntax/valid/decorator-call-expr-identifier-reference-yield.js - sloppy: semantic: 'yield' is reserved in strict mode and cannot be used as an identifier reference at 1350..1355
 Failed: fixtures/test262/test/language/expressions/class/decorator/syntax/valid/decorator-member-expr-identifier-reference-yield.js - sloppy: semantic: 'yield' is reserved in strict mode and cannot be used as an identifier reference at 966..971
 Failed: fixtures/test262/test/language/expressions/class/decorator/syntax/valid/decorator-parenthesized-expr-identifier-reference-yield.js - sloppy: semantic: 'yield' is reserved in strict mode and cannot be used as an identifier reference at 1554..1559
@@ -777,7 +779,7 @@ Failed: fixtures/test262/test/language/literals/regexp/u-unicode-esc-non-hex.js 
 Failed: fixtures/test262/test/language/literals/regexp/u-unicode-esc-non-hex.js - strict: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/language/literals/regexp/unicode-escape-nls-err.js - sloppy: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/language/literals/regexp/unicode-escape-nls-err.js - strict: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/test262/test/language/statements/await-using/syntax/await-using-declaring-let-split-across-two-lines.js - sloppy: parser: expected a binding pattern at 513..514
+Failed: fixtures/test262/test/language/statements/await-using/syntax/await-using-declaring-let-split-across-two-lines.js - sloppy: parser: Unexpected token '=' in binding pattern at 513..514
 Failed: fixtures/test262/test/language/statements/class/decorator/syntax/valid/decorator-call-expr-identifier-reference-yield.js - sloppy: semantic: 'yield' is reserved in strict mode and cannot be used as an identifier reference at 1422..1427
 Failed: fixtures/test262/test/language/statements/class/decorator/syntax/valid/decorator-member-expr-identifier-reference-yield.js - sloppy: semantic: 'yield' is reserved in strict mode and cannot be used as an identifier reference at 1038..1043
 Failed: fixtures/test262/test/language/statements/class/decorator/syntax/valid/decorator-parenthesized-expr-identifier-reference-yield.js - sloppy: semantic: 'yield' is reserved in strict mode and cannot be used as an identifier reference at 1626..1631
@@ -793,7 +795,7 @@ Failed: fixtures/test262/test/language/statements/for-in/let-block-with-newline.
 Failed: fixtures/test262/test/language/statements/for-in/let-identifier-with-newline.js - sloppy: parser: Lexical declaration cannot appear in a single-statement context at 502..519
 Failed: fixtures/test262/test/language/statements/for-of/let-block-with-newline.js - sloppy: parser: Destructuring declaration must have an initializer at 492..494
 Failed: fixtures/test262/test/language/statements/for-of/let-identifier-with-newline.js - sloppy: parser: Lexical declaration cannot appear in a single-statement context at 500..517
-Failed: fixtures/test262/test/language/statements/for/head-lhs-let.js - sloppy: parser: expected a binding pattern at 684..685
+Failed: fixtures/test262/test/language/statements/for/head-lhs-let.js - sloppy: parser: Unexpected token '=' in binding pattern at 684..685
 Failed: fixtures/test262/test/language/statements/for/let-block-with-newline.js - sloppy: parser: Destructuring declaration must have an initializer at 475..477
 Failed: fixtures/test262/test/language/statements/for/let-identifier-with-newline.js - sloppy: parser: Lexical declaration cannot appear in a single-statement context at 483..500
 Failed: fixtures/test262/test/language/statements/if/let-block-with-newline.js - sloppy: parser: Destructuring declaration must have an initializer at 469..471
@@ -801,7 +803,7 @@ Failed: fixtures/test262/test/language/statements/if/let-identifier-with-newline
 Failed: fixtures/test262/test/language/statements/labeled/let-block-with-newline.js - sloppy: parser: Destructuring declaration must have an initializer at 557..559
 Failed: fixtures/test262/test/language/statements/labeled/let-identifier-with-newline.js - sloppy: parser: Lexical declaration cannot appear in a single-statement context at 561..582
 Failed: fixtures/test262/test/language/statements/let/syntax/escaped-let.js - sloppy: parser: Keywords cannot contain escape characters at 846..854
-Failed: fixtures/test262/test/language/statements/using/syntax/using-declaring-let-split-across-two-lines.js - sloppy: parser: expected a binding pattern at 432..433
+Failed: fixtures/test262/test/language/statements/using/syntax/using-declaring-let-split-across-two-lines.js - sloppy: parser: Unexpected token '=' in binding pattern at 432..433
 Failed: fixtures/test262/test/language/statements/while/let-block-with-newline.js - sloppy: parser: Destructuring declaration must have an initializer at 475..477
 Failed: fixtures/test262/test/language/statements/while/let-identifier-with-newline.js - sloppy: parser: Lexical declaration cannot appear in a single-statement context at 483..500
 Failed: fixtures/test262/test/language/statements/with/let-block-with-newline.js - sloppy: parser: Destructuring declaration must have an initializer at 559..561

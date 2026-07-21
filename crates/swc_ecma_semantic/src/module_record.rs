@@ -1,10 +1,9 @@
-use std::string::String;
+use std::{borrow::Cow, string::String};
 
 use rustc_hash::FxHashMap;
 use swc_experimental_ecma_ast::*;
 
 use crate::{
-    diagnostic::Diagnostic,
     scope::ScopeTree,
     symbol::{SymbolFlags, SymbolTable},
 };
@@ -62,7 +61,7 @@ pub(crate) fn collect<'a>(
     ast: &mut Ast<'a>,
     scopes: &ScopeTree,
     symbols: &SymbolTable,
-    diagnostics: &mut Vec<Diagnostic>,
+    diagnostics: &mut Vec<Diagnostic<'static>>,
 ) -> ModuleRecord {
     let mut collector = Collector {
         record: ModuleRecord::default(),
@@ -81,7 +80,7 @@ struct Collector<'table, 'diagnostics> {
     record: ModuleRecord,
     top_scope: ScopeId,
     symbols: &'table SymbolTable,
-    diagnostics: &'diagnostics mut Vec<Diagnostic>,
+    diagnostics: &'diagnostics mut Vec<Diagnostic<'static>>,
     export_names: FxHashMap<String, Span>,
     default_export_bindings: Vec<bool>,
 }
@@ -89,10 +88,16 @@ struct Collector<'table, 'diagnostics> {
 impl Collector<'_, '_> {
     fn record_exported_name(&mut self, name: &str, span: Span) {
         if let Some(previous) = self.export_names.get(name).copied() {
-            self.diagnostics.push(
-                Diagnostic::error(span, format!("Duplicate export '{}'", name))
-                    .with_label(previous, "previous export is here"),
-            );
+            self.diagnostics.push(Diagnostic {
+                severity: Severity::Error,
+                message: Cow::Owned(format!("Duplicate export '{}'", name)),
+                span,
+                help: None,
+                labels: vec![Label {
+                    span: previous,
+                    message: Cow::Borrowed("previous export is here"),
+                }],
+            });
         } else {
             self.export_names.insert(name.into(), span);
         }
@@ -101,10 +106,13 @@ impl Collector<'_, '_> {
     fn check_unresolved_exports(&mut self, name: &str, span: Span) -> Option<SymbolId> {
         let symbol = self.symbols.find_in_scope(self.top_scope, name.as_bytes());
         if symbol.is_none() {
-            self.diagnostics.push(Diagnostic::error(
+            self.diagnostics.push(Diagnostic {
+                severity: Severity::Error,
+                message: Cow::Owned(format!("Export '{name}' is not defined")),
                 span,
-                format!("Export '{name}' is not defined"),
-            ));
+                help: None,
+                labels: Vec::new(),
+            });
         }
         symbol
     }

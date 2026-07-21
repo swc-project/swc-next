@@ -1,10 +1,9 @@
-use std::{marker::PhantomData, string::String};
+use std::{borrow::Cow, marker::PhantomData, string::String};
 
 use swc_experimental_ecma_ast::String as AstString;
 use swc_experimental_ecma_ast::*;
 
 use crate::{
-    diagnostic::Diagnostic,
     scope::{ScopeFlags, ScopeKind, ScopeTree},
     symbol::{ReferenceKind, SymbolFlags, SymbolTable},
 };
@@ -13,7 +12,7 @@ pub(crate) struct AnalysisParts {
     pub scopes: ScopeTree,
     pub symbols: SymbolTable,
     pub node_scopes: Vec<ScopeId>,
-    pub diagnostics: Vec<Diagnostic>,
+    pub diagnostics: Vec<Diagnostic<'static>>,
 }
 
 #[derive(Clone, Copy)]
@@ -63,7 +62,7 @@ struct SemanticBuilder<'a> {
     control_frames: Vec<(u32, u32, usize)>,
     labels: Vec<(AstString, bool, Span)>,
     ambient: bool,
-    diagnostics: Vec<Diagnostic>,
+    diagnostics: Vec<Diagnostic<'static>>,
     marker: PhantomData<&'a ()>,
 }
 
@@ -234,17 +233,23 @@ impl<'a> SemanticBuilder<'a> {
         ctx: &TraverseCtx<'_, 'a>,
     ) {
         if !is_at_program_level(ctx) {
-            self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
-                format!("{description} may only appear at the top level"),
-            ));
+            self.diagnostics.push(Diagnostic {
+                severity: Severity::Error,
+                message: Cow::Owned(format!("{description} may only appear at the top level")),
+                span: node.span(ctx.ast()),
+                help: None,
+                labels: Vec::new(),
+            });
         } else if self.scopes.get(self.scopes.top_level_scope_id()).kind != ScopeKind::Module
             && !is_in_ts_namespace(ctx)
         {
-            self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
-                format!("{description} is only valid in module code"),
-            ));
+            self.diagnostics.push(Diagnostic {
+                severity: Severity::Error,
+                message: Cow::Owned(format!("{description} is only valid in module code")),
+                span: node.span(ctx.ast()),
+                help: None,
+                labels: Vec::new(),
+            });
         }
     }
 
@@ -262,10 +267,16 @@ impl<'a> SemanticBuilder<'a> {
                 continue;
             };
             if let Some((_, previous)) = seen.iter().find(|(existing, _)| existing == &key) {
-                self.diagnostics.push(
-                    Diagnostic::error(attribute.key(ast).span(ast), "Duplicate import attribute")
-                        .with_label(*previous, "first attribute is here"),
-                );
+                self.diagnostics.push(Diagnostic {
+                    severity: Severity::Error,
+                    message: Cow::Borrowed("Duplicate import attribute"),
+                    span: attribute.key(ast).span(ast),
+                    help: None,
+                    labels: vec![Label {
+                        span: *previous,
+                        message: Cow::Borrowed("first attribute is here"),
+                    }],
+                });
             } else {
                 seen.push((key, attribute.key(ast).span(ast)));
             }
@@ -353,8 +364,8 @@ impl<'a> SemanticBuilder<'a> {
         let name_text = String::from_utf8_lossy(name_bytes).into_owned();
         if name_bytes == b"let" && binding.flags.intersects(SymbolFlags::BLOCK_SCOPED_VAR) {
             self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
                 "'let' may not be used as a lexical binding name",
+                node.span(ctx.ast()),
             ));
         }
         let result = self.symbols.declare(
@@ -368,16 +379,19 @@ impl<'a> SemanticBuilder<'a> {
         );
         if binding.flags.is_hoisting_var() {
             if let Some(previous) = self.find_hoisting_conflict(name_bytes, binding.target) {
-                self.report(
-                    Diagnostic::error(
-                        node.span(ctx.ast()),
-                        format!(
-                            "Variable '{}' conflicts with a lexical declaration",
-                            name_text
-                        ),
-                    )
-                    .with_label(previous, "lexical declaration is here"),
-                );
+                self.report(Diagnostic {
+                    severity: Severity::Error,
+                    message: Cow::Owned(format!(
+                        "Variable '{}' conflicts with a lexical declaration",
+                        name_text
+                    )),
+                    span: node.span(ctx.ast()),
+                    help: None,
+                    labels: vec![Label {
+                        span: previous,
+                        message: Cow::Borrowed("lexical declaration is here"),
+                    }],
+                });
             }
             self.symbols.register_hoist(
                 &self.scopes,
@@ -424,13 +438,16 @@ impl<'a> SemanticBuilder<'a> {
 
         let strict = self.scopes.get(self.current_scope).flags.strict;
         if strict && is_eval_or_arguments(name_bytes) {
-            self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
-                format!(
+            self.diagnostics.push(Diagnostic {
+                severity: Severity::Error,
+                message: Cow::Owned(format!(
                     "'{}' is not allowed as a binding identifier in strict mode",
                     name_text
-                ),
-            ));
+                )),
+                span: node.span(ctx.ast()),
+                help: None,
+                labels: Vec::new(),
+            });
         }
         if strict {
             check_strict_reserved(
@@ -459,16 +476,19 @@ impl<'a> SemanticBuilder<'a> {
     }
 
     fn report_redeclaration(&mut self, name: &str, span: Span, previous: Span) {
-        self.report(
-            Diagnostic::error(
-                span,
-                format!("Identifier '{name}' has already been declared"),
-            )
-            .with_label(previous, "previous declaration is here"),
-        );
+        self.report(Diagnostic {
+            severity: Severity::Error,
+            message: Cow::Owned(format!("Identifier '{name}' has already been declared")),
+            span,
+            help: None,
+            labels: vec![Label {
+                span: previous,
+                message: Cow::Borrowed("previous declaration is here"),
+            }],
+        });
     }
 
-    fn report(&mut self, diagnostic: Diagnostic) {
+    fn report(&mut self, diagnostic: Diagnostic<'static>) {
         self.diagnostics.push(diagnostic);
     }
 
@@ -511,8 +531,8 @@ impl<'a> SemanticBuilder<'a> {
         let declarators = declaration.declarators(ast);
         if declarators.len() != 1 {
             self.diagnostics.push(Diagnostic::error(
-                declaration.span(ast),
                 "Only one variable declaration is allowed in a for-in/of statement",
+                declaration.span(ast),
             ));
             return;
         }
@@ -521,8 +541,8 @@ impl<'a> SemanticBuilder<'a> {
             .expect("a one-element declarator range contains its node");
         if declarator.init(ast).is_some() {
             self.diagnostics.push(Diagnostic::error(
-                declarator.span(ast),
                 "A for-in/of variable declaration may not have an initializer",
+                declarator.span(ast),
             ));
         }
     }
@@ -639,8 +659,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             });
             if !valid {
                 self.diagnostics.push(Diagnostic::error(
-                    node.span(ctx.ast()),
                     "A function declaration is not allowed in this statement position",
+                    node.span(ctx.ast()),
                 ));
             }
         }
@@ -713,13 +733,18 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         if let Some(params) =
             params.filter(|params| formal_parameters_are_non_simple(*params, ctx.ast()))
         {
-            self.diagnostics.push(
-                Diagnostic::error(
-                    node.span(ctx.ast()),
+            self.diagnostics.push(Diagnostic {
+                severity: Severity::Error,
+                message: Cow::Borrowed(
                     "Illegal 'use strict' directive in function with non-simple parameter list",
-                )
-                .with_label(params.span(ctx.ast()), "non-simple parameters"),
-            );
+                ),
+                span: node.span(ctx.ast()),
+                help: None,
+                labels: vec![Label {
+                    span: params.span(ctx.ast()),
+                    message: Cow::Borrowed("non-simple parameters"),
+                }],
+            });
         }
         TraverseAction::Proceed
     }
@@ -854,13 +879,16 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                 continue;
             }
             if let Some(previous) = default_span {
-                self.diagnostics.push(
-                    Diagnostic::error(
-                        case.span(_ctx.ast()),
-                        "A switch statement can only have one default clause",
-                    )
-                    .with_label(previous, "previous default clause is here"),
-                );
+                self.diagnostics.push(Diagnostic {
+                    severity: Severity::Error,
+                    message: Cow::Borrowed("A switch statement can only have one default clause"),
+                    span: case.span(_ctx.ast()),
+                    help: None,
+                    labels: vec![Label {
+                        span: previous,
+                        message: Cow::Borrowed("previous default clause is here"),
+                    }],
+                });
             } else {
                 default_span = Some(case.span(_ctx.ast()));
             }
@@ -917,16 +945,19 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             .rev()
             .find(|(existing, _, _)| ctx.ast().string(*existing) == ctx.ast().string(name))
         {
-            self.diagnostics.push(
-                Diagnostic::error(
-                    label.span(ctx.ast()),
-                    format!(
-                        "Label '{}' has already been declared",
-                        String::from_utf8_lossy(ctx.ast().string(name))
-                    ),
-                )
-                .with_label(*previous, "previous label is here"),
-            );
+            self.diagnostics.push(Diagnostic {
+                severity: Severity::Error,
+                message: Cow::Owned(format!(
+                    "Label '{}' has already been declared",
+                    String::from_utf8_lossy(ctx.ast().string(name))
+                )),
+                span: label.span(ctx.ast()),
+                help: None,
+                labels: vec![Label {
+                    span: *previous,
+                    message: Cow::Borrowed("previous label is here"),
+                }],
+            });
         }
         let iteration = is_iteration(node.body(ctx.ast()), ctx.ast());
         self.labels.push((name, iteration, label.span(ctx.ast())));
@@ -945,18 +976,21 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         if let Some(label) = node.label(ctx.ast()) {
             let name = label.name(ctx.ast());
             if !self.find_label(name, ctx.ast()) {
-                self.diagnostics.push(Diagnostic::error(
-                    node.span(ctx.ast()),
-                    format!(
+                self.diagnostics.push(Diagnostic {
+                    severity: Severity::Error,
+                    message: Cow::Owned(format!(
                         "Undefined label '{}'",
                         String::from_utf8_lossy(ctx.ast().string(name))
-                    ),
-                ));
+                    )),
+                    span: node.span(ctx.ast()),
+                    help: None,
+                    labels: Vec::new(),
+                });
             }
         } else if !self.is_inside_breakable() {
             self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
                 "A 'break' statement can only be used within a loop or switch",
+                node.span(ctx.ast()),
             ));
         }
         TraverseAction::Proceed
@@ -971,25 +1005,31 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             let name = label.name(ctx.ast());
             match self.find_label_for_continue(name, ctx.ast()) {
                 Some(true) => {}
-                Some(false) => self.diagnostics.push(Diagnostic::error(
-                    node.span(ctx.ast()),
-                    format!(
+                Some(false) => self.diagnostics.push(Diagnostic {
+                    severity: Severity::Error,
+                    message: Cow::Owned(format!(
                         "Label '{}' does not denote an iteration statement",
                         String::from_utf8_lossy(ctx.ast().string(name))
-                    ),
-                )),
-                None => self.diagnostics.push(Diagnostic::error(
-                    node.span(ctx.ast()),
-                    format!(
+                    )),
+                    span: node.span(ctx.ast()),
+                    help: None,
+                    labels: Vec::new(),
+                }),
+                None => self.diagnostics.push(Diagnostic {
+                    severity: Severity::Error,
+                    message: Cow::Owned(format!(
                         "Undefined label '{}'",
                         String::from_utf8_lossy(ctx.ast().string(name))
-                    ),
-                )),
+                    )),
+                    span: node.span(ctx.ast()),
+                    help: None,
+                    labels: Vec::new(),
+                }),
             }
         } else if !self.is_inside_iteration() {
             self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
                 "A 'continue' statement can only be used within a loop",
+                node.span(ctx.ast()),
             ));
         }
         TraverseAction::Proceed
@@ -1002,8 +1042,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
     ) -> TraverseAction {
         if self.scopes.get(self.current_scope).flags.strict {
             self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
                 "'with' statements are not allowed in strict mode",
+                node.span(ctx.ast()),
             ));
         }
         self.scopes.get_mut(self.current_scope).has_with = true;
@@ -1018,8 +1058,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
     ) -> TraverseAction {
         if is_in_formal_parameters(ctx) {
             self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
                 "A yield expression is not allowed in formal parameters",
+                node.span(ctx.ast()),
             ));
         }
         TraverseAction::Proceed
@@ -1032,8 +1072,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
     ) -> TraverseAction {
         if is_in_formal_parameters(ctx) {
             self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
                 "An await expression is not allowed in formal parameters",
+                node.span(ctx.ast()),
             ));
         }
         if ctx
@@ -1048,8 +1088,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             .any(|ancestor| ctx.node_kind(ancestor) == NodeKind::StaticBlock)
         {
             self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
                 "Await is not allowed in a class static block",
+                node.span(ctx.ast()),
             ));
         }
         TraverseAction::Proceed
@@ -1079,8 +1119,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         }
         if name == b"arguments" && !is_arguments_available(ctx) {
             self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
                 "'arguments' is not allowed in a class field initializer or static block",
+                node.span(ctx.ast()),
             ));
         }
         TraverseAction::Proceed
@@ -1106,7 +1146,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             };
             if let Some(message) = message {
                 self.diagnostics
-                    .push(Diagnostic::error(node.span(ctx.ast()), message));
+                    .push(Diagnostic::error(message, node.span(ctx.ast())));
             }
         }
         TraverseAction::Proceed
@@ -1122,13 +1162,13 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         if ctx.ast().node_kind(node.object(ctx.ast()).node_id()) == NodeKind::Super {
             if property_is_private {
                 self.diagnostics.push(Diagnostic::error(
-                    node.span(ctx.ast()),
                     "A private name may not be accessed on 'super'",
+                    node.span(ctx.ast()),
                 ));
             } else if !self.is_super_property_valid(ctx) {
                 self.diagnostics.push(Diagnostic::error(
-                    node.span(ctx.ast()),
                     "A super property is only valid inside a method or class field",
+                    node.span(ctx.ast()),
                 ));
             }
         }
@@ -1138,13 +1178,16 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             let name = private.name(ctx.ast());
             let name = ctx.ast().string(name);
             if !is_private_name_declared(ctx, name) {
-                self.diagnostics.push(Diagnostic::error(
-                    private.span(ctx.ast()),
-                    format!(
+                self.diagnostics.push(Diagnostic {
+                    severity: Severity::Error,
+                    message: Cow::Owned(format!(
                         "Private name '#{}' is not declared",
                         String::from_utf8_lossy(name)
-                    ),
-                ));
+                    )),
+                    span: private.span(ctx.ast()),
+                    help: None,
+                    labels: Vec::new(),
+                });
             }
         }
         TraverseAction::Proceed
@@ -1161,13 +1204,16 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             let name = private.name(ctx.ast());
             let name = ctx.ast().string(name);
             if !is_private_name_declared(ctx, name) {
-                self.diagnostics.push(Diagnostic::error(
-                    private.span(ctx.ast()),
-                    format!(
+                self.diagnostics.push(Diagnostic {
+                    severity: Severity::Error,
+                    message: Cow::Owned(format!(
                         "Private name '#{}' is not declared",
                         String::from_utf8_lossy(name)
-                    ),
-                ));
+                    )),
+                    span: private.span(ctx.ast()),
+                    help: None,
+                    labels: Vec::new(),
+                });
             }
         }
         TraverseAction::Proceed
@@ -1182,8 +1228,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             && expression_is_private_reference(node.argument(ctx.ast()), ctx.ast())
         {
             self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
                 "Private fields may not be deleted",
+                node.span(ctx.ast()),
             ));
         }
         if node.operator(ctx.ast()) == UnaryOperator::Delete
@@ -1191,8 +1237,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             && expression_is_identifier_reference(node.argument(ctx.ast()), ctx.ast())
         {
             self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
                 "Deleting an unqualified identifier is forbidden in strict mode",
+                node.span(ctx.ast()),
             ));
         }
         TraverseAction::Proceed
@@ -1214,8 +1260,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             && string_has_legacy_escape(ctx.ast().string(node.raw(ctx.ast())))
         {
             self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
                 "Legacy octal and non-octal decimal escapes are forbidden in strict mode",
+                node.span(ctx.ast()),
             ));
         }
         TraverseAction::Proceed
@@ -1236,8 +1282,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         let raw = ctx.ast().string(node.raw(ctx.ast()));
         if self.inherited_flags().strict && is_legacy_numeric_literal(raw) {
             self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
                 "Legacy octal and leading-zero decimal literals are forbidden in strict mode",
+                node.span(ctx.ast()),
             ));
         }
         TraverseAction::Proceed
@@ -1255,8 +1301,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             && self.scopes.get(self.scopes.top_level_scope_id()).kind != ScopeKind::Module
         {
             self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
                 "'import.meta' is only valid in module code",
+                node.span(ctx.ast()),
             ));
         }
         if ctx.ast().string(meta) == b"new"
@@ -1264,8 +1310,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             && !is_new_target_available(ctx)
         {
             self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
                 "'new.target' is only valid inside a function or class field initializer",
+                node.span(ctx.ast()),
             ));
         }
         TraverseAction::Proceed
@@ -1309,8 +1355,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                 && self.scopes.get(self.scopes.top_level_scope_id()).kind != ScopeKind::Module
             {
                 self.diagnostics.push(Diagnostic::error(
-                    node.span(ctx.ast()),
                     "A using declaration may not appear at the top level of a script",
+                    node.span(ctx.ast()),
                 ));
             }
         }
@@ -1399,13 +1445,16 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                     && method.value(ctx.ast()).body(ctx.ast()).is_some()
                 {
                     if let Some(previous) = first_constructor {
-                        self.diagnostics.push(
-                            Diagnostic::error(
-                                method.key(ctx.ast()).span(ctx.ast()),
-                                "A class can only have one constructor",
-                            )
-                            .with_label(previous, "first constructor is here"),
-                        );
+                        self.diagnostics.push(Diagnostic {
+                            severity: Severity::Error,
+                            message: Cow::Borrowed("A class can only have one constructor"),
+                            span: method.key(ctx.ast()).span(ctx.ast()),
+                            help: None,
+                            labels: vec![Label {
+                                span: previous,
+                                message: Cow::Borrowed("first constructor is here"),
+                            }],
+                        });
                     } else {
                         first_constructor = Some(method.span(ctx.ast()));
                     }
@@ -1427,16 +1476,19 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                         | (PrivateElementKind::Setter, PrivateElementKind::Getter)
                 ) && *previous_static == is_static;
                 if !accessor_pair {
-                    self.diagnostics.push(
-                        Diagnostic::error(
-                            key_span,
-                            format!(
-                                "Duplicate private name '#{}'",
-                                String::from_utf8_lossy(ctx.ast().string(name))
-                            ),
-                        )
-                        .with_label(*previous_span, "first declaration is here"),
-                    );
+                    self.diagnostics.push(Diagnostic {
+                        severity: Severity::Error,
+                        message: Cow::Owned(format!(
+                            "Duplicate private name '#{}'",
+                            String::from_utf8_lossy(ctx.ast().string(name))
+                        )),
+                        span: key_span,
+                        help: None,
+                        labels: vec![Label {
+                            span: *previous_span,
+                            message: Cow::Borrowed("first declaration is here"),
+                        }],
+                    });
                 }
             } else {
                 private_elements.push((name, kind, is_static, key_span));
@@ -1467,13 +1519,16 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                 continue;
             }
             if let Some(previous) = first_proto {
-                self.diagnostics.push(
-                    Diagnostic::error(
-                        property.span(ctx.ast()),
-                        "Duplicate '__proto__' property in object literal",
-                    )
-                    .with_label(previous, "first property is here"),
-                );
+                self.diagnostics.push(Diagnostic {
+                    severity: Severity::Error,
+                    message: Cow::Borrowed("Duplicate '__proto__' property in object literal"),
+                    span: property.span(ctx.ast()),
+                    help: None,
+                    labels: vec![Label {
+                        span: previous,
+                        message: Cow::Borrowed("first property is here"),
+                    }],
+                });
             } else {
                 first_proto = Some(property.span(ctx.ast()));
             }
@@ -1968,7 +2023,7 @@ struct ReferenceResolver<'semantic> {
     node_scopes: &'semantic [ScopeId],
     type_depth: u32,
     write_targets: Vec<Option<NodeId>>,
-    diagnostics: &'semantic mut Vec<Diagnostic>,
+    diagnostics: &'semantic mut Vec<Diagnostic<'static>>,
 }
 
 impl<'semantic> ReferenceResolver<'semantic> {
@@ -1976,7 +2031,7 @@ impl<'semantic> ReferenceResolver<'semantic> {
         scopes: &'semantic ScopeTree,
         symbols: &'semantic mut SymbolTable,
         node_scopes: &'semantic [ScopeId],
-        diagnostics: &'semantic mut Vec<Diagnostic>,
+        diagnostics: &'semantic mut Vec<Diagnostic<'static>>,
     ) -> Self {
         Self {
             scopes,
@@ -2102,13 +2157,16 @@ impl<'a> Traverse<'a> for ReferenceResolver<'_> {
         node.set_symbol_id(ctx.ast_mut(), symbol_id);
         let name_bytes = ctx.ast().string(name);
         if self.scopes.get(scope).flags.strict && is_eval_or_arguments(name_bytes) {
-            self.diagnostics.push(Diagnostic::error(
-                node.span(ctx.ast()),
-                format!(
+            self.diagnostics.push(Diagnostic {
+                severity: Severity::Error,
+                message: Cow::Owned(format!(
                     "Cannot assign to '{}' in strict mode",
                     String::from_utf8_lossy(name_bytes)
-                ),
-            ));
+                )),
+                span: node.span(ctx.ast()),
+                help: None,
+                labels: Vec::new(),
+            });
         }
         TraverseAction::Proceed
     }
@@ -2492,7 +2550,7 @@ fn string_has_legacy_escape(bytes: &[u8]) -> bool {
 }
 
 fn check_strict_reserved(
-    diagnostics: &mut Vec<Diagnostic>,
+    diagnostics: &mut Vec<Diagnostic<'static>>,
     name: &[u8],
     span: Span,
     as_what: &'static str,
@@ -2500,10 +2558,15 @@ fn check_strict_reserved(
     let Some(word) = match_strict_reserved(name) else {
         return;
     };
-    diagnostics.push(Diagnostic::error(
+    diagnostics.push(Diagnostic {
+        severity: Severity::Error,
+        message: Cow::Owned(format!(
+            "'{word}' is reserved in strict mode and cannot be used as {as_what}"
+        )),
         span,
-        format!("'{word}' is reserved in strict mode and cannot be used as {as_what}"),
-    ));
+        help: None,
+        labels: Vec::new(),
+    });
 }
 
 fn match_strict_reserved(name: &[u8]) -> Option<&'static str> {
@@ -2532,14 +2595,14 @@ fn is_eval_or_arguments_ref(node: IdentifierReference, ast: &Ast<'_>) -> bool {
 }
 
 fn check_assign_target_eval_arguments(
-    diagnostics: &mut Vec<Diagnostic>,
+    diagnostics: &mut Vec<Diagnostic<'static>>,
     node: IdentifierReference,
     ast: &Ast<'_>,
 ) {
     if is_eval_or_arguments_ref(node, ast) {
         diagnostics.push(Diagnostic::error(
-            node.span(ast),
             "Cannot assign to 'eval' or 'arguments' in strict mode",
+            node.span(ast),
         ));
     }
 }
