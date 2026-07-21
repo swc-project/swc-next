@@ -1,7 +1,9 @@
-pub mod test262;
+use crate::{AppArgs, cases::Case, suite::TestResult};
 
-// TODO(flat-ast): Port these runners to the current typed AST before
-// re-enabling their modules and Cargo dependencies.
-// pub mod parser;
-// pub mod remove_paren;
-// pub mod semantic;
+pub mod parser;
+
+pub trait Runner {
+    const NAME: &'static str;
+
+    fn run<C: Case>(args: &AppArgs, cases: &[C]) -> Vec<TestResult>;
+}

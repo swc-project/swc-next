@@ -1,12 +1,24 @@
 use std::path::{Path, PathBuf};
 
+use swc_experimental_ecma_ast::SourceType;
+
 use crate::util::crate_root;
 
 pub mod test262;
 
-pub trait Case: Sync {
+pub struct CaseVariant {
+    pub code: String,
+    pub source_type: SourceType,
+    pub expects_error: bool,
+    pub name: &'static str,
+}
+
+pub trait Case: Sized + Sync {
+    const NAME: &'static str;
+
+    fn read() -> Vec<Self>;
     fn path(&self) -> &Path;
-    fn code(&self) -> &str;
+    fn variants(&self) -> Vec<CaseVariant>;
 
     fn relative_path(&self) -> &Path {
         self.path().strip_prefix(crate_root()).unwrap()

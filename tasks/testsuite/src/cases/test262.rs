@@ -6,8 +6,9 @@ use std::{
 
 use jwalk::WalkDir;
 use saphyr::{LoadableYamlNode, Yaml};
+use swc_experimental_ecma_ast::SourceType;
 
-use crate::cases::{Case, fixtures};
+use crate::cases::{Case, CaseVariant, fixtures};
 
 /// https://github.com/evanw/esbuild/blob/main/scripts/test262.js
 pub struct Test262Case {
@@ -51,7 +52,7 @@ impl From<&str> for Phase {
 }
 
 impl Test262Case {
-    pub fn read() -> Vec<Self> {
+    fn read_cases() -> Vec<Self> {
         let mut cases = Vec::new();
         for file in WalkDir::new(fixtures().join("test262").join("test")).parallelism(
             jwalk::Parallelism::RayonDefaultPool {
@@ -150,11 +151,43 @@ impl Test262Case {
 }
 
 impl Case for Test262Case {
+    const NAME: &'static str = "test262";
+
+    fn read() -> Vec<Self> {
+        Self::read_cases()
+    }
+
     fn path(&self) -> &Path {
         &self.path
     }
 
-    fn code(&self) -> &str {
-        &self.code
+    fn variants(&self) -> Vec<CaseVariant> {
+        if self.is_module() {
+            return vec![CaseVariant {
+                code: self.code.clone(),
+                source_type: SourceType::Module,
+                expects_error: self.expects_error(),
+                name: "module",
+            }];
+        }
+
+        let mut variants = Vec::with_capacity(2);
+        if self.runs_sloppy() {
+            variants.push(CaseVariant {
+                code: self.code.clone(),
+                source_type: SourceType::Script,
+                expects_error: self.expects_error(),
+                name: "sloppy",
+            });
+        }
+        if self.runs_strict() {
+            variants.push(CaseVariant {
+                code: format!("\"use strict\";\n{}", self.code).clone(),
+                source_type: SourceType::Script,
+                expects_error: self.expects_error(),
+                name: "strict",
+            });
+        }
+        variants
     }
 }
