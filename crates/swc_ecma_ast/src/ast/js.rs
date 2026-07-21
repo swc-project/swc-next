@@ -276,6 +276,7 @@ pub enum Decl {
     TsEnumDeclaration(TsEnumDeclaration),
     TsModuleDeclaration(TsModuleDeclaration),
     TsGlobalDeclaration(TsGlobalDeclaration),
+    TsImportEqualsDeclaration(TsImportEqualsDeclaration),
 }
 
 #[ast(repr)]

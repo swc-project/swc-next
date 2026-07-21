@@ -1558,6 +1558,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Decl {
             DeclData::TsGlobalDeclaration(it) => {
                 <TsGlobalDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            DeclData::TsImportEqualsDeclaration(it) => {
+                <TsImportEqualsDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
         }
     }
 }
@@ -6515,6 +6518,9 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Decl {
             }
             DeclData::TsGlobalDeclaration(it) => {
                 <TsGlobalDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            DeclData::TsImportEqualsDeclaration(it) => {
+                <TsImportEqualsDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
         }
     }

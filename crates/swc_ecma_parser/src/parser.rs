@@ -14,13 +14,18 @@ use crate::{
 
 pub type ParseResult<T> = Result<T, Error>;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CommentMode {
     None,
-    #[default]
     Flat,
     Attached,
     Both,
+}
+
+impl Default for CommentMode {
+    fn default() -> Self {
+        Self::Flat
+    }
 }
 
 impl CommentMode {
@@ -101,11 +106,21 @@ pub struct ParserState {
     pub cover_has_init_name: bool,
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ReportOptions {
     pub severity: Severity,
     pub help: Option<Cow<'static, str>>,
     pub labels: Vec<Label>,
+}
+
+impl Default for ReportOptions {
+    fn default() -> Self {
+        Self {
+            severity: Severity::Error,
+            help: None,
+            labels: Vec::new(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -150,12 +165,23 @@ enum PatternContext {
     Assignment,
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct ParseFunctionOpts {
     is_async: bool,
     is_expression: bool,
     is_declare: bool,
     is_default_export: bool,
+}
+
+impl Default for ParseFunctionOpts {
+    fn default() -> Self {
+        Self {
+            is_async: false,
+            is_expression: false,
+            is_declare: false,
+            is_default_export: false,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -195,12 +221,6 @@ pub struct ParenthesizedCover {
     pub start: u32,
     pub end: u32,
     pub has_trailing_comma: bool,
-}
-
-#[derive(Clone, Copy, Debug)]
-enum Cover {
-    Array(ArrayCover),
-    Object(ObjectCover),
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -493,11 +513,6 @@ pub struct Checkpoint {
     pub nodes_len: usize,
     pub extra_len: usize,
     pub diagnostics_len: usize,
-    pub scratch_a_len: usize,
-    pub scratch_b_len: usize,
-    pub scratch_cover_len: usize,
-    pub scratch_decorators_len: usize,
-    pub scratch_statements_len: usize,
     pub context: Context,
     pub ts_context: TsContext,
     pub state: ParserState,
@@ -540,11 +555,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             "Ast and Parser must be initialized with the same source"
         );
         ast.set_source_metadata(options.source_type, options.lang);
-        build_line_starts(ast, source);
         let lexer = Lexer::init(source, options.source_type, options.comments.collects());
-        let mut context = Context::default();
-        context.await_ = options.source_type == SourceType::Module;
-        context.return_ = options.allow_return_outside_function;
         Self {
             ast,
             source,
@@ -562,30 +573,36 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             scratch_decorators: ScratchBuffer::default(),
             scratch_a: ScratchBuffer::default(),
             scratch_b: ScratchBuffer::default(),
-            context,
+            context: Context::default(),
             ts_context: TsContext::default(),
             state: ParserState::default(),
         }
     }
 
-    pub fn new(ast: &'parser mut Ast<'allocator>, source: &'source [u8], options: Options) -> Self {
-        Self::init(ast, source, options)
-    }
-
     pub fn parse(&mut self) -> ParseResult<Program> {
+        self.context.yield_ = false;
+        self.context.await_ = self.source_type == SourceType::Module;
+        self.context.return_ = self.allow_return_outside_function;
+        if self.advance().is_err() {
+            self.current_token = Token::eof(0);
+        }
         self.ensure_capacity();
-        self.advance()?;
         let body = self.parse_body(None, BodyKind::Program)?;
         let end = self.current_token.span.end;
+        if !self.preserve_parens {
+            strip_parenthesized_nodes(self.ast);
+        }
         let hashbang = self.lexer.hashbang.map(|hashbang| {
             let start = hashbang.start;
             let end = start + u32::from(hashbang.len);
             let value = self.ast.source_slice(start, end);
             self.ast.hashbang(Span::new(0, end), value)
         });
-        Ok(self
+        let program = self
             .ast
-            .program(Span::new(0, end), self.source_type, body, hashbang))
+            .program(Span::new(0, end), self.source_type, body, hashbang);
+        build_line_starts(self.ast, self.source);
+        Ok(program)
     }
 
     pub fn identifier_name(&mut self, token: Token) -> ParseResult<AstString> {
@@ -655,48 +672,69 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     where
         N: AstNode + ExtraDataCompact<'allocator>,
     {
-        assert!(scratch_checkpoint <= scratch.items.len());
-        self.ast.add_typed_sub_range(
+        debug_assert!(scratch_checkpoint <= scratch.items.len());
+        let range = self.ast.add_typed_sub_range(
             scratch.items[scratch_checkpoint..]
                 .iter()
                 .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
-        )
+        );
+        debug_assert_eq!(
+            range.len() as usize,
+            scratch.items.len() - scratch_checkpoint
+        );
+        range
     }
 
+    // field-specific helpers avoid allocating scratch copies while splitting mutable borrows
     pub fn add_extra_from_scratch_a<N>(&mut self, scratch_checkpoint: usize) -> TypedSubRange<N>
     where
         N: AstNode + ExtraDataCompact<'allocator>,
     {
-        assert!(scratch_checkpoint <= self.scratch_a.items.len());
-        self.ast.add_typed_sub_range(
+        debug_assert!(scratch_checkpoint <= self.scratch_a.items.len());
+        let range = self.ast.add_typed_sub_range(
             self.scratch_a.items[scratch_checkpoint..]
                 .iter()
                 .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
-        )
+        );
+        debug_assert_eq!(
+            range.len() as usize,
+            self.scratch_a.items.len() - scratch_checkpoint
+        );
+        range
     }
 
     pub fn add_extra_from_scratch_b<N>(&mut self, scratch_checkpoint: usize) -> TypedSubRange<N>
     where
         N: AstNode + ExtraDataCompact<'allocator>,
     {
-        assert!(scratch_checkpoint <= self.scratch_b.items.len());
-        self.ast.add_typed_sub_range(
+        debug_assert!(scratch_checkpoint <= self.scratch_b.items.len());
+        let range = self.ast.add_typed_sub_range(
             self.scratch_b.items[scratch_checkpoint..]
                 .iter()
                 .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
-        )
+        );
+        debug_assert_eq!(
+            range.len() as usize,
+            self.scratch_b.items.len() - scratch_checkpoint
+        );
+        range
     }
 
     pub fn add_extra_from_scratch_cover<N>(&mut self, scratch_checkpoint: usize) -> TypedSubRange<N>
     where
         N: AstNode + ExtraDataCompact<'allocator>,
     {
-        assert!(scratch_checkpoint <= self.scratch_cover.items.len());
-        self.ast.add_typed_sub_range(
+        debug_assert!(scratch_checkpoint <= self.scratch_cover.items.len());
+        let range = self.ast.add_typed_sub_range(
             self.scratch_cover.items[scratch_checkpoint..]
                 .iter()
                 .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
-        )
+        );
+        debug_assert_eq!(
+            range.len() as usize,
+            self.scratch_cover.items.len() - scratch_checkpoint
+        );
+        range
     }
 
     pub fn add_extra_from_scratch_decorators<N>(
@@ -706,12 +744,17 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     where
         N: AstNode + ExtraDataCompact<'allocator>,
     {
-        assert!(scratch_checkpoint <= self.scratch_decorators.items.len());
-        self.ast.add_typed_sub_range(
+        debug_assert!(scratch_checkpoint <= self.scratch_decorators.items.len());
+        let range = self.ast.add_typed_sub_range(
             self.scratch_decorators.items[scratch_checkpoint..]
                 .iter()
                 .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
-        )
+        );
+        debug_assert_eq!(
+            range.len() as usize,
+            self.scratch_decorators.items.len() - scratch_checkpoint
+        );
+        range
     }
 
     pub fn add_extra_from_scratch_statements<N>(
@@ -721,12 +764,17 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     where
         N: AstNode + ExtraDataCompact<'allocator>,
     {
-        assert!(scratch_checkpoint <= self.scratch_statements.items.len());
-        self.ast.add_typed_sub_range(
+        debug_assert!(scratch_checkpoint <= self.scratch_statements.items.len());
+        let range = self.ast.add_typed_sub_range(
             self.scratch_statements.items[scratch_checkpoint..]
                 .iter()
                 .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
-        )
+        );
+        debug_assert_eq!(
+            range.len() as usize,
+            self.scratch_statements.items.len() - scratch_checkpoint
+        );
+        range
     }
 
     pub fn checkpoint(&self) -> Checkpoint {
@@ -740,11 +788,6 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             nodes_len: self.ast.node_count(),
             extra_len: self.ast.extra_data_count(),
             diagnostics_len: self.diagnostics.len(),
-            scratch_a_len: self.scratch_a.items.len(),
-            scratch_b_len: self.scratch_b.items.len(),
-            scratch_cover_len: self.scratch_cover.items.len(),
-            scratch_decorators_len: self.scratch_decorators.items.len(),
-            scratch_statements_len: self.scratch_statements.items.len(),
             context: self.context,
             ts_context: self.ts_context,
             state: self.state,
@@ -761,13 +804,6 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         self.ast
             .truncate(checkpoint.nodes_len, checkpoint.extra_len);
         self.diagnostics.truncate(checkpoint.diagnostics_len);
-        self.scratch_a.reset(checkpoint.scratch_a_len);
-        self.scratch_b.reset(checkpoint.scratch_b_len);
-        self.scratch_cover.reset(checkpoint.scratch_cover_len);
-        self.scratch_decorators
-            .reset(checkpoint.scratch_decorators_len);
-        self.scratch_statements
-            .reset(checkpoint.scratch_statements_len);
         self.context = checkpoint.context;
         self.ts_context = checkpoint.ts_context;
         self.state = checkpoint.state;
@@ -822,27 +858,50 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             kind,
             BodyKind::Program | BodyKind::Function | BodyKind::ModuleBlock
         );
-        let mut body = Vec::new();
+        let statements_checkpoint = self.scratch_statements.begin();
         while !self.is_at_body_end(terminator) {
-            let statement = self.parse_statement(ParseStatementOpts::default())?;
-            let item = if self.context.directive_prologue
-                && let StmtData::ExpressionStatement(expression_statement) =
-                    self.ast.stmt_data(statement)
-                && let ExprData::StringLiteral(string_literal) = self
-                    .ast
-                    .expr_data(expression_statement.expression(self.ast))
-            {
-                let span = string_literal.span(self.ast);
-                self.parse_directive(statement, string_literal, span)?
-            } else {
-                StatementListItem::Stmt(statement)
+            let item = match (|| {
+                if self.context.directive_prologue
+                    && self.current_token.tag == TokenTag::StringLiteral
+                {
+                    self.context.single_statement = false;
+                    let expression =
+                        self.parse_expression(Precedence::LOWEST, ParseExpressionOpts::default())?;
+                    if let ExprData::StringLiteral(string_literal) = self.ast.expr_data(expression)
+                    {
+                        return self.parse_directive(string_literal, string_literal.span(self.ast));
+                    }
+                    let start = expression.span(self.ast).start;
+                    return self
+                        .parse_expression_statement_with_expression(start, expression)
+                        .map(StatementListItem::Stmt);
+                }
+                self.parse_statement(ParseStatementOpts::default())
+                    .map(StatementListItem::Stmt)
+            })() {
+                Ok(item) => item,
+                Err(error) => {
+                    if !error.reported {
+                        self.diagnostics.push(Diagnostic {
+                            severity: Severity::Error,
+                            message: error.message,
+                            span: error.span,
+                            help: None,
+                            labels: Vec::new(),
+                        });
+                    }
+                    self.recover(terminator);
+                    continue;
+                }
             };
             self.context.directive_prologue =
                 self.context.directive_prologue && item.is_directive(self.ast);
-            body.push(item);
+            self.scratch_statements.append(item);
         }
         self.context.directive_prologue = false;
-        Ok(self.ast.add_typed_sub_range(body))
+        let body = self.add_extra_from_scratch_statements(statements_checkpoint);
+        self.scratch_statements.reset(statements_checkpoint);
+        Ok(body)
     }
 
     pub fn is_at_body_end(&self, terminator: Option<TokenTag>) -> bool {
@@ -852,6 +911,9 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_statement(&mut self, opts: ParseStatementOpts) -> ParseResult<Stmt> {
         self.context.single_statement = opts.can_be_single_statement_context;
+        let directive_prologue =
+            self.context.directive_prologue && self.current_token.tag == TokenTag::StringLiteral;
+        self.context.directive_prologue = directive_prologue;
         if self.is_start_of_ts_declaration()? {
             let result = self.parse_ts_declaration();
             self.context.single_statement = false;
@@ -931,8 +993,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 ExportDefaultDeclarationKind::Class(class),
             ))
         } else {
-            let specifiers = self.empty_range();
-            let attributes = self.empty_range();
+            let specifiers = TypedSubRange::empty();
+            let attributes = TypedSubRange::empty();
             Ok(self.ast.stmt_export_named_declaration(
                 Span::new(export_start, end),
                 Some(Decl::Class(class)),
@@ -1054,21 +1116,42 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_block_statement(&mut self) -> ParseResult<BlockStatement> {
         let start = self.expect(TokenTag::LeftBrace)?.span.start;
-        let mut statements = Vec::new();
-        while !matches!(self.current_token.tag, TokenTag::RightBrace | TokenTag::Eof) {
-            statements.push(self.parse_statement(ParseStatementOpts::default())?);
-        }
-        let end = self.expect(TokenTag::RightBrace)?.span.end;
-        let body = self.ast.add_typed_sub_range(statements);
-        Ok(self.ast.block_statement(Span::new(start, end), body))
+        self.context.directive_prologue = false;
+        let checkpoint = self.scratch_statements.begin();
+        let result = (|| {
+            while !matches!(self.current_token.tag, TokenTag::RightBrace | TokenTag::Eof) {
+                match self.parse_statement(ParseStatementOpts::default()) {
+                    Ok(statement) => self.scratch_statements.append(statement),
+                    Err(error) => {
+                        if !error.reported {
+                            self.diagnostics.push(Diagnostic {
+                                severity: Severity::Error,
+                                message: error.message,
+                                span: error.span,
+                                help: None,
+                                labels: Vec::new(),
+                            });
+                        }
+                        self.recover(Some(TokenTag::RightBrace));
+                    }
+                }
+            }
+            let end = self.expect(TokenTag::RightBrace)?.span.end;
+            let body = self.add_extra_from_scratch_statements(checkpoint);
+            Ok(self.ast.block_statement(Span::new(start, end), body))
+        })();
+        self.scratch_statements.reset(checkpoint);
+        result
     }
 
     fn parse_empty_statement(&mut self) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Semicolon);
         let span = self.expect(TokenTag::Semicolon)?.span;
         Ok(self.ast.stmt_empty_statement(span))
     }
 
     fn parse_if_statement(&mut self) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::If);
         let start = self.expect(TokenTag::If)?.span.start;
         self.expect(TokenTag::LeftParen)?;
         let test = self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?;
@@ -1093,6 +1176,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_while_statement(&mut self) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::While);
         let start = self.expect(TokenTag::While)?.span.start;
         self.expect(TokenTag::LeftParen)?;
         let test = self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?;
@@ -1107,6 +1191,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_do_while_statement(&mut self) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Do);
         let start = self.expect(TokenTag::Do)?.span.start;
         let body = self.parse_statement(ParseStatementOpts {
             can_be_single_statement_context: true,
@@ -1123,11 +1208,18 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_return_statement(&mut self) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Return);
         let start = self.expect(TokenTag::Return)?.span.start;
         if !self.context.return_ {
-            return self.error_at(
+            self.report(
                 Span::new(start, self.prev_token_end),
-                "return is not allowed outside a function",
+                "'return' statement is only valid inside a function",
+                ReportOptions {
+                    help: Some(Cow::Borrowed(
+                        "Remove the 'return' statement or wrap the code in a function.",
+                    )),
+                    ..ReportOptions::default()
+                },
             );
         }
         let argument = if self.current_token.has_line_terminator_before()
@@ -1146,6 +1238,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_throw_statement(&mut self) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Throw);
         let start = self.expect(TokenTag::Throw)?.span.start;
         if self.current_token.has_line_terminator_before() {
             return self.error("line terminator is not allowed after throw");
@@ -1158,6 +1251,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_break_statement(&mut self) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Break);
         let start = self.expect(TokenTag::Break)?.span.start;
         let label = if self.current_token.has_line_terminator_before()
             || !self.current_token.tag.is_identifier_like()
@@ -1171,6 +1265,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_continue_statement(&mut self) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Continue);
         let start = self.expect(TokenTag::Continue)?.span.start;
         let label = if self.current_token.has_line_terminator_before()
             || !self.current_token.tag.is_identifier_like()
@@ -1186,12 +1281,14 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_debugger_statement(&mut self) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Debugger);
         let start = self.expect(TokenTag::Debugger)?.span.start;
         let end = self.eat_semicolon(self.prev_token_end)?;
         Ok(self.ast.stmt_debugger_statement(Span::new(start, end)))
     }
 
     fn parse_with_statement(&mut self) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::With);
         let start = self.expect(TokenTag::With)?.span.start;
         self.expect(TokenTag::LeftParen)?;
         let object = self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?;
@@ -1206,11 +1303,16 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_expression_or_labeled_statement_or_directive(&mut self) -> ParseResult<Stmt> {
-        if self.current_token.tag.is_identifier_like() && self.peek_ahead()?.tag == TokenTag::Colon
+        let expression =
+            self.parse_expression(Precedence::LOWEST, ParseExpressionOpts::default())?;
+        if matches!(
+            self.ast.expr_data(expression),
+            ExprData::IdentifierReference(_)
+        ) && self.current_token.tag == TokenTag::Colon
         {
-            return self.parse_labeled_statement();
+            return self.parse_labeled_statement(expression);
         }
-        self.parse_expression_statement()
+        self.parse_expression_statement_with_expression(expression.span(self.ast).start, expression)
     }
 
     fn parse_expression_statement(&mut self) -> ParseResult<Stmt> {
@@ -1231,28 +1333,34 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             .stmt_expression_statement(Span::new(start, end), expression))
     }
 
-    fn parse_labeled_statement(&mut self) -> ParseResult<Stmt> {
-        let start = self.current_token.span.start;
-        let label = self.parse_label_identifier()?;
-        self.expect(TokenTag::Colon)?;
+    fn parse_labeled_statement(&mut self, identifier: Expr) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Colon);
+        let ExprData::IdentifierReference(identifier) = self.ast.expr_data(identifier) else {
+            unreachable!("only an identifier reference can start a labeled statement")
+        };
+        let identifier_span = identifier.span(self.ast);
+        let label = self
+            .ast
+            .label_identifier(identifier_span, identifier.name(self.ast));
+        self.advance()?;
         let body = self.parse_statement(ParseStatementOpts {
             can_be_single_statement_context: true,
         })?;
         let end = body.span(self.ast).end;
         Ok(self
             .ast
-            .stmt_labeled_statement(Span::new(start, end), label, body))
+            .stmt_labeled_statement(Span::new(identifier_span.start, end), label, body))
     }
 
     fn parse_directive(
         &mut self,
-        statement: Stmt,
         string_literal: StringLiteral,
         span: Span,
     ) -> ParseResult<StatementListItem> {
         let raw_value = self.ast.source_slice(span.start + 1, span.end - 1);
+        let end = self.eat_semicolon(span.end)?;
         Ok(StatementListItem::Directive(self.ast.directive(
-            statement.span(self.ast),
+            Span::new(span.start, end),
             string_literal,
             raw_value,
         )))
@@ -1263,6 +1371,13 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         opts: ParseVariableDeclarationOpts,
         start_from_param: Option<u32>,
     ) -> ParseResult<VariableDeclaration> {
+        debug_assert!(
+            start_from_param.is_some()
+                || matches!(
+                    self.current_token.tag,
+                    TokenTag::Var | TokenTag::Let | TokenTag::Const | TokenTag::Using
+                )
+        );
         let declaration_start = start_from_param.unwrap_or(self.current_token.span.start);
         if self.current_token.tag == TokenTag::Await {
             self.advance()?;
@@ -1276,41 +1391,45 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         } else {
             DeclaratorCtx::Normal
         };
-        let mut declarators = vec![self.parse_variable_declarator(kind, context)?];
-        while self.eat(TokenTag::Comma)? {
-            declarators.push(self.parse_variable_declarator(kind, context)?);
-        }
-        let end = declarators
-            .last()
-            .expect("a variable declaration has at least one declarator")
-            .span(self.ast)
-            .end;
-        let end = self.eat_semicolon(end)?;
-        if self.context.single_statement
-            && matches!(
-                kind,
-                VariableKind::Let
-                    | VariableKind::Const
-                    | VariableKind::Using
-                    | VariableKind::AwaitUsing
-            )
-        {
-            self.report(
+        let checkpoint = self.scratch_a.begin();
+        let result = (|| {
+            let first = self.parse_variable_declarator(kind, context)?;
+            let mut declaration_end = first.span(self.ast).end;
+            self.scratch_a.append(first);
+            while self.eat(TokenTag::Comma)? {
+                let declarator = self.parse_variable_declarator(kind, context)?;
+                declaration_end = declarator.span(self.ast).end;
+                self.scratch_a.append(declarator);
+            }
+            let end = self.eat_semicolon(declaration_end)?;
+            if self.context.single_statement
+                && matches!(
+                    kind,
+                    VariableKind::Let
+                        | VariableKind::Const
+                        | VariableKind::Using
+                        | VariableKind::AwaitUsing
+                )
+            {
+                self.report(
+                    Span::new(declaration_start, end),
+                    "Lexical declaration cannot appear in a single-statement context",
+                    ReportOptions {
+                        help: Some(Cow::Borrowed("Wrap this declaration in a block statement")),
+                        ..ReportOptions::default()
+                    },
+                );
+            }
+            let declarators = self.add_extra_from_scratch_a(checkpoint);
+            Ok(self.ast.variable_declaration(
                 Span::new(declaration_start, end),
-                "Lexical declaration cannot appear in a single-statement context",
-                ReportOptions {
-                    help: Some(Cow::Borrowed("Wrap this declaration in a block statement")),
-                    ..ReportOptions::default()
-                },
-            );
-        }
-        let declarators = self.ast.add_typed_sub_range(declarators);
-        Ok(self.ast.variable_declaration(
-            Span::new(declaration_start, end),
-            kind,
-            declarators,
-            opts.is_declare,
-        ))
+                kind,
+                declarators,
+                opts.is_declare,
+            ))
+        })();
+        self.scratch_a.reset(checkpoint);
+        result
     }
 
     fn parse_variable_kind(&mut self, await_using: bool) -> ParseResult<VariableKind> {
@@ -1342,9 +1461,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let is_using = matches!(kind, VariableKind::Using | VariableKind::AwaitUsing);
         let destructuring = self.is_destructuring_pattern(id);
         if is_using && destructuring {
-            return self.error_at(
+            self.report(
                 id_span,
-                "using declarations cannot have destructuring patterns",
+                "Using declaration cannot have destructuring patterns.",
+                ReportOptions::default(),
             );
         }
         let definite = self.lang.is_typescript()
@@ -1364,7 +1484,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             let expression = self.parse_expression(
                 Precedence::ASSIGNMENT,
                 ParseExpressionOpts {
-                    respect_allow_in: context == DeclaratorCtx::ForLoop,
+                    respect_allow_in: true,
                     ..ParseExpressionOpts::default()
                 },
             )?;
@@ -1375,15 +1495,37 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         };
         if init.is_none() && context == DeclaratorCtx::Normal {
             if destructuring {
-                return self.error_at(id_span, "destructuring declarations require an initializer");
-            }
-            if matches!(
-                kind,
-                VariableKind::Const | VariableKind::Using | VariableKind::AwaitUsing
-            ) {
-                return self.error_at(
+                self.report(
                     id_span,
-                    "const and using declarations require an initializer",
+                    "Destructuring declaration must have an initializer",
+                    ReportOptions {
+                        help: Some(Cow::Borrowed(
+                            "Add '= value' to provide the object or array to destructure from.",
+                        )),
+                        ..ReportOptions::default()
+                    },
+                );
+            } else if kind == VariableKind::Const {
+                self.report(
+                    id_span,
+                    "'const' declarations must be initialized",
+                    ReportOptions {
+                        help: Some(Cow::Borrowed(
+                            "Add '= value' to initialize the constant, or use 'let' if you need to assign it later.",
+                        )),
+                        ..ReportOptions::default()
+                    },
+                );
+            } else if is_using {
+                self.report(
+                    id_span,
+                    Cow::Owned(format!("'{}' declarations must be initialized", kind.as_str())),
+                    ReportOptions {
+                        help: Some(Cow::Borrowed(
+                            "Disposable resources require an initial value that implements the dispose protocol.",
+                        )),
+                        ..ReportOptions::default()
+                    },
                 );
             }
         }
@@ -1394,16 +1536,9 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_binding_pattern(&mut self) -> ParseResult<BindingPattern> {
         match self.current_token.tag {
-            tag if tag.is_identifier_like() && !tag.is_unconditionally_reserved() => {
-                let token = self.current_token;
-                let name = self.identifier_name(token)?;
-                self.validate_identifier(token, "a binding identifier")?;
-                self.advance()?;
-                let decorators = self.empty_range();
-                Ok(self.ast.binding_pattern_binding_identifier(
-                    token.span, name, decorators, None, false, None,
-                ))
-            }
+            tag if tag.is_identifier_like() => Ok(BindingPattern::BindingIdentifier(
+                self.parse_binding_identifier()?,
+            )),
             TokenTag::LeftBracket => self.parse_array_pattern(),
             TokenTag::LeftBrace => self.parse_object_pattern(),
             _ => self.error("expected a binding pattern"),
@@ -1411,13 +1546,15 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_array_pattern(&mut self) -> ParseResult<BindingPattern> {
-        let expression = self.parse_array_expression(true)?;
-        self.expression_to_binding_pattern(expression)
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftBracket);
+        let cover = self.parse_array_cover()?;
+        self.array_cover_to_pattern(cover, PatternContext::Binding)
     }
 
     fn parse_object_pattern(&mut self) -> ParseResult<BindingPattern> {
-        let expression = self.parse_object_expression(true)?;
-        self.expression_to_binding_pattern(expression)
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftBrace);
+        let cover = self.parse_object_cover()?;
+        self.object_cover_to_pattern(cover, PatternContext::Binding)
     }
 
     fn parse_assignment_pattern(&mut self, left: BindingPattern) -> ParseResult<BindingPattern> {
@@ -1427,7 +1564,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let right =
             self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
         let span = Span::new(left.span(self.ast).start, right.span(self.ast).end);
-        let decorators = self.empty_range();
+        let decorators = TypedSubRange::empty();
         Ok(self
             .ast
             .binding_pattern_assignment_pattern(span, left, right, decorators, None, false))
@@ -1473,25 +1610,37 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         opts: ParseFunctionOpts,
         start_from_param: Option<u32>,
     ) -> ParseResult<Function> {
+        debug_assert!(start_from_param.is_some() || self.current_token.tag == TokenTag::Function);
         let start = start_from_param.unwrap_or(self.current_token.span.start);
         self.expect(TokenTag::Function)?;
         let generator = self.eat(TokenTag::Star)?;
-        let old_context = self.context;
+        let outer_yield = self.context.yield_;
+        let outer_await = self.context.await_;
         let is_function_expression = opts.is_expression && !opts.is_default_export;
         if is_function_expression {
             self.context.yield_ = generator;
             self.context.await_ = opts.is_async;
         }
         let id = if self.current_token.tag.is_identifier_like() {
-            Some(self.parse_binding_identifier()?)
-        } else if !opts.is_expression && !opts.is_default_export {
-            return self.error("function declarations require a name");
+            self.parse_binding_identifier().map(Some)
         } else {
-            None
+            if !opts.is_expression && !opts.is_default_export {
+                self.report(
+                    self.current_token.span,
+                    "Function declaration requires a name",
+                    ReportOptions {
+                        help: Some(Cow::Borrowed(
+                            "Add a name after 'function', e.g. 'function myFunc() {}'.",
+                        )),
+                        ..ReportOptions::default()
+                    },
+                );
+            }
+            Ok(None)
         };
-        self.context = old_context;
-        let old_context = self.context;
-        self.context.return_ = true;
+        self.context.yield_ = outer_yield;
+        self.context.await_ = outer_await;
+        let id = id?;
         self.context.yield_ = generator;
         self.context.await_ = opts.is_async;
         let tail = (|| {
@@ -1515,22 +1664,35 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 } else {
                     None
                 };
-            let body = if self.current_token.tag == TokenTag::LeftBrace {
+            let params_end = params.span(self.ast).end;
+            let return_type_end =
+                return_type.map_or(params_end, |return_type| return_type.span(self.ast).end);
+            let ambient_declaration = self.ts_context.ambient && !is_function_expression;
+            if ambient_declaration && self.current_token.tag == TokenTag::LeftBrace {
+                return self.error_at(
+                    self.current_token.span,
+                    "an implementation cannot be declared in ambient contexts",
+                );
+            }
+            let has_body = !ambient_declaration
+                && (!self.lang.is_typescript()
+                    || is_function_expression
+                    || self.current_token.tag == TokenTag::LeftBrace);
+            let body = if has_body {
                 Some(self.parse_function_body()?)
-            } else if self.lang.is_typescript() {
-                None
             } else {
-                return self.error("expected '{' to start function body");
+                None
             };
             let end = if let Some(body) = body {
                 body.span(self.ast).end
             } else {
-                self.eat_semicolon(self.prev_token_end)?
+                self.eat_semicolon(return_type_end)?
             };
-            Ok((params, body, type_parameters, return_type, end))
+            Ok((params, body, type_parameters, return_type, params_end, end))
         })();
-        self.context = old_context;
-        let (params, body, type_parameters, return_type, end) = tail?;
+        self.context.yield_ = outer_yield;
+        self.context.await_ = outer_await;
+        let (params, body, type_parameters, return_type, params_end, end) = tail?;
         let function_type = if is_function_expression {
             FunctionType::FunctionExpression
         } else if body.is_none() {
@@ -1538,11 +1700,21 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         } else {
             FunctionType::FunctionDeclaration
         };
-        if self.context.single_statement && (opts.is_async || generator) {
-            return self.error_at(
-                Span::new(start, end),
-                "async and generator functions are not allowed in a single-statement context",
-            );
+        if self.context.single_statement {
+            if opts.is_async {
+                self.report(
+                    self.current_token.span,
+                    "Async functions can only be declared at the top level or inside a block",
+                    ReportOptions::default(),
+                );
+            }
+            if generator {
+                self.report(
+                    Span::new(start, params_end),
+                    "Generators can only be declared at the top level or inside a block",
+                    ReportOptions::default(),
+                );
+            }
         }
         Ok(self.ast.function(
             Span::new(start, end),
@@ -1563,7 +1735,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         opts: ParseClassOpts,
         start_from_param: Option<u32>,
     ) -> ParseResult<Class> {
-        let decorators = self.empty_range();
+        let decorators = TypedSubRange::empty();
         self.parse_class_decorated(opts, start_from_param, decorators)
     }
 
@@ -1573,6 +1745,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         start_from_param: Option<u32>,
         decorators: TypedSubRange<Decorator>,
     ) -> ParseResult<Class> {
+        debug_assert!(start_from_param.is_some() || self.current_token.tag == TokenTag::Class);
         let start = start_from_param.unwrap_or(self.current_token.span.start);
         self.expect(TokenTag::Class)?;
         let class_type = if opts.is_expression && !opts.is_default_export {
@@ -1581,9 +1754,15 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             ClassType::ClassDeclaration
         };
         if class_type == ClassType::ClassDeclaration && self.context.single_statement {
-            return self.error_at(
+            self.report(
                 Span::new(start, self.current_token.span.end),
-                "a class declaration is not allowed in a single-statement context",
+                "Class declarations are not allowed in single-statement contexts",
+                ReportOptions {
+                    help: Some(Cow::Borrowed(
+                        "Wrap the class declaration in a block: { class C {} }",
+                    )),
+                    ..ReportOptions::default()
+                },
             );
         }
         let id = if self.can_start_class_name()? {
@@ -1623,7 +1802,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let implements = if self.lang.is_typescript() {
             self.parse_implements_clause()?
         } else {
-            self.empty_range()
+            TypedSubRange::empty()
         };
         let body = self.parse_class_body()?;
         let end = body.span(self.ast).end;
@@ -1661,13 +1840,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_heritage_expression(&mut self) -> ParseResult<Expr> {
-        let token = self.current_token;
-        if !token.tag.is_identifier_like() {
-            return self.error("expected an identifier in a heritage clause");
-        }
-        let name = self.identifier_name(token)?;
-        self.advance()?;
-        let mut expression = self.ast.expr_identifier_reference(token.span, name, None);
+        let mut expression = self.parse_identifier()?;
         while self.current_token.tag == TokenTag::Dot {
             expression = self.parse_static_member_expression(expression, false)?;
         }
@@ -1676,16 +1849,21 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_class_body(&mut self) -> ParseResult<ClassBody> {
         let start = self.expect(TokenTag::LeftBrace)?.span.start;
-        let mut elements = Vec::new();
-        while !matches!(self.current_token.tag, TokenTag::RightBrace | TokenTag::Eof) {
-            if self.eat(TokenTag::Semicolon)? {
-                continue;
+        let checkpoint = self.scratch_a.begin();
+        let result = (|| {
+            while !matches!(self.current_token.tag, TokenTag::RightBrace | TokenTag::Eof) {
+                if self.eat(TokenTag::Semicolon)? {
+                    continue;
+                }
+                let element = self.parse_class_element()?;
+                self.scratch_a.append(element);
             }
-            elements.push(self.parse_class_element()?);
-        }
-        let end = self.expect(TokenTag::RightBrace)?.span.end;
-        let elements = self.ast.add_typed_sub_range(elements);
-        Ok(self.ast.class_body(Span::new(start, end), elements))
+            let end = self.expect(TokenTag::RightBrace)?.span.end;
+            let elements = self.add_extra_from_scratch_a(checkpoint);
+            Ok(self.ast.class_body(Span::new(start, end), elements))
+        })();
+        self.scratch_a.reset(checkpoint);
+        result
     }
 
     fn parse_class_element(&mut self) -> ParseResult<ClassElement> {
@@ -1693,7 +1871,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let decorators = if self.current_token.tag == TokenTag::At {
             self.parse_decorators()?.1
         } else {
-            self.empty_range()
+            TypedSubRange::empty()
         };
 
         if let Some(block) = self.try_static_block(decorators)? {
@@ -1796,17 +1974,15 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             && !modifiers.conflicts(token.tag);
 
         if !consume_as_modifier {
+            self.advance_without_escape_check()?;
             let name = self.identifier_name(token)?;
-            self.advance()?;
             return Ok(ClassModifierStep::Key(
                 self.ast.property_key_identifier_name(token.span, name),
             ));
         }
 
-        if token.is_escaped() {
-            return self.error_at(token.span, "keywords may not contain escape sequences");
-        }
-        self.advance()?;
+        self.report_if_escaped_keyword(token);
+        self.advance_without_escape_check()?;
         modifiers.set(token.tag);
         Ok(ClassModifierStep::Consumed)
     }
@@ -1837,18 +2013,45 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_static_block(&mut self, start: u32) -> ParseResult<ClassElement> {
-        let old_context = self.context;
+        self.expect(TokenTag::LeftBrace)?;
+        let old_await = self.context.await_;
+        let old_yield = self.context.yield_;
+        let old_return = self.context.return_;
         self.context.return_ = false;
         self.context.yield_ = false;
         self.context.await_ = true;
-        let block = self.parse_block_statement();
-        self.context = old_context;
-        let block = block?;
-        let body = block.body(self.ast);
-        Ok(ClassElement::StaticBlock(self.ast.static_block(
-            Span::new(start, block.span(self.ast).end),
-            body,
-        )))
+        self.context.directive_prologue = false;
+        let checkpoint = self.scratch_statements.begin();
+        let body = (|| {
+            while !matches!(self.current_token.tag, TokenTag::RightBrace | TokenTag::Eof) {
+                match self.parse_statement(ParseStatementOpts::default()) {
+                    Ok(statement) => self.scratch_statements.append(statement),
+                    Err(error) => {
+                        if !error.reported {
+                            self.diagnostics.push(Diagnostic {
+                                severity: Severity::Error,
+                                message: error.message,
+                                span: error.span,
+                                help: None,
+                                labels: Vec::new(),
+                            });
+                        }
+                        self.recover(Some(TokenTag::RightBrace));
+                    }
+                }
+            }
+            Ok(self.add_extra_from_scratch_statements(checkpoint))
+        })();
+        self.context.await_ = old_await;
+        self.context.yield_ = old_yield;
+        self.context.return_ = old_return;
+        self.scratch_statements.reset(checkpoint);
+        let body = body?;
+        let end = self.current_token.span.end;
+        self.expect(TokenTag::RightBrace)?;
+        Ok(ClassElement::StaticBlock(
+            self.ast.static_block(Span::new(start, end), body),
+        ))
     }
 
     fn validate_private_constructor(&mut self, key: PropertyKey, computed: bool) {
@@ -1962,8 +2165,9 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         }
     }
 
-    fn restore_method_context(&mut self, context: Context) {
-        self.context = context;
+    fn restore_method_context(&mut self, await_: bool, yield_: bool) {
+        self.context.await_ = await_;
+        self.context.yield_ = yield_;
     }
 
     fn parse_method_definition(
@@ -1980,8 +2184,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         }
 
         let function_start = self.current_token.span.start;
-        let old_context = self.context;
-        self.context.return_ = true;
+        let old_await = self.context.await_;
+        let old_yield = self.context.yield_;
         self.context.await_ = modifiers.is_async;
         self.context.yield_ = modifiers.is_generator;
         let result = (|| {
@@ -1995,7 +2199,9 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 FormalParameterKind::UniqueFormalParameters,
                 modifiers.kind == MethodDefinitionKind::Constructor,
             )?;
-            self.check_accessor_arity(modifiers.kind, params)?;
+            if let Err(error) = self.check_accessor_arity(modifiers.kind, params) {
+                self.report(error.span, error.message, ReportOptions::default());
+            }
             let return_type =
                 if self.lang.is_typescript() && self.current_token.tag == TokenTag::Colon {
                     Some(self.parse_return_type_annotation()?)
@@ -2027,7 +2233,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 self.error("expected '{' to start method body")
             }
         })();
-        self.restore_method_context(old_context);
+        self.restore_method_context(old_await, old_yield);
         let (params, type_parameters, return_type, body, function_type, end) = result?;
         let function = self.ast.function(
             Span::new(function_start, end),
@@ -2081,15 +2287,19 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 None
             };
 
-        let old_context = self.context;
-        self.context.await_ = false;
-        self.context.yield_ = false;
         let value = if self.eat(TokenTag::Assign)? {
-            Some(self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?)
+            let old_await = self.context.await_;
+            let old_yield = self.context.yield_;
+            self.context.await_ = false;
+            self.context.yield_ = false;
+            let value =
+                self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default());
+            self.context.await_ = old_await;
+            self.context.yield_ = old_yield;
+            Some(value?)
         } else {
             None
         };
-        self.context = old_context;
 
         let end = self.eat_semicolon(self.prev_token_end)?;
         Ok(ClassElement::PropertyDefinition(
@@ -2115,11 +2325,16 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_decorators(&mut self) -> ParseResult<(u32, TypedSubRange<Decorator>)> {
         let start = self.current_token.span.start;
-        let mut decorators = Vec::new();
-        while self.current_token.tag == TokenTag::At {
-            decorators.push(self.parse_decorator()?);
-        }
-        Ok((start, self.ast.add_typed_sub_range(decorators)))
+        let checkpoint = self.scratch_decorators.begin();
+        let result = (|| {
+            while self.current_token.tag == TokenTag::At {
+                let decorator = self.parse_decorator()?;
+                self.scratch_decorators.append(decorator);
+            }
+            Ok((start, self.add_extra_from_scratch_decorators(checkpoint)))
+        })();
+        self.scratch_decorators.reset(checkpoint);
+        result
     }
 
     fn parse_decorator(&mut self) -> ParseResult<Decorator> {
@@ -2132,9 +2347,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_left_hand_side_expression(&mut self, context: LhsContext) -> ParseResult<Expr> {
         let mut expression = match self.current_token.tag {
-            TokenTag::LeftParen => {
-                self.parse_parenthesized_or_arrow_function(None, false, Precedence::GROUPING)?
-            }
+            TokenTag::LeftParen => self.parse_parenthesized_expression()?,
             TokenTag::New => self.parse_new_expression()?,
             TokenTag::Import => self.parse_import_expression()?,
             _ => self.parse_primary_expression(false)?,
@@ -2211,39 +2424,46 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         allow_parameter_properties: bool,
     ) -> ParseResult<FormalParameters> {
         let start = self.expect(TokenTag::LeftParen)?.span.start;
-        let mut items = Vec::new();
-        let mut rest = None;
-        while self.current_token.tag != TokenTag::RightParen {
-            let parameter_start = self.current_token.span.start;
-            let decorators = if self.lang.is_typescript() && self.current_token.tag == TokenTag::At
+        let checkpoint = self.scratch_a.begin();
+        let result = (|| {
+            let mut rest = None;
+            while self.current_token.tag != TokenTag::RightParen
+                && self.current_token.tag != TokenTag::Eof
             {
-                self.parse_decorators()?.1
-            } else {
-                self.empty_range()
-            };
+                let parameter_start = self.current_token.span.start;
+                let decorators =
+                    if self.lang.is_typescript() && self.current_token.tag == TokenTag::At {
+                        self.parse_decorators()?.1
+                    } else {
+                        TypedSubRange::empty()
+                    };
 
-            if self.current_token.tag == TokenTag::Spread {
-                rest = Some(self.parse_binding_rest_element(decorators)?);
-                if self.eat(TokenTag::Comma)? {
-                    return self.error("a rest parameter must be last");
+                if self.current_token.tag == TokenTag::Spread {
+                    rest = Some(self.parse_binding_rest_element(decorators)?);
+                    if self.eat(TokenTag::Comma)? {
+                        return self.error("a rest parameter must be last");
+                    }
+                    break;
                 }
-                break;
-            }
 
-            items.push(self.parse_formal_parameter(
-                allow_parameter_properties,
-                decorators,
-                parameter_start,
-            )?);
-            if !self.eat(TokenTag::Comma)? {
-                break;
+                let parameter = self.parse_formal_parameter(
+                    allow_parameter_properties,
+                    decorators,
+                    parameter_start,
+                )?;
+                self.scratch_a.append(parameter);
+                if !self.eat(TokenTag::Comma)? {
+                    break;
+                }
             }
-        }
-        let end = self.expect(TokenTag::RightParen)?.span.end;
-        let items = self.ast.add_typed_sub_range(items);
-        Ok(self
-            .ast
-            .formal_parameters(Span::new(start, end), items, rest, kind))
+            let end = self.expect(TokenTag::RightParen)?.span.end;
+            let items = self.add_extra_from_scratch_a(checkpoint);
+            Ok(self
+                .ast
+                .formal_parameters(Span::new(start, end), items, rest, kind))
+        })();
+        self.scratch_a.reset(checkpoint);
+        result
     }
 
     fn parse_formal_parameter(
@@ -2296,6 +2516,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_this_parameter(&mut self) -> ParseResult<TsThisParameter> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::This);
         let start = self.expect(TokenTag::This)?.span.start;
         let type_annotation = if self.current_token.tag == TokenTag::Colon {
             Some(self.parse_type_annotation()?)
@@ -2314,6 +2535,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         &mut self,
         decorators: TypedSubRange<Decorator>,
     ) -> ParseResult<BindingRestElement> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Spread);
         let start = self.expect(TokenTag::Spread)?.span.start;
         let argument = self.parse_binding_pattern()?;
         let type_annotation =
@@ -2390,12 +2612,17 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_function_body(&mut self) -> ParseResult<FunctionBody> {
         let start = self.expect(TokenTag::LeftBrace)?.span.start;
-        let body = self.parse_body(Some(TokenTag::RightBrace), BodyKind::Function)?;
+        let old_return = self.context.return_;
+        self.context.return_ = true;
+        let body = self.parse_body(Some(TokenTag::RightBrace), BodyKind::Function);
+        self.context.return_ = old_return;
+        let body = body?;
         let end = self.expect(TokenTag::RightBrace)?.span.end;
         Ok(self.ast.function_body(Span::new(start, end), body))
     }
 
     fn parse_import_declaration(&mut self) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Import);
         let start = self.expect(TokenTag::Import)?.span.start;
         self.parse_import_declaration_from(start)
     }
@@ -2475,7 +2702,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let source = self.parse_module_specifier()?;
         let attributes = self.parse_with_clause()?;
         let end = self.eat_semicolon(self.prev_token_end)?;
-        let specifiers = self.empty_range();
+        let specifiers = TypedSubRange::empty();
         Ok(self.ast.stmt_import_declaration(
             Span::new(start, end),
             specifiers,
@@ -2487,36 +2714,45 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_import_clause(&mut self) -> ParseResult<TypedSubRange<ImportDeclarationSpecifier>> {
-        let mut specifiers = Vec::new();
-        if self.current_token.tag == TokenTag::Star {
-            let specifier = self.parse_import_namespace_specifier()?;
-            specifiers.push(ImportDeclarationSpecifier::ImportNamespaceSpecifier(
-                specifier,
-            ));
-            return Ok(self.ast.add_typed_sub_range(specifiers));
-        }
-        if self.current_token.tag == TokenTag::LeftBrace {
-            return self.parse_named_imports();
-        }
-
-        let specifier = self.parse_import_default_specifier()?;
-        specifiers.push(ImportDeclarationSpecifier::ImportDefaultSpecifier(
-            specifier,
-        ));
-        if self.eat(TokenTag::Comma)? {
+        let checkpoint = self.scratch_a.begin();
+        let result = (|| {
             if self.current_token.tag == TokenTag::Star {
                 let specifier = self.parse_import_namespace_specifier()?;
-                specifiers.push(ImportDeclarationSpecifier::ImportNamespaceSpecifier(
+                self.scratch_a
+                    .append(ImportDeclarationSpecifier::ImportNamespaceSpecifier(
+                        specifier,
+                    ));
+                return Ok(self.add_extra_from_scratch_a(checkpoint));
+            }
+            if self.current_token.tag == TokenTag::LeftBrace {
+                return self.parse_named_imports();
+            }
+
+            let specifier = self.parse_import_default_specifier()?;
+            self.scratch_a
+                .append(ImportDeclarationSpecifier::ImportDefaultSpecifier(
                     specifier,
                 ));
-            } else if self.current_token.tag == TokenTag::LeftBrace {
-                let named = self.parse_named_imports()?;
-                specifiers.extend(named.iter().map(|id| self.ast.get_node_in_sub_range(id)));
-            } else {
-                return self.error("expected namespace or named imports after ','");
+            if self.eat(TokenTag::Comma)? {
+                if self.current_token.tag == TokenTag::Star {
+                    let specifier = self.parse_import_namespace_specifier()?;
+                    self.scratch_a
+                        .append(ImportDeclarationSpecifier::ImportNamespaceSpecifier(
+                            specifier,
+                        ));
+                } else if self.current_token.tag == TokenTag::LeftBrace {
+                    let named = self.parse_named_imports()?;
+                    for id in named.iter() {
+                        self.scratch_a.append(self.ast.get_node_in_sub_range(id));
+                    }
+                } else {
+                    return self.error("expected namespace or named imports after ','");
+                }
             }
-        }
-        Ok(self.ast.add_typed_sub_range(specifiers))
+            Ok(self.add_extra_from_scratch_a(checkpoint))
+        })();
+        self.scratch_a.reset(checkpoint);
+        result
     }
 
     fn parse_import_default_specifier(&mut self) -> ParseResult<ImportDefaultSpecifier> {
@@ -2538,19 +2774,23 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_named_imports(&mut self) -> ParseResult<TypedSubRange<ImportDeclarationSpecifier>> {
         self.expect(TokenTag::LeftBrace)?;
-        let mut specifiers = Vec::new();
-        while self.current_token.tag != TokenTag::RightBrace
-            && self.current_token.tag != TokenTag::Eof
-        {
-            specifiers.push(ImportDeclarationSpecifier::ImportSpecifier(
-                self.parse_import_specifier()?,
-            ));
-            if !self.eat(TokenTag::Comma)? {
-                break;
+        let checkpoint = self.scratch_a.begin();
+        let result = (|| {
+            while self.current_token.tag != TokenTag::RightBrace
+                && self.current_token.tag != TokenTag::Eof
+            {
+                let specifier = self.parse_import_specifier()?;
+                self.scratch_a
+                    .append(ImportDeclarationSpecifier::ImportSpecifier(specifier));
+                if !self.eat(TokenTag::Comma)? {
+                    break;
+                }
             }
-        }
-        self.expect(TokenTag::RightBrace)?;
-        Ok(self.ast.add_typed_sub_range(specifiers))
+            self.expect(TokenTag::RightBrace)?;
+            Ok(self.add_extra_from_scratch_a(checkpoint))
+        })();
+        self.scratch_a.reset(checkpoint);
+        result
     }
 
     fn parse_import_specifier(&mut self) -> ParseResult<ImportSpecifier> {
@@ -2563,8 +2803,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             return self.error_at(local_span, "import local binding must be an identifier");
         };
         let name = identifier.name(self.ast);
-        self.validate_identifier(parts.name_token, "an imported binding")?;
-        let decorators = self.empty_range();
+        self.validate_identifier(parts.name_token, "an imported binding");
+        let decorators = TypedSubRange::empty();
         let local = self
             .ast
             .binding_identifier(local_span, name, decorators, None, false, None);
@@ -2683,22 +2923,18 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             return self.parse_external_module_reference();
         }
 
-        let token = self.current_token;
-        if !token.tag.is_identifier_like() {
-            return self.error("expected a module reference");
-        }
-        let name = self.identifier_name(token)?;
-        self.advance()?;
+        let head = self.parse_identifier()?;
+        let ExprData::IdentifierReference(head) = self.ast.expr_data(head) else {
+            unreachable!()
+        };
         if self.current_token.tag != TokenTag::Dot {
-            return Ok(self
-                .ast
-                .ts_module_reference_ts_type_name_identifier_reference(token.span, name, None));
+            return Ok(TsModuleReference::TsTypeName(
+                TsTypeName::IdentifierReference(head),
+            ));
         }
 
-        let mut left = self
-            .ast
-            .ts_qualified_name_left_identifier_reference(token.span, name, None);
-        let start = token.span.start;
+        let mut left = TsQualifiedNameLeft::IdentifierReference(head);
+        let start = head.span(self.ast).start;
         loop {
             self.expect(TokenTag::Dot)?;
             let right_token = self.current_token;
@@ -2706,7 +2942,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 return self.error("expected an identifier after '.'");
             }
             let right_name = self.identifier_name(right_token)?;
-            self.advance()?;
+            self.advance_without_escape_check()?;
             let right = self.ast.identifier_name(right_token.span, right_name);
             let qualified =
                 self.ast
@@ -2731,6 +2967,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_export_declaration(&mut self) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Export);
         let start = self.expect(TokenTag::Export)?.span.start;
         if self.lang.is_typescript() {
             match self.current_token.tag {
@@ -2778,13 +3015,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_namespace_export_declaration(&mut self, start: u32) -> ParseResult<Stmt> {
-        let token = self.current_token;
-        if !token.tag.is_identifier_like() {
-            return self.error("expected an identifier after 'export as namespace'");
-        }
-        let name = self.identifier_name(token)?;
-        self.advance()?;
-        let id = self.ast.identifier_name(token.span, name);
+        let id = self.parse_identifier_name()?;
         let end = self.eat_semicolon(self.prev_token_end)?;
         Ok(self
             .ast
@@ -2806,6 +3037,35 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_export_default_part(&mut self) -> ParseResult<DefaultExportPart> {
+        if self.current_token.tag == TokenTag::Async
+            && !self.current_token.has_line_terminator_before()
+        {
+            let async_start = self.current_token.span.start;
+            self.advance()?;
+            if self.current_token.tag == TokenTag::Function {
+                let function = self.parse_function(
+                    ParseFunctionOpts {
+                        is_async: true,
+                        is_default_export: true,
+                        ..ParseFunctionOpts::default()
+                    },
+                    Some(async_start),
+                )?;
+                return Ok(DefaultExportPart {
+                    declaration: ExportDefaultDeclarationKind::Function(function),
+                    needs_semi: false,
+                });
+            }
+            let async_end = async_start + 5;
+            let name = self.ast.source_slice(async_start, async_end);
+            let expression =
+                self.ast
+                    .expr_identifier_reference(Span::new(async_start, async_end), name, None);
+            return Ok(DefaultExportPart {
+                declaration: ExportDefaultDeclarationKind::Expr(expression),
+                needs_semi: true,
+            });
+        }
         let (declaration, needs_semicolon) = if self.current_token.tag == TokenTag::Function {
             let function = self.parse_function(
                 ParseFunctionOpts {
@@ -2815,27 +3075,6 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 None,
             )?;
             (ExportDefaultDeclarationKind::Function(function), false)
-        } else if self.current_token.tag == TokenTag::Async
-            && !self.current_token.has_line_terminator_before()
-        {
-            let function_start = self.current_token.span.start;
-            self.expect(TokenTag::Async)?;
-            if self.current_token.tag == TokenTag::Function {
-                let function = self.parse_function(
-                    ParseFunctionOpts {
-                        is_async: true,
-                        is_default_export: true,
-                        ..ParseFunctionOpts::default()
-                    },
-                    Some(function_start),
-                )?;
-                (ExportDefaultDeclarationKind::Function(function), false)
-            } else {
-                let span = Span::new(function_start, function_start + 5);
-                let name = self.ast.source_slice(span.start, span.end);
-                let expression = self.ast.expr_identifier_reference(span, name, None);
-                (ExportDefaultDeclarationKind::Expr(expression), true)
-            }
         } else if self.current_token.tag == TokenTag::Class {
             let class = self.parse_class(
                 ParseClassOpts {
@@ -2934,29 +3173,24 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_export_with_declaration(&mut self, start: u32) -> ParseResult<Stmt> {
-        if self.lang.is_typescript()
-            && matches!(
-                self.current_token.tag,
-                TokenTag::Public | TokenTag::Private | TokenTag::Static
-            )
-            && self.is_legacy_accessibility_import()?
-        {
-            return self.error(
-                "legacy accessibility import exports cannot be represented by the current AST",
-            );
-        }
         if self.lang.is_typescript() && self.is_start_of_ts_declaration()? {
             let statement = self.parse_ts_declaration()?;
-            let StmtData::Declaration(declaration) = self.ast.stmt_data(statement) else {
-                return self.error_at(
-                    statement.span(self.ast),
-                    "this TypeScript declaration cannot be represented inside an export declaration",
-                );
+            let declaration = match self.ast.stmt_data(statement) {
+                StmtData::Declaration(declaration) => declaration,
+                StmtData::TsImportEqualsDeclaration(declaration) => {
+                    Decl::TsImportEqualsDeclaration(declaration)
+                }
+                _ => {
+                    return self.error_at(
+                        statement.span(self.ast),
+                        "expected a TypeScript declaration after 'export'",
+                    );
+                }
             };
             let export_kind = self.export_kind_for_declaration(declaration);
             let end = declaration.span(self.ast).end;
-            let specifiers = self.empty_range();
-            let attributes = self.empty_range();
+            let specifiers = TypedSubRange::empty();
+            let attributes = TypedSubRange::empty();
             return Ok(self.ast.stmt_export_named_declaration(
                 Span::new(start, end),
                 Some(declaration),
@@ -2966,6 +3200,49 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 export_kind,
             ));
         }
+        if self.lang.is_typescript() && self.current_token.tag == TokenTag::Import {
+            let statement = self.parse_import_declaration()?;
+            let StmtData::TsImportEqualsDeclaration(declaration) = self.ast.stmt_data(statement)
+            else {
+                return self.error_at(
+                    statement.span(self.ast),
+                    "expected an import-equals declaration after 'export'",
+                );
+            };
+            let declaration = Decl::TsImportEqualsDeclaration(declaration);
+            return Ok(self.ast.stmt_export_named_declaration(
+                Span::new(start, declaration.span(self.ast).end),
+                Some(declaration),
+                TypedSubRange::empty(),
+                None,
+                TypedSubRange::empty(),
+                ImportOrExportKind::Value,
+            ));
+        }
+        if self.lang.is_typescript()
+            && matches!(
+                self.current_token.tag,
+                TokenTag::Public | TokenTag::Private | TokenTag::Static
+            )
+            && self.is_legacy_accessibility_import()?
+        {
+            let declaration_start = self.current_token.span.start;
+            self.advance()?;
+            let statement = self.parse_import_declaration_from(declaration_start)?;
+            let StmtData::TsImportEqualsDeclaration(declaration) = self.ast.stmt_data(statement)
+            else {
+                unreachable!()
+            };
+            let declaration = Decl::TsImportEqualsDeclaration(declaration);
+            return Ok(self.ast.stmt_export_named_declaration(
+                Span::new(start, declaration.span(self.ast).end),
+                Some(declaration),
+                TypedSubRange::empty(),
+                None,
+                TypedSubRange::empty(),
+                ImportOrExportKind::Value,
+            ));
+        }
         if matches!(
             self.current_token.tag,
             TokenTag::Var | TokenTag::Let | TokenTag::Const
@@ -2973,8 +3250,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             let declaration =
                 self.parse_variable_declaration(ParseVariableDeclarationOpts::default(), None)?;
             let end = declaration.span(self.ast).end;
-            let specifiers = self.empty_range();
-            let attributes = self.empty_range();
+            let specifiers = TypedSubRange::empty();
+            let attributes = TypedSubRange::empty();
             return Ok(self.ast.stmt_export_named_declaration(
                 Span::new(start, end),
                 Some(Decl::VariableDeclaration(declaration)),
@@ -2984,13 +3261,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 ImportOrExportKind::Value,
             ));
         }
-        if self.current_token.tag == TokenTag::Function
-            || (self.current_token.tag == TokenTag::Async && {
-                let next = self.peek_ahead()?;
-                next.tag == TokenTag::Function && !next.has_line_terminator_before()
-            })
-            || matches!(self.current_token.tag, TokenTag::Class | TokenTag::At)
-        {
+        if matches!(
+            self.current_token.tag,
+            TokenTag::Function | TokenTag::Async | TokenTag::Class | TokenTag::At
+        ) {
             let declaration = if self.current_token.tag == TokenTag::At {
                 let (decorators_start, decorators) = self.parse_decorators()?;
                 Decl::Class(self.parse_class_decorated(
@@ -3018,8 +3292,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 )?)
             };
             let end = declaration.span(self.ast).end;
-            let specifiers = self.empty_range();
-            let attributes = self.empty_range();
+            let specifiers = TypedSubRange::empty();
+            let attributes = TypedSubRange::empty();
             return Ok(self.ast.stmt_export_named_declaration(
                 Span::new(start, end),
                 Some(declaration),
@@ -3055,6 +3329,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             }
             DeclData::Function(node) => import_or_export_kind_for_declare(node.declare(self.ast)),
             DeclData::Class(node) => import_or_export_kind_for_declare(node.declare(self.ast)),
+            DeclData::TsImportEqualsDeclaration(_) => ImportOrExportKind::Value,
         }
     }
 
@@ -3064,13 +3339,14 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         export_kind: ImportOrExportKind,
     ) -> ParseResult<Stmt> {
         let result = self.parse_export_specifiers()?;
-        let source = if self.eat(TokenTag::From)? {
-            Some(self.parse_module_specifier()?)
+        let (source, attributes) = if self.eat(TokenTag::From)? {
+            let source = self.parse_module_specifier()?;
+            let attributes = self.parse_with_clause()?;
+            (Some(source), attributes)
         } else {
             self.resolve_local_export_specifiers(&result)?;
-            None
+            (None, TypedSubRange::empty())
         };
-        let attributes = self.parse_with_clause()?;
         let end = self.eat_semicolon(self.prev_token_end)?;
         Ok(self.ast.stmt_export_named_declaration(
             Span::new(start, end),
@@ -3084,22 +3360,27 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_export_specifiers(&mut self) -> ParseResult<ExportSpecifiersResult> {
         self.expect(TokenTag::LeftBrace)?;
-        let mut specifiers = Vec::new();
+        let checkpoint = self.scratch_a.begin();
         let mut local_tags = Vec::new();
-        while self.current_token.tag != TokenTag::RightBrace
-            && self.current_token.tag != TokenTag::Eof
-        {
-            local_tags.push(self.current_token.tag);
-            specifiers.push(self.parse_export_specifier()?);
-            if !self.eat(TokenTag::Comma)? {
-                break;
+        let result = (|| {
+            while self.current_token.tag != TokenTag::RightBrace
+                && self.current_token.tag != TokenTag::Eof
+            {
+                local_tags.push(self.current_token.tag);
+                let specifier = self.parse_export_specifier()?;
+                self.scratch_a.append(specifier);
+                if !self.eat(TokenTag::Comma)? {
+                    break;
+                }
             }
-        }
-        self.expect(TokenTag::RightBrace)?;
-        Ok(ExportSpecifiersResult {
-            specifiers: self.ast.add_typed_sub_range(specifiers),
-            local_tags,
-        })
+            self.expect(TokenTag::RightBrace)?;
+            Ok(ExportSpecifiersResult {
+                specifiers: self.add_extra_from_scratch_a(checkpoint),
+                local_tags,
+            })
+        })();
+        self.scratch_a.reset(checkpoint);
+        result
     }
 
     fn parse_export_specifier(&mut self) -> ParseResult<ExportSpecifier> {
@@ -3115,7 +3396,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         ))
     }
 
-    fn resolve_local_export_specifiers(&self, result: &ExportSpecifiersResult) -> ParseResult<()> {
+    fn resolve_local_export_specifiers(
+        &mut self,
+        result: &ExportSpecifiersResult,
+    ) -> ParseResult<()> {
         for (index, local_tag) in result.local_tags.iter().copied().enumerate() {
             let specifier = result
                 .specifiers
@@ -3123,15 +3407,23 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 .expect("export specifier range contains its nodes");
             let local = specifier.local(self.ast);
             if local.is_string_literal(self.ast) {
-                return self.error_at(
+                self.report(
                     local.span(self.ast),
-                    "a string export binding requires a source module",
+                    "A string literal cannot be used as an exported binding without 'from'",
+                    ReportOptions {
+                        help: Some(Cow::Borrowed(
+                            "Use: export { \"name\" } from 'some-module' or export { localName as \"name\" }",
+                        )),
+                        ..ReportOptions::default()
+                    },
                 );
+                continue;
             }
             if local_tag.is_reserved() {
-                return self.error_at(
+                self.report(
                     local.span(self.ast),
-                    "a reserved word cannot be a local export binding",
+                    "A reserved word cannot be used as an exported binding without 'from'",
+                    ReportOptions::default(),
                 );
             }
         }
@@ -3140,25 +3432,71 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_with_clause(&mut self) -> ParseResult<TypedSubRange<ImportAttribute>> {
         if !matches!(self.current_token.tag, TokenTag::With | TokenTag::Assert) {
-            return Ok(self.empty_range());
+            return Ok(TypedSubRange::empty());
         }
         self.advance()?;
-        self.expect(TokenTag::LeftBrace)?;
-        let mut attributes = Vec::new();
-        while self.current_token.tag != TokenTag::RightBrace {
-            attributes.push(self.parse_import_attribute()?);
-            if !self.eat(TokenTag::Comma)? {
+        if self.current_token.tag != TokenTag::LeftBrace {
+            self.report_expected(
+                self.current_token.span,
+                "Expected '{' after 'with' in import attributes",
+                ReportOptions::default(),
+            );
+            return Ok(TypedSubRange::empty());
+        }
+        self.advance()?;
+        let checkpoint = self.scratch_a.begin();
+        while self.current_token.tag != TokenTag::RightBrace
+            && self.current_token.tag != TokenTag::Eof
+        {
+            let attribute = match self.parse_import_attribute() {
+                Ok(attribute) => attribute,
+                Err(_) => {
+                    self.scratch_a.reset(checkpoint);
+                    return Ok(TypedSubRange::empty());
+                }
+            };
+            self.scratch_a.append(attribute);
+            if self.current_token.tag == TokenTag::Comma {
+                self.advance()?;
+            } else {
                 break;
             }
         }
-        self.expect(TokenTag::RightBrace)?;
-        Ok(self.ast.add_typed_sub_range(attributes))
+        if self.current_token.tag != TokenTag::RightBrace {
+            self.report_expected(
+                self.current_token.span,
+                "Expected '}' to close import attributes",
+                ReportOptions::default(),
+            );
+            self.scratch_a.reset(checkpoint);
+            return Ok(TypedSubRange::empty());
+        }
+        self.advance()?;
+        let attributes = self.add_extra_from_scratch_a(checkpoint);
+        self.scratch_a.reset(checkpoint);
+        Ok(attributes)
     }
 
     fn parse_import_attribute(&mut self) -> ParseResult<ImportAttribute> {
         let start = self.current_token.span.start;
         let key = self.parse_attribute_key()?;
-        self.expect(TokenTag::Colon)?;
+        if self.current_token.tag != TokenTag::Colon {
+            self.report_expected(
+                self.current_token.span,
+                "Expected ':' in import attribute",
+                ReportOptions::default(),
+            );
+            return self.error("invalid import attribute");
+        }
+        self.advance()?;
+        if self.current_token.tag != TokenTag::StringLiteral {
+            self.report(
+                self.current_token.span,
+                "Import attribute value must be a string literal",
+                ReportOptions::default(),
+            );
+            return self.error("invalid import attribute");
+        }
         let value = self.parse_string_literal()?;
         Ok(self
             .ast
@@ -3166,7 +3504,23 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_attribute_key(&mut self) -> ParseResult<ModuleExportName> {
-        self.parse_module_export_name()
+        let token = self.current_token;
+        if token.tag == TokenTag::StringLiteral {
+            return Ok(ModuleExportName::StringLiteral(
+                self.parse_string_literal()?,
+            ));
+        }
+        if token.tag.is_identifier_like() {
+            return Ok(ModuleExportName::IdentifierName(
+                self.parse_identifier_name()?,
+            ));
+        }
+        self.report_expected(
+            self.current_token.span,
+            "Expected identifier or string literal for attribute key",
+            ReportOptions::default(),
+        );
+        self.error("invalid import attribute key")
     }
 
     fn parse_module_export_name(&mut self) -> ParseResult<ModuleExportName> {
@@ -3178,19 +3532,14 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                     "an import or export name cannot contain a lone surrogate",
                 );
             }
-            let raw = self.ast.source_slice(token.span.start, token.span.end);
-            let value = self.string_value(token)?;
-            self.advance()?;
-            return Ok(self
-                .ast
-                .module_export_name_string_literal(token.span, value, raw));
+            return Ok(ModuleExportName::StringLiteral(
+                self.parse_string_literal()?,
+            ));
         }
         if token.tag.is_identifier_like() {
-            let name = self.identifier_name(token)?;
-            self.advance()?;
-            return Ok(self
-                .ast
-                .module_export_name_identifier_name(token.span, name));
+            return Ok(ModuleExportName::IdentifierName(
+                self.parse_identifier_name()?,
+            ));
         }
         self.error("expected an import or export name")
     }
@@ -3199,68 +3548,60 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         if !self.lang.is_typescript() {
             return Ok(false);
         }
-        let mut peek = self.begin_peek();
-        let tokens = (|| {
-            let mut tokens = Vec::with_capacity(4);
-            for _ in 0..4 {
-                tokens.push(peek.next()?);
-            }
-            Ok(tokens)
-        })();
-        peek.end();
-        let tokens = tokens?;
         let mut current = self.current_token;
-        let mut index = 0usize;
+        let mut peek = self.begin_peek();
         let mut has_declare = false;
         let mut has_abstract = false;
 
         if current.tag == TokenTag::Declare {
-            current = tokens[index];
-            index += 1;
+            current = peek.next()?;
             if current.has_line_terminator_before() {
+                peek.end();
                 return Ok(false);
             }
             has_declare = true;
         }
         if current.tag == TokenTag::Abstract {
-            let next = tokens[index];
-            index += 1;
+            let next = peek.next()?;
             if next.has_line_terminator_before() || next.tag != TokenTag::Class {
+                peek.end();
                 return Ok(false);
             }
             current = next;
             has_abstract = true;
         }
         if current.tag == TokenTag::Const {
-            let next = tokens[index];
+            let next = peek.next()?;
             if is_const_enum_head(next) {
                 current = next;
-                index += 1;
             } else if has_declare {
-                return Ok(!next.has_line_terminator_before() && can_start_binding(next.tag));
+                let result = !next.has_line_terminator_before() && can_start_binding(next.tag);
+                peek.end();
+                return Ok(result);
             } else {
+                peek.end();
                 return Ok(false);
             }
         }
 
         let result = match current.tag {
             TokenTag::Type | TokenTag::Interface | TokenTag::Enum | TokenTag::Namespace => {
-                is_declaration_name(tokens[index])
+                is_declaration_name(peek.next()?)
             }
             TokenTag::Module => {
-                let name = tokens[index];
+                let name = peek.next()?;
                 !name.has_line_terminator_before()
                     && (is_declaration_name(name) || name.tag == TokenTag::StringLiteral)
             }
             TokenTag::Global => {
-                let next = tokens[index];
+                let next = peek.next()?;
                 next.tag == TokenTag::LeftBrace && !next.has_line_terminator_before()
             }
             TokenTag::Var | TokenTag::Let | TokenTag::Function | TokenTag::Class => {
                 if !has_declare && !has_abstract {
                     false
                 } else {
-                    let name = tokens[index];
+                    let name = peek.next()?;
                     !name.has_line_terminator_before()
                         && match current.tag {
                             TokenTag::Var | TokenTag::Let => can_start_binding(name.tag),
@@ -3268,22 +3609,34 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                         }
                 }
             }
-            TokenTag::Async if has_declare => {
-                let function = tokens[index];
-                let name = tokens[index + 1];
-                function.tag == TokenTag::Function
-                    && !function.has_line_terminator_before()
-                    && is_declaration_name(name)
+            TokenTag::Async => {
+                if !has_declare {
+                    false
+                } else {
+                    let function = peek.next()?;
+                    if function.tag != TokenTag::Function || function.has_line_terminator_before() {
+                        false
+                    } else {
+                        is_declaration_name(peek.next()?)
+                    }
+                }
             }
-            TokenTag::Import if has_declare => {
-                let name = tokens[index];
-                let assign = tokens[index + 1];
-                is_declaration_name(name)
-                    && assign.tag == TokenTag::Assign
-                    && !assign.has_line_terminator_before()
+            TokenTag::Import => {
+                if !has_declare {
+                    false
+                } else {
+                    let name = peek.next()?;
+                    if !is_declaration_name(name) {
+                        false
+                    } else {
+                        let assign = peek.next()?;
+                        assign.tag == TokenTag::Assign && !assign.has_line_terminator_before()
+                    }
+                }
             }
             _ => false,
         };
+        peek.end();
         Ok(result)
     }
 
@@ -3368,6 +3721,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_type_alias_declaration(&mut self, start: u32, declare: bool) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Type);
         self.expect(TokenTag::Type)?;
         let id = self.parse_binding_identifier()?;
         let type_parameters = if is_angle_open(self.current_token.tag) {
@@ -3389,6 +3743,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_interface_declaration(&mut self, start: u32, declare: bool) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Interface);
         self.expect(TokenTag::Interface)?;
         let id = self.parse_binding_identifier()?;
         let type_parameters = if is_angle_open(self.current_token.tag) {
@@ -3421,37 +3776,32 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     ) -> ParseResult<HeritageClause> {
         if !self.eat(keyword)? {
             return Ok(match kind {
-                HeritageKind::Interface => HeritageClause::Interface(self.empty_range()),
-                HeritageKind::Class => HeritageClause::Class(self.empty_range()),
+                HeritageKind::Interface => HeritageClause::Interface(TypedSubRange::empty()),
+                HeritageKind::Class => HeritageClause::Class(TypedSubRange::empty()),
             });
         }
-        let mut entries = Vec::new();
-        loop {
-            let node = match self.parse_heritage_entry(kind)? {
-                HeritageEntry::Interface(node) => node.node_id(),
-                HeritageEntry::Class(node) => node.node_id(),
-            };
-            entries.push(node);
-            if !self.eat(TokenTag::Comma)? {
-                break;
+        let checkpoint = self.scratch_a.begin();
+        let result = (|| {
+            loop {
+                match self.parse_heritage_entry(kind)? {
+                    HeritageEntry::Interface(node) => self.scratch_a.append(node),
+                    HeritageEntry::Class(node) => self.scratch_a.append(node),
+                }
+                if !self.eat(TokenTag::Comma)? {
+                    break;
+                }
             }
-        }
-        Ok(match kind {
-            HeritageKind::Interface => HeritageClause::Interface(
-                self.ast.add_typed_sub_range(
-                    entries
-                        .into_iter()
-                        .map(|node| unsafe { TsInterfaceHeritage::from_node_id_unchecked(node) }),
-                ),
-            ),
-            HeritageKind::Class => HeritageClause::Class(
-                self.ast.add_typed_sub_range(
-                    entries
-                        .into_iter()
-                        .map(|node| unsafe { TsClassImplements::from_node_id_unchecked(node) }),
-                ),
-            ),
-        })
+            Ok(match kind {
+                HeritageKind::Interface => {
+                    HeritageClause::Interface(self.add_extra_from_scratch_a(checkpoint))
+                }
+                HeritageKind::Class => {
+                    HeritageClause::Class(self.add_extra_from_scratch_a(checkpoint))
+                }
+            })
+        })();
+        self.scratch_a.reset(checkpoint);
+        result
     }
 
     fn parse_heritage_entry(&mut self, kind: HeritageKind) -> ParseResult<HeritageEntry> {
@@ -3480,6 +3830,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_interface_body(&mut self) -> ParseResult<TsInterfaceBody> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftBrace);
         let start = self.current_token.span.start;
         let (body, end) = self.parse_object_type_members()?;
         Ok(self.ast.ts_interface_body(Span::new(start, end), body))
@@ -3491,6 +3842,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         is_const: bool,
         declare: bool,
     ) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Enum);
         self.expect(TokenTag::Enum)?;
         let id = self.parse_binding_identifier()?;
         let body = self.parse_enum_body()?;
@@ -3503,18 +3855,23 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_enum_body(&mut self) -> ParseResult<TsEnumBody> {
         let start = self.expect(TokenTag::LeftBrace)?.span.start;
-        let mut members = Vec::new();
-        while self.current_token.tag != TokenTag::RightBrace
-            && self.current_token.tag != TokenTag::Eof
-        {
-            members.push(self.parse_enum_member()?);
-            if !self.eat(TokenTag::Comma)? {
-                break;
+        let checkpoint = self.scratch_a.begin();
+        let result = (|| {
+            while self.current_token.tag != TokenTag::RightBrace
+                && self.current_token.tag != TokenTag::Eof
+            {
+                let member = self.parse_enum_member()?;
+                self.scratch_a.append(member);
+                if !self.eat(TokenTag::Comma)? {
+                    break;
+                }
             }
-        }
-        let end = self.expect(TokenTag::RightBrace)?.span.end;
-        let members = self.ast.add_typed_sub_range(members);
-        Ok(self.ast.ts_enum_body(Span::new(start, end), members))
+            let end = self.expect(TokenTag::RightBrace)?.span.end;
+            let members = self.add_extra_from_scratch_a(checkpoint);
+            Ok(self.ast.ts_enum_body(Span::new(start, end), members))
+        })();
+        self.scratch_a.reset(checkpoint);
+        result
     }
 
     fn parse_enum_member(&mut self) -> ParseResult<TsEnumMember> {
@@ -3549,11 +3906,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             return Ok((TsEnumMemberName::Expr(expression), true));
         }
         if token.tag.is_identifier_like() {
-            let name = self.identifier_name(token)?;
-            self.advance()?;
             return Ok((
-                self.ast
-                    .ts_enum_member_name_identifier_name(token.span, name),
+                TsEnumMemberName::IdentifierName(self.parse_identifier_name()?),
                 false,
             ));
         }
@@ -3595,6 +3949,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_global_declaration(&mut self, start: u32, declare: bool) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Global);
         let token = self.expect(TokenTag::Global)?;
         let name = self.identifier_name(token)?;
         let id = self.ast.identifier_name(token.span, name);
@@ -3650,6 +4005,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_type_annotation(&mut self) -> ParseResult<TsTypeAnnotation> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Colon);
         let start = self.expect(TokenTag::Colon)?.span.start;
         let type_annotation = self.parse_type()?;
         let end = type_annotation.span(self.ast).end;
@@ -3659,6 +4015,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_return_type_annotation(&mut self) -> ParseResult<TsTypeAnnotation> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Colon);
         let start = self.expect(TokenTag::Colon)?.span.start;
         let type_annotation = self.parse_type_or_type_predicate()?;
         let end = type_annotation.span(self.ast).end;
@@ -3671,16 +4028,12 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         if !self.is_identifier_predicate_start()? {
             return self.parse_type();
         }
-        let token = self.current_token;
-        let name = self.identifier_name(token)?;
-        self.advance()?;
-        let parameter_name = self
-            .ast
-            .ts_type_predicate_name_identifier_name(token.span, name);
-        self.finish_type_predicate(token.span.start, parameter_name, false)
+        let parameter_name = TsTypePredicateName::IdentifierName(self.parse_identifier_name()?);
+        self.finish_type_predicate(parameter_name.span(self.ast).start, parameter_name, false)
     }
 
     fn parse_this_type_or_predicate(&mut self) -> ParseResult<TsType> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::This);
         let token = self.expect(TokenTag::This)?;
         if self.current_token.tag != TokenTag::Is
             || self.current_token.is_escaped()
@@ -3693,6 +4046,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_asserts_type_predicate(&mut self) -> ParseResult<TsType> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Asserts);
         let start = self.expect(TokenTag::Asserts)?.span.start;
         let parameter_name = self.parse_predicate_parameter_name()?;
         self.finish_type_predicate(start, parameter_name, true)
@@ -3707,11 +4061,9 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         if !token.tag.is_identifier_like() {
             return self.error("expected a type predicate parameter name");
         }
-        let name = self.identifier_name(token)?;
-        self.advance()?;
-        Ok(self
-            .ast
-            .ts_type_predicate_name_identifier_name(token.span, name))
+        Ok(TsTypePredicateName::IdentifierName(
+            self.parse_identifier_name()?,
+        ))
     }
 
     fn finish_type_predicate(
@@ -3834,24 +4186,31 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         if leading_start.is_none() && self.current_token.tag != separator {
             return Ok(first);
         }
-        let mut types = vec![first];
-        while self.eat(separator)? {
-            types.push(match kind {
-                BinaryTypeKind::Union => self.parse_intersection_type()?,
-                BinaryTypeKind::Intersection => self.parse_postfix_type()?,
-            });
-        }
-        let span = Span::new(
-            leading_start.unwrap_or(first.span(self.ast).start),
-            types.last().unwrap().span(self.ast).end,
-        );
-        let types = self.ast.add_typed_sub_range(types);
-        Ok(match kind {
-            BinaryTypeKind::Union => TsType::TsUnionType(self.ast.ts_union_type(span, types)),
-            BinaryTypeKind::Intersection => {
-                TsType::TsIntersectionType(self.ast.ts_intersection_type(span, types))
+        let checkpoint = self.scratch_a.begin();
+        self.scratch_a.append(first);
+        let result = (|| {
+            let mut last = first;
+            while self.eat(separator)? {
+                last = match kind {
+                    BinaryTypeKind::Union => self.parse_intersection_type()?,
+                    BinaryTypeKind::Intersection => self.parse_postfix_type()?,
+                };
+                self.scratch_a.append(last);
             }
-        })
+            let span = Span::new(
+                leading_start.unwrap_or(first.span(self.ast).start),
+                last.span(self.ast).end,
+            );
+            let types = self.add_extra_from_scratch_a(checkpoint);
+            Ok(match kind {
+                BinaryTypeKind::Union => TsType::TsUnionType(self.ast.ts_union_type(span, types)),
+                BinaryTypeKind::Intersection => {
+                    TsType::TsIntersectionType(self.ast.ts_intersection_type(span, types))
+                }
+            })
+        })();
+        self.scratch_a.reset(checkpoint);
+        result
     }
 
     fn parse_intersection_type(&mut self) -> ParseResult<TsType> {
@@ -3930,12 +4289,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             match token.tag {
                 TokenTag::LeftParen => return self.parse_parenthesized_type(),
                 TokenTag::LeftBracket => return self.parse_tuple_type(),
-                TokenTag::LeftBrace => {
-                    if self.is_start_of_mapped_type()? {
-                        return self.parse_mapped_type();
-                    }
-                    return self.parse_type_literal();
-                }
+                TokenTag::LeftBrace => return self.parse_type_literal(),
                 TokenTag::Keyof | TokenTag::Unique | TokenTag::Readonly => {
                     return self.parse_type_operator();
                 }
@@ -3989,6 +4343,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_parenthesized_type(&mut self) -> ParseResult<TsType> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftParen);
         let start = self.expect(TokenTag::LeftParen)?.span.start;
         let type_annotation = self.parse_type()?;
         let end = self.expect(TokenTag::RightParen)?.span.end;
@@ -3999,21 +4354,27 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_tuple_type(&mut self) -> ParseResult<TsType> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftBracket);
         let start = self.expect(TokenTag::LeftBracket)?.span.start;
-        let mut elements = Vec::new();
-        while self.current_token.tag != TokenTag::RightBracket
-            && self.current_token.tag != TokenTag::Eof
-        {
-            elements.push(self.parse_tuple_element()?);
-            if !self.eat(TokenTag::Comma)? {
-                break;
+        let checkpoint = self.scratch_a.begin();
+        let result = (|| {
+            while self.current_token.tag != TokenTag::RightBracket
+                && self.current_token.tag != TokenTag::Eof
+            {
+                let element = self.parse_tuple_element()?;
+                self.scratch_a.append(element);
+                if !self.eat(TokenTag::Comma)? {
+                    break;
+                }
             }
-        }
-        let end = self.expect(TokenTag::RightBracket)?.span.end;
-        let elements = self.ast.add_typed_sub_range(elements);
-        Ok(TsType::TsTupleType(
-            self.ast.ts_tuple_type(Span::new(start, end), elements),
-        ))
+            let end = self.expect(TokenTag::RightBracket)?.span.end;
+            let elements = self.add_extra_from_scratch_a(checkpoint);
+            Ok(TsType::TsTupleType(
+                self.ast.ts_tuple_type(Span::new(start, end), elements),
+            ))
+        })();
+        self.scratch_a.reset(checkpoint);
+        result
     }
 
     fn parse_tuple_element(&mut self) -> ParseResult<TsTupleElement> {
@@ -4083,14 +4444,12 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_named_tuple_member(&mut self) -> ParseResult<TsTupleElement> {
-        let token = self.current_token;
-        let name = self.identifier_name(token)?;
-        self.advance()?;
-        let label = self.ast.identifier_name(token.span, name);
+        let start = self.current_token.span.start;
+        let label = self.parse_identifier_name()?;
         let optional = self.eat(TokenTag::Question)?;
         self.expect(TokenTag::Colon)?;
         let element_type = self.parse_type()?;
-        let span = Span::new(token.span.start, element_type.span(self.ast).end);
+        let span = Span::new(start, element_type.span(self.ast).end);
         Ok(TsTupleElement::TsNamedTupleMember(
             self.ast
                 .ts_named_tuple_member(span, label, element_type, optional),
@@ -4116,6 +4475,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_infer_type(&mut self) -> ParseResult<TsType> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Infer);
         let start = self.expect(TokenTag::Infer)?.span.start;
         let name_start = self.current_token.span.start;
         let name = self.parse_binding_identifier()?;
@@ -4245,6 +4605,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_type_query(&mut self) -> ParseResult<TsType> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Typeof);
         let start = self.expect(TokenTag::Typeof)?.span.start;
         let expr_name = if self.current_token.tag == TokenTag::Import {
             let import_type = self.parse_import_type()?;
@@ -4254,7 +4615,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             TsTypeQueryExprName::TsImportType(import_type)
         } else if self.current_token.tag == TokenTag::This {
             let token = self.current_token;
-            self.advance()?;
+            self.advance_without_escape_check()?;
             if self.current_token.tag == TokenTag::Dot {
                 let left = self.ast.ts_qualified_name_left_this_expression(token.span);
                 TsTypeQueryExprName::TsTypeName(self.extend_qualified_name(left, token.span.start)?)
@@ -4279,6 +4640,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_import_type(&mut self) -> ParseResult<TsType> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Import);
         let start = self.expect(TokenTag::Import)?.span.start;
         self.expect(TokenTag::LeftParen)?;
         let source = self.parse_string_literal()?;
@@ -4321,18 +4683,12 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_import_type_qualifier(&mut self) -> ParseResult<TsImportTypeQualifier> {
-        let token = self.current_token;
-        if !token.tag.is_identifier_like() {
-            return self.error("expected an identifier");
-        }
-        let name = self.identifier_name(token)?;
-        self.advance()?;
-        let identifier = self.ast.identifier_name(token.span, name);
+        let identifier = self.parse_identifier_name()?;
         if self.current_token.tag != TokenTag::Dot {
             return Ok(TsImportTypeQualifier::IdentifierName(identifier));
         }
         let left = TsQualifiedNameLeft::IdentifierName(identifier);
-        let qualified = self.extend_qualified_name(left, token.span.start)?;
+        let qualified = self.extend_qualified_name(left, identifier.span(self.ast).start)?;
         let qualified = qualified
             .as_ts_qualified_name(self.ast)
             .expect("qualified-name parsing produces a qualified name");
@@ -4345,17 +4701,15 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         start: u32,
     ) -> ParseResult<TsTypeName> {
         let mut result = None;
-        while self.current_token.tag == TokenTag::Dot
-            && !self.current_token.has_line_terminator_before()
-        {
+        while self.current_token.tag == TokenTag::Dot {
             self.advance()?;
             let token = self.current_token;
             if !token.tag.is_identifier_like() {
                 return self.error("expected an identifier after '.'");
             }
             let name = self.identifier_name(token)?;
-            self.advance()?;
             let right = self.ast.identifier_name(token.span, name);
+            self.advance_without_escape_check()?;
             let qualified =
                 self.ast
                     .ts_qualified_name(Span::new(start, token.span.end), left, right);
@@ -4368,6 +4722,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_jsdoc_nullable_or_unknown_type(&mut self) -> ParseResult<TsType> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Question);
         let token = self.expect(TokenTag::Question)?;
         if !is_start_of_type(self.current_token.tag) {
             return Ok(TsType::TsJsDocUnknownType(
@@ -4380,6 +4735,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_jsdoc_non_nullable_type(&mut self) -> ParseResult<TsType> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LogicalNot);
         let start = self.expect(TokenTag::LogicalNot)?.span.start;
         let type_annotation = self.parse_primary_type()?;
         let span = Span::new(start, type_annotation.span(self.ast).end);
@@ -4460,38 +4816,50 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_template_literal_type(&mut self) -> ParseResult<TsType> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::TemplateHead);
         let start = self.current_token.span.start;
         let head = self.current_token;
-        let mut quasis = vec![self.add_template_element(head, false, false)?];
-        let mut types = Vec::new();
-        self.advance()?;
-        let end = loop {
-            types.push(self.parse_type()?);
-            if self.current_token.tag != TokenTag::RightBrace {
-                return self.error("expected '}' to close template type interpolation");
-            }
-            let continuation = self
-                .lexer
-                .re_scan_template_continuation(self.current_token.span.start)
-                .map_err(|error| self.next_token_error(error))?;
-            let tail = continuation.tag == TokenTag::TemplateTail;
-            quasis.push(self.add_template_element(continuation, tail, false)?);
-            let end = continuation.span.end;
-            self.current_token = continuation;
+        let quasis_checkpoint = self.scratch_a.begin();
+        let types_checkpoint = self.scratch_b.begin();
+        let result = (|| {
+            let head = self.add_template_element(head, false, false)?;
+            self.scratch_a.append(head);
             self.advance()?;
-            if tail {
-                break end;
-            }
-        };
-        let quasis = self.ast.add_typed_sub_range(quasis);
-        let types = self.ast.add_typed_sub_range(types);
-        Ok(TsType::TsTemplateLiteralType(
-            self.ast
-                .ts_template_literal_type(Span::new(start, end), quasis, types),
-        ))
+            let end = loop {
+                let ty = self.parse_type()?;
+                self.scratch_b.append(ty);
+                if self.current_token.tag != TokenTag::RightBrace {
+                    return self.error("expected '}' to close template type interpolation");
+                }
+                let continuation = self
+                    .lexer
+                    .re_scan_template_continuation(self.current_token.span.start)
+                    .map_err(|error| self.next_token_error(error))?;
+                let tail = continuation.tag == TokenTag::TemplateTail;
+                let element = self.add_template_element(continuation, tail, false)?;
+                self.scratch_a.append(element);
+                let end = continuation.span.end;
+                self.current_token = continuation;
+                self.advance()?;
+                if tail {
+                    break end;
+                }
+            };
+            let quasis = self.add_extra_from_scratch_a(quasis_checkpoint);
+            let types = self.add_extra_from_scratch_b(types_checkpoint);
+            Ok(TsType::TsTemplateLiteralType(
+                self.ast
+                    .ts_template_literal_type(Span::new(start, end), quasis, types),
+            ))
+        })();
+        self.scratch_a.reset(quasis_checkpoint);
+        self.scratch_b.reset(types_checkpoint);
+        result
     }
 
+    #[allow(dead_code)]
     fn is_start_of_mapped_type(&mut self) -> ParseResult<bool> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftBrace);
         let cursor = self.lexer.cursor;
         let state = self.lexer.state;
         let mode = self.lexer.mode;
@@ -4525,7 +4893,9 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         result.map_err(|error| self.next_token_error(error))
     }
 
+    #[allow(dead_code)]
     fn parse_mapped_type(&mut self) -> ParseResult<TsType> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftBrace);
         let start = self.expect(TokenTag::LeftBrace)?.span.start;
         let readonly = self.parse_mapped_modifier(TokenTag::Readonly)?;
         self.expect(TokenTag::LeftBracket)?;
@@ -4578,6 +4948,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_type_literal(&mut self) -> ParseResult<TsType> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftBrace);
         let start = self.current_token.span.start;
         let (members, end) = self.parse_object_type_members()?;
         Ok(TsType::TsTypeLiteral(
@@ -4586,17 +4957,22 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_object_type_members(&mut self) -> ParseResult<(TypedSubRange<TsTypeElement>, u32)> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftBrace);
         self.expect(TokenTag::LeftBrace)?;
-        let mut members = Vec::new();
-        while self.current_token.tag != TokenTag::RightBrace
-            && self.current_token.tag != TokenTag::Eof
-        {
-            let member = self.parse_type_member()?;
-            self.consume_type_member_separator(member)?;
-            members.push(member);
-        }
-        let end = self.expect(TokenTag::RightBrace)?.span.end;
-        Ok((self.ast.add_typed_sub_range(members), end))
+        let checkpoint = self.scratch_a.begin();
+        let result = (|| {
+            while self.current_token.tag != TokenTag::RightBrace
+                && self.current_token.tag != TokenTag::Eof
+            {
+                let member = self.parse_type_member()?;
+                self.consume_type_member_separator(member)?;
+                self.scratch_a.append(member);
+            }
+            let end = self.expect(TokenTag::RightBrace)?.span.end;
+            Ok((self.add_extra_from_scratch_a(checkpoint), end))
+        })();
+        self.scratch_a.reset(checkpoint);
+        result
     }
 
     fn consume_type_member_separator(&mut self, member: TsTypeElement) -> ParseResult<bool> {
@@ -4687,6 +5063,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn is_index_signature_start(&mut self) -> ParseResult<bool> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftBracket);
         let name = self.peek_ahead()?;
         if !name.tag.is_identifier_like() {
             return Ok(false);
@@ -4706,6 +5083,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         readonly: bool,
         r#static: bool,
     ) -> ParseResult<TsTypeElement> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftBracket);
         self.expect(TokenTag::LeftBracket)?;
         let parameter = self.parse_index_signature_parameter()?;
         if self.current_token.tag == TokenTag::Comma {
@@ -4759,7 +5137,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             self.advance()?;
         }
         let computed = self.current_token.tag == TokenTag::LeftBracket;
-        let key = self.parse_property_key()?;
+        let key = self.parse_property_key(false)?;
         let mut end = key.span(self.ast).end;
         let optional = if self.current_token.tag == TokenTag::Question {
             end = self.current_token.span.end;
@@ -4849,13 +5227,11 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             return self.error("expected a type name");
         }
         let name = self.identifier_name(token)?;
-        self.advance()?;
         let mut type_name = self
             .ast
             .ts_type_name_identifier_reference(token.span, name, None);
-        while self.current_token.tag == TokenTag::Dot
-            && !self.current_token.has_line_terminator_before()
-        {
+        self.advance_without_escape_check()?;
+        while self.current_token.tag == TokenTag::Dot {
             type_name = self.parse_qualified_segment(type_name)?;
         }
         Ok(type_name)
@@ -4869,8 +5245,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             return self.error("expected an identifier after '.'");
         }
         let name = self.identifier_name(token)?;
-        self.advance()?;
         let right = self.ast.identifier_name(token.span, name);
+        self.advance_without_escape_check()?;
         let left = match self.ast.ts_type_name_data(left) {
             TsTypeNameData::IdentifierReference(identifier) => {
                 TsQualifiedNameLeft::IdentifierReference(identifier)
@@ -4912,45 +5288,47 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_angle_list(&mut self, kind: AngleListKind) -> ParseResult<AngleList> {
         let start = self.consume_angle_open()?;
-        let mut nodes = Vec::new();
-        while !is_angle_close(self.current_token.tag) && self.current_token.tag != TokenTag::Eof {
-            let node = match kind {
-                AngleListKind::Arguments => self.parse_type()?.node_id(),
-                AngleListKind::Parameters => self.parse_type_parameter()?.node_id(),
-            };
-            nodes.push(node);
-            if !self.eat(TokenTag::Comma)? {
-                break;
+        let checkpoint = self.scratch_a.begin();
+        let result = (|| {
+            while !is_angle_close(self.current_token.tag) && self.current_token.tag != TokenTag::Eof
+            {
+                match kind {
+                    AngleListKind::Arguments => {
+                        let node = self.parse_type()?;
+                        self.scratch_a.append(node);
+                    }
+                    AngleListKind::Parameters => {
+                        let node = self.parse_type_parameter()?;
+                        self.scratch_a.append(node);
+                    }
+                }
+                if !self.eat(TokenTag::Comma)? {
+                    break;
+                }
             }
-        }
-        if kind == AngleListKind::Arguments && nodes.is_empty() {
-            return self.error("a type argument list cannot be empty");
-        }
-        let end = self.consume_angle_close()?;
-        Ok(match kind {
-            AngleListKind::Arguments => {
-                let parameters = self.ast.add_typed_sub_range(
-                    nodes
-                        .into_iter()
-                        .map(|node| unsafe { TsType::from_node_id_unchecked(node) }),
-                );
-                AngleList::Arguments(
-                    self.ast
-                        .ts_type_parameter_instantiation(Span::new(start, end), parameters),
-                )
+            if kind == AngleListKind::Arguments && self.scratch_a.items.len() == checkpoint {
+                return self.error("a type argument list cannot be empty");
             }
-            AngleListKind::Parameters => {
-                let parameters = self.ast.add_typed_sub_range(
-                    nodes
-                        .into_iter()
-                        .map(|node| unsafe { TsTypeParameter::from_node_id_unchecked(node) }),
-                );
-                AngleList::Parameters(
-                    self.ast
-                        .ts_type_parameter_declaration(Span::new(start, end), parameters),
-                )
-            }
-        })
+            let end = self.consume_angle_close()?;
+            Ok(match kind {
+                AngleListKind::Arguments => {
+                    let parameters = self.add_extra_from_scratch_a(checkpoint);
+                    AngleList::Arguments(
+                        self.ast
+                            .ts_type_parameter_instantiation(Span::new(start, end), parameters),
+                    )
+                }
+                AngleListKind::Parameters => {
+                    let parameters = self.add_extra_from_scratch_a(checkpoint);
+                    AngleList::Parameters(
+                        self.ast
+                            .ts_type_parameter_declaration(Span::new(start, end), parameters),
+                    )
+                }
+            })
+        })();
+        self.scratch_a.reset(checkpoint);
+        result
     }
 
     fn parse_type_parameter(&mut self) -> ParseResult<TsTypeParameter> {
@@ -5043,6 +5421,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_for_statement(&mut self) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::For);
         let start = self.expect(TokenTag::For)?.span.start;
         if self.current_token.tag == TokenTag::Await {
             if !self.context.await_ {
@@ -5136,18 +5515,22 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     ) -> ParseResult<Stmt> {
         let old_allow_in = self.context.in_;
         self.context.in_ = false;
-        let mut declarators = vec![self.parse_variable_declarator(kind, DeclaratorCtx::ForLoop)?];
-        while self.eat(TokenTag::Comma)? {
-            declarators.push(self.parse_variable_declarator(kind, DeclaratorCtx::ForLoop)?);
-        }
+        let checkpoint = self.scratch_a.begin();
+        let declarators_result = (|| {
+            let first = self.parse_variable_declarator(kind, DeclaratorCtx::ForLoop)?;
+            let mut declaration_end = first.span(self.ast).end;
+            self.scratch_a.append(first);
+            while self.eat(TokenTag::Comma)? {
+                let declarator = self.parse_variable_declarator(kind, DeclaratorCtx::ForLoop)?;
+                declaration_end = declarator.span(self.ast).end;
+                self.scratch_a.append(declarator);
+            }
+            let declarators = self.add_extra_from_scratch_a(checkpoint);
+            Ok((declarators, declaration_end))
+        })();
         self.context.in_ = old_allow_in;
-
-        let declaration_end = declarators
-            .last()
-            .expect("a variable declaration has at least one declarator")
-            .span(self.ast)
-            .end;
-        let declarators = self.ast.add_typed_sub_range(declarators);
+        self.scratch_a.reset(checkpoint);
+        let (declarators, declaration_end) = declarators_result?;
         let declaration = self.ast.variable_declaration(
             Span::new(declaration_start, declaration_end),
             kind,
@@ -5346,6 +5729,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_switch_statement(&mut self) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Switch);
         let start = self.expect(TokenTag::Switch)?.span.start;
         self.expect(TokenTag::LeftParen)?;
         let discriminant =
@@ -5360,14 +5744,34 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_switch_cases(&mut self) -> ParseResult<TypedSubRange<SwitchCase>> {
-        let mut cases = Vec::new();
-        while self.current_token.tag != TokenTag::RightBrace {
-            cases.push(self.parse_switch_case()?);
+        let checkpoint = self.scratch_a.begin();
+        while matches!(self.current_token.tag, TokenTag::Case | TokenTag::Default) {
+            match self.parse_switch_case() {
+                Ok(case) => self.scratch_a.append(case),
+                Err(error) => {
+                    if !error.reported {
+                        self.diagnostics.push(Diagnostic {
+                            severity: Severity::Error,
+                            message: error.message,
+                            span: error.span,
+                            help: None,
+                            labels: Vec::new(),
+                        });
+                    }
+                    self.recover(Some(TokenTag::RightBrace));
+                }
+            }
         }
-        Ok(self.ast.add_typed_sub_range(cases))
+        let cases = self.add_extra_from_scratch_a(checkpoint);
+        self.scratch_a.reset(checkpoint);
+        Ok(cases)
     }
 
     fn parse_switch_case(&mut self) -> ParseResult<SwitchCase> {
+        debug_assert!(matches!(
+            self.current_token.tag,
+            TokenTag::Case | TokenTag::Default
+        ));
         let case_start = self.current_token.span.start;
         let test = if self.eat(TokenTag::Case)? {
             Some(self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?)
@@ -5392,34 +5796,54 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_case_consequent(&mut self) -> ParseResult<TypedSubRange<Stmt>> {
-        let mut consequent = Vec::new();
-        while !matches!(
-            self.current_token.tag,
-            TokenTag::Case | TokenTag::Default | TokenTag::RightBrace | TokenTag::Eof
-        ) {
-            let statement = self.parse_statement(ParseStatementOpts::default())?;
-            if let StmtData::Declaration(declaration) = self.ast.stmt_data(statement)
-                && let DeclData::VariableDeclaration(declaration) = self.ast.decl_data(declaration)
-                && matches!(
-                    declaration.kind(self.ast),
-                    VariableKind::Using | VariableKind::AwaitUsing
-                )
-            {
-                self.report(
-                    statement.span(self.ast),
-                    "Using declaration cannot appear in the bare case statement.",
-                    ReportOptions {
-                        help: Some(Cow::Borrowed("Wrap this declaration in a block statement")),
-                        ..ReportOptions::default()
-                    },
-                );
+        let checkpoint = self.scratch_b.begin();
+        let result = (|| {
+            while !matches!(
+                self.current_token.tag,
+                TokenTag::Case | TokenTag::Default | TokenTag::RightBrace | TokenTag::Eof
+            ) {
+                let statement = match self.parse_statement(ParseStatementOpts::default()) {
+                    Ok(statement) => statement,
+                    Err(error) => {
+                        if !error.reported {
+                            self.diagnostics.push(Diagnostic {
+                                severity: Severity::Error,
+                                message: error.message,
+                                span: error.span,
+                                help: None,
+                                labels: Vec::new(),
+                            });
+                        }
+                        break;
+                    }
+                };
+                if let StmtData::Declaration(declaration) = self.ast.stmt_data(statement)
+                    && let DeclData::VariableDeclaration(declaration) =
+                        self.ast.decl_data(declaration)
+                    && matches!(
+                        declaration.kind(self.ast),
+                        VariableKind::Using | VariableKind::AwaitUsing
+                    )
+                {
+                    self.report(
+                        statement.span(self.ast),
+                        "Using declaration cannot appear in the bare case statement.",
+                        ReportOptions {
+                            help: Some(Cow::Borrowed("Wrap this declaration in a block statement")),
+                            ..ReportOptions::default()
+                        },
+                    );
+                }
+                self.scratch_b.append(statement);
             }
-            consequent.push(statement);
-        }
-        Ok(self.ast.add_typed_sub_range(consequent))
+            Ok(self.add_extra_from_scratch_b(checkpoint))
+        })();
+        self.scratch_b.reset(checkpoint);
+        result
     }
 
     fn parse_try_statement(&mut self) -> ParseResult<Stmt> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Try);
         let start = self.expect(TokenTag::Try)?.span.start;
         let block = self.parse_block_statement()?;
         let handler = if self.current_token.tag == TokenTag::Catch {
@@ -5445,6 +5869,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_catch_clause(&mut self) -> ParseResult<CatchClause> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Catch);
         let start = self.expect(TokenTag::Catch)?.span.start;
         let param = if self.eat(TokenTag::LeftParen)? {
             let param = self.parse_binding_pattern()?;
@@ -5520,7 +5945,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         }
     }
 
-    fn parse_infix(&mut self, _precedence: u8, left: Expr) -> ParseResult<Expr> {
+    fn parse_infix(&mut self, precedence: u8, left: Expr) -> ParseResult<Expr> {
         let token = self.current_token;
         match token.tag {
             TokenTag::Dot => self.parse_static_member_expression(left, false),
@@ -5530,25 +5955,23 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             TokenTag::Increment | TokenTag::Decrement => {
                 self.parse_update_expression(false, Some(left))
             }
-            TokenTag::Question => self.parse_conditional_expression(left),
+            TokenTag::Question => self.parse_conditional_expression(precedence, left),
             TokenTag::As | TokenTag::Satisfies if self.lang.is_typescript() => {
                 self.parse_as_or_satisfies_expression(left, token.tag)
             }
             TokenTag::LogicalNot if self.lang.is_typescript() => {
                 self.parse_non_null_expression(left)
             }
-            tag if tag.is_assignment_operator() => self.parse_assignment_expression(left, tag),
-            TokenTag::Arrow => self.parse_simple_arrow_function(left),
+            tag if tag.is_assignment_operator() => {
+                self.parse_assignment_expression(precedence, left, tag)
+            }
+            TokenTag::Arrow if !token.has_line_terminator_before() => {
+                self.parse_simple_arrow_function(left)
+            }
             tag if tag.is_binary_operator() => self.parse_binary_expression(left, tag),
             tag if tag.is_logical_operator() => self.parse_logical_expression(left, tag),
-            TokenTag::Comma => self.parse_sequence_expression(left),
+            TokenTag::Comma => self.parse_sequence_expression(precedence, left),
             TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => {
-                if expression_contains_optional_chain(left, self.ast) {
-                    return self.error_at(
-                        left.span(self.ast),
-                        "An optional chain cannot be used as a tagged template tag",
-                    );
-                }
                 self.parse_tagged_template_expression(left, None)
             }
             _ => self.error("unexpected token in expression"),
@@ -5566,7 +5989,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             TokenTag::Yield if self.context.yield_ && minimum < Precedence::ADDITIVE => {
                 self.parse_yield_expression()
             }
-            TokenTag::LeftParen => self.parse_parenthesized_or_arrow_function(None, false, minimum),
+            TokenTag::LeftParen => self.parse_parenthesized_or_arrow_function(None, minimum),
             TokenTag::New => self.parse_new_expression(),
             TokenTag::At => {
                 let (start, decorators) = self.parse_decorators()?;
@@ -5602,15 +6025,13 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             TokenTag::PrivateIdentifier => {
                 let private = self.parse_private_identifier()?;
                 if self.current_token.tag != TokenTag::In {
-                    return self.error_at(
+                    self.report(
                         token.span,
-                        "Private names are only valid in property accesses or 'in' expressions",
+                        "Private names are only valid in property accesses (`obj.#field`) or `in` expressions (`#field in obj`)",
+                        ReportOptions::default(),
                     );
                 }
                 Ok(Expr::PrivateIdentifier(private))
-            }
-            tag if tag.is_identifier_like() && !tag.is_unconditionally_reserved() => {
-                self.parse_identifier()
             }
             TokenTag::This => self.parse_this_expression(),
             TokenTag::Super => self.parse_super_expression(),
@@ -5641,40 +6062,44 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 },
                 None,
             )?)),
+            tag if tag.is_identifier_like() => self.parse_identifier(),
             _ => self.error("expected an expression"),
         }
     }
 
     fn parse_identifier(&mut self) -> ParseResult<Expr> {
         let token = self.current_token;
-        let name = self.identifier_name(token)?;
-        self.validate_identifier(token, "an identifier")?;
+        self.validate_identifier(token, "an identifier");
         self.advance_without_escape_check()?;
+        let name = self.identifier_name(token)?;
         Ok(self.ast.expr_identifier_reference(token.span, name, None))
     }
 
     fn parse_private_identifier(&mut self) -> ParseResult<PrivateIdentifier> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::PrivateIdentifier);
         let token = self.current_token;
-        let name = self.identifier_name(token)?;
-        let private = self.ast.private_identifier(token.span, name);
         self.advance()?;
-        Ok(private)
+        let name = self.identifier_name(token)?;
+        Ok(self.ast.private_identifier(token.span, name))
     }
 
     fn parse_identifier_name(&mut self) -> ParseResult<IdentifierName> {
+        debug_assert!(self.current_token.tag.is_identifier_like());
         let token = self.current_token;
-        let name = self.identifier_name(token)?;
         self.advance_without_escape_check()?;
+        let name = self.identifier_name(token)?;
         Ok(self.ast.identifier_name(token.span, name))
     }
 
     fn parse_this_expression(&mut self) -> ParseResult<Expr> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::This);
         let token = self.current_token;
         self.advance()?;
         Ok(self.ast.expr_this_expression(token.span))
     }
 
     fn parse_super_expression(&mut self) -> ParseResult<Expr> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Super);
         let token = self.current_token;
         self.advance()?;
         if !matches!(
@@ -5687,6 +6112,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_boolean_literal(&mut self) -> ParseResult<Expr> {
+        debug_assert!(matches!(
+            self.current_token.tag,
+            TokenTag::True | TokenTag::False
+        ));
         let token = self.current_token;
         self.advance()?;
         Ok(self
@@ -5695,12 +6124,14 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_null_literal(&mut self) -> ParseResult<Expr> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::NullLiteral);
         let token = self.current_token;
         self.advance()?;
         Ok(self.ast.expr_null_literal(token.span))
     }
 
     fn parse_numeric_literal(&mut self) -> ParseResult<Expr> {
+        debug_assert!(self.current_token.tag.is_numeric_literal());
         let token = self.current_token;
         let kind = match token.tag {
             TokenTag::NumericLiteral => NumericLiteralKind::Decimal,
@@ -5708,14 +6139,14 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             TokenTag::OctalLiteral => NumericLiteralKind::Octal,
             TokenTag::BinaryLiteral => NumericLiteralKind::Binary,
             TokenTag::BigIntLiteral => {
-                let raw = self.ast.source_slice(token.span.start, token.span.end - 1);
                 self.advance()?;
+                let raw = self.ast.source_slice(token.span.start, token.span.end - 1);
                 return Ok(self.ast.expr_big_int_literal(token.span, raw));
             }
             _ => unreachable!(),
         };
-        let raw = self.ast.source_slice(token.span.start, token.span.end);
         self.advance()?;
+        let raw = self.ast.source_slice(token.span.start, token.span.end);
         Ok(self.ast.expr_numeric_literal(token.span, kind, raw))
     }
 
@@ -5724,67 +6155,83 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         if token.tag != TokenTag::StringLiteral {
             return self.error("expected a string literal");
         }
-        let raw = self.ast.source_slice(token.span.start, token.span.end);
-        let value = self.string_value(token)?;
         self.advance()?;
+        let value = self.string_value(token)?;
+        let raw = self.ast.source_slice(token.span.start, token.span.end);
         Ok(self.ast.string_literal(token.span, value, raw))
     }
 
     fn parse_regexp_literal(&mut self) -> ParseResult<Expr> {
+        debug_assert!(matches!(
+            self.current_token.tag,
+            TokenTag::Slash | TokenTag::SlashAssign
+        ));
+        let token = self.current_token;
         let result = self
             .lexer
-            .re_scan_as_regex(self.current_token.span.start)
+            .re_scan_as_regex(token.span.start)
             .map_err(|error| self.next_token_error(error))?;
+        let regex_token =
+            self.lexer
+                .create_token(TokenTag::RegexLiteral, result.span.start, result.span.end);
+        self.advance_with_rescanned_token(regex_token)?;
         let pattern = self
             .ast
             .source_slice(result.pattern.start, result.pattern.end);
         let flags = self.ast.source_slice(result.flags.start, result.flags.end);
-        let expression = self.ast.expr_reg_exp_literal(result.span, pattern, flags);
-        self.current_token = Token::eof(result.span.end);
-        self.advance()?;
-        Ok(expression)
+        Ok(self.ast.expr_reg_exp_literal(result.span, pattern, flags))
     }
 
     fn parse_no_substitution_template(&mut self, tagged: bool) -> ParseResult<TemplateLiteral> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::NoSubstitutionTemplate);
         let token = self.current_token;
         let quasi = self.add_template_element(token, true, tagged)?;
         self.advance()?;
         let quasis = self.ast.add_typed_sub_range([quasi]);
-        let expressions = self.ast.add_typed_sub_range(std::iter::empty());
+        let expressions = TypedSubRange::empty();
         Ok(self.ast.template_literal(token.span, quasis, expressions))
     }
 
     fn parse_template_literal(&mut self, tagged: bool) -> ParseResult<TemplateLiteral> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::TemplateHead);
         let start = self.current_token.span.start;
-        let mut quasis = Vec::new();
-        let mut expressions = Vec::new();
+        let quasis_checkpoint = self.scratch_a.begin();
+        let expressions_checkpoint = self.scratch_b.begin();
         let head = self.current_token;
-        quasis.push(self.add_template_element(head, false, tagged)?);
-        self.advance()?;
-        let end = loop {
-            expressions
-                .push(self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?);
-            if self.current_token.tag != TokenTag::RightBrace {
-                return self.error("expected '}' in template literal");
-            }
-            let continuation = self
-                .lexer
-                .re_scan_template_continuation(self.current_token.span.start)
-                .map_err(|error| self.next_token_error(error))?;
-            let tail = continuation.tag == TokenTag::TemplateTail;
-            quasis.push(self.add_template_element(continuation, tail, tagged)?);
-            let end = continuation.span.end;
-            self.current_token = continuation;
+        let result = (|| {
+            let head = self.add_template_element(head, false, tagged)?;
+            self.scratch_a.append(head);
             self.advance()?;
-            if tail {
-                break end;
-            }
-        };
-        let quasis = self.ast.add_typed_sub_range(quasis);
-        let expressions = self.ast.add_typed_sub_range(expressions);
-        Ok(self
-            .ast
-            .template_literal(Span::new(start, end), quasis, expressions))
+            let end = loop {
+                let expression =
+                    self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?;
+                self.scratch_b.append(expression);
+                if self.current_token.tag != TokenTag::RightBrace {
+                    return self.error("expected '}' in template literal");
+                }
+                let continuation = self
+                    .lexer
+                    .re_scan_template_continuation(self.current_token.span.start)
+                    .map_err(|error| self.next_token_error(error))?;
+                let tail = continuation.tag == TokenTag::TemplateTail;
+                let element = self.add_template_element(continuation, tail, tagged)?;
+                self.scratch_a.append(element);
+                let end = continuation.span.end;
+                self.current_token = continuation;
+                self.advance()?;
+                if tail {
+                    break end;
+                }
+            };
+            let quasis = self.add_extra_from_scratch_a(quasis_checkpoint);
+            let expressions = self.add_extra_from_scratch_b(expressions_checkpoint);
+            Ok(self
+                .ast
+                .template_literal(Span::new(start, end), quasis, expressions))
+        })();
+        self.scratch_a.reset(quasis_checkpoint);
+        self.scratch_b.reset(expressions_checkpoint);
+        result
     }
 
     fn parse_tagged_template_expression(
@@ -5843,90 +6290,83 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     fn parse_parenthesized_or_arrow_function(
         &mut self,
         arrow_start: Option<u32>,
-        async_function: bool,
         minimum: u8,
     ) -> ParseResult<Expr> {
-        if minimum > Precedence::ASSIGNMENT {
-            return self.parse_parenthesized_expression();
-        }
-        let arrow_start_value = arrow_start.unwrap_or(self.current_token.span.start);
+        let start = arrow_start.unwrap_or(self.current_token.span.start);
         if self.lang.is_typescript() && minimum <= Precedence::ASSIGNMENT {
             match self.classify_arrow_head()? {
                 ArrowHead::Yes => {
-                    return self.parse_arrow_inner(async_function, arrow_start_value);
+                    return self.parse_arrow(false, start);
                 }
                 ArrowHead::Maybe => {
-                    if let Some(arrow) = self.try_parse_arrow(async_function, arrow_start_value)? {
+                    if let Some(arrow) = self.try_parse_arrow(false, start)? {
                         return Ok(arrow);
                     }
                 }
                 ArrowHead::No => {}
             }
         }
-        let old_context = self.context;
-        if async_function {
-            self.context.await_ = true;
-        }
         let cover = self.parse_parenthesized_cover()?;
         let is_arrow = self.current_token.tag == TokenTag::Arrow
             && !self.current_token.has_line_terminator_before()
             && minimum <= Precedence::ASSIGNMENT;
-        self.context = old_context;
         if is_arrow {
-            return self.cover_to_arrow_function(
-                cover,
-                async_function,
-                arrow_start.unwrap_or(cover.start),
-            );
+            return self.cover_to_arrow_function(cover, false, start);
         }
         self.cover_to_parenthesized_expression(cover)
     }
 
     fn parse_parenthesized_cover(&mut self) -> ParseResult<ParenthesizedCover> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftParen);
         let start = self.expect(TokenTag::LeftParen)?.span.start;
-        let mut elements = Vec::new();
-        let mut has_trailing_comma = false;
-        while self.current_token.tag != TokenTag::RightParen
-            && self.current_token.tag != TokenTag::Eof
-        {
-            if self.eat(TokenTag::Spread)? {
-                let spread_start = self.prev_token_end - 3;
-                let argument = self.parse_expression(
-                    Precedence::ASSIGNMENT,
-                    ParseExpressionOpts {
-                        in_cover: true,
-                        ..ParseExpressionOpts::default()
-                    },
-                )?;
-                elements.push(Argument::SpreadElement(self.ast.spread_element(
-                    Span::new(spread_start, argument.span(self.ast).end),
-                    argument,
-                )));
-            } else {
-                elements.push(Argument::Expr(self.parse_expression(
-                    Precedence::ASSIGNMENT,
-                    ParseExpressionOpts {
-                        in_cover: true,
-                        ..ParseExpressionOpts::default()
-                    },
-                )?));
+        let checkpoint = self.scratch_cover.begin();
+        let result = (|| {
+            let mut has_trailing_comma = false;
+            while self.current_token.tag != TokenTag::RightParen
+                && self.current_token.tag != TokenTag::Eof
+            {
+                let element = if self.eat(TokenTag::Spread)? {
+                    let spread_start = self.prev_token_end - 3;
+                    let argument = self.parse_expression(
+                        Precedence::ASSIGNMENT,
+                        ParseExpressionOpts {
+                            in_cover: true,
+                            ..ParseExpressionOpts::default()
+                        },
+                    )?;
+                    Argument::SpreadElement(self.ast.spread_element(
+                        Span::new(spread_start, argument.span(self.ast).end),
+                        argument,
+                    ))
+                } else {
+                    Argument::Expr(self.parse_expression(
+                        Precedence::ASSIGNMENT,
+                        ParseExpressionOpts {
+                            in_cover: true,
+                            ..ParseExpressionOpts::default()
+                        },
+                    )?)
+                };
+                self.scratch_cover.append(element);
+                if !self.eat(TokenTag::Comma)? {
+                    break;
+                }
+                if self.current_token.tag == TokenTag::RightParen {
+                    has_trailing_comma = true;
+                    break;
+                }
             }
-            if !self.eat(TokenTag::Comma)? {
-                break;
-            }
-            if self.current_token.tag == TokenTag::RightParen {
-                has_trailing_comma = true;
-                break;
-            }
-        }
-        let end = self.expect(TokenTag::RightParen)?.span.end;
-        let elements = self.ast.add_typed_sub_range(elements);
-        Ok(ParenthesizedCover {
-            elements,
-            start,
-            end,
-            has_trailing_comma,
-        })
+            let end = self.expect(TokenTag::RightParen)?.span.end;
+            let elements = self.add_extra_from_scratch_cover(checkpoint);
+            Ok(ParenthesizedCover {
+                elements,
+                start,
+                end,
+                has_trailing_comma,
+            })
+        })();
+        self.scratch_cover.reset(checkpoint);
+        result
     }
 
     fn cover_to_parenthesized_expression(
@@ -5953,39 +6393,48 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                     .expect("parenthesized cover contains its arguments")
             })
             .collect::<Vec<_>>();
-        let mut expressions = Vec::with_capacity(arguments.len());
-        for argument in arguments {
-            match self.ast.argument_data(argument) {
-                ArgumentData::Expr(expression) => {
-                    self.validate_no_cover_initialized_syntax(expression)?;
-                    expressions.push(expression);
-                }
-                ArgumentData::SpreadElement(spread) => {
-                    return self.error_at(
-                        spread.span(self.ast),
-                        "spread is not allowed in a parenthesized expression",
-                    );
+        let checkpoint = self.scratch_cover.begin();
+        let expression_result = (|| {
+            for argument in arguments {
+                match self.ast.argument_data(argument) {
+                    ArgumentData::Expr(expression) => {
+                        self.validate_no_cover_initialized_syntax(expression)?;
+                        self.scratch_cover.append(expression);
+                    }
+                    ArgumentData::SpreadElement(spread) => {
+                        return self.error_at(
+                            spread.span(self.ast),
+                            "spread is not allowed in a parenthesized expression",
+                        );
+                    }
                 }
             }
-        }
-        let expression = if expressions.len() == 1 {
-            expressions[0]
-        } else {
-            let expressions = self.ast.add_typed_sub_range(expressions);
-            self.ast
-                .expr_sequence_expression(Span::new(cover.start + 1, cover.end - 1), expressions)
-        };
-        if self.state.cover_has_init_name {
-            self.state.cover_has_init_name = false;
-            self.validate_no_cover_initialized_syntax(expression)?;
-        }
-        if self.preserve_parens {
-            Ok(self
-                .ast
-                .expr_parenthesized_expression(Span::new(cover.start, cover.end), expression))
-        } else {
-            Ok(expression)
-        }
+            Ok(if self.scratch_cover.items.len() - checkpoint == 1 {
+                unsafe { Expr::from_node_id_unchecked(self.scratch_cover.items[checkpoint]) }
+            } else {
+                let first =
+                    unsafe { Expr::from_node_id_unchecked(self.scratch_cover.items[checkpoint]) };
+                let last = unsafe {
+                    Expr::from_node_id_unchecked(
+                        *self
+                            .scratch_cover
+                            .items
+                            .last()
+                            .expect("a sequence expression contains its last expression"),
+                    )
+                };
+                let expressions = self.add_extra_from_scratch_cover(checkpoint);
+                self.ast.expr_sequence_expression(
+                    Span::new(first.span(self.ast).start, last.span(self.ast).end),
+                    expressions,
+                )
+            })
+        })();
+        self.scratch_cover.reset(checkpoint);
+        let expression = expression_result?;
+        Ok(self
+            .ast
+            .expr_parenthesized_expression(Span::new(cover.start, cover.end), expression))
     }
 
     fn parse_parenthesized_expression(&mut self) -> ParseResult<Expr> {
@@ -5999,16 +6448,14 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         is_async: bool,
         arrow_start: u32,
     ) -> ParseResult<Expr> {
-        let (parameters, rest) = self.convert_to_formal_parameters(cover)?;
-        self.expect(TokenTag::Arrow)?;
-        self.state.cover_has_init_name = false;
-        self.parse_arrow(arrow_start, parameters, rest, is_async)
+        let parameters = self.convert_to_formal_parameters(cover)?;
+        self.build_arrow_function(arrow_start, parameters, is_async, None, None)
     }
 
     fn convert_to_formal_parameters(
         &mut self,
         cover: ParenthesizedCover,
-    ) -> ParseResult<(Vec<FormalParameterItem>, Option<BindingRestElement>)> {
+    ) -> ParseResult<FormalParameters> {
         let arguments = (0..cover.elements.len())
             .map(|index| {
                 cover
@@ -6017,50 +6464,64 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                     .expect("parenthesized cover contains its arguments")
             })
             .collect::<Vec<_>>();
-        let mut parameters = Vec::new();
-        let mut rest = None;
-        for (index, argument) in arguments.iter().copied().enumerate() {
-            match self.ast.argument_data(argument) {
-                ArgumentData::Expr(expression) => {
-                    if rest.is_some() {
-                        return self
-                            .error_at(expression.span(self.ast), "a rest parameter must be last");
+        let checkpoint = self.scratch_cover.begin();
+        let result = (|| {
+            let mut rest = None;
+            for (index, argument) in arguments.iter().copied().enumerate() {
+                match self.ast.argument_data(argument) {
+                    ArgumentData::Expr(expression) => {
+                        if rest.is_some() {
+                            return self.error_at(
+                                expression.span(self.ast),
+                                "a rest parameter must be last",
+                            );
+                        }
+                        let parameter = self.convert_to_formal_parameter(expression)?;
+                        self.scratch_cover.append(parameter);
                     }
-                    parameters.push(self.convert_to_formal_parameter(expression)?);
-                }
-                ArgumentData::SpreadElement(spread) => {
-                    if index + 1 != arguments.len() {
-                        return self
-                            .error_at(spread.span(self.ast), "a rest parameter must be last");
-                    }
-                    if cover.has_trailing_comma {
-                        return self.error_at(
+                    ArgumentData::SpreadElement(spread) => {
+                        if index + 1 != arguments.len() {
+                            return self
+                                .error_at(spread.span(self.ast), "a rest parameter must be last");
+                        }
+                        if cover.has_trailing_comma {
+                            return self.error_at(
+                                spread.span(self.ast),
+                                "a rest parameter cannot have a trailing comma",
+                            );
+                        }
+                        let argument =
+                            self.expression_to_binding_pattern(spread.argument(self.ast))?;
+                        if matches!(
+                            self.ast.binding_pattern_data(argument),
+                            BindingPatternData::AssignmentPattern(_)
+                        ) {
+                            return self.error_at(
+                                argument.span(self.ast),
+                                "a rest parameter may not have an initializer",
+                            );
+                        }
+                        let temporary = self.ast.binding_rest_element(
                             spread.span(self.ast),
-                            "a rest parameter cannot have a trailing comma",
+                            argument,
+                            TypedSubRange::empty(),
+                            None,
+                            false,
                         );
+                        rest = Some(self.ast.replace_data(spread, temporary));
                     }
-                    let argument = self.expression_to_binding_pattern(spread.argument(self.ast))?;
-                    if matches!(
-                        self.ast.binding_pattern_data(argument),
-                        BindingPatternData::AssignmentPattern(_)
-                    ) {
-                        return self.error_at(
-                            argument.span(self.ast),
-                            "a rest parameter may not have an initializer",
-                        );
-                    }
-                    let decorators = self.empty_range();
-                    rest = Some(self.ast.binding_rest_element(
-                        spread.span(self.ast),
-                        argument,
-                        decorators,
-                        None,
-                        false,
-                    ));
                 }
             }
-        }
-        Ok((parameters, rest))
+            let items = self.add_extra_from_scratch_cover(checkpoint);
+            Ok(self.ast.formal_parameters(
+                Span::new(cover.start, cover.end),
+                items,
+                rest,
+                FormalParameterKind::ArrowFormalParameters,
+            ))
+        })();
+        self.scratch_cover.reset(checkpoint);
+        result
     }
 
     fn convert_to_formal_parameter(
@@ -6072,37 +6533,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_async_function_or_arrow(&mut self, minimum: u8) -> ParseResult<Expr> {
         let token = self.current_token;
-        let is_arrow_head = {
-            let mut peek = self.begin_peek();
-            let result = (|| {
-                let mut next = peek.next()?;
-                if next.has_line_terminator_before() {
-                    return Ok(false);
-                }
-                if next.tag.is_identifier_like() {
-                    return Ok(peek.next()?.tag == TokenTag::Arrow);
-                }
-                if next.tag != TokenTag::LeftParen {
-                    return Ok(false);
-                }
-                let mut depth = 1u32;
-                while depth > 0 {
-                    next = peek.next()?;
-                    match next.tag {
-                        TokenTag::LeftParen => depth += 1,
-                        TokenTag::RightParen => depth -= 1,
-                        TokenTag::Eof => return Ok(false),
-                        _ => {}
-                    }
-                }
-                Ok(peek.next()?.tag == TokenTag::Arrow)
-            })();
-            peek.end();
-            result?
-        };
-        let name = self.identifier_name(token)?;
-        self.advance()?;
-        let async_identifier = self.ast.expr_identifier_reference(token.span, name, None);
+        let async_identifier = self.parse_identifier()?;
 
         if self.current_token.has_line_terminator_before() {
             return Ok(async_identifier);
@@ -6111,7 +6542,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         match self.current_token.tag {
             TokenTag::Function => {
                 if token.is_escaped() {
-                    return self.error_at(token.span, "keywords may not contain escape sequences");
+                    self.report_escaped_keyword(token.span);
                 }
                 Ok(Expr::Function(self.parse_function(
                     ParseFunctionOpts {
@@ -6122,29 +6553,38 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                     Some(token.span.start),
                 )?))
             }
-            TokenTag::LeftParen => self.parse_async_arrow_function_or_call(
-                token.span,
-                async_identifier,
-                minimum,
-                token.is_escaped(),
-                is_arrow_head,
-            ),
+            TokenTag::LeftParen => {
+                if token.is_escaped() {
+                    self.report_escaped_keyword(token.span);
+                }
+                self.parse_async_arrow_function_or_call(
+                    token.span,
+                    async_identifier,
+                    minimum,
+                    token.is_escaped(),
+                )
+            }
             TokenTag::LessThan if self.lang.is_typescript() => {
                 if let Some(arrow) = self.try_parse_generic_arrow(true, token.span.start)? {
                     if token.is_escaped() {
-                        return self
-                            .error_at(token.span, "keywords may not contain escape sequences");
+                        self.report_escaped_keyword(token.span);
                     }
                     return Ok(arrow);
                 }
                 Ok(async_identifier)
             }
-            tag if tag.is_identifier_like() && is_arrow_head => {
-                if token.is_escaped() {
-                    return self.error_at(token.span, "keywords may not contain escape sequences");
+            tag if tag.is_identifier_like() => {
+                let after_identifier = self.peek_ahead()?;
+                if after_identifier.tag == TokenTag::Arrow
+                    && !after_identifier.has_line_terminator_before()
+                {
+                    if token.is_escaped() {
+                        self.report_escaped_keyword(token.span);
+                    }
+                    let parameter = self.parse_primary_expression(false)?;
+                    return self.identifier_to_arrow_function(parameter, true, token.span.start);
                 }
-                let parameter = self.parse_primary_expression(false)?;
-                self.identifier_to_arrow_function(parameter, true, Some(token.span.start))
+                Ok(async_identifier)
             }
             _ => Ok(async_identifier),
         }
@@ -6156,77 +6596,66 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         async_identifier: Expr,
         minimum: u8,
         escaped_async: bool,
-        is_arrow_head: bool,
     ) -> ParseResult<Expr> {
         if self.lang.is_typescript() && minimum <= Precedence::ASSIGNMENT {
             let arrow = match self.classify_arrow_head()? {
-                ArrowHead::Yes => Some(self.parse_arrow_inner(true, async_span.start)?),
+                ArrowHead::Yes => Some(self.parse_arrow(true, async_span.start)?),
                 ArrowHead::Maybe => self.try_parse_arrow(true, async_span.start)?,
                 ArrowHead::No => None,
             };
             if let Some(arrow) = arrow {
                 if escaped_async {
-                    return self.error_at(async_span, "keywords may not contain escape sequences");
+                    self.report_escaped_keyword(async_span);
                 }
                 return Ok(arrow);
             }
         }
-        if is_arrow_head && minimum <= Precedence::ASSIGNMENT {
-            if escaped_async {
-                return self.error_at(async_span, "keywords may not contain escape sequences");
-            }
-            return self.parse_parenthesized_or_arrow_function(
-                Some(async_span.start),
-                true,
-                minimum,
-            );
-        }
 
-        let old_context = self.context;
+        let old_await = self.context.await_;
         self.context.await_ = true;
-        let expression = self.parse_call_expression(async_identifier, false, None);
-        self.context = old_context;
-        expression
+        let cover = self.parse_parenthesized_cover();
+        self.context.await_ = old_await;
+        let cover = cover?;
+
+        let is_arrow = self.current_token.tag == TokenTag::Arrow
+            && !self.current_token.has_line_terminator_before()
+            && minimum <= Precedence::ASSIGNMENT;
+        if is_arrow {
+            if escaped_async {
+                self.report_escaped_keyword(async_span);
+            }
+            return self.cover_to_arrow_function(cover, true, async_span.start);
+        }
+        self.cover_to_call_expression(cover, async_identifier)
     }
 
     fn identifier_to_arrow_function(
         &mut self,
-        left: Expr,
+        identifier: Expr,
         async_function: bool,
-        arrow_start: Option<u32>,
+        arrow_start: u32,
     ) -> ParseResult<Expr> {
-        let ExprData::IdentifierReference(identifier) = self.ast.expr_data(left) else {
+        let parameter = self.expression_to_parameter(identifier)?;
+        let parameter_span = parameter.span(self.ast);
+        let parameters = self.ast.add_typed_sub_range([parameter]);
+        let parameters = self.ast.formal_parameters(
+            parameter_span,
+            parameters,
+            None,
+            FormalParameterKind::ArrowFormalParameters,
+        );
+        self.build_arrow_function(arrow_start, parameters, async_function, None, None)
+    }
+
+    fn parse_simple_arrow_function(&mut self, left: Expr) -> ParseResult<Expr> {
+        if !matches!(self.ast.expr_data(left), ExprData::IdentifierReference(_)) {
             return self.error_at(
                 left.span(self.ast),
                 "'=>' is only valid after a single identifier or a parenthesized parameter list",
             );
-        };
-        let span = identifier.span(self.ast);
-        let name = identifier.name(self.ast);
-        if async_function && self.ast.string(name) == b"await" {
-            return self.error_at(
-                span,
-                "'await' is reserved in an async context and cannot be used as a binding identifier",
-            );
         }
-        self.advance()?;
-        let decorators = self.empty_range();
-        let pattern = self
-            .ast
-            .binding_pattern_binding_identifier(span, name, decorators, None, false, None);
-        let parameter = self
-            .ast
-            .formal_parameter(span, FormalParameterPattern::BindingPattern(pattern));
-        self.parse_arrow(
-            arrow_start.unwrap_or(span.start),
-            vec![FormalParameterItem::FormalParameter(parameter)],
-            None,
-            async_function,
-        )
-    }
-
-    fn parse_simple_arrow_function(&mut self, left: Expr) -> ParseResult<Expr> {
-        self.identifier_to_arrow_function(left, false, None)
+        let start = left.span(self.ast).start;
+        self.identifier_to_arrow_function(left, false, start)
     }
 
     fn classify_arrow_head(&mut self) -> ParseResult<ArrowHead> {
@@ -6292,7 +6721,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn try_parse_arrow(&mut self, is_async: bool, start: u32) -> ParseResult<Option<Expr>> {
         let checkpoint = self.checkpoint();
-        let arrow = match self.parse_arrow_inner(is_async, start) {
+        let arrow = match self.parse_arrow(is_async, start) {
             Ok(arrow) => arrow,
             Err(_) => {
                 self.rewind(checkpoint);
@@ -6314,9 +6743,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn try_parse_generic_arrow(&mut self, is_async: bool, start: u32) -> ParseResult<Option<Expr>> {
-        if self.current_token.tag != TokenTag::LessThan {
-            return Ok(None);
-        }
+        debug_assert_eq!(self.current_token.tag, TokenTag::LessThan);
         let next = self.peek_ahead()?;
         if !next.tag.is_identifier_like() && next.tag != TokenTag::Const {
             return Ok(None);
@@ -6324,55 +6751,38 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         self.try_parse_arrow(is_async, start)
     }
 
-    fn parse_arrow_inner(&mut self, is_async: bool, start: u32) -> ParseResult<Expr> {
-        let old_context = self.context;
+    fn parse_arrow(&mut self, is_async: bool, start: u32) -> ParseResult<Expr> {
+        let old_await = self.context.await_;
         if is_async {
             self.context.await_ = true;
         }
-        let result = (|| {
-            let type_parameters = if is_angle_open(self.current_token.tag) {
-                Some(self.parse_type_parameters()?)
-            } else {
-                None
-            };
-            if self.current_token.tag != TokenTag::LeftParen {
-                return self.error("expected '(' in arrow function");
-            }
-            let params =
-                self.parse_formal_parameters(FormalParameterKind::ArrowFormalParameters, false)?;
-            let return_type = if self.current_token.tag == TokenTag::Colon {
-                Some(self.parse_return_type_annotation()?)
-            } else {
-                None
-            };
-            if self.current_token.tag != TokenTag::Arrow
-                || self.current_token.has_line_terminator_before()
-            {
-                return self.error("expected '=>' in arrow function");
-            }
-            self.advance()?;
-            self.build_arrow_function(start, params, is_async, type_parameters, return_type)
-        })();
-        self.context = old_context;
+        let result = self.parse_arrow_inner(is_async, start);
+        self.context.await_ = old_await;
         result
     }
 
-    fn parse_arrow(
-        &mut self,
-        start: u32,
-        parameters: Vec<FormalParameterItem>,
-        rest: Option<BindingRestElement>,
-        async_function: bool,
-    ) -> ParseResult<Expr> {
-        let parameter_end = self.prev_token_end;
-        let parameters = self.ast.add_typed_sub_range(parameters);
-        let parameters = self.ast.formal_parameters(
-            Span::new(start, parameter_end),
-            parameters,
-            rest,
-            FormalParameterKind::ArrowFormalParameters,
-        );
-        self.build_arrow_function(start, parameters, async_function, None, None)
+    fn parse_arrow_inner(&mut self, is_async: bool, start: u32) -> ParseResult<Expr> {
+        let type_parameters = if is_angle_open(self.current_token.tag) {
+            Some(self.parse_type_parameters()?)
+        } else {
+            None
+        };
+        if self.current_token.tag != TokenTag::LeftParen {
+            return self.error("expected '(' in arrow function");
+        }
+        let params =
+            self.parse_formal_parameters(FormalParameterKind::ArrowFormalParameters, false)?;
+        let return_type = if self.current_token.tag == TokenTag::Colon {
+            Some(self.parse_return_type_annotation()?)
+        } else {
+            None
+        };
+        if self.current_token.tag != TokenTag::Arrow
+            || self.current_token.has_line_terminator_before()
+        {
+            return self.error("expected '=>' in arrow function");
+        }
+        self.build_arrow_function(start, params, is_async, type_parameters, return_type)
     }
 
     fn build_arrow_function(
@@ -6383,16 +6793,19 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         type_parameters: Option<TsTypeParameterDeclaration>,
         return_type: Option<TsTypeAnnotation>,
     ) -> ParseResult<Expr> {
-        let old_context = self.context;
-        self.context.return_ = true;
+        self.advance()?;
+        let old_await = self.context.await_;
+        let old_yield = self.context.yield_;
         self.context.await_ = async_function;
         self.context.yield_ = false;
+        let body = self.parse_arrow_body();
+        self.context.await_ = old_await;
+        self.context.yield_ = old_yield;
         let ArrowBodyResult {
             body,
             is_expression,
-        } = self.parse_arrow_body()?;
+        } = body?;
         let end = body.span(self.ast).end;
-        self.context = old_context;
         Ok(self.ast.expr_arrow_function_expression(
             Span::new(start, end),
             is_expression,
@@ -6451,15 +6864,17 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 ))
             }
             ExprData::IdentifierReference(identifier) => {
-                let decorators = self.empty_range();
-                Ok(self.ast.binding_pattern_binding_identifier(
+                let decorators = TypedSubRange::empty();
+                let binding = self.ast.binding_identifier(
                     identifier.span(self.ast),
                     identifier.name(self.ast),
                     decorators,
                     None,
                     false,
                     None,
-                ))
+                );
+                let binding = self.ast.replace_data(identifier, binding);
+                Ok(BindingPattern::BindingIdentifier(binding))
             }
             ExprData::MemberExpression(member)
                 if context == PatternContext::Assignment
@@ -6484,15 +6899,17 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             {
                 let left = self.assignment_target_to_pattern(assignment.left(self.ast), context)?;
                 let right = assignment.right(self.ast);
-                let decorators = self.empty_range();
-                Ok(self.ast.binding_pattern_assignment_pattern(
+                let decorators = TypedSubRange::empty();
+                let pattern = self.ast.assignment_pattern(
                     assignment.span(self.ast),
                     left,
                     right,
                     decorators,
                     None,
                     false,
-                ))
+                );
+                let pattern = self.ast.replace_data(assignment, pattern);
+                Ok(BindingPattern::AssignmentPattern(pattern))
             }
             ExprData::ArrayExpression(array) => self.to_array_pattern(array, context),
             ExprData::ObjectExpression(object) => self.to_object_pattern(object, context),
@@ -6524,8 +6941,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         context: PatternContext,
     ) -> ParseResult<BindingPattern> {
         match self.ast.expr_data(expression) {
-            ExprData::ArrayExpression(array) => self.to_array_pattern_impl(array, context),
-            ExprData::ObjectExpression(object) => self.to_object_pattern_impl(object, context),
+            ExprData::ArrayExpression(array) => self.to_array_pattern(array, context),
+            ExprData::ObjectExpression(object) => self.to_object_pattern(object, context),
             _ => self.expression_to_pattern(expression, context),
         }
     }
@@ -6535,73 +6952,125 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         array: ArrayExpression,
         context: PatternContext,
     ) -> ParseResult<BindingPattern> {
-        self.to_array_pattern_impl(array, context)
+        self.to_array_pattern_impl(
+            Some(array),
+            array.elements(self.ast),
+            array.span(self.ast),
+            context,
+        )
+    }
+
+    fn array_cover_to_pattern(
+        &mut self,
+        cover: ArrayCover,
+        context: PatternContext,
+    ) -> ParseResult<BindingPattern> {
+        self.to_array_pattern_impl(
+            None,
+            cover.elements,
+            Span::new(cover.start, cover.end),
+            context,
+        )
     }
 
     fn to_array_pattern_impl(
         &mut self,
-        array: ArrayExpression,
+        mutate_node: Option<ArrayExpression>,
+        elements_range: TypedSubRange<Option<Argument>>,
+        span: Span,
         context: PatternContext,
     ) -> ParseResult<BindingPattern> {
-        let source_elements = array.elements(self.ast);
-        let source_elements = (0..source_elements.len())
-            .map(|index| source_elements.get_node(self.ast, index).unwrap())
-            .collect::<Vec<_>>();
-        let source_elements_len = source_elements.len();
-        let mut elements = Vec::new();
-        let mut rest = None;
-        for (index, argument) in source_elements.into_iter().enumerate() {
-            let Some(argument) = argument else {
-                elements.push(None);
-                continue;
-            };
-            match self.ast.argument_data(argument) {
-                ArgumentData::Expr(expression) => {
-                    elements.push(Some(self.expression_to_pattern(expression, context)?));
-                }
-                ArgumentData::SpreadElement(spread) => {
-                    if index + 1 != source_elements_len {
-                        return self.error_at(spread.span(self.ast), "a rest element must be last");
+        let checkpoint = self.scratch_cover.begin();
+        let result = (|| {
+            let source_elements_len = elements_range.len();
+            let none = NodeId::from_raw_unchecked(u32::MAX);
+            let mut rest = None;
+            for index in 0..source_elements_len {
+                let argument = elements_range.get_node(self.ast, index).unwrap();
+                let Some(argument) = argument else {
+                    self.scratch_cover.items.push(none);
+                    continue;
+                };
+                match self.ast.argument_data(argument) {
+                    ArgumentData::Expr(expression) => {
+                        let pattern = self.expression_to_pattern(expression, context)?;
+                        self.scratch_cover.append(pattern);
                     }
-                    if self.state.cover_has_trailing_comma == Some(array.span(self.ast).start) {
-                        self.state.cover_has_trailing_comma = None;
-                        return self.error_at(
+                    ArgumentData::SpreadElement(spread) => {
+                        if self.state.cover_has_trailing_comma == Some(span.start) {
+                            self.report(
+                                span,
+                                "Rest element cannot have a trailing comma in array destructuring.",
+                                ReportOptions {
+                                    help: Some(Cow::Borrowed(
+                                        "Remove the trailing comma after the rest element",
+                                    )),
+                                    ..ReportOptions::default()
+                                },
+                            );
+                            self.state.cover_has_trailing_comma = None;
+                        }
+                        if index + 1 != source_elements_len {
+                            self.report(
+                                spread.span(self.ast),
+                                "Rest element must be the last element",
+                                ReportOptions {
+                                    help: Some(Cow::Borrowed(
+                                        "No elements can follow the rest element in a destructuring pattern.",
+                                    )),
+                                    ..ReportOptions::default()
+                                },
+                            );
+                        }
+                        let argument =
+                            self.expression_to_pattern(spread.argument(self.ast), context)?;
+                        if matches!(
+                            self.ast.binding_pattern_data(argument),
+                            BindingPatternData::AssignmentPattern(_)
+                        ) {
+                            self.report(
+                                spread.span(self.ast),
+                                "A rest element cannot have an initializer",
+                                ReportOptions {
+                                    help: Some(Cow::Borrowed(
+                                        "Remove the '= ...' from the rest element.",
+                                    )),
+                                    ..ReportOptions::default()
+                                },
+                            );
+                        }
+                        let temporary = self.ast.binding_rest_element(
                             spread.span(self.ast),
-                            "a rest element may not have a trailing comma",
+                            argument,
+                            TypedSubRange::empty(),
+                            None,
+                            false,
                         );
+                        rest = Some(self.ast.replace_data(spread, temporary));
+                        break;
                     }
-                    let argument =
-                        self.expression_to_pattern(spread.argument(self.ast), context)?;
-                    if matches!(
-                        self.ast.binding_pattern_data(argument),
-                        BindingPatternData::AssignmentPattern(_)
-                    ) {
-                        return self.error_at(
-                            argument.span(self.ast),
-                            "a rest element may not have an initializer",
-                        );
-                    }
-                    let decorators = self.empty_range();
-                    rest = Some(self.ast.binding_rest_element(
-                        spread.span(self.ast),
-                        argument,
-                        decorators,
-                        None,
-                        false,
-                    ));
                 }
             }
-        }
-        let elements = self.ast.add_typed_sub_range(elements);
-        let decorators = self.empty_range();
-        Ok(self.ast.binding_pattern_array_pattern(
-            array.span(self.ast),
-            elements,
-            rest,
-            decorators,
-            None,
-            false,
-        ))
+            let elements =
+                self.ast
+                    .add_typed_sub_range(self.scratch_cover.items[checkpoint..].iter().map(
+                        |node| {
+                            (*node != none)
+                                .then(|| unsafe { BindingPattern::from_node_id_unchecked(*node) })
+                        },
+                    ));
+            let temporary =
+                self.ast
+                    .array_pattern(span, elements, rest, TypedSubRange::empty(), None, false);
+            let pattern = if let Some(array) = mutate_node {
+                self.ast.replace_data(array, temporary)
+            } else {
+                temporary
+            };
+            Ok(BindingPattern::ArrayPattern(pattern))
+        })();
+        self.scratch_cover.reset(checkpoint);
+        result
     }
 
     fn to_object_pattern(
@@ -6609,83 +7078,153 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         object: ObjectExpression,
         context: PatternContext,
     ) -> ParseResult<BindingPattern> {
-        self.to_object_pattern_impl(object, context)
+        self.to_object_pattern_impl(
+            Some(object),
+            object.properties(self.ast),
+            object.span(self.ast),
+            context,
+        )
+    }
+
+    fn object_cover_to_pattern(
+        &mut self,
+        cover: ObjectCover,
+        context: PatternContext,
+    ) -> ParseResult<BindingPattern> {
+        self.to_object_pattern_impl(
+            None,
+            cover.properties,
+            Span::new(cover.start, cover.end),
+            context,
+        )
     }
 
     fn to_object_pattern_impl(
         &mut self,
-        object: ObjectExpression,
+        mutate_node: Option<ObjectExpression>,
+        properties_range: TypedSubRange<ObjectPropertyKind>,
+        span: Span,
         context: PatternContext,
     ) -> ParseResult<BindingPattern> {
-        let source_properties = object.properties(self.ast);
-        let source_properties = (0..source_properties.len())
-            .map(|index| source_properties.get_node(self.ast, index).unwrap())
-            .collect::<Vec<_>>();
-        let source_properties_len = source_properties.len();
-        let mut properties = Vec::new();
-        let mut rest = None;
-        for (index, property) in source_properties.into_iter().enumerate() {
-            match self.ast.object_property_kind_data(property) {
-                ObjectPropertyKindData::ObjectProperty(property) => {
-                    if property.method(self.ast) || property.kind(self.ast) != PropertyKind::Init {
-                        return self.error_at(
+        let checkpoint = self.scratch_cover.begin();
+        let result = (|| {
+            let source_properties_len = properties_range.len();
+            let mut rest = None;
+            for index in 0..source_properties_len {
+                let property = properties_range.get_node(self.ast, index).unwrap();
+                match self.ast.object_property_kind_data(property) {
+                    ObjectPropertyKindData::ObjectProperty(property) => {
+                        if property.method(self.ast) {
+                            self.report(
+                                property.span(self.ast),
+                                "Method cannot appear in destructuring pattern",
+                                ReportOptions {
+                                    help: Some(Cow::Borrowed(
+                                        "Use a regular property instead of a method definition.",
+                                    )),
+                                    ..ReportOptions::default()
+                                },
+                            );
+                            continue;
+                        }
+                        if property.kind(self.ast) != PropertyKind::Init {
+                            self.report(
+                                property.span(self.ast),
+                                "Getter/setter cannot appear in destructuring pattern",
+                                ReportOptions {
+                                    help: Some(Cow::Borrowed(
+                                        "Use a regular property instead of a getter or setter.",
+                                    )),
+                                    ..ReportOptions::default()
+                                },
+                            );
+                            continue;
+                        }
+                        let value =
+                            self.expression_to_pattern(property.value(self.ast), context)?;
+                        let temporary = self.ast.binding_property(
                             property.span(self.ast),
-                            "methods are not allowed in patterns",
+                            property.key(self.ast),
+                            value,
+                            property.shorthand(self.ast),
+                            property.computed(self.ast),
                         );
+                        let property = self.ast.replace_data(property, temporary);
+                        self.scratch_cover.append(property);
                     }
-                    let value = self.expression_to_pattern(property.value(self.ast), context)?;
-                    properties.push(self.ast.binding_property(
-                        property.span(self.ast),
-                        property.key(self.ast),
-                        value,
-                        property.shorthand(self.ast),
-                        property.computed(self.ast),
-                    ));
-                }
-                ObjectPropertyKindData::SpreadElement(spread) => {
-                    if index + 1 != source_properties_len {
-                        return self
-                            .error_at(spread.span(self.ast), "a rest property must be last");
-                    }
-                    if self.state.cover_has_trailing_comma == Some(object.span(self.ast).start) {
-                        self.state.cover_has_trailing_comma = None;
-                        return self.error_at(
+                    ObjectPropertyKindData::SpreadElement(spread) => {
+                        if self.state.cover_has_trailing_comma == Some(span.start) {
+                            self.report(
+                                span,
+                                "Rest element cannot have a trailing comma in object destructuring.",
+                                ReportOptions {
+                                    help: Some(Cow::Borrowed(
+                                        "Remove the trailing comma after the rest element",
+                                    )),
+                                    ..ReportOptions::default()
+                                },
+                            );
+                            self.state.cover_has_trailing_comma = None;
+                        }
+                        if index + 1 != source_properties_len {
+                            self.report(
+                                spread.span(self.ast),
+                                "Rest element must be the last property",
+                                ReportOptions {
+                                    help: Some(Cow::Borrowed(
+                                        "No properties can follow the rest element in a destructuring pattern.",
+                                    )),
+                                    ..ReportOptions::default()
+                                },
+                            );
+                        }
+                        let argument =
+                            self.expression_to_pattern(spread.argument(self.ast), context)?;
+                        if matches!(
+                            self.ast.binding_pattern_data(argument),
+                            BindingPatternData::AssignmentPattern(_)
+                        ) {
+                            self.report(
+                                spread.span(self.ast),
+                                "A rest element cannot have an initializer",
+                                ReportOptions {
+                                    help: Some(Cow::Borrowed(
+                                        "Remove the '= ...' from the rest element.",
+                                    )),
+                                    ..ReportOptions::default()
+                                },
+                            );
+                        }
+                        let temporary = self.ast.binding_rest_element(
                             spread.span(self.ast),
-                            "a rest property may not have a trailing comma",
+                            argument,
+                            TypedSubRange::empty(),
+                            None,
+                            false,
                         );
+                        rest = Some(self.ast.replace_data(spread, temporary));
+                        break;
                     }
-                    let argument =
-                        self.expression_to_pattern(spread.argument(self.ast), context)?;
-                    if matches!(
-                        self.ast.binding_pattern_data(argument),
-                        BindingPatternData::AssignmentPattern(_)
-                    ) {
-                        return self.error_at(
-                            argument.span(self.ast),
-                            "a rest property may not have an initializer",
-                        );
-                    }
-                    let decorators = self.empty_range();
-                    rest = Some(self.ast.binding_rest_element(
-                        spread.span(self.ast),
-                        argument,
-                        decorators,
-                        None,
-                        false,
-                    ));
                 }
             }
-        }
-        let properties = self.ast.add_typed_sub_range(properties);
-        let decorators = self.empty_range();
-        Ok(self.ast.binding_pattern_object_pattern(
-            object.span(self.ast),
-            properties,
-            rest,
-            decorators,
-            None,
-            false,
-        ))
+            let properties = self.add_extra_from_scratch_cover(checkpoint);
+            let temporary = self.ast.object_pattern(
+                span,
+                properties,
+                rest,
+                TypedSubRange::empty(),
+                None,
+                false,
+            );
+            let pattern = if let Some(object) = mutate_node {
+                self.ast.replace_data(object, temporary)
+            } else {
+                temporary
+            };
+            Ok(BindingPattern::ObjectPattern(pattern))
+        })();
+        self.scratch_cover.reset(checkpoint);
+        result
     }
 
     fn assignment_target_to_pattern(
@@ -6702,15 +7241,17 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                         Ok(BindingPattern::SimpleAssignmentTarget(target))
                     }
                     SimpleAssignmentTargetData::IdentifierReference(identifier) => {
-                        let decorators = self.empty_range();
-                        Ok(self.ast.binding_pattern_binding_identifier(
+                        let decorators = TypedSubRange::empty();
+                        let binding = self.ast.binding_identifier(
                             identifier.span(self.ast),
                             identifier.name(self.ast),
                             decorators,
                             None,
                             false,
                             None,
-                        ))
+                        );
+                        let binding = self.ast.replace_data(identifier, binding);
+                        Ok(BindingPattern::BindingIdentifier(binding))
                     }
                     SimpleAssignmentTargetData::MemberExpression(_)
                         if context == PatternContext::Assignment =>
@@ -6737,18 +7278,6 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             }
             _ => false,
         }
-    }
-
-    fn finish_cover_expression(&mut self, expression: Expr, in_cover: bool) -> ParseResult<Expr> {
-        let needs_validation =
-            !in_cover && self.state.cover_has_init_name && !self.is_part_of_pattern();
-        if !in_cover {
-            self.state.cover_has_init_name = false;
-        }
-        if needs_validation {
-            self.validate_no_cover_initialized_syntax(expression)?;
-        }
-        Ok(expression)
     }
 
     fn is_part_of_pattern(&self) -> bool {
@@ -6831,105 +7360,142 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_array_expression(&mut self, in_cover: bool) -> ParseResult<Expr> {
-        let cover = self.parse_cover()?;
-        debug_assert!(matches!(cover, Cover::Array(_)));
-        self.cover_to_expression(cover, in_cover)
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftBracket);
+        let cover = self.parse_array_cover()?;
+        let needs_validation =
+            !in_cover && self.state.cover_has_init_name && !self.is_part_of_pattern();
+        if !in_cover {
+            self.state.cover_has_init_name = false;
+        }
+        self.array_cover_to_expression(cover, needs_validation)
     }
 
     fn parse_object_expression(&mut self, in_cover: bool) -> ParseResult<Expr> {
-        let cover = self.parse_cover()?;
-        debug_assert!(matches!(cover, Cover::Object(_)));
-        self.cover_to_expression(cover, in_cover)
-    }
-
-    fn parse_cover(&mut self) -> ParseResult<Cover> {
-        match self.current_token.tag {
-            TokenTag::LeftBracket => self.parse_array_cover().map(Cover::Array),
-            TokenTag::LeftBrace => self.parse_object_cover().map(Cover::Object),
-            _ => self.error("expected array or object cover"),
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftBrace);
+        let cover = self.parse_object_cover()?;
+        let needs_validation =
+            !in_cover && self.state.cover_has_init_name && !self.is_part_of_pattern();
+        if !in_cover {
+            self.state.cover_has_init_name = false;
         }
+        self.object_cover_to_expression(cover, needs_validation)
     }
 
     fn parse_array_cover(&mut self) -> ParseResult<ArrayCover> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftBracket);
         let start = self.expect(TokenTag::LeftBracket)?.span.start;
-        let mut elements = Vec::new();
-        while self.current_token.tag != TokenTag::RightBracket {
-            if self.eat(TokenTag::Comma)? {
-                elements.push(None);
-                continue;
-            }
-            let argument = if self.eat(TokenTag::Spread)? {
-                let spread_start = self.prev_token_end - 3;
-                let expression = self.parse_assignment_expression_in_cover()?;
-                let span = Span::new(spread_start, expression.span(self.ast).end);
-                Argument::SpreadElement(self.ast.spread_element(span, expression))
-            } else {
-                Argument::Expr(self.parse_assignment_expression_in_cover()?)
-            };
-            elements.push(Some(argument));
-            if !self.eat(TokenTag::Comma)? {
-                break;
-            }
-            if self.current_token.tag == TokenTag::RightBracket {
-                self.state.cover_has_trailing_comma = Some(start);
-            }
-        }
-        let end = self.expect(TokenTag::RightBracket)?.span.end;
-        let elements = self.ast.add_typed_sub_range(elements);
-        Ok(ArrayCover {
-            elements,
-            start,
-            end,
-        })
+        let checkpoint = self.scratch_cover.begin();
+        let result =
+            (|| {
+                while self.current_token.tag != TokenTag::RightBracket {
+                    if self.eat(TokenTag::Comma)? {
+                        self.scratch_cover
+                            .items
+                            .push(NodeId::from_raw_unchecked(u32::MAX));
+                        continue;
+                    }
+                    let argument = if self.eat(TokenTag::Spread)? {
+                        let spread_start = self.prev_token_end - 3;
+                        let expression = self.parse_assignment_expression_in_cover()?;
+                        let span = Span::new(spread_start, expression.span(self.ast).end);
+                        Argument::SpreadElement(self.ast.spread_element(span, expression))
+                    } else {
+                        Argument::Expr(self.parse_assignment_expression_in_cover()?)
+                    };
+                    self.scratch_cover.append(argument);
+                    if !self.eat(TokenTag::Comma)? {
+                        break;
+                    }
+                    if self.current_token.tag == TokenTag::RightBracket {
+                        self.state.cover_has_trailing_comma = Some(start);
+                    }
+                }
+                let end = self.expect(TokenTag::RightBracket)?.span.end;
+                let none = NodeId::from_raw_unchecked(u32::MAX);
+                let elements = self.ast.add_typed_sub_range(
+                    self.scratch_cover.items[checkpoint..].iter().map(|node| {
+                        (*node != none).then(|| unsafe { Argument::from_node_id_unchecked(*node) })
+                    }),
+                );
+                Ok(ArrayCover {
+                    elements,
+                    start,
+                    end,
+                })
+            })();
+        self.scratch_cover.reset(checkpoint);
+        result
     }
 
     fn parse_object_cover(&mut self) -> ParseResult<ObjectCover> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftBrace);
         let start = self.expect(TokenTag::LeftBrace)?.span.start;
-        let mut properties = Vec::new();
-        while self.current_token.tag != TokenTag::RightBrace {
-            if self.eat(TokenTag::Spread)? {
-                let spread_start = self.prev_token_end - 3;
-                let expression = self.parse_expression(
-                    Precedence::ASSIGNMENT,
-                    ParseExpressionOpts {
-                        in_cover: true,
-                        ..ParseExpressionOpts::default()
-                    },
-                )?;
-                let spread = self.ast.spread_element(
-                    Span::new(spread_start, expression.span(self.ast).end),
-                    expression,
-                );
-                properties.push(ObjectPropertyKind::SpreadElement(spread));
-            } else {
-                properties.push(self.parse_cover_property()?);
+        let checkpoint = self.scratch_cover.begin();
+        let result = (|| {
+            while self.current_token.tag != TokenTag::RightBrace {
+                let property = if self.eat(TokenTag::Spread)? {
+                    let spread_start = self.prev_token_end - 3;
+                    let expression = self.parse_expression(
+                        Precedence::ASSIGNMENT,
+                        ParseExpressionOpts {
+                            in_cover: true,
+                            ..ParseExpressionOpts::default()
+                        },
+                    )?;
+                    let spread = self.ast.spread_element(
+                        Span::new(spread_start, expression.span(self.ast).end),
+                        expression,
+                    );
+                    ObjectPropertyKind::SpreadElement(spread)
+                } else {
+                    self.parse_cover_property()?
+                };
+                self.scratch_cover.append(property);
+                if !self.eat(TokenTag::Comma)? {
+                    break;
+                }
+                if self.current_token.tag == TokenTag::RightBrace {
+                    self.state.cover_has_trailing_comma = Some(start);
+                }
             }
-            if !self.eat(TokenTag::Comma)? {
-                break;
-            }
-            if self.current_token.tag == TokenTag::RightBrace {
-                self.state.cover_has_trailing_comma = Some(start);
-            }
-        }
-        let end = self.expect(TokenTag::RightBrace)?.span.end;
-        let properties = self.ast.add_typed_sub_range(properties);
-        Ok(ObjectCover {
-            properties,
-            start,
-            end,
-        })
+            let end = self.expect(TokenTag::RightBrace)?.span.end;
+            let properties = self.add_extra_from_scratch_cover(checkpoint);
+            Ok(ObjectCover {
+                properties,
+                start,
+                end,
+            })
+        })();
+        self.scratch_cover.reset(checkpoint);
+        result
     }
 
-    fn cover_to_expression(&mut self, cover: Cover, in_cover: bool) -> ParseResult<Expr> {
-        let expression = match cover {
-            Cover::Array(cover) => self
-                .ast
-                .expr_array_expression(Span::new(cover.start, cover.end), cover.elements),
-            Cover::Object(cover) => self
-                .ast
-                .expr_object_expression(Span::new(cover.start, cover.end), cover.properties),
-        };
-        self.finish_cover_expression(expression, in_cover)
+    fn array_cover_to_expression(
+        &mut self,
+        cover: ArrayCover,
+        validate: bool,
+    ) -> ParseResult<Expr> {
+        let expression = self
+            .ast
+            .expr_array_expression(Span::new(cover.start, cover.end), cover.elements);
+        if validate {
+            self.validate_no_cover_initialized_syntax(expression)?;
+        }
+        Ok(expression)
+    }
+
+    fn object_cover_to_expression(
+        &mut self,
+        cover: ObjectCover,
+        validate: bool,
+    ) -> ParseResult<Expr> {
+        let expression = self
+            .ast
+            .expr_object_expression(Span::new(cover.start, cover.end), cover.properties);
+        if validate {
+            self.validate_no_cover_initialized_syntax(expression)?;
+        }
+        Ok(expression)
     }
 
     fn parse_cover_property(&mut self) -> ParseResult<ObjectPropertyKind> {
@@ -6941,13 +7507,11 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
         if self.current_token.tag == TokenTag::Async {
             let token = self.current_token;
-            self.advance()?;
+            self.advance_without_escape_check()?;
             if !self.current_token.has_line_terminator_before()
                 && Self::is_property_key_start(self.current_token.tag)
             {
-                if token.is_escaped() {
-                    return self.error_at(token.span, "keywords may not contain escape sequences");
-                }
+                self.report_if_escaped_keyword(token);
                 async_function = true;
             } else {
                 let name = self.identifier_name(token)?;
@@ -6965,11 +7529,9 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             && matches!(self.current_token.tag, TokenTag::Get | TokenTag::Set)
         {
             let token = self.current_token;
-            self.advance()?;
+            self.advance_without_escape_check()?;
             if Self::is_property_key_start(self.current_token.tag) {
-                if token.is_escaped() {
-                    return self.error_at(token.span, "keywords may not contain escape sequences");
-                }
+                self.report_if_escaped_keyword(token);
                 kind = if token.tag == TokenTag::Get {
                     PropertyKind::Get
                 } else {
@@ -6984,17 +7546,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let computed = self.current_token.tag == TokenTag::LeftBracket && key.is_none();
         let key = match key {
             Some(key) => key,
-            None => self.parse_property_key()?,
+            None => self.parse_property_key(true)?,
         };
-        if matches!(
-            self.ast.property_key_data(key),
-            PropertyKeyData::PrivateIdentifier(_)
-        ) {
-            return self.error_at(
-                key.span(self.ast),
-                "private names are not allowed in object literals",
-            );
-        }
 
         if self.current_token.tag == TokenTag::LeftParen
             || (self.lang.is_typescript() && is_angle_open(self.current_token.tag))
@@ -7031,13 +7584,22 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             };
             let name = identifier.name(self.ast);
             let name = self.ast.string(name);
-            if is_unconditionally_reserved_word(name) {
-                return self.error_at(
+            let is_reserved = is_unconditionally_reserved_word(name);
+            let is_yield = name == b"yield";
+            let is_await = name == b"await";
+            if is_reserved {
+                self.report(
                     identifier.span(self.ast),
                     "reserved words may not be used as shorthand properties",
+                    ReportOptions::default(),
                 );
             }
-            self.validate_identifier_name(identifier.span(self.ast), name, "an identifier")?;
+            self.validate_identifier_name(
+                identifier.span(self.ast),
+                is_yield,
+                is_await,
+                "an identifier",
+            );
             let identifier = self.ast.expr_identifier_reference(
                 identifier.span(self.ast),
                 identifier.name(self.ast),
@@ -7093,8 +7655,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             );
         }
         let function_start = self.current_token.span.start;
-        let old_context = self.context;
-        self.context.return_ = true;
+        let old_await = self.context.await_;
+        let old_yield = self.context.yield_;
         self.context.await_ = async_function;
         self.context.yield_ = generator;
         let result = (|| {
@@ -7116,7 +7678,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             let body = self.parse_function_body()?;
             Ok((params, type_parameters, return_type, body))
         })();
-        self.context = old_context;
+        self.restore_method_context(old_await, old_yield);
         let (params, type_parameters, return_type, body) = result?;
         let span = Span::new(start, body.span(self.ast).end);
         let function = self.ast.function(
@@ -7148,47 +7710,50 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     fn is_property_key_start(tag: TokenTag) -> bool {
         matches!(
             tag,
-            TokenTag::Star
-                | TokenTag::LeftBracket
-                | TokenTag::StringLiteral
-                | TokenTag::PrivateIdentifier
+            TokenTag::Star | TokenTag::LeftBracket | TokenTag::StringLiteral
         ) || tag.is_numeric_literal()
             || tag.is_identifier_like()
     }
 
     fn parse_class_element_key(&mut self) -> ParseResult<PropertyKey> {
-        self.parse_property_key()
+        if self.current_token.tag == TokenTag::LeftBracket {
+            self.advance()?;
+            let expression =
+                self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
+            self.expect(TokenTag::RightBracket)?;
+            return Ok(PropertyKey::Expr(expression));
+        }
+        if self.current_token.tag == TokenTag::PrivateIdentifier {
+            return Ok(PropertyKey::PrivateIdentifier(
+                self.parse_private_identifier()?,
+            ));
+        }
+        self.parse_property_key(false)
     }
 
-    fn parse_property_key(&mut self) -> ParseResult<PropertyKey> {
+    fn parse_property_key(&mut self, in_cover: bool) -> ParseResult<PropertyKey> {
         let token = self.current_token;
         match token.tag {
             TokenTag::LeftBracket => {
                 self.advance()?;
-                let expression =
-                    self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
+                let expression = self.parse_expression(
+                    Precedence::ASSIGNMENT,
+                    ParseExpressionOpts {
+                        in_cover,
+                        ..ParseExpressionOpts::default()
+                    },
+                )?;
                 self.expect(TokenTag::RightBracket)?;
                 Ok(PropertyKey::Expr(expression))
             }
-            TokenTag::PrivateIdentifier => Ok(PropertyKey::PrivateIdentifier(
-                self.parse_private_identifier()?,
-            )),
-            TokenTag::StringLiteral => {
-                let raw = self.ast.source_slice(token.span.start, token.span.end);
-                let value = self.string_value(token)?;
-                self.advance()?;
-                Ok(self.ast.property_key_string_literal(token.span, value, raw))
-            }
+            TokenTag::StringLiteral => Ok(PropertyKey::StringLiteral(self.parse_string_literal()?)),
             tag if tag.is_numeric_literal() => {
-                let kind = match tag {
-                    TokenTag::HexLiteral => NumericLiteralKind::Hex,
-                    TokenTag::OctalLiteral => NumericLiteralKind::Octal,
-                    TokenTag::BinaryLiteral => NumericLiteralKind::Binary,
-                    _ => NumericLiteralKind::Decimal,
-                };
-                let raw = self.ast.source_slice(token.span.start, token.span.end);
-                self.advance()?;
-                Ok(self.ast.property_key_numeric_literal(token.span, kind, raw))
+                let expression = self.parse_numeric_literal()?;
+                match self.ast.expr_data(expression) {
+                    ExprData::NumericLiteral(literal) => Ok(PropertyKey::NumericLiteral(literal)),
+                    ExprData::BigIntLiteral(literal) => Ok(PropertyKey::BigIntLiteral(literal)),
+                    _ => unreachable!(),
+                }
             }
             tag if tag.is_identifier_like() => {
                 Ok(PropertyKey::IdentifierName(self.parse_identifier_name()?))
@@ -7202,10 +7767,14 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         object: Expr,
         optional: bool,
     ) -> ParseResult<Expr> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftBracket);
         let start = object.span(self.ast).start;
         self.expect(TokenTag::LeftBracket)?;
-        let expression =
-            self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?;
+        let old_allow_in = self.context.in_;
+        self.context.in_ = true;
+        let expression = self.parse_expression(Precedence::LOWEST, ParseExpressionOpts::default());
+        self.context.in_ = old_allow_in;
+        let expression = expression?;
         let property = PropertyKey::Expr(expression);
         let end = self.expect(TokenTag::RightBracket)?.span.end;
         Ok(self
@@ -7218,6 +7787,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         object: Expr,
         optional: bool,
     ) -> ParseResult<Expr> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Dot);
         self.expect(TokenTag::Dot)?;
         self.parse_member_property(object, optional)
     }
@@ -7248,16 +7818,25 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         optional: bool,
         type_arguments: Option<TsTypeParameterInstantiation>,
     ) -> ParseResult<Expr> {
-        let cover = self.parse_parenthesized_cover()?;
-        self.cover_to_call_expression(cover, callee, optional, type_arguments)
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftParen);
+        let start = callee.span(self.ast).start;
+        self.advance()?;
+        let arguments = self.parse_arguments()?;
+        let end = self.current_token.span.end;
+        self.expect(TokenTag::RightParen)?;
+        Ok(self.ast.expr_call_expression(
+            Span::new(start, end),
+            callee,
+            arguments,
+            optional,
+            type_arguments,
+        ))
     }
 
     fn cover_to_call_expression(
         &mut self,
         cover: ParenthesizedCover,
         callee: Expr,
-        optional: bool,
-        type_arguments: Option<TsTypeParameterInstantiation>,
     ) -> ParseResult<Expr> {
         let arguments = (0..cover.elements.len())
             .map(|index| {
@@ -7278,8 +7857,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             Span::new(callee.span(self.ast).start, cover.end),
             callee,
             cover.elements,
-            optional,
-            type_arguments,
+            false,
+            None,
         ))
     }
 
@@ -7313,9 +7892,17 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                     next
                 }
                 TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => {
-                    return self.error(
-                        "tagged template expressions are not permitted in an optional chain",
+                    self.report(
+                        self.current_token.span,
+                        "Tagged template expressions are not permitted in an optional chain",
+                        ReportOptions {
+                            help: Some(Cow::Borrowed(
+                                "Remove the optional chaining operator '?.' before the template literal or add parentheses.",
+                            )),
+                            ..ReportOptions::default()
+                        },
                     );
+                    break;
                 }
                 _ => break,
             };
@@ -7346,44 +7933,55 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_arguments(&mut self) -> ParseResult<TypedSubRange<Argument>> {
-        self.expect(TokenTag::LeftParen)?;
-        let mut arguments = Vec::new();
-        while self.current_token.tag != TokenTag::RightParen {
-            let argument = if self.eat(TokenTag::Spread)? {
-                let start = self.prev_token_end - 3;
-                let expression =
-                    self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
-                Argument::SpreadElement(
-                    self.ast.spread_element(
+        let checkpoint = self.scratch_a.begin();
+        let old_allow_in = self.context.in_;
+        self.context.in_ = true;
+        let result = (|| {
+            while self.current_token.tag != TokenTag::RightParen
+                && self.current_token.tag != TokenTag::Eof
+            {
+                let argument = if self.eat(TokenTag::Spread)? {
+                    let start = self.prev_token_end - 3;
+                    let expression = self
+                        .parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
+                    Argument::SpreadElement(self.ast.spread_element(
                         Span::new(start, expression.span(self.ast).end),
                         expression,
-                    ),
-                )
-            } else {
-                Argument::Expr(
-                    self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?,
-                )
-            };
-            arguments.push(argument);
-            if !self.eat(TokenTag::Comma)? {
-                break;
+                    ))
+                } else {
+                    Argument::Expr(
+                        self.parse_expression(
+                            Precedence::ASSIGNMENT,
+                            ParseExpressionOpts::default(),
+                        )?,
+                    )
+                };
+                self.scratch_a.append(argument);
+                if !self.eat(TokenTag::Comma)? {
+                    break;
+                }
             }
-        }
-        self.expect(TokenTag::RightParen)?;
-        Ok(self.ast.add_typed_sub_range(arguments))
+            Ok(self.add_extra_from_scratch_a(checkpoint))
+        })();
+        self.context.in_ = old_allow_in;
+        self.scratch_a.reset(checkpoint);
+        result
     }
 
     fn parse_new_expression(&mut self) -> ParseResult<Expr> {
-        if self.peek_ahead()?.tag == TokenTag::Dot {
-            return self.parse_new_target();
+        debug_assert_eq!(self.current_token.tag, TokenTag::New);
+        let meta_token = self.current_token;
+        let start = meta_token.span.start;
+        self.report_if_escaped_keyword(meta_token);
+        let meta_name = self.identifier_name(meta_token)?;
+        self.advance_without_escape_check()?;
+        let meta = self.ast.identifier_name(meta_token.span, meta_name);
+        if self.current_token.tag == TokenTag::Dot {
+            return self.parse_new_target(meta);
         }
-        let start = self.expect(TokenTag::New)?.span.start;
         let mut callee = match self.current_token.tag {
-            TokenTag::LeftParen => {
-                self.parse_parenthesized_or_arrow_function(None, false, Precedence::GROUPING)?
-            }
+            TokenTag::LeftParen => self.parse_parenthesized_expression()?,
             TokenTag::New => self.parse_new_expression()?,
-            TokenTag::Import => self.parse_import_expression()?,
             _ => self.parse_primary_expression(false)?,
         };
         loop {
@@ -7399,18 +7997,18 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 _ => break,
             };
         }
-        if matches!(self.ast.expr_data(callee), ExprData::ImportExpression(_)) {
-            return self.error_at(callee.span(self.ast), "import() cannot be used with new");
-        }
         let type_arguments = if self.lang.is_typescript() {
             self.try_parse_type_arguments_in_expression()?
         } else {
             None
         };
         let arguments = if self.current_token.tag == TokenTag::LeftParen {
-            self.parse_arguments()?
+            self.advance()?;
+            let arguments = self.parse_arguments()?;
+            self.expect(TokenTag::RightParen)?;
+            arguments
         } else {
-            self.empty_range()
+            TypedSubRange::empty()
         };
         let end = self.prev_token_end.max(callee.span(self.ast).end);
         Ok(self
@@ -7419,36 +8017,43 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_import_expression(&mut self) -> ParseResult<Expr> {
-        let import_token = self.expect(TokenTag::Import)?;
-        let start = import_token.span.start;
-        if self.current_token.tag == TokenTag::Dot {
-            return self.parse_import_meta_or_phase_import(import_token);
+        debug_assert_eq!(self.current_token.tag, TokenTag::Import);
+        self.report_if_escaped_keyword(self.current_token);
+        let import_name = self.parse_identifier_name()?;
+        let start = import_name.span(self.ast).start;
+        match self.current_token.tag {
+            TokenTag::Dot => self.parse_import_meta_or_phase_import(import_name),
+            TokenTag::LeftParen => self.parse_dynamic_import(start, None),
+            _ => self.error(
+                "'import' keyword is only valid in 'import.meta' or dynamic import() expressions",
+            ),
         }
-        self.parse_dynamic_import(start, None)
     }
 
-    fn parse_import_meta_or_phase_import(&mut self, import_token: Token) -> ParseResult<Expr> {
+    fn parse_import_meta_or_phase_import(
+        &mut self,
+        import_name: IdentifierName,
+    ) -> ParseResult<Expr> {
         self.expect(TokenTag::Dot)?;
         let property = self.current_token;
         let phase = match property.tag {
             TokenTag::Source => Some(ImportPhase::Source),
             TokenTag::Defer => Some(ImportPhase::Defer),
             TokenTag::Identifier if property.text(self.source) == b"meta" => {
-                let meta_name = self.identifier_name(import_token)?;
-                let property_name = self.identifier_name(property)?;
-                self.advance()?;
-                let meta = self.ast.identifier_name(import_token.span, meta_name);
-                let property = self.ast.identifier_name(property.span, property_name);
+                let property = self.parse_identifier_name()?;
                 return Ok(self.ast.expr_meta_property(
-                    Span::new(import_token.span.start, property.span(self.ast).end),
-                    meta,
+                    Span::new(
+                        import_name.span(self.ast).start,
+                        property.span(self.ast).end,
+                    ),
+                    import_name,
                     property,
                 ));
             }
             _ => return self.error("expected 'meta', 'source', or 'defer' after import."),
         };
         self.advance()?;
-        self.parse_dynamic_import(import_token.span.start, phase)
+        self.parse_dynamic_import(import_name.span(self.ast).start, phase)
     }
 
     fn parse_dynamic_import(
@@ -7476,44 +8081,23 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             .expr_import_expression(Span::new(start, end), source, options, phase))
     }
 
-    fn parse_new_target(&mut self) -> ParseResult<Expr> {
-        let meta_token = self.current_token;
-        if meta_token.is_escaped() {
-            return self.error_at(
-                meta_token.span,
-                "meta-property keywords may not contain escape sequences",
-            );
-        }
-        let meta_name = self.identifier_name(meta_token)?;
+    fn parse_new_target(&mut self, meta: IdentifierName) -> ParseResult<Expr> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Dot);
         self.advance()?;
-        self.expect(TokenTag::Dot)?;
         let property_token = self.current_token;
-        if !property_token.tag.is_identifier_like()
-            || self
-                .source
-                .get(property_token.span.start as usize..property_token.span.end as usize)
-                != Some(b"target")
-        {
+        if property_token.text(self.source) != b"target" {
             return self.error("the only valid meta-property for 'new' is 'new.target'");
         }
-        if property_token.is_escaped() {
-            return self.error_at(
-                property_token.span,
-                "meta-property names may not contain escape sequences",
-            );
-        }
-        let property_name = self.identifier_name(property_token)?;
-        self.advance()?;
-        let meta = self.ast.identifier_name(meta_token.span, meta_name);
-        let property = self.ast.identifier_name(property_token.span, property_name);
+        let property = self.parse_identifier_name()?;
         Ok(self.ast.expr_meta_property(
-            Span::new(meta_token.span.start, property_token.span.end),
+            Span::new(meta.span(self.ast).start, property.span(self.ast).end),
             meta,
             property,
         ))
     }
 
     fn parse_jsx_expression(&mut self) -> ParseResult<Expr> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LessThan);
         self.parse_jsx_element(JsxElementContext::TopLevel)
     }
 
@@ -7533,7 +8117,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
         let opening = self.parse_jsx_opening_element(context)?;
         if opening.self_closing(self.ast) {
-            let children = self.empty_range();
+            let children = TypedSubRange::empty();
             return Ok(Expr::JsxElement(self.ast.jsx_element(
                 Span::new(start, opening.span(self.ast).end),
                 opening,
@@ -7555,6 +8139,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         &mut self,
         context: JsxElementContext,
     ) -> ParseResult<JsxOpeningElement> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LessThan);
         let start = self.current_token.span.start;
         self.enter_jsx_tag();
         self.advance()?;
@@ -7666,45 +8251,51 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_jsx_children(&mut self, mut scan_from: u32) -> ParseResult<TypedSubRange<JsxChild>> {
-        let mut children = Vec::new();
+        let checkpoint = self.scratch_b.begin();
         self.exit_jsx_tag();
-        loop {
-            let text = self.lexer.re_scan_jsx_text(scan_from);
-            if text.span.start < text.span.end {
-                let value = self.ast.source_slice(text.span.start, text.span.end);
-                children.push(self.ast.jsx_child_jsx_text(text.span, value));
-            }
-            self.current_token = text;
-            self.advance()?;
-            match self.current_token.tag {
-                TokenTag::LessThan => {
-                    if self.peek_ahead()?.tag == TokenTag::Slash {
-                        break;
-                    }
-                    let child = self.parse_jsx_element(JsxElementContext::Child)?;
-                    scan_from = child.span(self.ast).end;
-                    match self.ast.expr_data(child) {
-                        ExprData::JsxElement(element) => {
-                            children.push(JsxChild::JsxElement(element));
-                        }
-                        ExprData::JsxFragment(fragment) => {
-                            children.push(JsxChild::JsxFragment(fragment));
-                        }
-                        _ => unreachable!(),
-                    }
+        let result = (|| {
+            loop {
+                let text = self.lexer.re_scan_jsx_text(scan_from);
+                if text.span.start < text.span.end {
+                    let value = self.ast.source_slice(text.span.start, text.span.end);
+                    let text = self.ast.jsx_child_jsx_text(text.span, value);
+                    self.scratch_b.append(text);
                 }
-                TokenTag::LeftBrace => {
-                    let child = self.parse_jsx_child_from_left_brace()?;
-                    scan_from = child.span(self.ast).end;
-                    children.push(child);
+                self.current_token = text;
+                self.advance()?;
+                match self.current_token.tag {
+                    TokenTag::LessThan => {
+                        if self.peek_ahead()?.tag == TokenTag::Slash {
+                            break;
+                        }
+                        let child = self.parse_jsx_element(JsxElementContext::Child)?;
+                        scan_from = child.span(self.ast).end;
+                        match self.ast.expr_data(child) {
+                            ExprData::JsxElement(element) => {
+                                self.scratch_b.append(JsxChild::JsxElement(element));
+                            }
+                            ExprData::JsxFragment(fragment) => {
+                                self.scratch_b.append(JsxChild::JsxFragment(fragment));
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
+                    TokenTag::LeftBrace => {
+                        let child = self.parse_jsx_child_from_left_brace()?;
+                        scan_from = child.span(self.ast).end;
+                        self.scratch_b.append(child);
+                    }
+                    _ => break,
                 }
-                _ => break,
             }
-        }
-        Ok(self.ast.add_typed_sub_range(children))
+            Ok(self.add_extra_from_scratch_b(checkpoint))
+        })();
+        self.scratch_b.reset(checkpoint);
+        result
     }
 
     fn parse_jsx_child_from_left_brace(&mut self) -> ParseResult<JsxChild> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftBrace);
         let start = self.expect(TokenTag::LeftBrace)?.span.start;
         if self.current_token.tag == TokenTag::RightBrace {
             let empty_span = Span::new(start + 1, self.current_token.span.start);
@@ -7788,14 +8379,19 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_jsx_attributes(&mut self) -> ParseResult<TypedSubRange<JsxAttributeItem>> {
-        let mut attributes = Vec::new();
-        while matches!(
-            self.current_token.tag,
-            TokenTag::JsxIdentifier | TokenTag::LeftBrace
-        ) {
-            attributes.push(self.parse_jsx_attribute()?);
-        }
-        Ok(self.ast.add_typed_sub_range(attributes))
+        let checkpoint = self.scratch_a.begin();
+        let result = (|| {
+            while matches!(
+                self.current_token.tag,
+                TokenTag::JsxIdentifier | TokenTag::LeftBrace
+            ) {
+                let attribute = self.parse_jsx_attribute()?;
+                self.scratch_a.append(attribute);
+            }
+            Ok(self.add_extra_from_scratch_a(checkpoint))
+        })();
+        self.scratch_a.reset(checkpoint);
+        result
     }
 
     fn parse_jsx_attribute(&mut self) -> ParseResult<JsxAttributeItem> {
@@ -7878,6 +8474,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         &mut self,
         context: JsxExprContext,
     ) -> ParseResult<JsxExpressionContainer> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftBrace);
         let start = self.current_token.span.start;
         if context == JsxExprContext::Tag {
             self.exit_jsx_tag();
@@ -7908,6 +8505,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_jsx_spread_attribute(&mut self) -> ParseResult<JsxAttributeItem> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LeftBrace);
         let start = self.current_token.span.start;
         self.exit_jsx_tag();
         self.advance()?;
@@ -7925,9 +8523,15 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     fn parse_await_expression(&mut self, start: u32) -> ParseResult<Expr> {
         let argument = self.parse_expression(Precedence::UNARY, ParseExpressionOpts::default())?;
         if self.current_token.tag == TokenTag::Exponent {
-            return self.error_at(
+            self.report(
                 Span::new(start, argument.span(self.ast).end),
                 "The left-hand side of '**' cannot be an unparenthesized await expression",
+                ReportOptions {
+                    help: Some(Cow::Borrowed(
+                        "Add parentheses to make precedence explicit, for example `(await x) ** y`.",
+                    )),
+                    ..ReportOptions::default()
+                },
             );
         }
         Ok(self
@@ -7986,6 +8590,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_type_assertion(&mut self) -> ParseResult<Expr> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LessThan);
         let start = self.expect(TokenTag::LessThan)?.span.start;
         let type_annotation = self.parse_type()?;
         self.expect(TokenTag::GreaterThan)?;
@@ -7999,6 +8604,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_as_or_satisfies_expression(&mut self, left: Expr, tag: TokenTag) -> ParseResult<Expr> {
+        debug_assert!(matches!(tag, TokenTag::As | TokenTag::Satisfies));
         self.advance()?;
         let type_annotation = self.parse_type()?;
         let span = Span::new(
@@ -8014,6 +8620,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_non_null_expression(&mut self, left: Expr) -> ParseResult<Expr> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::LogicalNot);
         let end = self.expect(TokenTag::LogicalNot)?.span.end;
         Ok(self
             .ast
@@ -8021,6 +8628,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_yield_expression(&mut self) -> ParseResult<Expr> {
+        debug_assert_eq!(self.current_token.tag, TokenTag::Yield);
         let start = self.expect(TokenTag::Yield)?.span.start;
         let delegate = if self.current_token.tag == TokenTag::Star
             && !self.current_token.has_line_terminator_before()
@@ -8043,7 +8651,13 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             ) {
             None
         } else {
-            Some(self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?)
+            Some(self.parse_expression(
+                Precedence::ASSIGNMENT,
+                ParseExpressionOpts {
+                    respect_allow_in: true,
+                    ..ParseExpressionOpts::default()
+                },
+            )?)
         };
         if delegate && argument.is_none() {
             return self.error("expected an expression after 'yield*'");
@@ -8055,9 +8669,22 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_unary_expression(&mut self) -> ParseResult<Expr> {
+        debug_assert!(self.current_token.tag.is_unary_operator());
         let token = self.current_token;
         self.advance()?;
         let argument = self.parse_expression(Precedence::UNARY, ParseExpressionOpts::default())?;
+        if self.current_token.tag == TokenTag::Exponent {
+            self.report(
+                Span::new(token.span.start, argument.span(self.ast).end),
+                "The left-hand side of '**' cannot be an unparenthesized unary expression",
+                ReportOptions {
+                    help: Some(Cow::Borrowed(
+                        "Add parentheses to make precedence explicit, for example `(-x) ** y` or `-(x ** y)`.",
+                    )),
+                    ..ReportOptions::default()
+                },
+            );
+        }
         let operator = match token.tag {
             TokenTag::Minus => UnaryOperator::Negate,
             TokenTag::Plus => UnaryOperator::Positive,
@@ -8107,17 +8734,6 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     fn parse_binary_expression(&mut self, left: Expr, tag: TokenTag) -> ParseResult<Expr> {
         let start = left.span(self.ast).start;
         let precedence = tag.precedence();
-        if tag == TokenTag::Exponent
-            && matches!(
-                self.ast.expr_data(left),
-                ExprData::UnaryExpression(_) | ExprData::AwaitExpression(_)
-            )
-        {
-            return self.error_at(
-                left.span(self.ast),
-                "A unary expression cannot be the left operand of exponentiation",
-            );
-        }
         self.advance()?;
         let right = self.parse_expression(
             if tag == TokenTag::Exponent {
@@ -8128,9 +8744,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             ParseExpressionOpts::default(),
         )?;
         if matches!(self.ast.expr_data(right), ExprData::PrivateIdentifier(_)) {
-            return self.error_at(
+            self.report(
                 right.span(self.ast),
-                "Private names are only valid on the left of an 'in' expression",
+                "Private names are only allowed in property accesses (`obj.#field`) or in `in` expressions (`#field in obj`)",
+                ReportOptions::default(),
             );
         }
         let operator = binary_operator(tag);
@@ -8153,13 +8770,22 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             TokenTag::NullishCoalescing => LogicalOperator::NullishCoalescing,
             _ => unreachable!(),
         };
-        if logical_expression_mixes_coalesce(left, operator, self.ast)
-            || logical_expression_mixes_coalesce(right, operator, self.ast)
-        {
-            return self.error_at(
-                Span::new(start, right.span(self.ast).end),
-                "Nullish coalescing cannot be mixed with logical AND or OR without parentheses",
-            );
+        let operator_to_check = match self.ast.expr_data(left) {
+            ExprData::LogicalExpression(expression) => Some(expression.operator(self.ast)),
+            _ => match self.ast.expr_data(right) {
+                ExprData::LogicalExpression(expression) => Some(expression.operator(self.ast)),
+                _ => None,
+            },
+        };
+        if let Some(operator_to_check) = operator_to_check {
+            let mixes_coalesce = (operator == LogicalOperator::NullishCoalescing)
+                != (operator_to_check == LogicalOperator::NullishCoalescing);
+            if mixes_coalesce {
+                return self.error_at(
+                    Span::new(start, right.span(self.ast).end),
+                    "Logical expressions and nullish coalescing cannot be mixed",
+                );
+            }
         }
         Ok(self.ast.expr_logical_expression(
             Span::new(start, right.span(self.ast).end),
@@ -8169,7 +8795,12 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         ))
     }
 
-    fn parse_assignment_expression(&mut self, left: Expr, tag: TokenTag) -> ParseResult<Expr> {
+    fn parse_assignment_expression(
+        &mut self,
+        precedence: u8,
+        left: Expr,
+        tag: TokenTag,
+    ) -> ParseResult<Expr> {
         let start = left.span(self.ast).start;
         let target = self.expression_to_assignment_target(left)?;
         if tag != TokenTag::Assign
@@ -8184,8 +8815,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             );
         }
         self.advance()?;
-        let right =
-            self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
+        let right = self.parse_expression(precedence, ParseExpressionOpts::default())?;
         Ok(self.ast.expr_assignment_expression(
             Span::new(start, right.span(self.ast).end),
             target,
@@ -8194,14 +8824,26 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         ))
     }
 
-    fn parse_conditional_expression(&mut self, test: Expr) -> ParseResult<Expr> {
+    fn parse_conditional_expression(&mut self, precedence: u8, test: Expr) -> ParseResult<Expr> {
         let start = test.span(self.ast).start;
-        self.expect(TokenTag::Question)?;
-        let consequent =
-            self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
+        debug_assert_eq!(self.current_token.tag, TokenTag::Question);
+        self.advance()?;
+        let old_in = self.context.in_;
+        let old_allow_arrow_return_type = self.ts_context.allow_arrow_return_type;
+        self.context.in_ = true;
+        self.ts_context.allow_arrow_return_type = false;
+        let consequent = self.parse_expression(precedence, ParseExpressionOpts::default());
+        self.context.in_ = old_in;
+        self.ts_context.allow_arrow_return_type = old_allow_arrow_return_type;
+        let consequent = consequent?;
         self.expect(TokenTag::Colon)?;
-        let alternate =
-            self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
+        let alternate = self.parse_expression(
+            precedence,
+            ParseExpressionOpts {
+                respect_allow_in: true,
+                ..ParseExpressionOpts::default()
+            },
+        )?;
         Ok(self.ast.expr_conditional_expression(
             Span::new(start, alternate.span(self.ast).end),
             test,
@@ -8210,19 +8852,25 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         ))
     }
 
-    fn parse_sequence_expression(&mut self, left: Expr) -> ParseResult<Expr> {
+    fn parse_sequence_expression(&mut self, precedence: u8, left: Expr) -> ParseResult<Expr> {
         let start = left.span(self.ast).start;
-        let mut expressions = vec![left];
-        while self.eat(TokenTag::Comma)? {
-            expressions.push(
-                self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?,
-            );
-        }
-        let end = expressions.last().unwrap().span(self.ast).end;
-        let expressions = self.ast.add_typed_sub_range(expressions);
-        Ok(self
-            .ast
-            .expr_sequence_expression(Span::new(start, end), expressions))
+        let checkpoint = self.scratch_a.begin();
+        self.scratch_a.append(left);
+        let result = (|| {
+            let mut end = left.span(self.ast).end;
+            while self.eat(TokenTag::Comma)? {
+                let expression =
+                    self.parse_expression(precedence + 1, ParseExpressionOpts::default())?;
+                end = expression.span(self.ast).end;
+                self.scratch_a.append(expression);
+            }
+            let expressions = self.add_extra_from_scratch_a(checkpoint);
+            Ok(self
+                .ast
+                .expr_sequence_expression(Span::new(start, end), expressions))
+        })();
+        self.scratch_a.reset(checkpoint);
+        result
     }
 
     fn expression_to_simple_assignment_target(
@@ -8335,13 +8983,13 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_binding_identifier(&mut self) -> ParseResult<BindingIdentifier> {
         let token = self.current_token;
-        if !token.tag.is_identifier_like() || token.tag.is_unconditionally_reserved() {
+        if !token.tag.is_identifier_like() {
             return self.error("expected an identifier");
         }
+        self.validate_identifier(token, "a binding identifier");
+        self.advance_without_escape_check()?;
         let name = self.identifier_name(token)?;
-        self.validate_identifier(token, "a binding identifier")?;
-        self.advance()?;
-        let decorators = self.empty_range();
+        let decorators = TypedSubRange::empty();
         Ok(self
             .ast
             .binding_identifier(token.span, name, decorators, None, false, None))
@@ -8349,59 +8997,86 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_label_identifier(&mut self) -> ParseResult<LabelIdentifier> {
         let token = self.current_token;
-        if !token.tag.is_identifier_like() || token.tag.is_unconditionally_reserved() {
+        if !token.tag.is_identifier_like() {
             return self.error("expected a label");
         }
-        let name = self.identifier_name(token)?;
-        self.validate_identifier(token, "a label")?;
+        self.validate_identifier(token, "a label");
         self.advance()?;
+        let name = self.identifier_name(token)?;
         Ok(self.ast.label_identifier(token.span, name))
     }
 
-    fn validate_identifier(&self, token: Token, as_what: &str) -> ParseResult<()> {
-        if token.tag == TokenTag::Yield && self.context.yield_ {
-            return Err(Error::new(
+    fn validate_identifier(&mut self, token: Token, as_what: &str) {
+        if !token.tag.is_identifier_like() {
+            self.report_expected(
                 token.span,
-                format!(
+                "Expected an identifier",
+                ReportOptions {
+                    help: Some(Cow::Borrowed(
+                        "Identifiers must start with a letter, underscore (_), or dollar sign ($)",
+                    )),
+                    ..ReportOptions::default()
+                },
+            );
+        }
+        if token.tag.is_unconditionally_reserved() {
+            let found = self.describe_token(token);
+            self.report(
+                token.span,
+                Cow::Owned(format!(
+                    "'{}' is reserved and cannot be used as {as_what}",
+                    String::from_utf8_lossy(found.as_ref())
+                )),
+                ReportOptions::default(),
+            );
+        }
+        if token.tag == TokenTag::Yield && self.context.yield_ {
+            self.report(
+                token.span,
+                Cow::Owned(format!(
                     "'yield' is reserved in a generator context and cannot be used as {as_what}"
-                ),
-            ));
+                )),
+                ReportOptions::default(),
+            );
         }
         if token.tag == TokenTag::Await
             && (self.context.await_ || self.source_type == SourceType::Module)
         {
-            return Err(Error::new(
+            self.report(
                 token.span,
-                format!(
+                Cow::Owned(format!(
                     "'await' is reserved in an async/module context and cannot be used as {as_what}"
-                ),
-            ));
+                )),
+                ReportOptions::default(),
+            );
         }
-        Ok(())
     }
 
-    fn validate_identifier_name(&self, span: Span, name: &[u8], as_what: &str) -> ParseResult<()> {
-        if name == b"yield" && self.context.yield_ {
-            return Err(Error::new(
+    fn validate_identifier_name(
+        &mut self,
+        span: Span,
+        is_yield: bool,
+        is_await: bool,
+        as_what: &str,
+    ) {
+        if is_yield && self.context.yield_ {
+            self.report(
                 span,
-                format!(
+                Cow::Owned(format!(
                     "'yield' is reserved in a generator context and cannot be used as {as_what}"
-                ),
-            ));
+                )),
+                ReportOptions::default(),
+            );
         }
-        if name == b"await" && (self.context.await_ || self.source_type == SourceType::Module) {
-            return Err(Error::new(
+        if is_await && (self.context.await_ || self.source_type == SourceType::Module) {
+            self.report(
                 span,
-                format!(
+                Cow::Owned(format!(
                     "'await' is reserved in an async/module context and cannot be used as {as_what}"
-                ),
-            ));
+                )),
+                ReportOptions::default(),
+            );
         }
-        Ok(())
-    }
-
-    fn empty_range<T: ExtraDataCompact<'allocator>>(&mut self) -> TypedSubRange<T> {
-        self.ast.add_typed_sub_range(std::iter::empty())
     }
 
     fn next_token(&mut self) -> ParseResult<()> {
@@ -8412,18 +9087,21 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     #[cold]
     #[inline(never)]
-    fn next_token_error(&self, error: LexicalError) -> Error {
-        Error::new(
-            Span::new(
-                self.prev_token_end.min(self.lexer.cursor),
-                self.prev_token_end.max(self.lexer.cursor),
-            ),
-            format!(
-                "{}. {}",
-                lexical_error_message(error),
-                lexical_error_help(error)
-            ),
-        )
+    fn next_token_error(&mut self, error: LexicalError) -> Error {
+        let current_token_end = self.current_token.span.end;
+        let span = Span::new(
+            current_token_end.min(self.lexer.cursor),
+            current_token_end.max(self.lexer.cursor),
+        );
+        let message = lexical_error_message(error);
+        self.diagnostics.push(Diagnostic {
+            severity: Severity::Error,
+            message: message.into(),
+            span,
+            help: Some(lexical_error_help(error).into()),
+            labels: Vec::new(),
+        });
+        Error::reported(span, message)
     }
 
     pub fn advance(&mut self) -> ParseResult<()> {
@@ -8480,9 +9158,6 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             ));
         }
         let token = self.current_token;
-        if tag.is_keyword() && token.is_escaped() {
-            return self.error_at(token.span, "keywords may not contain escape sequences");
-        }
         self.advance()?;
         Ok(token)
     }
@@ -8490,12 +9165,6 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     fn eat(&mut self, tag: TokenTag) -> ParseResult<bool> {
         if self.current_token.tag != tag {
             return Ok(false);
-        }
-        if tag.is_keyword() && self.current_token.is_escaped() {
-            return self.error_at(
-                self.current_token.span,
-                "keywords may not contain escape sequences",
-            );
         }
         self.advance()?;
         Ok(true)
@@ -8615,18 +9284,6 @@ fn member_expression_is_optional(member: MemberExpression, ast: &Ast<'_>) -> boo
                 ExprData::ChainExpression(_)
             )
         }
-        _ => false,
-    }
-}
-
-fn expression_contains_optional_chain(expression: Expr, ast: &Ast<'_>) -> bool {
-    match ast.expr_data(expression) {
-        ExprData::MemberExpression(member) => member_expression_is_optional(member, ast),
-        ExprData::CallExpression(call) => {
-            call.optional(ast) || expression_contains_optional_chain(call.callee(ast), ast)
-        }
-        ExprData::ChainExpression(_) => true,
-        ExprData::ParenthesizedExpression(_) => false,
         _ => false,
     }
 }
@@ -8761,6 +9418,7 @@ pub fn build_line_starts(ast: &mut Ast<'_>, source: &[u8]) {
     const BYTE_HIGH_BITS: u64 = 0x8080_8080_8080_8080;
     const LINE_FEEDS: u64 = u64::from_le_bytes([b'\n'; 8]);
 
+    // subtract-and-mask marks zero bytes after xor converts line feeds to zero
     let mut chunks = source.chunks_exact(8);
     for (chunk_index, chunk) in chunks.by_ref().enumerate() {
         let bytes: [u8; 8] = chunk.try_into().expect("chunk size is fixed");
@@ -8777,6 +9435,8 @@ pub fn build_line_starts(ast: &mut Ast<'_>, source: &[u8]) {
             }
             matches |= 0xff << (byte_index * 8);
         }
+        let zero_high_bits = matches.wrapping_sub(BYTE_LOW_BITS) & !matches & BYTE_HIGH_BITS;
+        debug_assert_eq!(zero_high_bits, 0);
     }
 
     let remainder_start = source.len() - chunks.remainder().len();
@@ -8785,12 +9445,13 @@ pub fn build_line_starts(ast: &mut Ast<'_>, source: &[u8]) {
             starts.push((remainder_start + remainder_index + 1) as u32);
         }
     }
+    debug_assert!(!starts.is_empty());
+    debug_assert_eq!(starts[0], 0);
     ast.set_line_starts(starts);
 }
 
 fn can_start_binding(tag: TokenTag) -> bool {
-    matches!(tag, TokenTag::LeftBracket | TokenTag::LeftBrace)
-        || (tag.is_identifier_like() && !tag.is_unconditionally_reserved())
+    tag.is_identifier_like() || matches!(tag, TokenTag::LeftBracket | TokenTag::LeftBrace)
 }
 
 fn is_parameter_property_modifier_tag(tag: TokenTag) -> bool {
@@ -8931,19 +9592,6 @@ fn is_start_of_expression(tag: TokenTag) -> bool {
         || tag.is_numeric_literal()
 }
 
-fn logical_expression_mixes_coalesce(
-    expression: Expr,
-    parent_operator: LogicalOperator,
-    ast: &Ast<'_>,
-) -> bool {
-    let ExprData::LogicalExpression(logical) = ast.expr_data(expression) else {
-        return false;
-    };
-    let child_operator = logical.operator(ast);
-    (parent_operator == LogicalOperator::NullishCoalescing)
-        != (child_operator == LogicalOperator::NullishCoalescing)
-}
-
 fn is_unconditionally_reserved_word(name: &[u8]) -> bool {
     const WORDS: &[&[u8]] = &[
         b"break",
@@ -9033,5 +9681,24 @@ fn assignment_operator(tag: TokenTag) -> AssignmentOperator {
         TokenTag::LogicalAndAssign => AssignmentOperator::LogicalAndAssign,
         TokenTag::NullishAssign => AssignmentOperator::NullishAssign,
         _ => unreachable!(),
+    }
+}
+
+fn strip_parenthesized_nodes(ast: &mut Ast<'_>) {
+    for index in 0..ast.node_count() {
+        let node = NodeId::from_raw_unchecked(index as u32);
+        if ast.node_kind(node) != NodeKind::ParenthesizedExpression {
+            continue;
+        }
+        let expression = unsafe { Expr::from_node_id_unchecked(node) };
+        let ExprData::ParenthesizedExpression(parenthesized) = ast.expr_data(expression) else {
+            unreachable!()
+        };
+
+        let mut inner = parenthesized.expression(ast);
+        while let ExprData::ParenthesizedExpression(parenthesized) = ast.expr_data(inner) {
+            inner = parenthesized.expression(ast);
+        }
+        ast.set_data(node, inner.node_id());
     }
 }

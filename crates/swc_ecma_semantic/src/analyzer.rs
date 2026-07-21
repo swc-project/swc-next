@@ -598,17 +598,6 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         self.enter_control_boundary();
         let outer_scope = self.current_scope;
         let strict = self.function_is_strict(node, ctx.ast());
-        let annex_b_function = !strict && !node.r#async(ctx.ast()) && !node.generator(ctx.ast());
-        let direct_parent = ctx.ancestors().skip(1).next();
-        let annex_b_statement_function = node.function_type(ctx.ast())
-            == FunctionType::FunctionDeclaration
-            && annex_b_function
-            && direct_parent.is_some_and(|parent| {
-                matches!(
-                    ctx.node_kind(parent),
-                    NodeKind::IfStatement | NodeKind::LabeledStatement
-                )
-            });
         if node.function_type(ctx.ast()) == FunctionType::FunctionDeclaration {
             let mut through_label = false;
             let parent = ctx.ancestors().skip(1).find(|ancestor| {
@@ -640,7 +629,6 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             }
         }
         let flags = ScopeFlags { strict };
-        let function_type = node.function_type(ctx.ast());
         let binding_target = if is_named_function_expression(node, ctx.ast()) {
             self.expr_name_scope(node.node_id(), ScopeKind::Function, flags);
             self.scopes
@@ -651,38 +639,17 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             self.push_scope(node.node_id(), ScopeKind::Function, flags);
             outer_scope
         };
-        let block_lexical_function = function_type == FunctionType::FunctionDeclaration
-            && (self.scopes.get(outer_scope).kind == ScopeKind::Module
-                || self.scopes.get(outer_scope).kind == ScopeKind::Block);
-        let annex_b_block_function = block_lexical_function
-            && self.scopes.get(outer_scope).kind == ScopeKind::Block
-            && !strict
-            && !node.r#async(ctx.ast())
-            && !node.generator(ctx.ast());
-        let excludes = if annex_b_statement_function {
-            SymbolFlags::default()
-        } else if block_lexical_function {
-            if annex_b_block_function {
-                SymbolFlags::function_excludes(true)
-            } else {
-                SymbolFlags::function_excludes(false)
-            }
-        } else {
-            SymbolFlags::function_var_excludes()
-        };
-        let mut symbol_flags = if block_lexical_function {
-            SymbolFlags::FUNCTION.union(SymbolFlags::BLOCK_SCOPED_VAR)
-        } else {
-            SymbolFlags::FUNCTION
-        };
-        if annex_b_block_function {
-            symbol_flags = symbol_flags.union(SymbolFlags::ANNEX_B_FUNCTION);
-        }
+        let target_kind = self.scopes.get(binding_target).kind;
+        let allow_overload = ctx.ast().lang().is_typescript()
+            || matches!(
+                target_kind,
+                ScopeKind::Function | ScopeKind::Global | ScopeKind::StaticBlock
+            );
         self.set_binding_context(
             node.node_id(),
             BindingContext {
-                flags: symbol_flags,
-                excludes,
+                flags: SymbolFlags::FUNCTION,
+                excludes: SymbolFlags::function_excludes(allow_overload),
                 target: binding_target,
                 export_state: ExportState::None,
                 ambient: node.declare(ctx.ast()) || self.ambient,

@@ -18,7 +18,7 @@ fn remove_parens(program: Program, ast: &mut Ast<'_>) {
             ctx: &mut TraverseCtx<'_, 'a>,
         ) {
             let expression = node.expression(ctx.ast());
-            ctx.ast_mut().set_data(node, expression);
+            ctx.ast_mut().set_data(node.node_id(), expression.node_id());
         }
     }
 

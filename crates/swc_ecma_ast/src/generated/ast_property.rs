@@ -426,6 +426,10 @@ impl Decl {
         matches!(ast.decl_data(self), DeclData::TsGlobalDeclaration(_))
     }
     #[inline]
+    pub fn is_ts_import_equals_declaration(self, ast: &Ast<'_>) -> bool {
+        matches!(ast.decl_data(self), DeclData::TsImportEqualsDeclaration(_))
+    }
+    #[inline]
     pub fn as_variable_declaration(self, ast: &Ast<'_>) -> Option<VariableDeclaration> {
         match ast.decl_data(self) {
             DeclData::VariableDeclaration(it) => Some(it),
@@ -478,6 +482,16 @@ impl Decl {
     pub fn as_ts_global_declaration(self, ast: &Ast<'_>) -> Option<TsGlobalDeclaration> {
         match ast.decl_data(self) {
             DeclData::TsGlobalDeclaration(it) => Some(it),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_ts_import_equals_declaration(
+        self,
+        ast: &Ast<'_>,
+    ) -> Option<TsImportEqualsDeclaration> {
+        match ast.decl_data(self) {
+            DeclData::TsImportEqualsDeclaration(it) => Some(it),
             _ => None,
         }
     }

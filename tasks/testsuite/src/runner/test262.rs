@@ -4,7 +4,7 @@ use colored::Colorize;
 use rayon::prelude::*;
 use swc_experimental_allocator::Allocator;
 use swc_experimental_ecma_ast::{Ast, SourceType};
-use swc_experimental_ecma_parser::{Options, parse};
+use swc_experimental_ecma_parser::{Options, Parser};
 use swc_experimental_ecma_semantic::analyze;
 
 use crate::{
@@ -78,8 +78,21 @@ fn run_source(
         ..Options::default()
     };
 
-    let actual_error = match parse(&mut ast, source, options) {
+    let (parse_result, parser_diagnostic) = {
+        let mut parser = Parser::init(&mut ast, source, options);
+        let result = parser.parse();
+        let diagnostic = parser.diagnostics.first().map(|diagnostic| {
+            format!(
+                "parser: {} at {}..{}",
+                diagnostic.message, diagnostic.span.start, diagnostic.span.end
+            )
+        });
+        (result, diagnostic)
+    };
+
+    let actual_error = match parse_result {
         Err(error) => Some(format!("parser: {error:?}")),
+        Ok(_) if parser_diagnostic.is_some() => parser_diagnostic,
         Ok(program) => {
             let semantic = analyze(program, &mut ast);
             semantic.diagnostics().first().map(|diagnostic| {

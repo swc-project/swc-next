@@ -15,7 +15,9 @@ pub trait AstNode {
     where
         Self: Sized,
     {
-        debug_assert_eq!(std::mem::size_of::<Self>(), std::mem::size_of::<NodeId>());
+        const {
+            assert!(std::mem::size_of::<Self>() == std::mem::size_of::<NodeId>());
+        };
         unsafe { std::mem::transmute_copy(&node_id) }
     }
 }

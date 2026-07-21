@@ -35,6 +35,7 @@ pub struct Diagnostic {
 pub struct Error {
     pub message: String,
     pub span: Span,
+    pub(crate) reported: bool,
 }
 
 impl Error {
@@ -42,6 +43,15 @@ impl Error {
         Self {
             message: message.into(),
             span,
+            reported: false,
+        }
+    }
+
+    pub(crate) fn reported(span: Span, message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            span,
+            reported: true,
         }
     }
 }

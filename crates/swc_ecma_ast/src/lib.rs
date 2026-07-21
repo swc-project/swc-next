@@ -105,12 +105,23 @@ impl<'a> Ast<'a> {
 
     /// Replace `old`'s node data with `new`'s while preserving `old`'s node ID.
     #[inline]
-    pub fn set_data<Old: AstNode, New: AstNode>(&mut self, old: Old, new: New) {
+    pub fn set_data(&mut self, old: NodeId, new: NodeId) {
+        let span = *self.nodes.span(new);
+        let kind = *self.nodes.kind(new);
+        let data = *self.nodes.data(new);
+        *self.nodes.span_mut(old) = span;
+        *self.nodes.kind_mut(old) = kind;
+        *self.nodes.data_mut(old) = data;
+    }
+
+    /// Replace `old` with a newly built `new` node, discard the temporary node,
+    /// and return a typed handle that preserves `old`'s node ID.
+    #[inline]
+    pub fn replace_data<Old: AstNode, New: AstNode>(&mut self, old: Old, new: New) -> New {
         let old = old.node_id();
         let new = new.node_id();
-        if old == new {
-            return;
-        }
+        assert_ne!(old, new);
+        assert_eq!(new.index() + 1, self.nodes.len());
 
         let span = *self.nodes.span(new);
         let kind = *self.nodes.kind(new);
@@ -118,6 +129,9 @@ impl<'a> Ast<'a> {
         *self.nodes.span_mut(old) = span;
         *self.nodes.kind_mut(old) = kind;
         *self.nodes.data_mut(old) = data;
+        self.nodes.truncate(new.index());
+
+        unsafe { New::from_node_id_unchecked(old) }
     }
 
     #[inline]

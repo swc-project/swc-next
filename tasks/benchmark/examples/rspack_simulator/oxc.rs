@@ -35,7 +35,7 @@ fn run_parse<'a>(
             preserve_parens: false,
             ..Default::default()
         })
-        .with_config(TokensParserConfig)
+        // .with_config(TokensParserConfig)
         .parse();
     assert!(parser_return.diagnostics.is_empty());
     (parser_return.program, parser_return.tokens)

@@ -78,6 +78,9 @@ impl<'a> CloneIn<'a> for Decl {
             DeclData::TsEnumDeclaration(it) => Self::TsEnumDeclaration(it.clone_in(ast)),
             DeclData::TsModuleDeclaration(it) => Self::TsModuleDeclaration(it.clone_in(ast)),
             DeclData::TsGlobalDeclaration(it) => Self::TsGlobalDeclaration(it.clone_in(ast)),
+            DeclData::TsImportEqualsDeclaration(it) => {
+                Self::TsImportEqualsDeclaration(it.clone_in(ast))
+            }
         }
     }
 }

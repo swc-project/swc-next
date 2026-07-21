@@ -25,5 +25,5 @@ use swc_experimental_ecma_ast::{Ast, Program};
 
 /// Parse one source file into `ast`.
 pub fn parse<'a>(ast: &mut Ast<'a>, source: &[u8], options: Options) -> Result<Program, Error> {
-    Parser::new(ast, source, options).parse()
+    Parser::init(ast, source, options).parse()
 }

@@ -285,6 +285,19 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
+    pub fn stmt_decl_ts_import_equals_declaration(
+        &mut self,
+        span: Span,
+        id: BindingIdentifier,
+        module_reference: TsModuleReference,
+        import_kind: ImportOrExportKind,
+    ) -> Stmt {
+        Stmt::Declaration(Decl::TsImportEqualsDeclaration(
+            self.ts_import_equals_declaration(span, id, module_reference, import_kind)
+                .into(),
+        ))
+    }
+    #[inline]
     pub fn stmt_import_declaration(
         &mut self,
         span: Span,
@@ -697,6 +710,19 @@ impl<'a> Ast<'a> {
         )))
     }
     #[inline]
+    pub fn statement_list_item_stmt_decl_ts_import_equals_declaration(
+        &mut self,
+        span: Span,
+        id: BindingIdentifier,
+        module_reference: TsModuleReference,
+        import_kind: ImportOrExportKind,
+    ) -> StatementListItem {
+        StatementListItem::Stmt(Stmt::Declaration(Decl::TsImportEqualsDeclaration(
+            self.ts_import_equals_declaration(span, id, module_reference, import_kind)
+                .into(),
+        )))
+    }
+    #[inline]
     pub fn statement_list_item_stmt_import_declaration(
         &mut self,
         span: Span,
@@ -940,6 +966,19 @@ impl<'a> Ast<'a> {
         declare: bool,
     ) -> Decl {
         Decl::TsGlobalDeclaration(self.ts_global_declaration(span, id, body, declare).into())
+    }
+    #[inline]
+    pub fn decl_ts_import_equals_declaration(
+        &mut self,
+        span: Span,
+        id: BindingIdentifier,
+        module_reference: TsModuleReference,
+        import_kind: ImportOrExportKind,
+    ) -> Decl {
+        Decl::TsImportEqualsDeclaration(
+            self.ts_import_equals_declaration(span, id, module_reference, import_kind)
+                .into(),
+        )
     }
     #[inline]
     pub fn expr_identifier_reference(

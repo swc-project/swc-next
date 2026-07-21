@@ -5519,6 +5519,7 @@ impl<'a> Ast<'a> {
             NodeKind::TsEnumDeclaration => StmtData::Declaration(Decl(node.0)),
             NodeKind::TsModuleDeclaration => StmtData::Declaration(Decl(node.0)),
             NodeKind::TsGlobalDeclaration => StmtData::Declaration(Decl(node.0)),
+            NodeKind::TsImportEqualsDeclaration => StmtData::Declaration(Decl(node.0)),
             NodeKind::ImportDeclaration => StmtData::ImportDeclaration(ImportDeclaration(node.0)),
             NodeKind::ExportNamedDeclaration => {
                 StmtData::ExportNamedDeclaration(ExportNamedDeclaration(node.0))
@@ -5534,9 +5535,6 @@ impl<'a> Ast<'a> {
             }
             NodeKind::TsNamespaceExportDeclaration => {
                 StmtData::TsNamespaceExportDeclaration(TsNamespaceExportDeclaration(node.0))
-            }
-            NodeKind::TsImportEqualsDeclaration => {
-                StmtData::TsImportEqualsDeclaration(TsImportEqualsDeclaration(node.0))
             }
             _ => unsafe { std::hint::unreachable_unchecked() },
         }
@@ -5570,13 +5568,13 @@ impl<'a> Ast<'a> {
             NodeKind::TsEnumDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
             NodeKind::TsModuleDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
             NodeKind::TsGlobalDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
+            NodeKind::TsImportEqualsDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
             NodeKind::ImportDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
             NodeKind::ExportNamedDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
             NodeKind::ExportDefaultDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
             NodeKind::ExportAllDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
             NodeKind::TsExportAssignment => StatementListItemData::Stmt(Stmt(node.0)),
             NodeKind::TsNamespaceExportDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::TsImportEqualsDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
             NodeKind::Directive => StatementListItemData::Directive(Directive(node.0)),
             _ => unsafe { std::hint::unreachable_unchecked() },
         }
@@ -5601,6 +5599,9 @@ impl<'a> Ast<'a> {
             }
             NodeKind::TsGlobalDeclaration => {
                 DeclData::TsGlobalDeclaration(TsGlobalDeclaration(node.0))
+            }
+            NodeKind::TsImportEqualsDeclaration => {
+                DeclData::TsImportEqualsDeclaration(TsImportEqualsDeclaration(node.0))
             }
             _ => unsafe { std::hint::unreachable_unchecked() },
         }
