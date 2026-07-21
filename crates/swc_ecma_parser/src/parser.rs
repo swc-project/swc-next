@@ -7044,9 +7044,11 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_expression(&mut self, minimum: u8, opts: ParseExpressionOpts) -> Option<Expr> {
         let mut left = self.parse_prefix(opts.in_cover, minimum)?;
+        let is_ts = self.lang.is_typescript();
+
         loop {
             let token = self.current_token;
-            if self.lang.is_typescript()
+            if is_ts
                 && is_angle_open(token.tag)
                 && max_left_precedence(left, self.ast) >= Precedence::CALL
                 && let Some(expression) = self.parse_type_argumented_call_or_instantiation(left)?
@@ -7054,14 +7056,14 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 left = expression;
                 continue;
             }
-            if opts.respect_allow_in && token.tag == TokenTag::In && !self.context.in_ {
-                break;
-            }
             let precedence = self.infix_precedence(token);
             if precedence < minimum || precedence == Precedence::LOWEST {
                 break;
             }
             if precedence > max_left_precedence(left, self.ast) {
+                break;
+            }
+            if opts.respect_allow_in && token.tag == TokenTag::In && !self.context.in_ {
                 break;
             }
             left = self.parse_infix(precedence, left)?;
@@ -7101,33 +7103,48 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_infix(&mut self, precedence: u8, left: Expr) -> Option<Expr> {
         let token = self.current_token;
+
         match token.tag {
-            TokenTag::Dot => self.parse_static_member_expression(left, false),
-            TokenTag::LeftBracket => self.parse_computed_member_expression(left, false),
-            TokenTag::OptionalChaining => self.parse_optional_chain(left),
-            TokenTag::LeftParen => self.parse_call_expression(left, false, None),
+            TokenTag::As | TokenTag::Satisfies if self.lang.is_typescript() => {
+                return self.parse_as_or_satisfies_expression(left, token.tag);
+            }
+            TokenTag::LogicalNot
+                if self.lang.is_typescript() && !token.has_line_terminator_before() =>
+            {
+                return self.parse_non_null_expression(left);
+            }
+            _ => {}
+        }
+
+        if token.tag.is_binary_operator() {
+            return self.parse_binary_expression(left, token.tag);
+        }
+
+        if token.tag.is_logical_operator() {
+            return self.parse_logical_expression(left, token.tag);
+        }
+
+        if token.tag.is_assignment_operator() {
+            return self.parse_assignment_expression(precedence, left, token.tag);
+        }
+
+        if token.tag == TokenTag::Arrow && !token.has_line_terminator_before() {
+            return self.parse_simple_arrow_function(left);
+        }
+
+        match token.tag {
             TokenTag::Increment | TokenTag::Decrement => {
                 self.parse_update_expression(false, Some(left))
             }
             TokenTag::Question => self.parse_conditional_expression(precedence, left),
-            TokenTag::As | TokenTag::Satisfies if self.lang.is_typescript() => {
-                self.parse_as_or_satisfies_expression(left, token.tag)
-            }
-            TokenTag::LogicalNot if self.lang.is_typescript() => {
-                self.parse_non_null_expression(left)
-            }
-            tag if tag.is_assignment_operator() => {
-                self.parse_assignment_expression(precedence, left, tag)
-            }
-            TokenTag::Arrow if !token.has_line_terminator_before() => {
-                self.parse_simple_arrow_function(left)
-            }
-            tag if tag.is_binary_operator() => self.parse_binary_expression(left, tag),
-            tag if tag.is_logical_operator() => self.parse_logical_expression(left, tag),
             TokenTag::Comma => self.parse_sequence_expression(precedence, left),
+            TokenTag::Dot => self.parse_static_member_expression(left, false),
+            TokenTag::LeftBracket => self.parse_computed_member_expression(left, false),
+            TokenTag::LeftParen => self.parse_call_expression(left, false, None),
             TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => {
                 self.parse_tagged_template_expression(left, None)
             }
+            TokenTag::OptionalChaining => self.parse_optional_chain(left),
             _ => {
                 let found = self.describe_token(token);
                 self.report(
@@ -7149,49 +7166,83 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_prefix(&mut self, in_cover: bool, minimum: u8) -> Option<Expr> {
-        let token = self.current_token;
-        match token.tag {
-            TokenTag::Async => self.parse_async_function_or_arrow(minimum),
-            TokenTag::Await if self.context.await_ => {
+        let tag = self.current_token.tag;
+
+        if tag == TokenTag::Identifier {
+            return self.parse_identifier();
+        }
+
+        if matches!(tag, TokenTag::Increment | TokenTag::Decrement) {
+            return self.parse_update_expression(true, None);
+        }
+
+        if tag == TokenTag::At {
+            let (start, decorators) = self.parse_decorators()?;
+            return Some(Expr::Class(self.parse_class_decorated(
+                ParseClassOpts {
+                    is_expression: true,
+                    ..ParseClassOpts::default()
+                },
+                Some(start),
+                decorators,
+            )?));
+        }
+
+        if tag.is_unary_operator() {
+            return self.parse_unary_expression();
+        }
+
+        if tag == TokenTag::LeftParen {
+            return self.parse_parenthesized_or_arrow_function(None, minimum);
+        }
+
+        if tag == TokenTag::Await && self.context.await_ {
+            let start = self.current_token.span.start;
+            self.advance()?;
+            return self.parse_await_expression(start);
+        }
+
+        if tag == TokenTag::Yield && self.context.yield_ && minimum < Precedence::ADDITIVE {
+            return self.parse_yield_expression();
+        }
+
+        if tag == TokenTag::New {
+            return self.parse_new_expression();
+        }
+
+        if tag == TokenTag::Import {
+            return self.parse_import_expression();
+        }
+
+        if tag == TokenTag::Async {
+            return self.parse_async_function_or_arrow(minimum);
+        }
+
+        if tag == TokenTag::LessThan {
+            if self.lang.is_typescript() {
                 let start = self.current_token.span.start;
-                self.advance()?;
-                self.parse_await_expression(start)
-            }
-            TokenTag::Yield if self.context.yield_ && minimum < Precedence::ADDITIVE => {
-                self.parse_yield_expression()
-            }
-            TokenTag::LeftParen => self.parse_parenthesized_or_arrow_function(None, minimum),
-            TokenTag::New => self.parse_new_expression(),
-            TokenTag::At => {
-                let (start, decorators) = self.parse_decorators()?;
-                Some(Expr::Class(self.parse_class_decorated(
-                    ParseClassOpts {
-                        is_expression: true,
-                        ..ParseClassOpts::default()
-                    },
-                    Some(start),
-                    decorators,
-                )?))
-            }
-            TokenTag::LessThan if self.lang.is_typescript() => {
-                if let Some(arrow) = self.try_parse_generic_arrow(false, token.span.start)? {
-                    Some(arrow)
-                } else if !self.lang.is_jsx() {
-                    self.parse_type_assertion()
-                } else {
-                    self.parse_jsx_expression()
+                if let Some(arrow) = self.try_parse_generic_arrow(false, start)? {
+                    return Some(arrow);
+                }
+                if !self.lang.is_jsx() {
+                    return self.parse_type_assertion();
                 }
             }
-            TokenTag::LessThan if self.lang.is_jsx() => self.parse_jsx_expression(),
-            TokenTag::Import => self.parse_import_expression(),
-            TokenTag::Increment | TokenTag::Decrement => self.parse_update_expression(true, None),
-            tag if tag.is_unary_operator() => self.parse_unary_expression(),
-            _ => self.parse_primary_expression(in_cover),
+            if self.lang.is_jsx() {
+                return self.parse_jsx_expression();
+            }
         }
+
+        self.parse_primary_expression(in_cover)
     }
 
     fn parse_primary_expression(&mut self, in_cover: bool) -> Option<Expr> {
         let token = self.current_token;
+
+        if token.tag.is_numeric_literal() {
+            return self.parse_numeric_literal();
+        }
+
         match token.tag {
             TokenTag::PrivateIdentifier => {
                 let private = self.parse_private_identifier()?;
@@ -7208,7 +7259,6 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             TokenTag::Super => self.parse_super_expression(),
             TokenTag::True | TokenTag::False => self.parse_boolean_literal(),
             TokenTag::NullLiteral => self.parse_null_literal(),
-            tag if tag.is_numeric_literal() => self.parse_numeric_literal(),
             TokenTag::StringLiteral => Some(Expr::StringLiteral(self.parse_string_literal()?)),
             TokenTag::NoSubstitutionTemplate => Some(Expr::TemplateLiteral(
                 self.parse_no_substitution_template(false)?,
