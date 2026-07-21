@@ -9,21 +9,6 @@ use crate::{sourcemap, utils};
 pub use sourcemap::{Options as SourceMapOptions, SourceMap};
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum Format {
-    #[default]
-    Pretty,
-    Compact,
-}
-
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum Quotes {
-    #[default]
-    Preserve,
-    Double,
-    Single,
-}
-
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Comments {
     None,
     All,
@@ -35,9 +20,9 @@ pub enum Comments {
 
 #[derive(Clone, Copy)]
 pub struct Options<'a> {
-    pub format: Format,
-    pub indent: u8,
-    pub quotes: Quotes,
+    pub ascii_only: bool,
+    pub minify: bool,
+    pub inline_script: bool,
     pub source_maps: Option<SourceMapOptions<'a>>,
     pub comments: Comments,
 }
@@ -45,9 +30,9 @@ pub struct Options<'a> {
 impl Default for Options<'_> {
     fn default() -> Self {
         Self {
-            format: Format::Pretty,
-            indent: 2,
-            quotes: Quotes::Preserve,
+            ascii_only: false,
+            minify: false,
+            inline_script: false,
             source_maps: None,
             comments: Comments::Some,
         }
@@ -67,75 +52,18 @@ pub struct Result<'a> {
     pub map: Option<SourceMap<'a>>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Error {
-    OutOfMemory,
-}
-
-#[derive(Clone, Copy, Default)]
-pub struct Config {
-    pub strip_ts: bool,
-    pub minify: bool,
-}
-
 pub fn print<'a>(
     allocator: &'a Allocator,
     tree: &'a Ast<'a>,
     root: Program,
     options: Options<'a>,
-) -> std::result::Result<Result<'a>, Error> {
-    print_impl(Config::default(), allocator, tree, root, options)
-}
-
-pub fn strip<'a>(
-    allocator: &'a Allocator,
-    tree: &'a Ast<'a>,
-    root: Program,
-    options: Options<'a>,
-) -> std::result::Result<Result<'a>, Error> {
-    print_impl(
-        Config {
-            strip_ts: true,
-            minify: false,
-        },
-        allocator,
-        tree,
-        root,
-        options,
-    )
-}
-
-pub fn minify<'a>(
-    allocator: &'a Allocator,
-    tree: &'a Ast<'a>,
-    root: Program,
-    options: Options<'a>,
-) -> std::result::Result<Result<'a>, Error> {
-    print_impl(
-        Config {
-            strip_ts: false,
-            minify: true,
-        },
-        allocator,
-        tree,
-        root,
-        options,
-    )
-}
-
-pub fn print_impl<'a>(
-    config: Config,
-    allocator: &'a Allocator,
-    tree: &'a Ast<'a>,
-    root: Program,
-    options: Options<'a>,
-) -> std::result::Result<Result<'a>, Error> {
-    let mut printer = Printer::init(allocator, tree, options, config);
+) -> Result<'a> {
+    let mut printer = Printer::init(allocator, tree, options);
     printer.print_root(root);
     let code = std::mem::replace(&mut printer.code, Vec::new_in(allocator)).into_bump_slice();
     let errors = std::mem::replace(&mut printer.errors, Vec::new_in(allocator)).into_bump_slice();
     let map = printer.sm.as_mut().map(|state| state.build(allocator));
-    Ok(Result { code, errors, map })
+    Result { code, errors, map }
 }
 
 fn fixed_string(tag: NodeKind) -> Option<&'static [u8]> {
@@ -244,14 +172,12 @@ struct Printer<'a> {
     code: Vec<'a, u8>,
     errors: Vec<'a, Diagnostic<'a>>,
     options: Options<'a>,
-    config: Config,
     allocator: &'a Allocator,
     indent_depth: u32,
     in_assign_target: bool,
     pending_semi: bool,
     sm: Option<sourcemap::State<'a>>,
     current_idx: Option<NodeId>,
-    definite_pending: bool,
     skip_leading_of: Option<NodeId>,
     at_lead: Lead,
     in_prologue: bool,
@@ -265,12 +191,7 @@ struct Cursor {
 }
 
 impl<'a> Printer<'a> {
-    fn init(
-        allocator: &'a Allocator,
-        tree: &'a Ast<'a>,
-        options: Options<'a>,
-        config: Config,
-    ) -> Self {
+    fn init(allocator: &'a Allocator, tree: &'a Ast<'a>, options: Options<'a>) -> Self {
         let mut code = Vec::with_capacity_in(tree.source().len(), allocator);
         let sm = options.source_maps.map(|options| {
             let mut state = sourcemap::State::init(options, allocator);
@@ -283,14 +204,12 @@ impl<'a> Printer<'a> {
             code,
             errors: Vec::new_in(allocator),
             options,
-            config,
             allocator,
             indent_depth: 0,
             in_assign_target: false,
             pending_semi: false,
             sm,
             current_idx: None,
-            definite_pending: false,
             skip_leading_of: None,
             at_lead: Lead::None,
             in_prologue: false,
@@ -300,7 +219,7 @@ impl<'a> Printer<'a> {
 
     #[inline]
     fn pretty(&self) -> bool {
-        self.options.format == Format::Pretty
+        !self.options.minify
     }
 
     #[inline]
@@ -364,6 +283,57 @@ impl<'a> Printer<'a> {
         self.write_str(self.tree.string(id));
     }
 
+    fn write_identifier(&mut self, id: swc_experimental_ecma_ast::String) {
+        let value = self.tree.string(id);
+        if !self.options.ascii_only || value.is_ascii() {
+            self.write_str(value);
+            return;
+        }
+        let Ok(value) = std::str::from_utf8(value) else {
+            self.write_str(value);
+            return;
+        };
+        for ch in value.chars() {
+            if ch.is_ascii() {
+                self.write_byte(ch as u8);
+            } else {
+                self.write_braced_unicode_escape(ch as u32);
+            }
+        }
+    }
+
+    fn write_ascii_regex(&mut self, value: &[u8]) {
+        if !self.options.ascii_only || value.is_ascii() {
+            self.write_str(value);
+            return;
+        }
+        let mut start = 0;
+        let mut index = 0;
+        while index < value.len() {
+            if value[index].is_ascii() {
+                index += 1;
+                continue;
+            }
+            let Some((code_point, len)) = decode_code_point(value, index) else {
+                index += 1;
+                continue;
+            };
+            if index > start {
+                self.write_str(&value[start..index]);
+            }
+            if code_point <= 0xff {
+                self.write_hex_escape(code_point as u8);
+            } else {
+                self.write_unicode_escape(code_point);
+            }
+            index += len;
+            start = index;
+        }
+        if start < value.len() {
+            self.write_str(&value[start..]);
+        }
+    }
+
     #[inline]
     fn space(&mut self) {
         if self.pretty() {
@@ -395,28 +365,6 @@ impl<'a> Printer<'a> {
             let node = self.tree.get_node_in_sub_range(item);
             self.emit(node.node_id());
         }
-    }
-
-    fn print_binding_suffix(&mut self, optional: bool, definite: bool, annotation: Option<NodeId>) {
-        if !self.config.strip_ts && optional {
-            self.write_byte(b'?');
-        }
-        if definite {
-            self.write_byte(b'!');
-        }
-        if let Some(annotation) = annotation {
-            self.emit(annotation);
-        }
-    }
-
-    #[inline]
-    fn take_definite(&mut self) -> bool {
-        if self.config.strip_ts {
-            return false;
-        }
-        let definite = self.definite_pending;
-        self.definite_pending = false;
-        definite
     }
 
     fn newline(&mut self) {
@@ -472,121 +420,118 @@ impl<'a> Printer<'a> {
     }
 
     fn emit_expr(&mut self, idx: NodeId, context: ExprContext) {
-        if self.config.strip_ts {
-            match self.node_data(idx) {
-                NodeKindData::TsTypeAliasDeclaration(_)
-                | NodeKindData::TsInterfaceDeclaration(_)
-                | NodeKindData::TsGlobalDeclaration(_)
-                | NodeKindData::TsNamespaceExportDeclaration(_)
-                | NodeKindData::TsThisParameter(_) => return,
-                NodeKindData::TsAsExpression(_)
-                | NodeKindData::TsSatisfiesExpression(_)
-                | NodeKindData::TsTypeAssertion(_)
-                | NodeKindData::TsNonNullExpression(_)
-                | NodeKindData::TsInstantiationExpression(_) => {
-                    return self.emit_expr(self.stripped(idx), context);
+        match self.node_data(idx) {
+            NodeKindData::TsTypeAliasDeclaration(_)
+            | NodeKindData::TsInterfaceDeclaration(_)
+            | NodeKindData::TsGlobalDeclaration(_)
+            | NodeKindData::TsNamespaceExportDeclaration(_)
+            | NodeKindData::TsThisParameter(_) => return,
+            NodeKindData::TsAsExpression(_)
+            | NodeKindData::TsSatisfiesExpression(_)
+            | NodeKindData::TsTypeAssertion(_)
+            | NodeKindData::TsNonNullExpression(_)
+            | NodeKindData::TsInstantiationExpression(_) => {
+                return self.emit_expr(self.stripped(idx), context);
+            }
+            NodeKindData::TsEnumDeclaration(declaration) => {
+                if declaration.declare(self.tree) {
+                    return;
                 }
-                NodeKindData::TsEnumDeclaration(declaration) => {
-                    if declaration.declare(self.tree) {
-                        return;
-                    }
-                    return self
-                        .diagnose(idx, b"TypeScript enums cannot be stripped to JavaScript");
+                return self.diagnose(idx, b"TypeScript enums cannot be stripped to JavaScript");
+            }
+            NodeKindData::TsModuleDeclaration(declaration) => {
+                if declaration.declare(self.tree) {
+                    return;
                 }
-                NodeKindData::TsModuleDeclaration(declaration) => {
-                    if declaration.declare(self.tree) {
-                        return;
-                    }
-                    return self.diagnose(
-                        idx,
-                        b"TypeScript namespaces cannot be stripped to JavaScript",
-                    );
-                }
-                NodeKindData::TsImportEqualsDeclaration(declaration) => {
-                    if declaration.import_kind(self.tree)
-                        == swc_experimental_ecma_ast::ImportOrExportKind::Type
-                    {
-                        return;
-                    }
-                    return self.diagnose(
-                        idx,
-                        b"`import = require()` cannot be stripped to JavaScript",
-                    );
-                }
-                NodeKindData::TsExportAssignment(_) => {
-                    return self.diagnose(idx, b"`export =` cannot be stripped to JavaScript");
-                }
-                NodeKindData::TsParameterProperty(property) => {
-                    self.diagnose(
-                        idx,
-                        b"parameter properties cannot be stripped to JavaScript",
-                    );
-                    return self.emit_expr(property.parameter(self.tree).node_id(), context);
-                }
-                _ if matches!(
-                    self.tree.node_kind(idx),
-                    NodeKind::TsTypeAnnotation
-                        | NodeKind::TsAnyKeyword
-                        | NodeKind::TsUnknownKeyword
-                        | NodeKind::TsNeverKeyword
-                        | NodeKind::TsVoidKeyword
-                        | NodeKind::TsNullKeyword
-                        | NodeKind::TsUndefinedKeyword
-                        | NodeKind::TsStringKeyword
-                        | NodeKind::TsNumberKeyword
-                        | NodeKind::TsBigIntKeyword
-                        | NodeKind::TsBooleanKeyword
-                        | NodeKind::TsSymbolKeyword
-                        | NodeKind::TsObjectKeyword
-                        | NodeKind::TsIntrinsicKeyword
-                        | NodeKind::TsThisType
-                        | NodeKind::TsTypeReference
-                        | NodeKind::TsQualifiedName
-                        | NodeKind::TsTypeQuery
-                        | NodeKind::TsImportType
-                        | NodeKind::TsTypeParameter
-                        | NodeKind::TsTypeParameterDeclaration
-                        | NodeKind::TsTypeParameterInstantiation
-                        | NodeKind::TsLiteralType
-                        | NodeKind::TsTemplateLiteralType
-                        | NodeKind::TsArrayType
-                        | NodeKind::TsIndexedAccessType
-                        | NodeKind::TsTupleType
-                        | NodeKind::TsNamedTupleMember
-                        | NodeKind::TsOptionalType
-                        | NodeKind::TsRestType
-                        | NodeKind::TsJsDocNullableType
-                        | NodeKind::TsJsDocNonNullableType
-                        | NodeKind::TsJsDocUnknownType
-                        | NodeKind::TsUnionType
-                        | NodeKind::TsIntersectionType
-                        | NodeKind::TsConditionalType
-                        | NodeKind::TsInferType
-                        | NodeKind::TsTypeOperator
-                        | NodeKind::TsParenthesizedType
-                        | NodeKind::TsFunctionType
-                        | NodeKind::TsConstructorType
-                        | NodeKind::TsTypePredicate
-                        | NodeKind::TsTypeLiteral
-                        | NodeKind::TsMappedType
-                        | NodeKind::TsPropertySignature
-                        | NodeKind::TsMethodSignature
-                        | NodeKind::TsCallSignatureDeclaration
-                        | NodeKind::TsConstructSignatureDeclaration
-                        | NodeKind::TsIndexSignature
-                        | NodeKind::TsInterfaceBody
-                        | NodeKind::TsInterfaceHeritage
-                        | NodeKind::TsClassImplements
-                        | NodeKind::TsEnumBody
-                        | NodeKind::TsEnumMember
-                        | NodeKind::TsModuleBlock
-                        | NodeKind::TsExternalModuleReference
-                ) =>
+                return self.diagnose(
+                    idx,
+                    b"TypeScript namespaces cannot be stripped to JavaScript",
+                );
+            }
+            NodeKindData::TsImportEqualsDeclaration(declaration) => {
+                if declaration.import_kind(self.tree)
+                    == swc_experimental_ecma_ast::ImportOrExportKind::Type
                 {
                     return;
                 }
-                _ => {}
+                return self.diagnose(
+                    idx,
+                    b"`import = require()` cannot be stripped to JavaScript",
+                );
             }
+            NodeKindData::TsExportAssignment(_) => {
+                return self.diagnose(idx, b"`export =` cannot be stripped to JavaScript");
+            }
+            NodeKindData::TsParameterProperty(property) => {
+                self.diagnose(
+                    idx,
+                    b"parameter properties cannot be stripped to JavaScript",
+                );
+                return self.emit_expr(property.parameter(self.tree).node_id(), context);
+            }
+            _ if matches!(
+                self.tree.node_kind(idx),
+                NodeKind::TsTypeAnnotation
+                    | NodeKind::TsAnyKeyword
+                    | NodeKind::TsUnknownKeyword
+                    | NodeKind::TsNeverKeyword
+                    | NodeKind::TsVoidKeyword
+                    | NodeKind::TsNullKeyword
+                    | NodeKind::TsUndefinedKeyword
+                    | NodeKind::TsStringKeyword
+                    | NodeKind::TsNumberKeyword
+                    | NodeKind::TsBigIntKeyword
+                    | NodeKind::TsBooleanKeyword
+                    | NodeKind::TsSymbolKeyword
+                    | NodeKind::TsObjectKeyword
+                    | NodeKind::TsIntrinsicKeyword
+                    | NodeKind::TsThisType
+                    | NodeKind::TsTypeReference
+                    | NodeKind::TsQualifiedName
+                    | NodeKind::TsTypeQuery
+                    | NodeKind::TsImportType
+                    | NodeKind::TsTypeParameter
+                    | NodeKind::TsTypeParameterDeclaration
+                    | NodeKind::TsTypeParameterInstantiation
+                    | NodeKind::TsLiteralType
+                    | NodeKind::TsTemplateLiteralType
+                    | NodeKind::TsArrayType
+                    | NodeKind::TsIndexedAccessType
+                    | NodeKind::TsTupleType
+                    | NodeKind::TsNamedTupleMember
+                    | NodeKind::TsOptionalType
+                    | NodeKind::TsRestType
+                    | NodeKind::TsJsDocNullableType
+                    | NodeKind::TsJsDocNonNullableType
+                    | NodeKind::TsJsDocUnknownType
+                    | NodeKind::TsUnionType
+                    | NodeKind::TsIntersectionType
+                    | NodeKind::TsConditionalType
+                    | NodeKind::TsInferType
+                    | NodeKind::TsTypeOperator
+                    | NodeKind::TsParenthesizedType
+                    | NodeKind::TsFunctionType
+                    | NodeKind::TsConstructorType
+                    | NodeKind::TsTypePredicate
+                    | NodeKind::TsTypeLiteral
+                    | NodeKind::TsMappedType
+                    | NodeKind::TsPropertySignature
+                    | NodeKind::TsMethodSignature
+                    | NodeKind::TsCallSignatureDeclaration
+                    | NodeKind::TsConstructSignatureDeclaration
+                    | NodeKind::TsIndexSignature
+                    | NodeKind::TsInterfaceBody
+                    | NodeKind::TsInterfaceHeritage
+                    | NodeKind::TsClassImplements
+                    | NodeKind::TsEnumBody
+                    | NodeKind::TsEnumMember
+                    | NodeKind::TsModuleBlock
+                    | NodeKind::TsExternalModuleReference
+            ) =>
+            {
+                return;
+            }
+            _ => {}
         }
 
         let wrap = self.needs_parens(idx, context);
@@ -643,9 +588,9 @@ impl<'a> Printer<'a> {
             | NodeKindData::ImportExpression(_)
             | NodeKindData::TsNonNullExpression(_)
             | NodeKindData::TsInstantiationExpression(_) => Precedence::CALL,
-            NodeKindData::BooleanLiteral(_) if self.config.minify => Precedence::UNARY,
+            NodeKindData::BooleanLiteral(_) if self.options.minify => Precedence::UNARY,
             NodeKindData::IdentifierReference(identifier)
-                if self.config.minify && !self.in_assign_target =>
+                if self.options.minify && !self.in_assign_target =>
             {
                 match self.tree.string(identifier.name(self.tree)) {
                     b"undefined" => Precedence::UNARY,
@@ -734,9 +679,6 @@ impl<'a> Printer<'a> {
     }
 
     fn stripped(&self, mut idx: NodeId) -> NodeId {
-        if !self.config.strip_ts {
-            return idx;
-        }
         loop {
             idx = match self.node_data(idx) {
                 NodeKindData::TsAsExpression(expression) => {
@@ -1090,7 +1032,7 @@ impl<'a> Printer<'a> {
         }
         self.code.truncate(index);
         let count = if self.pretty() {
-            self.indent_depth * u32::from(self.options.indent)
+            self.indent_depth * 4
         } else {
             0
         } as usize;
@@ -1157,6 +1099,12 @@ impl<'a> Printer<'a> {
             self.write_byte(b'\n');
         }
         self.print_stmt_list(program.body(self.tree), true);
+        if self.pretty() && self.last_byte() == b';' {
+            self.code.pop();
+            if let Some(sm) = &mut self.sm {
+                sm.gen_col = sm.gen_col.saturating_sub(1);
+            }
+        }
         self.pending_semi = false;
         if self.options.comments != Comments::None {
             self.emit_inside_comments(self.current_idx.expect("program is current"));
@@ -1565,7 +1513,7 @@ impl<'a> Printer<'a> {
         &mut self,
         declaration: swc_experimental_ecma_ast::VariableDeclaration,
     ) {
-        if self.config.strip_ts && declaration.declare(self.tree) {
+        if declaration.declare(self.tree) {
             return;
         }
         self.print_variable_decl(declaration, true, false);
@@ -1577,9 +1525,6 @@ impl<'a> Printer<'a> {
         with_semicolon: bool,
         no_in: bool,
     ) {
-        if !self.config.strip_ts && declaration.declare(self.tree) {
-            self.write_str(b"declare ");
-        }
         self.write_str(declaration.kind(self.tree).as_str().as_bytes());
         self.write_byte(b' ');
         let previous = self.declaration_no_in;
@@ -1595,11 +1540,7 @@ impl<'a> Printer<'a> {
         &mut self,
         declarator: swc_experimental_ecma_ast::VariableDeclarator,
     ) {
-        if !self.config.strip_ts {
-            self.definite_pending = declarator.definite(self.tree);
-        }
         self.emit(declarator.id(self.tree).node_id());
-        assert!(!self.definite_pending);
         if let Some(init) = declarator.init(self.tree) {
             self.separate_bang_from_assign();
             self.print_eq();
@@ -2050,7 +1991,7 @@ impl<'a> Printer<'a> {
                 ..ExprContext::default()
             },
         );
-        let static_key = if self.config.minify && expression.computed(self.tree) {
+        let static_key = if self.options.minify && expression.computed(self.tree) {
             simple_string_key(self.tree, property)
         } else {
             None
@@ -2196,23 +2137,15 @@ impl<'a> Printer<'a> {
 
     #[inline]
     fn pick_quote(&self, value: &[u8], single_quoted: bool) -> u8 {
-        if self.config.minify {
+        if self.options.minify {
             let single = value.iter().filter(|&&byte| byte == b'\'').count();
             let double = value.iter().filter(|&&byte| byte == b'"').count();
             if single == double {
-                return if self.options.quotes == Quotes::Single {
-                    b'\''
-                } else {
-                    b'"'
-                };
+                return b'"';
             }
             return if double < single { b'"' } else { b'\'' };
         }
-        match self.options.quotes {
-            Quotes::Preserve if single_quoted => b'\'',
-            Quotes::Preserve | Quotes::Double => b'"',
-            Quotes::Single => b'\'',
-        }
+        if single_quoted { b'\'' } else { b'"' }
     }
 
     fn write_escaped_string(&mut self, value: &[u8], quote: u8) {
@@ -2237,10 +2170,27 @@ impl<'a> Printer<'a> {
                         continue;
                     }
                 }
+                if self.options.ascii_only {
+                    if let Some((code_point, len)) = decode_code_point(value, index) {
+                        if index > start {
+                            self.write_str(&value[start..index]);
+                        }
+                        if code_point <= 0xff {
+                            self.write_hex_escape(code_point as u8);
+                        } else if code_point > 0xffff {
+                            self.write_braced_unicode_escape(code_point);
+                        } else {
+                            self.write_unicode_escape(code_point);
+                        }
+                        index += len;
+                        start = index;
+                        continue;
+                    }
+                }
                 index += 1;
                 continue;
             }
-            let escape = if self.config.minify {
+            let escape = if self.options.inline_script {
                 utils::script_escape(value, index)
             } else {
                 None
@@ -2274,6 +2224,12 @@ impl<'a> Printer<'a> {
     }
 
     fn write_unicode_escape(&mut self, code_point: u32) {
+        if code_point > 0xffff {
+            let code_point = code_point - 0x10000;
+            self.write_unicode_escape(0xd800 + (code_point >> 10));
+            self.write_unicode_escape(0xdc00 + (code_point & 0x3ff));
+            return;
+        }
         let hex = b"0123456789abcdef";
         let buffer = [
             b'\\',
@@ -2286,8 +2242,36 @@ impl<'a> Printer<'a> {
         self.write_str(&buffer);
     }
 
+    fn write_hex_escape(&mut self, byte: u8) {
+        let hex = b"0123456789abcdef";
+        self.write_str(&[
+            b'\\',
+            b'x',
+            hex[(byte >> 4) as usize],
+            hex[(byte & 0xf) as usize],
+        ]);
+    }
+
+    fn write_braced_unicode_escape(&mut self, code_point: u32) {
+        let hex = b"0123456789abcdef";
+        let mut digits = [0; 6];
+        let mut start = digits.len();
+        let mut code_point = code_point;
+        loop {
+            start -= 1;
+            digits[start] = hex[(code_point & 0xf) as usize];
+            code_point >>= 4;
+            if code_point == 0 {
+                break;
+            }
+        }
+        self.write_str(b"\\u{");
+        self.write_str(&digits[start..]);
+        self.write_byte(b'}');
+    }
+
     fn emit_numeric_literal(&mut self, literal: swc_experimental_ecma_ast::NumericLiteral) {
-        if self.config.minify {
+        if self.options.minify {
             self.write_shortest_number(literal);
         } else {
             self.write_string(literal.raw(self.tree));
@@ -2315,7 +2299,7 @@ impl<'a> Printer<'a> {
     }
 
     fn emit_boolean_literal(&mut self, literal: swc_experimental_ecma_ast::BooleanLiteral) {
-        if self.config.minify {
+        if self.options.minify {
             self.write_str(if literal.value(self.tree) {
                 b"!0"
             } else {
@@ -2332,7 +2316,7 @@ impl<'a> Printer<'a> {
 
     fn emit_regexp_literal(&mut self, literal: swc_experimental_ecma_ast::RegExpLiteral) {
         self.write_byte(b'/');
-        self.write_string(literal.pattern(self.tree));
+        self.write_ascii_regex(self.tree.string(literal.pattern(self.tree)));
         self.write_byte(b'/');
         self.write_string(literal.flags(self.tree));
     }
@@ -2361,9 +2345,9 @@ impl<'a> Printer<'a> {
     }
 
     fn emit_template_element(&mut self, element: swc_experimental_ecma_ast::TemplateElement) {
-        if !self.config.minify {
+        if !self.options.minify {
             let raw = self.tree.string(element.raw(self.tree));
-            if !raw.is_empty() {
+            if !raw.is_empty() && (!self.options.ascii_only || raw.is_ascii()) {
                 self.write_str(raw);
                 return;
             }
@@ -2389,7 +2373,22 @@ impl<'a> Printer<'a> {
                     continue;
                 }
             }
-            let escape = if self.config.minify {
+            if byte >= 0x80 && self.options.ascii_only {
+                if let Some((code_point, len)) = decode_code_point(value, index) {
+                    if index > start {
+                        self.write_str(&value[start..index]);
+                    }
+                    if code_point <= 0xff {
+                        self.write_hex_escape(code_point as u8);
+                    } else {
+                        self.write_braced_unicode_escape(code_point);
+                    }
+                    index += len;
+                    start = index;
+                    continue;
+                }
+            }
+            let escape = if self.options.inline_script {
                 utils::script_escape(value, index)
             } else {
                 None
@@ -2421,38 +2420,29 @@ impl<'a> Printer<'a> {
         &mut self,
         identifier: swc_experimental_ecma_ast::IdentifierReference,
     ) {
-        if self.config.minify && !self.in_assign_target {
+        if self.options.minify && !self.in_assign_target {
             match self.tree.string(identifier.name(self.tree)) {
                 b"undefined" => return self.write_str(b"void 0"),
                 b"Infinity" => return self.write_str(b"1/0"),
                 _ => {}
             }
         }
-        self.write_string(identifier.name(self.tree));
+        self.write_identifier(identifier.name(self.tree));
     }
 
     fn emit_identifier_name(&mut self, identifier: swc_experimental_ecma_ast::IdentifierName) {
-        self.write_string(identifier.name(self.tree));
+        self.write_identifier(identifier.name(self.tree));
     }
 
     fn emit_binding_identifier(
         &mut self,
         identifier: swc_experimental_ecma_ast::BindingIdentifier,
     ) {
-        let definite = self.take_definite();
-        if !self.config.strip_ts {
-            self.print_decorators(identifier.decorators(self.tree));
-        }
-        self.write_string(identifier.name(self.tree));
-        self.print_binding_suffix(
-            identifier.optional(self.tree),
-            definite,
-            identifier.type_annotation(self.tree).map(AstNode::node_id),
-        );
+        self.write_identifier(identifier.name(self.tree));
     }
 
     fn emit_label_identifier(&mut self, identifier: swc_experimental_ecma_ast::LabelIdentifier) {
-        self.write_string(identifier.name(self.tree));
+        self.write_identifier(identifier.name(self.tree));
     }
 
     fn emit_private_identifier(
@@ -2460,17 +2450,11 @@ impl<'a> Printer<'a> {
         identifier: swc_experimental_ecma_ast::PrivateIdentifier,
     ) {
         self.write_byte(b'#');
-        self.write_string(identifier.name(self.tree));
+        self.write_identifier(identifier.name(self.tree));
     }
 
     fn emit_assignment_pattern(&mut self, pattern: swc_experimental_ecma_ast::AssignmentPattern) {
-        if !self.config.strip_ts {
-            self.print_decorators(pattern.decorators(self.tree));
-        }
         self.emit(pattern.left(self.tree).node_id());
-        if !self.config.strip_ts && pattern.optional(self.tree) {
-            self.write_byte(b'?');
-        }
         if let Some(annotation) = pattern.type_annotation(self.tree) {
             self.emit(annotation.node_id());
         }
@@ -2480,24 +2464,14 @@ impl<'a> Printer<'a> {
     }
 
     fn emit_binding_rest_element(&mut self, rest: swc_experimental_ecma_ast::BindingRestElement) {
-        if !self.config.strip_ts {
-            self.print_decorators(rest.decorators(self.tree));
-        }
         self.write_str(b"...");
         self.emit(rest.argument(self.tree).node_id());
-        if !self.config.strip_ts && rest.optional(self.tree) {
-            self.write_byte(b'?');
-        }
         if let Some(annotation) = rest.type_annotation(self.tree) {
             self.emit(annotation.node_id());
         }
     }
 
     fn emit_array_pattern(&mut self, pattern: swc_experimental_ecma_ast::ArrayPattern) {
-        let definite = self.take_definite();
-        if !self.config.strip_ts {
-            self.print_decorators(pattern.decorators(self.tree));
-        }
         self.write_byte(b'[');
         let elements = pattern.elements(self.tree);
         for (index, element) in elements.iter().enumerate() {
@@ -2521,18 +2495,9 @@ impl<'a> Printer<'a> {
             self.write_byte(b',');
         }
         self.write_byte(b']');
-        self.print_binding_suffix(
-            pattern.optional(self.tree),
-            definite,
-            pattern.type_annotation(self.tree).map(AstNode::node_id),
-        );
     }
 
     fn emit_object_pattern(&mut self, pattern: swc_experimental_ecma_ast::ObjectPattern) {
-        let definite = self.take_definite();
-        if !self.config.strip_ts {
-            self.print_decorators(pattern.decorators(self.tree));
-        }
         self.write_byte(b'{');
         let properties = pattern.properties(self.tree);
         let has_any = !properties.is_empty() || pattern.rest(self.tree).is_some();
@@ -2556,11 +2521,6 @@ impl<'a> Printer<'a> {
             self.space();
         }
         self.write_byte(b'}');
-        self.print_binding_suffix(
-            pattern.optional(self.tree),
-            definite,
-            pattern.type_annotation(self.tree).map(AstNode::node_id),
-        );
     }
 
     fn emit_binding_property(&mut self, property: swc_experimental_ecma_ast::BindingProperty) {
@@ -2587,7 +2547,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_object_key(&mut self, key: NodeId, computed: bool) {
-        if self.config.minify
+        if self.options.minify
             && let Some(value) = simple_string_key(self.tree, key)
         {
             self.write_str(value);
@@ -2597,7 +2557,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_class_key(&mut self, key: NodeId, computed: bool, r#static: bool, is_field: bool) {
-        if self.config.minify
+        if self.options.minify
             && let Some(value) = simple_string_key(self.tree, key)
         {
             if !computed {
@@ -2616,17 +2576,13 @@ impl<'a> Printer<'a> {
 
     fn emit_function(&mut self, function: swc_experimental_ecma_ast::Function) {
         use swc_experimental_ecma_ast::FunctionType;
-        if self.config.strip_ts
-            && (function.declare(self.tree)
-                || matches!(
-                    function.function_type(self.tree),
-                    FunctionType::TsDeclareFunction | FunctionType::TsEmptyBodyFunctionExpression
-                ))
+        if function.declare(self.tree)
+            || matches!(
+                function.function_type(self.tree),
+                FunctionType::TsDeclareFunction | FunctionType::TsEmptyBodyFunctionExpression
+            )
         {
             return;
-        }
-        if !self.config.strip_ts && function.declare(self.tree) {
-            self.write_str(b"declare ");
         }
         if function.r#async(self.tree) {
             self.write_str(b"async ");
@@ -2653,8 +2609,6 @@ impl<'a> Printer<'a> {
         if let Some(body) = function.body(self.tree) {
             self.space();
             self.emit(body.node_id());
-        } else if !self.config.strip_ts {
-            self.soft_semi();
         }
     }
 
@@ -2721,18 +2675,10 @@ impl<'a> Printer<'a> {
     }
 
     fn emit_class(&mut self, class: swc_experimental_ecma_ast::Class) {
-        if self.config.strip_ts && class.declare(self.tree) {
+        if class.declare(self.tree) {
             return;
         }
         self.print_decorators(class.decorators(self.tree));
-        if !self.config.strip_ts {
-            if class.declare(self.tree) {
-                self.write_str(b"declare ");
-            }
-            if class.r#abstract(self.tree) {
-                self.write_str(b"abstract ");
-            }
-        }
         self.write_str(b"class");
         if let Some(identifier) = class.id(self.tree) {
             self.write_byte(b' ');
@@ -2753,10 +2699,6 @@ impl<'a> Printer<'a> {
             if let Some(arguments) = class.super_type_arguments(self.tree) {
                 self.emit(arguments.node_id());
             }
-        }
-        if !self.config.strip_ts && !class.implements(self.tree).is_empty() {
-            self.write_str(b" implements ");
-            self.emit_list(class.implements(self.tree));
         }
         self.space();
         self.emit(class.body(self.tree).node_id());
@@ -2790,38 +2732,19 @@ impl<'a> Printer<'a> {
     }
 
     fn emit_method_definition(&mut self, method: swc_experimental_ecma_ast::MethodDefinition) {
-        use swc_experimental_ecma_ast::{Accessibility, MethodDefinitionKind};
+        use swc_experimental_ecma_ast::MethodDefinitionKind;
         let NodeKindData::Function(function) = self.node_data(method.value(self.tree).node_id())
         else {
             unreachable!("method value must be a function");
         };
-        if self.config.strip_ts
-            && (method.r#abstract(self.tree) || function.body(self.tree).is_none())
-        {
+        if method.r#abstract(self.tree) || function.body(self.tree).is_none() {
             return;
         }
         self.print_decorators(method.decorators(self.tree));
         let key = method.key(self.tree).node_id();
         self.hoist_key_comments(Some(key));
-        if !self.config.strip_ts && method.accessibility(self.tree) != Accessibility::None {
-            self.write_str(match method.accessibility(self.tree) {
-                Accessibility::Public => b"public",
-                Accessibility::Private => b"private",
-                Accessibility::Protected => b"protected",
-                Accessibility::None => unreachable!(),
-            });
-            self.write_byte(b' ');
-        }
         if method.r#static(self.tree) {
             self.write_str(b"static ");
-        }
-        if !self.config.strip_ts {
-            if method.r#abstract(self.tree) {
-                self.write_str(b"abstract ");
-            }
-            if method.r#override(self.tree) {
-                self.write_str(b"override ");
-            }
         }
         match method.kind(self.tree) {
             MethodDefinitionKind::Get => self.write_str(b"get "),
@@ -2841,9 +2764,6 @@ impl<'a> Printer<'a> {
             method.r#static(self.tree),
             false,
         );
-        if !self.config.strip_ts && method.optional(self.tree) {
-            self.write_byte(b'?');
-        }
         self.print_function_as_method(function);
         self.skip_leading_of = None;
     }
@@ -2852,40 +2772,14 @@ impl<'a> Printer<'a> {
         &mut self,
         property: swc_experimental_ecma_ast::PropertyDefinition,
     ) {
-        use swc_experimental_ecma_ast::Accessibility;
-        if self.config.strip_ts && (property.declare(self.tree) || property.r#abstract(self.tree)) {
+        if property.declare(self.tree) || property.r#abstract(self.tree) {
             return;
         }
         self.print_decorators(property.decorators(self.tree));
         let key = property.key(self.tree).node_id();
         self.hoist_key_comments(Some(key));
-        if !self.config.strip_ts {
-            if property.declare(self.tree) {
-                self.write_str(b"declare ");
-            }
-            if property.accessibility(self.tree) != Accessibility::None {
-                self.write_str(match property.accessibility(self.tree) {
-                    Accessibility::Public => b"public",
-                    Accessibility::Private => b"private",
-                    Accessibility::Protected => b"protected",
-                    Accessibility::None => unreachable!(),
-                });
-                self.write_byte(b' ');
-            }
-        }
         if property.r#static(self.tree) {
             self.write_str(b"static ");
-        }
-        if !self.config.strip_ts {
-            if property.r#abstract(self.tree) {
-                self.write_str(b"abstract ");
-            }
-            if property.r#override(self.tree) {
-                self.write_str(b"override ");
-            }
-            if property.readonly(self.tree) {
-                self.write_str(b"readonly ");
-            }
         }
         if property.accessor(self.tree) {
             self.write_str(b"accessor ");
@@ -2896,14 +2790,6 @@ impl<'a> Printer<'a> {
             property.r#static(self.tree),
             true,
         );
-        if !self.config.strip_ts {
-            if property.optional(self.tree) {
-                self.write_byte(b'?');
-            }
-            if property.definite(self.tree) {
-                self.write_byte(b'!');
-            }
-        }
         if let Some(annotation) = property.type_annotation(self.tree) {
             self.emit(annotation.node_id());
         }
@@ -2973,13 +2859,11 @@ impl<'a> Printer<'a> {
     ) {
         use swc_experimental_ecma_ast::{ImportOrExportKind, ImportPhase};
         let specifiers = declaration.specifiers(self.tree);
-        if self.config.strip_ts {
-            if declaration.import_kind(self.tree) == ImportOrExportKind::Type {
-                return;
-            }
-            if !specifiers.is_empty() && !has_value_import_specifier(self.tree, specifiers) {
-                return;
-            }
+        if declaration.import_kind(self.tree) == ImportOrExportKind::Type {
+            return;
+        }
+        if !specifiers.is_empty() && !has_value_import_specifier(self.tree, specifiers) {
+            return;
         }
         self.write_str(b"import");
         if declaration.import_kind(self.tree) == ImportOrExportKind::Type {
@@ -3037,7 +2921,7 @@ impl<'a> Printer<'a> {
 
     fn emit_import_specifier(&mut self, specifier: swc_experimental_ecma_ast::ImportSpecifier) {
         use swc_experimental_ecma_ast::ImportOrExportKind;
-        if self.config.strip_ts && specifier.import_kind(self.tree) == ImportOrExportKind::Type {
+        if specifier.import_kind(self.tree) == ImportOrExportKind::Type {
             return;
         }
         if specifier.import_kind(self.tree) == ImportOrExportKind::Type {
@@ -3099,12 +2983,11 @@ impl<'a> Printer<'a> {
         declaration: swc_experimental_ecma_ast::ExportNamedDeclaration,
     ) {
         use swc_experimental_ecma_ast::ImportOrExportKind;
-        if self.config.strip_ts && declaration.export_kind(self.tree) == ImportOrExportKind::Type {
+        if declaration.export_kind(self.tree) == ImportOrExportKind::Type {
             return;
         }
         let specifiers = declaration.specifiers(self.tree);
-        if self.config.strip_ts
-            && declaration.declaration(self.tree).is_none()
+        if declaration.declaration(self.tree).is_none()
             && !specifiers.is_empty()
             && !has_value_export_specifier(self.tree, specifiers)
         {
@@ -3184,7 +3067,7 @@ impl<'a> Printer<'a> {
         declaration: swc_experimental_ecma_ast::ExportAllDeclaration,
     ) {
         use swc_experimental_ecma_ast::ImportOrExportKind;
-        if self.config.strip_ts && declaration.export_kind(self.tree) == ImportOrExportKind::Type {
+        if declaration.export_kind(self.tree) == ImportOrExportKind::Type {
             return;
         }
         self.write_str(b"export");
@@ -3204,7 +3087,7 @@ impl<'a> Printer<'a> {
 
     fn emit_export_specifier(&mut self, specifier: swc_experimental_ecma_ast::ExportSpecifier) {
         use swc_experimental_ecma_ast::ImportOrExportKind;
-        if self.config.strip_ts && specifier.export_kind(self.tree) == ImportOrExportKind::Type {
+        if specifier.export_kind(self.tree) == ImportOrExportKind::Type {
             return;
         }
         if specifier.export_kind(self.tree) == ImportOrExportKind::Type {
@@ -3284,7 +3167,7 @@ impl<'a> Printer<'a> {
             if self.sm.is_some() {
                 self.record_mapping(idx);
             }
-            self.write_string(identifier.name(self.tree));
+            self.write_identifier(identifier.name(self.tree));
         } else {
             self.emit(idx);
         }
@@ -4170,7 +4053,7 @@ impl<'a> Printer<'a> {
     }
 
     fn emit_jsx_identifier(&mut self, identifier: swc_experimental_ecma_ast::JsxIdentifier) {
-        self.write_string(identifier.name(self.tree));
+        self.write_identifier(identifier.name(self.tree));
     }
 
     fn emit_jsx_namespaced_name(&mut self, name: swc_experimental_ecma_ast::JsxNamespacedName) {
@@ -4232,6 +4115,22 @@ impl<'a> Printer<'a> {
         self.emit_value(child.expression(self.tree).node_id());
         self.write_byte(b'}');
     }
+}
+
+fn decode_code_point(value: &[u8], index: usize) -> Option<(u32, usize)> {
+    let first = *value.get(index)?;
+    let len = match first {
+        0xc2..=0xdf => 2,
+        0xe0..=0xef => 3,
+        0xf0..=0xf4 => 4,
+        _ => return None,
+    };
+    let end = index.checked_add(len)?;
+    let ch = std::str::from_utf8(value.get(index..end)?)
+        .ok()?
+        .chars()
+        .next()?;
+    Some((ch as u32, len))
 }
 
 fn is_bare_async_identifier(tree: &Ast<'_>, idx: NodeId) -> bool {
