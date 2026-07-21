@@ -4,7 +4,7 @@ This project is still in a very early stage; please continue to use [SWC](https:
 
 This project is an experimental version of [SWC](https://github.com/swc-project/swc). The primary modification, based on SWC, is the redesign of the AST data structure:
 
-1. It adopts arena-based AST design, which allows for a higher performance.
+1. It adopts a Flattening AST design, which allows for a higher performance.
 2. The AST structure (fields) of the SWC (experimental) remains largely consistent with that of SWC, making migration relatively straightforward.
 
 ## Performance
@@ -20,10 +20,8 @@ Local benchmark results with M3Pro:
 
 There's a long way to go, but luckly it could be progressive.
 
-- [x] Arena-based AST design
-- [x] Port SWC js parser.
-- [x] Port SWC jsx parser.
-- [ ] Port SWC TypeScript parser.
+- [x] Flattening AST design
+- [x] Parser, Visit, and Transformation APIs.
 - [ ] Port SWC minifier.
 - [ ] Port SWC transformation.
 
@@ -35,7 +33,9 @@ See our [docs](/docs/)
 
 Thanks to:
 
-- The [oxc](https://github.com/oxc-project/oxc), which inspires the arena-based ast design and ast-tools design.
+- The [yuku](https://github.com/yuku-toolchain/yuku), which provides the prototype of ESTree AST design, parser and semantic analysis.
+- The [zig](https://github.com/ziglang/zig) compiler and the [rowan](https://github.com/rust-analyzer/rowan), which inspire the flattening AST design.
+- The [oxc](https://github.com/oxc-project/oxc), which inspires the ast-tools design.
 
 ## License
 
