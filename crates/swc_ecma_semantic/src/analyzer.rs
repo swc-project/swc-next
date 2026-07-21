@@ -302,13 +302,32 @@ impl<'a> SemanticBuilder<'a> {
         if binding.ambient || self.ambient {
             binding.flags = binding.flags.union(SymbolFlags::AMBIENT);
         }
-        if ctx
+        let in_type_position = ctx
             .ancestors()
             .skip(1)
-            .any(|ancestor| is_type_node(ctx.node_kind(ancestor)))
-            && !binding.flags.intersects(SymbolFlags::TYPE_PARAMETER)
-        {
-            return;
+            .any(|ancestor| is_type_node(ctx.node_kind(ancestor)));
+        if in_type_position {
+            let is_type_parameter_name =
+                ctx.parent()
+                    .is_some_and(|parent| match ctx.node_kind(parent) {
+                        NodeKind::TsTypeParameter => {
+                            unsafe { TsTypeParameter::from_node_id_unchecked(parent) }
+                                .name(ctx.ast())
+                                .node_id()
+                                == node.node_id()
+                        }
+                        NodeKind::TsMappedType => {
+                            unsafe { TsMappedType::from_node_id_unchecked(parent) }
+                                .key(ctx.ast())
+                                .node_id()
+                                == node.node_id()
+                        }
+                        _ => false,
+                    });
+            if !is_type_parameter_name {
+                return;
+            }
+            debug_assert!(binding.flags.intersects(SymbolFlags::TYPE_PARAMETER));
         }
         let export_kind =
             ctx.ancestors()
@@ -1047,6 +1066,13 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: IdentifierReference,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
+        if ctx
+            .ancestors()
+            .skip(1)
+            .any(|ancestor| is_type_node(ctx.node_kind(ancestor)))
+        {
+            return TraverseAction::Proceed;
+        }
         let name = node.name(ctx.ast());
         let name = ctx.ast().string(name);
         if self.inherited_flags().strict {
@@ -2205,7 +2231,10 @@ fn has_use_strict_directive(body: TypedSubRange<StatementListItem>, ast: &Ast<'_
 }
 
 fn is_named_function_expression(function: Function, ast: &Ast<'_>) -> bool {
-    function.function_type(ast) == FunctionType::FunctionExpression && function.id(ast).is_some()
+    matches!(
+        function.function_type(ast),
+        FunctionType::FunctionExpression | FunctionType::TsEmptyBodyFunctionExpression
+    ) && function.id(ast).is_some()
 }
 
 fn is_named_class_expression(class: Class, ast: &Ast<'_>) -> bool {
@@ -2263,17 +2292,21 @@ fn formal_parameters_are_non_simple(params: FormalParameters, ast: &Ast<'_>) -> 
     }
     params.items(ast).iter().any(|id| {
         let item = ast.get_node_in_sub_range(id);
-        match ast.formal_parameter_item_data(item) {
-            FormalParameterItemData::FormalParameter(parameter) => !matches!(
-                ast.formal_parameter_pattern_data(parameter.pattern(ast)),
-                FormalParameterPatternData::BindingPattern(pattern)
-                    if matches!(
-                        ast.binding_pattern_data(pattern),
-                        BindingPatternData::BindingIdentifier(_)
-                    )
-            ),
-            FormalParameterItemData::TsParameterProperty(_) => true,
-        }
+        let pattern = match ast.formal_parameter_item_data(item) {
+            FormalParameterItemData::FormalParameter(parameter) => {
+                match ast.formal_parameter_pattern_data(parameter.pattern(ast)) {
+                    FormalParameterPatternData::BindingPattern(pattern) => Some(pattern),
+                    FormalParameterPatternData::TsThisParameter(_) => None,
+                }
+            }
+            FormalParameterItemData::TsParameterProperty(property) => Some(property.parameter(ast)),
+        };
+        pattern.is_some_and(|pattern| {
+            !matches!(
+                ast.binding_pattern_data(pattern),
+                BindingPatternData::BindingIdentifier(_)
+            )
+        })
     })
 }
 
@@ -2658,14 +2691,20 @@ fn is_type_node(kind: NodeKind) -> bool {
             | NodeKind::TsObjectKeyword
             | NodeKind::TsIntrinsicKeyword
             | NodeKind::TsThisType
+            | NodeKind::TsTypeAnnotation
             | NodeKind::TsTypeReference
+            | NodeKind::TsQualifiedName
             | NodeKind::TsTypeQuery
             | NodeKind::TsImportType
+            | NodeKind::TsTypeParameter
+            | NodeKind::TsTypeParameterDeclaration
+            | NodeKind::TsTypeParameterInstantiation
             | NodeKind::TsLiteralType
             | NodeKind::TsTemplateLiteralType
             | NodeKind::TsArrayType
             | NodeKind::TsIndexedAccessType
             | NodeKind::TsTupleType
+            | NodeKind::TsNamedTupleMember
             | NodeKind::TsOptionalType
             | NodeKind::TsRestType
             | NodeKind::TsJsDocNullableType
@@ -2681,8 +2720,14 @@ fn is_type_node(kind: NodeKind) -> bool {
             | NodeKind::TsConstructorType
             | NodeKind::TsTypePredicate
             | NodeKind::TsTypeLiteral
+            | NodeKind::TsPropertySignature
+            | NodeKind::TsMethodSignature
+            | NodeKind::TsCallSignatureDeclaration
+            | NodeKind::TsConstructSignatureDeclaration
+            | NodeKind::TsIndexSignature
             | NodeKind::TsMappedType
             | NodeKind::TsInterfaceHeritage
             | NodeKind::TsClassImplements
+            | NodeKind::TsInterfaceBody
     )
 }

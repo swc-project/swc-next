@@ -189,7 +189,16 @@ impl<'ast> Traverse<'ast> for Collector<'_, '_> {
         } else {
             ImportOrExportKind::Type
         };
-        self.record_exported_name(&name, node.span(ast));
+        let is_merged_ts_export = !is_default
+            && ast.lang().is_typescript()
+            && self.record.exports.iter().any(|record| {
+                record.name == name
+                    && record.symbol_id == Some(symbol_id)
+                    && record.specifier.is_empty()
+            });
+        if !is_merged_ts_export {
+            self.record_exported_name(&name, node.span(ast));
+        }
         self.record.exports.push(ExportRecord {
             name_kind: ModuleRecordNameKind::Named,
             name,

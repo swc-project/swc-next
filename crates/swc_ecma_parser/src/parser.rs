@@ -523,22 +523,43 @@ pub struct Peek<'peek, 'parser, 'allocator, 'source> {
     state: LexerState,
     cursor: u32,
     comments_len: usize,
+    active: bool,
 }
 
 impl<'parser, 'allocator, 'source> Peek<'_, 'parser, 'allocator, 'source> {
     pub fn next(&mut self) -> ParseResult<Token> {
+        debug_assert!(self.active);
         let mut token = Token::eof(self.parser.lexer.cursor);
-        self.parser
-            .lexer
-            .next_token(&mut token)
-            .map_err(|error| self.parser.next_token_error(error))?;
+        self.parser.lexer.next_token(&mut token).map_err(|error| {
+            let current_token_end = self.parser.current_token.span.end;
+            let span = Span::new(
+                current_token_end.min(self.parser.lexer.cursor),
+                current_token_end.max(self.parser.lexer.cursor),
+            );
+            Error::new(span, lexical_error_message(error))
+        })?;
         Ok(token)
     }
 
-    pub fn end(self) {
+    pub fn end(mut self) {
+        self.restore();
+    }
+
+    fn restore(&mut self) {
+        debug_assert!(self.active);
+        debug_assert!(self.comments_len <= self.parser.lexer.comments.len());
         self.parser.lexer.state = self.state;
         self.parser.lexer.cursor = self.cursor;
         self.parser.lexer.comments.truncate(self.comments_len);
+        self.active = false;
+    }
+}
+
+impl Drop for Peek<'_, '_, '_, '_> {
+    fn drop(&mut self) {
+        if self.active {
+            self.restore();
+        }
     }
 }
 
@@ -814,6 +835,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             state: self.lexer.state,
             cursor: self.lexer.cursor,
             comments_len: self.lexer.comments.len(),
+            active: true,
             parser: self,
         }
     }
@@ -1895,6 +1917,14 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             modifiers.is_generator = true;
         }
 
+        if key.is_none()
+            && self.lang.is_typescript()
+            && self.current_token.tag == TokenTag::LeftBracket
+            && self.is_index_signature_start()?
+        {
+            return self.parse_index_signature_element(element_start, decorators, modifiers);
+        }
+
         if key.is_none() {
             modifiers.computed = self.current_token.tag == TokenTag::LeftBracket;
             key = Some(self.parse_class_element_key()?);
@@ -1956,6 +1986,46 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             optional,
             definite,
         )
+    }
+
+    fn parse_index_signature_element(
+        &mut self,
+        start: u32,
+        decorators: TypedSubRange<Decorator>,
+        modifiers: ClassElementModifiers,
+    ) -> ParseResult<ClassElement> {
+        if let Some(first) = decorators.get_node(self.ast, 0) {
+            self.report(
+                first.span(self.ast),
+                "Decorators cannot be applied to an index signature",
+                ReportOptions::default(),
+            );
+        }
+        if modifiers.is_async
+            || modifiers.is_generator
+            || modifiers.is_accessor
+            || modifiers.kind != MethodDefinitionKind::Method
+            || modifiers.declare
+            || modifiers.r#abstract
+            || modifiers.r#override
+        {
+            self.report(
+                Span::new(start, self.current_token.span.end),
+                "Index signatures only accept 'readonly', 'static', and accessibility modifiers",
+                ReportOptions::default(),
+            );
+        }
+
+        let element = self.parse_index_signature(start, modifiers.readonly, modifiers.is_static)?;
+        let TsTypeElementData::TsIndexSignature(signature) = self.ast.ts_type_element_data(element)
+        else {
+            unreachable!("parse_index_signature always creates a TS index signature")
+        };
+        if self.current_token.tag == TokenTag::Semicolon {
+            self.extend_span_to(signature, self.current_token.span.end);
+            self.advance()?;
+        }
+        Ok(ClassElement::TsIndexSignature(signature))
     }
 
     fn consume_modifier(
@@ -2408,7 +2478,20 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         params: FormalParameters,
     ) -> ParseResult<()> {
         let kind = kind.into();
-        let count = params.items(self.ast).len();
+        let items = params.items(self.ast);
+        let has_this = items.get_node(self.ast, 0).is_some_and(|item| {
+            let FormalParameterItemData::FormalParameter(parameter) =
+                self.ast.formal_parameter_item_data(item)
+            else {
+                return false;
+            };
+            matches!(
+                self.ast
+                    .formal_parameter_pattern_data(parameter.pattern(self.ast)),
+                FormalParameterPatternData::TsThisParameter(_)
+            )
+        });
+        let count = items.len() - usize::from(has_this);
         let has_rest = params.rest(self.ast).is_some();
         if let Some((expected, message)) = kind.accessor_arity()
             && (count != expected || has_rest)
@@ -3830,7 +3913,20 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_interface_body(&mut self) -> ParseResult<TsInterfaceBody> {
-        debug_assert_eq!(self.current_token.tag, TokenTag::LeftBrace);
+        if self.current_token.tag != TokenTag::LeftBrace {
+            let span = self.current_token.span;
+            self.report_expected(
+                span,
+                "Expected '{' to start an interface body",
+                ReportOptions {
+                    help: Some(Cow::Borrowed(
+                        "An interface body is written '{ member1; member2 }'",
+                    )),
+                    ..ReportOptions::default()
+                },
+            );
+            return Err(Error::reported(span, "invalid interface body"));
+        }
         let start = self.current_token.span.start;
         let (body, end) = self.parse_object_type_members()?;
         Ok(self.ast.ts_interface_body(Span::new(start, end), body))
@@ -4289,7 +4385,13 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             match token.tag {
                 TokenTag::LeftParen => return self.parse_parenthesized_type(),
                 TokenTag::LeftBracket => return self.parse_tuple_type(),
-                TokenTag::LeftBrace => return self.parse_type_literal(),
+                TokenTag::LeftBrace => {
+                    return if self.is_start_of_mapped_type()? {
+                        self.parse_mapped_type()
+                    } else {
+                        self.parse_type_literal()
+                    };
+                }
                 TokenTag::Keyof | TokenTag::Unique | TokenTag::Readonly => {
                     return self.parse_type_operator();
                 }
@@ -4479,11 +4581,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let start = self.expect(TokenTag::Infer)?.span.start;
         let name_start = self.current_token.span.start;
         let name = self.parse_binding_identifier()?;
-        let constraint = if self.eat(TokenTag::Extends)? {
-            Some(self.parse_union_type()?)
-        } else {
-            None
-        };
+        let constraint = self.parse_infer_constraint()?;
         let end = constraint.map_or(name.span(self.ast).end, |ty| ty.span(self.ast).end);
         let parameter = self.ast.ts_type_parameter(
             Span::new(name_start, end),
@@ -4497,6 +4595,33 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         Ok(TsType::TsInferType(
             self.ast.ts_infer_type(Span::new(start, end), parameter),
         ))
+    }
+
+    fn parse_infer_constraint(&mut self) -> ParseResult<Option<TsType>> {
+        if self.current_token.tag != TokenTag::Extends {
+            return Ok(None);
+        }
+
+        let checkpoint = self.checkpoint();
+        self.advance()?;
+        self.ts_context.disallow_conditional_types = true;
+        let constraint = match self.parse_union_type() {
+            Ok(constraint) => constraint,
+            Err(_) => {
+                self.rewind(checkpoint);
+                return Ok(None);
+            }
+        };
+        self.ts_context.disallow_conditional_types =
+            checkpoint.ts_context.disallow_conditional_types;
+
+        if !checkpoint.ts_context.disallow_conditional_types
+            && self.current_token.tag == TokenTag::Question
+        {
+            self.rewind(checkpoint);
+            return Ok(None);
+        }
+        Ok(Some(constraint))
     }
 
     fn is_start_of_function_or_constructor_type(&mut self) -> ParseResult<bool> {
@@ -4857,43 +4982,45 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         result
     }
 
-    #[allow(dead_code)]
     fn is_start_of_mapped_type(&mut self) -> ParseResult<bool> {
         debug_assert_eq!(self.current_token.tag, TokenTag::LeftBrace);
-        let cursor = self.lexer.cursor;
-        let state = self.lexer.state;
-        let mode = self.lexer.mode;
-        let comments_len = self.lexer.comments.len();
-        let result = (|| {
-            let mut token = Token::eof(cursor);
-            self.lexer.next_token(&mut token)?;
-            if matches!(token.tag, TokenTag::Plus | TokenTag::Minus) {
-                self.lexer.next_token(&mut token)?;
-                if token.tag != TokenTag::Readonly {
-                    return Ok(false);
-                }
-                self.lexer.next_token(&mut token)?;
-            } else if token.tag == TokenTag::Readonly {
-                self.lexer.next_token(&mut token)?;
-            }
-            if token.tag != TokenTag::LeftBracket {
+        let mut peek = self.begin_peek();
+        let Ok(mut token) = peek.next() else {
+            return Ok(false);
+        };
+        if matches!(token.tag, TokenTag::Plus | TokenTag::Minus) {
+            let Ok(next) = peek.next() else {
+                return Ok(false);
+            };
+            token = next;
+            if token.tag != TokenTag::Readonly {
                 return Ok(false);
             }
-            self.lexer.next_token(&mut token)?;
-            if !token.tag.is_identifier_like() {
+            let Ok(next) = peek.next() else {
                 return Ok(false);
-            }
-            self.lexer.next_token(&mut token)?;
-            Ok(token.tag == TokenTag::In)
-        })();
-        self.lexer.cursor = cursor;
-        self.lexer.state = state;
-        self.lexer.mode = mode;
-        self.lexer.comments.truncate(comments_len);
-        result.map_err(|error| self.next_token_error(error))
+            };
+            token = next;
+        } else if token.tag == TokenTag::Readonly {
+            let Ok(next) = peek.next() else {
+                return Ok(false);
+            };
+            token = next;
+        }
+        if token.tag != TokenTag::LeftBracket {
+            return Ok(false);
+        }
+        let Ok(name) = peek.next() else {
+            return Ok(false);
+        };
+        if !name.tag.is_identifier_like() {
+            return Ok(false);
+        }
+        let Ok(operator) = peek.next() else {
+            return Ok(false);
+        };
+        Ok(operator.tag == TokenTag::In)
     }
 
-    #[allow(dead_code)]
     fn parse_mapped_type(&mut self) -> ParseResult<TsType> {
         debug_assert_eq!(self.current_token.tag, TokenTag::LeftBrace);
         let start = self.expect(TokenTag::LeftBrace)?.span.start;
@@ -5064,17 +5191,17 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn is_index_signature_start(&mut self) -> ParseResult<bool> {
         debug_assert_eq!(self.current_token.tag, TokenTag::LeftBracket);
-        let name = self.peek_ahead()?;
+        let mut peek = self.begin_peek();
+        let Ok(name) = peek.next() else {
+            return Ok(false);
+        };
         if !name.tag.is_identifier_like() {
             return Ok(false);
         }
-        let mut peek = self.begin_peek();
-        let second = (|| {
-            peek.next()?;
-            peek.next()
-        })();
-        peek.end();
-        Ok(matches!(second?.tag, TokenTag::Colon | TokenTag::Comma))
+        let Ok(second) = peek.next() else {
+            return Ok(false);
+        };
+        Ok(matches!(second.tag, TokenTag::Colon | TokenTag::Comma))
     }
 
     fn parse_index_signature(
@@ -7920,10 +8047,22 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             TokenTag::LeftBracket => self.parse_computed_member_expression(object, optional),
             TokenTag::LeftParen => self.parse_call_expression(object, optional, None),
             TokenTag::LessThan | TokenTag::LeftShift if self.lang.is_typescript() => {
-                let Some(type_arguments) = self.try_parse_type_arguments_in_expression()? else {
-                    return self.error("expected type arguments after '?.'");
-                };
-                self.parse_call_expression(object, optional, Some(type_arguments))
+                if let Some(type_arguments) = self.try_parse_type_arguments_in_expression()?
+                    && self.current_token.tag == TokenTag::LeftParen
+                {
+                    return self.parse_call_expression(object, optional, Some(type_arguments));
+                }
+                self.report_expected(
+                    self.current_token.span,
+                    "Expected property name, '[', or '(' after '?.'",
+                    ReportOptions {
+                        help: Some(Cow::Borrowed(
+                            "Optional chaining must be followed by property access (.x), computed access ([x]), or a call (()).",
+                        )),
+                        ..ReportOptions::default()
+                    },
+                );
+                self.error("invalid optional chain")
             }
             TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => {
                 self.error("tagged template expressions are not permitted in an optional chain")
