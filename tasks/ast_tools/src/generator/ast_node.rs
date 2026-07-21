@@ -10,37 +10,46 @@ use crate::{
     schema::{AstEnum, AstStruct, AstType, Schema},
 };
 
-pub fn ast_node_id(schema: &Schema) -> RawOutput {
-    let mut impls = TokenStream::new();
+pub fn ast_node(schema: &Schema) -> RawOutput {
+    let mut node_impls = TokenStream::new();
     let mut data_accessors = TokenStream::new();
-    for ty in schema.types.iter() {
+    let mut node_kind_variants = TokenStream::new();
+
+    for ty in &schema.types {
         match ty {
             AstType::Struct(ast_struct) => {
-                impls.extend(generate_node_id_for_struct(ast_struct, schema))
+                node_impls.extend(generate_node_impls_for_struct(ast_struct));
+
+                let name = format_ident!("{}", ast_struct.name);
+                node_kind_variants.extend(quote!(#name,));
             }
             AstType::Enum(ast_enum) => {
-                impls.extend(generate_node_id_for_enum(ast_enum, schema));
+                node_impls.extend(generate_node_impls_for_enum(ast_enum));
                 data_accessors.extend(generate_data_accessor(ast_enum, schema));
             }
-            _ => continue,
-        };
+            _ => {}
+        }
     }
 
-    let output = quote! {
+    RustOutput {
+        path: output_path(AST_CRATE_PATH, "ast_node"),
+        tokens: quote! {
             #![allow(unused)]
-            use crate::{Ast, GetSpan, NodeKind, SetSpan};
+            use crate::{Ast, GetSpan, SetSpan};
             use crate::{ast::*, node_id::*};
 
-            #impls
+            /// The concrete type stored at a node ID.
+            #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+            pub enum NodeKind {
+                #node_kind_variants
+            }
+
+            #node_impls
 
             impl<'a> Ast<'a> {
                 #data_accessors
             }
-    };
-
-    RustOutput {
-        path: output_path(AST_CRATE_PATH, "ast_node_id"),
-        tokens: output,
+        },
     }
     .into()
 }
@@ -96,44 +105,17 @@ fn concrete_node_kinds(type_id: crate::schema::TypeId, schema: &Schema) -> Vec<S
     }
 }
 
-fn generate_node_id_for_struct(ast: &AstStruct, _schema: &Schema) -> TokenStream {
+fn generate_node_impls_for_struct(ast: &AstStruct) -> TokenStream {
     let name = format_ident!("{}", ast.name);
-    quote! {
-        impl #name {
-            #[inline]
-            pub fn node_id(self) -> NodeId {
-                self.0
-            }
-        }
-
-        impl AstNode for #name {
-            #[inline]
-            fn node_id(self) -> NodeId {
-                self.0
-            }
-        }
-
-        impl GetSpan for #name {
-            #[inline]
-            fn span(self, ast: &Ast<'_>) -> crate::Span {
-                unsafe { *ast.nodes.span_unchecked(self.0) }
-            }
-        }
-
-        impl SetSpan for #name {
-            #[inline]
-            fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
-                unsafe {
-                    *ast.nodes.span_mut_unchecked(self.0) = span;
-                }
-            }
-        }
-    }
+    generate_node_impls(&name)
 }
 
-fn generate_node_id_for_enum(ast: &AstEnum, _schema: &Schema) -> TokenStream {
+fn generate_node_impls_for_enum(ast: &AstEnum) -> TokenStream {
     let name = format_ident!("{}", ast.name);
+    generate_node_impls(&name)
+}
 
+fn generate_node_impls(name: &proc_macro2::Ident) -> TokenStream {
     quote! {
         impl #name {
             #[inline]

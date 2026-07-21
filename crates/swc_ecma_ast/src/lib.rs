@@ -11,8 +11,7 @@ mod generated {
     mod ast_builder;
     mod ast_clone_in;
     pub(crate) mod ast_extra_compact;
-    mod ast_node_id;
-    pub mod ast_node_kind;
+    pub mod ast_node;
     mod ast_property;
     pub(crate) mod ast_visitor;
 }
@@ -24,7 +23,7 @@ use swc_experimental_allocator::{Allocator, vec::Vec as ArenaVec};
 pub use ast::*;
 pub use comment::*;
 pub use derive::*;
-pub use generated::ast_node_kind::NodeKind;
+pub use generated::ast_node::NodeKind;
 pub use generated::ast_visitor::*;
 pub use node_id::{AstNode, ExtraDataCompact, ExtraDataId, NodeId, SubRange, TypedSubRange};
 pub use semantic::{ScopeId, SymbolId};

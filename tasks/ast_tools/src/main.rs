@@ -1,8 +1,8 @@
 use crate::{
-    derive::{ast_clone_in::ast_clone_in, ast_node_id::ast_node_id},
+    derive::ast_clone_in::ast_clone_in,
     generator::{
-        ast_builder::ast_builder, ast_extra_compact::ast_extra_compact,
-        ast_node_kind::ast_node_kind, ast_property::ast_property, ast_visitor::ast_visitor,
+        ast_builder::ast_builder, ast_extra_compact::ast_extra_compact, ast_node::ast_node,
+        ast_property::ast_property, ast_visitor::ast_visitor,
     },
     parse::parse_files,
 };
@@ -31,8 +31,8 @@ fn main() {
     let ast_property_ret = ast_property(&schema);
     ast_property_ret.write_to_file().unwrap();
 
-    let ast_node_id = ast_node_id(&schema);
-    ast_node_id.write_to_file().unwrap();
+    let ast_node = ast_node(&schema);
+    ast_node.write_to_file().unwrap();
 
     let ast_clone_in = ast_clone_in(&schema);
     ast_clone_in.write_to_file().unwrap();
@@ -42,7 +42,4 @@ fn main() {
 
     let ast_extra_data_compact = ast_extra_compact(&schema);
     ast_extra_data_compact.write_to_file().unwrap();
-
-    let ast_node_kind = ast_node_kind(&schema);
-    ast_node_kind.write_to_file().unwrap();
 }
