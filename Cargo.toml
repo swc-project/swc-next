@@ -11,25 +11,14 @@ repository  = "https://github.com/CPunisher/swc-experimental"
 
 [workspace.dependencies]
 allocator-api2   = "=0.2.21"
-bitflags         = "2.13.0"
 bumpalo          = "3.20.3"
-either           = "1.16.0"
 hashbrown        = "0.17.1"
 indexmap         = "2.14.0"
-insta            = "1.48.0"
-miette           = "7.6.0"
-num-bigint       = "0.4.6"
 oxc_index        = { version = "5.0.0", features = ["nonmax"] }
 rayon            = "1.12.0"
 regex            = "1.12.2"
 rustc-hash       = "2.1.2"
-seq-macro        = "0.3.6"
 serde_json       = "1.0.145"
-similar          = "3.1.1"
-smartstring      = "1.0.1"
-stacker          = "0.1.24"
-tracing          = "0.1.44"
-unicode-id-start = "1.4.0"
 
 # SWC
 swc_core = { version = "71.0.3", features = [
@@ -64,9 +53,7 @@ jwalk                  = "0.8.1"
 mimalloc               = "0.1.52"
 oxc                    = { version = "0.137.0", features = ["ast_visit", "semantic"] }
 oxc_allocator          = "0.137.0"
-oxc_regular_expression = "0.137.0"
 pico-args              = "0.5.0"
-rstest                 = "0.26.1"
 saphyr                 = "0.0.6"
 tracy-client           = { version = "=0.18.1", features = ["enable", "sampling", "demangle", "system-tracing"] }
 

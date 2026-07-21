@@ -2083,18 +2083,15 @@ dependencies = [
 name = "swc_experimental_ecma_ast"
 version = "0.11.0"
 dependencies = [
- "num-bigint",
  "oxc_index",
  "swc_experimental_allocator",
  "swc_experimental_ast_macros",
- "unicode-id-start",
 ]
 
 [[package]]
 name = "swc_experimental_ecma_parser"
 version = "0.11.0"
 dependencies = [
- "swc_experimental_allocator",
  "swc_experimental_ecma_ast",
 ]
 
@@ -2104,9 +2101,7 @@ version = "0.11.0"
 dependencies = [
  "oxc_index",
  "rustc-hash",
- "swc_experimental_allocator",
  "swc_experimental_ecma_ast",
- "swc_experimental_ecma_parser",
 ]
 
 [[package]]

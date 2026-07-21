@@ -12,5 +12,4 @@ version               = "0.11.0"
 unstable = []
 
 [dependencies]
-swc_experimental_allocator = { workspace = true }
 swc_experimental_ecma_ast  = { workspace = true }

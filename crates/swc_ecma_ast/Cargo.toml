@@ -12,9 +12,7 @@ version               = "0.11.0"
 shared_string_allocator = []
 
 [dependencies]
-num-bigint       = { workspace = true }
 oxc_index        = { workspace = true }
-unicode-id-start = { workspace = true }
 
 swc_experimental_allocator  = { workspace = true }
 swc_experimental_ast_macros = { workspace = true }
