@@ -14,6 +14,8 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
     let mut node_impls = TokenStream::new();
     let mut data_accessors = TokenStream::new();
     let mut node_kind_variants = TokenStream::new();
+    let mut node_kind_data_variants = TokenStream::new();
+    let mut node_kind_data_arms = TokenStream::new();
 
     for ty in &schema.types {
         match ty {
@@ -22,6 +24,10 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
 
                 let name = format_ident!("{}", ast_struct.name);
                 node_kind_variants.extend(quote!(#name,));
+                node_kind_data_variants.extend(quote!(#name(#name),));
+                node_kind_data_arms.extend(quote! {
+                    NodeKind::#name => NodeKindData::#name(#name(node_id)),
+                });
             }
             AstType::Enum(ast_enum) => {
                 node_impls.extend(generate_node_impls_for_enum(ast_enum));
@@ -44,9 +50,23 @@ pub fn ast_node(schema: &Schema) -> RawOutput {
                 #node_kind_variants
             }
 
+            /// The typed wrapper for the concrete node stored at a node ID.
+            #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+            pub enum NodeKindData {
+                #node_kind_data_variants
+            }
+
             #node_impls
 
             impl<'a> Ast<'a> {
+                /// Returns the typed wrapper for the concrete node stored at `node_id`.
+                #[inline]
+                pub fn kind_data(&self, node_id: NodeId) -> NodeKindData {
+                    match self.node_kind(node_id) {
+                        #node_kind_data_arms
+                    }
+                }
+
                 #data_accessors
             }
         },

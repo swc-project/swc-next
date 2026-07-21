@@ -309,18 +309,12 @@ impl<'a> SemanticBuilder<'a> {
         if in_type_position {
             let is_type_parameter_name =
                 ctx.parent()
-                    .is_some_and(|parent| match ctx.node_kind(parent) {
-                        NodeKind::TsTypeParameter => {
-                            unsafe { TsTypeParameter::from_node_id_unchecked(parent) }
-                                .name(ctx.ast())
-                                .node_id()
-                                == node.node_id()
+                    .is_some_and(|parent| match ctx.ast().kind_data(parent) {
+                        NodeKindData::TsTypeParameter(parameter) => {
+                            parameter.name(ctx.ast()).node_id() == node.node_id()
                         }
-                        NodeKind::TsMappedType => {
-                            unsafe { TsMappedType::from_node_id_unchecked(parent) }
-                                .key(ctx.ast())
-                                .node_id()
-                                == node.node_id()
+                        NodeKindData::TsMappedType(mapped_type) => {
+                            mapped_type.key(ctx.ast()).node_id() == node.node_id()
                         }
                         _ => false,
                     });
@@ -414,14 +408,16 @@ impl<'a> SemanticBuilder<'a> {
                         ctx.ast(),
                     )
                 })
-            && ctx.parent().is_some_and(|parent| {
-                ctx.node_kind(parent) == NodeKind::Function && {
-                    let function = unsafe { Function::from_node_id_unchecked(parent) };
-                    function.function_type(ctx.ast()) == FunctionType::FunctionDeclaration
-                        && !function.r#async(ctx.ast())
-                        && !function.generator(ctx.ast())
-                }
-            });
+            && ctx
+                .parent()
+                .is_some_and(|parent| match ctx.ast().kind_data(parent) {
+                    NodeKindData::Function(function) => {
+                        function.function_type(ctx.ast()) == FunctionType::FunctionDeclaration
+                            && !function.r#async(ctx.ast())
+                            && !function.generator(ctx.ast())
+                    }
+                    _ => false,
+                });
         if let Some(previous) = result.conflict.filter(|_| !annex_b_duplicate_function) {
             self.report_redeclaration(&name_text, node.span(ctx.ast()), previous);
         }
@@ -534,20 +530,18 @@ impl<'a> SemanticBuilder<'a> {
     fn super_call_validity(&self, ctx: &TraverseCtx<'_, 'a>) -> SuperCallValidity {
         let mut ancestors = ctx.ancestors().skip(1);
         while let Some(ancestor) = ancestors.next() {
-            match ctx.node_kind(ancestor) {
-                NodeKind::ArrowFunctionExpression => {}
-                NodeKind::Function => {
+            match ctx.ast().kind_data(ancestor) {
+                NodeKindData::ArrowFunctionExpression(_) => {}
+                NodeKindData::Function(_) => {
                     if let Some(parent) = ancestors.next()
-                        && ctx.node_kind(parent) == NodeKind::MethodDefinition
-                        && unsafe { MethodDefinition::from_node_id_unchecked(parent) }
-                            .kind(ctx.ast())
-                            == MethodDefinitionKind::Constructor
+                        && let NodeKindData::MethodDefinition(method) = ctx.ast().kind_data(parent)
+                        && method.kind(ctx.ast()) == MethodDefinitionKind::Constructor
                     {
                         return if ancestors.any(|ancestor| {
-                            ctx.node_kind(ancestor) == NodeKind::Class
-                                && unsafe { Class::from_node_id_unchecked(ancestor) }
-                                    .super_class(ctx.ast())
-                                    .is_some()
+                            matches!(
+                                ctx.ast().kind_data(ancestor),
+                                NodeKindData::Class(class) if class.super_class(ctx.ast()).is_some()
+                            )
                         }) {
                             SuperCallValidity::Valid
                         } else {
@@ -556,7 +550,9 @@ impl<'a> SemanticBuilder<'a> {
                     }
                     return SuperCallValidity::NotInConstructor;
                 }
-                NodeKind::PropertyDefinition | NodeKind::StaticBlock | NodeKind::Program => {
+                NodeKindData::PropertyDefinition(_)
+                | NodeKindData::StaticBlock(_)
+                | NodeKindData::Program(_) => {
                     return SuperCallValidity::NotInConstructor;
                 }
                 _ => {}
@@ -568,21 +564,22 @@ impl<'a> SemanticBuilder<'a> {
     fn is_super_property_valid(&self, ctx: &TraverseCtx<'_, 'a>) -> bool {
         let mut ancestors = ctx.ancestors().skip(1);
         while let Some(ancestor) = ancestors.next() {
-            match ctx.node_kind(ancestor) {
-                NodeKind::ArrowFunctionExpression => {}
-                NodeKind::Function => {
+            match ctx.ast().kind_data(ancestor) {
+                NodeKindData::ArrowFunctionExpression(_) => {}
+                NodeKindData::Function(_) => {
                     return ancestors.next().is_some_and(|parent| {
-                        ctx.node_kind(parent) == NodeKind::MethodDefinition
-                            || (ctx.node_kind(parent) == NodeKind::ObjectProperty && {
-                                let property =
-                                    unsafe { ObjectProperty::from_node_id_unchecked(parent) };
+                        match ctx.ast().kind_data(parent) {
+                            NodeKindData::MethodDefinition(_) => true,
+                            NodeKindData::ObjectProperty(property) => {
                                 property.method(ctx.ast())
                                     || property.kind(ctx.ast()) != PropertyKind::Init
-                            })
+                            }
+                            _ => false,
+                        }
                     });
                 }
-                NodeKind::PropertyDefinition | NodeKind::StaticBlock => return true,
-                NodeKind::Program => return false,
+                NodeKindData::PropertyDefinition(_) | NodeKindData::StaticBlock(_) => return true,
+                NodeKindData::Program(_) => return false,
                 _ => {}
             }
         }
@@ -702,20 +699,17 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         if ctx.ast().string(node.value(ctx.ast())) != b"use strict" {
             return TraverseAction::Proceed;
         }
-        let params = ctx
-            .ancestors()
-            .skip(1)
-            .find_map(|ancestor| match ctx.node_kind(ancestor) {
-                NodeKind::Function => {
-                    Some(unsafe { Function::from_node_id_unchecked(ancestor) }.params(ctx.ast()))
-                }
-                NodeKind::ArrowFunctionExpression => Some(
-                    unsafe { ArrowFunctionExpression::from_node_id_unchecked(ancestor) }
-                        .params(ctx.ast()),
-                ),
-                NodeKind::Program => None,
-                _ => return None,
-            });
+        let params =
+            ctx.ancestors()
+                .skip(1)
+                .find_map(|ancestor| match ctx.ast().kind_data(ancestor) {
+                    NodeKindData::Function(function) => Some(function.params(ctx.ast())),
+                    NodeKindData::ArrowFunctionExpression(function) => {
+                        Some(function.params(ctx.ast()))
+                    }
+                    NodeKindData::Program(_) => None,
+                    _ => None,
+                });
         if let Some(params) =
             params.filter(|params| formal_parameters_are_non_simple(*params, ctx.ast()))
         {
@@ -2397,10 +2391,9 @@ fn is_arguments_available(ctx: &TraverseCtx<'_, '_>) -> bool {
 
 fn is_private_name_declared(ctx: &TraverseCtx<'_, '_>, name: &[u8]) -> bool {
     for ancestor in ctx.ancestors().skip(1) {
-        if ctx.node_kind(ancestor) != NodeKind::ClassBody {
+        let NodeKindData::ClassBody(body) = ctx.ast().kind_data(ancestor) else {
             continue;
-        }
-        let body = unsafe { ClassBody::from_node_id_unchecked(ancestor) };
+        };
         for id in body.body(ctx.ast()).iter() {
             let element = ctx.ast().get_node_in_sub_range(id);
             let key = match ctx.ast().class_element_data(element) {
@@ -2605,16 +2598,15 @@ fn is_write_position(node: NodeId, ctx: &TraverseCtx<'_, '_>, targets: &[Option<
 
 fn is_read_write_position(node: NodeId, ctx: &TraverseCtx<'_, '_>) -> bool {
     for ancestor in ctx.ancestors().skip(1) {
-        match ctx.node_kind(ancestor) {
-            NodeKind::UpdateExpression => return true,
-            NodeKind::AssignmentExpression => {
-                let assignment = unsafe { AssignmentExpression::from_node_id_unchecked(ancestor) };
+        match ctx.ast().kind_data(ancestor) {
+            NodeKindData::UpdateExpression(_) => return true,
+            NodeKindData::AssignmentExpression(assignment) => {
                 return assignment.operator(ctx.ast()) != AssignmentOperator::Assign;
             }
-            NodeKind::MemberExpression
-            | NodeKind::Function
-            | NodeKind::ArrowFunctionExpression
-            | NodeKind::Program => return false,
+            NodeKindData::MemberExpression(_)
+            | NodeKindData::Function(_)
+            | NodeKindData::ArrowFunctionExpression(_)
+            | NodeKindData::Program(_) => return false,
             _ if ancestor == node => {}
             _ => {}
         }
@@ -2651,25 +2643,19 @@ fn scope_function_declaration_is_ordinary(
         })
     };
 
-    match ast.node_kind(scope_node) {
-        NodeKind::BlockStatement => {
-            let block = unsafe { BlockStatement::from_node_id_unchecked(scope_node) };
-            block
-                .body(ast)
+    match ast.kind_data(scope_node) {
+        NodeKindData::BlockStatement(block) => block
+            .body(ast)
+            .iter()
+            .find_map(|id| statement_is_match(ast.get_node_in_sub_range(id)))
+            .unwrap_or(false),
+        NodeKindData::SwitchStatement(switch) => switch.cases(ast).iter().any(|case_id| {
+            let case = ast.get_node_in_sub_range(case_id);
+            case.consequent(ast)
                 .iter()
                 .find_map(|id| statement_is_match(ast.get_node_in_sub_range(id)))
-                .unwrap_or(false)
-        }
-        NodeKind::SwitchStatement => {
-            let switch = unsafe { SwitchStatement::from_node_id_unchecked(scope_node) };
-            switch.cases(ast).iter().any(|case_id| {
-                let case = ast.get_node_in_sub_range(case_id);
-                case.consequent(ast)
-                    .iter()
-                    .find_map(|id| statement_is_match(ast.get_node_in_sub_range(id)))
-                    .is_some_and(|ordinary| ordinary)
-            })
-        }
+                .is_some_and(|ordinary| ordinary)
+        }),
         _ => false,
     }
 }

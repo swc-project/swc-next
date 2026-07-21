@@ -177,6 +177,182 @@ pub enum NodeKind {
     JsxText,
     JsxSpreadChild,
 }
+/// The typed wrapper for the concrete node stored at a node ID.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum NodeKindData {
+    Program(Program),
+    Super(Super),
+    ThisExpression(ThisExpression),
+    StringLiteral(StringLiteral),
+    NumericLiteral(NumericLiteral),
+    BigIntLiteral(BigIntLiteral),
+    BooleanLiteral(BooleanLiteral),
+    NullLiteral(NullLiteral),
+    RegExpLiteral(RegExpLiteral),
+    TemplateLiteral(TemplateLiteral),
+    TemplateElement(TemplateElement),
+    IdentifierReference(IdentifierReference),
+    PrivateIdentifier(PrivateIdentifier),
+    BindingIdentifier(BindingIdentifier),
+    IdentifierName(IdentifierName),
+    LabelIdentifier(LabelIdentifier),
+    AssignmentPattern(AssignmentPattern),
+    BindingRestElement(BindingRestElement),
+    ArrayPattern(ArrayPattern),
+    ObjectPattern(ObjectPattern),
+    BindingProperty(BindingProperty),
+    BinaryExpression(BinaryExpression),
+    LogicalExpression(LogicalExpression),
+    ConditionalExpression(ConditionalExpression),
+    UnaryExpression(UnaryExpression),
+    UpdateExpression(UpdateExpression),
+    AssignmentExpression(AssignmentExpression),
+    VariableDeclaration(VariableDeclaration),
+    VariableDeclarator(VariableDeclarator),
+    IfStatement(IfStatement),
+    SwitchStatement(SwitchStatement),
+    SwitchCase(SwitchCase),
+    ForStatement(ForStatement),
+    ForInStatement(ForInStatement),
+    ForOfStatement(ForOfStatement),
+    TryStatement(TryStatement),
+    CatchClause(CatchClause),
+    BreakStatement(BreakStatement),
+    ContinueStatement(ContinueStatement),
+    LabeledStatement(LabeledStatement),
+    ExpressionStatement(ExpressionStatement),
+    ReturnStatement(ReturnStatement),
+    ThrowStatement(ThrowStatement),
+    DebuggerStatement(DebuggerStatement),
+    EmptyStatement(EmptyStatement),
+    Directive(Directive),
+    Decorator(Decorator),
+    Class(Class),
+    ClassBody(ClassBody),
+    MethodDefinition(MethodDefinition),
+    PropertyDefinition(PropertyDefinition),
+    StaticBlock(StaticBlock),
+    Function(Function),
+    FunctionBody(FunctionBody),
+    BlockStatement(BlockStatement),
+    WhileStatement(WhileStatement),
+    DoWhileStatement(DoWhileStatement),
+    WithStatement(WithStatement),
+    FormalParameters(FormalParameters),
+    FormalParameter(FormalParameter),
+    ArrayExpression(ArrayExpression),
+    ObjectExpression(ObjectExpression),
+    SpreadElement(SpreadElement),
+    ObjectProperty(ObjectProperty),
+    ParenthesizedExpression(ParenthesizedExpression),
+    ArrowFunctionExpression(ArrowFunctionExpression),
+    SequenceExpression(SequenceExpression),
+    MemberExpression(MemberExpression),
+    CallExpression(CallExpression),
+    ChainExpression(ChainExpression),
+    TaggedTemplateExpression(TaggedTemplateExpression),
+    NewExpression(NewExpression),
+    AwaitExpression(AwaitExpression),
+    YieldExpression(YieldExpression),
+    MetaProperty(MetaProperty),
+    ImportExpression(ImportExpression),
+    ImportDeclaration(ImportDeclaration),
+    ImportSpecifier(ImportSpecifier),
+    ImportDefaultSpecifier(ImportDefaultSpecifier),
+    ImportNamespaceSpecifier(ImportNamespaceSpecifier),
+    ImportAttribute(ImportAttribute),
+    ExportNamedDeclaration(ExportNamedDeclaration),
+    ExportDefaultDeclaration(ExportDefaultDeclaration),
+    ExportAllDeclaration(ExportAllDeclaration),
+    ExportSpecifier(ExportSpecifier),
+    Hashbang(Hashbang),
+    TsTypeAnnotation(TsTypeAnnotation),
+    TsAnyKeyword(TsAnyKeyword),
+    TsUnknownKeyword(TsUnknownKeyword),
+    TsNeverKeyword(TsNeverKeyword),
+    TsVoidKeyword(TsVoidKeyword),
+    TsNullKeyword(TsNullKeyword),
+    TsUndefinedKeyword(TsUndefinedKeyword),
+    TsStringKeyword(TsStringKeyword),
+    TsNumberKeyword(TsNumberKeyword),
+    TsBigIntKeyword(TsBigIntKeyword),
+    TsBooleanKeyword(TsBooleanKeyword),
+    TsSymbolKeyword(TsSymbolKeyword),
+    TsObjectKeyword(TsObjectKeyword),
+    TsIntrinsicKeyword(TsIntrinsicKeyword),
+    TsThisType(TsThisType),
+    TsTypeReference(TsTypeReference),
+    TsQualifiedName(TsQualifiedName),
+    TsTypeQuery(TsTypeQuery),
+    TsImportType(TsImportType),
+    TsTypeParameter(TsTypeParameter),
+    TsTypeParameterDeclaration(TsTypeParameterDeclaration),
+    TsTypeParameterInstantiation(TsTypeParameterInstantiation),
+    TsLiteralType(TsLiteralType),
+    TsTemplateLiteralType(TsTemplateLiteralType),
+    TsArrayType(TsArrayType),
+    TsIndexedAccessType(TsIndexedAccessType),
+    TsTupleType(TsTupleType),
+    TsNamedTupleMember(TsNamedTupleMember),
+    TsOptionalType(TsOptionalType),
+    TsRestType(TsRestType),
+    TsJsDocNullableType(TsJsDocNullableType),
+    TsJsDocNonNullableType(TsJsDocNonNullableType),
+    TsJsDocUnknownType(TsJsDocUnknownType),
+    TsUnionType(TsUnionType),
+    TsIntersectionType(TsIntersectionType),
+    TsConditionalType(TsConditionalType),
+    TsInferType(TsInferType),
+    TsTypeOperator(TsTypeOperator),
+    TsParenthesizedType(TsParenthesizedType),
+    TsFunctionType(TsFunctionType),
+    TsConstructorType(TsConstructorType),
+    TsTypePredicate(TsTypePredicate),
+    TsTypeLiteral(TsTypeLiteral),
+    TsMappedType(TsMappedType),
+    TsPropertySignature(TsPropertySignature),
+    TsMethodSignature(TsMethodSignature),
+    TsCallSignatureDeclaration(TsCallSignatureDeclaration),
+    TsConstructSignatureDeclaration(TsConstructSignatureDeclaration),
+    TsIndexSignature(TsIndexSignature),
+    TsTypeAliasDeclaration(TsTypeAliasDeclaration),
+    TsInterfaceDeclaration(TsInterfaceDeclaration),
+    TsInterfaceBody(TsInterfaceBody),
+    TsInterfaceHeritage(TsInterfaceHeritage),
+    TsClassImplements(TsClassImplements),
+    TsEnumDeclaration(TsEnumDeclaration),
+    TsEnumBody(TsEnumBody),
+    TsEnumMember(TsEnumMember),
+    TsModuleDeclaration(TsModuleDeclaration),
+    TsModuleBlock(TsModuleBlock),
+    TsGlobalDeclaration(TsGlobalDeclaration),
+    TsParameterProperty(TsParameterProperty),
+    TsThisParameter(TsThisParameter),
+    TsAsExpression(TsAsExpression),
+    TsSatisfiesExpression(TsSatisfiesExpression),
+    TsTypeAssertion(TsTypeAssertion),
+    TsNonNullExpression(TsNonNullExpression),
+    TsInstantiationExpression(TsInstantiationExpression),
+    TsExportAssignment(TsExportAssignment),
+    TsNamespaceExportDeclaration(TsNamespaceExportDeclaration),
+    TsImportEqualsDeclaration(TsImportEqualsDeclaration),
+    TsExternalModuleReference(TsExternalModuleReference),
+    JsxElement(JsxElement),
+    JsxOpeningElement(JsxOpeningElement),
+    JsxClosingElement(JsxClosingElement),
+    JsxFragment(JsxFragment),
+    JsxOpeningFragment(JsxOpeningFragment),
+    JsxClosingFragment(JsxClosingFragment),
+    JsxIdentifier(JsxIdentifier),
+    JsxNamespacedName(JsxNamespacedName),
+    JsxMemberExpression(JsxMemberExpression),
+    JsxAttribute(JsxAttribute),
+    JsxSpreadAttribute(JsxSpreadAttribute),
+    JsxExpressionContainer(JsxExpressionContainer),
+    JsxEmptyExpression(JsxEmptyExpression),
+    JsxText(JsxText),
+    JsxSpreadChild(JsxSpreadChild),
+}
 impl Program {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -5664,6 +5840,318 @@ impl SetSpan for JsxSpreadChild {
     }
 }
 impl<'a> Ast<'a> {
+    /// Returns the typed wrapper for the concrete node stored at `node_id`.
+    #[inline]
+    pub fn kind_data(&self, node_id: NodeId) -> NodeKindData {
+        match self.node_kind(node_id) {
+            NodeKind::Program => NodeKindData::Program(Program(node_id)),
+            NodeKind::Super => NodeKindData::Super(Super(node_id)),
+            NodeKind::ThisExpression => NodeKindData::ThisExpression(ThisExpression(node_id)),
+            NodeKind::StringLiteral => NodeKindData::StringLiteral(StringLiteral(node_id)),
+            NodeKind::NumericLiteral => NodeKindData::NumericLiteral(NumericLiteral(node_id)),
+            NodeKind::BigIntLiteral => NodeKindData::BigIntLiteral(BigIntLiteral(node_id)),
+            NodeKind::BooleanLiteral => NodeKindData::BooleanLiteral(BooleanLiteral(node_id)),
+            NodeKind::NullLiteral => NodeKindData::NullLiteral(NullLiteral(node_id)),
+            NodeKind::RegExpLiteral => NodeKindData::RegExpLiteral(RegExpLiteral(node_id)),
+            NodeKind::TemplateLiteral => NodeKindData::TemplateLiteral(TemplateLiteral(node_id)),
+            NodeKind::TemplateElement => NodeKindData::TemplateElement(TemplateElement(node_id)),
+            NodeKind::IdentifierReference => {
+                NodeKindData::IdentifierReference(IdentifierReference(node_id))
+            }
+            NodeKind::PrivateIdentifier => {
+                NodeKindData::PrivateIdentifier(PrivateIdentifier(node_id))
+            }
+            NodeKind::BindingIdentifier => {
+                NodeKindData::BindingIdentifier(BindingIdentifier(node_id))
+            }
+            NodeKind::IdentifierName => NodeKindData::IdentifierName(IdentifierName(node_id)),
+            NodeKind::LabelIdentifier => NodeKindData::LabelIdentifier(LabelIdentifier(node_id)),
+            NodeKind::AssignmentPattern => {
+                NodeKindData::AssignmentPattern(AssignmentPattern(node_id))
+            }
+            NodeKind::BindingRestElement => {
+                NodeKindData::BindingRestElement(BindingRestElement(node_id))
+            }
+            NodeKind::ArrayPattern => NodeKindData::ArrayPattern(ArrayPattern(node_id)),
+            NodeKind::ObjectPattern => NodeKindData::ObjectPattern(ObjectPattern(node_id)),
+            NodeKind::BindingProperty => NodeKindData::BindingProperty(BindingProperty(node_id)),
+            NodeKind::BinaryExpression => NodeKindData::BinaryExpression(BinaryExpression(node_id)),
+            NodeKind::LogicalExpression => {
+                NodeKindData::LogicalExpression(LogicalExpression(node_id))
+            }
+            NodeKind::ConditionalExpression => {
+                NodeKindData::ConditionalExpression(ConditionalExpression(node_id))
+            }
+            NodeKind::UnaryExpression => NodeKindData::UnaryExpression(UnaryExpression(node_id)),
+            NodeKind::UpdateExpression => NodeKindData::UpdateExpression(UpdateExpression(node_id)),
+            NodeKind::AssignmentExpression => {
+                NodeKindData::AssignmentExpression(AssignmentExpression(node_id))
+            }
+            NodeKind::VariableDeclaration => {
+                NodeKindData::VariableDeclaration(VariableDeclaration(node_id))
+            }
+            NodeKind::VariableDeclarator => {
+                NodeKindData::VariableDeclarator(VariableDeclarator(node_id))
+            }
+            NodeKind::IfStatement => NodeKindData::IfStatement(IfStatement(node_id)),
+            NodeKind::SwitchStatement => NodeKindData::SwitchStatement(SwitchStatement(node_id)),
+            NodeKind::SwitchCase => NodeKindData::SwitchCase(SwitchCase(node_id)),
+            NodeKind::ForStatement => NodeKindData::ForStatement(ForStatement(node_id)),
+            NodeKind::ForInStatement => NodeKindData::ForInStatement(ForInStatement(node_id)),
+            NodeKind::ForOfStatement => NodeKindData::ForOfStatement(ForOfStatement(node_id)),
+            NodeKind::TryStatement => NodeKindData::TryStatement(TryStatement(node_id)),
+            NodeKind::CatchClause => NodeKindData::CatchClause(CatchClause(node_id)),
+            NodeKind::BreakStatement => NodeKindData::BreakStatement(BreakStatement(node_id)),
+            NodeKind::ContinueStatement => {
+                NodeKindData::ContinueStatement(ContinueStatement(node_id))
+            }
+            NodeKind::LabeledStatement => NodeKindData::LabeledStatement(LabeledStatement(node_id)),
+            NodeKind::ExpressionStatement => {
+                NodeKindData::ExpressionStatement(ExpressionStatement(node_id))
+            }
+            NodeKind::ReturnStatement => NodeKindData::ReturnStatement(ReturnStatement(node_id)),
+            NodeKind::ThrowStatement => NodeKindData::ThrowStatement(ThrowStatement(node_id)),
+            NodeKind::DebuggerStatement => {
+                NodeKindData::DebuggerStatement(DebuggerStatement(node_id))
+            }
+            NodeKind::EmptyStatement => NodeKindData::EmptyStatement(EmptyStatement(node_id)),
+            NodeKind::Directive => NodeKindData::Directive(Directive(node_id)),
+            NodeKind::Decorator => NodeKindData::Decorator(Decorator(node_id)),
+            NodeKind::Class => NodeKindData::Class(Class(node_id)),
+            NodeKind::ClassBody => NodeKindData::ClassBody(ClassBody(node_id)),
+            NodeKind::MethodDefinition => NodeKindData::MethodDefinition(MethodDefinition(node_id)),
+            NodeKind::PropertyDefinition => {
+                NodeKindData::PropertyDefinition(PropertyDefinition(node_id))
+            }
+            NodeKind::StaticBlock => NodeKindData::StaticBlock(StaticBlock(node_id)),
+            NodeKind::Function => NodeKindData::Function(Function(node_id)),
+            NodeKind::FunctionBody => NodeKindData::FunctionBody(FunctionBody(node_id)),
+            NodeKind::BlockStatement => NodeKindData::BlockStatement(BlockStatement(node_id)),
+            NodeKind::WhileStatement => NodeKindData::WhileStatement(WhileStatement(node_id)),
+            NodeKind::DoWhileStatement => NodeKindData::DoWhileStatement(DoWhileStatement(node_id)),
+            NodeKind::WithStatement => NodeKindData::WithStatement(WithStatement(node_id)),
+            NodeKind::FormalParameters => NodeKindData::FormalParameters(FormalParameters(node_id)),
+            NodeKind::FormalParameter => NodeKindData::FormalParameter(FormalParameter(node_id)),
+            NodeKind::ArrayExpression => NodeKindData::ArrayExpression(ArrayExpression(node_id)),
+            NodeKind::ObjectExpression => NodeKindData::ObjectExpression(ObjectExpression(node_id)),
+            NodeKind::SpreadElement => NodeKindData::SpreadElement(SpreadElement(node_id)),
+            NodeKind::ObjectProperty => NodeKindData::ObjectProperty(ObjectProperty(node_id)),
+            NodeKind::ParenthesizedExpression => {
+                NodeKindData::ParenthesizedExpression(ParenthesizedExpression(node_id))
+            }
+            NodeKind::ArrowFunctionExpression => {
+                NodeKindData::ArrowFunctionExpression(ArrowFunctionExpression(node_id))
+            }
+            NodeKind::SequenceExpression => {
+                NodeKindData::SequenceExpression(SequenceExpression(node_id))
+            }
+            NodeKind::MemberExpression => NodeKindData::MemberExpression(MemberExpression(node_id)),
+            NodeKind::CallExpression => NodeKindData::CallExpression(CallExpression(node_id)),
+            NodeKind::ChainExpression => NodeKindData::ChainExpression(ChainExpression(node_id)),
+            NodeKind::TaggedTemplateExpression => {
+                NodeKindData::TaggedTemplateExpression(TaggedTemplateExpression(node_id))
+            }
+            NodeKind::NewExpression => NodeKindData::NewExpression(NewExpression(node_id)),
+            NodeKind::AwaitExpression => NodeKindData::AwaitExpression(AwaitExpression(node_id)),
+            NodeKind::YieldExpression => NodeKindData::YieldExpression(YieldExpression(node_id)),
+            NodeKind::MetaProperty => NodeKindData::MetaProperty(MetaProperty(node_id)),
+            NodeKind::ImportExpression => NodeKindData::ImportExpression(ImportExpression(node_id)),
+            NodeKind::ImportDeclaration => {
+                NodeKindData::ImportDeclaration(ImportDeclaration(node_id))
+            }
+            NodeKind::ImportSpecifier => NodeKindData::ImportSpecifier(ImportSpecifier(node_id)),
+            NodeKind::ImportDefaultSpecifier => {
+                NodeKindData::ImportDefaultSpecifier(ImportDefaultSpecifier(node_id))
+            }
+            NodeKind::ImportNamespaceSpecifier => {
+                NodeKindData::ImportNamespaceSpecifier(ImportNamespaceSpecifier(node_id))
+            }
+            NodeKind::ImportAttribute => NodeKindData::ImportAttribute(ImportAttribute(node_id)),
+            NodeKind::ExportNamedDeclaration => {
+                NodeKindData::ExportNamedDeclaration(ExportNamedDeclaration(node_id))
+            }
+            NodeKind::ExportDefaultDeclaration => {
+                NodeKindData::ExportDefaultDeclaration(ExportDefaultDeclaration(node_id))
+            }
+            NodeKind::ExportAllDeclaration => {
+                NodeKindData::ExportAllDeclaration(ExportAllDeclaration(node_id))
+            }
+            NodeKind::ExportSpecifier => NodeKindData::ExportSpecifier(ExportSpecifier(node_id)),
+            NodeKind::Hashbang => NodeKindData::Hashbang(Hashbang(node_id)),
+            NodeKind::TsTypeAnnotation => NodeKindData::TsTypeAnnotation(TsTypeAnnotation(node_id)),
+            NodeKind::TsAnyKeyword => NodeKindData::TsAnyKeyword(TsAnyKeyword(node_id)),
+            NodeKind::TsUnknownKeyword => NodeKindData::TsUnknownKeyword(TsUnknownKeyword(node_id)),
+            NodeKind::TsNeverKeyword => NodeKindData::TsNeverKeyword(TsNeverKeyword(node_id)),
+            NodeKind::TsVoidKeyword => NodeKindData::TsVoidKeyword(TsVoidKeyword(node_id)),
+            NodeKind::TsNullKeyword => NodeKindData::TsNullKeyword(TsNullKeyword(node_id)),
+            NodeKind::TsUndefinedKeyword => {
+                NodeKindData::TsUndefinedKeyword(TsUndefinedKeyword(node_id))
+            }
+            NodeKind::TsStringKeyword => NodeKindData::TsStringKeyword(TsStringKeyword(node_id)),
+            NodeKind::TsNumberKeyword => NodeKindData::TsNumberKeyword(TsNumberKeyword(node_id)),
+            NodeKind::TsBigIntKeyword => NodeKindData::TsBigIntKeyword(TsBigIntKeyword(node_id)),
+            NodeKind::TsBooleanKeyword => NodeKindData::TsBooleanKeyword(TsBooleanKeyword(node_id)),
+            NodeKind::TsSymbolKeyword => NodeKindData::TsSymbolKeyword(TsSymbolKeyword(node_id)),
+            NodeKind::TsObjectKeyword => NodeKindData::TsObjectKeyword(TsObjectKeyword(node_id)),
+            NodeKind::TsIntrinsicKeyword => {
+                NodeKindData::TsIntrinsicKeyword(TsIntrinsicKeyword(node_id))
+            }
+            NodeKind::TsThisType => NodeKindData::TsThisType(TsThisType(node_id)),
+            NodeKind::TsTypeReference => NodeKindData::TsTypeReference(TsTypeReference(node_id)),
+            NodeKind::TsQualifiedName => NodeKindData::TsQualifiedName(TsQualifiedName(node_id)),
+            NodeKind::TsTypeQuery => NodeKindData::TsTypeQuery(TsTypeQuery(node_id)),
+            NodeKind::TsImportType => NodeKindData::TsImportType(TsImportType(node_id)),
+            NodeKind::TsTypeParameter => NodeKindData::TsTypeParameter(TsTypeParameter(node_id)),
+            NodeKind::TsTypeParameterDeclaration => {
+                NodeKindData::TsTypeParameterDeclaration(TsTypeParameterDeclaration(node_id))
+            }
+            NodeKind::TsTypeParameterInstantiation => {
+                NodeKindData::TsTypeParameterInstantiation(TsTypeParameterInstantiation(node_id))
+            }
+            NodeKind::TsLiteralType => NodeKindData::TsLiteralType(TsLiteralType(node_id)),
+            NodeKind::TsTemplateLiteralType => {
+                NodeKindData::TsTemplateLiteralType(TsTemplateLiteralType(node_id))
+            }
+            NodeKind::TsArrayType => NodeKindData::TsArrayType(TsArrayType(node_id)),
+            NodeKind::TsIndexedAccessType => {
+                NodeKindData::TsIndexedAccessType(TsIndexedAccessType(node_id))
+            }
+            NodeKind::TsTupleType => NodeKindData::TsTupleType(TsTupleType(node_id)),
+            NodeKind::TsNamedTupleMember => {
+                NodeKindData::TsNamedTupleMember(TsNamedTupleMember(node_id))
+            }
+            NodeKind::TsOptionalType => NodeKindData::TsOptionalType(TsOptionalType(node_id)),
+            NodeKind::TsRestType => NodeKindData::TsRestType(TsRestType(node_id)),
+            NodeKind::TsJsDocNullableType => {
+                NodeKindData::TsJsDocNullableType(TsJsDocNullableType(node_id))
+            }
+            NodeKind::TsJsDocNonNullableType => {
+                NodeKindData::TsJsDocNonNullableType(TsJsDocNonNullableType(node_id))
+            }
+            NodeKind::TsJsDocUnknownType => {
+                NodeKindData::TsJsDocUnknownType(TsJsDocUnknownType(node_id))
+            }
+            NodeKind::TsUnionType => NodeKindData::TsUnionType(TsUnionType(node_id)),
+            NodeKind::TsIntersectionType => {
+                NodeKindData::TsIntersectionType(TsIntersectionType(node_id))
+            }
+            NodeKind::TsConditionalType => {
+                NodeKindData::TsConditionalType(TsConditionalType(node_id))
+            }
+            NodeKind::TsInferType => NodeKindData::TsInferType(TsInferType(node_id)),
+            NodeKind::TsTypeOperator => NodeKindData::TsTypeOperator(TsTypeOperator(node_id)),
+            NodeKind::TsParenthesizedType => {
+                NodeKindData::TsParenthesizedType(TsParenthesizedType(node_id))
+            }
+            NodeKind::TsFunctionType => NodeKindData::TsFunctionType(TsFunctionType(node_id)),
+            NodeKind::TsConstructorType => {
+                NodeKindData::TsConstructorType(TsConstructorType(node_id))
+            }
+            NodeKind::TsTypePredicate => NodeKindData::TsTypePredicate(TsTypePredicate(node_id)),
+            NodeKind::TsTypeLiteral => NodeKindData::TsTypeLiteral(TsTypeLiteral(node_id)),
+            NodeKind::TsMappedType => NodeKindData::TsMappedType(TsMappedType(node_id)),
+            NodeKind::TsPropertySignature => {
+                NodeKindData::TsPropertySignature(TsPropertySignature(node_id))
+            }
+            NodeKind::TsMethodSignature => {
+                NodeKindData::TsMethodSignature(TsMethodSignature(node_id))
+            }
+            NodeKind::TsCallSignatureDeclaration => {
+                NodeKindData::TsCallSignatureDeclaration(TsCallSignatureDeclaration(node_id))
+            }
+            NodeKind::TsConstructSignatureDeclaration => {
+                NodeKindData::TsConstructSignatureDeclaration(TsConstructSignatureDeclaration(
+                    node_id,
+                ))
+            }
+            NodeKind::TsIndexSignature => NodeKindData::TsIndexSignature(TsIndexSignature(node_id)),
+            NodeKind::TsTypeAliasDeclaration => {
+                NodeKindData::TsTypeAliasDeclaration(TsTypeAliasDeclaration(node_id))
+            }
+            NodeKind::TsInterfaceDeclaration => {
+                NodeKindData::TsInterfaceDeclaration(TsInterfaceDeclaration(node_id))
+            }
+            NodeKind::TsInterfaceBody => NodeKindData::TsInterfaceBody(TsInterfaceBody(node_id)),
+            NodeKind::TsInterfaceHeritage => {
+                NodeKindData::TsInterfaceHeritage(TsInterfaceHeritage(node_id))
+            }
+            NodeKind::TsClassImplements => {
+                NodeKindData::TsClassImplements(TsClassImplements(node_id))
+            }
+            NodeKind::TsEnumDeclaration => {
+                NodeKindData::TsEnumDeclaration(TsEnumDeclaration(node_id))
+            }
+            NodeKind::TsEnumBody => NodeKindData::TsEnumBody(TsEnumBody(node_id)),
+            NodeKind::TsEnumMember => NodeKindData::TsEnumMember(TsEnumMember(node_id)),
+            NodeKind::TsModuleDeclaration => {
+                NodeKindData::TsModuleDeclaration(TsModuleDeclaration(node_id))
+            }
+            NodeKind::TsModuleBlock => NodeKindData::TsModuleBlock(TsModuleBlock(node_id)),
+            NodeKind::TsGlobalDeclaration => {
+                NodeKindData::TsGlobalDeclaration(TsGlobalDeclaration(node_id))
+            }
+            NodeKind::TsParameterProperty => {
+                NodeKindData::TsParameterProperty(TsParameterProperty(node_id))
+            }
+            NodeKind::TsThisParameter => NodeKindData::TsThisParameter(TsThisParameter(node_id)),
+            NodeKind::TsAsExpression => NodeKindData::TsAsExpression(TsAsExpression(node_id)),
+            NodeKind::TsSatisfiesExpression => {
+                NodeKindData::TsSatisfiesExpression(TsSatisfiesExpression(node_id))
+            }
+            NodeKind::TsTypeAssertion => NodeKindData::TsTypeAssertion(TsTypeAssertion(node_id)),
+            NodeKind::TsNonNullExpression => {
+                NodeKindData::TsNonNullExpression(TsNonNullExpression(node_id))
+            }
+            NodeKind::TsInstantiationExpression => {
+                NodeKindData::TsInstantiationExpression(TsInstantiationExpression(node_id))
+            }
+            NodeKind::TsExportAssignment => {
+                NodeKindData::TsExportAssignment(TsExportAssignment(node_id))
+            }
+            NodeKind::TsNamespaceExportDeclaration => {
+                NodeKindData::TsNamespaceExportDeclaration(TsNamespaceExportDeclaration(node_id))
+            }
+            NodeKind::TsImportEqualsDeclaration => {
+                NodeKindData::TsImportEqualsDeclaration(TsImportEqualsDeclaration(node_id))
+            }
+            NodeKind::TsExternalModuleReference => {
+                NodeKindData::TsExternalModuleReference(TsExternalModuleReference(node_id))
+            }
+            NodeKind::JsxElement => NodeKindData::JsxElement(JsxElement(node_id)),
+            NodeKind::JsxOpeningElement => {
+                NodeKindData::JsxOpeningElement(JsxOpeningElement(node_id))
+            }
+            NodeKind::JsxClosingElement => {
+                NodeKindData::JsxClosingElement(JsxClosingElement(node_id))
+            }
+            NodeKind::JsxFragment => NodeKindData::JsxFragment(JsxFragment(node_id)),
+            NodeKind::JsxOpeningFragment => {
+                NodeKindData::JsxOpeningFragment(JsxOpeningFragment(node_id))
+            }
+            NodeKind::JsxClosingFragment => {
+                NodeKindData::JsxClosingFragment(JsxClosingFragment(node_id))
+            }
+            NodeKind::JsxIdentifier => NodeKindData::JsxIdentifier(JsxIdentifier(node_id)),
+            NodeKind::JsxNamespacedName => {
+                NodeKindData::JsxNamespacedName(JsxNamespacedName(node_id))
+            }
+            NodeKind::JsxMemberExpression => {
+                NodeKindData::JsxMemberExpression(JsxMemberExpression(node_id))
+            }
+            NodeKind::JsxAttribute => NodeKindData::JsxAttribute(JsxAttribute(node_id)),
+            NodeKind::JsxSpreadAttribute => {
+                NodeKindData::JsxSpreadAttribute(JsxSpreadAttribute(node_id))
+            }
+            NodeKind::JsxExpressionContainer => {
+                NodeKindData::JsxExpressionContainer(JsxExpressionContainer(node_id))
+            }
+            NodeKind::JsxEmptyExpression => {
+                NodeKindData::JsxEmptyExpression(JsxEmptyExpression(node_id))
+            }
+            NodeKind::JsxText => NodeKindData::JsxText(JsxText(node_id)),
+            NodeKind::JsxSpreadChild => NodeKindData::JsxSpreadChild(JsxSpreadChild(node_id)),
+        }
+    }
     #[inline]
     pub fn stmt_data(&self, node: Stmt) -> StmtData {
         match unsafe { *self.nodes.kind_unchecked(node.0) } {

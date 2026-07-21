@@ -3007,7 +3007,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         }
 
         let head = self.parse_identifier()?;
-        let ExprData::IdentifierReference(head) = self.ast.expr_data(head) else {
+        let NodeKindData::IdentifierReference(head) = self.ast.kind_data(head.node_id()) else {
             unreachable!()
         };
         if self.current_token.tag != TokenTag::Dot {
@@ -3196,10 +3196,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         } else if self.lang.is_typescript() && self.current_token.tag == TokenTag::Interface {
             let interface_start = self.current_token.span.start;
             let statement = self.parse_interface_declaration(interface_start, false)?;
-            let StmtData::Declaration(declaration) = self.ast.stmt_data(statement) else {
-                unreachable!()
-            };
-            let DeclData::TsInterfaceDeclaration(interface) = self.ast.decl_data(declaration)
+            let NodeKindData::TsInterfaceDeclaration(interface) =
+                self.ast.kind_data(statement.node_id())
             else {
                 unreachable!()
             };
@@ -4734,7 +4732,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let start = self.expect(TokenTag::Typeof)?.span.start;
         let expr_name = if self.current_token.tag == TokenTag::Import {
             let import_type = self.parse_import_type()?;
-            let TsTypeData::TsImportType(import_type) = self.ast.ts_type_data(import_type) else {
+            let NodeKindData::TsImportType(import_type) = self.ast.kind_data(import_type.node_id())
+            else {
                 unreachable!()
             };
             TsTypeQueryExprName::TsImportType(import_type)
@@ -9826,12 +9825,8 @@ fn assignment_operator(tag: TokenTag) -> AssignmentOperator {
 fn strip_parenthesized_nodes(ast: &mut Ast<'_>) {
     for index in 0..ast.node_count() {
         let node = NodeId::from_raw_unchecked(index as u32);
-        if ast.node_kind(node) != NodeKind::ParenthesizedExpression {
+        let NodeKindData::ParenthesizedExpression(parenthesized) = ast.kind_data(node) else {
             continue;
-        }
-        let expression = unsafe { Expr::from_node_id_unchecked(node) };
-        let ExprData::ParenthesizedExpression(parenthesized) = ast.expr_data(expression) else {
-            unreachable!()
         };
 
         let mut inner = parenthesized.expression(ast);

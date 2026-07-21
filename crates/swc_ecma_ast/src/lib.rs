@@ -23,7 +23,7 @@ use swc_experimental_allocator::{Allocator, vec::Vec as ArenaVec};
 pub use ast::*;
 pub use comment::*;
 pub use derive::*;
-pub use generated::ast_node::NodeKind;
+pub use generated::ast_node::{NodeKind, NodeKindData};
 pub use generated::ast_visitor::*;
 pub use node_id::{AstNode, ExtraDataCompact, ExtraDataId, NodeId, SubRange, TypedSubRange};
 pub use semantic::{ScopeId, SymbolId};
