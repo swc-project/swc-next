@@ -23,8 +23,8 @@ oxc_index        = { version = "5.0.0", features = ["nonmax"] }
 rayon            = "1.12.0"
 regex            = "1.12.2"
 rustc-hash       = "2.1.2"
-serde_json       = "1.0.145"
 seq-macro        = "0.3.6"
+serde_json       = "1.0.145"
 similar          = "3.1.1"
 smartstring      = "1.0.1"
 stacker          = "0.1.24"
@@ -56,7 +56,6 @@ swc_experimental_ast_macros    = { version = "0.11.0", path = "crates/swc_ast_ma
 swc_experimental_ecma_ast      = { version = "0.11.0", path = "crates/swc_ecma_ast" }
 swc_experimental_ecma_parser   = { version = "0.11.0", path = "crates/swc_ecma_parser" }
 swc_experimental_ecma_semantic = { version = "0.11.0", path = "crates/swc_ecma_semantic" }
-swc_experimental_ecma_visit    = { version = "0.11.0", path = "crates/swc_ecma_visit" }
 
 # Dev
 colored                = "3.1.1"

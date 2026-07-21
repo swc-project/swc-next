@@ -113,7 +113,6 @@ dependencies = [
  "swc_experimental_ecma_ast",
  "swc_experimental_ecma_parser",
  "swc_experimental_ecma_semantic",
- "swc_experimental_ecma_visit",
  "tracy-client",
 ]
 
@@ -2108,13 +2107,6 @@ dependencies = [
  "swc_experimental_allocator",
  "swc_experimental_ecma_ast",
  "swc_experimental_ecma_parser",
-]
-
-[[package]]
-name = "swc_experimental_ecma_visit"
-version = "0.11.0"
-dependencies = [
- "swc_experimental_ecma_ast",
 ]
 
 [[package]]
