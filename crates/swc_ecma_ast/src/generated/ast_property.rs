@@ -68,110 +68,118 @@ impl Program {
 impl Stmt {
     #[inline]
     pub fn is_block_statement(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::BlockStatement(_))
+        ast.node_kind(self.0) == NodeKind::BlockStatement
     }
     #[inline]
     pub fn is_break_statement(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::BreakStatement(_))
+        ast.node_kind(self.0) == NodeKind::BreakStatement
     }
     #[inline]
     pub fn is_continue_statement(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::ContinueStatement(_))
+        ast.node_kind(self.0) == NodeKind::ContinueStatement
     }
     #[inline]
     pub fn is_debugger_statement(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::DebuggerStatement(_))
+        ast.node_kind(self.0) == NodeKind::DebuggerStatement
     }
     #[inline]
     pub fn is_do_while_statement(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::DoWhileStatement(_))
+        ast.node_kind(self.0) == NodeKind::DoWhileStatement
     }
     #[inline]
     pub fn is_empty_statement(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::EmptyStatement(_))
+        ast.node_kind(self.0) == NodeKind::EmptyStatement
     }
     #[inline]
     pub fn is_expression_statement(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::ExpressionStatement(_))
+        ast.node_kind(self.0) == NodeKind::ExpressionStatement
     }
     #[inline]
     pub fn is_for_in_statement(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::ForInStatement(_))
+        ast.node_kind(self.0) == NodeKind::ForInStatement
     }
     #[inline]
     pub fn is_for_of_statement(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::ForOfStatement(_))
+        ast.node_kind(self.0) == NodeKind::ForOfStatement
     }
     #[inline]
     pub fn is_for_statement(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::ForStatement(_))
+        ast.node_kind(self.0) == NodeKind::ForStatement
     }
     #[inline]
     pub fn is_if_statement(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::IfStatement(_))
+        ast.node_kind(self.0) == NodeKind::IfStatement
     }
     #[inline]
     pub fn is_labeled_statement(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::LabeledStatement(_))
+        ast.node_kind(self.0) == NodeKind::LabeledStatement
     }
     #[inline]
     pub fn is_return_statement(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::ReturnStatement(_))
+        ast.node_kind(self.0) == NodeKind::ReturnStatement
     }
     #[inline]
     pub fn is_switch_statement(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::SwitchStatement(_))
+        ast.node_kind(self.0) == NodeKind::SwitchStatement
     }
     #[inline]
     pub fn is_throw_statement(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::ThrowStatement(_))
+        ast.node_kind(self.0) == NodeKind::ThrowStatement
     }
     #[inline]
     pub fn is_try_statement(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::TryStatement(_))
+        ast.node_kind(self.0) == NodeKind::TryStatement
     }
     #[inline]
     pub fn is_while_statement(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::WhileStatement(_))
+        ast.node_kind(self.0) == NodeKind::WhileStatement
     }
     #[inline]
     pub fn is_with_statement(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::WithStatement(_))
+        ast.node_kind(self.0) == NodeKind::WithStatement
     }
     #[inline]
     pub fn is_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::Declaration(_))
-    }
-    #[inline]
-    pub fn is_import_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::ImportDeclaration(_))
-    }
-    #[inline]
-    pub fn is_export_named_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::ExportNamedDeclaration(_))
-    }
-    #[inline]
-    pub fn is_export_default_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::ExportDefaultDeclaration(_))
-    }
-    #[inline]
-    pub fn is_export_all_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::ExportAllDeclaration(_))
-    }
-    #[inline]
-    pub fn is_ts_export_assignment(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::TsExportAssignment(_))
-    }
-    #[inline]
-    pub fn is_ts_namespace_export_declaration(self, ast: &Ast<'_>) -> bool {
         matches!(
-            ast.stmt_data(self),
-            StmtData::TsNamespaceExportDeclaration(_)
+            ast.node_kind(self.0),
+            NodeKind::VariableDeclaration
+                | NodeKind::Function
+                | NodeKind::Class
+                | NodeKind::TsTypeAliasDeclaration
+                | NodeKind::TsInterfaceDeclaration
+                | NodeKind::TsEnumDeclaration
+                | NodeKind::TsModuleDeclaration
+                | NodeKind::TsGlobalDeclaration
+                | NodeKind::TsImportEqualsDeclaration
         )
     }
     #[inline]
+    pub fn is_import_declaration(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ImportDeclaration
+    }
+    #[inline]
+    pub fn is_export_named_declaration(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ExportNamedDeclaration
+    }
+    #[inline]
+    pub fn is_export_default_declaration(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ExportDefaultDeclaration
+    }
+    #[inline]
+    pub fn is_export_all_declaration(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::ExportAllDeclaration
+    }
+    #[inline]
+    pub fn is_ts_export_assignment(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsExportAssignment
+    }
+    #[inline]
+    pub fn is_ts_namespace_export_declaration(self, ast: &Ast<'_>) -> bool {
+        ast.node_kind(self.0) == NodeKind::TsNamespaceExportDeclaration
+    }
+    #[inline]
     pub fn is_ts_import_equals_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.stmt_data(self), StmtData::TsImportEqualsDeclaration(_))
+        ast.node_kind(self.0) == NodeKind::TsImportEqualsDeclaration
     }
     #[inline]
     pub fn as_block_statement(self, ast: &Ast<'_>) -> Option<BlockStatement> {
@@ -366,16 +374,46 @@ impl StatementListItem {
     #[inline]
     pub fn is_stmt(self, ast: &Ast<'_>) -> bool {
         matches!(
-            ast.statement_list_item_data(self),
-            StatementListItemData::Stmt(_)
+            ast.node_kind(self.0),
+            NodeKind::BlockStatement
+                | NodeKind::BreakStatement
+                | NodeKind::ContinueStatement
+                | NodeKind::DebuggerStatement
+                | NodeKind::DoWhileStatement
+                | NodeKind::EmptyStatement
+                | NodeKind::ExpressionStatement
+                | NodeKind::ForInStatement
+                | NodeKind::ForOfStatement
+                | NodeKind::ForStatement
+                | NodeKind::IfStatement
+                | NodeKind::LabeledStatement
+                | NodeKind::ReturnStatement
+                | NodeKind::SwitchStatement
+                | NodeKind::ThrowStatement
+                | NodeKind::TryStatement
+                | NodeKind::WhileStatement
+                | NodeKind::WithStatement
+                | NodeKind::VariableDeclaration
+                | NodeKind::Function
+                | NodeKind::Class
+                | NodeKind::TsTypeAliasDeclaration
+                | NodeKind::TsInterfaceDeclaration
+                | NodeKind::TsEnumDeclaration
+                | NodeKind::TsModuleDeclaration
+                | NodeKind::TsGlobalDeclaration
+                | NodeKind::TsImportEqualsDeclaration
+                | NodeKind::ImportDeclaration
+                | NodeKind::ExportNamedDeclaration
+                | NodeKind::ExportDefaultDeclaration
+                | NodeKind::ExportAllDeclaration
+                | NodeKind::TsExportAssignment
+                | NodeKind::TsNamespaceExportDeclaration
+                | NodeKind::TsImportEqualsDeclaration
         )
     }
     #[inline]
     pub fn is_directive(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.statement_list_item_data(self),
-            StatementListItemData::Directive(_)
-        )
+        ast.node_kind(self.0) == NodeKind::Directive
     }
     #[inline]
     pub fn as_stmt(self, ast: &Ast<'_>) -> Option<Stmt> {
@@ -395,39 +433,39 @@ impl StatementListItem {
 impl Decl {
     #[inline]
     pub fn is_variable_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.decl_data(self), DeclData::VariableDeclaration(_))
+        ast.node_kind(self.0) == NodeKind::VariableDeclaration
     }
     #[inline]
     pub fn is_function(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.decl_data(self), DeclData::Function(_))
+        ast.node_kind(self.0) == NodeKind::Function
     }
     #[inline]
     pub fn is_class(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.decl_data(self), DeclData::Class(_))
+        ast.node_kind(self.0) == NodeKind::Class
     }
     #[inline]
     pub fn is_ts_type_alias_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.decl_data(self), DeclData::TsTypeAliasDeclaration(_))
+        ast.node_kind(self.0) == NodeKind::TsTypeAliasDeclaration
     }
     #[inline]
     pub fn is_ts_interface_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.decl_data(self), DeclData::TsInterfaceDeclaration(_))
+        ast.node_kind(self.0) == NodeKind::TsInterfaceDeclaration
     }
     #[inline]
     pub fn is_ts_enum_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.decl_data(self), DeclData::TsEnumDeclaration(_))
+        ast.node_kind(self.0) == NodeKind::TsEnumDeclaration
     }
     #[inline]
     pub fn is_ts_module_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.decl_data(self), DeclData::TsModuleDeclaration(_))
+        ast.node_kind(self.0) == NodeKind::TsModuleDeclaration
     }
     #[inline]
     pub fn is_ts_global_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.decl_data(self), DeclData::TsGlobalDeclaration(_))
+        ast.node_kind(self.0) == NodeKind::TsGlobalDeclaration
     }
     #[inline]
     pub fn is_ts_import_equals_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.decl_data(self), DeclData::TsImportEqualsDeclaration(_))
+        ast.node_kind(self.0) == NodeKind::TsImportEqualsDeclaration
     }
     #[inline]
     pub fn as_variable_declaration(self, ast: &Ast<'_>) -> Option<VariableDeclaration> {
@@ -499,163 +537,163 @@ impl Decl {
 impl Expr {
     #[inline]
     pub fn is_identifier_reference(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::IdentifierReference(_))
+        ast.node_kind(self.0) == NodeKind::IdentifierReference
     }
     #[inline]
     pub fn is_this_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::ThisExpression(_))
+        ast.node_kind(self.0) == NodeKind::ThisExpression
     }
     #[inline]
     pub fn is_super(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::Super(_))
+        ast.node_kind(self.0) == NodeKind::Super
     }
     #[inline]
     pub fn is_meta_property(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::MetaProperty(_))
+        ast.node_kind(self.0) == NodeKind::MetaProperty
     }
     #[inline]
     pub fn is_string_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::StringLiteral(_))
+        ast.node_kind(self.0) == NodeKind::StringLiteral
     }
     #[inline]
     pub fn is_numeric_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::NumericLiteral(_))
+        ast.node_kind(self.0) == NodeKind::NumericLiteral
     }
     #[inline]
     pub fn is_big_int_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::BigIntLiteral(_))
+        ast.node_kind(self.0) == NodeKind::BigIntLiteral
     }
     #[inline]
     pub fn is_boolean_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::BooleanLiteral(_))
+        ast.node_kind(self.0) == NodeKind::BooleanLiteral
     }
     #[inline]
     pub fn is_null_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::NullLiteral(_))
+        ast.node_kind(self.0) == NodeKind::NullLiteral
     }
     #[inline]
     pub fn is_reg_exp_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::RegExpLiteral(_))
+        ast.node_kind(self.0) == NodeKind::RegExpLiteral
     }
     #[inline]
     pub fn is_template_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::TemplateLiteral(_))
+        ast.node_kind(self.0) == NodeKind::TemplateLiteral
     }
     #[inline]
     pub fn is_binary_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::BinaryExpression(_))
+        ast.node_kind(self.0) == NodeKind::BinaryExpression
     }
     #[inline]
     pub fn is_logical_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::LogicalExpression(_))
+        ast.node_kind(self.0) == NodeKind::LogicalExpression
     }
     #[inline]
     pub fn is_unary_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::UnaryExpression(_))
+        ast.node_kind(self.0) == NodeKind::UnaryExpression
     }
     #[inline]
     pub fn is_update_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::UpdateExpression(_))
+        ast.node_kind(self.0) == NodeKind::UpdateExpression
     }
     #[inline]
     pub fn is_assignment_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::AssignmentExpression(_))
+        ast.node_kind(self.0) == NodeKind::AssignmentExpression
     }
     #[inline]
     pub fn is_conditional_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::ConditionalExpression(_))
+        ast.node_kind(self.0) == NodeKind::ConditionalExpression
     }
     #[inline]
     pub fn is_sequence_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::SequenceExpression(_))
+        ast.node_kind(self.0) == NodeKind::SequenceExpression
     }
     #[inline]
     pub fn is_member_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::MemberExpression(_))
+        ast.node_kind(self.0) == NodeKind::MemberExpression
     }
     #[inline]
     pub fn is_call_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::CallExpression(_))
+        ast.node_kind(self.0) == NodeKind::CallExpression
     }
     #[inline]
     pub fn is_chain_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::ChainExpression(_))
+        ast.node_kind(self.0) == NodeKind::ChainExpression
     }
     #[inline]
     pub fn is_new_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::NewExpression(_))
+        ast.node_kind(self.0) == NodeKind::NewExpression
     }
     #[inline]
     pub fn is_tagged_template_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::TaggedTemplateExpression(_))
+        ast.node_kind(self.0) == NodeKind::TaggedTemplateExpression
     }
     #[inline]
     pub fn is_arrow_function_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::ArrowFunctionExpression(_))
+        ast.node_kind(self.0) == NodeKind::ArrowFunctionExpression
     }
     #[inline]
     pub fn is_array_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::ArrayExpression(_))
+        ast.node_kind(self.0) == NodeKind::ArrayExpression
     }
     #[inline]
     pub fn is_object_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::ObjectExpression(_))
+        ast.node_kind(self.0) == NodeKind::ObjectExpression
     }
     #[inline]
     pub fn is_parenthesized_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::ParenthesizedExpression(_))
+        ast.node_kind(self.0) == NodeKind::ParenthesizedExpression
     }
     #[inline]
     pub fn is_function(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::Function(_))
+        ast.node_kind(self.0) == NodeKind::Function
     }
     #[inline]
     pub fn is_class(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::Class(_))
+        ast.node_kind(self.0) == NodeKind::Class
     }
     #[inline]
     pub fn is_import_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::ImportExpression(_))
+        ast.node_kind(self.0) == NodeKind::ImportExpression
     }
     #[inline]
     pub fn is_await_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::AwaitExpression(_))
+        ast.node_kind(self.0) == NodeKind::AwaitExpression
     }
     #[inline]
     pub fn is_yield_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::YieldExpression(_))
+        ast.node_kind(self.0) == NodeKind::YieldExpression
     }
     #[inline]
     pub fn is_private_identifier(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::PrivateIdentifier(_))
+        ast.node_kind(self.0) == NodeKind::PrivateIdentifier
     }
     #[inline]
     pub fn is_ts_as_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::TsAsExpression(_))
+        ast.node_kind(self.0) == NodeKind::TsAsExpression
     }
     #[inline]
     pub fn is_ts_satisfies_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::TsSatisfiesExpression(_))
+        ast.node_kind(self.0) == NodeKind::TsSatisfiesExpression
     }
     #[inline]
     pub fn is_ts_type_assertion(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::TsTypeAssertion(_))
+        ast.node_kind(self.0) == NodeKind::TsTypeAssertion
     }
     #[inline]
     pub fn is_ts_non_null_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::TsNonNullExpression(_))
+        ast.node_kind(self.0) == NodeKind::TsNonNullExpression
     }
     #[inline]
     pub fn is_ts_instantiation_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::TsInstantiationExpression(_))
+        ast.node_kind(self.0) == NodeKind::TsInstantiationExpression
     }
     #[inline]
     pub fn is_jsx_element(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::JsxElement(_))
+        ast.node_kind(self.0) == NodeKind::JsxElement
     }
     #[inline]
     pub fn is_jsx_fragment(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.expr_data(self), ExprData::JsxFragment(_))
+        ast.node_kind(self.0) == NodeKind::JsxFragment
     }
     #[inline]
     pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
@@ -944,45 +982,35 @@ impl Expr {
 impl BindingPattern {
     #[inline]
     pub fn is_binding_identifier(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.binding_pattern_data(self),
-            BindingPatternData::BindingIdentifier(_)
-        )
+        ast.node_kind(self.0) == NodeKind::BindingIdentifier
     }
     #[inline]
     pub fn is_simple_assignment_target(self, ast: &Ast<'_>) -> bool {
         matches!(
-            ast.binding_pattern_data(self),
-            BindingPatternData::SimpleAssignmentTarget(_)
+            ast.node_kind(self.0),
+            NodeKind::IdentifierReference
+                | NodeKind::MemberExpression
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
         )
     }
     #[inline]
     pub fn is_assignment_pattern(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.binding_pattern_data(self),
-            BindingPatternData::AssignmentPattern(_)
-        )
+        ast.node_kind(self.0) == NodeKind::AssignmentPattern
     }
     #[inline]
     pub fn is_binding_rest_element(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.binding_pattern_data(self),
-            BindingPatternData::BindingRestElement(_)
-        )
+        ast.node_kind(self.0) == NodeKind::BindingRestElement
     }
     #[inline]
     pub fn is_array_pattern(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.binding_pattern_data(self),
-            BindingPatternData::ArrayPattern(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ArrayPattern
     }
     #[inline]
     pub fn is_object_pattern(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.binding_pattern_data(self),
-            BindingPatternData::ObjectPattern(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ObjectPattern
     }
     #[inline]
     pub fn as_binding_identifier(self, ast: &Ast<'_>) -> Option<BindingIdentifier> {
@@ -1031,23 +1059,22 @@ impl AssignmentTarget {
     #[inline]
     pub fn is_simple_assignment_target(self, ast: &Ast<'_>) -> bool {
         matches!(
-            ast.assignment_target_data(self),
-            AssignmentTargetData::SimpleAssignmentTarget(_)
+            ast.node_kind(self.0),
+            NodeKind::IdentifierReference
+                | NodeKind::MemberExpression
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
         )
     }
     #[inline]
     pub fn is_array_assignment_target(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.assignment_target_data(self),
-            AssignmentTargetData::ArrayAssignmentTarget(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ArrayPattern
     }
     #[inline]
     pub fn is_object_assignment_target(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.assignment_target_data(self),
-            AssignmentTargetData::ObjectAssignmentTarget(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ObjectPattern
     }
     #[inline]
     pub fn as_simple_assignment_target(self, ast: &Ast<'_>) -> Option<SimpleAssignmentTarget> {
@@ -1074,45 +1101,27 @@ impl AssignmentTarget {
 impl SimpleAssignmentTarget {
     #[inline]
     pub fn is_identifier_reference(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.simple_assignment_target_data(self),
-            SimpleAssignmentTargetData::IdentifierReference(_)
-        )
+        ast.node_kind(self.0) == NodeKind::IdentifierReference
     }
     #[inline]
     pub fn is_member_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.simple_assignment_target_data(self),
-            SimpleAssignmentTargetData::MemberExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::MemberExpression
     }
     #[inline]
     pub fn is_ts_as_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.simple_assignment_target_data(self),
-            SimpleAssignmentTargetData::TsAsExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsAsExpression
     }
     #[inline]
     pub fn is_ts_satisfies_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.simple_assignment_target_data(self),
-            SimpleAssignmentTargetData::TsSatisfiesExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsSatisfiesExpression
     }
     #[inline]
     pub fn is_ts_type_assertion(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.simple_assignment_target_data(self),
-            SimpleAssignmentTargetData::TsTypeAssertion(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsTypeAssertion
     }
     #[inline]
     pub fn is_ts_non_null_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.simple_assignment_target_data(self),
-            SimpleAssignmentTargetData::TsNonNullExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsNonNullExpression
     }
     #[inline]
     pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
@@ -1160,42 +1169,69 @@ impl SimpleAssignmentTarget {
 impl PropertyKey {
     #[inline]
     pub fn is_identifier_name(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.property_key_data(self),
-            PropertyKeyData::IdentifierName(_)
-        )
+        ast.node_kind(self.0) == NodeKind::IdentifierName
     }
     #[inline]
     pub fn is_private_identifier(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.property_key_data(self),
-            PropertyKeyData::PrivateIdentifier(_)
-        )
+        ast.node_kind(self.0) == NodeKind::PrivateIdentifier
     }
     #[inline]
     pub fn is_string_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.property_key_data(self),
-            PropertyKeyData::StringLiteral(_)
-        )
+        ast.node_kind(self.0) == NodeKind::StringLiteral
     }
     #[inline]
     pub fn is_numeric_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.property_key_data(self),
-            PropertyKeyData::NumericLiteral(_)
-        )
+        ast.node_kind(self.0) == NodeKind::NumericLiteral
     }
     #[inline]
     pub fn is_big_int_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.property_key_data(self),
-            PropertyKeyData::BigIntLiteral(_)
-        )
+        ast.node_kind(self.0) == NodeKind::BigIntLiteral
     }
     #[inline]
     pub fn is_expr(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.property_key_data(self), PropertyKeyData::Expr(_))
+        matches!(
+            ast.node_kind(self.0),
+            NodeKind::IdentifierReference
+                | NodeKind::ThisExpression
+                | NodeKind::Super
+                | NodeKind::MetaProperty
+                | NodeKind::StringLiteral
+                | NodeKind::NumericLiteral
+                | NodeKind::BigIntLiteral
+                | NodeKind::BooleanLiteral
+                | NodeKind::NullLiteral
+                | NodeKind::RegExpLiteral
+                | NodeKind::TemplateLiteral
+                | NodeKind::BinaryExpression
+                | NodeKind::LogicalExpression
+                | NodeKind::UnaryExpression
+                | NodeKind::UpdateExpression
+                | NodeKind::AssignmentExpression
+                | NodeKind::ConditionalExpression
+                | NodeKind::SequenceExpression
+                | NodeKind::MemberExpression
+                | NodeKind::CallExpression
+                | NodeKind::ChainExpression
+                | NodeKind::NewExpression
+                | NodeKind::TaggedTemplateExpression
+                | NodeKind::ArrowFunctionExpression
+                | NodeKind::ArrayExpression
+                | NodeKind::ObjectExpression
+                | NodeKind::ParenthesizedExpression
+                | NodeKind::Function
+                | NodeKind::Class
+                | NodeKind::ImportExpression
+                | NodeKind::AwaitExpression
+                | NodeKind::YieldExpression
+                | NodeKind::PrivateIdentifier
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
+                | NodeKind::TsInstantiationExpression
+                | NodeKind::JsxElement
+                | NodeKind::JsxFragment
+        )
     }
     #[inline]
     pub fn as_identifier_name(self, ast: &Ast<'_>) -> Option<IdentifierName> {
@@ -1243,17 +1279,11 @@ impl PropertyKey {
 impl ModuleExportName {
     #[inline]
     pub fn is_identifier_name(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.module_export_name_data(self),
-            ModuleExportNameData::IdentifierName(_)
-        )
+        ast.node_kind(self.0) == NodeKind::IdentifierName
     }
     #[inline]
     pub fn is_string_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.module_export_name_data(self),
-            ModuleExportNameData::StringLiteral(_)
-        )
+        ast.node_kind(self.0) == NodeKind::StringLiteral
     }
     #[inline]
     pub fn as_identifier_name(self, ast: &Ast<'_>) -> Option<IdentifierName> {
@@ -1273,11 +1303,53 @@ impl ModuleExportName {
 impl Argument {
     #[inline]
     pub fn is_expr(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.argument_data(self), ArgumentData::Expr(_))
+        matches!(
+            ast.node_kind(self.0),
+            NodeKind::IdentifierReference
+                | NodeKind::ThisExpression
+                | NodeKind::Super
+                | NodeKind::MetaProperty
+                | NodeKind::StringLiteral
+                | NodeKind::NumericLiteral
+                | NodeKind::BigIntLiteral
+                | NodeKind::BooleanLiteral
+                | NodeKind::NullLiteral
+                | NodeKind::RegExpLiteral
+                | NodeKind::TemplateLiteral
+                | NodeKind::BinaryExpression
+                | NodeKind::LogicalExpression
+                | NodeKind::UnaryExpression
+                | NodeKind::UpdateExpression
+                | NodeKind::AssignmentExpression
+                | NodeKind::ConditionalExpression
+                | NodeKind::SequenceExpression
+                | NodeKind::MemberExpression
+                | NodeKind::CallExpression
+                | NodeKind::ChainExpression
+                | NodeKind::NewExpression
+                | NodeKind::TaggedTemplateExpression
+                | NodeKind::ArrowFunctionExpression
+                | NodeKind::ArrayExpression
+                | NodeKind::ObjectExpression
+                | NodeKind::ParenthesizedExpression
+                | NodeKind::Function
+                | NodeKind::Class
+                | NodeKind::ImportExpression
+                | NodeKind::AwaitExpression
+                | NodeKind::YieldExpression
+                | NodeKind::PrivateIdentifier
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
+                | NodeKind::TsInstantiationExpression
+                | NodeKind::JsxElement
+                | NodeKind::JsxFragment
+        )
     }
     #[inline]
     pub fn is_spread_element(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.argument_data(self), ArgumentData::SpreadElement(_))
+        ast.node_kind(self.0) == NodeKind::SpreadElement
     }
     #[inline]
     pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
@@ -1297,17 +1369,11 @@ impl Argument {
 impl ObjectPropertyKind {
     #[inline]
     pub fn is_object_property(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.object_property_kind_data(self),
-            ObjectPropertyKindData::ObjectProperty(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ObjectProperty
     }
     #[inline]
     pub fn is_spread_element(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.object_property_kind_data(self),
-            ObjectPropertyKindData::SpreadElement(_)
-        )
+        ast.node_kind(self.0) == NodeKind::SpreadElement
     }
     #[inline]
     pub fn as_object_property(self, ast: &Ast<'_>) -> Option<ObjectProperty> {
@@ -1327,16 +1393,52 @@ impl ObjectPropertyKind {
 impl ForStatementInit {
     #[inline]
     pub fn is_variable_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.for_statement_init_data(self),
-            ForStatementInitData::VariableDeclaration(_)
-        )
+        ast.node_kind(self.0) == NodeKind::VariableDeclaration
     }
     #[inline]
     pub fn is_expr(self, ast: &Ast<'_>) -> bool {
         matches!(
-            ast.for_statement_init_data(self),
-            ForStatementInitData::Expr(_)
+            ast.node_kind(self.0),
+            NodeKind::IdentifierReference
+                | NodeKind::ThisExpression
+                | NodeKind::Super
+                | NodeKind::MetaProperty
+                | NodeKind::StringLiteral
+                | NodeKind::NumericLiteral
+                | NodeKind::BigIntLiteral
+                | NodeKind::BooleanLiteral
+                | NodeKind::NullLiteral
+                | NodeKind::RegExpLiteral
+                | NodeKind::TemplateLiteral
+                | NodeKind::BinaryExpression
+                | NodeKind::LogicalExpression
+                | NodeKind::UnaryExpression
+                | NodeKind::UpdateExpression
+                | NodeKind::AssignmentExpression
+                | NodeKind::ConditionalExpression
+                | NodeKind::SequenceExpression
+                | NodeKind::MemberExpression
+                | NodeKind::CallExpression
+                | NodeKind::ChainExpression
+                | NodeKind::NewExpression
+                | NodeKind::TaggedTemplateExpression
+                | NodeKind::ArrowFunctionExpression
+                | NodeKind::ArrayExpression
+                | NodeKind::ObjectExpression
+                | NodeKind::ParenthesizedExpression
+                | NodeKind::Function
+                | NodeKind::Class
+                | NodeKind::ImportExpression
+                | NodeKind::AwaitExpression
+                | NodeKind::YieldExpression
+                | NodeKind::PrivateIdentifier
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
+                | NodeKind::TsInstantiationExpression
+                | NodeKind::JsxElement
+                | NodeKind::JsxFragment
         )
     }
     #[inline]
@@ -1357,16 +1459,20 @@ impl ForStatementInit {
 impl ForStatementLeft {
     #[inline]
     pub fn is_variable_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.for_statement_left_data(self),
-            ForStatementLeftData::VariableDeclaration(_)
-        )
+        ast.node_kind(self.0) == NodeKind::VariableDeclaration
     }
     #[inline]
     pub fn is_assignment_target(self, ast: &Ast<'_>) -> bool {
         matches!(
-            ast.for_statement_left_data(self),
-            ForStatementLeftData::AssignmentTarget(_)
+            ast.node_kind(self.0),
+            NodeKind::IdentifierReference
+                | NodeKind::MemberExpression
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
+                | NodeKind::ArrayPattern
+                | NodeKind::ObjectPattern
         )
     }
     #[inline]
@@ -1387,16 +1493,52 @@ impl ForStatementLeft {
 impl ArrowFunctionBody {
     #[inline]
     pub fn is_function_body(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.arrow_function_body_data(self),
-            ArrowFunctionBodyData::FunctionBody(_)
-        )
+        ast.node_kind(self.0) == NodeKind::FunctionBody
     }
     #[inline]
     pub fn is_expr(self, ast: &Ast<'_>) -> bool {
         matches!(
-            ast.arrow_function_body_data(self),
-            ArrowFunctionBodyData::Expr(_)
+            ast.node_kind(self.0),
+            NodeKind::IdentifierReference
+                | NodeKind::ThisExpression
+                | NodeKind::Super
+                | NodeKind::MetaProperty
+                | NodeKind::StringLiteral
+                | NodeKind::NumericLiteral
+                | NodeKind::BigIntLiteral
+                | NodeKind::BooleanLiteral
+                | NodeKind::NullLiteral
+                | NodeKind::RegExpLiteral
+                | NodeKind::TemplateLiteral
+                | NodeKind::BinaryExpression
+                | NodeKind::LogicalExpression
+                | NodeKind::UnaryExpression
+                | NodeKind::UpdateExpression
+                | NodeKind::AssignmentExpression
+                | NodeKind::ConditionalExpression
+                | NodeKind::SequenceExpression
+                | NodeKind::MemberExpression
+                | NodeKind::CallExpression
+                | NodeKind::ChainExpression
+                | NodeKind::NewExpression
+                | NodeKind::TaggedTemplateExpression
+                | NodeKind::ArrowFunctionExpression
+                | NodeKind::ArrayExpression
+                | NodeKind::ObjectExpression
+                | NodeKind::ParenthesizedExpression
+                | NodeKind::Function
+                | NodeKind::Class
+                | NodeKind::ImportExpression
+                | NodeKind::AwaitExpression
+                | NodeKind::YieldExpression
+                | NodeKind::PrivateIdentifier
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
+                | NodeKind::TsInstantiationExpression
+                | NodeKind::JsxElement
+                | NodeKind::JsxFragment
         )
     }
     #[inline]
@@ -1417,17 +1559,11 @@ impl ArrowFunctionBody {
 impl FormalParameterItem {
     #[inline]
     pub fn is_formal_parameter(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.formal_parameter_item_data(self),
-            FormalParameterItemData::FormalParameter(_)
-        )
+        ast.node_kind(self.0) == NodeKind::FormalParameter
     }
     #[inline]
     pub fn is_ts_parameter_property(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.formal_parameter_item_data(self),
-            FormalParameterItemData::TsParameterProperty(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsParameterProperty
     }
     #[inline]
     pub fn as_formal_parameter(self, ast: &Ast<'_>) -> Option<FormalParameter> {
@@ -1448,16 +1584,23 @@ impl FormalParameterPattern {
     #[inline]
     pub fn is_binding_pattern(self, ast: &Ast<'_>) -> bool {
         matches!(
-            ast.formal_parameter_pattern_data(self),
-            FormalParameterPatternData::BindingPattern(_)
+            ast.node_kind(self.0),
+            NodeKind::BindingIdentifier
+                | NodeKind::IdentifierReference
+                | NodeKind::MemberExpression
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
+                | NodeKind::AssignmentPattern
+                | NodeKind::BindingRestElement
+                | NodeKind::ArrayPattern
+                | NodeKind::ObjectPattern
         )
     }
     #[inline]
     pub fn is_ts_this_parameter(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.formal_parameter_pattern_data(self),
-            FormalParameterPatternData::TsThisParameter(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsThisParameter
     }
     #[inline]
     pub fn as_binding_pattern(self, ast: &Ast<'_>) -> Option<BindingPattern> {
@@ -1477,31 +1620,19 @@ impl FormalParameterPattern {
 impl ClassElement {
     #[inline]
     pub fn is_method_definition(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.class_element_data(self),
-            ClassElementData::MethodDefinition(_)
-        )
+        ast.node_kind(self.0) == NodeKind::MethodDefinition
     }
     #[inline]
     pub fn is_property_definition(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.class_element_data(self),
-            ClassElementData::PropertyDefinition(_)
-        )
+        ast.node_kind(self.0) == NodeKind::PropertyDefinition
     }
     #[inline]
     pub fn is_static_block(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.class_element_data(self),
-            ClassElementData::StaticBlock(_)
-        )
+        ast.node_kind(self.0) == NodeKind::StaticBlock
     }
     #[inline]
     pub fn is_ts_index_signature(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.class_element_data(self),
-            ClassElementData::TsIndexSignature(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsIndexSignature
     }
     #[inline]
     pub fn as_method_definition(self, ast: &Ast<'_>) -> Option<MethodDefinition> {
@@ -1535,24 +1666,15 @@ impl ClassElement {
 impl ImportDeclarationSpecifier {
     #[inline]
     pub fn is_import_specifier(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.import_declaration_specifier_data(self),
-            ImportDeclarationSpecifierData::ImportSpecifier(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ImportSpecifier
     }
     #[inline]
     pub fn is_import_default_specifier(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.import_declaration_specifier_data(self),
-            ImportDeclarationSpecifierData::ImportDefaultSpecifier(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ImportDefaultSpecifier
     }
     #[inline]
     pub fn is_import_namespace_specifier(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.import_declaration_specifier_data(self),
-            ImportDeclarationSpecifierData::ImportNamespaceSpecifier(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ImportNamespaceSpecifier
     }
     #[inline]
     pub fn as_import_specifier(self, ast: &Ast<'_>) -> Option<ImportSpecifier> {
@@ -1580,30 +1702,60 @@ impl ExportDefaultDeclarationKind {
     #[inline]
     pub fn is_expr(self, ast: &Ast<'_>) -> bool {
         matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::Expr(_)
+            ast.node_kind(self.0),
+            NodeKind::IdentifierReference
+                | NodeKind::ThisExpression
+                | NodeKind::Super
+                | NodeKind::MetaProperty
+                | NodeKind::StringLiteral
+                | NodeKind::NumericLiteral
+                | NodeKind::BigIntLiteral
+                | NodeKind::BooleanLiteral
+                | NodeKind::NullLiteral
+                | NodeKind::RegExpLiteral
+                | NodeKind::TemplateLiteral
+                | NodeKind::BinaryExpression
+                | NodeKind::LogicalExpression
+                | NodeKind::UnaryExpression
+                | NodeKind::UpdateExpression
+                | NodeKind::AssignmentExpression
+                | NodeKind::ConditionalExpression
+                | NodeKind::SequenceExpression
+                | NodeKind::MemberExpression
+                | NodeKind::CallExpression
+                | NodeKind::ChainExpression
+                | NodeKind::NewExpression
+                | NodeKind::TaggedTemplateExpression
+                | NodeKind::ArrowFunctionExpression
+                | NodeKind::ArrayExpression
+                | NodeKind::ObjectExpression
+                | NodeKind::ParenthesizedExpression
+                | NodeKind::Function
+                | NodeKind::Class
+                | NodeKind::ImportExpression
+                | NodeKind::AwaitExpression
+                | NodeKind::YieldExpression
+                | NodeKind::PrivateIdentifier
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
+                | NodeKind::TsInstantiationExpression
+                | NodeKind::JsxElement
+                | NodeKind::JsxFragment
         )
     }
     #[inline]
     pub fn is_function(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::Function(_)
-        )
+        ast.node_kind(self.0) == NodeKind::Function
     }
     #[inline]
     pub fn is_class(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::Class(_)
-        )
+        ast.node_kind(self.0) == NodeKind::Class
     }
     #[inline]
     pub fn is_ts_interface_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.export_default_declaration_kind_data(self),
-            ExportDefaultDeclarationKindData::TsInterfaceDeclaration(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsInterfaceDeclaration
     }
     #[inline]
     pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
@@ -5415,158 +5567,155 @@ impl Hashbang {
 impl TsType {
     #[inline]
     pub fn is_ts_any_keyword(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsAnyKeyword(_))
+        ast.node_kind(self.0) == NodeKind::TsAnyKeyword
     }
     #[inline]
     pub fn is_ts_unknown_keyword(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsUnknownKeyword(_))
+        ast.node_kind(self.0) == NodeKind::TsUnknownKeyword
     }
     #[inline]
     pub fn is_ts_never_keyword(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsNeverKeyword(_))
+        ast.node_kind(self.0) == NodeKind::TsNeverKeyword
     }
     #[inline]
     pub fn is_ts_void_keyword(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsVoidKeyword(_))
+        ast.node_kind(self.0) == NodeKind::TsVoidKeyword
     }
     #[inline]
     pub fn is_ts_null_keyword(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsNullKeyword(_))
+        ast.node_kind(self.0) == NodeKind::TsNullKeyword
     }
     #[inline]
     pub fn is_ts_undefined_keyword(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsUndefinedKeyword(_))
+        ast.node_kind(self.0) == NodeKind::TsUndefinedKeyword
     }
     #[inline]
     pub fn is_ts_string_keyword(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsStringKeyword(_))
+        ast.node_kind(self.0) == NodeKind::TsStringKeyword
     }
     #[inline]
     pub fn is_ts_number_keyword(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsNumberKeyword(_))
+        ast.node_kind(self.0) == NodeKind::TsNumberKeyword
     }
     #[inline]
     pub fn is_ts_big_int_keyword(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsBigIntKeyword(_))
+        ast.node_kind(self.0) == NodeKind::TsBigIntKeyword
     }
     #[inline]
     pub fn is_ts_boolean_keyword(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsBooleanKeyword(_))
+        ast.node_kind(self.0) == NodeKind::TsBooleanKeyword
     }
     #[inline]
     pub fn is_ts_symbol_keyword(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsSymbolKeyword(_))
+        ast.node_kind(self.0) == NodeKind::TsSymbolKeyword
     }
     #[inline]
     pub fn is_ts_object_keyword(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsObjectKeyword(_))
+        ast.node_kind(self.0) == NodeKind::TsObjectKeyword
     }
     #[inline]
     pub fn is_ts_intrinsic_keyword(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsIntrinsicKeyword(_))
+        ast.node_kind(self.0) == NodeKind::TsIntrinsicKeyword
     }
     #[inline]
     pub fn is_ts_this_type(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsThisType(_))
+        ast.node_kind(self.0) == NodeKind::TsThisType
     }
     #[inline]
     pub fn is_ts_type_reference(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsTypeReference(_))
+        ast.node_kind(self.0) == NodeKind::TsTypeReference
     }
     #[inline]
     pub fn is_ts_type_query(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsTypeQuery(_))
+        ast.node_kind(self.0) == NodeKind::TsTypeQuery
     }
     #[inline]
     pub fn is_ts_import_type(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsImportType(_))
+        ast.node_kind(self.0) == NodeKind::TsImportType
     }
     #[inline]
     pub fn is_ts_literal_type(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsLiteralType(_))
+        ast.node_kind(self.0) == NodeKind::TsLiteralType
     }
     #[inline]
     pub fn is_ts_template_literal_type(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsTemplateLiteralType(_))
+        ast.node_kind(self.0) == NodeKind::TsTemplateLiteralType
     }
     #[inline]
     pub fn is_ts_array_type(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsArrayType(_))
+        ast.node_kind(self.0) == NodeKind::TsArrayType
     }
     #[inline]
     pub fn is_ts_indexed_access_type(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsIndexedAccessType(_))
+        ast.node_kind(self.0) == NodeKind::TsIndexedAccessType
     }
     #[inline]
     pub fn is_ts_tuple_type(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsTupleType(_))
+        ast.node_kind(self.0) == NodeKind::TsTupleType
     }
     #[inline]
     pub fn is_ts_optional_type(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsOptionalType(_))
+        ast.node_kind(self.0) == NodeKind::TsOptionalType
     }
     #[inline]
     pub fn is_ts_rest_type(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsRestType(_))
+        ast.node_kind(self.0) == NodeKind::TsRestType
     }
     #[inline]
     pub fn is_ts_js_doc_nullable_type(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsJsDocNullableType(_))
+        ast.node_kind(self.0) == NodeKind::TsJsDocNullableType
     }
     #[inline]
     pub fn is_ts_js_doc_non_nullable_type(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_type_data(self),
-            TsTypeData::TsJsDocNonNullableType(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsJsDocNonNullableType
     }
     #[inline]
     pub fn is_ts_js_doc_unknown_type(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsJsDocUnknownType(_))
+        ast.node_kind(self.0) == NodeKind::TsJsDocUnknownType
     }
     #[inline]
     pub fn is_ts_union_type(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsUnionType(_))
+        ast.node_kind(self.0) == NodeKind::TsUnionType
     }
     #[inline]
     pub fn is_ts_intersection_type(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsIntersectionType(_))
+        ast.node_kind(self.0) == NodeKind::TsIntersectionType
     }
     #[inline]
     pub fn is_ts_conditional_type(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsConditionalType(_))
+        ast.node_kind(self.0) == NodeKind::TsConditionalType
     }
     #[inline]
     pub fn is_ts_infer_type(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsInferType(_))
+        ast.node_kind(self.0) == NodeKind::TsInferType
     }
     #[inline]
     pub fn is_ts_type_operator(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsTypeOperator(_))
+        ast.node_kind(self.0) == NodeKind::TsTypeOperator
     }
     #[inline]
     pub fn is_ts_parenthesized_type(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsParenthesizedType(_))
+        ast.node_kind(self.0) == NodeKind::TsParenthesizedType
     }
     #[inline]
     pub fn is_ts_function_type(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsFunctionType(_))
+        ast.node_kind(self.0) == NodeKind::TsFunctionType
     }
     #[inline]
     pub fn is_ts_constructor_type(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsConstructorType(_))
+        ast.node_kind(self.0) == NodeKind::TsConstructorType
     }
     #[inline]
     pub fn is_ts_type_predicate(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsTypePredicate(_))
+        ast.node_kind(self.0) == NodeKind::TsTypePredicate
     }
     #[inline]
     pub fn is_ts_type_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsTypeLiteral(_))
+        ast.node_kind(self.0) == NodeKind::TsTypeLiteral
     }
     #[inline]
     pub fn is_ts_mapped_type(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_type_data(self), TsTypeData::TsMappedType(_))
+        ast.node_kind(self.0) == NodeKind::TsMappedType
     }
     #[inline]
     pub fn as_ts_any_keyword(self, ast: &Ast<'_>) -> Option<TsAnyKeyword> {
@@ -5838,17 +5987,11 @@ impl TsType {
 impl TsTypeName {
     #[inline]
     pub fn is_identifier_reference(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_type_name_data(self),
-            TsTypeNameData::IdentifierReference(_)
-        )
+        ast.node_kind(self.0) == NodeKind::IdentifierReference
     }
     #[inline]
     pub fn is_ts_qualified_name(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_type_name_data(self),
-            TsTypeNameData::TsQualifiedName(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsQualifiedName
     }
     #[inline]
     pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
@@ -5868,38 +6011,23 @@ impl TsTypeName {
 impl TsQualifiedNameLeft {
     #[inline]
     pub fn is_identifier_reference(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_qualified_name_left_data(self),
-            TsQualifiedNameLeftData::IdentifierReference(_)
-        )
+        ast.node_kind(self.0) == NodeKind::IdentifierReference
     }
     #[inline]
     pub fn is_identifier_name(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_qualified_name_left_data(self),
-            TsQualifiedNameLeftData::IdentifierName(_)
-        )
+        ast.node_kind(self.0) == NodeKind::IdentifierName
     }
     #[inline]
     pub fn is_binding_identifier(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_qualified_name_left_data(self),
-            TsQualifiedNameLeftData::BindingIdentifier(_)
-        )
+        ast.node_kind(self.0) == NodeKind::BindingIdentifier
     }
     #[inline]
     pub fn is_this_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_qualified_name_left_data(self),
-            TsQualifiedNameLeftData::ThisExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ThisExpression
     }
     #[inline]
     pub fn is_ts_qualified_name(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_qualified_name_left_data(self),
-            TsQualifiedNameLeftData::TsQualifiedName(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsQualifiedName
     }
     #[inline]
     pub fn as_identifier_reference(self, ast: &Ast<'_>) -> Option<IdentifierReference> {
@@ -5940,17 +6068,11 @@ impl TsQualifiedNameLeft {
 impl TsImportTypeQualifier {
     #[inline]
     pub fn is_identifier_name(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_import_type_qualifier_data(self),
-            TsImportTypeQualifierData::IdentifierName(_)
-        )
+        ast.node_kind(self.0) == NodeKind::IdentifierName
     }
     #[inline]
     pub fn is_ts_qualified_name(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_import_type_qualifier_data(self),
-            TsImportTypeQualifierData::TsQualifiedName(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsQualifiedName
     }
     #[inline]
     pub fn as_identifier_name(self, ast: &Ast<'_>) -> Option<IdentifierName> {
@@ -5971,23 +6093,17 @@ impl TsTypeQueryExprName {
     #[inline]
     pub fn is_ts_type_name(self, ast: &Ast<'_>) -> bool {
         matches!(
-            ast.ts_type_query_expr_name_data(self),
-            TsTypeQueryExprNameData::TsTypeName(_)
+            ast.node_kind(self.0),
+            NodeKind::IdentifierReference | NodeKind::TsQualifiedName
         )
     }
     #[inline]
     pub fn is_this_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_type_query_expr_name_data(self),
-            TsTypeQueryExprNameData::ThisExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::ThisExpression
     }
     #[inline]
     pub fn is_ts_import_type(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_type_query_expr_name_data(self),
-            TsTypeQueryExprNameData::TsImportType(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsImportType
     }
     #[inline]
     pub fn as_ts_type_name(self, ast: &Ast<'_>) -> Option<TsTypeName> {
@@ -6014,27 +6130,27 @@ impl TsTypeQueryExprName {
 impl TsLiteral {
     #[inline]
     pub fn is_string_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_literal_data(self), TsLiteralData::StringLiteral(_))
+        ast.node_kind(self.0) == NodeKind::StringLiteral
     }
     #[inline]
     pub fn is_numeric_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_literal_data(self), TsLiteralData::NumericLiteral(_))
+        ast.node_kind(self.0) == NodeKind::NumericLiteral
     }
     #[inline]
     pub fn is_big_int_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_literal_data(self), TsLiteralData::BigIntLiteral(_))
+        ast.node_kind(self.0) == NodeKind::BigIntLiteral
     }
     #[inline]
     pub fn is_boolean_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_literal_data(self), TsLiteralData::BooleanLiteral(_))
+        ast.node_kind(self.0) == NodeKind::BooleanLiteral
     }
     #[inline]
     pub fn is_template_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_literal_data(self), TsLiteralData::TemplateLiteral(_))
+        ast.node_kind(self.0) == NodeKind::TemplateLiteral
     }
     #[inline]
     pub fn is_unary_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.ts_literal_data(self), TsLiteralData::UnaryExpression(_))
+        ast.node_kind(self.0) == NodeKind::UnaryExpression
     }
     #[inline]
     pub fn as_string_literal(self, ast: &Ast<'_>) -> Option<StringLiteral> {
@@ -6083,30 +6199,58 @@ impl TsTupleElement {
     #[inline]
     pub fn is_ts_type(self, ast: &Ast<'_>) -> bool {
         matches!(
-            ast.ts_tuple_element_data(self),
-            TsTupleElementData::TsType(_)
+            ast.node_kind(self.0),
+            NodeKind::TsAnyKeyword
+                | NodeKind::TsUnknownKeyword
+                | NodeKind::TsNeverKeyword
+                | NodeKind::TsVoidKeyword
+                | NodeKind::TsNullKeyword
+                | NodeKind::TsUndefinedKeyword
+                | NodeKind::TsStringKeyword
+                | NodeKind::TsNumberKeyword
+                | NodeKind::TsBigIntKeyword
+                | NodeKind::TsBooleanKeyword
+                | NodeKind::TsSymbolKeyword
+                | NodeKind::TsObjectKeyword
+                | NodeKind::TsIntrinsicKeyword
+                | NodeKind::TsThisType
+                | NodeKind::TsTypeReference
+                | NodeKind::TsTypeQuery
+                | NodeKind::TsImportType
+                | NodeKind::TsLiteralType
+                | NodeKind::TsTemplateLiteralType
+                | NodeKind::TsArrayType
+                | NodeKind::TsIndexedAccessType
+                | NodeKind::TsTupleType
+                | NodeKind::TsOptionalType
+                | NodeKind::TsRestType
+                | NodeKind::TsJsDocNullableType
+                | NodeKind::TsJsDocNonNullableType
+                | NodeKind::TsJsDocUnknownType
+                | NodeKind::TsUnionType
+                | NodeKind::TsIntersectionType
+                | NodeKind::TsConditionalType
+                | NodeKind::TsInferType
+                | NodeKind::TsTypeOperator
+                | NodeKind::TsParenthesizedType
+                | NodeKind::TsFunctionType
+                | NodeKind::TsConstructorType
+                | NodeKind::TsTypePredicate
+                | NodeKind::TsTypeLiteral
+                | NodeKind::TsMappedType
         )
     }
     #[inline]
     pub fn is_ts_named_tuple_member(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_tuple_element_data(self),
-            TsTupleElementData::TsNamedTupleMember(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsNamedTupleMember
     }
     #[inline]
     pub fn is_ts_optional_type(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_tuple_element_data(self),
-            TsTupleElementData::TsOptionalType(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsOptionalType
     }
     #[inline]
     pub fn is_ts_rest_type(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_tuple_element_data(self),
-            TsTupleElementData::TsRestType(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsRestType
     }
     #[inline]
     pub fn as_ts_type(self, ast: &Ast<'_>) -> Option<TsType> {
@@ -6140,38 +6284,23 @@ impl TsTupleElement {
 impl TsTypeElement {
     #[inline]
     pub fn is_ts_property_signature(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_type_element_data(self),
-            TsTypeElementData::TsPropertySignature(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsPropertySignature
     }
     #[inline]
     pub fn is_ts_method_signature(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_type_element_data(self),
-            TsTypeElementData::TsMethodSignature(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsMethodSignature
     }
     #[inline]
     pub fn is_ts_call_signature_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_type_element_data(self),
-            TsTypeElementData::TsCallSignatureDeclaration(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsCallSignatureDeclaration
     }
     #[inline]
     pub fn is_ts_construct_signature_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_type_element_data(self),
-            TsTypeElementData::TsConstructSignatureDeclaration(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsConstructSignatureDeclaration
     }
     #[inline]
     pub fn is_ts_index_signature(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_type_element_data(self),
-            TsTypeElementData::TsIndexSignature(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsIndexSignature
     }
     #[inline]
     pub fn as_ts_property_signature(self, ast: &Ast<'_>) -> Option<TsPropertySignature> {
@@ -6218,17 +6347,11 @@ impl TsTypeElement {
 impl TsTypePredicateName {
     #[inline]
     pub fn is_identifier_name(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_type_predicate_name_data(self),
-            TsTypePredicateNameData::IdentifierName(_)
-        )
+        ast.node_kind(self.0) == NodeKind::IdentifierName
     }
     #[inline]
     pub fn is_ts_this_type(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_type_predicate_name_data(self),
-            TsTypePredicateNameData::TsThisType(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsThisType
     }
     #[inline]
     pub fn as_identifier_name(self, ast: &Ast<'_>) -> Option<IdentifierName> {
@@ -6248,30 +6371,60 @@ impl TsTypePredicateName {
 impl TsEnumMemberName {
     #[inline]
     pub fn is_identifier_name(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_enum_member_name_data(self),
-            TsEnumMemberNameData::IdentifierName(_)
-        )
+        ast.node_kind(self.0) == NodeKind::IdentifierName
     }
     #[inline]
     pub fn is_string_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_enum_member_name_data(self),
-            TsEnumMemberNameData::StringLiteral(_)
-        )
+        ast.node_kind(self.0) == NodeKind::StringLiteral
     }
     #[inline]
     pub fn is_template_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_enum_member_name_data(self),
-            TsEnumMemberNameData::TemplateLiteral(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TemplateLiteral
     }
     #[inline]
     pub fn is_expr(self, ast: &Ast<'_>) -> bool {
         matches!(
-            ast.ts_enum_member_name_data(self),
-            TsEnumMemberNameData::Expr(_)
+            ast.node_kind(self.0),
+            NodeKind::IdentifierReference
+                | NodeKind::ThisExpression
+                | NodeKind::Super
+                | NodeKind::MetaProperty
+                | NodeKind::StringLiteral
+                | NodeKind::NumericLiteral
+                | NodeKind::BigIntLiteral
+                | NodeKind::BooleanLiteral
+                | NodeKind::NullLiteral
+                | NodeKind::RegExpLiteral
+                | NodeKind::TemplateLiteral
+                | NodeKind::BinaryExpression
+                | NodeKind::LogicalExpression
+                | NodeKind::UnaryExpression
+                | NodeKind::UpdateExpression
+                | NodeKind::AssignmentExpression
+                | NodeKind::ConditionalExpression
+                | NodeKind::SequenceExpression
+                | NodeKind::MemberExpression
+                | NodeKind::CallExpression
+                | NodeKind::ChainExpression
+                | NodeKind::NewExpression
+                | NodeKind::TaggedTemplateExpression
+                | NodeKind::ArrowFunctionExpression
+                | NodeKind::ArrayExpression
+                | NodeKind::ObjectExpression
+                | NodeKind::ParenthesizedExpression
+                | NodeKind::Function
+                | NodeKind::Class
+                | NodeKind::ImportExpression
+                | NodeKind::AwaitExpression
+                | NodeKind::YieldExpression
+                | NodeKind::PrivateIdentifier
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
+                | NodeKind::TsInstantiationExpression
+                | NodeKind::JsxElement
+                | NodeKind::JsxFragment
         )
     }
     #[inline]
@@ -6306,24 +6459,15 @@ impl TsEnumMemberName {
 impl TsModuleName {
     #[inline]
     pub fn is_binding_identifier(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_module_name_data(self),
-            TsModuleNameData::BindingIdentifier(_)
-        )
+        ast.node_kind(self.0) == NodeKind::BindingIdentifier
     }
     #[inline]
     pub fn is_string_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_module_name_data(self),
-            TsModuleNameData::StringLiteral(_)
-        )
+        ast.node_kind(self.0) == NodeKind::StringLiteral
     }
     #[inline]
     pub fn is_ts_qualified_name(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_module_name_data(self),
-            TsModuleNameData::TsQualifiedName(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsQualifiedName
     }
     #[inline]
     pub fn as_binding_identifier(self, ast: &Ast<'_>) -> Option<BindingIdentifier> {
@@ -6350,17 +6494,11 @@ impl TsModuleName {
 impl TsModuleBody {
     #[inline]
     pub fn is_ts_module_block(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_module_body_data(self),
-            TsModuleBodyData::TsModuleBlock(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsModuleBlock
     }
     #[inline]
     pub fn is_ts_module_declaration(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_module_body_data(self),
-            TsModuleBodyData::TsModuleDeclaration(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsModuleDeclaration
     }
     #[inline]
     pub fn as_ts_module_block(self, ast: &Ast<'_>) -> Option<TsModuleBlock> {
@@ -6381,16 +6519,13 @@ impl TsModuleReference {
     #[inline]
     pub fn is_ts_type_name(self, ast: &Ast<'_>) -> bool {
         matches!(
-            ast.ts_module_reference_data(self),
-            TsModuleReferenceData::TsTypeName(_)
+            ast.node_kind(self.0),
+            NodeKind::IdentifierReference | NodeKind::TsQualifiedName
         )
     }
     #[inline]
     pub fn is_ts_external_module_reference(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.ts_module_reference_data(self),
-            TsModuleReferenceData::TsExternalModuleReference(_)
-        )
+        ast.node_kind(self.0) == NodeKind::TsExternalModuleReference
     }
     #[inline]
     pub fn as_ts_type_name(self, ast: &Ast<'_>) -> Option<TsTypeName> {
@@ -8471,24 +8606,15 @@ impl TsExternalModuleReference {
 impl JsxElementName {
     #[inline]
     pub fn is_jsx_identifier(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.jsx_element_name_data(self),
-            JsxElementNameData::JsxIdentifier(_)
-        )
+        ast.node_kind(self.0) == NodeKind::JsxIdentifier
     }
     #[inline]
     pub fn is_jsx_namespaced_name(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.jsx_element_name_data(self),
-            JsxElementNameData::JsxNamespacedName(_)
-        )
+        ast.node_kind(self.0) == NodeKind::JsxNamespacedName
     }
     #[inline]
     pub fn is_jsx_member_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.jsx_element_name_data(self),
-            JsxElementNameData::JsxMemberExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::JsxMemberExpression
     }
     #[inline]
     pub fn as_jsx_identifier(self, ast: &Ast<'_>) -> Option<JsxIdentifier> {
@@ -8515,17 +8641,11 @@ impl JsxElementName {
 impl JsxMemberExpressionObject {
     #[inline]
     pub fn is_jsx_identifier(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.jsx_member_expression_object_data(self),
-            JsxMemberExpressionObjectData::JsxIdentifier(_)
-        )
+        ast.node_kind(self.0) == NodeKind::JsxIdentifier
     }
     #[inline]
     pub fn is_jsx_member_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.jsx_member_expression_object_data(self),
-            JsxMemberExpressionObjectData::JsxMemberExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::JsxMemberExpression
     }
     #[inline]
     pub fn as_jsx_identifier(self, ast: &Ast<'_>) -> Option<JsxIdentifier> {
@@ -8545,17 +8665,11 @@ impl JsxMemberExpressionObject {
 impl JsxAttributeName {
     #[inline]
     pub fn is_jsx_identifier(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.jsx_attribute_name_data(self),
-            JsxAttributeNameData::JsxIdentifier(_)
-        )
+        ast.node_kind(self.0) == NodeKind::JsxIdentifier
     }
     #[inline]
     pub fn is_jsx_namespaced_name(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.jsx_attribute_name_data(self),
-            JsxAttributeNameData::JsxNamespacedName(_)
-        )
+        ast.node_kind(self.0) == NodeKind::JsxNamespacedName
     }
     #[inline]
     pub fn as_jsx_identifier(self, ast: &Ast<'_>) -> Option<JsxIdentifier> {
@@ -8575,17 +8689,11 @@ impl JsxAttributeName {
 impl JsxAttributeItem {
     #[inline]
     pub fn is_jsx_attribute(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.jsx_attribute_item_data(self),
-            JsxAttributeItemData::JsxAttribute(_)
-        )
+        ast.node_kind(self.0) == NodeKind::JsxAttribute
     }
     #[inline]
     pub fn is_jsx_spread_attribute(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.jsx_attribute_item_data(self),
-            JsxAttributeItemData::JsxSpreadAttribute(_)
-        )
+        ast.node_kind(self.0) == NodeKind::JsxSpreadAttribute
     }
     #[inline]
     pub fn as_jsx_attribute(self, ast: &Ast<'_>) -> Option<JsxAttribute> {
@@ -8605,31 +8713,19 @@ impl JsxAttributeItem {
 impl JsxAttributeValue {
     #[inline]
     pub fn is_string_literal(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.jsx_attribute_value_data(self),
-            JsxAttributeValueData::StringLiteral(_)
-        )
+        ast.node_kind(self.0) == NodeKind::StringLiteral
     }
     #[inline]
     pub fn is_jsx_expression_container(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.jsx_attribute_value_data(self),
-            JsxAttributeValueData::JsxExpressionContainer(_)
-        )
+        ast.node_kind(self.0) == NodeKind::JsxExpressionContainer
     }
     #[inline]
     pub fn is_jsx_element(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.jsx_attribute_value_data(self),
-            JsxAttributeValueData::JsxElement(_)
-        )
+        ast.node_kind(self.0) == NodeKind::JsxElement
     }
     #[inline]
     pub fn is_jsx_fragment(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.jsx_attribute_value_data(self),
-            JsxAttributeValueData::JsxFragment(_)
-        )
+        ast.node_kind(self.0) == NodeKind::JsxFragment
     }
     #[inline]
     pub fn as_string_literal(self, ast: &Ast<'_>) -> Option<StringLiteral> {
@@ -8663,14 +8759,53 @@ impl JsxAttributeValue {
 impl JsxExpression {
     #[inline]
     pub fn is_expr(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.jsx_expression_data(self), JsxExpressionData::Expr(_))
+        matches!(
+            ast.node_kind(self.0),
+            NodeKind::IdentifierReference
+                | NodeKind::ThisExpression
+                | NodeKind::Super
+                | NodeKind::MetaProperty
+                | NodeKind::StringLiteral
+                | NodeKind::NumericLiteral
+                | NodeKind::BigIntLiteral
+                | NodeKind::BooleanLiteral
+                | NodeKind::NullLiteral
+                | NodeKind::RegExpLiteral
+                | NodeKind::TemplateLiteral
+                | NodeKind::BinaryExpression
+                | NodeKind::LogicalExpression
+                | NodeKind::UnaryExpression
+                | NodeKind::UpdateExpression
+                | NodeKind::AssignmentExpression
+                | NodeKind::ConditionalExpression
+                | NodeKind::SequenceExpression
+                | NodeKind::MemberExpression
+                | NodeKind::CallExpression
+                | NodeKind::ChainExpression
+                | NodeKind::NewExpression
+                | NodeKind::TaggedTemplateExpression
+                | NodeKind::ArrowFunctionExpression
+                | NodeKind::ArrayExpression
+                | NodeKind::ObjectExpression
+                | NodeKind::ParenthesizedExpression
+                | NodeKind::Function
+                | NodeKind::Class
+                | NodeKind::ImportExpression
+                | NodeKind::AwaitExpression
+                | NodeKind::YieldExpression
+                | NodeKind::PrivateIdentifier
+                | NodeKind::TsAsExpression
+                | NodeKind::TsSatisfiesExpression
+                | NodeKind::TsTypeAssertion
+                | NodeKind::TsNonNullExpression
+                | NodeKind::TsInstantiationExpression
+                | NodeKind::JsxElement
+                | NodeKind::JsxFragment
+        )
     }
     #[inline]
     pub fn is_jsx_empty_expression(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.jsx_expression_data(self),
-            JsxExpressionData::JsxEmptyExpression(_)
-        )
+        ast.node_kind(self.0) == NodeKind::JsxEmptyExpression
     }
     #[inline]
     pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
@@ -8690,26 +8825,23 @@ impl JsxExpression {
 impl JsxChild {
     #[inline]
     pub fn is_jsx_text(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.jsx_child_data(self), JsxChildData::JsxText(_))
+        ast.node_kind(self.0) == NodeKind::JsxText
     }
     #[inline]
     pub fn is_jsx_expression_container(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.jsx_child_data(self),
-            JsxChildData::JsxExpressionContainer(_)
-        )
+        ast.node_kind(self.0) == NodeKind::JsxExpressionContainer
     }
     #[inline]
     pub fn is_jsx_spread_child(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.jsx_child_data(self), JsxChildData::JsxSpreadChild(_))
+        ast.node_kind(self.0) == NodeKind::JsxSpreadChild
     }
     #[inline]
     pub fn is_jsx_element(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.jsx_child_data(self), JsxChildData::JsxElement(_))
+        ast.node_kind(self.0) == NodeKind::JsxElement
     }
     #[inline]
     pub fn is_jsx_fragment(self, ast: &Ast<'_>) -> bool {
-        matches!(ast.jsx_child_data(self), JsxChildData::JsxFragment(_))
+        ast.node_kind(self.0) == NodeKind::JsxFragment
     }
     #[inline]
     pub fn as_jsx_text(self, ast: &Ast<'_>) -> Option<JsxText> {

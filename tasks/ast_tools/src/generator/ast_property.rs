@@ -2,6 +2,7 @@ use convert_case::{Case, Casing};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
+use super::ast_node::concrete_node_kinds;
 use crate::{
     AST_CRATE_PATH,
     output::{RawOutput, RustOutput, output_path},
@@ -324,10 +325,19 @@ fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
     for variant in ast.variants.iter() {
         let variant_name = format_ident!("{}", variant.name);
         let is_fn_name = format_ident!("is_{}", variant.name.to_case(Case::Snake));
+        let node_kinds: Vec<_> = concrete_node_kinds(variant.type_id.unwrap(), schema)
+            .into_iter()
+            .map(|name| format_ident!("{name}"))
+            .collect();
+        let kind_check = if let [node_kind] = node_kinds.as_slice() {
+            quote!(ast.node_kind(self.0) == NodeKind::#node_kind)
+        } else {
+            quote!(matches!(ast.node_kind(self.0), #(NodeKind::#node_kinds)|*))
+        };
         is_variant.extend(quote! {
             #[inline]
             pub fn #is_fn_name(self, ast: &Ast<'_>) -> bool {
-                matches!(ast.#data_fn_name(self), #data_name::#variant_name(_))
+                #kind_check
             }
         });
 

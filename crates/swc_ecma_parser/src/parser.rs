@@ -1327,10 +1327,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     fn parse_expression_or_labeled_statement_or_directive(&mut self) -> ParseResult<Stmt> {
         let expression =
             self.parse_expression(Precedence::LOWEST, ParseExpressionOpts::default())?;
-        if matches!(
-            self.ast.expr_data(expression),
-            ExprData::IdentifierReference(_)
-        ) && self.current_token.tag == TokenTag::Colon
+        if self.ast.node_kind(expression.node_id()) == NodeKind::IdentifierReference
+            && self.current_token.tag == TokenTag::Colon
         {
             return self.parse_labeled_statement(expression);
         }
@@ -5835,10 +5833,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 continue;
             }
             let id = declarator.id(self.ast);
-            if !matches!(
-                self.ast.binding_pattern_data(id),
-                BindingPatternData::BindingIdentifier(_)
-            ) {
+            if self.ast.node_kind(id.node_id()) != NodeKind::BindingIdentifier {
                 return self.error_at(
                     id.span(self.ast),
                     "destructuring declaration in a for-loop initializer requires an initializer",
@@ -6618,10 +6613,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                         }
                         let argument =
                             self.expression_to_binding_pattern(spread.argument(self.ast))?;
-                        if matches!(
-                            self.ast.binding_pattern_data(argument),
-                            BindingPatternData::AssignmentPattern(_)
-                        ) {
+                        if self.ast.node_kind(argument.node_id()) == NodeKind::AssignmentPattern {
                             return self.error_at(
                                 argument.span(self.ast),
                                 "a rest parameter may not have an initializer",
@@ -6774,7 +6766,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_simple_arrow_function(&mut self, left: Expr) -> ParseResult<Expr> {
-        if !matches!(self.ast.expr_data(left), ExprData::IdentifierReference(_)) {
+        if self.ast.node_kind(left.node_id()) != NodeKind::IdentifierReference {
             return self.error_at(
                 left.span(self.ast),
                 "'=>' is only valid after a single identifier or a parenthesized parameter list",
@@ -7047,8 +7039,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             ExprData::ParenthesizedExpression(parenthesized) => {
                 let inner = parenthesized.expression(self.ast);
                 if !matches!(
-                    self.ast.expr_data(inner),
-                    ExprData::IdentifierReference(_) | ExprData::MemberExpression(_)
+                    self.ast.node_kind(inner.node_id()),
+                    NodeKind::IdentifierReference | NodeKind::MemberExpression
                 ) {
                     return self.error_at(
                         inner.span(self.ast),
@@ -7150,10 +7142,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                         }
                         let argument =
                             self.expression_to_pattern(spread.argument(self.ast), context)?;
-                        if matches!(
-                            self.ast.binding_pattern_data(argument),
-                            BindingPatternData::AssignmentPattern(_)
-                        ) {
+                        if self.ast.node_kind(argument.node_id()) == NodeKind::AssignmentPattern {
                             self.report(
                                 spread.span(self.ast),
                                 "A rest element cannot have an initializer",
@@ -7306,10 +7295,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                         }
                         let argument =
                             self.expression_to_pattern(spread.argument(self.ast), context)?;
-                        if matches!(
-                            self.ast.binding_pattern_data(argument),
-                            BindingPatternData::AssignmentPattern(_)
-                        ) {
+                        if self.ast.node_kind(argument.node_id()) == NodeKind::AssignmentPattern {
                             self.report(
                                 spread.span(self.ast),
                                 "A rest element cannot have an initializer",
@@ -8881,7 +8867,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             },
             ParseExpressionOpts::default(),
         )?;
-        if matches!(self.ast.expr_data(right), ExprData::PrivateIdentifier(_)) {
+        if self.ast.node_kind(right.node_id()) == NodeKind::PrivateIdentifier {
             self.report(
                 right.span(self.ast),
                 "Private names are only allowed in property accesses (`obj.#field`) or in `in` expressions (`#field in obj`)",
@@ -8941,12 +8927,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     ) -> ParseResult<Expr> {
         let start = left.span(self.ast).start;
         let target = self.expression_to_assignment_target(left)?;
-        if tag != TokenTag::Assign
-            && !matches!(
-                self.ast.assignment_target_data(target),
-                AssignmentTargetData::SimpleAssignmentTarget(_)
-            )
-        {
+        if tag != TokenTag::Assign && !target.is_simple_assignment_target(self.ast) {
             return self.error_at(
                 target.span(self.ast),
                 "A compound assignment requires a simple assignment target",
@@ -9103,8 +9084,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             ExprData::ParenthesizedExpression(parenthesized) => {
                 let inner = self.unwrap_parens(parenthesized.expression(self.ast));
                 if matches!(
-                    self.ast.expr_data(inner),
-                    ExprData::ArrayExpression(_) | ExprData::ObjectExpression(_)
+                    self.ast.node_kind(inner.node_id()),
+                    NodeKind::ArrayExpression | NodeKind::ObjectExpression
                 ) {
                     return self.error_at(
                         expression.span(self.ast),
@@ -9417,28 +9398,25 @@ fn member_expression_is_optional(member: MemberExpression, ast: &Ast<'_>) -> boo
         ExprData::CallExpression(call) => call.optional(ast),
         ExprData::ChainExpression(_) => true,
         ExprData::ParenthesizedExpression(parenthesized) => {
-            matches!(
-                ast.expr_data(parenthesized.expression(ast)),
-                ExprData::ChainExpression(_)
-            )
+            ast.node_kind(parenthesized.expression(ast).node_id()) == NodeKind::ChainExpression
         }
         _ => false,
     }
 }
 
 fn max_left_precedence(expression: Expr, ast: &Ast<'_>) -> u8 {
-    match ast.expr_data(expression) {
-        ExprData::ArrowFunctionExpression(_) | ExprData::YieldExpression(_) => Precedence::COMMA,
-        ExprData::UpdateExpression(_)
-        | ExprData::UnaryExpression(_)
-        | ExprData::AwaitExpression(_)
-        | ExprData::BinaryExpression(_)
-        | ExprData::LogicalExpression(_)
-        | ExprData::ConditionalExpression(_)
-        | ExprData::AssignmentExpression(_)
-        | ExprData::SequenceExpression(_)
-        | ExprData::TsAsExpression(_)
-        | ExprData::TsSatisfiesExpression(_) => Precedence::UNARY,
+    match ast.node_kind(expression.node_id()) {
+        NodeKind::ArrowFunctionExpression | NodeKind::YieldExpression => Precedence::COMMA,
+        NodeKind::UpdateExpression
+        | NodeKind::UnaryExpression
+        | NodeKind::AwaitExpression
+        | NodeKind::BinaryExpression
+        | NodeKind::LogicalExpression
+        | NodeKind::ConditionalExpression
+        | NodeKind::AssignmentExpression
+        | NodeKind::SequenceExpression
+        | NodeKind::TsAsExpression
+        | NodeKind::TsSatisfiesExpression => Precedence::UNARY,
         _ => u8::MAX,
     }
 }

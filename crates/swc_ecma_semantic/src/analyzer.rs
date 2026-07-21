@@ -1094,10 +1094,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         if direct_eval_callee(node, ctx.ast()) {
             self.mark_direct_eval();
         }
-        if matches!(
-            ctx.ast().expr_data(node.callee(ctx.ast())),
-            ExprData::Super(_)
-        ) {
+        if ctx.ast().node_kind(node.callee(ctx.ast()).node_id()) == NodeKind::Super {
             let message = match self.super_call_validity(ctx) {
                 SuperCallValidity::Valid => None,
                 SuperCallValidity::NotInConstructor => {
@@ -1120,14 +1117,9 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: MemberExpression,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        let property_is_private = matches!(
-            ctx.ast().property_key_data(node.property(ctx.ast())),
-            PropertyKeyData::PrivateIdentifier(_)
-        );
-        if matches!(
-            ctx.ast().expr_data(node.object(ctx.ast())),
-            ExprData::Super(_)
-        ) {
+        let property_is_private =
+            ctx.ast().node_kind(node.property(ctx.ast()).node_id()) == NodeKind::PrivateIdentifier;
+        if ctx.ast().node_kind(node.object(ctx.ast()).node_id()) == NodeKind::Super {
             if property_is_private {
                 self.diagnostics.push(Diagnostic::error(
                     node.span(ctx.ast()),
@@ -2295,12 +2287,8 @@ fn formal_parameters_are_non_simple(params: FormalParameters, ast: &Ast<'_>) -> 
             }
             FormalParameterItemData::TsParameterProperty(property) => Some(property.parameter(ast)),
         };
-        pattern.is_some_and(|pattern| {
-            !matches!(
-                ast.binding_pattern_data(pattern),
-                BindingPatternData::BindingIdentifier(_)
-            )
-        })
+        pattern
+            .is_some_and(|pattern| ast.node_kind(pattern.node_id()) != NodeKind::BindingIdentifier)
     })
 }
 
@@ -2346,12 +2334,12 @@ fn is_in_formal_parameters(ctx: &TraverseCtx<'_, '_>) -> bool {
 
 fn is_iteration(statement: Stmt, ast: &Ast<'_>) -> bool {
     matches!(
-        ast.stmt_data(statement),
-        StmtData::DoWhileStatement(_)
-            | StmtData::ForStatement(_)
-            | StmtData::ForInStatement(_)
-            | StmtData::ForOfStatement(_)
-            | StmtData::WhileStatement(_)
+        ast.node_kind(statement.node_id()),
+        NodeKind::DoWhileStatement
+            | NodeKind::ForStatement
+            | NodeKind::ForInStatement
+            | NodeKind::ForOfStatement
+            | NodeKind::WhileStatement
     )
 }
 
@@ -2453,10 +2441,9 @@ fn private_element_is_static(element: ClassElement, ast: &Ast<'_>) -> bool {
 
 fn expression_is_private_reference(expression: Expr, ast: &Ast<'_>) -> bool {
     match ast.expr_data(unwrap_parens(expression, ast)) {
-        ExprData::MemberExpression(member) => matches!(
-            ast.property_key_data(member.property(ast)),
-            PropertyKeyData::PrivateIdentifier(_)
-        ),
+        ExprData::MemberExpression(member) => {
+            ast.node_kind(member.property(ast).node_id()) == NodeKind::PrivateIdentifier
+        }
         ExprData::CallExpression(call) => expression_is_private_reference(call.callee(ast), ast),
         ExprData::ChainExpression(chain) => {
             expression_is_private_reference(chain.expression(ast), ast)
@@ -2466,10 +2453,7 @@ fn expression_is_private_reference(expression: Expr, ast: &Ast<'_>) -> bool {
 }
 
 fn expression_is_identifier_reference(expression: Expr, ast: &Ast<'_>) -> bool {
-    matches!(
-        ast.expr_data(unwrap_parens(expression, ast)),
-        ExprData::IdentifierReference(_)
-    )
+    ast.node_kind(unwrap_parens(expression, ast).node_id()) == NodeKind::IdentifierReference
 }
 
 fn unwrap_parens(mut expression: Expr, ast: &Ast<'_>) -> Expr {
