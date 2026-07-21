@@ -10,7 +10,10 @@ use swc_experimental_ecma_parser::{Options, parse};
 use swc_experimental_ecma_semantic::analyze;
 
 fn bench_semantic(c: &mut Criterion) {
-    let bench_cases = &[("typescript", include_str!("../files/typescript.js"))];
+    let bench_cases = &[
+        ("typescript", include_str!("../files/typescript.js")),
+        ("cal.com.tsx", include_str!("../files/cal.com.tsx")),
+    ];
     let mut group = c.benchmark_group("semantic");
     for (name, source) in bench_cases {
         group.bench_function(format!("{name}/semantic/legacy"), |b| {

@@ -30,12 +30,8 @@ name    = "parser"
 
 [[bench]]
 harness = false
-name    = "visit_compare"
+name    = "visit"
 
 [[bench]]
 harness = false
 name    = "semantic"
-
-[[bench]]
-harness = false
-name    = "transform"
