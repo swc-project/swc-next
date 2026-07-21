@@ -6,15 +6,17 @@ use std::{
 
 use jwalk::WalkDir;
 use saphyr::{LoadableYamlNode, Yaml};
-use swc_experimental_ecma_ast::SourceType;
+use swc_experimental_ecma_ast::{Lang, SourceType};
 
-use crate::cases::{Case, CaseVariant, fixtures};
+use crate::cases::{Case, fixtures};
 
 /// https://github.com/evanw/esbuild/blob/main/scripts/test262.js
 pub struct Test262Case {
     path: PathBuf,
     code: String,
-    meta: Meta,
+    source_type: SourceType,
+    expects_error: bool,
+    name: &'static str,
 }
 
 #[derive(Debug, Default)]
@@ -76,11 +78,40 @@ impl Test262Case {
             let Some(meta) = parse_meta(&code) else {
                 continue;
             };
-            cases.push(Self {
-                code,
-                path: file.path(),
-                meta,
-            });
+            let expects_error = meta
+                .negative
+                .as_ref()
+                .is_some_and(|negative| matches!(negative.phase, Phase::Parse | Phase::Early));
+            let path = file.path();
+            if meta.module {
+                cases.push(Self {
+                    path,
+                    code,
+                    source_type: SourceType::Module,
+                    expects_error,
+                    name: "module",
+                });
+                continue;
+            }
+
+            if !meta.only_strict {
+                cases.push(Self {
+                    path: path.clone(),
+                    code: code.clone(),
+                    source_type: SourceType::Script,
+                    expects_error,
+                    name: "sloppy",
+                });
+            }
+            if !meta.no_strict && !meta.raw {
+                cases.push(Self {
+                    path,
+                    code: format!("\"use strict\";\n{code}"),
+                    source_type: SourceType::Script,
+                    expects_error,
+                    name: "strict",
+                });
+            }
         }
 
         cases
@@ -129,27 +160,6 @@ fn parse_meta(source: &str) -> Option<Meta> {
     })
 }
 
-impl Test262Case {
-    pub fn expects_error(&self) -> bool {
-        self.meta
-            .negative
-            .as_ref()
-            .is_some_and(|negative| matches!(negative.phase, Phase::Parse | Phase::Early))
-    }
-
-    pub fn is_module(&self) -> bool {
-        self.meta.module
-    }
-
-    pub fn runs_strict(&self) -> bool {
-        !self.meta.module && !self.meta.no_strict && !self.meta.raw
-    }
-
-    pub fn runs_sloppy(&self) -> bool {
-        !self.meta.module && !self.meta.only_strict
-    }
-}
-
 impl Case for Test262Case {
     const NAME: &'static str = "test262";
 
@@ -161,33 +171,23 @@ impl Case for Test262Case {
         &self.path
     }
 
-    fn variants(&self) -> Vec<CaseVariant> {
-        if self.is_module() {
-            return vec![CaseVariant {
-                code: self.code.clone(),
-                source_type: SourceType::Module,
-                expects_error: self.expects_error(),
-                name: "module",
-            }];
-        }
+    fn name(&self) -> &str {
+        self.name
+    }
 
-        let mut variants = Vec::with_capacity(2);
-        if self.runs_sloppy() {
-            variants.push(CaseVariant {
-                code: self.code.clone(),
-                source_type: SourceType::Script,
-                expects_error: self.expects_error(),
-                name: "sloppy",
-            });
-        }
-        if self.runs_strict() {
-            variants.push(CaseVariant {
-                code: format!("\"use strict\";\n{}", self.code).clone(),
-                source_type: SourceType::Script,
-                expects_error: self.expects_error(),
-                name: "strict",
-            });
-        }
-        variants
+    fn code(&self) -> &str {
+        &self.code
+    }
+
+    fn source_type(&self) -> SourceType {
+        self.source_type
+    }
+
+    fn lang(&self) -> Lang {
+        Lang::Js
+    }
+
+    fn expects_error(&self) -> bool {
+        self.expects_error
     }
 }

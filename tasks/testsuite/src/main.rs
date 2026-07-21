@@ -4,7 +4,7 @@ use pico_args::Arguments;
 use rayon::ThreadPoolBuilder;
 
 use crate::{
-    cases::{Case, test262::Test262Case},
+    cases::{Case, test262::Test262Case, typescript::TypeScriptCase},
     runner::{Runner, parser::ParserRunner},
     suite::TestResult,
     util::crate_root,
@@ -42,6 +42,7 @@ pub fn main() {
     }
 
     update_snapshot::<ParserRunner, Test262Case>(&args);
+    update_snapshot::<ParserRunner, TypeScriptCase>(&args);
 }
 
 fn update_snapshot<R: Runner, C: Case>(args: &AppArgs) {

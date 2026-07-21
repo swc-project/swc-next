@@ -5,11 +5,13 @@ publish = false
 version = "0.1.0"
 
 [dependencies]
-colored   = { workspace = true }
-jwalk     = { workspace = true }
-pico-args = { workspace = true }
-rayon     = { workspace = true }
-saphyr    = { workspace = true }
+colored    = { workspace = true }
+jwalk      = { workspace = true }
+pico-args  = { workspace = true }
+rayon      = { workspace = true }
+regex      = { workspace = true }
+saphyr     = { workspace = true }
+serde_json = { workspace = true }
 
 # TODO(flat-ast): Re-enable when the legacy conformance runner is ported.
 # swc_core = { workspace = true, features = ["__ecma_transforms", "ecma_parser_unstable"] }

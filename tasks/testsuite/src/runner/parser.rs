@@ -35,27 +35,27 @@ impl Runner for ParserRunner {
 }
 
 fn run_case<C: Case>(case: &C) -> Result<(), String> {
-    for variant in case.variants() {
-        run_source(
-            variant.code.as_bytes(),
-            variant.source_type,
-            variant.expects_error,
-            variant.name,
-        )?;
+    let error = run_source(case.code().as_bytes(), case.source_type(), case.lang());
+    match (case.expects_error(), error) {
+        (true, Some(_)) | (false, None) => Ok(()),
+        (true, None) => Err(format!(
+            "{}: expected a parse or early error, but pipeline succeeded",
+            case.name()
+        )),
+        (false, Some(error)) => Err(format!("{}: {error}", case.name())),
     }
-    Ok(())
 }
 
 fn run_source(
     source: &[u8],
     source_type: SourceType,
-    expects_error: bool,
-    variant: &str,
-) -> Result<(), String> {
+    lang: swc_experimental_ecma_ast::Lang,
+) -> Option<String> {
     let allocator = Allocator::new();
     let mut ast = Ast::new(source, &allocator);
     let options = Options {
         source_type,
+        lang,
         ..Options::default()
     };
 
@@ -71,7 +71,7 @@ fn run_source(
         (result, diagnostic)
     };
 
-    let actual_error = match parse_result {
+    match parse_result {
         Err(error) => Some(format!("parser: {error:?}")),
         Ok(_) if parser_diagnostic.is_some() => parser_diagnostic,
         Ok(program) => {
@@ -83,13 +83,5 @@ fn run_source(
                 )
             })
         }
-    };
-
-    match (expects_error, actual_error) {
-        (true, Some(_)) | (false, None) => Ok(()),
-        (true, None) => Err(format!(
-            "expected parse or early error in {variant} mode, but pipeline succeeded"
-        )),
-        (false, Some(error)) => Err(format!("{variant}: {error}")),
     }
 }
