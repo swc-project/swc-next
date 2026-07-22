@@ -21,28 +21,20 @@ pub enum TraverseAction {
 }
 
 /// Mutable AST state passed to every [`Traverse`] hook.
-pub struct TraverseCtx<'traverse, 'ast> {
-    ast: &'traverse mut Ast<'ast>,
+pub struct TraverseCtx<'traverse, 'ast, State = ()> {
+    pub state: State,
+    pub ast: &'traverse mut Ast<'ast>,
     path: Vec<NodeId>,
 }
 
-impl<'traverse, 'ast> TraverseCtx<'traverse, 'ast> {
+impl<'traverse, 'ast, State> TraverseCtx<'traverse, 'ast, State> {
     #[inline]
-    pub fn new(ast: &'traverse mut Ast<'ast>) -> Self {
+    pub fn new(ast: &'traverse mut Ast<'ast>, state: State) -> Self {
         Self {
+            state,
             ast,
             path: Vec::new(),
         }
-    }
-
-    #[inline]
-    pub fn ast(&self) -> &Ast<'ast> {
-        self.ast
-    }
-
-    #[inline]
-    pub fn ast_mut(&mut self) -> &mut Ast<'ast> {
-        self.ast
     }
 
     /// Returns the concrete kind currently stored for `node_id`.
@@ -148,3 +140,46 @@ dummy_visit_mut_impl!(TsTypeOperatorKind);
 dummy_visit_mut_impl!(TsMethodSignatureKind);
 dummy_visit_mut_impl!(TsModuleDeclarationKind);
 dummy_visit_mut_impl!(TsMappedTypeModifier);
+
+#[cfg(test)]
+mod tests {
+    use swc_experimental_allocator::Allocator;
+
+    use crate::{
+        Ast, NodeId, NodeKind, SourceType, Span, Traverse, TraverseAction, TraverseCtx,
+        TraverseWith, TypedSubRange,
+    };
+
+    struct NodeCounter;
+
+    impl<'a> Traverse<'a, usize> for NodeCounter {
+        fn enter_node(
+            &mut self,
+            _node_id: NodeId,
+            _kind: NodeKind,
+            ctx: &mut TraverseCtx<'_, 'a, usize>,
+        ) -> TraverseAction {
+            ctx.state += 1;
+            TraverseAction::Proceed
+        }
+    }
+
+    #[test]
+    fn traverse_carries_state() {
+        let allocator = Allocator::default();
+        let mut ast = Ast::new(b"", &allocator);
+        let program = ast.program(
+            Span::default(),
+            SourceType::default(),
+            TypedSubRange::empty(),
+            None,
+        );
+        let mut ctx = TraverseCtx::new(&mut ast, 0usize);
+
+        assert_eq!(
+            program.traverse_with(&mut NodeCounter, &mut ctx),
+            TraverseAction::Proceed
+        );
+        assert_eq!(ctx.state, 1);
+    }
+}
