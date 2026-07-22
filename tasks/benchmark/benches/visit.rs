@@ -160,7 +160,7 @@ fn bench_traverse(b: &mut Bencher, src: &'static str) {
 
     b.iter(|| {
         let mut counter = Counter { count: 0 };
-        let _ = program.traverse_with(&mut counter, &mut TraverseCtx::new(&mut ast));
+        let _ = program.traverse_with(&mut counter, &mut TraverseCtx::new(&mut ast, ()));
         std::hint::black_box(counter.count);
     });
 }

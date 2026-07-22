@@ -13,7 +13,9 @@ use regex::Regex;
 use serde_json::Value;
 use swc_experimental_ecma_ast::{Lang, SourceType};
 
-use crate::cases::{Case, constants::NOT_SUPPORTED_ERROR_CODES, fixtures};
+use crate::cases::{Case, fixtures, typescript::constants::NOT_SUPPORTED_ERROR_CODES};
+
+mod constants;
 
 /// Regex for parsing options in the format `// @Alpha: Value of any sort`.
 static OPTION_REGEX: LazyLock<Regex> =

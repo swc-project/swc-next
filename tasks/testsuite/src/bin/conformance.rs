@@ -2,18 +2,12 @@ use std::{collections::HashSet, fs};
 
 use pico_args::Arguments;
 use rayon::ThreadPoolBuilder;
-
-use crate::{
+use testsuite::{
     cases::{Case, test262::Test262Case, typescript::TypeScriptCase},
     runner::{Runner, codegen::CodegenRunner, parser::ParserRunner},
     suite::TestResult,
     util::crate_root,
 };
-
-pub(crate) mod cases;
-pub(crate) mod runner;
-pub(crate) mod suite;
-pub(crate) mod util;
 
 pub struct AppArgs {
     pub debug: bool,
@@ -53,7 +47,7 @@ fn update_snapshot<R: Runner, C: Case>(args: &AppArgs) {
     }
 
     let cases = filter(args, C::read());
-    let results = R::run(args, &cases);
+    let results = R::run(&cases, args.debug);
     let snapshot = to_snapshot(R::NAME, C::NAME, &results);
     let snapshot_path =
         crate_root()

@@ -4,7 +4,7 @@ use swc_experimental_ecma_ast::{Lang, SourceType};
 
 use crate::util::crate_root;
 
-pub mod constants;
+pub mod babel;
 pub mod test262;
 pub mod typescript;
 

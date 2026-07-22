@@ -187,6 +187,6 @@ fn build_traversal_order(program: Program, ast: &mut Ast<'_>) -> Vec<u64> {
         node_order: vec![u64::MAX; ast.node_count()],
         next: 0,
     };
-    let _ = program.traverse_with(&mut order, &mut TraverseCtx::new(ast));
+    let _ = program.traverse_with(&mut order, &mut TraverseCtx::new(ast, ()));
     order.node_order
 }

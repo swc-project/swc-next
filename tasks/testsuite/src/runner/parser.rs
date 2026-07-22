@@ -7,18 +7,18 @@ use swc_experimental_ecma_ast::{Ast, SourceType};
 use swc_experimental_ecma_parser::{Options, Parser};
 use swc_experimental_ecma_semantic::analyze;
 
-use crate::{AppArgs, cases::Case, runner::Runner, suite::TestResult};
+use crate::{cases::Case, runner::Runner, suite::TestResult};
 
 pub struct ParserRunner;
 
 impl Runner for ParserRunner {
     const NAME: &'static str = "parser";
 
-    fn run<C: Case>(args: &AppArgs, cases: &[C]) -> Vec<TestResult> {
+    fn run<C: Case>(cases: &[C], debug: bool) -> Vec<TestResult> {
         cases
             .par_iter()
             .map(|case| {
-                if args.debug {
+                if debug {
                     println!("[{}] {:?}", "Debug".green(), case.relative_path());
                 }
 

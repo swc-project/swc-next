@@ -72,7 +72,7 @@ pub(crate) fn collect<'a>(
         default_export_bindings: Vec::new(),
     };
 
-    let _ = program.traverse_with(&mut collector, &mut TraverseCtx::new(ast));
+    let _ = program.traverse_with(&mut collector, &mut TraverseCtx::new(ast, ()));
     collector.record
 }
 
@@ -177,7 +177,7 @@ impl<'ast> Traverse<'ast> for Collector<'_, '_> {
             return TraverseAction::Proceed;
         }
 
-        let ast = ctx.ast();
+        let ast = &*ctx.ast;
         let Some(symbol_id) = node.symbol_id(ast) else {
             return TraverseAction::Proceed;
         };
@@ -229,7 +229,7 @@ impl<'ast> Traverse<'ast> for Collector<'_, '_> {
         if !is_program_child(ctx) {
             return TraverseAction::Proceed;
         }
-        let ast = ctx.ast();
+        let ast = &*ctx.ast;
         let specifier = string_literal(node.source(ast), ast);
         let specifiers = node.specifiers(ast);
         if specifiers.is_empty() {
@@ -293,7 +293,7 @@ impl<'ast> Traverse<'ast> for Collector<'_, '_> {
         if !is_program_child(ctx) {
             return TraverseAction::Proceed;
         }
-        let ast = ctx.ast();
+        let ast = &*ctx.ast;
         if node.declaration(ast).is_some() {
             return TraverseAction::Proceed;
         }
@@ -351,7 +351,7 @@ impl<'ast> Traverse<'ast> for Collector<'_, '_> {
         if has_binding {
             return;
         }
-        self.record_exported_name("default", node.span(ctx.ast()));
+        self.record_exported_name("default", node.span(ctx.ast));
         self.record.exports.push(ExportRecord {
             name_kind: ModuleRecordNameKind::Named,
             name: "default".into(),
@@ -372,7 +372,7 @@ impl<'ast> Traverse<'ast> for Collector<'_, '_> {
         if !is_program_child(ctx) {
             return TraverseAction::Proceed;
         }
-        let ast = ctx.ast();
+        let ast = &*ctx.ast;
         let exported = node.exported(ast);
         if let Some(name) = exported {
             self.record_exported_name(&module_export_name(name, ast), node.span(ast));
@@ -400,7 +400,7 @@ impl<'ast> Traverse<'ast> for Collector<'_, '_> {
         if !is_program_child(ctx) {
             return TraverseAction::Proceed;
         }
-        let ast = ctx.ast();
+        let ast = &*ctx.ast;
         let TsModuleReferenceData::TsExternalModuleReference(reference) =
             ast.ts_module_reference_data(node.module_reference(ast))
         else {
@@ -448,7 +448,7 @@ impl<'ast> Traverse<'ast> for Collector<'_, '_> {
         if !is_program_child(ctx) {
             return TraverseAction::Proceed;
         }
-        let ast = ctx.ast();
+        let ast = &*ctx.ast;
         self.record.exports.push(ExportRecord {
             name_kind: ModuleRecordNameKind::Global,
             name: String::from_utf8_lossy(ast.string(node.id(ast).name(ast))).into_owned(),

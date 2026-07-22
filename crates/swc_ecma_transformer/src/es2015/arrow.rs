@@ -15,7 +15,7 @@ pub struct ArrowFunctionsOptions {
 }
 
 /// Compile ES2015 arrow functions to function expressions.
-pub struct ArrowFunctions {
+pub(super) struct ArrowFunctions {
     _options: ArrowFunctionsOptions,
 }
 

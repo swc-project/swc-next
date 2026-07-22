@@ -1,11 +1,17 @@
-use swc_experimental_ecma_ast::{GetSpan, RegExpLiteral, TraverseCtx};
+use swc_experimental_ecma_ast::{GetSpan, RegExpLiteral};
 
-pub struct StickyRegex;
+use crate::state::TransformerCtx;
+
+pub(super) struct StickyRegex;
 
 impl StickyRegex {
-    pub fn exit_reg_exp_literal(&mut self, literal: RegExpLiteral, ctx: &mut TraverseCtx<'_, '_>) {
+    pub fn exit_reg_exp_literal(
+        &mut self,
+        literal: RegExpLiteral,
+        ctx: &mut TransformerCtx<'_, '_>,
+    ) {
         let (span, pattern, flags, is_sticky) = {
-            let ast = ctx.ast();
+            let ast = &*ctx.ast;
             let flags = literal.flags(ast);
             (
                 literal.span(ast),
@@ -18,7 +24,7 @@ impl StickyRegex {
             return;
         }
 
-        let ast = ctx.ast_mut();
+        let ast = &mut *ctx.ast;
         let pattern = ast.argument_expr_string_literal(span, pattern, ast.empty_string());
         let flags = ast.argument_expr_string_literal(span, flags, ast.empty_string());
         let arguments = ast.add_typed_sub_range([pattern, flags]);

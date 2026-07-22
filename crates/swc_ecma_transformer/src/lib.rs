@@ -4,12 +4,20 @@ use swc_experimental_ecma_ast::{
 };
 use swc_experimental_ecma_semantic::Semantic;
 
-mod es2015;
+use crate::{
+    assumptions::Assumptions,
+    state::{TransformerCtx, TransformerState},
+};
+
+pub mod assumptions;
+pub mod es2015;
+mod state;
 
 pub struct Transformer {}
 
 #[derive(Default)]
 pub struct TransformerOptions {
+    pub assumptions: Assumptions,
     pub es2015: es2015::ES2015Options,
 }
 
@@ -29,21 +37,25 @@ impl Transformer {
             semantic,
             x0_es2015: es2015::ES2015::new(options.es2015),
         };
-        let _ = program.traverse_with(&mut transformer, &mut TraverseCtx::new(ast));
+
+        let state = TransformerState {
+            assumptions: options.assumptions,
+        };
+        let _ = program.traverse_with(&mut transformer, &mut TraverseCtx::new(ast, state));
     }
 }
 
-impl<'a> Traverse<'a> for TransformerImpl<'_> {
-    fn enter_program(&mut self, node: Program, ctx: &mut TraverseCtx<'_, 'a>) -> TraverseAction {
+impl<'a> Traverse<'a, TransformerState> for TransformerImpl<'_> {
+    fn enter_program(&mut self, node: Program, ctx: &mut TransformerCtx<'_, 'a>) -> TraverseAction {
         self.x0_es2015.transform(node, self.semantic, ctx);
         TraverseAction::Proceed
     }
 
-    fn exit_object_property(&mut self, node: ObjectProperty, ctx: &mut TraverseCtx<'_, 'a>) {
+    fn exit_object_property(&mut self, node: ObjectProperty, ctx: &mut TransformerCtx<'_, 'a>) {
         self.x0_es2015.exit_object_property(node, ctx);
     }
 
-    fn exit_reg_exp_literal(&mut self, node: RegExpLiteral, ctx: &mut TraverseCtx<'_, 'a>) {
+    fn exit_reg_exp_literal(&mut self, node: RegExpLiteral, ctx: &mut TransformerCtx<'_, 'a>) {
         self.x0_es2015.exit_reg_exp_literal(node, ctx);
     }
 }

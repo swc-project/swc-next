@@ -7,19 +7,19 @@ use swc_experimental_ecma_ast::{Ast, Lang, Severity, SourceType};
 use swc_experimental_ecma_codegen::{Options as CodegenOptions, print};
 use swc_experimental_ecma_parser::{Options as ParserOptions, Parser};
 
-use crate::{AppArgs, cases::Case, runner::Runner, suite::TestResult};
+use crate::{cases::Case, runner::Runner, suite::TestResult};
 
 pub struct CodegenRunner;
 
 impl Runner for CodegenRunner {
     const NAME: &'static str = "codegen";
 
-    fn run<C: Case>(args: &AppArgs, cases: &[C]) -> Vec<TestResult> {
+    fn run<C: Case>(cases: &[C], debug: bool) -> Vec<TestResult> {
         cases
             .par_iter()
             .filter(|case| !case.expects_error())
             .map(|case| {
-                if args.debug {
+                if debug {
                     println!("[{}] {:?}", "Debug".green(), case.relative_path());
                 }
 

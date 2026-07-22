@@ -2116,7 +2116,7 @@ dependencies = [
 
 [[package]]
 name = "swc_experimental_ecma_transformer"
-version = "0.1.0"
+version = "0.11.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -2188,12 +2188,14 @@ dependencies = [
  "rayon",
  "regex",
  "saphyr",
+ "serde",
  "serde_json",
  "swc_experimental_allocator",
  "swc_experimental_ecma_ast",
  "swc_experimental_ecma_codegen",
  "swc_experimental_ecma_parser",
  "swc_experimental_ecma_semantic",
+ "swc_experimental_ecma_transformer",
 ]
 
 [[package]]

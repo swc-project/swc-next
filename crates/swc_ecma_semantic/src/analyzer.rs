@@ -236,7 +236,7 @@ impl<'a> SemanticBuilder<'a> {
             self.diagnostics.push(Diagnostic {
                 severity: Severity::Error,
                 message: Cow::Owned(format!("{description} may only appear at the top level")),
-                span: node.span(ctx.ast()),
+                span: node.span(ctx.ast),
                 help: None,
                 labels: Vec::new(),
             });
@@ -246,7 +246,7 @@ impl<'a> SemanticBuilder<'a> {
             self.diagnostics.push(Diagnostic {
                 severity: Severity::Error,
                 message: Cow::Owned(format!("{description} is only valid in module code")),
-                span: node.span(ctx.ast()),
+                span: node.span(ctx.ast),
                 help: None,
                 labels: Vec::new(),
             });
@@ -320,12 +320,12 @@ impl<'a> SemanticBuilder<'a> {
         if in_type_position {
             let is_type_parameter_name =
                 ctx.parent()
-                    .is_some_and(|parent| match ctx.ast().kind_data(parent) {
+                    .is_some_and(|parent| match ctx.ast.kind_data(parent) {
                         NodeKindData::TsTypeParameter(parameter) => {
-                            parameter.name(ctx.ast()).node_id() == node.node_id()
+                            parameter.name(ctx.ast).node_id() == node.node_id()
                         }
                         NodeKindData::TsMappedType(mapped_type) => {
-                            mapped_type.key(ctx.ast()).node_id() == node.node_id()
+                            mapped_type.key(ctx.ast).node_id() == node.node_id()
                         }
                         _ => false,
                     });
@@ -359,13 +359,13 @@ impl<'a> SemanticBuilder<'a> {
             }
         }
 
-        let name = node.name(ctx.ast());
-        let name_bytes = ctx.ast().string(name);
+        let name = node.name(ctx.ast);
+        let name_bytes = ctx.ast.string(name);
         let name_text = String::from_utf8_lossy(name_bytes).into_owned();
         if name_bytes == b"let" && binding.flags.intersects(SymbolFlags::BLOCK_SCOPED_VAR) {
             self.diagnostics.push(Diagnostic::error(
                 "'let' may not be used as a lexical binding name",
-                node.span(ctx.ast()),
+                node.span(ctx.ast),
             ));
         }
         let result = self.symbols.declare(
@@ -375,7 +375,7 @@ impl<'a> SemanticBuilder<'a> {
             binding.excludes,
             binding.target,
             node.node_id(),
-            node.span(ctx.ast()),
+            node.span(ctx.ast),
         );
         if binding.flags.is_hoisting_var() {
             if let Some(previous) = self.find_hoisting_conflict(name_bytes, binding.target) {
@@ -385,7 +385,7 @@ impl<'a> SemanticBuilder<'a> {
                         "Variable '{}' conflicts with a lexical declaration",
                         name_text
                     )),
-                    span: node.span(ctx.ast()),
+                    span: node.span(ctx.ast),
                     help: None,
                     labels: vec![Label {
                         span: previous,
@@ -419,21 +419,21 @@ impl<'a> SemanticBuilder<'a> {
                     scope_function_declaration_is_ordinary(
                         self.scopes.get(binding.target).node,
                         declaration,
-                        ctx.ast(),
+                        ctx.ast,
                     )
                 })
             && ctx
                 .parent()
-                .is_some_and(|parent| match ctx.ast().kind_data(parent) {
+                .is_some_and(|parent| match ctx.ast.kind_data(parent) {
                     NodeKindData::Function(function) => {
-                        function.function_type(ctx.ast()) == FunctionType::FunctionDeclaration
-                            && !function.r#async(ctx.ast())
-                            && !function.generator(ctx.ast())
+                        function.function_type(ctx.ast) == FunctionType::FunctionDeclaration
+                            && !function.r#async(ctx.ast)
+                            && !function.generator(ctx.ast)
                     }
                     _ => false,
                 });
         if let Some(previous) = result.conflict.filter(|_| !annex_b_duplicate_function) {
-            self.report_redeclaration(&name_text, node.span(ctx.ast()), previous);
+            self.report_redeclaration(&name_text, node.span(ctx.ast), previous);
         }
 
         let strict = self.scopes.get(self.current_scope).flags.strict;
@@ -444,7 +444,7 @@ impl<'a> SemanticBuilder<'a> {
                     "'{}' is not allowed as a binding identifier in strict mode",
                     name_text
                 )),
-                span: node.span(ctx.ast()),
+                span: node.span(ctx.ast),
                 help: None,
                 labels: Vec::new(),
             });
@@ -453,11 +453,11 @@ impl<'a> SemanticBuilder<'a> {
             check_strict_reserved(
                 &mut self.diagnostics,
                 name_bytes,
-                node.span(ctx.ast()),
+                node.span(ctx.ast),
                 "a binding identifier",
             );
         }
-        node.set_symbol_id(ctx.ast_mut(), Some(result.symbol_id));
+        node.set_symbol_id(ctx.ast, Some(result.symbol_id));
     }
 
     fn find_hoisting_conflict(&self, name: &[u8], target: ScopeId) -> Option<Span> {
@@ -550,17 +550,17 @@ impl<'a> SemanticBuilder<'a> {
     fn super_call_validity(&self, ctx: &TraverseCtx<'_, 'a>) -> SuperCallValidity {
         let mut ancestors = ctx.ancestors().skip(1);
         while let Some(ancestor) = ancestors.next() {
-            match ctx.ast().kind_data(ancestor) {
+            match ctx.ast.kind_data(ancestor) {
                 NodeKindData::ArrowFunctionExpression(_) => {}
                 NodeKindData::Function(_) => {
                     if let Some(parent) = ancestors.next()
-                        && let NodeKindData::MethodDefinition(method) = ctx.ast().kind_data(parent)
-                        && method.kind(ctx.ast()) == MethodDefinitionKind::Constructor
+                        && let NodeKindData::MethodDefinition(method) = ctx.ast.kind_data(parent)
+                        && method.kind(ctx.ast) == MethodDefinitionKind::Constructor
                     {
                         return if ancestors.any(|ancestor| {
                             matches!(
-                                ctx.ast().kind_data(ancestor),
-                                NodeKindData::Class(class) if class.super_class(ctx.ast()).is_some()
+                                ctx.ast.kind_data(ancestor),
+                                NodeKindData::Class(class) if class.super_class(ctx.ast).is_some()
                             )
                         }) {
                             SuperCallValidity::Valid
@@ -584,15 +584,15 @@ impl<'a> SemanticBuilder<'a> {
     fn is_super_property_valid(&self, ctx: &TraverseCtx<'_, 'a>) -> bool {
         let mut ancestors = ctx.ancestors().skip(1);
         while let Some(ancestor) = ancestors.next() {
-            match ctx.ast().kind_data(ancestor) {
+            match ctx.ast.kind_data(ancestor) {
                 NodeKindData::ArrowFunctionExpression(_) => {}
                 NodeKindData::Function(_) => {
                     return ancestors.next().is_some_and(|parent| {
-                        match ctx.ast().kind_data(parent) {
+                        match ctx.ast.kind_data(parent) {
                             NodeKindData::MethodDefinition(_) => true,
                             NodeKindData::ObjectProperty(property) => {
-                                property.method(ctx.ast())
-                                    || property.kind(ctx.ast()) != PropertyKind::Init
+                                property.method(ctx.ast)
+                                    || property.kind(ctx.ast) != PropertyKind::Init
                             }
                             _ => false,
                         }
@@ -633,8 +633,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
     fn enter_function(&mut self, node: Function, ctx: &mut TraverseCtx<'_, 'a>) -> TraverseAction {
         self.enter_control_boundary();
         let outer_scope = self.current_scope;
-        let strict = self.function_is_strict(node, ctx.ast());
-        if node.function_type(ctx.ast()) == FunctionType::FunctionDeclaration {
+        let strict = self.function_is_strict(node, ctx.ast);
+        if node.function_type(ctx.ast) == FunctionType::FunctionDeclaration {
             let mut through_label = false;
             let parent = ctx.ancestors().skip(1).find(|ancestor| {
                 if ctx.node_kind(*ancestor) == NodeKind::LabeledStatement {
@@ -660,12 +660,12 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             if !valid {
                 self.diagnostics.push(Diagnostic::error(
                     "A function declaration is not allowed in this statement position",
-                    node.span(ctx.ast()),
+                    node.span(ctx.ast),
                 ));
             }
         }
         let flags = ScopeFlags { strict };
-        let binding_target = if is_named_function_expression(node, ctx.ast()) {
+        let binding_target = if is_named_function_expression(node, ctx.ast) {
             self.expr_name_scope(node.node_id(), ScopeKind::Function, flags);
             self.scopes
                 .get(self.current_scope)
@@ -676,7 +676,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             outer_scope
         };
         let target_kind = self.scopes.get(binding_target).kind;
-        let allow_overload = ctx.ast().lang().is_typescript()
+        let allow_overload = ctx.ast.lang().is_typescript()
             || matches!(
                 target_kind,
                 ScopeKind::Function | ScopeKind::Global | ScopeKind::StaticBlock
@@ -688,7 +688,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                 excludes: SymbolFlags::function_excludes(allow_overload),
                 target: binding_target,
                 export_state: ExportState::None,
-                ambient: node.declare(ctx.ast()) || self.ambient,
+                ambient: node.declare(ctx.ast) || self.ambient,
             },
         );
         TraverseAction::Proceed
@@ -706,7 +706,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
         self.enter_control_boundary();
-        let strict = self.arrow_is_strict(node, ctx.ast());
+        let strict = self.arrow_is_strict(node, ctx.ast);
         self.push_scope(node.node_id(), ScopeKind::Function, ScopeFlags { strict });
         TraverseAction::Proceed
     }
@@ -716,32 +716,32 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: Directive,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        if ctx.ast().string(node.value(ctx.ast())) != b"use strict" {
+        if ctx.ast.string(node.value(ctx.ast)) != b"use strict" {
             return TraverseAction::Proceed;
         }
         let params =
             ctx.ancestors()
                 .skip(1)
-                .find_map(|ancestor| match ctx.ast().kind_data(ancestor) {
-                    NodeKindData::Function(function) => Some(function.params(ctx.ast())),
+                .find_map(|ancestor| match ctx.ast.kind_data(ancestor) {
+                    NodeKindData::Function(function) => Some(function.params(ctx.ast)),
                     NodeKindData::ArrowFunctionExpression(function) => {
-                        Some(function.params(ctx.ast()))
+                        Some(function.params(ctx.ast))
                     }
                     NodeKindData::Program(_) => None,
                     _ => None,
                 });
         if let Some(params) =
-            params.filter(|params| formal_parameters_are_non_simple(*params, ctx.ast()))
+            params.filter(|params| formal_parameters_are_non_simple(*params, ctx.ast))
         {
             self.diagnostics.push(Diagnostic {
                 severity: Severity::Error,
                 message: Cow::Borrowed(
                     "Illegal 'use strict' directive in function with non-simple parameter list",
                 ),
-                span: node.span(ctx.ast()),
+                span: node.span(ctx.ast),
                 help: None,
                 labels: vec![Label {
-                    span: params.span(ctx.ast()),
+                    span: params.span(ctx.ast),
                     message: Cow::Borrowed("non-simple parameters"),
                 }],
             });
@@ -764,9 +764,9 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
         let excludes = if self.scopes.get(self.current_scope).flags.strict
-            || formal_parameters_are_non_simple(node, ctx.ast())
+            || formal_parameters_are_non_simple(node, ctx.ast)
             || matches!(
-                node.kind(ctx.ast()),
+                node.kind(ctx.ast),
                 FormalParameterKind::UniqueFormalParameters
                     | FormalParameterKind::ArrowFormalParameters
             ) {
@@ -828,12 +828,12 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: ForInStatement,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.check_for_in_of_initializer(node.left(_ctx.ast()), _ctx.ast());
+        self.check_for_in_of_initializer(node.left(_ctx.ast), _ctx.ast);
         self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
         self.breakable_depth += 1;
         self.iteration_depth += 1;
         self.write_targets
-            .push(for_left_write_target(node.left(_ctx.ast()), _ctx.ast()));
+            .push(for_left_write_target(node.left(_ctx.ast), _ctx.ast));
         TraverseAction::Proceed
     }
 
@@ -849,12 +849,12 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: ForOfStatement,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.check_for_in_of_initializer(node.left(_ctx.ast()), _ctx.ast());
+        self.check_for_in_of_initializer(node.left(_ctx.ast), _ctx.ast);
         self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
         self.breakable_depth += 1;
         self.iteration_depth += 1;
         self.write_targets
-            .push(for_left_write_target(node.left(_ctx.ast()), _ctx.ast()));
+            .push(for_left_write_target(node.left(_ctx.ast), _ctx.ast));
         TraverseAction::Proceed
     }
 
@@ -873,16 +873,16 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
         self.breakable_depth += 1;
         let mut default_span = None;
-        for case_id in node.cases(_ctx.ast()).iter() {
-            let case = _ctx.ast().get_node_in_sub_range(case_id);
-            if case.test(_ctx.ast()).is_some() {
+        for case_id in node.cases(_ctx.ast).iter() {
+            let case = _ctx.ast.get_node_in_sub_range(case_id);
+            if case.test(_ctx.ast).is_some() {
                 continue;
             }
             if let Some(previous) = default_span {
                 self.diagnostics.push(Diagnostic {
                     severity: Severity::Error,
                     message: Cow::Borrowed("A switch statement can only have one default clause"),
-                    span: case.span(_ctx.ast()),
+                    span: case.span(_ctx.ast),
                     help: None,
                     labels: vec![Label {
                         span: previous,
@@ -890,7 +890,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                     }],
                 });
             } else {
-                default_span = Some(case.span(_ctx.ast()));
+                default_span = Some(case.span(_ctx.ast));
             }
         }
         TraverseAction::Proceed
@@ -936,22 +936,22 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: LabeledStatement,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        let label = node.label(ctx.ast());
-        let name = label.name(ctx.ast());
-        self.enter_label_identifier(label, ctx.ast());
+        let label = node.label(ctx.ast);
+        let name = label.name(ctx.ast);
+        self.enter_label_identifier(label, ctx.ast);
         if let Some((_, _, previous)) = self
             .visible_labels()
             .iter()
             .rev()
-            .find(|(existing, _, _)| ctx.ast().string(*existing) == ctx.ast().string(name))
+            .find(|(existing, _, _)| ctx.ast.string(*existing) == ctx.ast.string(name))
         {
             self.diagnostics.push(Diagnostic {
                 severity: Severity::Error,
                 message: Cow::Owned(format!(
                     "Label '{}' has already been declared",
-                    String::from_utf8_lossy(ctx.ast().string(name))
+                    String::from_utf8_lossy(ctx.ast.string(name))
                 )),
-                span: label.span(ctx.ast()),
+                span: label.span(ctx.ast),
                 help: None,
                 labels: vec![Label {
                     span: *previous,
@@ -959,8 +959,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                 }],
             });
         }
-        let iteration = is_iteration(node.body(ctx.ast()), ctx.ast());
-        self.labels.push((name, iteration, label.span(ctx.ast())));
+        let iteration = is_iteration(node.body(ctx.ast), ctx.ast);
+        self.labels.push((name, iteration, label.span(ctx.ast)));
         TraverseAction::Proceed
     }
 
@@ -973,16 +973,16 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: BreakStatement,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        if let Some(label) = node.label(ctx.ast()) {
-            let name = label.name(ctx.ast());
-            if !self.find_label(name, ctx.ast()) {
+        if let Some(label) = node.label(ctx.ast) {
+            let name = label.name(ctx.ast);
+            if !self.find_label(name, ctx.ast) {
                 self.diagnostics.push(Diagnostic {
                     severity: Severity::Error,
                     message: Cow::Owned(format!(
                         "Undefined label '{}'",
-                        String::from_utf8_lossy(ctx.ast().string(name))
+                        String::from_utf8_lossy(ctx.ast.string(name))
                     )),
-                    span: node.span(ctx.ast()),
+                    span: node.span(ctx.ast),
                     help: None,
                     labels: Vec::new(),
                 });
@@ -990,7 +990,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         } else if !self.is_inside_breakable() {
             self.diagnostics.push(Diagnostic::error(
                 "A 'break' statement can only be used within a loop or switch",
-                node.span(ctx.ast()),
+                node.span(ctx.ast),
             ));
         }
         TraverseAction::Proceed
@@ -1001,17 +1001,17 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: ContinueStatement,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        if let Some(label) = node.label(ctx.ast()) {
-            let name = label.name(ctx.ast());
-            match self.find_label_for_continue(name, ctx.ast()) {
+        if let Some(label) = node.label(ctx.ast) {
+            let name = label.name(ctx.ast);
+            match self.find_label_for_continue(name, ctx.ast) {
                 Some(true) => {}
                 Some(false) => self.diagnostics.push(Diagnostic {
                     severity: Severity::Error,
                     message: Cow::Owned(format!(
                         "Label '{}' does not denote an iteration statement",
-                        String::from_utf8_lossy(ctx.ast().string(name))
+                        String::from_utf8_lossy(ctx.ast.string(name))
                     )),
-                    span: node.span(ctx.ast()),
+                    span: node.span(ctx.ast),
                     help: None,
                     labels: Vec::new(),
                 }),
@@ -1019,9 +1019,9 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                     severity: Severity::Error,
                     message: Cow::Owned(format!(
                         "Undefined label '{}'",
-                        String::from_utf8_lossy(ctx.ast().string(name))
+                        String::from_utf8_lossy(ctx.ast.string(name))
                     )),
-                    span: node.span(ctx.ast()),
+                    span: node.span(ctx.ast),
                     help: None,
                     labels: Vec::new(),
                 }),
@@ -1029,7 +1029,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         } else if !self.is_inside_iteration() {
             self.diagnostics.push(Diagnostic::error(
                 "A 'continue' statement can only be used within a loop",
-                node.span(ctx.ast()),
+                node.span(ctx.ast),
             ));
         }
         TraverseAction::Proceed
@@ -1043,7 +1043,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         if self.scopes.get(self.current_scope).flags.strict {
             self.diagnostics.push(Diagnostic::error(
                 "'with' statements are not allowed in strict mode",
-                node.span(ctx.ast()),
+                node.span(ctx.ast),
             ));
         }
         self.scopes.get_mut(self.current_scope).has_with = true;
@@ -1059,7 +1059,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         if is_in_formal_parameters(ctx) {
             self.diagnostics.push(Diagnostic::error(
                 "A yield expression is not allowed in formal parameters",
-                node.span(ctx.ast()),
+                node.span(ctx.ast),
             ));
         }
         TraverseAction::Proceed
@@ -1073,7 +1073,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         if is_in_formal_parameters(ctx) {
             self.diagnostics.push(Diagnostic::error(
                 "An await expression is not allowed in formal parameters",
-                node.span(ctx.ast()),
+                node.span(ctx.ast),
             ));
         }
         if ctx
@@ -1089,7 +1089,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         {
             self.diagnostics.push(Diagnostic::error(
                 "Await is not allowed in a class static block",
-                node.span(ctx.ast()),
+                node.span(ctx.ast),
             ));
         }
         TraverseAction::Proceed
@@ -1107,20 +1107,20 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         {
             return TraverseAction::Proceed;
         }
-        let name = node.name(ctx.ast());
-        let name = ctx.ast().string(name);
+        let name = node.name(ctx.ast);
+        let name = ctx.ast.string(name);
         if self.inherited_flags().strict {
             check_strict_reserved(
                 &mut self.diagnostics,
                 name,
-                node.span(ctx.ast()),
+                node.span(ctx.ast),
                 "an identifier reference",
             );
         }
         if name == b"arguments" && !is_arguments_available(ctx) {
             self.diagnostics.push(Diagnostic::error(
                 "'arguments' is not allowed in a class field initializer or static block",
-                node.span(ctx.ast()),
+                node.span(ctx.ast),
             ));
         }
         TraverseAction::Proceed
@@ -1131,10 +1131,10 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: CallExpression,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        if direct_eval_callee(node, ctx.ast()) {
+        if direct_eval_callee(node, ctx.ast) {
             self.mark_direct_eval();
         }
-        if ctx.ast().node_kind(node.callee(ctx.ast()).node_id()) == NodeKind::Super {
+        if ctx.ast.node_kind(node.callee(ctx.ast).node_id()) == NodeKind::Super {
             let message = match self.super_call_validity(ctx) {
                 SuperCallValidity::Valid => None,
                 SuperCallValidity::NotInConstructor => {
@@ -1146,7 +1146,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             };
             if let Some(message) = message {
                 self.diagnostics
-                    .push(Diagnostic::error(message, node.span(ctx.ast())));
+                    .push(Diagnostic::error(message, node.span(ctx.ast)));
             }
         }
         TraverseAction::Proceed
@@ -1158,25 +1158,25 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
         let property_is_private =
-            ctx.ast().node_kind(node.property(ctx.ast()).node_id()) == NodeKind::PrivateIdentifier;
-        if ctx.ast().node_kind(node.object(ctx.ast()).node_id()) == NodeKind::Super {
+            ctx.ast.node_kind(node.property(ctx.ast).node_id()) == NodeKind::PrivateIdentifier;
+        if ctx.ast.node_kind(node.object(ctx.ast).node_id()) == NodeKind::Super {
             if property_is_private {
                 self.diagnostics.push(Diagnostic::error(
                     "A private name may not be accessed on 'super'",
-                    node.span(ctx.ast()),
+                    node.span(ctx.ast),
                 ));
             } else if !self.is_super_property_valid(ctx) {
                 self.diagnostics.push(Diagnostic::error(
                     "A super property is only valid inside a method or class field",
-                    node.span(ctx.ast()),
+                    node.span(ctx.ast),
                 ));
             }
         }
         if let PropertyKeyData::PrivateIdentifier(private) =
-            ctx.ast().property_key_data(node.property(ctx.ast()))
+            ctx.ast.property_key_data(node.property(ctx.ast))
         {
-            let name = private.name(ctx.ast());
-            let name = ctx.ast().string(name);
+            let name = private.name(ctx.ast);
+            let name = ctx.ast.string(name);
             if !is_private_name_declared(ctx, name) {
                 self.diagnostics.push(Diagnostic {
                     severity: Severity::Error,
@@ -1184,7 +1184,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                         "Private name '#{}' is not declared",
                         String::from_utf8_lossy(name)
                     )),
-                    span: private.span(ctx.ast()),
+                    span: private.span(ctx.ast),
                     help: None,
                     labels: Vec::new(),
                 });
@@ -1198,11 +1198,11 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: BinaryExpression,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        if node.operator(ctx.ast()) == BinaryOperator::In
-            && let ExprData::PrivateIdentifier(private) = ctx.ast().expr_data(node.left(ctx.ast()))
+        if node.operator(ctx.ast) == BinaryOperator::In
+            && let ExprData::PrivateIdentifier(private) = ctx.ast.expr_data(node.left(ctx.ast))
         {
-            let name = private.name(ctx.ast());
-            let name = ctx.ast().string(name);
+            let name = private.name(ctx.ast);
+            let name = ctx.ast.string(name);
             if !is_private_name_declared(ctx, name) {
                 self.diagnostics.push(Diagnostic {
                     severity: Severity::Error,
@@ -1210,7 +1210,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                         "Private name '#{}' is not declared",
                         String::from_utf8_lossy(name)
                     )),
-                    span: private.span(ctx.ast()),
+                    span: private.span(ctx.ast),
                     help: None,
                     labels: Vec::new(),
                 });
@@ -1224,21 +1224,21 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: UnaryExpression,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        if node.operator(ctx.ast()) == UnaryOperator::Delete
-            && expression_is_private_reference(node.argument(ctx.ast()), ctx.ast())
+        if node.operator(ctx.ast) == UnaryOperator::Delete
+            && expression_is_private_reference(node.argument(ctx.ast), ctx.ast)
         {
             self.diagnostics.push(Diagnostic::error(
                 "Private fields may not be deleted",
-                node.span(ctx.ast()),
+                node.span(ctx.ast),
             ));
         }
-        if node.operator(ctx.ast()) == UnaryOperator::Delete
+        if node.operator(ctx.ast) == UnaryOperator::Delete
             && self.inherited_flags().strict
-            && expression_is_identifier_reference(node.argument(ctx.ast()), ctx.ast())
+            && expression_is_identifier_reference(node.argument(ctx.ast), ctx.ast)
         {
             self.diagnostics.push(Diagnostic::error(
                 "Deleting an unqualified identifier is forbidden in strict mode",
-                node.span(ctx.ast()),
+                node.span(ctx.ast),
             ));
         }
         TraverseAction::Proceed
@@ -1257,11 +1257,11 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             return TraverseAction::Proceed;
         }
         if self.inherited_flags().strict
-            && string_has_legacy_escape(ctx.ast().string(node.raw(ctx.ast())))
+            && string_has_legacy_escape(ctx.ast.string(node.raw(ctx.ast)))
         {
             self.diagnostics.push(Diagnostic::error(
                 "Legacy octal and non-octal decimal escapes are forbidden in strict mode",
-                node.span(ctx.ast()),
+                node.span(ctx.ast),
             ));
         }
         TraverseAction::Proceed
@@ -1279,11 +1279,11 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         {
             return TraverseAction::Proceed;
         }
-        let raw = ctx.ast().string(node.raw(ctx.ast()));
+        let raw = ctx.ast.string(node.raw(ctx.ast));
         if self.inherited_flags().strict && is_legacy_numeric_literal(raw) {
             self.diagnostics.push(Diagnostic::error(
                 "Legacy octal and leading-zero decimal literals are forbidden in strict mode",
-                node.span(ctx.ast()),
+                node.span(ctx.ast),
             ));
         }
         TraverseAction::Proceed
@@ -1294,24 +1294,24 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: MetaProperty,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        let meta = node.meta(ctx.ast()).name(ctx.ast());
-        let property = node.property(ctx.ast()).name(ctx.ast());
-        if ctx.ast().string(meta) == b"import"
-            && ctx.ast().string(property) == b"meta"
+        let meta = node.meta(ctx.ast).name(ctx.ast);
+        let property = node.property(ctx.ast).name(ctx.ast);
+        if ctx.ast.string(meta) == b"import"
+            && ctx.ast.string(property) == b"meta"
             && self.scopes.get(self.scopes.top_level_scope_id()).kind != ScopeKind::Module
         {
             self.diagnostics.push(Diagnostic::error(
                 "'import.meta' is only valid in module code",
-                node.span(ctx.ast()),
+                node.span(ctx.ast),
             ));
         }
-        if ctx.ast().string(meta) == b"new"
-            && ctx.ast().string(property) == b"target"
+        if ctx.ast.string(meta) == b"new"
+            && ctx.ast.string(property) == b"target"
             && !is_new_target_available(ctx)
         {
             self.diagnostics.push(Diagnostic::error(
                 "'new.target' is only valid inside a function or class field initializer",
-                node.span(ctx.ast()),
+                node.span(ctx.ast),
             ));
         }
         TraverseAction::Proceed
@@ -1323,7 +1323,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
         self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
-        self.catch_bodies.push(node.body(ctx.ast()).node_id());
+        self.catch_bodies.push(node.body(ctx.ast).node_id());
         self.set_binding_context(
             node.node_id(),
             BindingContext {
@@ -1348,7 +1348,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: VariableDeclaration,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        let kind = node.kind(ctx.ast());
+        let kind = node.kind(ctx.ast);
         if matches!(kind, VariableKind::Using | VariableKind::AwaitUsing) {
             let direct_parent = ctx.ancestors().nth(1);
             if direct_parent.is_some_and(|parent| ctx.node_kind(parent) == NodeKind::Program)
@@ -1356,11 +1356,11 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             {
                 self.diagnostics.push(Diagnostic::error(
                     "A using declaration may not appear at the top level of a script",
-                    node.span(ctx.ast()),
+                    node.span(ctx.ast),
                 ));
             }
         }
-        let (flags, excludes, target) = match node.kind(ctx.ast()) {
+        let (flags, excludes, target) = match node.kind(ctx.ast) {
             VariableKind::Var => (
                 SymbolFlags::FUNCTION_SCOPED_VAR,
                 SymbolFlags::function_var_excludes(),
@@ -1384,7 +1384,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                 excludes,
                 target,
                 export_state: ExportState::None,
-                ambient: node.declare(ctx.ast()) || self.ambient,
+                ambient: node.declare(ctx.ast) || self.ambient,
             },
         );
         TraverseAction::Proceed
@@ -1401,7 +1401,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
     fn enter_class(&mut self, node: Class, ctx: &mut TraverseCtx<'_, 'a>) -> TraverseAction {
         let outer_scope = self.current_scope;
         let flags = ScopeFlags { strict: true };
-        let binding_target = if is_named_class_expression(node, ctx.ast()) {
+        let binding_target = if is_named_class_expression(node, ctx.ast) {
             self.expr_name_scope(node.node_id(), ScopeKind::Class, flags);
             self.scopes
                 .get(self.current_scope)
@@ -1418,7 +1418,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                 excludes: SymbolFlags::class_excludes(),
                 target: binding_target,
                 export_state: ExportState::None,
-                ambient: node.declare(ctx.ast()) || self.ambient,
+                ambient: node.declare(ctx.ast) || self.ambient,
             },
         );
         TraverseAction::Proceed
@@ -1436,18 +1436,17 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
     ) -> TraverseAction {
         let mut first_constructor = None;
         let mut private_elements: Vec<(AstString, PrivateElementKind, bool, Span)> = Vec::new();
-        for id in node.body(ctx.ast()).iter() {
-            let element = ctx.ast().get_node_in_sub_range(id);
-            if let ClassElementData::MethodDefinition(method) =
-                ctx.ast().class_element_data(element)
-                && method.kind(ctx.ast()) == MethodDefinitionKind::Constructor
-                && method.value(ctx.ast()).body(ctx.ast()).is_some()
+        for id in node.body(ctx.ast).iter() {
+            let element = ctx.ast.get_node_in_sub_range(id);
+            if let ClassElementData::MethodDefinition(method) = ctx.ast.class_element_data(element)
+                && method.kind(ctx.ast) == MethodDefinitionKind::Constructor
+                && method.value(ctx.ast).body(ctx.ast).is_some()
             {
                 if let Some(previous) = first_constructor {
                     self.diagnostics.push(Diagnostic {
                         severity: Severity::Error,
                         message: Cow::Borrowed("A class can only have one constructor"),
-                        span: method.key(ctx.ast()).span(ctx.ast()),
+                        span: method.key(ctx.ast).span(ctx.ast),
                         help: None,
                         labels: vec![Label {
                             span: previous,
@@ -1455,17 +1454,17 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                         }],
                     });
                 } else {
-                    first_constructor = Some(method.span(ctx.ast()));
+                    first_constructor = Some(method.span(ctx.ast));
                 }
             }
-            let Some((name, key_span)) = private_element_name(element, ctx.ast()) else {
+            let Some((name, key_span)) = private_element_name(element, ctx.ast) else {
                 continue;
             };
-            let kind = private_element_kind(element, ctx.ast());
-            let is_static = private_element_is_static(element, ctx.ast());
+            let kind = private_element_kind(element, ctx.ast);
+            let is_static = private_element_is_static(element, ctx.ast);
             if let Some((_, previous_kind, previous_static, previous_span)) =
                 private_elements.iter().find(|(previous_name, _, _, _)| {
-                    ctx.ast().string(*previous_name) == ctx.ast().string(name)
+                    ctx.ast.string(*previous_name) == ctx.ast.string(name)
                 })
             {
                 let accessor_pair = matches!(
@@ -1478,7 +1477,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                         severity: Severity::Error,
                         message: Cow::Owned(format!(
                             "Duplicate private name '#{}'",
-                            String::from_utf8_lossy(ctx.ast().string(name))
+                            String::from_utf8_lossy(ctx.ast.string(name))
                         )),
                         span: key_span,
                         help: None,
@@ -1501,18 +1500,18 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
         let mut first_proto = None;
-        for id in node.properties(ctx.ast()).iter() {
-            let property = ctx.ast().get_node_in_sub_range(id);
+        for id in node.properties(ctx.ast).iter() {
+            let property = ctx.ast.get_node_in_sub_range(id);
             let ObjectPropertyKindData::ObjectProperty(property) =
-                ctx.ast().object_property_kind_data(property)
+                ctx.ast.object_property_kind_data(property)
             else {
                 continue;
             };
-            if property.computed(ctx.ast())
-                || property.method(ctx.ast())
-                || property.shorthand(ctx.ast())
-                || property.kind(ctx.ast()) != PropertyKind::Init
-                || !property_key_name_is(property.key(ctx.ast()), "__proto__", ctx.ast())
+            if property.computed(ctx.ast)
+                || property.method(ctx.ast)
+                || property.shorthand(ctx.ast)
+                || property.kind(ctx.ast) != PropertyKind::Init
+                || !property_key_name_is(property.key(ctx.ast), "__proto__", ctx.ast)
             {
                 continue;
             }
@@ -1520,7 +1519,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                 self.diagnostics.push(Diagnostic {
                     severity: Severity::Error,
                     message: Cow::Borrowed("Duplicate '__proto__' property in object literal"),
-                    span: property.span(ctx.ast()),
+                    span: property.span(ctx.ast),
                     help: None,
                     labels: vec![Label {
                         span: previous,
@@ -1528,7 +1527,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                     }],
                 });
             } else {
-                first_proto = Some(property.span(ctx.ast()));
+                first_proto = Some(property.span(ctx.ast));
             }
         }
         TraverseAction::Proceed
@@ -1559,8 +1558,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
         self.check_import_export_position(node, "An import declaration", ctx);
-        self.check_duplicate_with_clause_attributes(node.attributes(ctx.ast()), ctx.ast());
-        let flags = if node.import_kind(ctx.ast()) == ImportOrExportKind::Type {
+        self.check_duplicate_with_clause_attributes(node.attributes(ctx.ast), ctx.ast);
+        let flags = if node.import_kind(ctx.ast) == ImportOrExportKind::Type {
             SymbolFlags::TYPE_IMPORT
         } else {
             SymbolFlags::IMPORT
@@ -1588,7 +1587,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
         self.check_import_export_position(node, "An import declaration", ctx);
-        let flags = if node.import_kind(ctx.ast()) == ImportOrExportKind::Type {
+        let flags = if node.import_kind(ctx.ast) == ImportOrExportKind::Type {
             SymbolFlags::TYPE_IMPORT
         } else {
             SymbolFlags::IMPORT
@@ -1619,7 +1618,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: ImportSpecifier,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        if node.import_kind(ctx.ast()) == ImportOrExportKind::Type {
+        if node.import_kind(ctx.ast) == ImportOrExportKind::Type {
             self.set_binding_context(
                 node.node_id(),
                 BindingContext {
@@ -1644,7 +1643,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
         self.check_import_export_position(node, "An export declaration", ctx);
-        self.check_duplicate_with_clause_attributes(node.attributes(ctx.ast()), ctx.ast());
+        self.check_duplicate_with_clause_attributes(node.attributes(ctx.ast), ctx.ast);
         TraverseAction::Proceed
     }
 
@@ -1663,7 +1662,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
         self.check_import_export_position(node, "An export declaration", ctx);
-        self.check_duplicate_with_clause_attributes(node.attributes(ctx.ast()), ctx.ast());
+        self.check_duplicate_with_clause_attributes(node.attributes(ctx.ast), ctx.ast);
         TraverseAction::Proceed
     }
 
@@ -1685,7 +1684,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                 excludes: SymbolFlags::type_alias_excludes(),
                 target,
                 export_state: ExportState::None,
-                ambient: node.declare(ctx.ast()) || self.ambient,
+                ambient: node.declare(ctx.ast) || self.ambient,
             },
         );
         TraverseAction::Proceed
@@ -1718,7 +1717,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                 excludes: SymbolFlags::interface_excludes(),
                 target,
                 export_state: ExportState::None,
-                ambient: node.declare(ctx.ast()) || self.ambient,
+                ambient: node.declare(ctx.ast) || self.ambient,
             },
         );
         TraverseAction::Proceed
@@ -1738,7 +1737,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsEnumDeclaration,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        let flags = if node.is_const(ctx.ast()) {
+        let flags = if node.is_const(ctx.ast) {
             SymbolFlags::CONST_ENUM
         } else {
             SymbolFlags::REGULAR_ENUM
@@ -1747,14 +1746,14 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             node.node_id(),
             BindingContext {
                 flags,
-                excludes: if node.is_const(ctx.ast()) {
+                excludes: if node.is_const(ctx.ast) {
                     SymbolFlags::const_enum_excludes()
                 } else {
                     SymbolFlags::regular_enum_excludes()
                 },
                 target: self.current_scope,
                 export_state: ExportState::None,
-                ambient: node.declare(ctx.ast()) || self.ambient,
+                ambient: node.declare(ctx.ast) || self.ambient,
             },
         );
         TraverseAction::Proceed
@@ -1773,7 +1772,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsModuleDeclaration,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        let instantiated = is_namespace_instantiated(node.body(ctx.ast()), ctx.ast());
+        let instantiated = is_namespace_instantiated(node.body(ctx.ast), ctx.ast);
         self.set_binding_context(
             node.node_id(),
             BindingContext {
@@ -1789,7 +1788,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                 },
                 target: self.current_scope,
                 export_state: ExportState::None,
-                ambient: node.declare(ctx.ast()) || self.ambient,
+                ambient: node.declare(ctx.ast) || self.ambient,
             },
         );
         TraverseAction::Proceed
@@ -1839,8 +1838,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: AssignmentExpression,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.write_targets
-            .push(Some(node.left(ctx.ast()).node_id()));
+        self.write_targets.push(Some(node.left(ctx.ast).node_id()));
         TraverseAction::Proceed
     }
 
@@ -1858,7 +1856,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
         self.write_targets
-            .push(Some(node.argument(ctx.ast()).node_id()));
+            .push(Some(node.argument(ctx.ast).node_id()));
         TraverseAction::Proceed
     }
 
@@ -2046,7 +2044,7 @@ impl<'semantic> ReferenceResolver<'semantic> {
         node: IdentifierReference,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) {
-        let name = node.name(ctx.ast());
+        let name = node.name(ctx.ast);
         let mut scope = self.node_scopes[node.node_id().index()];
         if ctx
             .ancestors()
@@ -2076,7 +2074,7 @@ impl<'semantic> ReferenceResolver<'semantic> {
             name,
             scope,
             node.node_id(),
-            node.span(ctx.ast()),
+            node.span(ctx.ast),
             kind,
             is_read,
             is_write,
@@ -2084,19 +2082,19 @@ impl<'semantic> ReferenceResolver<'semantic> {
         );
         let symbol_id =
             self.symbols
-                .resolve_reference(self.scopes, reference_id, ctx.ast().string(name));
-        node.set_symbol_id(ctx.ast_mut(), symbol_id);
+                .resolve_reference(self.scopes, reference_id, ctx.ast.string(name));
+        node.set_symbol_id(ctx.ast, symbol_id);
         let strict = self.scopes.get(scope).flags.strict;
         if self.type_depth == 0 && strict {
             check_strict_reserved(
                 self.diagnostics,
-                ctx.ast().string(name),
-                node.span(ctx.ast()),
+                ctx.ast.string(name),
+                node.span(ctx.ast),
                 "an identifier reference",
             );
         }
         if is_write && strict {
-            check_assign_target_eval_arguments(self.diagnostics, node, ctx.ast());
+            check_assign_target_eval_arguments(self.diagnostics, node, ctx.ast);
         }
     }
 }
@@ -2137,13 +2135,13 @@ impl<'a> Traverse<'a> for ReferenceResolver<'_> {
         if !is_write_position(node.node_id(), ctx, &self.write_targets) {
             return TraverseAction::Proceed;
         }
-        let name = node.name(ctx.ast());
+        let name = node.name(ctx.ast);
         let scope = self.node_scopes[node.node_id().index()];
         let reference_id = self.symbols.add_reference(
             name,
             scope,
             node.node_id(),
-            node.span(ctx.ast()),
+            node.span(ctx.ast),
             ReferenceKind::Value,
             false,
             true,
@@ -2151,9 +2149,9 @@ impl<'a> Traverse<'a> for ReferenceResolver<'_> {
         );
         let symbol_id =
             self.symbols
-                .resolve_reference(self.scopes, reference_id, ctx.ast().string(name));
-        node.set_symbol_id(ctx.ast_mut(), symbol_id);
-        let name_bytes = ctx.ast().string(name);
+                .resolve_reference(self.scopes, reference_id, ctx.ast.string(name));
+        node.set_symbol_id(ctx.ast, symbol_id);
+        let name_bytes = ctx.ast.string(name);
         if self.scopes.get(scope).flags.strict && is_eval_or_arguments(name_bytes) {
             self.diagnostics.push(Diagnostic {
                 severity: Severity::Error,
@@ -2161,7 +2159,7 @@ impl<'a> Traverse<'a> for ReferenceResolver<'_> {
                     "Cannot assign to '{}' in strict mode",
                     String::from_utf8_lossy(name_bytes)
                 )),
-                span: node.span(ctx.ast()),
+                span: node.span(ctx.ast),
                 help: None,
                 labels: Vec::new(),
             });
@@ -2174,8 +2172,7 @@ impl<'a> Traverse<'a> for ReferenceResolver<'_> {
         node: AssignmentExpression,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.write_targets
-            .push(Some(node.left(ctx.ast()).node_id()));
+        self.write_targets.push(Some(node.left(ctx.ast).node_id()));
         TraverseAction::Proceed
     }
 
@@ -2193,7 +2190,7 @@ impl<'a> Traverse<'a> for ReferenceResolver<'_> {
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
         self.write_targets
-            .push(Some(node.argument(ctx.ast()).node_id()));
+            .push(Some(node.argument(ctx.ast).node_id()));
         TraverseAction::Proceed
     }
 
@@ -2207,7 +2204,7 @@ impl<'a> Traverse<'a> for ReferenceResolver<'_> {
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
         self.write_targets
-            .push(for_left_write_target(node.left(ctx.ast()), ctx.ast()));
+            .push(for_left_write_target(node.left(ctx.ast), ctx.ast));
         TraverseAction::Proceed
     }
 
@@ -2221,7 +2218,7 @@ impl<'a> Traverse<'a> for ReferenceResolver<'_> {
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
         self.write_targets
-            .push(for_left_write_target(node.left(ctx.ast()), ctx.ast()));
+            .push(for_left_write_target(node.left(ctx.ast), ctx.ast));
         TraverseAction::Proceed
     }
 
@@ -2232,7 +2229,7 @@ impl<'a> Traverse<'a> for ReferenceResolver<'_> {
 
 pub(crate) fn analyze_program<'a>(program: Program, ast: &mut Ast<'a>) -> AnalysisParts {
     let mut builder = SemanticBuilder::new(program, ast);
-    let mut traverse_ctx = TraverseCtx::new(ast);
+    let mut traverse_ctx = TraverseCtx::new(ast, ());
     let _ = program.traverse_with(&mut builder, &mut traverse_ctx);
 
     let SemanticBuilder {
@@ -2244,7 +2241,7 @@ pub(crate) fn analyze_program<'a>(program: Program, ast: &mut Ast<'a>) -> Analys
     } = builder;
     let mut resolver =
         ReferenceResolver::new(&scopes, &mut symbols, &node_scopes, &mut diagnostics);
-    let mut traverse_ctx = TraverseCtx::new(ast);
+    let mut traverse_ctx = TraverseCtx::new(ast, ());
     let _ = program.traverse_with(&mut resolver, &mut traverse_ctx);
 
     AnalysisParts {
@@ -2435,20 +2432,20 @@ fn is_arguments_available(ctx: &TraverseCtx<'_, '_>) -> bool {
 
 fn is_private_name_declared(ctx: &TraverseCtx<'_, '_>, name: &[u8]) -> bool {
     for ancestor in ctx.ancestors().skip(1) {
-        let NodeKindData::ClassBody(body) = ctx.ast().kind_data(ancestor) else {
+        let NodeKindData::ClassBody(body) = ctx.ast.kind_data(ancestor) else {
             continue;
         };
-        for id in body.body(ctx.ast()).iter() {
-            let element = ctx.ast().get_node_in_sub_range(id);
-            let key = match ctx.ast().class_element_data(element) {
-                ClassElementData::MethodDefinition(method) => method.key(ctx.ast()),
-                ClassElementData::PropertyDefinition(property) => property.key(ctx.ast()),
+        for id in body.body(ctx.ast).iter() {
+            let element = ctx.ast.get_node_in_sub_range(id);
+            let key = match ctx.ast.class_element_data(element) {
+                ClassElementData::MethodDefinition(method) => method.key(ctx.ast),
+                ClassElementData::PropertyDefinition(property) => property.key(ctx.ast),
                 ClassElementData::StaticBlock(_) | ClassElementData::TsIndexSignature(_) => {
                     continue;
                 }
             };
-            if let PropertyKeyData::PrivateIdentifier(private) = ctx.ast().property_key_data(key)
-                && ctx.ast().string(private.name(ctx.ast())) == name
+            if let PropertyKeyData::PrivateIdentifier(private) = ctx.ast.property_key_data(key)
+                && ctx.ast.string(private.name(ctx.ast)) == name
             {
                 return true;
             }
@@ -2643,10 +2640,10 @@ fn is_write_position(node: NodeId, ctx: &TraverseCtx<'_, '_>, targets: &[Option<
 
 fn is_read_write_position(node: NodeId, ctx: &TraverseCtx<'_, '_>) -> bool {
     for ancestor in ctx.ancestors().skip(1) {
-        match ctx.ast().kind_data(ancestor) {
+        match ctx.ast.kind_data(ancestor) {
             NodeKindData::UpdateExpression(_) => return true,
             NodeKindData::AssignmentExpression(assignment) => {
-                return assignment.operator(ctx.ast()) != AssignmentOperator::Assign;
+                return assignment.operator(ctx.ast) != AssignmentOperator::Assign;
             }
             NodeKindData::MemberExpression(_)
             | NodeKindData::Function(_)

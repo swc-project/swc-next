@@ -63,7 +63,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     fn #enter_fn_name(
                         &mut self,
                         node: #ty_ident,
-                        ctx: &mut TraverseCtx<'_, 'a>,
+                        ctx: &mut TraverseCtx<'_, 'a, State>,
                     ) -> TraverseAction {
                         TraverseAction::Proceed
                     }
@@ -72,7 +72,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     fn #exit_fn_name(
                         &mut self,
                         node: #ty_ident,
-                        ctx: &mut TraverseCtx<'_, 'a>,
+                        ctx: &mut TraverseCtx<'_, 'a, State>,
                     ) {
                     }
                 });
@@ -188,8 +188,8 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     let field_ty_ident = field_ty.repr_ident(schema);
                     let getter_name = safe_ident(&field.name.to_case(Case::Snake));
                     traverse_children.extend(quote! {
-                        let child = node.#getter_name(ctx.ast());
-                        if <#field_ty_ident as TraverseWith<'a>>::traverse_with(
+                        let child = node.#getter_name(ctx.ast);
+                        if <#field_ty_ident as TraverseWith<'a, State>>::traverse_with(
                             child,
                             traverser,
                             ctx,
@@ -207,12 +207,12 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     },
                 });
                 traverse_with_impls.extend(quote! {
-                    impl<'a> TraverseWith<'a> for #ty_ident {
+                    impl<'a, State> TraverseWith<'a, State> for #ty_ident {
                         #[inline]
-                        fn traverse_with<T: ?Sized + Traverse<'a>>(
+                        fn traverse_with<T: ?Sized + Traverse<'a, State>>(
                             self,
                             traverser: &mut T,
-                            ctx: &mut TraverseCtx<'_, 'a>,
+                            ctx: &mut TraverseCtx<'_, 'a, State>,
                         ) -> TraverseAction {
                             walk_node(self.node_id(), traverser, ctx)
                         }
@@ -294,12 +294,12 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 });
 
                 traverse_with_impls.extend(quote! {
-                    impl<'a> TraverseWith<'a> for #ty_ident {
+                    impl<'a, State> TraverseWith<'a, State> for #ty_ident {
                         #[inline]
-                        fn traverse_with<T: ?Sized + Traverse<'a>>(
+                        fn traverse_with<T: ?Sized + Traverse<'a, State>>(
                             self,
                             traverser: &mut T,
-                            ctx: &mut TraverseCtx<'_, 'a>,
+                            ctx: &mut TraverseCtx<'_, 'a, State>,
                         ) -> TraverseAction {
                             walk_node(self.node_id(), traverser, ctx)
                         }
@@ -385,15 +385,15 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 });
 
                 traverse_with_impls.extend(quote! {
-                    impl<'a> TraverseWith<'a> for #ty_ident {
+                    impl<'a, State> TraverseWith<'a, State> for #ty_ident {
                         #[inline]
-                        fn traverse_with<T: ?Sized + Traverse<'a>>(
+                        fn traverse_with<T: ?Sized + Traverse<'a, State>>(
                             self,
                             traverser: &mut T,
-                            ctx: &mut TraverseCtx<'_, 'a>,
+                            ctx: &mut TraverseCtx<'_, 'a, State>,
                         ) -> TraverseAction {
                             if let Some(it) = self {
-                                return <#inner_ty_ident as TraverseWith<'a>>::traverse_with(
+                                return <#inner_ty_ident as TraverseWith<'a, State>>::traverse_with(
                                     it,
                                     traverser,
                                     ctx,
@@ -485,16 +485,16 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 });
 
                 traverse_with_impls.extend(quote! {
-                    impl<'a> TraverseWith<'a> for #ty_ident {
+                    impl<'a, State> TraverseWith<'a, State> for #ty_ident {
                         #[inline]
-                        fn traverse_with<T: ?Sized + Traverse<'a>>(
+                        fn traverse_with<T: ?Sized + Traverse<'a, State>>(
                             self,
                             traverser: &mut T,
-                            ctx: &mut TraverseCtx<'_, 'a>,
+                            ctx: &mut TraverseCtx<'_, 'a, State>,
                         ) -> TraverseAction {
                             for child_idx in self.iter() {
-                                let child = ctx.ast().get_node_in_sub_range(child_idx);
-                                if <#inner_ty_ident as TraverseWith<'a>>::traverse_with(
+                                let child = ctx.ast.get_node_in_sub_range(child_idx);
+                                if <#inner_ty_ident as TraverseWith<'a, State>>::traverse_with(
                                     child,
                                     traverser,
                                     ctx,
@@ -538,13 +538,13 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
 
             #visit_mut_with_impls
 
-            pub trait Traverse<'a> {
+            pub trait Traverse<'a, State = ()> {
                 #[inline]
                 fn enter_node(
                     &mut self,
                     node_id: NodeId,
                     kind: NodeKind,
-                    ctx: &mut TraverseCtx<'_, 'a>,
+                    ctx: &mut TraverseCtx<'_, 'a, State>,
                 ) -> TraverseAction {
                     TraverseAction::Proceed
                 }
@@ -554,27 +554,27 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     &mut self,
                     node_id: NodeId,
                     kind: NodeKind,
-                    ctx: &mut TraverseCtx<'_, 'a>,
+                    ctx: &mut TraverseCtx<'_, 'a, State>,
                 ) {
                 }
 
                 #traverse_functions
             }
 
-            pub trait TraverseWith<'a> {
-                fn traverse_with<T: ?Sized + Traverse<'a>>(
+            pub trait TraverseWith<'a, State = ()> {
+                fn traverse_with<T: ?Sized + Traverse<'a, State>>(
                     self,
                     traverser: &mut T,
-                    ctx: &mut TraverseCtx<'_, 'a>,
+                    ctx: &mut TraverseCtx<'_, 'a, State>,
                 ) -> TraverseAction;
             }
 
             #traverse_with_impls
 
-            fn walk_node<'a, T: ?Sized + Traverse<'a>>(
+            fn walk_node<'a, State, T: ?Sized + Traverse<'a, State>>(
                 node_id: NodeId,
                 traverser: &mut T,
-                ctx: &mut TraverseCtx<'_, 'a>,
+                ctx: &mut TraverseCtx<'_, 'a, State>,
             ) -> TraverseAction {
                 ctx.push_node(node_id);
 
