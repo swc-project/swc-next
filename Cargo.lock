@@ -2090,7 +2090,7 @@ dependencies = [
 
 [[package]]
 name = "swc_experimental_ecma_codegen"
-version = "0.1.0"
+version = "0.11.0"
 dependencies = [
  "swc_experimental_allocator",
  "swc_experimental_ecma_ast",
@@ -2170,6 +2170,7 @@ dependencies = [
  "serde_json",
  "swc_experimental_allocator",
  "swc_experimental_ecma_ast",
+ "swc_experimental_ecma_codegen",
  "swc_experimental_ecma_parser",
  "swc_experimental_ecma_semantic",
 ]

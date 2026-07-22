@@ -5,7 +5,7 @@ use rayon::ThreadPoolBuilder;
 
 use crate::{
     cases::{Case, test262::Test262Case, typescript::TypeScriptCase},
-    runner::{Runner, parser::ParserRunner},
+    runner::{Runner, codegen::CodegenRunner, parser::ParserRunner},
     suite::TestResult,
     util::crate_root,
 };
@@ -43,6 +43,8 @@ pub fn main() {
 
     update_snapshot::<ParserRunner, Test262Case>(&args);
     update_snapshot::<ParserRunner, TypeScriptCase>(&args);
+    update_snapshot::<CodegenRunner, Test262Case>(&args);
+    update_snapshot::<CodegenRunner, TypeScriptCase>(&args);
 }
 
 fn update_snapshot<R: Runner, C: Case>(args: &AppArgs) {

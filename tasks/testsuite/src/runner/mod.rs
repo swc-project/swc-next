@@ -1,5 +1,6 @@
 use crate::{AppArgs, cases::Case, suite::TestResult};
 
+pub mod codegen;
 pub mod parser;
 
 pub trait Runner {
