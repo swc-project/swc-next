@@ -1,9 +1,27 @@
 use std::path::PathBuf;
 
-use swc_experimental_allocator::Allocator;
-use swc_experimental_ecma_ast::{Ast, Comment, Program};
+use swc_experimental_allocator::{Allocator, vec::Vec as ArenaVec};
+use swc_experimental_ecma_ast::*;
 
-use crate::SourceMap;
+use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator};
+use crate::util::{
+    AstAdapterState, Level, OperatorCode, SourceComment, append_lowered_template_name,
+    append_lowered_template_prefix, assignment_operator, ast_text, binary_operator_code,
+    binding_pattern_identifier_name, can_omit_arrow_parens, conditional_in_was_reassociated,
+    decorator_expression_needs_parentheses, decorator_omit_newline_after,
+    empty_import_attribute_offsets, export_default_expr_was_parenthesized, expr_was_parenthesized,
+    format_float, import_attribute_offsets, import_declaration_has_empty_clause, is_identifier,
+    is_identifier_continue_byte, is_identifier_es5_and_esnext, is_jsx_tag_single_line,
+    is_legal_comment, member_object_was_parenthesized, module_name_bytes, next_code_point,
+    next_level, parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
+    scan_comments, template_contains_closing_script, token_offset_after_decorators, unary_operator,
+    unary_operator_code, update_operator_code,
+};
+
+use crate::{
+    SourceMap,
+    sourcemap::{ChunkBuilder, generate_line_offset_tables, make_chunk_builder},
+};
 
 #[derive(Clone)]
 pub struct Options {
@@ -30,11 +48,4194 @@ pub struct PrintResult<'a> {
     pub map: Option<SourceMap<'a>>,
 }
 
+fn parse_small_int(bytes: &[u8]) -> i32 {
+    let was_negative = bytes[0] == b'-';
+    let bytes = if was_negative { &bytes[1..] } else { bytes };
+    let mut n = 0;
+    for &byte in bytes {
+        n = n * 10 + i32::from(byte - b'0');
+    }
+    if was_negative { -n } else { n }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum PrintAfterDecorator {
+    Newline,
+    Space,
+}
+
+struct Printer<'a> {
+    allocator: &'a Allocator,
+    ast: &'a Ast<'a>,
+    options: Options,
+    js: ArenaVec<'a, u8>,
+    legal_comments: Vec<Comment>,
+    source_comments: ArenaVec<'a, SourceComment>,
+    // esbuild intentionally uses one reusable heap stack for all iterative
+    // expression printing. Keep the same allocation shape even though this AST
+    // represents logical and binary expressions with different node types.
+    expr_visitor_stack: ArenaVec<'a, BinaryExprVisitor>,
+    builder: ChunkBuilder<'a>,
+    next_comment: usize,
+    indent: usize,
+    print_next_indent_as_space: bool,
+    needs_semicolon: bool,
+    stmt_start: usize,
+    export_default_start: usize,
+    arrow_expr_start: usize,
+    for_of_init_start: usize,
+    prev_op_end: usize,
+    prev_op: OperatorCode,
+    need_space_before_dot: usize,
+    prev_reg_exp_end: usize,
+    with_nesting: usize,
+    forbid_in: bool,
+    int_to_bytes_buffer: [u8; 64],
+    adapter: AstAdapterState,
+}
+
 pub fn print<'a>(
     allocator: &'a Allocator,
     tree: &'a Ast<'a>,
     root: Program,
     options: Options,
 ) -> PrintResult<'a> {
-    todo!()
+    let wants_map = options.source_map_path.is_some();
+    let source_comments = scan_comments(tree.source(), allocator);
+    let line_offset_tables = if wants_map {
+        generate_line_offset_tables(allocator, tree.source())
+    } else {
+        ArenaVec::new_in(allocator)
+    };
+    let legal_comments = source_comments
+        .iter()
+        .filter(|comment| is_legal_comment(tree.source(), **comment))
+        .map(|comment| Comment {
+            comment_type: comment.comment_type,
+            value: tree.source_slice(comment.value_start, comment.value_end),
+            span: Span::new(comment.start, comment.end),
+        })
+        .collect();
+    let mut p = Printer {
+        allocator,
+        ast: tree,
+        options,
+        js: ArenaVec::new_in(allocator),
+        legal_comments,
+        source_comments,
+        expr_visitor_stack: ArenaVec::new_in(allocator),
+        builder: make_chunk_builder(allocator, line_offset_tables),
+        next_comment: 0,
+        indent: 0,
+        print_next_indent_as_space: false,
+        needs_semicolon: false,
+        stmt_start: usize::MAX,
+        export_default_start: usize::MAX,
+        arrow_expr_start: usize::MAX,
+        for_of_init_start: usize::MAX,
+        prev_op_end: usize::MAX,
+        prev_op: OperatorCode::Other,
+        need_space_before_dot: usize::MAX,
+        prev_reg_exp_end: usize::MAX,
+        with_nesting: 0,
+        forbid_in: false,
+        int_to_bytes_buffer: [0; 64],
+        adapter: AstAdapterState::new(tree, root),
+    };
+    append_lowered_template_prefix(&mut p.js, p.adapter.lowered_template_count);
+    p.print_program(root);
+    let Printer {
+        options,
+        js,
+        legal_comments,
+        builder,
+        ..
+    } = p;
+    let map = if wants_map {
+        let path = options.source_map_path.as_deref().unwrap();
+        let path = path.as_os_str().as_encoded_bytes();
+        let chunk = builder.generate_chunk(js.as_slice());
+        Some(crate::util::finalize_source_map(
+            allocator,
+            tree.source(),
+            path,
+            chunk,
+        ))
+    } else {
+        None
+    };
+    let code = js.into_bump_slice();
+    PrintResult {
+        code,
+        legal_comments,
+        map,
+    }
+}
+
+impl BinaryExprVisitor {
+    fn check_and_prepare(&mut self, p: &mut Printer<'_>) -> bool {
+        let e = self.e;
+
+        let operator = e.operator(p.ast);
+        let precedence = operator.precedence();
+
+        self.operator = operator;
+        self.wrap = self.level > precedence
+            || (self.flags && operator == BinaryishOperator::Binary(BinaryOperator::In));
+
+        if self.wrap {
+            p.print("(");
+        }
+
+        let local_forbid_in = self.flags && !self.wrap;
+        p.forbid_in = local_forbid_in;
+
+        self.left_level = if operator.is_right_associative() {
+            next_level(precedence)
+        } else {
+            precedence
+        };
+        self.right_level = if operator.is_right_associative() {
+            precedence
+        } else {
+            next_level(precedence)
+        };
+        self.left_flags = local_forbid_in;
+
+        match operator {
+            BinaryishOperator::Logical(LogicalOperator::NullishCoalescing) => {
+                let needs_nullish_wrap = |child| {
+                    matches!(
+                        p.ast.expr_data(child),
+                        ExprData::LogicalExpression(logical)
+                            if matches!(
+                                logical.operator(p.ast),
+                                LogicalOperator::And | LogicalOperator::Or
+                            )
+                    )
+                };
+                if needs_nullish_wrap(e.left(p.ast)) {
+                    self.left_level = Level::Prefix;
+                }
+                if needs_nullish_wrap(e.right(p.ast)) {
+                    self.right_level = Level::Prefix;
+                }
+            }
+            BinaryishOperator::Binary(BinaryOperator::Exponent) => {
+                if matches!(
+                    p.ast.expr_data(e.left(p.ast)),
+                    ExprData::UnaryExpression(_)
+                        | ExprData::AwaitExpression(_)
+                        | ExprData::TsTypeAssertion(_)
+                ) {
+                    self.left_level = Level::Call;
+                }
+            }
+            _ => {}
+        }
+
+        let Binaryish::Binary(binary) = e else {
+            return true;
+        };
+        if let Some(conditional) = conditional_in_was_reassociated(p.ast, binary) {
+            p.print_expr(conditional.test(p.ast), Level::Conditional);
+            p.print_space();
+            p.print("?");
+            p.print_space();
+            p.print_expr(conditional.consequent(p.ast), Level::Yield);
+            p.print_space();
+            p.print(":");
+            p.print_space();
+            p.print_expr(conditional.alternate(p.ast), precedence);
+            p.print_space();
+            p.print_space_before_identifier();
+            p.print(operator.text());
+            p.print(" ");
+            p.print_expr(e.right(p.ast), next_level(precedence));
+            if self.wrap {
+                p.print(")");
+            }
+            p.forbid_in = self.flags;
+            return false;
+        }
+
+        true
+    }
+
+    fn visit_right_and_finish(self, p: &mut Printer<'_>) {
+        p.print_space();
+        if self.operator.is_keyword() {
+            p.print_space_before_identifier();
+            p.print(self.operator.text());
+            // This separator is syntactically required even when whitespace
+            // minification is enabled (`in this`, not `inthis`).
+            p.print(" ");
+        } else {
+            match self.operator {
+                BinaryishOperator::Binary(operator) => {
+                    let operator_code = binary_operator_code(operator);
+                    p.print_space_before_operator(operator_code);
+                    p.print(self.operator.text());
+                    p.prev_op = operator_code;
+                    p.prev_op_end = p.js.len();
+                }
+                BinaryishOperator::Logical(_) => p.print(self.operator.text()),
+            }
+        }
+        if !self.operator.is_keyword() {
+            p.print_space();
+        }
+
+        p.forbid_in = self.flags && !self.wrap;
+        p.print_expr(self.e.right(p.ast), self.right_level);
+
+        if self.wrap {
+            p.print(")");
+        }
+        p.forbid_in = self.flags;
+    }
+}
+
+impl<'a> Printer<'a> {
+    #[inline]
+    fn add_source_mapping(&mut self, original_offset: u32) {
+        if self.options.source_map_path.is_some() {
+            self.builder
+                .add_source_mapping(original_offset, &[], self.js.as_slice());
+        }
+    }
+
+    #[inline]
+    fn add_source_mapping_for_name(&mut self, original_offset: u32, original_name: &'a [u8]) {
+        if self.options.source_map_path.is_some() {
+            self.builder
+                .add_source_mapping(original_offset, original_name, self.js.as_slice());
+        }
+    }
+
+    #[inline]
+    fn print(&mut self, text: &str) {
+        self.js.extend_from_slice_copy(text.as_bytes());
+    }
+
+    #[inline]
+    fn print_bytes(&mut self, text: &[u8]) {
+        self.js.extend_from_slice_copy(text);
+    }
+
+    fn print_program(&mut self, program: Program) {
+        if let Some(hashbang) = program.hashbang(self.ast) {
+            self.print("#!");
+            self.print_bytes(ast_text(self.ast, hashbang.value(self.ast)));
+            self.print("\n");
+        }
+        for id in program.body(self.ast).iter() {
+            let item = self.ast.get_node_in_sub_range(id);
+            match self.ast.statement_list_item_data(item) {
+                StatementListItemData::Stmt(stmt) => self.print_stmt(stmt),
+                StatementListItemData::Directive(directive) => {
+                    self.print_indent();
+                    self.print_quoted(ast_text(self.ast, directive.value(self.ast)), false);
+                    self.print(";");
+                    self.print_newline();
+                }
+            }
+            self.print_semicolon_if_needed();
+        }
+        self.print_comments_before(self.ast.source().len() as u32, true, false);
+    }
+
+    fn print_comments_before(&mut self, offset: u32, statement: bool, preserve_all: bool) {
+        while self.next_comment < self.source_comments.len()
+            && self.source_comments[self.next_comment].end <= offset
+        {
+            let comment = self.source_comments[self.next_comment];
+            self.next_comment += 1;
+            if !self.options.comments
+                || (!preserve_all && !is_legal_comment(self.ast.source(), comment))
+            {
+                continue;
+            }
+            let value =
+                &self.ast.source()[comment.value_start as usize..comment.value_end as usize];
+            let mut trim_start = 0;
+            while value[trim_start..]
+                .first()
+                .is_some_and(|c| c.is_ascii_whitespace())
+            {
+                trim_start += 1;
+            }
+            let mut trim_end = value.len();
+            while trim_end > trim_start && value[trim_end - 1].is_ascii_whitespace() {
+                trim_end -= 1;
+            }
+            let trimmed = &value[trim_start..trim_end];
+            if comment.comment_type == CommentType::Block
+                && matches!(
+                    trimmed,
+                    b"@__PURE__" | b"#__PURE__" | b"@__NO_SIDE_EFFECTS__" | b"#__NO_SIDE_EFFECTS__"
+                )
+            {
+                if self.js.last().is_some_and(|&c| !c.is_ascii_whitespace()) {
+                    self.print(" ");
+                }
+                self.print("/* ");
+                self.print_bytes(trimmed);
+                self.print(" */ ");
+                continue;
+            }
+            let comment_at_stmt_start = !statement && self.js.len() == self.stmt_start;
+            if statement {
+                if self.js.last().is_some_and(|&c| c != b'\n') {
+                    self.print_newline();
+                }
+                self.print_indent();
+            } else if self.js.last().is_some_and(|&c| !c.is_ascii_whitespace()) {
+                self.print(" ");
+            }
+            match comment.comment_type {
+                CommentType::Line => {
+                    self.print("//");
+                    self.print_comment_text(value);
+                    self.print("\n");
+                    if !statement {
+                        self.print_indent();
+                    }
+                }
+                CommentType::Block => {
+                    self.print_indented_block_comment(value);
+                    if statement || value.contains(&b'\n') || comment_at_stmt_start {
+                        self.print_newline();
+                    } else {
+                        self.print(" ");
+                    }
+                }
+            }
+        }
+    }
+
+    fn print_attached_comments(
+        &mut self,
+        node: NodeId,
+        position: AttachedCommentPosition,
+        statement: bool,
+    ) {
+        if !self.options.comments {
+            return;
+        }
+        for comment in self.ast.comments_of(node) {
+            if comment.position != position {
+                continue;
+            }
+            if statement {
+                self.print_indent();
+            } else if self.js.last().is_some_and(|&c| !c.is_ascii_whitespace()) {
+                self.print(" ");
+            }
+            match comment.comment_type {
+                CommentType::Line => {
+                    self.print("//");
+                    self.print_comment_text(ast_text(self.ast, comment.value));
+                    self.print("\n");
+                }
+                CommentType::Block => {
+                    self.print_indented_block_comment(ast_text(self.ast, comment.value));
+                    if statement || !comment.same_line {
+                        self.print_newline();
+                    } else {
+                        self.print(" ");
+                    }
+                }
+            }
+        }
+    }
+
+    fn print_indented_block_comment(&mut self, value: &[u8]) {
+        self.print("/*");
+        let mut start = 0;
+        while start < value.len() {
+            let mut end = start;
+            let mut newline_width = 0;
+            while end < value.len() {
+                newline_width = match value[end] {
+                    b'\n' => 1,
+                    b'\r' => usize::from(value.get(end + 1) == Some(&b'\n')) + 1,
+                    0xe2 if value.get(end + 1) == Some(&0x80)
+                        && matches!(value.get(end + 2), Some(0xa8 | 0xa9)) =>
+                    {
+                        3
+                    }
+                    _ => 0,
+                };
+                if newline_width != 0 {
+                    break;
+                }
+                end += 1;
+            }
+            if newline_width == 0 {
+                break;
+            }
+            self.print_comment_text(&value[start..end]);
+            self.print("\n");
+            self.print_indent();
+            start = end + newline_width;
+            let whitespace_start = start;
+            while value[start..]
+                .first()
+                .is_some_and(|c| c.is_ascii_whitespace())
+            {
+                start += 1;
+            }
+            if start != whitespace_start || value[start..].first() == Some(&b'*') {
+                self.print(" ");
+            }
+        }
+        self.print_comment_text(&value[start..]);
+        self.print("*/");
+    }
+
+    fn print_comment_text(&mut self, text: &[u8]) {
+        let mut start = 0;
+        for index in 0..text.len().saturating_sub(7) {
+            if text[index] == b'<'
+                && text[index + 1] == b'/'
+                && text[index + 2..index + 8].eq_ignore_ascii_case(b"script")
+            {
+                self.print_bytes(&text[start..index + 1]);
+                self.print("\\");
+                start = index + 1;
+            }
+        }
+        self.print_bytes(&text[start..]);
+    }
+
+    fn discard_comments_before_trailing_comma(&mut self, close_offset: u32) {
+        while let Some(comment) = self.source_comments.get(self.next_comment).copied() {
+            if comment.end > close_offset || is_legal_comment(self.ast.source(), comment) {
+                break;
+            }
+            if !self.ast.source()[comment.end as usize..close_offset as usize].contains(&b',') {
+                break;
+            }
+            self.next_comment += 1;
+        }
+    }
+
+    fn has_direct_argument_comments(
+        &self,
+        args: TypedSubRange<Argument>,
+        close_offset: u32,
+    ) -> bool {
+        self.source_comments[self.next_comment..]
+            .iter()
+            .take_while(|comment| comment.end <= close_offset)
+            .any(|comment| {
+                !args.iter().any(|id| {
+                    let span = self.ast.get_node_in_sub_range(id).span(self.ast);
+                    span.start <= comment.start && comment.end <= span.end
+                })
+            })
+    }
+
+    #[inline]
+    fn print_indent(&mut self) {
+        if self.options.minify {
+            return;
+        }
+        if self.print_next_indent_as_space {
+            self.print(" ");
+            self.print_next_indent_as_space = false;
+            return;
+        }
+        for _ in 0..self.indent {
+            self.print("  ");
+        }
+    }
+
+    #[inline]
+    fn print_space(&mut self) {
+        if !self.options.minify {
+            self.print(" ");
+        }
+    }
+
+    #[inline]
+    fn print_newline(&mut self) {
+        if !self.options.minify {
+            self.print("\n");
+        }
+    }
+
+    #[inline]
+    fn print_space_before_operator(&mut self, next: OperatorCode) {
+        if self.prev_op_end == self.js.len() {
+            let previous = self.prev_op;
+            if (matches!(previous, OperatorCode::Add | OperatorCode::Positive)
+                && matches!(
+                    next,
+                    OperatorCode::Add | OperatorCode::Positive | OperatorCode::PreIncrement
+                ))
+                || (matches!(previous, OperatorCode::Subtract | OperatorCode::Negative)
+                    && matches!(
+                        next,
+                        OperatorCode::Subtract
+                            | OperatorCode::Negative
+                            | OperatorCode::PreDecrement
+                    ))
+                || (previous == OperatorCode::PostDecrement && next == OperatorCode::GreaterThan)
+                || (previous == OperatorCode::Not
+                    && next == OperatorCode::PreDecrement
+                    && self.js.len() > 1
+                    && self.js[self.js.len() - 2] == b'<')
+            {
+                self.print(" ");
+            }
+        }
+    }
+
+    #[inline]
+    fn print_semicolon_after_statement(&mut self) {
+        if self.options.minify {
+            self.needs_semicolon = true;
+        } else {
+            self.print(";\n");
+            self.needs_semicolon = false;
+        }
+    }
+
+    #[inline]
+    fn print_semicolon_if_needed(&mut self) {
+        if self.needs_semicolon {
+            self.print(";");
+            self.needs_semicolon = false;
+        }
+    }
+
+    #[inline]
+    fn print_space_before_identifier(&mut self) {
+        if self.prev_reg_exp_end == self.js.len()
+            || self
+                .js
+                .last()
+                .is_some_and(|&last| is_identifier_continue_byte(last) || last == b'\\')
+        {
+            self.print(" ");
+        }
+    }
+
+    fn print_identifier(&mut self, name: &[u8]) {
+        self.print_space_before_identifier();
+        if !self.options.ascii_only || name.is_ascii() {
+            self.print_bytes(name);
+            return;
+        }
+        let mut i = 0;
+        while i < name.len() {
+            let (cp, size) = next_code_point(name, i);
+            i += size;
+            if cp <= 0x7e {
+                self.js.push(cp as u8);
+            } else if cp <= 0xffff {
+                push_u16_escape(&mut self.js, cp as u16);
+            } else {
+                push_code_point_escape(&mut self.js, cp);
+            }
+        }
+    }
+
+    fn can_print_identifier(&self, name: &[u8]) -> bool {
+        is_identifier_es5_and_esnext(name)
+    }
+
+    fn print_quoted(&mut self, value: &[u8], allow_backtick: bool) {
+        let single_cost = value.iter().filter(|&&byte| byte == b'\'').count();
+        let double_cost = value.iter().filter(|&&byte| byte == b'"').count();
+        let mut backtick_cost = value.iter().filter(|&&byte| byte == b'`').count();
+        backtick_cost += value.windows(2).filter(|pair| *pair == b"${").count();
+        let quote = if double_cost > single_cost {
+            if allow_backtick && single_cost > backtick_cost {
+                b'`'
+            } else {
+                b'\''
+            }
+        } else if allow_backtick && double_cost > backtick_cost {
+            b'`'
+        } else {
+            b'"'
+        };
+        quote_into(&mut self.js, value, quote, self.options.ascii_only);
+    }
+
+    fn print_stmt(&mut self, stmt: Stmt) {
+        self.print_comments_before(stmt.span(self.ast).start, true, true);
+        self.print_attached_comments(stmt.node_id(), AttachedCommentPosition::Before, true);
+        self.add_source_mapping(stmt.span(self.ast).start);
+        self.stmt_start = self.js.len();
+        match self.ast.stmt_data(stmt) {
+            StmtData::BlockStatement(s) => {
+                self.print_indent();
+                self.print_block(s);
+                self.print_newline();
+            }
+            StmtData::BreakStatement(s) => {
+                self.print_indent();
+                self.add_source_mapping(stmt.span(self.ast).start);
+                self.print("break");
+                if let Some(label) = s.label(self.ast) {
+                    self.print(" ");
+                    let name = ast_text(self.ast, label.name(self.ast));
+                    self.add_source_mapping_for_name(label.span(self.ast).start, name);
+                    self.print_identifier(name);
+                }
+                self.print_semicolon_after_statement();
+            }
+            StmtData::ContinueStatement(s) => {
+                self.print_indent();
+                self.add_source_mapping(stmt.span(self.ast).start);
+                self.print("continue");
+                if let Some(label) = s.label(self.ast) {
+                    self.print(" ");
+                    let name = ast_text(self.ast, label.name(self.ast));
+                    self.add_source_mapping_for_name(label.span(self.ast).start, name);
+                    self.print_identifier(name);
+                }
+                self.print_semicolon_after_statement();
+            }
+            StmtData::DebuggerStatement(_) => {
+                self.print_indent();
+                self.add_source_mapping(stmt.span(self.ast).start);
+                self.print("debugger");
+                self.print_semicolon_after_statement();
+            }
+            StmtData::DoWhileStatement(s) => {
+                self.print_indent();
+                self.add_source_mapping(stmt.span(self.ast).start);
+                self.print("do");
+                let body = s.body(self.ast);
+                if let Some(block) = body.as_block_statement(self.ast) {
+                    self.print_space();
+                    self.print_block(block);
+                    self.print_space();
+                } else {
+                    self.print_newline();
+                    self.indent += 1;
+                    self.print_stmt(body);
+                    self.indent -= 1;
+                    self.print_indent();
+                }
+                self.print_semicolon_if_needed();
+                self.print("while");
+                self.print_space();
+                self.print("(");
+                self.print_expr(s.test(self.ast), Level::Lowest);
+                self.print(");");
+                self.needs_semicolon = false;
+                self.print_newline();
+            }
+            StmtData::EmptyStatement(_) => {
+                self.print_indent();
+                self.add_source_mapping(stmt.span(self.ast).start);
+                self.print_semicolon_after_statement();
+            }
+            StmtData::ExpressionStatement(s) => {
+                self.print_indent();
+                self.stmt_start = self.js.len();
+                self.print_expr(s.expression(self.ast), Level::Lowest);
+                self.print_semicolon_after_statement();
+            }
+            StmtData::ForInStatement(s) => {
+                self.print_indent();
+                self.add_source_mapping(stmt.span(self.ast).start);
+                self.print("for");
+                self.print_space();
+                self.print("(");
+                let left = s.left(self.ast);
+                let leading_comment_end = self.source_comments[self.next_comment..]
+                    .first()
+                    .filter(|comment| comment.end <= left.span(self.ast).end)
+                    .map(|comment| comment.end);
+                if !self.options.minify
+                    && let Some(comment_end) = leading_comment_end
+                {
+                    self.print_newline();
+                    self.indent += 1;
+                    self.print_comments_before(comment_end, true, true);
+                    self.print_indent();
+                    self.print_for_left(left);
+                    self.print(" in ");
+                    self.print_expr(s.right(self.ast), Level::Lowest);
+                    self.print_newline();
+                    self.indent -= 1;
+                    self.print_indent();
+                } else {
+                    self.print_for_left(left);
+                    self.print(" in ");
+                    self.print_expr(s.right(self.ast), Level::Lowest);
+                }
+                self.print(")");
+                self.print_body(s.body(self.ast));
+            }
+            StmtData::ForOfStatement(s) => {
+                self.print_indent();
+                self.add_source_mapping(stmt.span(self.ast).start);
+                self.print("for");
+                if s.r#await(self.ast) {
+                    self.print(" await");
+                }
+                self.print_space();
+                self.print("(");
+                let left = s.left(self.ast);
+                let leading_comment_end = self.source_comments[self.next_comment..]
+                    .first()
+                    .filter(|comment| comment.end <= left.span(self.ast).end)
+                    .map(|comment| comment.end);
+                if !self.options.minify
+                    && let Some(comment_end) = leading_comment_end
+                {
+                    self.print_newline();
+                    self.indent += 1;
+                    self.print_comments_before(comment_end, true, true);
+                    self.print_indent();
+                    self.for_of_init_start = self.js.len();
+                    self.print_for_left(left);
+                    self.print(" of ");
+                    self.print_expr(s.right(self.ast), Level::Assignment);
+                    self.print_newline();
+                    self.indent -= 1;
+                    self.print_indent();
+                } else {
+                    self.for_of_init_start = self.js.len();
+                    self.print_for_left(left);
+                    self.print(" of ");
+                    self.print_expr(s.right(self.ast), Level::Assignment);
+                }
+                self.print(")");
+                self.print_body(s.body(self.ast));
+            }
+            StmtData::ForStatement(s) => {
+                self.print_indent();
+                self.add_source_mapping(stmt.span(self.ast).start);
+                self.print("for");
+                self.print_space();
+                self.print("(");
+                if let Some(init) = s.init(self.ast) {
+                    let old_forbid_in = self.forbid_in;
+                    self.forbid_in = true;
+                    match self.ast.for_statement_init_data(init) {
+                        ForStatementInitData::VariableDeclaration(v) => {
+                            self.print_variable_decl(v, false)
+                        }
+                        ForStatementInitData::Expr(e) => self.print_expr(e, Level::Lowest),
+                    }
+                    self.forbid_in = old_forbid_in;
+                }
+                self.print(";");
+                self.print_space();
+                if let Some(test) = s.test(self.ast) {
+                    self.print_expr(test, Level::Lowest);
+                }
+                self.print(";");
+                self.print_space();
+                if let Some(update) = s.update(self.ast) {
+                    self.print_expr(update, Level::Lowest);
+                }
+                self.print(")");
+                self.print_body(s.body(self.ast));
+            }
+            StmtData::IfStatement(s) => self.print_if(s),
+            StmtData::LabeledStatement(s) => {
+                self.print_indent();
+                let label = s.label(self.ast);
+                let name = ast_text(self.ast, label.name(self.ast));
+                self.add_source_mapping_for_name(label.span(self.ast).start, name);
+                self.print_identifier(name);
+                self.print(":");
+                self.print_body(s.body(self.ast));
+            }
+            StmtData::ReturnStatement(s) => {
+                self.print_indent();
+                self.add_source_mapping(stmt.span(self.ast).start);
+                self.print("return");
+                if let Some(value) = s.argument(self.ast) {
+                    let can_omit_space = self.options.minify
+                        && matches!(
+                            self.ast.expr_data(value),
+                            ExprData::BinaryExpression(binary)
+                                if binary.operator(self.ast) == BinaryOperator::In
+                                    && matches!(
+                                        self.ast.expr_data(binary.left(self.ast)),
+                                        ExprData::PrivateIdentifier(_)
+                                    )
+                        );
+                    if !can_omit_space {
+                        self.print(" ");
+                    }
+                    self.print_expr(value, Level::Lowest);
+                }
+                self.print_semicolon_after_statement();
+            }
+            StmtData::SwitchStatement(s) => self.print_switch(s),
+            StmtData::ThrowStatement(s) => {
+                self.print_indent();
+                self.add_source_mapping(stmt.span(self.ast).start);
+                self.print("throw");
+                self.print_space();
+                self.print_expr(s.argument(self.ast), Level::Lowest);
+                self.print_semicolon_after_statement();
+            }
+            StmtData::TryStatement(s) => self.print_try(s),
+            StmtData::WhileStatement(s) => {
+                self.print_indent();
+                self.add_source_mapping(stmt.span(self.ast).start);
+                self.print("while");
+                self.print_space();
+                self.print("(");
+                self.print_expr(s.test(self.ast), Level::Lowest);
+                self.print(")");
+                self.print_body(s.body(self.ast));
+            }
+            StmtData::WithStatement(s) => {
+                self.print_indent();
+                self.add_source_mapping(stmt.span(self.ast).start);
+                self.print("with");
+                self.print_space();
+                self.print("(");
+                self.print_expr(s.object(self.ast), Level::Lowest);
+                self.print(")");
+                self.with_nesting += 1;
+                self.print_body(s.body(self.ast));
+                self.with_nesting -= 1;
+            }
+            StmtData::Declaration(d) => {
+                if !matches!(self.ast.decl_data(d), DeclData::Class(_)) {
+                    self.print_indent();
+                }
+                let ends_with_block = matches!(
+                    self.ast.decl_data(d),
+                    DeclData::Function(_)
+                        | DeclData::Class(_)
+                        | DeclData::TsInterfaceDeclaration(_)
+                        | DeclData::TsModuleDeclaration(_)
+                        | DeclData::TsGlobalDeclaration(_)
+                );
+                self.print_decl(d);
+                if ends_with_block {
+                    self.print_newline();
+                } else {
+                    self.print_semicolon_after_statement();
+                }
+            }
+            StmtData::ImportDeclaration(s) => {
+                self.print_indent();
+                self.add_source_mapping(stmt.span(self.ast).start);
+                self.print_import(s);
+                self.print_semicolon_after_statement();
+            }
+            StmtData::ExportNamedDeclaration(s) => self.print_export_named(s),
+            StmtData::ExportDefaultDeclaration(s) => self.print_export_default(s),
+            StmtData::ExportAllDeclaration(s) => {
+                self.print_indent();
+                self.add_source_mapping(stmt.span(self.ast).start);
+                self.print("export");
+                self.print_space();
+                if s.export_kind(self.ast) == ImportOrExportKind::Type {
+                    self.print("type ");
+                }
+                self.print("*");
+                if let Some(exported) = s.exported(self.ast) {
+                    self.print_space();
+                    self.print_space_before_identifier();
+                    self.print("as");
+                    if matches!(
+                        self.ast.module_export_name_data(exported),
+                        ModuleExportNameData::IdentifierName(_)
+                    ) {
+                        self.print(" ");
+                    } else {
+                        self.print_space();
+                    }
+                    self.print_module_name(exported);
+                }
+                self.print_space();
+                self.print_space_before_identifier();
+                self.print("from");
+                self.print_space();
+                self.add_source_mapping(s.source(self.ast).span(self.ast).start);
+                self.print_quoted(
+                    ast_text(self.ast, s.source(self.ast).value(self.ast)),
+                    false,
+                );
+                self.print_import_attributes(
+                    s.attributes(self.ast),
+                    s.span(self.ast),
+                    s.source(self.ast).span(self.ast).end,
+                );
+                self.print_semicolon_after_statement();
+            }
+            StmtData::TsExportAssignment(s) => {
+                self.print_indent();
+                self.add_source_mapping(stmt.span(self.ast).start);
+                self.print("export = ");
+                self.print_expr(s.expression(self.ast), Level::Lowest);
+                self.print_semicolon_after_statement();
+            }
+            StmtData::TsNamespaceExportDeclaration(s) => {
+                self.print_indent();
+                self.add_source_mapping(stmt.span(self.ast).start);
+                self.print("export as namespace ");
+                self.print_identifier(ast_text(self.ast, s.id(self.ast).name(self.ast)));
+                self.print_semicolon_after_statement();
+            }
+            StmtData::TsImportEqualsDeclaration(s) => {
+                self.print_indent();
+                self.add_source_mapping(stmt.span(self.ast).start);
+                self.print_ts_import_equals(s);
+                self.print_semicolon_after_statement();
+            }
+        }
+    }
+
+    fn print_body(&mut self, body: Stmt) {
+        if let Some(block) = body.as_block_statement(self.ast) {
+            self.print_space();
+            self.print_block(block);
+            self.print_newline();
+        } else {
+            while self.next_comment < self.source_comments.len()
+                && self.source_comments[self.next_comment].end <= body.span(self.ast).start
+            {
+                self.next_comment += 1;
+            }
+            self.print_next_indent_as_space = true;
+            self.print_stmt(body);
+        }
+    }
+
+    fn print_block(&mut self, block: BlockStatement) {
+        self.add_source_mapping(block.span(self.ast).start);
+        self.print("{");
+        let body = block.body(self.ast);
+        if body.is_empty() {
+            let close_offset = block.span(self.ast).end.saturating_sub(1);
+            if self.source_comments[self.next_comment..]
+                .iter()
+                .any(|comment| comment.end <= close_offset)
+            {
+                self.print_newline();
+                self.indent += 1;
+                self.print_comments_before(close_offset, true, true);
+                self.indent -= 1;
+                self.print_indent();
+            } else if !self.options.minify {
+                self.print_newline();
+                self.print_indent();
+            }
+            self.add_source_mapping(block.span(self.ast).end.saturating_sub(1));
+            self.print("}");
+            return;
+        }
+        self.print_newline();
+        self.indent += 1;
+        for id in body.iter() {
+            self.print_semicolon_if_needed();
+            self.print_stmt(self.ast.get_node_in_sub_range(id));
+        }
+        self.needs_semicolon = false;
+        self.print_comments_before(block.span(self.ast).end.saturating_sub(1), true, true);
+        self.indent -= 1;
+        self.print_indent();
+        self.add_source_mapping(block.span(self.ast).end.saturating_sub(1));
+        self.print("}");
+    }
+
+    fn print_function_body(&mut self, body: FunctionBody) {
+        self.add_source_mapping(body.span(self.ast).start);
+        self.print("{");
+        let items = body.body(self.ast);
+        if items.is_empty() {
+            let close_offset = body.span(self.ast).end.saturating_sub(1);
+            if self.source_comments[self.next_comment..]
+                .iter()
+                .any(|comment| comment.end <= close_offset)
+            {
+                self.print_newline();
+                self.indent += 1;
+                self.print_comments_before(close_offset, true, true);
+                self.indent -= 1;
+                self.print_indent();
+            } else if !self.options.minify {
+                self.print_newline();
+                self.print_indent();
+            }
+            self.add_source_mapping(body.span(self.ast).end.saturating_sub(1));
+            self.print("}");
+            return;
+        }
+        self.print_newline();
+        self.indent += 1;
+        for id in items.iter() {
+            self.print_semicolon_if_needed();
+            match self
+                .ast
+                .statement_list_item_data(self.ast.get_node_in_sub_range(id))
+            {
+                StatementListItemData::Stmt(stmt) => self.print_stmt(stmt),
+                StatementListItemData::Directive(d) => {
+                    self.print_indent();
+                    self.print_quoted(ast_text(self.ast, d.value(self.ast)), false);
+                    self.print_semicolon_after_statement();
+                }
+            }
+        }
+        self.needs_semicolon = false;
+        self.print_comments_before(body.span(self.ast).end.saturating_sub(1), true, true);
+        self.indent -= 1;
+        self.print_indent();
+        self.add_source_mapping(body.span(self.ast).end.saturating_sub(1));
+        self.print("}");
+    }
+
+    fn print_if(&mut self, s: IfStatement) {
+        self.print_indent();
+        self.add_source_mapping(s.span(self.ast).start);
+        self.print("if");
+        self.print_space();
+        self.print("(");
+        self.print_expr(s.test(self.ast), Level::Lowest);
+        self.print(")");
+        let consequent = s.consequent(self.ast);
+        if let Some(block) = consequent.as_block_statement(self.ast) {
+            self.print_space();
+            self.print_block(block);
+        } else {
+            self.print_body(consequent);
+        }
+        if let Some(alternate) = s.alternate(self.ast) {
+            self.print_semicolon_if_needed();
+            if consequent.is_block_statement(self.ast) {
+                self.print_space();
+            } else {
+                self.print_indent();
+            }
+            self.print("else");
+            if let Some(nested) = alternate.as_if_statement(self.ast) {
+                self.print(" ");
+                let saved = self.indent;
+                self.indent = 0;
+                self.print_if(nested);
+                self.indent = saved;
+                return;
+            }
+            if let Some(block) = alternate.as_block_statement(self.ast) {
+                self.print_space();
+                self.print_block(block);
+                self.print_newline();
+            } else {
+                self.print_body(alternate);
+            }
+        } else {
+            if consequent.is_block_statement(self.ast) {
+                self.print_newline();
+            }
+        }
+    }
+
+    fn print_switch(&mut self, s: SwitchStatement) {
+        self.print_indent();
+        self.add_source_mapping(s.span(self.ast).start);
+        self.print("switch");
+        self.print_space();
+        self.print("(");
+        self.print_expr(s.discriminant(self.ast), Level::Lowest);
+        self.print(")");
+        self.print_space();
+        self.print("{");
+        let cases = s.cases(self.ast);
+        if !cases.is_empty() {
+            self.print_newline();
+        }
+        self.indent += 1;
+        for id in cases.iter() {
+            self.print_semicolon_if_needed();
+            let case = self.ast.get_node_in_sub_range(id);
+            self.print_comments_before(case.span(self.ast).start, true, true);
+            self.print_indent();
+            self.add_source_mapping(case.span(self.ast).start);
+            if let Some(test) = case.test(self.ast) {
+                self.print("case");
+                self.print_space();
+                self.print_expr(test, Level::Lowest);
+                self.print(":");
+            } else {
+                self.print("default:");
+            }
+            let consequent = case.consequent(self.ast);
+            if consequent.len() == 1 {
+                let statement = self.ast.get_node_in_sub_range(consequent.first().unwrap());
+                if let Some(block) = statement.as_block_statement(self.ast) {
+                    self.print_space();
+                    self.print_block(block);
+                    self.print_newline();
+                    continue;
+                }
+            }
+            self.print_newline();
+            self.indent += 1;
+            for id in consequent.iter() {
+                self.print_semicolon_if_needed();
+                self.print_stmt(self.ast.get_node_in_sub_range(id));
+            }
+            self.indent -= 1;
+        }
+        self.needs_semicolon = false;
+        self.indent -= 1;
+        self.print_indent();
+        self.add_source_mapping(s.span(self.ast).end.saturating_sub(1));
+        self.print("}");
+        self.print_newline();
+    }
+
+    fn print_try(&mut self, s: TryStatement) {
+        self.print_indent();
+        self.add_source_mapping(s.span(self.ast).start);
+        self.print("try");
+        self.print_space();
+        self.print_block(s.block(self.ast));
+        if let Some(handler) = s.handler(self.ast) {
+            self.print_space();
+            self.print("catch");
+            if let Some(param) = handler.param(self.ast) {
+                self.print_space();
+                self.print("(");
+                self.print_binding(param);
+                self.print(")");
+            }
+            self.print_space();
+            self.print_block(handler.body(self.ast));
+        }
+        if let Some(finalizer) = s.finalizer(self.ast) {
+            self.print_space();
+            self.print("finally");
+            self.print_space();
+            self.print_block(finalizer);
+        }
+        self.print_newline();
+    }
+
+    fn print_for_left(&mut self, left: ForStatementLeft) {
+        match self.ast.for_statement_left_data(left) {
+            ForStatementLeftData::VariableDeclaration(v) => self.print_variable_decl(v, false),
+            ForStatementLeftData::AssignmentTarget(t) => self.print_assignment_target(t),
+        }
+    }
+
+    fn print_decl(&mut self, decl: Decl) {
+        match self.ast.decl_data(decl) {
+            DeclData::VariableDeclaration(v) => self.print_variable_decl(v, true),
+            DeclData::Function(f) => self.print_function(f, true),
+            DeclData::Class(c) => self.print_class(c, true),
+            DeclData::TsTypeAliasDeclaration(d) => self.print_ts_type_alias(d),
+            DeclData::TsInterfaceDeclaration(d) => self.print_ts_interface(d),
+            DeclData::TsEnumDeclaration(d) => self.print_ts_enum(d),
+            DeclData::TsModuleDeclaration(d) => self.print_ts_module(d),
+            DeclData::TsGlobalDeclaration(d) => self.print_ts_global(d),
+            DeclData::TsImportEqualsDeclaration(d) => self.print_ts_import_equals(d),
+        }
+    }
+
+    fn print_variable_decl(&mut self, decl: VariableDeclaration, include_declare: bool) {
+        self.add_source_mapping(decl.span(self.ast).start);
+        if include_declare && decl.declare(self.ast) {
+            self.print("declare ");
+        }
+        self.print(decl.kind(self.ast).as_str());
+        self.print_space();
+        for (i, id) in decl.declarators(self.ast).iter().enumerate() {
+            if i != 0 {
+                self.print(",");
+                self.print_space();
+            }
+            let d = self.ast.get_node_in_sub_range(id);
+            self.print_binding(d.id(self.ast));
+            if d.definite(self.ast) {
+                self.print("!");
+            }
+            if let Some(value) = d.init(self.ast) {
+                self.print_space();
+                self.print("=");
+                self.print_space();
+                self.print_expr(value, Level::Assignment);
+            }
+        }
+    }
+
+    fn print_function(&mut self, f: Function, declaration: bool) {
+        self.print_space_before_identifier();
+        self.add_source_mapping(f.span(self.ast).start);
+        if f.declare(self.ast) {
+            self.print("declare ");
+        }
+        if f.r#async(self.ast) {
+            self.print("async ");
+        }
+        self.print("function");
+        if f.generator(self.ast) {
+            self.print("*");
+        }
+        if let Some(id) = f.id(self.ast) {
+            self.print_space();
+            self.print_binding_identifier(id, false);
+        } else if declaration || f.generator(self.ast) {
+            self.print_space();
+        }
+        if let Some(params) = f.type_parameters(self.ast) {
+            self.print_ts_type_params(params);
+        }
+        self.print_formal_parameters(f.params(self.ast));
+        if let Some(ret) = f.return_type(self.ast) {
+            self.print_ts_annotation(ret);
+        }
+        if let Some(body) = f.body(self.ast) {
+            self.print_space();
+            self.print_function_body(body);
+        } else {
+            self.print(";");
+        }
+    }
+
+    fn print_formal_parameters(&mut self, params: FormalParameters) {
+        self.add_source_mapping(params.span(self.ast).start);
+        self.print("(");
+        let items = params.items(self.ast);
+        for (i, id) in items.iter().enumerate() {
+            if i != 0 {
+                self.print(",");
+                self.print_space();
+            }
+            match self
+                .ast
+                .formal_parameter_item_data(self.ast.get_node_in_sub_range(id))
+            {
+                FormalParameterItemData::FormalParameter(p) => {
+                    self.print_formal_pattern(p.pattern(self.ast))
+                }
+                FormalParameterItemData::TsParameterProperty(p) => {
+                    self.print_ts_parameter_property(p)
+                }
+            }
+        }
+        if let Some(rest) = params.rest(self.ast) {
+            if !items.is_empty() {
+                self.print(",");
+                self.print_space();
+            }
+            self.print("...");
+            self.print_binding(rest.argument(self.ast));
+            if rest.optional(self.ast) {
+                self.print("?");
+            }
+            if let Some(annotation) = rest.type_annotation(self.ast) {
+                self.print_ts_annotation(annotation);
+            }
+        }
+        self.print(")");
+    }
+
+    fn print_formal_pattern(&mut self, pattern: FormalParameterPattern) {
+        match self.ast.formal_parameter_pattern_data(pattern) {
+            FormalParameterPatternData::BindingPattern(p) => self.print_binding(p),
+            FormalParameterPatternData::TsThisParameter(p) => {
+                self.print("this");
+                if let Some(a) = p.type_annotation(self.ast) {
+                    self.print_ts_annotation(a);
+                }
+            }
+        }
+    }
+
+    fn print_binding_identifier(&mut self, id: BindingIdentifier, decorators: bool) {
+        if decorators {
+            self.print_decorators(id.decorators(self.ast), PrintAfterDecorator::Space);
+        }
+        let name = ast_text(self.ast, id.name(self.ast));
+        self.add_source_mapping_for_name(id.span(self.ast).start, name);
+        self.print_identifier(name);
+        if id.optional(self.ast) {
+            self.print("?");
+        }
+        if let Some(annotation) = id.type_annotation(self.ast) {
+            self.print_ts_annotation(annotation);
+        }
+    }
+
+    fn print_binding(&mut self, binding: BindingPattern) {
+        match self.ast.binding_pattern_data(binding) {
+            BindingPatternData::BindingIdentifier(id) => self.print_binding_identifier(id, true),
+            BindingPatternData::SimpleAssignmentTarget(t) => self.print_simple_assignment_target(t),
+            BindingPatternData::AssignmentPattern(p) => {
+                self.print_decorators(p.decorators(self.ast), PrintAfterDecorator::Space);
+                self.print_binding(p.left(self.ast));
+                if p.optional(self.ast) {
+                    self.print("?");
+                }
+                if let Some(a) = p.type_annotation(self.ast) {
+                    self.print_ts_annotation(a);
+                }
+                self.print_space();
+                self.print("=");
+                self.print_space();
+                self.print_expr(p.right(self.ast), Level::Assignment);
+            }
+            BindingPatternData::BindingRestElement(r) => {
+                self.print_decorators(r.decorators(self.ast), PrintAfterDecorator::Space);
+                self.add_source_mapping(r.span(self.ast).start);
+                self.print("...");
+                self.print_binding(r.argument(self.ast));
+                if r.optional(self.ast) {
+                    self.print("?");
+                }
+                if let Some(a) = r.type_annotation(self.ast) {
+                    self.print_ts_annotation(a);
+                }
+            }
+            BindingPatternData::ArrayPattern(a) => self.print_array_pattern(a),
+            BindingPatternData::ObjectPattern(o) => self.print_object_pattern(o),
+        }
+    }
+
+    fn print_array_pattern(&mut self, a: ArrayPattern) {
+        self.print_decorators(a.decorators(self.ast), PrintAfterDecorator::Space);
+        self.add_source_mapping(a.span(self.ast).start);
+        self.print("[");
+        let elements = a.elements(self.ast);
+        for (i, id) in elements.iter().enumerate() {
+            if i != 0 {
+                self.print(",");
+                self.print_space();
+            }
+            if let Some(item) = self.ast.get_node_in_sub_range(id) {
+                self.print_binding(item);
+            } else if i + 1 == elements.len() {
+                self.print(",");
+            }
+        }
+        if let Some(rest) = a.rest(self.ast) {
+            if !elements.is_empty() {
+                self.print(",");
+                self.print_space();
+            }
+            self.add_source_mapping(rest.span(self.ast).start);
+            self.print("...");
+            self.print_binding(rest.argument(self.ast));
+        }
+        self.add_source_mapping(a.span(self.ast).end.saturating_sub(1));
+        self.print("]");
+        if a.optional(self.ast) {
+            self.print("?");
+        }
+        if let Some(t) = a.type_annotation(self.ast) {
+            self.print_ts_annotation(t);
+        }
+    }
+
+    fn print_object_pattern(&mut self, o: ObjectPattern) {
+        self.print_decorators(o.decorators(self.ast), PrintAfterDecorator::Space);
+        self.add_source_mapping(o.span(self.ast).start);
+        self.print("{");
+        let props = o.properties(self.ast);
+        if !props.is_empty() || o.rest(self.ast).is_some() {
+            self.print_space();
+        }
+        for (i, id) in props.iter().enumerate() {
+            if i != 0 {
+                self.print(",");
+                self.print_space();
+            }
+            let prop = self.ast.get_node_in_sub_range(id);
+            let value = prop.value(self.ast);
+            let can_shorthand = !prop.computed(self.ast)
+                && match self.ast.property_key_data(prop.key(self.ast)) {
+                    PropertyKeyData::IdentifierName(key) => {
+                        binding_pattern_identifier_name(self.ast, value)
+                            == Some(ast_text(self.ast, key.name(self.ast)))
+                    }
+                    _ => false,
+                };
+            if prop.shorthand(self.ast) {
+                self.print_binding(value);
+            } else if can_shorthand {
+                self.print_property_key(prop.key(self.ast), false);
+            } else {
+                self.print_property_key(prop.key(self.ast), prop.computed(self.ast));
+                self.print(":");
+                self.print_space();
+                self.print_binding(value);
+            }
+        }
+        if let Some(rest) = o.rest(self.ast) {
+            if !props.is_empty() {
+                self.print(",");
+                self.print_space();
+            }
+            self.add_source_mapping(rest.span(self.ast).start);
+            self.print("...");
+            self.print_binding(rest.argument(self.ast));
+        }
+        if !props.is_empty() || o.rest(self.ast).is_some() {
+            self.print_space();
+        }
+        self.add_source_mapping(o.span(self.ast).end.saturating_sub(1));
+        self.print("}");
+        if o.optional(self.ast) {
+            self.print("?");
+        }
+        if let Some(t) = o.type_annotation(self.ast) {
+            self.print_ts_annotation(t);
+        }
+    }
+
+    fn print_assignment_target(&mut self, target: AssignmentTarget) {
+        match self.ast.assignment_target_data(target) {
+            AssignmentTargetData::SimpleAssignmentTarget(t) => {
+                self.print_simple_assignment_target(t)
+            }
+            AssignmentTargetData::ArrayAssignmentTarget(a) => self.print_array_pattern(a),
+            AssignmentTargetData::ObjectAssignmentTarget(o) => self.print_object_pattern(o),
+        }
+    }
+
+    fn print_simple_assignment_target(&mut self, target: SimpleAssignmentTarget) {
+        match self.ast.simple_assignment_target_data(target) {
+            SimpleAssignmentTargetData::IdentifierReference(i) => {
+                let name = ast_text(self.ast, i.name(self.ast));
+                let wrap = self.js.len() == self.for_of_init_start && name == b"let";
+                if wrap {
+                    self.print("(");
+                }
+                self.add_source_mapping_for_name(i.span(self.ast).start, name);
+                self.print_identifier(name);
+                if wrap {
+                    self.print(")");
+                }
+            }
+            SimpleAssignmentTargetData::MemberExpression(m) => self.print_member(m),
+            SimpleAssignmentTargetData::TsAsExpression(e) => {
+                self.print_expr(e.expression(self.ast), Level::Assignment);
+                self.print(" as ");
+                self.print_ts_type(e.type_annotation(self.ast), Level::Lowest);
+            }
+            SimpleAssignmentTargetData::TsSatisfiesExpression(e) => {
+                self.print_expr(e.expression(self.ast), Level::Assignment);
+                self.print(" satisfies ");
+                self.print_ts_type(e.type_annotation(self.ast), Level::Lowest);
+            }
+            SimpleAssignmentTargetData::TsTypeAssertion(e) => {
+                self.print("<");
+                self.print_ts_type(e.type_annotation(self.ast), Level::Lowest);
+                self.print(">");
+                self.print_expr(e.expression(self.ast), Level::Prefix);
+            }
+            SimpleAssignmentTargetData::TsNonNullExpression(e) => {
+                self.print_expr(e.expression(self.ast), Level::Postfix);
+                self.print("!");
+            }
+        }
+    }
+
+    fn will_print_expr_comments(&self, expr: Expr) -> bool {
+        !self.options.minify
+            && self.source_comments[self.next_comment..]
+                .first()
+                .is_some_and(|comment| comment.end <= expr.span(self.ast).start)
+    }
+
+    fn print_expr_without_leading_newline(&mut self, expr: Expr, level: Level) {
+        if self.will_print_expr_comments(expr) {
+            self.print("(");
+            self.print_newline();
+            self.indent += 1;
+            self.print_comments_before(expr.span(self.ast).start, true, true);
+            self.print_indent();
+            self.print_expr(expr, level);
+            self.print_newline();
+            self.indent -= 1;
+            self.print_indent();
+            self.print(")");
+            return;
+        }
+        self.print_expr(expr, level);
+    }
+
+    fn print_expr(&mut self, expr: Expr, level: Level) {
+        self.print_comments_before(expr.span(self.ast).start, false, true);
+        self.print_attached_comments(expr.node_id(), AttachedCommentPosition::Before, false);
+        match self.ast.expr_data(expr) {
+            ExprData::IdentifierReference(e) => {
+                let name = ast_text(self.ast, e.name(self.ast));
+                let wrap = self.js.len() == self.for_of_init_start && name == b"let";
+                if wrap {
+                    self.print("(");
+                }
+                self.add_source_mapping_for_name(expr.span(self.ast).start, name);
+                self.print_identifier(name);
+                if wrap {
+                    self.print(")");
+                }
+            }
+            ExprData::ThisExpression(_) => {
+                self.add_source_mapping(expr.span(self.ast).start);
+                self.print("this");
+            }
+            ExprData::Super(_) => {
+                self.add_source_mapping(expr.span(self.ast).start);
+                self.print("super");
+            }
+            ExprData::MetaProperty(e) => {
+                self.add_source_mapping(expr.span(self.ast).start);
+                self.print_identifier(ast_text(self.ast, e.meta(self.ast).name(self.ast)));
+                self.print(".");
+                self.print_identifier(ast_text(self.ast, e.property(self.ast).name(self.ast)));
+            }
+            ExprData::StringLiteral(e) => {
+                self.add_source_mapping(expr.span(self.ast).start);
+                self.print_quoted(ast_text(self.ast, e.value(self.ast)), true)
+            }
+            ExprData::NumericLiteral(e) => {
+                self.add_source_mapping(expr.span(self.ast).start);
+                self.print_number(ast_text(self.ast, e.raw(self.ast)), level)
+            }
+            ExprData::BigIntLiteral(e) => {
+                self.add_source_mapping(expr.span(self.ast).start);
+                let raw = ast_text(self.ast, e.raw(self.ast));
+                for &byte in raw {
+                    if byte != b'_' {
+                        self.js.push(byte);
+                    }
+                }
+                self.print("n");
+            }
+            ExprData::BooleanLiteral(e) => {
+                self.add_source_mapping(expr.span(self.ast).start);
+                self.print(if e.value(self.ast) { "true" } else { "false" });
+            }
+            ExprData::NullLiteral(_) => {
+                self.add_source_mapping(expr.span(self.ast).start);
+                self.print("null");
+            }
+            ExprData::RegExpLiteral(e) => {
+                if let Some(&last) = self.js.last()
+                    && (last == b'/'
+                        || (last == b'<'
+                            && ast_text(self.ast, e.pattern(self.ast))
+                                .get(..6)
+                                .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"script"))))
+                {
+                    self.print(" ");
+                }
+                self.add_source_mapping(expr.span(self.ast).start);
+                self.print("/");
+                self.print_bytes(ast_text(self.ast, e.pattern(self.ast)));
+                self.print("/");
+                self.print_bytes(ast_text(self.ast, e.flags(self.ast)));
+                self.prev_reg_exp_end = self.js.len();
+            }
+            ExprData::TemplateLiteral(e) => self.print_template(e, false),
+            ExprData::BinaryExpression(e) => self.print_binaryish(Binaryish::Binary(e), level),
+            ExprData::LogicalExpression(e) => self.print_binaryish(Binaryish::Logical(e), level),
+            ExprData::UnaryExpression(e) => self.print_unary(e, level),
+            ExprData::UpdateExpression(e) => self.print_update(e, level),
+            ExprData::AssignmentExpression(e) => {
+                let destructuring_at_stmt = (self.js.len() == self.stmt_start
+                    || self.js.len() == self.arrow_expr_start)
+                    && matches!(
+                        self.ast.assignment_target_data(e.left(self.ast)),
+                        AssignmentTargetData::ObjectAssignmentTarget(_)
+                    );
+                let wrap = level > Level::Assignment || destructuring_at_stmt;
+                if wrap {
+                    self.print("(");
+                }
+                self.print_assignment_target(e.left(self.ast));
+                self.print_space();
+                self.print(assignment_operator(e.operator(self.ast)));
+                self.print_space();
+                self.print_expr(e.right(self.ast), Level::Assignment);
+                if wrap {
+                    self.print(")");
+                }
+            }
+            ExprData::ConditionalExpression(e) => {
+                let wrap = level > Level::Conditional;
+                if wrap {
+                    self.print("(");
+                }
+                self.print_expr(e.test(self.ast), Level::Conditional);
+                self.print_space();
+                self.print("?");
+                self.print_space();
+                self.print_expr(e.consequent(self.ast), Level::Yield);
+                self.print_space();
+                self.print(":");
+                self.print_space();
+                self.print_expr(e.alternate(self.ast), Level::Yield);
+                if wrap {
+                    self.print(")");
+                }
+            }
+            ExprData::SequenceExpression(e) => {
+                let wrap = level > Level::Comma;
+                if wrap {
+                    self.print("(");
+                }
+                for (i, id) in e.expressions(self.ast).iter().enumerate() {
+                    if i != 0 {
+                        self.print(",");
+                        self.print_space();
+                    }
+                    self.print_expr(self.ast.get_node_in_sub_range(id), Level::Comma);
+                }
+                if wrap {
+                    self.print(")");
+                }
+            }
+            ExprData::MemberExpression(e) => self.print_member(e),
+            ExprData::CallExpression(e) => self.print_call(e, level),
+            ExprData::ChainExpression(e) => {
+                let wrap = level >= Level::Call;
+                if wrap {
+                    self.print("(");
+                }
+                self.print_expr(e.expression(self.ast), Level::Lowest);
+                if wrap {
+                    self.print(")");
+                }
+            }
+            ExprData::NewExpression(e) => self.print_new(e, level),
+            ExprData::TaggedTemplateExpression(e) => {
+                let tag = e.tag(self.ast);
+                if matches!(self.ast.expr_data(tag), ExprData::ChainExpression(_)) {
+                    self.print("(");
+                    self.print_expr(tag, Level::Lowest);
+                    self.print(")");
+                } else {
+                    self.print_expr(tag, Level::Postfix);
+                }
+                if let Some(args) = e.type_arguments(self.ast) {
+                    self.print_ts_type_args(args);
+                }
+                let template = e.quasi(self.ast);
+                if template_contains_closing_script(self.ast, template) {
+                    let name = self.adapter.take_lowered_template_index();
+                    self.print("(");
+                    append_lowered_template_name(&mut self.js, name);
+                    self.print(" || (");
+                    append_lowered_template_name(&mut self.js, name);
+                    self.print(" = __template([");
+                    for (index, id) in template.quasis(self.ast).iter().enumerate() {
+                        if index != 0 {
+                            self.print(",");
+                            self.print_space();
+                        }
+                        let quasi = self.ast.get_node_in_sub_range(id);
+                        self.print_quoted(ast_text(self.ast, quasi.raw(self.ast)), false);
+                    }
+                    self.print("]))");
+                    for id in template.expressions(self.ast).iter() {
+                        self.print(",");
+                        self.print_space();
+                        self.print_expr(self.ast.get_node_in_sub_range(id), Level::Assignment);
+                    }
+                    self.print(")");
+                } else {
+                    self.print_template(template, true);
+                }
+            }
+            ExprData::ArrowFunctionExpression(e) => self.print_arrow(e, level),
+            ExprData::ArrayExpression(e) => self.print_array(e),
+            ExprData::ObjectExpression(e) => self.print_object(e, level),
+            ExprData::ParenthesizedExpression(e) => {
+                self.print("(");
+                self.print_expr(e.expression(self.ast), Level::Lowest);
+                self.print(")");
+            }
+            ExprData::Function(e) => {
+                let wrap = self.js.len() == self.stmt_start || level >= Level::Call;
+                if wrap {
+                    self.print("(");
+                }
+                self.print_function(e, false);
+                if wrap {
+                    self.print(")");
+                }
+            }
+            ExprData::Class(e) => {
+                let wrap = self.js.len() == self.stmt_start || level >= Level::Call;
+                if wrap {
+                    self.print("(");
+                }
+                self.print_class(e, false);
+                if wrap {
+                    self.print(")");
+                }
+            }
+            ExprData::ImportExpression(e) => {
+                self.add_source_mapping(expr.span(self.ast).start);
+                if e.phase(self.ast) == Some(ImportPhase::Source) {
+                    self.print("import.source(");
+                } else {
+                    self.print("import(");
+                }
+                let close_offset = e.span(self.ast).end.saturating_sub(1);
+                let source_span = e.source(self.ast).span(self.ast);
+                let options_span = e.options(self.ast).map(|options| options.span(self.ast));
+                let multiline = !self.options.minify
+                    && self.source_comments[self.next_comment..]
+                        .iter()
+                        .take_while(|comment| comment.end <= close_offset)
+                        .any(|comment| {
+                            !(source_span.start <= comment.start && comment.end <= source_span.end
+                                || options_span.is_some_and(|span| {
+                                    span.start <= comment.start && comment.end <= span.end
+                                }))
+                        });
+                if multiline {
+                    self.indent += 1;
+                    self.print_newline();
+                    let source = e.source(self.ast);
+                    self.print_comments_before(source.span(self.ast).start, true, true);
+                    self.print_indent();
+                    self.print_expr(source, Level::Assignment);
+                    if let Some(options) = e.options(self.ast) {
+                        self.print(",");
+                        self.print_newline();
+                        self.print_comments_before(options.span(self.ast).start, true, true);
+                        self.print_indent();
+                        self.print_expr(options, Level::Assignment);
+                    }
+                    self.print_newline();
+                    self.discard_comments_before_trailing_comma(close_offset);
+                    self.print_comments_before(close_offset, true, true);
+                    self.indent -= 1;
+                    self.print_indent();
+                } else {
+                    self.print_expr(e.source(self.ast), Level::Assignment);
+                    if let Some(options) = e.options(self.ast) {
+                        self.print(",");
+                        self.print_space();
+                        self.print_expr(options, Level::Assignment);
+                    }
+                }
+                self.print(")");
+            }
+            ExprData::AwaitExpression(e) => {
+                let wrap = level > Level::Prefix;
+                if wrap {
+                    self.print("(");
+                }
+                self.add_source_mapping(expr.span(self.ast).start);
+                self.print("await");
+                self.print_space();
+                self.print_expr(e.argument(self.ast), Level::Prefix);
+                if wrap {
+                    self.print(")");
+                }
+            }
+            ExprData::YieldExpression(e) => {
+                let wrap = level > Level::Assignment;
+                if wrap {
+                    self.print("(");
+                }
+                self.add_source_mapping(expr.span(self.ast).start);
+                self.print("yield");
+                if e.delegate(self.ast) {
+                    self.print("*");
+                }
+                if let Some(value) = e.argument(self.ast) {
+                    self.print(" ");
+                    self.print_expr_without_leading_newline(value, Level::Yield);
+                }
+                if wrap {
+                    self.print(")");
+                }
+            }
+            ExprData::PrivateIdentifier(e) => {
+                let name = ast_text(self.ast, e.name(self.ast));
+                self.add_source_mapping_for_name(expr.span(self.ast).start, name);
+                self.print("#");
+                self.print_identifier(name);
+            }
+            ExprData::TsAsExpression(e) => {
+                let wrap = level > Level::Assignment;
+                if wrap {
+                    self.print("(");
+                }
+                self.print_expr(e.expression(self.ast), Level::Assignment);
+                self.print(" as ");
+                self.print_ts_type(e.type_annotation(self.ast), Level::Lowest);
+                if wrap {
+                    self.print(")");
+                }
+            }
+            ExprData::TsSatisfiesExpression(e) => {
+                let wrap = level > Level::Assignment;
+                if wrap {
+                    self.print("(");
+                }
+                self.print_expr(e.expression(self.ast), Level::Assignment);
+                self.print(" satisfies ");
+                self.print_ts_type(e.type_annotation(self.ast), Level::Lowest);
+                if wrap {
+                    self.print(")");
+                }
+            }
+            ExprData::TsTypeAssertion(e) => {
+                let wrap = level > Level::Prefix;
+                if wrap {
+                    self.print("(");
+                }
+                self.add_source_mapping(expr.span(self.ast).start);
+                self.print("<");
+                self.print_ts_type(e.type_annotation(self.ast), Level::Lowest);
+                self.print(">");
+                self.print_expr(e.expression(self.ast), Level::Prefix);
+                if wrap {
+                    self.print(")");
+                }
+            }
+            ExprData::TsNonNullExpression(e) => {
+                self.print_expr(e.expression(self.ast), Level::Postfix);
+                self.print("!");
+            }
+            ExprData::TsInstantiationExpression(e) => {
+                self.print_expr(e.expression(self.ast), Level::Call);
+                self.print_ts_type_args(e.type_arguments(self.ast));
+            }
+            ExprData::JsxElement(e) => self.print_jsx_element(e),
+            ExprData::JsxFragment(e) => self.print_jsx_fragment(e),
+        }
+    }
+
+    fn print_binaryish(&mut self, e: Binaryish, level: Level) {
+        let operator = e.operator(self.ast);
+        let mut visitor = BinaryExprVisitor {
+            e,
+            level,
+            flags: self.forbid_in,
+            left_level: Level::Lowest,
+            left_flags: false,
+            operator,
+            wrap: false,
+            right_level: Level::Lowest,
+        };
+
+        // Use a single stack to reduce allocation overhead.
+        let stack_bottom = self.expr_visitor_stack.len();
+
+        loop {
+            // Check whether this node is a special case, and stop if it is.
+            if !visitor.check_and_prepare(self) {
+                break;
+            }
+
+            let left = visitor.e.left(self.ast);
+            let left_binaryish = match self.ast.expr_data(left) {
+                ExprData::BinaryExpression(e) => Some(Binaryish::Binary(e)),
+                ExprData::LogicalExpression(e) => Some(Binaryish::Logical(e)),
+                _ => None,
+            };
+            let Some(left_binaryish) = left_binaryish else {
+                self.print_expr(left, visitor.left_level);
+                visitor.visit_right_and_finish(self);
+                break;
+            };
+
+            // Manually run the code at the start of "print_expr".
+            self.print_comments_before(left.span(self.ast).start, false, true);
+            self.print_attached_comments(left.node_id(), AttachedCommentPosition::Before, false);
+
+            // Only allocate heap memory on the stack for nested binary-ish
+            // expressions.
+            self.expr_visitor_stack.push(visitor);
+            visitor = BinaryExprVisitor {
+                e: left_binaryish,
+                level: visitor.left_level,
+                flags: visitor.left_flags,
+                left_level: Level::Lowest,
+                left_flags: false,
+                operator: visitor.operator,
+                wrap: false,
+                right_level: Level::Lowest,
+            };
+        }
+
+        // Process all binary operations from the deepest-visited node back
+        // toward our original top-level binary operation.
+        while self.expr_visitor_stack.len() > stack_bottom {
+            let visitor = self.expr_visitor_stack.pop().unwrap();
+            visitor.visit_right_and_finish(self);
+        }
+    }
+
+    fn print_unary(&mut self, e: UnaryExpression, level: Level) {
+        let wrap = level > Level::Prefix;
+        if wrap {
+            self.print("(");
+        }
+        let op = unary_operator(e.operator(self.ast));
+        if op.as_bytes()[0].is_ascii_alphabetic() {
+            self.print_space_before_identifier();
+            self.add_source_mapping(e.span(self.ast).start);
+            self.print(op);
+            self.print(" ");
+        } else {
+            let operator_code = unary_operator_code(e.operator(self.ast));
+            self.print_space_before_operator(operator_code);
+            self.add_source_mapping(e.span(self.ast).start);
+            self.print(op);
+            self.prev_op = operator_code;
+            self.prev_op_end = self.js.len();
+        }
+        self.print_expr(e.argument(self.ast), Level::Prefix);
+        if wrap {
+            self.print(")");
+        }
+    }
+
+    fn print_update(&mut self, e: UpdateExpression, level: Level) {
+        let wrap = level > Level::Postfix;
+        if wrap {
+            self.print("(");
+        }
+        let op = if e.operator(self.ast) == UpdateOperator::Increment {
+            "++"
+        } else {
+            "--"
+        };
+        let operator_code = update_operator_code(e.operator(self.ast), e.prefix(self.ast));
+        if e.prefix(self.ast) {
+            self.print_space_before_operator(operator_code);
+            self.add_source_mapping(e.span(self.ast).start);
+            self.print(op);
+            self.prev_op = operator_code;
+            self.prev_op_end = self.js.len();
+            self.print_simple_assignment_target(e.argument(self.ast));
+        } else {
+            self.print_simple_assignment_target(e.argument(self.ast));
+            self.print_space_before_operator(operator_code);
+            self.add_source_mapping(e.span(self.ast).end.saturating_sub(2));
+            self.print(op);
+            self.prev_op = operator_code;
+            self.prev_op_end = self.js.len();
+        }
+        if wrap {
+            self.print(")");
+        }
+    }
+
+    fn print_member(&mut self, e: MemberExpression) {
+        let object = e.object(self.ast);
+        let wrap_object = member_object_was_parenthesized(self.ast, e)
+            && matches!(
+                self.ast.expr_data(object),
+                ExprData::IdentifierReference(identifier)
+                    if ast_text(self.ast, identifier.name(self.ast)) == b"let"
+            )
+            || member_object_was_parenthesized(self.ast, e)
+                && matches!(self.ast.expr_data(object), ExprData::ObjectExpression(_));
+        if wrap_object {
+            self.print("(");
+        }
+        self.print_expr(
+            object,
+            if matches!(self.ast.expr_data(object), ExprData::NewExpression(_)) {
+                Level::New
+            } else {
+                Level::Call
+            },
+        );
+        if wrap_object {
+            self.print(")");
+        }
+        let need_space_before_dot = self.need_space_before_dot == self.js.len();
+        self.need_space_before_dot = usize::MAX;
+        let property = e.property(self.ast);
+        let property_text = match self.ast.property_key_data(property) {
+            PropertyKeyData::IdentifierName(identifier) => {
+                Some(ast_text(self.ast, identifier.name(self.ast)))
+            }
+            PropertyKeyData::StringLiteral(string) => {
+                Some(ast_text(self.ast, string.value(self.ast)))
+            }
+            _ => None,
+        };
+        let force_computed = !e.computed(self.ast)
+            && property_text.is_some_and(|name| !self.can_print_identifier(name));
+        if e.optional(self.ast) {
+            self.print("?.");
+        }
+        if e.computed(self.ast) || force_computed {
+            self.print("[");
+            if force_computed {
+                self.add_source_mapping(property.span(self.ast).start);
+                self.print_quoted(property_text.unwrap(), true);
+            } else {
+                let old_forbid_in = self.forbid_in;
+                self.forbid_in = false;
+                self.print_property_key_expr(property);
+                self.forbid_in = old_forbid_in;
+                self.add_source_mapping(e.span(self.ast).end.saturating_sub(1));
+            }
+            self.print("]");
+        } else {
+            if !e.optional(self.ast) {
+                if need_space_before_dot {
+                    self.print(" ");
+                }
+                self.print(".");
+            }
+            self.add_source_mapping(property.span(self.ast).start);
+            self.print_property_key_plain(property);
+        }
+    }
+
+    fn print_call(&mut self, e: CallExpression, level: Level) {
+        let wrap = level > Level::Call;
+        if wrap {
+            self.print("(");
+        }
+        let callee = e.callee(self.ast);
+        self.print_expr(
+            callee,
+            if matches!(self.ast.expr_data(callee), ExprData::NewExpression(_)) {
+                Level::New
+            } else {
+                Level::Call
+            },
+        );
+        if e.optional(self.ast) {
+            self.print("?.");
+        }
+        if let Some(args) = e.type_arguments(self.ast) {
+            self.print_ts_type_args(args);
+        }
+        self.print_arguments(
+            e.arguments(self.ast),
+            e.span(self.ast).end.saturating_sub(1),
+        );
+        if wrap {
+            self.print(")");
+        }
+    }
+
+    fn print_new(&mut self, e: NewExpression, level: Level) {
+        let wrap = level > Level::New;
+        if wrap {
+            self.print("(");
+        }
+        self.add_source_mapping(e.span(self.ast).start);
+        self.print("new");
+        self.print_space();
+        let callee = e.callee(self.ast);
+        match self.ast.expr_data(callee) {
+            ExprData::CallExpression(_)
+            | ExprData::ImportExpression(_)
+            | ExprData::Function(_)
+            | ExprData::Class(_) => {
+                self.print("(");
+                self.print_expr(callee, Level::Lowest);
+                self.print(")");
+            }
+            ExprData::ChainExpression(_) => {
+                self.print("(");
+                self.print_expr(callee, Level::Lowest);
+                self.print(")");
+            }
+            ExprData::TaggedTemplateExpression(tagged)
+                if matches!(
+                    self.ast.expr_data(tagged.tag(self.ast)),
+                    ExprData::CallExpression(_) | ExprData::ImportExpression(_)
+                ) =>
+            {
+                self.print("(");
+                self.print_expr(tagged.tag(self.ast), Level::Lowest);
+                self.print(")");
+                if let Some(args) = tagged.type_arguments(self.ast) {
+                    self.print_ts_type_args(args);
+                }
+                self.print_template(tagged.quasi(self.ast), true);
+            }
+            ExprData::MemberExpression(member)
+                if matches!(
+                    self.ast.expr_data(member.object(self.ast)),
+                    ExprData::CallExpression(_) | ExprData::ImportExpression(_)
+                ) =>
+            {
+                self.print("(");
+                self.print_expr(member.object(self.ast), Level::Lowest);
+                self.print(")");
+                if member.optional(self.ast) {
+                    self.print("?.");
+                }
+                if member.computed(self.ast) {
+                    self.print("[");
+                    self.print_property_key_expr(member.property(self.ast));
+                    self.add_source_mapping(member.span(self.ast).end.saturating_sub(1));
+                    self.print("]");
+                } else {
+                    if !member.optional(self.ast) {
+                        self.print(".");
+                    }
+                    self.add_source_mapping(member.property(self.ast).span(self.ast).start);
+                    self.print_property_key_plain(member.property(self.ast));
+                }
+            }
+            _ => self.print_expr(callee, Level::New),
+        }
+        if let Some(args) = e.type_arguments(self.ast) {
+            self.print_ts_type_args(args);
+        }
+        let arguments = e.arguments(self.ast);
+        if !self.options.minify || !arguments.is_empty() || level >= Level::Postfix {
+            self.print_arguments(arguments, e.span(self.ast).end.saturating_sub(1));
+        }
+        if wrap {
+            self.print(")");
+        }
+    }
+
+    fn print_arguments(&mut self, args: TypedSubRange<Argument>, close_offset: u32) {
+        let old_forbid_in = self.forbid_in;
+        self.forbid_in = false;
+        self.print("(");
+        let multiline = !self.options.minify
+            && !args.is_empty()
+            && self.has_direct_argument_comments(args, close_offset);
+        if multiline {
+            self.indent += 1;
+            self.print_newline();
+        }
+        for (i, id) in args.iter().enumerate() {
+            if i != 0 {
+                self.print(",");
+                if multiline {
+                    self.print_newline();
+                } else {
+                    self.print_space();
+                }
+            }
+            let argument = self.ast.get_node_in_sub_range(id);
+            if multiline {
+                self.print_comments_before(argument.span(self.ast).start, true, true);
+                self.print_indent();
+            }
+            match self.ast.argument_data(argument) {
+                ArgumentData::Expr(e) => self.print_expr(e, Level::Assignment),
+                ArgumentData::SpreadElement(s) => {
+                    self.print("...");
+                    self.print_expr(s.argument(self.ast), Level::Assignment);
+                }
+            }
+        }
+        if multiline {
+            self.print_newline();
+            self.discard_comments_before_trailing_comma(close_offset);
+            self.print_comments_before(close_offset, true, true);
+            self.indent -= 1;
+            self.print_indent();
+        }
+        self.add_source_mapping(close_offset);
+        self.print(")");
+        self.forbid_in = old_forbid_in;
+    }
+
+    fn print_array(&mut self, e: ArrayExpression) {
+        let old_forbid_in = self.forbid_in;
+        self.forbid_in = false;
+        self.add_source_mapping(e.span(self.ast).start);
+        self.print("[");
+        let elements = e.elements(self.ast);
+        for (i, id) in elements.iter().enumerate() {
+            if i != 0 {
+                self.print(",");
+                self.print_space();
+            }
+            if let Some(arg) = self.ast.get_node_in_sub_range(id) {
+                match self.ast.argument_data(arg) {
+                    ArgumentData::Expr(e) => self.print_expr(e, Level::Assignment),
+                    ArgumentData::SpreadElement(s) => {
+                        self.print("...");
+                        self.print_expr(s.argument(self.ast), Level::Assignment);
+                    }
+                }
+            }
+        }
+        if !elements.is_empty()
+            && self
+                .ast
+                .get_node_in_sub_range(elements.last().unwrap())
+                .is_none()
+        {
+            self.print(",");
+        }
+        self.add_source_mapping(e.span(self.ast).end.saturating_sub(1));
+        self.print("]");
+        self.forbid_in = old_forbid_in;
+    }
+
+    fn print_object(&mut self, e: ObjectExpression, _level: Level) {
+        let wrap = self.js.len() == self.stmt_start || self.js.len() == self.arrow_expr_start;
+        if wrap {
+            self.print("(");
+        }
+        self.add_source_mapping(e.span(self.ast).start);
+        self.print("{");
+        let props = e.properties(self.ast);
+        if !props.is_empty() {
+            self.print_space();
+        }
+        for (i, id) in props.iter().enumerate() {
+            if i != 0 {
+                self.print(",");
+                self.print_space();
+            }
+            match self
+                .ast
+                .object_property_kind_data(self.ast.get_node_in_sub_range(id))
+            {
+                ObjectPropertyKindData::SpreadElement(s) => {
+                    self.print("...");
+                    self.print_expr(s.argument(self.ast), Level::Assignment);
+                }
+                ObjectPropertyKindData::ObjectProperty(p) => self.print_object_property(p),
+            }
+        }
+        if !props.is_empty() {
+            self.print_space();
+        }
+        self.add_source_mapping(e.span(self.ast).end.saturating_sub(1));
+        self.print("}");
+        if wrap {
+            self.print(")");
+        }
+    }
+
+    fn print_object_property(&mut self, p: ObjectProperty) {
+        match p.kind(self.ast) {
+            PropertyKind::Get => self.print("get "),
+            PropertyKind::Set => self.print("set "),
+            PropertyKind::Init => {}
+        }
+        if (p.method(self.ast) || p.kind(self.ast) != PropertyKind::Init)
+            && let ExprData::Function(f) = self.ast.expr_data(p.value(self.ast))
+        {
+            if f.r#async(self.ast) {
+                self.print("async ");
+            }
+            if f.generator(self.ast) {
+                self.print("*");
+            }
+            self.print_property_key(p.key(self.ast), p.computed(self.ast));
+            if let Some(t) = f.type_parameters(self.ast) {
+                self.print_ts_type_params(t);
+            }
+            self.print_formal_parameters(f.params(self.ast));
+            if let Some(t) = f.return_type(self.ast) {
+                self.print_ts_annotation(t);
+            }
+            if let Some(body) = f.body(self.ast) {
+                self.print_space();
+                self.print_function_body(body);
+            }
+            return;
+        }
+        self.print_property_key(p.key(self.ast), p.computed(self.ast));
+        if !self.can_use_shorthand_property(p) {
+            self.print(":");
+            self.print_space();
+            self.print_expr(p.value(self.ast), Level::Assignment);
+        }
+    }
+
+    fn can_use_shorthand_property(&self, property: ObjectProperty) -> bool {
+        property.shorthand(self.ast)
+            && !property.computed(self.ast)
+            && match self.ast.property_key_data(property.key(self.ast)) {
+                PropertyKeyData::IdentifierName(identifier) => {
+                    self.can_print_identifier(ast_text(self.ast, identifier.name(self.ast)))
+                }
+                _ => false,
+            }
+    }
+
+    fn print_property_key(&mut self, key: PropertyKey, computed: bool) {
+        self.add_source_mapping(key.span(self.ast).start);
+        if computed {
+            self.print("[");
+            self.print_property_key_expr(key);
+            self.print("]");
+        } else {
+            self.print_property_key_plain(key);
+        }
+    }
+
+    fn print_property_key_expr(&mut self, key: PropertyKey) {
+        match self.ast.property_key_data(key) {
+            PropertyKeyData::IdentifierName(e) => {
+                self.print_identifier(ast_text(self.ast, e.name(self.ast)))
+            }
+            PropertyKeyData::PrivateIdentifier(e) => {
+                self.print("#");
+                self.print_identifier(ast_text(self.ast, e.name(self.ast)));
+            }
+            PropertyKeyData::StringLiteral(e) => {
+                self.print_quoted(ast_text(self.ast, e.value(self.ast)), true)
+            }
+            PropertyKeyData::NumericLiteral(e) => {
+                self.print_number(ast_text(self.ast, e.raw(self.ast)), Level::Lowest)
+            }
+            PropertyKeyData::BigIntLiteral(e) => {
+                for &byte in ast_text(self.ast, e.raw(self.ast)) {
+                    if byte != b'_' {
+                        self.js.push(byte);
+                    }
+                }
+                self.print("n");
+            }
+            PropertyKeyData::Expr(e) => self.print_expr(e, Level::Assignment),
+        }
+    }
+
+    fn print_property_key_plain(&mut self, key: PropertyKey) {
+        match self.ast.property_key_data(key) {
+            PropertyKeyData::IdentifierName(value) => {
+                let name = ast_text(self.ast, value.name(self.ast));
+                if self.can_print_identifier(name) {
+                    self.print_identifier(name);
+                } else {
+                    self.print_quoted(name, true);
+                }
+            }
+            _ => self.print_property_key_expr(key),
+        }
+    }
+
+    fn print_template(&mut self, e: TemplateLiteral, is_tagged: bool) {
+        if !is_tagged {
+            self.add_source_mapping(e.span(self.ast).start);
+        }
+        self.print("`");
+        let quasis = e.quasis(self.ast);
+        let exprs = e.expressions(self.ast);
+        for (i, id) in quasis.iter().enumerate() {
+            let quasi = self.ast.get_node_in_sub_range(id);
+            if is_tagged {
+                self.print_bytes(ast_text(self.ast, quasi.raw(self.ast)));
+            } else {
+                let cooked = if quasi.is_cooked_undefined(self.ast) {
+                    ast_text(self.ast, quasi.raw(self.ast))
+                } else {
+                    ast_text(self.ast, quasi.cooked(self.ast))
+                };
+                let start = self.js.len();
+                quote_into(&mut self.js, cooked, b'`', self.options.ascii_only);
+                self.js.remove(start);
+                self.js.pop();
+            }
+            if i < exprs.len() {
+                self.print("${");
+                self.print_expr(exprs.get_node(self.ast, i).unwrap(), Level::Lowest);
+                let tail = quasis.get_node(self.ast, i + 1).unwrap();
+                self.add_source_mapping(tail.span(self.ast).start.saturating_sub(1));
+                self.print("}");
+            }
+        }
+        self.print("`");
+    }
+
+    fn print_arrow(&mut self, e: ArrowFunctionExpression, level: Level) {
+        let old_forbid_in = self.forbid_in;
+        let wrap = level > Level::Assignment
+            || self.forbid_in
+            || expr_was_parenthesized(self.ast, e.span(self.ast));
+        if wrap {
+            self.print("(");
+            self.forbid_in = false;
+        }
+        if e.r#async(self.ast) {
+            self.add_source_mapping(e.span(self.ast).start);
+            self.print("async ");
+        }
+        if let Some(t) = e.type_parameters(self.ast) {
+            self.print_ts_type_params(t);
+        }
+        let params = e.params(self.ast);
+        let can_omit = self.options.minify
+            && can_omit_arrow_parens(self.ast, params)
+            && e.type_parameters(self.ast).is_none()
+            && e.return_type(self.ast).is_none();
+        if can_omit {
+            let item = params.items(self.ast).get_node(self.ast, 0).unwrap();
+            if let FormalParameterItemData::FormalParameter(p) =
+                self.ast.formal_parameter_item_data(item)
+            {
+                self.print_formal_pattern(p.pattern(self.ast));
+            } else {
+                self.print_formal_parameters(params);
+            }
+        } else {
+            self.print_formal_parameters(params);
+        }
+        if let Some(t) = e.return_type(self.ast) {
+            self.print_ts_annotation(t);
+        }
+        self.print_space();
+        self.print("=>");
+        self.print_space();
+        self.arrow_expr_start = self.js.len();
+        match self.ast.arrow_function_body_data(e.body(self.ast)) {
+            ArrowFunctionBodyData::FunctionBody(body) => self.print_function_body(body),
+            ArrowFunctionBodyData::Expr(value) => {
+                self.print_expr_without_leading_newline(value, Level::Assignment);
+            }
+        }
+        if wrap {
+            self.print(")");
+        }
+        self.forbid_in = old_forbid_in;
+    }
+
+    fn print_class(&mut self, c: Class, declaration: bool) {
+        let omit_indent = if self.adapter.take_class_decorators_were_printed() {
+            true
+        } else {
+            self.print_decorators(
+                c.decorators(self.ast),
+                if declaration {
+                    PrintAfterDecorator::Newline
+                } else {
+                    PrintAfterDecorator::Space
+                },
+            )
+        };
+        if declaration && !omit_indent {
+            self.print_indent();
+        }
+        self.add_source_mapping(token_offset_after_decorators(
+            self.ast,
+            c.span(self.ast).start,
+            c.decorators(self.ast),
+            c.span(self.ast).end,
+        ));
+        if c.declare(self.ast) {
+            self.print("declare ");
+        }
+        if c.r#abstract(self.ast) {
+            self.print("abstract ");
+        }
+        self.print_space_before_identifier();
+        self.print("class");
+        if let Some(id) = c.id(self.ast) {
+            self.print(" ");
+            self.print_binding_identifier(id, false);
+        }
+        if let Some(t) = c.type_parameters(self.ast) {
+            self.print_ts_type_params(t);
+        }
+        if let Some(s) = c.super_class(self.ast) {
+            self.print(" extends ");
+            self.print_expr(s, Level::Compare);
+            if let Some(t) = c.super_type_arguments(self.ast) {
+                self.print_ts_type_args(t);
+            }
+        }
+        let implements = c.implements(self.ast);
+        if !implements.is_empty() {
+            self.print(" implements ");
+            for (i, id) in implements.iter().enumerate() {
+                if i != 0 {
+                    self.print(",");
+                    self.print_space();
+                }
+                let item = self.ast.get_node_in_sub_range(id);
+                self.print_expr(item.expression(self.ast), Level::Assignment);
+                if let Some(t) = item.type_arguments(self.ast) {
+                    self.print_ts_type_args(t);
+                }
+            }
+        }
+        self.print_space();
+        self.add_source_mapping(c.body(self.ast).span(self.ast).start);
+        self.print("{");
+        let body = c.body(self.ast).body(self.ast);
+        if !body.is_empty() || !self.options.minify {
+            self.print_newline();
+        }
+        self.indent += 1;
+        for id in body.iter() {
+            self.print_semicolon_if_needed();
+            self.print_class_element(self.ast.get_node_in_sub_range(id));
+        }
+        self.needs_semicolon = false;
+        self.print_comments_before(
+            c.body(self.ast).span(self.ast).end.saturating_sub(1),
+            true,
+            true,
+        );
+        self.indent -= 1;
+        self.print_indent();
+        self.add_source_mapping(c.body(self.ast).span(self.ast).end.saturating_sub(1));
+        self.print("}");
+    }
+
+    fn print_class_element(&mut self, element: ClassElement) {
+        match self.ast.class_element_data(element) {
+            ClassElementData::MethodDefinition(m) => {
+                let omit_indent =
+                    self.print_decorators(m.decorators(self.ast), PrintAfterDecorator::Newline);
+                if !omit_indent {
+                    self.print_indent();
+                }
+                self.add_source_mapping(token_offset_after_decorators(
+                    self.ast,
+                    element.span(self.ast).start,
+                    m.decorators(self.ast),
+                    element.span(self.ast).end,
+                ));
+                self.print_accessibility(m.accessibility(self.ast));
+                if m.r#static(self.ast) {
+                    self.print("static ");
+                }
+                if m.r#abstract(self.ast) {
+                    self.print("abstract ");
+                }
+                if m.r#override(self.ast) {
+                    self.print("override ");
+                }
+                let f = m.value(self.ast);
+                if f.r#async(self.ast) {
+                    self.print("async ");
+                }
+                match m.kind(self.ast) {
+                    MethodDefinitionKind::Get => self.print("get "),
+                    MethodDefinitionKind::Set => self.print("set "),
+                    _ => {}
+                }
+                if f.generator(self.ast) {
+                    self.print("*");
+                }
+                self.print_property_key(m.key(self.ast), m.computed(self.ast));
+                if m.optional(self.ast) {
+                    self.print("?");
+                }
+                if let Some(t) = f.type_parameters(self.ast) {
+                    self.print_ts_type_params(t);
+                }
+                self.print_formal_parameters(f.params(self.ast));
+                if let Some(t) = f.return_type(self.ast) {
+                    self.print_ts_annotation(t);
+                }
+                if let Some(body) = f.body(self.ast) {
+                    self.print_space();
+                    self.print_function_body(body);
+                    self.print_newline();
+                } else {
+                    self.print_semicolon_after_statement();
+                }
+            }
+            ClassElementData::PropertyDefinition(p) => {
+                let omit_indent =
+                    self.print_decorators(p.decorators(self.ast), PrintAfterDecorator::Newline);
+                if !omit_indent {
+                    self.print_indent();
+                }
+                self.add_source_mapping(token_offset_after_decorators(
+                    self.ast,
+                    element.span(self.ast).start,
+                    p.decorators(self.ast),
+                    element.span(self.ast).end,
+                ));
+                self.print_accessibility(p.accessibility(self.ast));
+                if p.r#static(self.ast) {
+                    self.print("static ");
+                }
+                if p.r#abstract(self.ast) {
+                    self.print("abstract ");
+                }
+                if p.declare(self.ast) {
+                    self.print("declare ");
+                }
+                if p.r#override(self.ast) {
+                    self.print("override ");
+                }
+                if p.readonly(self.ast) {
+                    self.print("readonly ");
+                }
+                if p.accessor(self.ast) {
+                    self.print("accessor");
+                    if !self.options.minify || !p.computed(self.ast) {
+                        self.print(" ");
+                    }
+                }
+                self.print_property_key(p.key(self.ast), p.computed(self.ast));
+                if p.optional(self.ast) {
+                    self.print("?");
+                }
+                if p.definite(self.ast) {
+                    self.print("!");
+                }
+                if let Some(t) = p.type_annotation(self.ast) {
+                    self.print_ts_annotation(t);
+                }
+                if let Some(v) = p.value(self.ast) {
+                    self.print_space();
+                    self.print("=");
+                    self.print_space();
+                    self.print_expr(v, Level::Assignment);
+                }
+                self.print_semicolon_after_statement();
+            }
+            ClassElementData::StaticBlock(b) => {
+                self.print_indent();
+                self.add_source_mapping(element.span(self.ast).start);
+                self.print("static {");
+                let body = b.body(self.ast);
+                if !body.is_empty() {
+                    self.print_newline();
+                    self.indent += 1;
+                    for id in body.iter() {
+                        self.print_semicolon_if_needed();
+                        self.print_stmt(self.ast.get_node_in_sub_range(id));
+                    }
+                    self.needs_semicolon = false;
+                    self.indent -= 1;
+                    self.print_indent();
+                } else if !self.options.minify {
+                    self.print_newline();
+                    self.print_indent();
+                }
+                self.add_source_mapping(element.span(self.ast).end.saturating_sub(1));
+                self.print("}");
+                self.print_newline();
+            }
+            ClassElementData::TsIndexSignature(s) => {
+                self.print_indent();
+                self.add_source_mapping(element.span(self.ast).start);
+                self.print_ts_index_signature(s);
+                self.print_semicolon_after_statement();
+            }
+        }
+    }
+
+    fn print_decorators(
+        &mut self,
+        decorators: TypedSubRange<Decorator>,
+        default_mode: PrintAfterDecorator,
+    ) -> bool {
+        let mut old_mode = default_mode;
+        for id in decorators.iter() {
+            let decorator = self.ast.get_node_in_sub_range(id);
+            let mode = if decorator_omit_newline_after(self.ast, decorator) {
+                PrintAfterDecorator::Space
+            } else {
+                default_mode
+            };
+            self.add_source_mapping(decorator.span(self.ast).start);
+            if old_mode == PrintAfterDecorator::Newline {
+                self.print_indent();
+            }
+            self.print("@");
+            let expression = decorator.expression(self.ast);
+            let wrap = decorator_expression_needs_parentheses(self.ast, expression)
+                && !matches!(
+                    self.ast.expr_data(expression),
+                    ExprData::ArrowFunctionExpression(_)
+                );
+            if wrap {
+                self.print("(");
+            }
+            self.print_expr(expression, Level::Lowest);
+            if wrap {
+                self.print(")");
+            }
+            match mode {
+                PrintAfterDecorator::Newline => self.print_newline(),
+                PrintAfterDecorator::Space => self.print_space(),
+            }
+            old_mode = mode;
+        }
+        old_mode == PrintAfterDecorator::Space
+    }
+
+    fn print_accessibility(&mut self, a: Accessibility) {
+        match a {
+            Accessibility::None => {}
+            Accessibility::Public => self.print("public "),
+            Accessibility::Private => self.print("private "),
+            Accessibility::Protected => self.print("protected "),
+        }
+    }
+
+    fn print_number(&mut self, raw: &[u8], level: Level) {
+        let Some(value) = parse_numeric_literal(raw) else {
+            self.print_bytes(raw);
+            return;
+        };
+        let abs_value = value.abs();
+        if value.is_nan() {
+            self.print_space_before_identifier();
+            if self.with_nesting != 0 {
+                let wrap = level >= Level::Multiply;
+                if wrap {
+                    self.print("(");
+                }
+                self.print("0");
+                self.print_space();
+                self.print("/");
+                self.print_space();
+                self.print("0");
+                if wrap {
+                    self.print(")");
+                }
+            } else {
+                self.print("NaN");
+            }
+        } else if value.is_infinite() {
+            let wrap = (self.with_nesting != 0 && level >= Level::Multiply)
+                || (value.is_sign_negative() && level >= Level::Prefix);
+            if wrap {
+                self.print("(");
+            }
+            if value.is_sign_negative() {
+                self.print("-");
+            } else {
+                self.print_space_before_identifier();
+            }
+            if self.with_nesting == 0 {
+                self.print("Infinity");
+            } else {
+                self.print("1");
+                self.print_space();
+                self.print("/");
+                self.print_space();
+                self.print("0");
+            }
+            if wrap {
+                self.print(")");
+            }
+        } else if !value.is_sign_negative() {
+            self.print_space_before_identifier();
+            self.print_non_negative_float(abs_value);
+        } else if level >= Level::Prefix {
+            self.print("(-");
+            self.print_non_negative_float(abs_value);
+            self.print(")");
+        } else {
+            self.print("-");
+            self.print_non_negative_float(abs_value);
+        }
+    }
+
+    fn small_int_to_bytes(&mut self, mut n: i32) -> usize {
+        let was_negative = n < 0;
+        if was_negative {
+            n = -n;
+        }
+        let mut start = self.int_to_bytes_buffer.len();
+        loop {
+            start -= 1;
+            self.int_to_bytes_buffer[start] = b'0' + (n % 10) as u8;
+            n /= 10;
+            if n == 0 {
+                break;
+            }
+        }
+        if was_negative {
+            start -= 1;
+            self.int_to_bytes_buffer[start] = b'-';
+        }
+        start
+    }
+
+    fn print_non_negative_float(&mut self, abs_value: f64) {
+        if abs_value < 1000.0 {
+            let as_int = abs_value as i64;
+            if abs_value == as_int as f64 {
+                let start = self.small_int_to_bytes(as_int as i32);
+                self.js
+                    .extend_from_slice_copy(&self.int_to_bytes_buffer[start..]);
+                self.need_space_before_dot = self.js.len();
+                return;
+            }
+        }
+
+        let mut result = format_float(abs_value);
+        if let Some(e) = result.iter().rposition(|&byte| byte == b'e') {
+            let mut from = e + 1;
+            let mut to = from;
+            match result[from] {
+                b'+' => from += 1,
+                b'-' => {
+                    to += 1;
+                    from += 1;
+                }
+                _ => {}
+            }
+            while from < result.len() && result[from] == b'0' {
+                from += 1;
+            }
+            result.copy_within(from.., to);
+            result.truncate(to + result.len() - from);
+        }
+
+        let dot = result.iter().position(|&byte| byte == b'.');
+        if dot == Some(1) && result[0] == b'0' {
+            let mut after_dot = 2;
+            if self.options.minify {
+                result.remove(0);
+                after_dot -= 1;
+            }
+            if result.get(after_dot) == Some(&b'0') {
+                let mut i = after_dot + 1;
+                while result.get(i) == Some(&b'0') {
+                    i += 1;
+                }
+                let remaining_len = result.len() - i;
+                let start =
+                    self.small_int_to_bytes(after_dot as i32 - i as i32 - remaining_len as i32);
+                let exponent = &self.int_to_bytes_buffer[start..];
+                if result.len() > remaining_len + 1 + exponent.len() {
+                    result.copy_within(i.., 0);
+                    result.truncate(remaining_len);
+                    result.push(b'e');
+                    result.extend_from_slice(exponent);
+                }
+            }
+        } else if let Some(dot) = dot {
+            if let Some(e) = result.iter().rposition(|&byte| byte == b'e') {
+                let integer_len = dot;
+                let fraction_len = e - dot - 1;
+                let parsed_exponent = parse_small_int(&result[e + 1..]);
+                let exponent = parsed_exponent - fraction_len as i32;
+                if (0..=2).contains(&exponent) {
+                    let new_len = integer_len + fraction_len + exponent as usize;
+                    if result.len() >= new_len {
+                        result.copy_within(dot + 1..e, dot);
+                        result.truncate(integer_len + fraction_len);
+                        result.resize(new_len, b'0');
+                    }
+                } else {
+                    let start = self.small_int_to_bytes(exponent);
+                    let exponent_bytes = &self.int_to_bytes_buffer[start..];
+                    if result.len() >= integer_len + fraction_len + 1 + exponent_bytes.len() {
+                        result.copy_within(dot + 1..e, dot);
+                        result.truncate(integer_len + fraction_len);
+                        result.push(b'e');
+                        result.extend_from_slice(exponent_bytes);
+                    }
+                }
+            }
+        } else if result.last() == Some(&b'0') {
+            let mut i = result.len() - 1;
+            while i > 0 && result[i - 1] == b'0' {
+                i -= 1;
+            }
+            let start = self.small_int_to_bytes((result.len() - i) as i32);
+            let exponent = &self.int_to_bytes_buffer[start..];
+            if result.len() > i + 1 + exponent.len() {
+                result.truncate(i);
+                result.push(b'e');
+                result.extend_from_slice(exponent);
+            }
+        }
+
+        if self.options.minify
+            && (1_000_000_000_000.0..=18_446_744_073_709_549_568.0).contains(&abs_value)
+        {
+            let as_int = abs_value as u64;
+            if abs_value == as_int as f64 {
+                let mut hex_buffer = [0u8; 16];
+                let mut value = as_int;
+                let mut start = hex_buffer.len();
+                loop {
+                    start -= 1;
+                    hex_buffer[start] = b"0123456789abcdef"[(value & 15) as usize];
+                    value >>= 4;
+                    if value == 0 {
+                        break;
+                    }
+                }
+                if 2 + hex_buffer.len() - start < result.len() {
+                    result.truncate(0);
+                    result.extend_from_slice(b"0x");
+                    result.extend_from_slice(&hex_buffer[start..]);
+                }
+            }
+        }
+
+        self.print_bytes(&result);
+        if !result
+            .iter()
+            .any(|&byte| matches!(byte, b'.' | b'e' | b'x'))
+        {
+            self.need_space_before_dot = self.js.len();
+        }
+    }
+
+    fn print_import(&mut self, d: ImportDeclaration) {
+        self.print("import");
+        if d.phase(self.ast) == Some(ImportPhase::Source) {
+            self.print(" source");
+        } else if d.phase(self.ast) == Some(ImportPhase::Defer) {
+            self.print(" defer");
+        }
+        if d.import_kind(self.ast) == ImportOrExportKind::Type {
+            self.print(" type");
+        }
+        let specs = d.specifiers(self.ast);
+        if specs.is_empty() {
+            if import_declaration_has_empty_clause(self.ast, d) {
+                self.print(" {} ");
+                self.print_space_before_identifier();
+                self.print("from ");
+            } else {
+                self.print_space();
+            }
+            self.add_source_mapping(d.source(self.ast).span(self.ast).start);
+            self.print_quoted(
+                ast_text(self.ast, d.source(self.ast).value(self.ast)),
+                false,
+            );
+        } else {
+            self.print_space();
+            let mut first = true;
+            let mut named = ArenaVec::new_in(self.allocator);
+            for id in specs.iter() {
+                match self
+                    .ast
+                    .import_declaration_specifier_data(self.ast.get_node_in_sub_range(id))
+                {
+                    ImportDeclarationSpecifierData::ImportDefaultSpecifier(s) => {
+                        self.print_binding_identifier(s.local(self.ast), false);
+                        first = false;
+                    }
+                    ImportDeclarationSpecifierData::ImportNamespaceSpecifier(s) => {
+                        if !first {
+                            self.print(",");
+                            self.print_space();
+                        }
+                        self.print("*");
+                        self.print_space();
+                        self.print("as ");
+                        self.print_binding_identifier(s.local(self.ast), false);
+                        first = false;
+                    }
+                    ImportDeclarationSpecifierData::ImportSpecifier(s) => named.push(s),
+                }
+            }
+            if !named.is_empty() {
+                if !first {
+                    self.print(",");
+                    self.print_space();
+                }
+                self.print("{");
+                self.print_space();
+                for (i, s) in named.into_iter().enumerate() {
+                    if i != 0 {
+                        self.print(",");
+                        self.print_space();
+                    }
+                    if s.import_kind(self.ast) == ImportOrExportKind::Type {
+                        self.print("type ");
+                    }
+                    self.print_module_name(s.imported(self.ast));
+                    let imported = module_name_bytes(self.ast, s.imported(self.ast));
+                    let local = ast_text(self.ast, s.local(self.ast).name(self.ast));
+                    if imported != local {
+                        self.print_space();
+                        self.print_space_before_identifier();
+                        self.print("as ");
+                        self.print_binding_identifier(s.local(self.ast), false);
+                    }
+                }
+                self.print_space();
+                self.print("}");
+            }
+            self.print_space();
+            self.print_space_before_identifier();
+            self.print("from");
+            self.print_space();
+            self.add_source_mapping(d.source(self.ast).span(self.ast).start);
+            self.print_quoted(
+                ast_text(self.ast, d.source(self.ast).value(self.ast)),
+                false,
+            );
+        }
+        self.print_import_attributes(
+            d.attributes(self.ast),
+            d.span(self.ast),
+            d.source(self.ast).span(self.ast).end,
+        );
+    }
+
+    fn print_import_attributes(
+        &mut self,
+        attrs: TypedSubRange<ImportAttribute>,
+        owner: Span,
+        search_start: u32,
+    ) {
+        let offsets = if attrs.is_empty() {
+            empty_import_attribute_offsets(self.ast, owner, search_start)
+        } else {
+            import_attribute_offsets(self.ast, attrs)
+        };
+        let Some((keyword, open, close, is_assert)) = offsets else {
+            return;
+        };
+        self.print(" ");
+        self.add_source_mapping(keyword);
+        self.print(if is_assert { "assert " } else { "with " });
+        self.add_source_mapping(open);
+        self.print("{");
+        if !attrs.is_empty() {
+            self.print_space();
+        }
+        for (i, id) in attrs.iter().enumerate() {
+            if i != 0 {
+                self.print(",");
+                self.print_space();
+            }
+            let a = self.ast.get_node_in_sub_range(id);
+            let key = a.key(self.ast);
+            if let ModuleExportNameData::StringLiteral(string) =
+                self.ast.module_export_name_data(key)
+            {
+                self.add_source_mapping(key.span(self.ast).start);
+                self.print_quoted(ast_text(self.ast, string.value(self.ast)), false);
+            } else {
+                self.print_module_name(key);
+            }
+            self.print(":");
+            self.print_space();
+            self.add_source_mapping(a.value(self.ast).span(self.ast).start);
+            self.print_quoted(ast_text(self.ast, a.value(self.ast).value(self.ast)), false);
+        }
+        if !attrs.is_empty() {
+            self.print_space();
+        }
+        self.add_source_mapping(close);
+        self.print("}");
+    }
+
+    fn print_module_name(&mut self, name: ModuleExportName) {
+        match self.ast.module_export_name_data(name) {
+            ModuleExportNameData::IdentifierName(i) => {
+                let text = ast_text(self.ast, i.name(self.ast));
+                self.add_source_mapping_for_name(name.span(self.ast).start, text);
+                self.print_identifier(text)
+            }
+            ModuleExportNameData::StringLiteral(s) => {
+                let text = ast_text(self.ast, s.value(self.ast));
+                self.add_source_mapping(name.span(self.ast).start);
+                if is_identifier(text) {
+                    self.print_identifier(text)
+                } else {
+                    self.print_quoted(text, false)
+                }
+            }
+        }
+    }
+
+    fn print_export_named(&mut self, d: ExportNamedDeclaration) {
+        if let Some(DeclData::Class(class)) = d.declaration(self.ast).map(|d| self.ast.decl_data(d))
+        {
+            let omit_indent =
+                self.print_decorators(class.decorators(self.ast), PrintAfterDecorator::Newline);
+            if !omit_indent {
+                self.print_indent();
+            }
+            self.adapter.mark_class_decorators_as_printed();
+        } else {
+            self.print_indent();
+        }
+        self.add_source_mapping(d.span(self.ast).start);
+        self.print("export");
+        if d.export_kind(self.ast) == ImportOrExportKind::Type {
+            self.print(" type ");
+        } else if d.declaration(self.ast).is_some() {
+            self.print(" ");
+        } else {
+            self.print_space();
+        }
+        if let Some(decl) = d.declaration(self.ast) {
+            let block = matches!(
+                self.ast.decl_data(decl),
+                DeclData::Function(_)
+                    | DeclData::Class(_)
+                    | DeclData::TsInterfaceDeclaration(_)
+                    | DeclData::TsModuleDeclaration(_)
+            );
+            self.print_decl(decl);
+            if block {
+                self.print_newline();
+            } else {
+                self.print_semicolon_after_statement();
+            }
+            return;
+        }
+        self.print("{");
+        let specs = d.specifiers(self.ast);
+        if !specs.is_empty() {
+            self.print_space();
+        }
+        for (i, id) in specs.iter().enumerate() {
+            if i != 0 {
+                self.print(",");
+                self.print_space();
+            }
+            let s = self.ast.get_node_in_sub_range(id);
+            if s.export_kind(self.ast) == ImportOrExportKind::Type {
+                self.print("type ");
+            }
+            self.print_module_name(s.local(self.ast));
+            if module_name_bytes(self.ast, s.local(self.ast))
+                != module_name_bytes(self.ast, s.exported(self.ast))
+            {
+                self.print_space();
+                self.print_space_before_identifier();
+                self.print("as");
+                if matches!(
+                    self.ast.module_export_name_data(s.exported(self.ast)),
+                    ModuleExportNameData::IdentifierName(_)
+                ) {
+                    self.print(" ");
+                } else {
+                    self.print_space();
+                }
+                self.print_module_name(s.exported(self.ast));
+            }
+        }
+        if !specs.is_empty() {
+            self.print_space();
+        }
+        self.print("}");
+        if let Some(source) = d.source(self.ast) {
+            self.print_space();
+            self.print_space_before_identifier();
+            self.print("from");
+            self.print_space();
+            self.add_source_mapping(source.span(self.ast).start);
+            self.print_quoted(ast_text(self.ast, source.value(self.ast)), false);
+        }
+        self.print_import_attributes(
+            d.attributes(self.ast),
+            d.span(self.ast),
+            d.source(self.ast)
+                .map(|source| source.span(self.ast).end)
+                .unwrap_or(d.span(self.ast).start),
+        );
+        self.print_semicolon_after_statement();
+    }
+
+    fn print_export_default(&mut self, d: ExportDefaultDeclaration) {
+        let class = match self
+            .ast
+            .export_default_declaration_kind_data(d.declaration(self.ast))
+        {
+            ExportDefaultDeclarationKindData::Class(class) => Some(class),
+            _ => None,
+        };
+        if let Some(class) = class {
+            let omit_indent =
+                self.print_decorators(class.decorators(self.ast), PrintAfterDecorator::Newline);
+            if !omit_indent {
+                self.print_indent();
+            }
+            self.adapter.mark_class_decorators_as_printed();
+        } else {
+            self.print_indent();
+        }
+        self.add_source_mapping(d.span(self.ast).start);
+        self.print("export default ");
+        self.export_default_start = self.js.len();
+        match self
+            .ast
+            .export_default_declaration_kind_data(d.declaration(self.ast))
+        {
+            ExportDefaultDeclarationKindData::Expr(e) => {
+                let is_function_or_class = matches!(
+                    self.ast.expr_data(e),
+                    ExprData::Function(_) | ExprData::Class(_)
+                );
+                let was_parenthesized =
+                    is_function_or_class && export_default_expr_was_parenthesized(self.ast, d, e);
+                let has_leading_comments = !self.options.minify
+                    && self.source_comments[self.next_comment..]
+                        .iter()
+                        .take_while(|comment| comment.end <= e.span(self.ast).start)
+                        .any(|comment| comment.start >= d.span(self.ast).start);
+                if was_parenthesized && has_leading_comments {
+                    self.print("(");
+                    self.print_newline();
+                    self.indent += 1;
+                    self.print_comments_before(e.span(self.ast).start, true, true);
+                    self.print_indent();
+                    let wrap_function = matches!(self.ast.expr_data(e), ExprData::Function(_));
+                    if wrap_function {
+                        self.print("(");
+                    }
+                    self.print_expr(e, Level::Assignment);
+                    if wrap_function {
+                        self.print(")");
+                    }
+                    self.print_newline();
+                    self.indent -= 1;
+                    self.print_indent();
+                    self.print(")");
+                    self.print_semicolon_after_statement();
+                    return;
+                }
+                if was_parenthesized {
+                    self.print("(");
+                }
+                self.print_expr(e, Level::Assignment);
+                if was_parenthesized {
+                    self.print(")");
+                    self.print_semicolon_after_statement();
+                } else if is_function_or_class {
+                    self.print_newline();
+                } else {
+                    self.print_semicolon_after_statement();
+                }
+            }
+            ExportDefaultDeclarationKindData::Function(f) => {
+                self.print_function(f, true);
+                self.print_newline();
+            }
+            ExportDefaultDeclarationKindData::Class(c) => {
+                self.print_class(c, true);
+                self.print_newline();
+            }
+            ExportDefaultDeclarationKindData::TsInterfaceDeclaration(i) => {
+                self.print_ts_interface(i);
+                self.print_newline();
+            }
+        }
+    }
+
+    // TypeScript printing follows the same recursive shape as the JavaScript
+    // printer. Keeping it here avoids a second representation or conversion.
+    fn print_ts_annotation(&mut self, a: TsTypeAnnotation) {
+        self.print(":");
+        self.print_space();
+        self.print_ts_type(a.type_annotation(self.ast), Level::Lowest);
+    }
+
+    fn print_ts_type_params(&mut self, d: TsTypeParameterDeclaration) {
+        self.print("<");
+        for (i, id) in d.params(self.ast).iter().enumerate() {
+            if i != 0 {
+                self.print(",");
+                self.print_space();
+            }
+            let p = self.ast.get_node_in_sub_range(id);
+            if p.r#const(self.ast) {
+                self.print("const ");
+            }
+            if p.r#in(self.ast) {
+                self.print("in ");
+            }
+            if p.out(self.ast) {
+                self.print("out ");
+            }
+            self.print_binding_identifier(p.name(self.ast), false);
+            if let Some(t) = p.constraint(self.ast) {
+                self.print(" extends ");
+                self.print_ts_type(t, Level::Lowest);
+            }
+            if let Some(t) = p.default(self.ast) {
+                self.print_space();
+                self.print("=");
+                self.print_space();
+                self.print_ts_type(t, Level::Lowest);
+            }
+        }
+        self.print(">");
+    }
+
+    fn print_ts_type_args(&mut self, d: TsTypeParameterInstantiation) {
+        self.print("<");
+        for (i, id) in d.params(self.ast).iter().enumerate() {
+            if i != 0 {
+                self.print(",");
+                self.print_space();
+            }
+            self.print_ts_type(self.ast.get_node_in_sub_range(id), Level::Lowest);
+        }
+        self.print(">");
+    }
+
+    fn print_ts_type(&mut self, ty: TsType, level: Level) {
+        self.add_source_mapping(ty.span(self.ast).start);
+        match self.ast.ts_type_data(ty) {
+            TsTypeData::TsAnyKeyword(_) => self.print("any"),
+            TsTypeData::TsUnknownKeyword(_) => self.print("unknown"),
+            TsTypeData::TsNeverKeyword(_) => self.print("never"),
+            TsTypeData::TsVoidKeyword(_) => self.print("void"),
+            TsTypeData::TsNullKeyword(_) => self.print("null"),
+            TsTypeData::TsUndefinedKeyword(_) => self.print("undefined"),
+            TsTypeData::TsStringKeyword(_) => self.print("string"),
+            TsTypeData::TsNumberKeyword(_) => self.print("number"),
+            TsTypeData::TsBigIntKeyword(_) => self.print("bigint"),
+            TsTypeData::TsBooleanKeyword(_) => self.print("boolean"),
+            TsTypeData::TsSymbolKeyword(_) => self.print("symbol"),
+            TsTypeData::TsObjectKeyword(_) => self.print("object"),
+            TsTypeData::TsIntrinsicKeyword(_) => self.print("intrinsic"),
+            TsTypeData::TsThisType(_) => self.print("this"),
+            TsTypeData::TsTypeReference(t) => {
+                self.print_ts_type_name(t.type_name(self.ast));
+                if let Some(a) = t.type_arguments(self.ast) {
+                    self.print_ts_type_args(a);
+                }
+            }
+            TsTypeData::TsTypeQuery(t) => {
+                self.print("typeof ");
+                self.print_ts_query_name(t.expr_name(self.ast));
+                if let Some(a) = t.type_arguments(self.ast) {
+                    self.print_ts_type_args(a);
+                }
+            }
+            TsTypeData::TsImportType(t) => {
+                self.print("import(");
+                self.add_source_mapping(t.source(self.ast).span(self.ast).start);
+                self.print_quoted(
+                    ast_text(self.ast, t.source(self.ast).value(self.ast)),
+                    false,
+                );
+                if let Some(o) = t.options(self.ast) {
+                    self.print(",");
+                    self.print_space();
+                    self.print_expr(o, Level::Assignment);
+                }
+                self.print(")");
+                if let Some(q) = t.qualifier(self.ast) {
+                    self.print(".");
+                    self.print_ts_import_qualifier(q);
+                }
+                if let Some(a) = t.type_arguments(self.ast) {
+                    self.print_ts_type_args(a);
+                }
+            }
+            TsTypeData::TsLiteralType(t) => self.print_ts_literal(t.literal(self.ast)),
+            TsTypeData::TsTemplateLiteralType(t) => {
+                self.print("`");
+                let qs = t.quasis(self.ast);
+                let types = t.types(self.ast);
+                for (i, id) in qs.iter().enumerate() {
+                    self.print_bytes(ast_text(
+                        self.ast,
+                        self.ast.get_node_in_sub_range(id).raw(self.ast),
+                    ));
+                    if i < types.len() {
+                        self.print("${");
+                        self.print_ts_type(types.get_node(self.ast, i).unwrap(), Level::Lowest);
+                        self.print("}");
+                    }
+                }
+                self.print("`");
+            }
+            TsTypeData::TsArrayType(t) => {
+                let wrap = level > Level::Postfix;
+                if wrap {
+                    self.print("(");
+                }
+                self.print_ts_type(t.element_type(self.ast), Level::Postfix);
+                if wrap {
+                    self.print(")");
+                }
+                self.print("[]");
+            }
+            TsTypeData::TsIndexedAccessType(t) => {
+                self.print_ts_type(t.object_type(self.ast), Level::Postfix);
+                self.print("[");
+                self.print_ts_type(t.index_type(self.ast), Level::Lowest);
+                self.print("]");
+            }
+            TsTypeData::TsTupleType(t) => {
+                self.print("[");
+                for (i, id) in t.element_types(self.ast).iter().enumerate() {
+                    if i != 0 {
+                        self.print(",");
+                        self.print_space();
+                    }
+                    self.print_ts_tuple_element(self.ast.get_node_in_sub_range(id));
+                }
+                self.print("]");
+            }
+            TsTypeData::TsOptionalType(t) => {
+                self.print_ts_type(t.type_annotation(self.ast), Level::Postfix);
+                self.print("?");
+            }
+            TsTypeData::TsRestType(t) => {
+                self.print("...");
+                self.print_ts_type(t.type_annotation(self.ast), Level::Prefix);
+            }
+            TsTypeData::TsJsDocNullableType(t) => {
+                if !t.postfix(self.ast) {
+                    self.print("?");
+                }
+                self.print_ts_type(t.type_annotation(self.ast), Level::Prefix);
+                if t.postfix(self.ast) {
+                    self.print("?");
+                }
+            }
+            TsTypeData::TsJsDocNonNullableType(t) => {
+                if !t.postfix(self.ast) {
+                    self.print("!");
+                }
+                self.print_ts_type(t.type_annotation(self.ast), Level::Prefix);
+                if t.postfix(self.ast) {
+                    self.print("!");
+                }
+            }
+            TsTypeData::TsJsDocUnknownType(_) => self.print("?"),
+            TsTypeData::TsUnionType(t) => {
+                self.print_ts_type_list(t.types(self.ast), " | ", Level::BitwiseOr, level)
+            }
+            TsTypeData::TsIntersectionType(t) => {
+                self.print_ts_type_list(t.types(self.ast), " & ", Level::BitwiseAnd, level)
+            }
+            TsTypeData::TsConditionalType(t) => {
+                let wrap = level > Level::Conditional;
+                if wrap {
+                    self.print("(");
+                }
+                self.print_ts_type(t.check_type(self.ast), Level::Compare);
+                self.print(" extends ");
+                self.print_ts_type(t.extends_type(self.ast), Level::Compare);
+                self.print(" ? ");
+                self.print_ts_type(t.true_type(self.ast), Level::Lowest);
+                self.print(" : ");
+                self.print_ts_type(t.false_type(self.ast), Level::Lowest);
+                if wrap {
+                    self.print(")");
+                }
+            }
+            TsTypeData::TsInferType(t) => {
+                self.print("infer ");
+                let p = t.type_parameter(self.ast);
+                self.print_binding_identifier(p.name(self.ast), false);
+                if let Some(c) = p.constraint(self.ast) {
+                    self.print(" extends ");
+                    self.print_ts_type(c, Level::Lowest);
+                }
+            }
+            TsTypeData::TsTypeOperator(t) => {
+                self.print(match t.operator(self.ast) {
+                    TsTypeOperatorKind::Keyof => "keyof ",
+                    TsTypeOperatorKind::Unique => "unique ",
+                    TsTypeOperatorKind::Readonly => "readonly ",
+                });
+                self.print_ts_type(t.type_annotation(self.ast), Level::Prefix);
+            }
+            TsTypeData::TsParenthesizedType(t) => {
+                self.print("(");
+                self.print_ts_type(t.type_annotation(self.ast), Level::Lowest);
+                self.print(")");
+            }
+            TsTypeData::TsFunctionType(t) => {
+                if let Some(p) = t.type_parameters(self.ast) {
+                    self.print_ts_type_params(p);
+                }
+                self.print_formal_parameters(t.params(self.ast));
+                self.print(" => ");
+                self.print_ts_type(
+                    t.return_type(self.ast).type_annotation(self.ast),
+                    Level::Assignment,
+                );
+            }
+            TsTypeData::TsConstructorType(t) => {
+                if t.r#abstract(self.ast) {
+                    self.print("abstract ");
+                }
+                self.print("new ");
+                if let Some(p) = t.type_parameters(self.ast) {
+                    self.print_ts_type_params(p);
+                }
+                self.print_formal_parameters(t.params(self.ast));
+                self.print(" => ");
+                self.print_ts_type(
+                    t.return_type(self.ast).type_annotation(self.ast),
+                    Level::Assignment,
+                );
+            }
+            TsTypeData::TsTypePredicate(t) => {
+                if t.asserts(self.ast) {
+                    self.print("asserts ");
+                }
+                match self
+                    .ast
+                    .ts_type_predicate_name_data(t.parameter_name(self.ast))
+                {
+                    TsTypePredicateNameData::IdentifierName(i) => {
+                        self.print_identifier(ast_text(self.ast, i.name(self.ast)))
+                    }
+                    TsTypePredicateNameData::TsThisType(_) => self.print("this"),
+                };
+                if let Some(a) = t.type_annotation(self.ast) {
+                    self.print(" is ");
+                    self.print_ts_type(a.type_annotation(self.ast), Level::Lowest);
+                }
+            }
+            TsTypeData::TsTypeLiteral(t) => self.print_ts_type_members(t.members(self.ast)),
+            TsTypeData::TsMappedType(t) => self.print_ts_mapped(t),
+        }
+    }
+
+    fn print_ts_type_list(
+        &mut self,
+        types: TypedSubRange<TsType>,
+        sep: &str,
+        prec: Level,
+        level: Level,
+    ) {
+        let wrap = level > prec;
+        if wrap {
+            self.print("(");
+        }
+        for (i, id) in types.iter().enumerate() {
+            if i != 0 {
+                self.print(sep);
+            }
+            self.print_ts_type(self.ast.get_node_in_sub_range(id), next_level(prec));
+        }
+        if wrap {
+            self.print(")");
+        }
+    }
+    fn print_ts_type_name(&mut self, n: TsTypeName) {
+        match self.ast.ts_type_name_data(n) {
+            TsTypeNameData::IdentifierReference(i) => {
+                let name = ast_text(self.ast, i.name(self.ast));
+                self.add_source_mapping_for_name(i.span(self.ast).start, name);
+                self.print_identifier(name)
+            }
+            TsTypeNameData::TsQualifiedName(q) => self.print_ts_qualified(q),
+        }
+    }
+    fn print_ts_qualified(&mut self, q: TsQualifiedName) {
+        match self.ast.ts_qualified_name_left_data(q.left(self.ast)) {
+            TsQualifiedNameLeftData::IdentifierReference(i) => {
+                let name = ast_text(self.ast, i.name(self.ast));
+                self.add_source_mapping_for_name(i.span(self.ast).start, name);
+                self.print_identifier(name)
+            }
+            TsQualifiedNameLeftData::IdentifierName(i) => {
+                let name = ast_text(self.ast, i.name(self.ast));
+                self.add_source_mapping_for_name(i.span(self.ast).start, name);
+                self.print_identifier(name)
+            }
+            TsQualifiedNameLeftData::BindingIdentifier(i) => {
+                let name = ast_text(self.ast, i.name(self.ast));
+                self.add_source_mapping_for_name(i.span(self.ast).start, name);
+                self.print_identifier(name)
+            }
+            TsQualifiedNameLeftData::ThisExpression(_) => self.print("this"),
+            TsQualifiedNameLeftData::TsQualifiedName(x) => self.print_ts_qualified(x),
+        }
+        self.print(".");
+        let right = q.right(self.ast);
+        let name = ast_text(self.ast, right.name(self.ast));
+        self.add_source_mapping_for_name(right.span(self.ast).start, name);
+        self.print_identifier(name);
+    }
+    fn print_ts_import_qualifier(&mut self, q: TsImportTypeQualifier) {
+        match self.ast.ts_import_type_qualifier_data(q) {
+            TsImportTypeQualifierData::IdentifierName(i) => {
+                let name = ast_text(self.ast, i.name(self.ast));
+                self.add_source_mapping_for_name(i.span(self.ast).start, name);
+                self.print_identifier(name)
+            }
+            TsImportTypeQualifierData::TsQualifiedName(q) => self.print_ts_qualified(q),
+        }
+    }
+    fn print_ts_query_name(&mut self, n: TsTypeQueryExprName) {
+        match self.ast.ts_type_query_expr_name_data(n) {
+            TsTypeQueryExprNameData::TsTypeName(n) => self.print_ts_type_name(n),
+            TsTypeQueryExprNameData::ThisExpression(_) => self.print("this"),
+            TsTypeQueryExprNameData::TsImportType(t) => {
+                self.print("import(");
+                self.add_source_mapping(t.source(self.ast).span(self.ast).start);
+                self.print_quoted(
+                    ast_text(self.ast, t.source(self.ast).value(self.ast)),
+                    false,
+                );
+                self.print(")");
+            }
+        }
+    }
+    fn print_ts_literal(&mut self, l: TsLiteral) {
+        match self.ast.ts_literal_data(l) {
+            TsLiteralData::StringLiteral(s) => {
+                self.print_quoted(ast_text(self.ast, s.value(self.ast)), true)
+            }
+            TsLiteralData::NumericLiteral(n) => {
+                self.print_number(ast_text(self.ast, n.raw(self.ast)), Level::Lowest)
+            }
+            TsLiteralData::BigIntLiteral(n) => {
+                self.print_bytes(ast_text(self.ast, n.raw(self.ast)))
+            }
+            TsLiteralData::BooleanLiteral(b) => {
+                self.print(if b.value(self.ast) { "true" } else { "false" })
+            }
+            TsLiteralData::TemplateLiteral(t) => self.print_template(t, false),
+            TsLiteralData::UnaryExpression(u) => self.print_unary(u, Level::Lowest),
+        }
+    }
+    fn print_ts_tuple_element(&mut self, e: TsTupleElement) {
+        match self.ast.ts_tuple_element_data(e) {
+            TsTupleElementData::TsType(t) => self.print_ts_type(t, Level::Lowest),
+            TsTupleElementData::TsNamedTupleMember(n) => {
+                let label = n.label(self.ast);
+                let name = ast_text(self.ast, label.name(self.ast));
+                self.add_source_mapping_for_name(label.span(self.ast).start, name);
+                self.print_identifier(name);
+                if n.optional(self.ast) {
+                    self.print("?");
+                }
+                self.print(":");
+                self.print_space();
+                self.print_ts_type(n.element_type(self.ast), Level::Lowest);
+            }
+            TsTupleElementData::TsOptionalType(t) => {
+                self.print_ts_type(t.type_annotation(self.ast), Level::Postfix);
+                self.print("?");
+            }
+            TsTupleElementData::TsRestType(t) => {
+                self.print("...");
+                self.print_ts_type(t.type_annotation(self.ast), Level::Prefix);
+            }
+        }
+    }
+    fn print_ts_type_members(&mut self, m: TypedSubRange<TsTypeElement>) {
+        self.print("{");
+        if !m.is_empty() {
+            self.print_newline();
+        }
+        self.indent += 1;
+        for id in m.iter() {
+            self.print_indent();
+            self.print_ts_type_element(self.ast.get_node_in_sub_range(id));
+            self.print_semicolon_after_statement();
+        }
+        self.indent -= 1;
+        self.print_indent();
+        self.print("}");
+    }
+    fn print_ts_type_element(&mut self, e: TsTypeElement) {
+        match self.ast.ts_type_element_data(e) {
+            TsTypeElementData::TsPropertySignature(s) => {
+                if s.readonly(self.ast) {
+                    self.print("readonly ");
+                }
+                self.print_property_key(s.key(self.ast), s.computed(self.ast));
+                if s.optional(self.ast) {
+                    self.print("?");
+                }
+                if let Some(a) = s.type_annotation(self.ast) {
+                    self.print_ts_annotation(a);
+                }
+            }
+            TsTypeElementData::TsMethodSignature(s) => {
+                match s.kind(self.ast) {
+                    TsMethodSignatureKind::Get => self.print("get "),
+                    TsMethodSignatureKind::Set => self.print("set "),
+                    _ => {}
+                }
+                self.print_property_key(s.key(self.ast), s.computed(self.ast));
+                if s.optional(self.ast) {
+                    self.print("?");
+                }
+                if let Some(p) = s.type_parameters(self.ast) {
+                    self.print_ts_type_params(p);
+                }
+                self.print_formal_parameters(s.params(self.ast));
+                if let Some(a) = s.return_type(self.ast) {
+                    self.print_ts_annotation(a);
+                }
+            }
+            TsTypeElementData::TsCallSignatureDeclaration(s) => {
+                if let Some(p) = s.type_parameters(self.ast) {
+                    self.print_ts_type_params(p);
+                }
+                self.print_formal_parameters(s.params(self.ast));
+                if let Some(a) = s.return_type(self.ast) {
+                    self.print_ts_annotation(a);
+                }
+            }
+            TsTypeElementData::TsConstructSignatureDeclaration(s) => {
+                self.print("new ");
+                if let Some(p) = s.type_parameters(self.ast) {
+                    self.print_ts_type_params(p);
+                }
+                self.print_formal_parameters(s.params(self.ast));
+                if let Some(a) = s.return_type(self.ast) {
+                    self.print_ts_annotation(a);
+                }
+            }
+            TsTypeElementData::TsIndexSignature(s) => self.print_ts_index_signature(s),
+        }
+    }
+    fn print_ts_index_signature(&mut self, s: TsIndexSignature) {
+        if s.r#static(self.ast) {
+            self.print("static ");
+        }
+        if s.readonly(self.ast) {
+            self.print("readonly ");
+        }
+        self.print("[");
+        for (i, id) in s.parameters(self.ast).iter().enumerate() {
+            if i != 0 {
+                self.print(",");
+                self.print_space();
+            }
+            self.print_binding_identifier(self.ast.get_node_in_sub_range(id), false);
+        }
+        self.print("]");
+        self.print_ts_annotation(s.type_annotation(self.ast));
+    }
+    fn print_ts_mapped(&mut self, t: TsMappedType) {
+        self.print("{");
+        self.print_newline();
+        self.indent += 1;
+        self.print_indent();
+        match t.readonly(self.ast) {
+            TsMappedTypeModifier::True => self.print("readonly "),
+            TsMappedTypeModifier::Plus => self.print("+readonly "),
+            TsMappedTypeModifier::Minus => self.print("-readonly "),
+            TsMappedTypeModifier::None => {}
+        }
+        self.print("[");
+        self.print_binding_identifier(t.key(self.ast), false);
+        self.print(" in ");
+        self.print_ts_type(t.constraint(self.ast), Level::Lowest);
+        if let Some(n) = t.name_type(self.ast) {
+            self.print(" as ");
+            self.print_ts_type(n, Level::Lowest);
+        }
+        self.print("]");
+        match t.optional(self.ast) {
+            TsMappedTypeModifier::True => self.print("?"),
+            TsMappedTypeModifier::Plus => self.print("+?"),
+            TsMappedTypeModifier::Minus => self.print("-?"),
+            TsMappedTypeModifier::None => {}
+        }
+        if let Some(a) = t.type_annotation(self.ast) {
+            self.print(":");
+            self.print_space();
+            self.print_ts_type(a, Level::Lowest);
+        }
+        self.print(";");
+        self.print_newline();
+        self.indent -= 1;
+        self.print_indent();
+        self.print("}");
+    }
+    fn print_ts_type_alias(&mut self, d: TsTypeAliasDeclaration) {
+        self.add_source_mapping(d.span(self.ast).start);
+        if d.declare(self.ast) {
+            self.print("declare ");
+        }
+        self.print("type ");
+        self.print_binding_identifier(d.id(self.ast), false);
+        if let Some(p) = d.type_parameters(self.ast) {
+            self.print_ts_type_params(p);
+        }
+        self.print_space();
+        self.print("=");
+        self.print_space();
+        self.print_ts_type(d.type_annotation(self.ast), Level::Lowest);
+    }
+    fn print_ts_interface(&mut self, d: TsInterfaceDeclaration) {
+        self.add_source_mapping(d.span(self.ast).start);
+        if d.declare(self.ast) {
+            self.print("declare ");
+        }
+        self.print("interface ");
+        self.print_binding_identifier(d.id(self.ast), false);
+        if let Some(p) = d.type_parameters(self.ast) {
+            self.print_ts_type_params(p);
+        }
+        let ex = d.extends(self.ast);
+        if !ex.is_empty() {
+            self.print(" extends ");
+            for (i, id) in ex.iter().enumerate() {
+                if i != 0 {
+                    self.print(",");
+                    self.print_space();
+                }
+                let h = self.ast.get_node_in_sub_range(id);
+                self.print_expr(h.expression(self.ast), Level::Assignment);
+                if let Some(a) = h.type_arguments(self.ast) {
+                    self.print_ts_type_args(a);
+                }
+            }
+        }
+        self.print_space();
+        self.print_ts_type_members(d.body(self.ast).body(self.ast));
+    }
+    fn print_ts_enum(&mut self, d: TsEnumDeclaration) {
+        self.add_source_mapping(d.span(self.ast).start);
+        if d.declare(self.ast) {
+            self.print("declare ");
+        }
+        if d.is_const(self.ast) {
+            self.print("const ");
+        }
+        self.print("enum ");
+        self.print_binding_identifier(d.id(self.ast), false);
+        self.print_space();
+        self.add_source_mapping(d.body(self.ast).span(self.ast).start);
+        self.print("{");
+        let m = d.body(self.ast).members(self.ast);
+        if !m.is_empty() {
+            self.print_newline();
+        }
+        self.indent += 1;
+        for id in m.iter() {
+            let x = self.ast.get_node_in_sub_range(id);
+            self.print_indent();
+            self.add_source_mapping(x.span(self.ast).start);
+            self.print_ts_enum_name(x.id(self.ast), x.computed(self.ast));
+            if let Some(v) = x.initializer(self.ast) {
+                self.print_space();
+                self.print("=");
+                self.print_space();
+                self.print_expr(v, Level::Assignment);
+            }
+            self.print(",");
+            self.print_newline();
+        }
+        self.indent -= 1;
+        self.print_indent();
+        self.add_source_mapping(d.body(self.ast).span(self.ast).end.saturating_sub(1));
+        self.print("}");
+    }
+    fn print_ts_enum_name(&mut self, n: TsEnumMemberName, computed: bool) {
+        if computed {
+            self.print("[");
+        }
+        match self.ast.ts_enum_member_name_data(n) {
+            TsEnumMemberNameData::IdentifierName(i) => {
+                let name = ast_text(self.ast, i.name(self.ast));
+                self.add_source_mapping_for_name(i.span(self.ast).start, name);
+                self.print_identifier(name)
+            }
+            TsEnumMemberNameData::StringLiteral(s) => {
+                self.add_source_mapping(s.span(self.ast).start);
+                self.print_quoted(ast_text(self.ast, s.value(self.ast)), true)
+            }
+            TsEnumMemberNameData::TemplateLiteral(t) => self.print_template(t, false),
+            TsEnumMemberNameData::Expr(e) => self.print_expr(e, Level::Lowest),
+        }
+        if computed {
+            self.print("]");
+        }
+    }
+    fn print_ts_module(&mut self, d: TsModuleDeclaration) {
+        self.add_source_mapping(d.span(self.ast).start);
+        if d.declare(self.ast) {
+            self.print("declare ");
+        }
+        self.print(match d.kind(self.ast) {
+            TsModuleDeclarationKind::Namespace => "namespace ",
+            TsModuleDeclarationKind::Module => "module ",
+        });
+        self.print_ts_module_name(d.id(self.ast));
+        if let Some(b) = d.body(self.ast) {
+            self.print_space();
+            self.print_ts_module_body(b);
+        }
+    }
+    fn print_ts_module_name(&mut self, n: TsModuleName) {
+        match self.ast.ts_module_name_data(n) {
+            TsModuleNameData::BindingIdentifier(i) => self.print_binding_identifier(i, false),
+            TsModuleNameData::StringLiteral(s) => {
+                self.add_source_mapping(s.span(self.ast).start);
+                self.print_quoted(ast_text(self.ast, s.value(self.ast)), false)
+            }
+            TsModuleNameData::TsQualifiedName(q) => self.print_ts_qualified(q),
+        }
+    }
+    fn print_ts_module_body(&mut self, b: TsModuleBody) {
+        match self.ast.ts_module_body_data(b) {
+            TsModuleBodyData::TsModuleBlock(b) => {
+                self.add_source_mapping(b.span(self.ast).start);
+                self.print("{");
+                let items = b.body(self.ast);
+                if !items.is_empty() {
+                    self.print_newline();
+                }
+                self.indent += 1;
+                for id in items.iter() {
+                    self.print_semicolon_if_needed();
+                    match self
+                        .ast
+                        .statement_list_item_data(self.ast.get_node_in_sub_range(id))
+                    {
+                        StatementListItemData::Stmt(s) => self.print_stmt(s),
+                        StatementListItemData::Directive(d) => {
+                            self.print_indent();
+                            self.print_quoted(ast_text(self.ast, d.value(self.ast)), false);
+                            self.print_semicolon_after_statement();
+                        }
+                    }
+                }
+                self.needs_semicolon = false;
+                self.indent -= 1;
+                self.print_indent();
+                self.add_source_mapping(b.span(self.ast).end.saturating_sub(1));
+                self.print("}");
+            }
+            TsModuleBodyData::TsModuleDeclaration(d) => self.print_ts_module(d),
+        }
+    }
+    fn print_ts_global(&mut self, d: TsGlobalDeclaration) {
+        self.add_source_mapping(d.span(self.ast).start);
+        if d.declare(self.ast) {
+            self.print("declare ");
+        }
+        let id = d.id(self.ast);
+        let name = ast_text(self.ast, id.name(self.ast));
+        self.add_source_mapping_for_name(id.span(self.ast).start, name);
+        self.print_identifier(name);
+        self.print_space();
+        let b = d.body(self.ast);
+        self.add_source_mapping(b.span(self.ast).start);
+        self.print("{");
+        let items = b.body(self.ast);
+        if !items.is_empty() {
+            self.print_newline();
+        }
+        self.indent += 1;
+        for id in items.iter() {
+            self.print_semicolon_if_needed();
+            if let StatementListItemData::Stmt(s) = self
+                .ast
+                .statement_list_item_data(self.ast.get_node_in_sub_range(id))
+            {
+                self.print_stmt(s);
+            }
+        }
+        self.needs_semicolon = false;
+        self.indent -= 1;
+        self.print_indent();
+        self.add_source_mapping(b.span(self.ast).end.saturating_sub(1));
+        self.print("}");
+    }
+    fn print_ts_parameter_property(&mut self, p: TsParameterProperty) {
+        self.print_decorators(p.decorators(self.ast), PrintAfterDecorator::Space);
+        self.print_accessibility(p.accessibility(self.ast));
+        if p.r#override(self.ast) {
+            self.print("override ");
+        }
+        if p.readonly(self.ast) {
+            self.print("readonly ");
+        }
+        self.print_binding(p.parameter(self.ast));
+    }
+    fn print_ts_import_equals(&mut self, d: TsImportEqualsDeclaration) {
+        self.add_source_mapping(d.span(self.ast).start);
+        self.print("import ");
+        if d.import_kind(self.ast) == ImportOrExportKind::Type {
+            self.print("type ");
+        }
+        self.print_binding_identifier(d.id(self.ast), false);
+        self.print_space();
+        self.print("=");
+        self.print_space();
+        match self
+            .ast
+            .ts_module_reference_data(d.module_reference(self.ast))
+        {
+            TsModuleReferenceData::TsTypeName(n) => self.print_ts_type_name(n),
+            TsModuleReferenceData::TsExternalModuleReference(r) => {
+                self.print("require(");
+                self.add_source_mapping(r.expression(self.ast).span(self.ast).start);
+                self.print_quoted(
+                    ast_text(self.ast, r.expression(self.ast).value(self.ast)),
+                    false,
+                );
+                self.print(")");
+            }
+        }
+    }
+
+    fn print_jsx_element(&mut self, e: JsxElement) {
+        let o = e.opening_element(self.ast);
+        let is_tag_single_line = is_jsx_tag_single_line(self.ast, o);
+        self.add_source_mapping(e.span(self.ast).start);
+        self.print("<");
+        self.print_jsx_name(o.name(self.ast));
+        if !is_tag_single_line {
+            self.indent += 1;
+        }
+        for id in o.attributes(self.ast).iter() {
+            let item = self.ast.get_node_in_sub_range(id);
+            let data = self.ast.jsx_attribute_item_data(item);
+            if is_tag_single_line {
+                self.print_space();
+            } else {
+                self.print_newline();
+                self.print_indent();
+            }
+            match data {
+                JsxAttributeItemData::JsxAttribute(a) => {
+                    self.print_space_before_identifier();
+                    self.print_jsx_attr_name(a.name(self.ast));
+                    if let Some(v) = a.value(self.ast) {
+                        self.print("=");
+                        self.print_jsx_attr_value(v);
+                    }
+                }
+                JsxAttributeItemData::JsxSpreadAttribute(s) => {
+                    self.add_source_mapping(item.span(self.ast).start);
+                    self.print("{...");
+                    self.print_expr(s.argument(self.ast), Level::Lowest);
+                    self.print("}");
+                }
+            }
+        }
+        if !is_tag_single_line {
+            self.indent -= 1;
+            if !o.attributes(self.ast).is_empty() {
+                self.print_newline();
+                self.print_indent();
+            }
+        }
+        if e.children(self.ast).is_empty() {
+            if is_tag_single_line || o.attributes(self.ast).is_empty() {
+                self.print_space();
+            }
+            self.add_source_mapping(o.span(self.ast).end.saturating_sub(2));
+            self.print("/>");
+            return;
+        }
+        self.print(">");
+        for id in e.children(self.ast).iter() {
+            self.print_jsx_child(self.ast.get_node_in_sub_range(id));
+        }
+        if let Some(c) = e.closing_element(self.ast) {
+            self.add_source_mapping(c.span(self.ast).start);
+            self.print("</");
+            self.print_jsx_name(c.name(self.ast));
+            self.print(">");
+        }
+    }
+    fn print_jsx_fragment(&mut self, e: JsxFragment) {
+        self.add_source_mapping(e.span(self.ast).start);
+        self.print("<>");
+        for id in e.children(self.ast).iter() {
+            self.print_jsx_child(self.ast.get_node_in_sub_range(id));
+        }
+        self.add_source_mapping(e.span(self.ast).end.saturating_sub(3));
+        self.print("</>");
+    }
+    fn print_jsx_name(&mut self, n: JsxElementName) {
+        match self.ast.jsx_element_name_data(n) {
+            JsxElementNameData::JsxIdentifier(i) => {
+                let name = ast_text(self.ast, i.name(self.ast));
+                self.add_source_mapping_for_name(n.span(self.ast).start, name);
+                self.print_bytes(name)
+            }
+            JsxElementNameData::JsxNamespacedName(x) => {
+                self.add_source_mapping(n.span(self.ast).start);
+                self.print_bytes(ast_text(self.ast, x.namespace(self.ast).name(self.ast)));
+                self.print(":");
+                self.print_bytes(ast_text(self.ast, x.name(self.ast).name(self.ast)));
+            }
+            JsxElementNameData::JsxMemberExpression(m) => self.print_jsx_member(m),
+        }
+    }
+    fn print_jsx_member(&mut self, m: JsxMemberExpression) {
+        match self
+            .ast
+            .jsx_member_expression_object_data(m.object(self.ast))
+        {
+            JsxMemberExpressionObjectData::JsxIdentifier(i) => {
+                let name = ast_text(self.ast, i.name(self.ast));
+                self.add_source_mapping_for_name(i.span(self.ast).start, name);
+                self.print_bytes(name)
+            }
+            JsxMemberExpressionObjectData::JsxMemberExpression(m) => self.print_jsx_member(m),
+        }
+        self.print(".");
+        let property = m.property(self.ast);
+        let name = ast_text(self.ast, property.name(self.ast));
+        self.add_source_mapping_for_name(property.span(self.ast).start, name);
+        self.print_bytes(name);
+    }
+    fn print_jsx_attr_name(&mut self, n: JsxAttributeName) {
+        match self.ast.jsx_attribute_name_data(n) {
+            JsxAttributeNameData::JsxIdentifier(i) => {
+                let name = ast_text(self.ast, i.name(self.ast));
+                self.add_source_mapping_for_name(n.span(self.ast).start, name);
+                self.print_bytes(name)
+            }
+            JsxAttributeNameData::JsxNamespacedName(x) => {
+                self.add_source_mapping(n.span(self.ast).start);
+                self.print_bytes(ast_text(self.ast, x.namespace(self.ast).name(self.ast)));
+                self.print(":");
+                self.print_bytes(ast_text(self.ast, x.name(self.ast).name(self.ast)));
+            }
+        }
+    }
+    fn print_jsx_attr_value(&mut self, v: JsxAttributeValue) {
+        match self.ast.jsx_attribute_value_data(v) {
+            JsxAttributeValueData::StringLiteral(s) => {
+                let span = s.span(self.ast);
+                self.print_bytes(&self.ast.source()[span.start as usize..span.end as usize]);
+            }
+            JsxAttributeValueData::JsxExpressionContainer(c) => self.print_jsx_container(c),
+            JsxAttributeValueData::JsxElement(e) => self.print_jsx_element(e),
+            JsxAttributeValueData::JsxFragment(e) => self.print_jsx_fragment(e),
+        }
+    }
+    fn print_jsx_container(&mut self, c: JsxExpressionContainer) {
+        self.print("{");
+        match self.ast.jsx_expression_data(c.expression(self.ast)) {
+            JsxExpressionData::Expr(e) => {
+                self.print_expr(e, Level::Assignment);
+            }
+            JsxExpressionData::JsxEmptyExpression(_) => {
+                let close_offset = c.span(self.ast).end.saturating_sub(1);
+                if !self.options.minify
+                    && self.source_comments[self.next_comment..]
+                        .iter()
+                        .any(|comment| comment.end <= close_offset)
+                {
+                    self.print_newline();
+                    self.indent += 1;
+                    self.print_comments_before(close_offset, true, true);
+                    self.indent -= 1;
+                    self.print_indent();
+                }
+            }
+        }
+        self.print("}");
+    }
+    fn print_jsx_child(&mut self, c: JsxChild) {
+        match self.ast.jsx_child_data(c) {
+            JsxChildData::JsxText(t) => {
+                self.print_bytes(ast_text(self.ast, t.value(self.ast)));
+            }
+            JsxChildData::JsxExpressionContainer(c) => self.print_jsx_container(c),
+            JsxChildData::JsxSpreadChild(s) => {
+                self.print("{...");
+                self.print_expr(s.expression(self.ast), Level::Lowest);
+                self.print("}");
+            }
+            JsxChildData::JsxElement(e) => self.print_jsx_element(e),
+            JsxChildData::JsxFragment(e) => self.print_jsx_fragment(e),
+        }
+    }
 }
