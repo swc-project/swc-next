@@ -10,15 +10,16 @@ license     = "Apache-2.0"
 repository  = "https://github.com/CPunisher/swc-experimental"
 
 [workspace.dependencies]
-allocator-api2 = "=0.2.21"
-bumpalo        = "3.20.3"
-hashbrown      = "0.17.1"
-indexmap       = "2.14.0"
-oxc_index      = { version = "5.0.0", features = ["nonmax"] }
-rayon          = "1.12.0"
-regex          = "1.12.2"
-rustc-hash     = "2.1.2"
-serde_json     = "1.0.145"
+allocator-api2   = "=0.2.21"
+bumpalo          = "3.20.3"
+hashbrown        = "0.17.1"
+indexmap         = "2.14.0"
+oxc_index        = { version = "5.0.0", features = ["nonmax"] }
+rayon            = "1.12.0"
+regex            = "1.12.2"
+rustc-hash       = "2.1.2"
+serde            = "1.0.229"
+serde_json       = "1.0.145"
 unicode-id-start = "1.4.0"
 
 # SWC
@@ -41,12 +42,13 @@ quote        = "1.0.46"
 syn          = { version = "2.0.118", default-features = false }
 
 # Workspace
-swc_experimental_allocator     = { version = "0.11.0", path = "crates/swc_allocator" }
-swc_experimental_ast_macros    = { version = "0.11.0", path = "crates/swc_ast_macros" }
-swc_experimental_ecma_ast      = { version = "0.11.0", path = "crates/swc_ecma_ast" }
-swc_experimental_ecma_codegen  = { version = "0.11.0", path = "crates/swc_ecma_codegen" }
-swc_experimental_ecma_parser   = { version = "0.11.0", path = "crates/swc_ecma_parser" }
-swc_experimental_ecma_semantic = { version = "0.11.0", path = "crates/swc_ecma_semantic" }
+swc_experimental_allocator        = { version = "0.11.0", path = "crates/swc_allocator" }
+swc_experimental_ast_macros       = { version = "0.11.0", path = "crates/swc_ast_macros" }
+swc_experimental_ecma_ast         = { version = "0.11.0", path = "crates/swc_ecma_ast" }
+swc_experimental_ecma_codegen     = { version = "0.11.0", path = "crates/swc_ecma_codegen" }
+swc_experimental_ecma_parser      = { version = "0.11.0", path = "crates/swc_ecma_parser" }
+swc_experimental_ecma_semantic    = { version = "0.11.0", path = "crates/swc_ecma_semantic" }
+swc_experimental_ecma_transformer = { version = "0.11.0", path = "crates/swc_ecma_transformer" }
 
 # Dev
 colored       = "3.1.1"

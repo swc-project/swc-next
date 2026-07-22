@@ -25,3 +25,4 @@ clone_repo() {
 
 clone_repo "tc39/test262" "tasks/testsuite/fixtures/test262" "de8e621cdba4f40cff3cf244e6cfb8cb48746b4a" "test262"
 clone_repo "microsoft/TypeScript" "tasks/testsuite/fixtures/typescript" "637d5746b70257028fb95aad32ddec6b26ab0a14" "typescript"
+clone_repo "babel/babel" "tasks/testsuite/fixtures/babel" "1554d587b31460f135adf65812d199f963a34e61" "babel"
