@@ -1,4 +1,4 @@
-use swc_next_ecma_ast::{CommentType, SourceType, Span};
+use swc_next_ecma_ast::{Comment, CommentType, SourceType, Span, String as AstString};
 
 use super::token::{Token, TokenFlag, TokenTag, flag_mask};
 use super::unicode_id::{can_continue_id, can_start_id};
@@ -6,13 +6,6 @@ use super::util::{
     code_point_at, is_multi_byte_space, parse_hex2, parse_octal, parse_unicode_escape,
     unicode_separator_len,
 };
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct RawComment {
-    pub comment_type: CommentType,
-    pub value: Span,
-    pub span: Span,
-}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LexicalError {
@@ -86,7 +79,7 @@ enum ConsumeUnicodeContext {
 
 #[derive(Clone, Debug)]
 pub struct Lexer<'a> {
-    pub comments: Vec<RawComment>,
+    pub comments: Vec<Comment>,
     pub collect_comments: bool,
     pub source: &'a [u8],
     pub cursor: u32,
@@ -1121,9 +1114,12 @@ impl<'a> Lexer<'a> {
         } else {
             0
         };
-        self.comments.push(RawComment {
+        self.comments.push(Comment {
             comment_type,
-            value: Span::new(start + head, end - tail),
+            value: AstString {
+                start: start + head,
+                end: end - tail,
+            },
             span: Span { start, end },
         });
         Ok(())

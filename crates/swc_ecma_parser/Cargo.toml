@@ -15,5 +15,5 @@ unstable = []
 swc_next_ecma_ast = { workspace = true }
 
 [dev-dependencies]
-pico-args         = { workspace = true }
+pico-args          = { workspace = true }
 swc_next_allocator = { workspace = true }

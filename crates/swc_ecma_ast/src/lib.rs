@@ -44,6 +44,8 @@ pub struct Ast<'a> {
 
     line_starts: Vec<u32>,
 
+    comments: ArenaVec<'a, Comment>,
+
     attached_comments: ArenaVec<'a, AttachedComment>,
 
     attached_comment_offsets: ArenaVec<'a, u32>,
@@ -55,7 +57,7 @@ pub struct Ast<'a> {
     extra_data: ArenaVec<'a, ExtraData>,
 
     /// Source-backed and decoded AST strings.
-    pub strings: StringPool<'a>,
+    strings: StringPool<'a>,
 }
 
 multi_index_vec! {
@@ -97,6 +99,7 @@ impl<'a> Ast<'a> {
             source_type: SourceType::Module,
             lang: Lang::Js,
             line_starts: vec![0],
+            comments: ArenaVec::new_in(allocator),
             attached_comments: ArenaVec::new_in(allocator),
             attached_comment_offsets: ArenaVec::new_in(allocator),
             nodes: NodeData::new_in(allocator),
@@ -207,6 +210,17 @@ impl<'a> Ast<'a> {
 
     pub fn line_starts(&self) -> &[u32] {
         &self.line_starts
+    }
+
+    /// Replaces the flat source-order comment list.
+    pub fn set_comments(&mut self, comments: &[Comment]) {
+        self.comments.clear();
+        self.comments.extend_from_slice_copy(comments);
+    }
+
+    /// Returns comments in source order when flat comment collection is enabled.
+    pub fn comments(&self) -> &[Comment] {
+        &self.comments
     }
 
     /// Replaces the attached-comment table used by source consumers.

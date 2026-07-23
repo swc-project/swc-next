@@ -656,9 +656,6 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         self.ensure_capacity();
         let ParsedBody { directives, body } = self.parse_body(None, BodyKind::Program);
         let end = self.current_token.span.end;
-        if !self.preserve_parens {
-            strip_parenthesized_nodes(self.ast);
-        }
         let hashbang = self.lexer.hashbang.map(|hashbang| {
             let start = hashbang.start;
             let end = start + u32::from(hashbang.len);
@@ -673,6 +670,18 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             hashbang,
         );
         build_line_starts(self.ast, self.source);
+
+        if self.comment_mode.attaches() {
+            crate::comments::attach(self.ast, program, &self.lexer.comments);
+        }
+
+        if self.comment_mode.is_flat() {
+            self.ast.set_comments(&self.lexer.comments);
+        }
+
+        if !self.preserve_parens {
+            strip_parenthesized_nodes(self.ast);
+        }
         Some(program)
     }
 
