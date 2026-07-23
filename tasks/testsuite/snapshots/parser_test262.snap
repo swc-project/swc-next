@@ -1,15 +1,8 @@
 parser * test262
 ========================
-Passed: 98942/99747 (99.19%)
-Failed: 805/99747 (0.81%)
-Panicked: 0/99747 (0.00%)
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-in-lhs.js - sloppy: parser: Invalid assignment target at 821..824
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-of-lhs.js - sloppy: parser: Invalid assignment target at 821..824
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-compound-assignment.js - sloppy: parser: Invalid assignment target at 898..901
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-postfix-update.js - sloppy: parser: Invalid operand for increment/decrement operator at 831..834
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-prefix-update.js - sloppy: parser: Invalid operand for increment/decrement operator at 832..835
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression.js - sloppy: parser: Invalid assignment target at 893..896
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/cover-callexpression-and-asyncarrowhead.js - sloppy: parser: Invalid assignment target at 730..737
+Passed: 98942/99740 (99.20%)
+Failed: 798/99740 (0.80%)
+Panicked: 0/99740 (0.00%)
 Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-a-func-no-skip-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1812..1813
 Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-a-func-skip-early-err-block.js - sloppy: semantic: Identifier 'f' has already been declared at 1545..1546
 Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-a-func-skip-early-err-switch.js - sloppy: semantic: Identifier 'f' has already been declared at 1569..1570

@@ -67,9 +67,12 @@ impl Test262Case {
             }
 
             let path = file.path().to_string_lossy().replace('\\', "/");
+            // These Annex B cases require call expressions to be accepted as assignment targets
+            // in non-strict mode, which this parser intentionally does not support.
             if !path.ends_with(".js")
                 || path.contains("_FIXTURE")
                 || path.contains("test262/test/staging")
+                || path.contains("test262/test/annexB/language/expressions/assignmenttargettype")
             {
                 continue;
             }

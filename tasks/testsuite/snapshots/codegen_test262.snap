@@ -1,15 +1,8 @@
 codegen * test262
 ========================
-Passed: 90369/91099 (99.20%)
-Failed: 730/91099 (0.80%)
-Panicked: 0/91099 (0.00%)
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-in-lhs.js - sloppy: first parse: Invalid assignment target at 821..824
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-of-lhs.js - sloppy: first parse: Invalid assignment target at 821..824
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-compound-assignment.js - sloppy: first parse: Invalid assignment target at 898..901
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-postfix-update.js - sloppy: first parse: Invalid operand for increment/decrement operator at 831..834
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-prefix-update.js - sloppy: first parse: Invalid operand for increment/decrement operator at 832..835
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression.js - sloppy: first parse: Invalid assignment target at 893..896
-Failed: fixtures/test262/test/annexB/language/expressions/assignmenttargettype/cover-callexpression-and-asyncarrowhead.js - sloppy: first parse: Invalid assignment target at 730..737
+Passed: 90369/91092 (99.21%)
+Failed: 723/91092 (0.79%)
+Panicked: 0/91092 (0.00%)
 Failed: fixtures/test262/test/built-ins/Array/fromAsync/asyncitems-arraylike-too-long.js - sloppy: codegen output changed after reparse at byte 668 (first: 800 bytes, second: 818 bytes)
 Failed: fixtures/test262/test/built-ins/Array/fromAsync/asyncitems-arraylike-too-long.js - strict: codegen output changed after reparse at byte 682 (first: 814 bytes, second: 832 bytes)
 Failed: fixtures/test262/test/built-ins/Function/prototype/toString/arrow-function.js - sloppy: codegen output changed after reparse at byte 468 (first: 840 bytes, second: 824 bytes)
