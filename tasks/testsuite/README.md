@@ -20,7 +20,7 @@ The harness expects three upstream repositories under `tasks/testsuite/fixtures`
 For a fresh checkout, clone the fixtures with:
 
 ```sh
-sh tasks/testsuite/clone-fixtures.sh
+./scripts/clone_fixtures.sh
 ```
 
 The fixture repositories are local inputs and are not part of this workspace.

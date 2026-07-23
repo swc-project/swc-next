@@ -2119,7 +2119,6 @@ name = "swc_experimental_ecma_transformer"
 version = "0.11.0"
 dependencies = [
  "serde",
- "serde_json",
  "swc_experimental_ecma_ast",
  "swc_experimental_ecma_semantic",
 ]
