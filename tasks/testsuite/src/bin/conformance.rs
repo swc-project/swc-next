@@ -3,7 +3,7 @@ use std::{collections::HashSet, fs};
 use pico_args::Arguments;
 use rayon::ThreadPoolBuilder;
 use testsuite::{
-    cases::{Case, test262::Test262Case, typescript::TypeScriptCase},
+    cases::{Case, babel::BabelCase, test262::Test262Case, typescript::TypeScriptCase},
     runner::{Runner, codegen::CodegenRunner, parser::ParserRunner},
     suite::TestResult,
     util::crate_root,
@@ -37,8 +37,10 @@ pub fn main() {
 
     update_snapshot::<ParserRunner, Test262Case>(&args);
     update_snapshot::<ParserRunner, TypeScriptCase>(&args);
+    update_snapshot::<ParserRunner, BabelCase>(&args);
     update_snapshot::<CodegenRunner, Test262Case>(&args);
     update_snapshot::<CodegenRunner, TypeScriptCase>(&args);
+    update_snapshot::<CodegenRunner, BabelCase>(&args);
 }
 
 fn update_snapshot<R: Runner, C: Case>(args: &AppArgs) {

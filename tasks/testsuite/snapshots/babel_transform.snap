@@ -3,34 +3,31 @@ babel transform
 
 Total
 -----
-Cases: 2941
-Passed: 247/2941 (8.40%)
-Failed: 174/2941 (5.92%)
-Panicked: 0/2941 (0.00%)
-Skipped: 2520/2941 (85.69%)
+Cases: 4069
+Passed: 435/4069 (10.69%)
+Failed: 68/4069 (1.67%)
+Panicked: 0/4069 (0.00%)
+Skipped: 3566/4069 (87.64%)
 
 Packages
 ========
 
 babel-core
 ----------
-Cases: 18
-Passed: 9/18 (50.00%)
-Failed: 1/18 (5.56%)
-Panicked: 0/18 (0.00%)
-Skipped: 8/18 (44.44%)
-Messages:
-Failed: fixtures/babel/packages/babel-core/test/fixtures/plugins/targets/preset/input.js - babel-core/test/fixtures/plugins/targets/preset: transformed output differs from output.js at byte 2 (actual: 2 bytes, expected: 50 bytes)
+Cases: 21
+Passed: 9/21 (42.86%)
+Failed: 0/21 (0.00%)
+Panicked: 0/21 (0.00%)
+Skipped: 12/21 (57.14%)
 
 babel-generator
 ---------------
-Cases: 531
-Passed: 209/531 (39.36%)
-Failed: 43/531 (8.10%)
-Panicked: 0/531 (0.00%)
-Skipped: 279/531 (52.54%)
+Cases: 560
+Passed: 408/560 (72.86%)
+Failed: 60/560 (10.71%)
+Panicked: 0/560 (0.00%)
+Skipped: 92/560 (16.43%)
 Messages:
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/async-do-expressions/retain-lines/input.js - input.js parse: Expected a semicolon or an implicit semicolon after a statement, but found 'do' at 28..30
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/await-using-declarations/for-using-init/input.js - babel-generator/test/fixtures/await-using-declarations/for-using-init: transformed output differs from output.js at byte 60 (actual: 99 bytes, expected: 111 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/comments/async-class-method-computed-key-comment/input.js - babel-generator/test/fixtures/comments/async-class-method-computed-key-comment: transformed output differs from output.js at byte 31 (actual: 87 bytes, expected: 79 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/comments/async-generator-class-method-comment/input.js - babel-generator/test/fixtures/comments/async-generator-class-method-comment: transformed output differs from output.js at byte 46 (actual: 93 bytes, expected: 93 bytes)
@@ -48,7 +45,6 @@ Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/new-prece
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/return-with-retainlines-and-compact-option/input.js - babel-generator/test/fixtures/edgecase/return-with-retainlines-and-compact-option: transformed output differs from output.js at byte 28 (actual: 43 bytes, expected: 34 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/unary-op/input.js - input.js semantic: Deleting an unqualified identifier is forbidden in strict mode at 7..15
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/yield-star-with-retainlines-option/input.js - babel-generator/test/fixtures/edgecase/yield-star-with-retainlines-option: transformed output differs from output.js at byte 28 (actual: 88 bytes, expected: 84 bytes)
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/flow/object-literal-types-compact/input.js - input.js parse: Expected a semicolon or an implicit semicolon after a statement, but found 'T1' at 5..7
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/arrow-function-ternary/input.js - babel-generator/test/fixtures/parentheses/arrow-function-ternary: transformed output differs from output.js at byte 28 (actual: 69 bytes, expected: 61 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/await-expression/input.js - babel-generator/test/fixtures/parentheses/await-expression: transformed output differs from output.js at byte 109 (actual: 290 bytes, expected: 284 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/class-extends/input.js - babel-generator/test/fixtures/parentheses/class-extends: transformed output differs from output.js at byte 227 (actual: 533 bytes, expected: 529 bytes)
@@ -58,6 +54,12 @@ Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/new-ca
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/nullish-coalescing/input.js - babel-generator/test/fixtures/parentheses/nullish-coalescing: transformed output differs from output.js at byte 57 (actual: 202 bytes, expected: 198 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/sequence-expressions/input.js - babel-generator/test/fixtures/parentheses/sequence-expressions: transformed output differs from output.js at byte 173 (actual: 264 bytes, expected: 254 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/tagged-template-expression/input.js - babel-generator/test/fixtures/parentheses/tagged-template-expression: transformed output differs from output.js at byte 32 (actual: 105 bytes, expected: 105 bytes)
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/ts-conditional-type/input.ts - babel-generator/test/fixtures/parentheses/ts-conditional-type: transformed output differs from output.js at byte 771 (actual: 971 bytes, expected: 965 bytes)
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/ts-infer-type/input.ts - babel-generator/test/fixtures/parentheses/ts-infer-type: transformed output differs from output.js at byte 632 (actual: 1683 bytes, expected: 1657 bytes)
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/ts-intersection-type/input.ts - babel-generator/test/fixtures/parentheses/ts-intersection-type: transformed output differs from output.js at byte 225 (actual: 317 bytes, expected: 313 bytes)
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/ts-new-callee/input.js - input.js semantic: 'super()' is only valid in a derived class constructor at 287..294
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/ts-type-operator/input.ts - babel-generator/test/fixtures/parentheses/ts-type-operator: transformed output differs from output.js at byte 181 (actual: 259 bytes, expected: 253 bytes)
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/ts-union-type/input.ts - babel-generator/test/fixtures/parentheses/ts-union-type: transformed output differs from output.js at byte 152 (actual: 364 bytes, expected: 358 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/unary-postfix/input.js - babel-generator/test/fixtures/parentheses/unary-postfix: transformed output differs from output.js at byte 1 (actual: 46 bytes, expected: 44 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/yield-expression/input.js - babel-generator/test/fixtures/parentheses/yield-expression: transformed output differs from output.js at byte 109 (actual: 312 bytes, expected: 304 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/regression/15161/input.js - babel-generator/test/fixtures/regression/15161: transformed output differs from output.js at byte 19 (actual: 57 bytes, expected: 22 bytes)
@@ -66,26 +68,42 @@ Failed: fixtures/babel/packages/babel-generator/test/fixtures/retainFunctionPare
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/sourcemaps/arrow-function-compact/input.js - babel-generator/test/fixtures/sourcemaps/arrow-function-compact: transformed output differs from output.js at byte 1 (actual: 28 bytes, expected: 24 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/sourcemaps/arrow-function/input.js - babel-generator/test/fixtures/sourcemaps/arrow-function: transformed output differs from output.js at byte 1 (actual: 28 bytes, expected: 24 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/sourcemaps/comment-before-parentheses-return-arg/input.js - babel-generator/test/fixtures/sourcemaps/comment-before-parentheses-return-arg: transformed output differs from output.js at byte 74 (actual: 311 bytes, expected: 308 bytes)
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/sourcemaps/real-world-babel-file1/input.ts - babel-generator/test/fixtures/sourcemaps/real-world-babel-file1: transformed output differs from output.js at byte 2535 (actual: 3706 bytes, expected: 3704 bytes)
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/sourcemaps/real-world-babel-file2/input.ts - babel-generator/test/fixtures/sourcemaps/real-world-babel-file2: transformed output differs from output.js at byte 4071 (actual: 22339 bytes, expected: 22319 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/ClassBody-ClassProperty/input.js - input.js parse: Getter cannot be a generator at 526..527
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/ExportDefaultDeclaration11/input.js - input.js parse: Expected a semicolon or an implicit semicolon after a statement, but found '(' at 21..22
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/LogicalExpression/input.js - babel-generator/test/fixtures/types/LogicalExpression: transformed output differs from output.js at byte 76 (actual: 230 bytes, expected: 216 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/UnaryExpression/input.js - input.js semantic: Deleting an unqualified identifier is forbidden in strict mode at 7..15
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/WithStatement/input.js - input.js semantic: 'with' statements are not allowed in strict mode at 0..13
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/types-parenthesized-createParenthesizedExpression/input.js - input.js parse: Expected a semicolon or an implicit semicolon after a statement, but found 'T' at 5..6
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/types-with-comments-retainLines/input.js - input.js parse: Expected a semicolon or an implicit semicolon after a statement, but found 'T' at 5..6
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/arrow-function-return-object-as/input.js - babel-generator/test/fixtures/typescript/arrow-function-return-object-as: transformed output differs from output.js at byte 9 (actual: 41 bytes, expected: 41 bytes)
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/cast-need-parentheses/input.js - babel-generator/test/fixtures/typescript/cast-need-parentheses: transformed output differs from output.js at byte 28 (actual: 354 bytes, expected: 346 bytes)
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/class-abstract/input.js - input.js semantic: Duplicate export 'default' at 187..189
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/export-default-function-as/input.js - babel-generator/test/fixtures/typescript/export-default-function-as: transformed output differs from output.js at byte 32 (actual: 40 bytes, expected: 40 bytes)
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/import-export-import-require/input.js - input.js parse: expected an import-equals declaration after 'export' at 7..31
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/import-export-import/input.js - input.js parse: expected an import-equals declaration after 'export' at 7..22
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/module-namespace-body-declare/input.js - input.js parse: 'const' declarations must be initialized at 32..33
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/module-namespace-body-nested-declare/input.js - input.js parse: 'const' declarations must be initialized at 54..55
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/non-null-parentheses/input.js - babel-generator/test/fixtures/typescript/non-null-parentheses: transformed output differs from output.js at byte 30 (actual: 166 bytes, expected: 162 bytes)
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/satisfies-parentheses/input.ts - babel-generator/test/fixtures/typescript/satisfies-parentheses: transformed output differs from output.js at byte 71 (actual: 694 bytes, expected: 662 bytes)
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/satisfies/input.js - babel-generator/test/fixtures/typescript/satisfies: transformed output differs from output.js at byte 186 (actual: 241 bytes, expected: 240 bytes)
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/types-parenthesized/input.js - babel-generator/test/fixtures/typescript/types-parenthesized: transformed output differs from output.js at byte 9 (actual: 15 bytes, expected: 13 bytes)
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/variance-annotations-with-jsx/input.tsx - input.js parse: Expected a semicolon or an implicit semicolon after a statement, but found '<' at 27..28
 
 babel-helper-create-class-features-plugin
 -----------------------------------------
 Cases: 13
 Passed: 0/13 (0.00%)
-Failed: 4/13 (30.77%)
+Failed: 0/13 (0.00%)
 Panicked: 0/13 (0.00%)
-Skipped: 9/13 (69.23%)
-Messages:
-Failed: fixtures/babel/packages/babel-helper-create-class-features-plugin/test/fixtures/field-reinitialization/private-accessor/input.js - babel-helper-create-class-features-plugin/test/fixtures/field-reinitialization/private-accessor: transformed output differs from output.js at byte 56 (actual: 218 bytes, expected: 522 bytes)
-Failed: fixtures/babel/packages/babel-helper-create-class-features-plugin/test/fixtures/field-reinitialization/private-field/input.js - babel-helper-create-class-features-plugin/test/fixtures/field-reinitialization/private-field: transformed output differs from output.js at byte 73 (actual: 169 bytes, expected: 344 bytes)
-Failed: fixtures/babel/packages/babel-helper-create-class-features-plugin/test/fixtures/field-reinitialization/private-method/input.js - babel-helper-create-class-features-plugin/test/fixtures/field-reinitialization/private-method: transformed output differs from output.js at byte 56 (actual: 167 bytes, expected: 394 bytes)
-Failed: fixtures/babel/packages/babel-helper-create-class-features-plugin/test/fixtures/plugin-proposal-class-properties/no-loose-and-assumptions-preset-env/input.js - babel-helper-create-class-features-plugin/test/fixtures/plugin-proposal-class-properties/no-loose-and-assumptions-preset-env: transformed output differs from output.js at byte 12 (actual: 19 bytes, expected: 57 bytes)
+Skipped: 13/13 (100.00%)
+
+babel-helper-create-regexp-features-plugin
+------------------------------------------
+Cases: 1
+Passed: 0/1 (0.00%)
+Failed: 0/1 (0.00%)
+Panicked: 0/1 (0.00%)
+Skipped: 1/1 (100.00%)
 
 babel-helpers
 -------------
@@ -97,27 +115,43 @@ Skipped: 2/2 (100.00%)
 
 babel-plugin-bugfix-firefox-class-in-computed-class-key
 -------------------------------------------------------
-Cases: 6
-Passed: 0/6 (0.00%)
-Failed: 0/6 (0.00%)
-Panicked: 0/6 (0.00%)
-Skipped: 6/6 (100.00%)
+Cases: 8
+Passed: 0/8 (0.00%)
+Failed: 0/8 (0.00%)
+Panicked: 0/8 (0.00%)
+Skipped: 8/8 (100.00%)
 
-babel-plugin-bugfix-safari-rest-destructuring-rhs-array
--------------------------------------------------------
-Cases: 3
-Passed: 0/3 (0.00%)
-Failed: 0/3 (0.00%)
-Panicked: 0/3 (0.00%)
-Skipped: 3/3 (100.00%)
-
-babel-plugin-bugfix-v8-spread-parameters-in-optional-chaining
--------------------------------------------------------------
+babel-plugin-bugfix-safari-class-field-initializer-scope
+--------------------------------------------------------
 Cases: 1
 Passed: 0/1 (0.00%)
 Failed: 0/1 (0.00%)
 Panicked: 0/1 (0.00%)
 Skipped: 1/1 (100.00%)
+
+babel-plugin-bugfix-safari-id-destructuring-collision-in-function-expression
+----------------------------------------------------------------------------
+Cases: 5
+Passed: 0/5 (0.00%)
+Failed: 0/5 (0.00%)
+Panicked: 0/5 (0.00%)
+Skipped: 5/5 (100.00%)
+
+babel-plugin-bugfix-safari-rest-destructuring-rhs-array
+-------------------------------------------------------
+Cases: 5
+Passed: 0/5 (0.00%)
+Failed: 0/5 (0.00%)
+Panicked: 0/5 (0.00%)
+Skipped: 5/5 (100.00%)
+
+babel-plugin-bugfix-v8-spread-parameters-in-optional-chaining
+-------------------------------------------------------------
+Cases: 7
+Passed: 0/7 (0.00%)
+Failed: 0/7 (0.00%)
+Panicked: 0/7 (0.00%)
+Skipped: 7/7 (100.00%)
 
 babel-plugin-bugfix-v8-static-class-fields-redefine-readonly
 ------------------------------------------------------------
@@ -145,96 +179,75 @@ Skipped: 7/7 (100.00%)
 
 babel-plugin-proposal-decorators
 --------------------------------
-Cases: 138
-Passed: 0/138 (0.00%)
-Failed: 21/138 (15.22%)
-Panicked: 0/138 (0.00%)
-Skipped: 117/138 (84.78%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-accessors--to-es2015/context-name/input.js - babel-plugin-proposal-decorators/test/fixtures/2023-11-accessors--to-es2015/context-name: transformed output differs from output.js at byte 0 (actual: 595 bytes, expected: 2832 bytes)
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-accessors/context-name/input.js - babel-plugin-proposal-decorators/test/fixtures/2023-11-accessors/context-name: transformed output differs from output.js at byte 0 (actual: 595 bytes, expected: 2761 bytes)
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-classes--to-es2015/replacement-static-method-private-instance-element-super-assumption-ignoreFunctionLength/input.js - babel-plugin-proposal-decorators/test/fixtures/2023-11-classes--to-es2015/replacement-static-method-private-instance-element-super-assumption-ignoreFunctionLength: transformed output differs from output.js at byte 0 (actual: 318 bytes, expected: 1816 bytes)
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-classes/decorator-access-modified-fields/input.js - babel-plugin-proposal-decorators/test/fixtures/2023-11-classes/decorator-access-modified-fields: transformed output differs from output.js at byte 0 (actual: 159 bytes, expected: 425 bytes)
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-classes/decorator-access-modified-methods/input.js - babel-plugin-proposal-decorators/test/fixtures/2023-11-classes/decorator-access-modified-methods: transformed output differs from output.js at byte 0 (actual: 168 bytes, expected: 391 bytes)
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-classes/replacement-static-method-private-instance-element-super-assumption-ignoreFunctionLength/input.js - babel-plugin-proposal-decorators/test/fixtures/2023-11-classes/replacement-static-method-private-instance-element-super-assumption-ignoreFunctionLength: transformed output differs from output.js at byte 0 (actual: 318 bytes, expected: 869 bytes)
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-fields--to-es2015/context-name/input.js - babel-plugin-proposal-decorators/test/fixtures/2023-11-fields--to-es2015/context-name: transformed output differs from output.js at byte 0 (actual: 514 bytes, expected: 2221 bytes)
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-fields/context-name/input.js - babel-plugin-proposal-decorators/test/fixtures/2023-11-fields/context-name: transformed output differs from output.js at byte 0 (actual: 514 bytes, expected: 1955 bytes)
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-getters--to-es2015/context-name/input.js - babel-plugin-proposal-decorators/test/fixtures/2023-11-getters--to-es2015/context-name: transformed output differs from output.js at byte 0 (actual: 613 bytes, expected: 935 bytes)
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-getters/context-name/input.js - babel-plugin-proposal-decorators/test/fixtures/2023-11-getters/context-name: transformed output differs from output.js at byte 0 (actual: 613 bytes, expected: 953 bytes)
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-methods--to-es2015/context-name/input.js - babel-plugin-proposal-decorators/test/fixtures/2023-11-methods--to-es2015/context-name: transformed output differs from output.js at byte 0 (actual: 577 bytes, expected: 928 bytes)
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-methods--to-es2015/private-async-and-generator/input.js - babel-plugin-proposal-decorators/test/fixtures/2023-11-methods--to-es2015/private-async-and-generator: transformed output differs from output.js at byte 0 (actual: 89 bytes, expected: 677 bytes)
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-methods/context-name/input.js - babel-plugin-proposal-decorators/test/fixtures/2023-11-methods/context-name: transformed output differs from output.js at byte 0 (actual: 577 bytes, expected: 894 bytes)
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-methods/private-async-and-generator/input.js - babel-plugin-proposal-decorators/test/fixtures/2023-11-methods/private-async-and-generator: transformed output differs from output.js at byte 0 (actual: 89 bytes, expected: 397 bytes)
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-misc--to-es2015/outer-class-binding-mutated/input.js - babel-plugin-proposal-decorators/test/fixtures/2023-11-misc--to-es2015/outer-class-binding-mutated: transformed output differs from output.js at byte 4 (actual: 3653 bytes, expected: 6285 bytes)
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-misc/initProto-existing-derived-constructor/input.js - input.js semantic: 'super()' is only valid in a derived class constructor at 1459..1467
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-misc/this/input.js - babel-plugin-proposal-decorators/test/fixtures/2023-11-misc/this: transformed output differs from output.js at byte 0 (actual: 116 bytes, expected: 585 bytes)
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-ordering--to-es2015/class-decorators-without-element-decorators/input.js - babel-plugin-proposal-decorators/test/fixtures/2023-11-ordering--to-es2015/class-decorators-without-element-decorators: transformed output differs from output.js at byte 338 (actual: 2332 bytes, expected: 6101 bytes)
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-setters--to-es2015/context-name/input.js - babel-plugin-proposal-decorators/test/fixtures/2023-11-setters--to-es2015/context-name: transformed output differs from output.js at byte 0 (actual: 622 bytes, expected: 944 bytes)
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/2023-11-setters/context-name/input.js - babel-plugin-proposal-decorators/test/fixtures/2023-11-setters/context-name: transformed output differs from output.js at byte 0 (actual: 622 bytes, expected: 959 bytes)
-Failed: fixtures/babel/packages/babel-plugin-proposal-decorators/test/fixtures/legacy-regression/7030/input.js - babel-plugin-proposal-decorators/test/fixtures/legacy-regression/7030: transformed output differs from output.js at byte 68 (actual: 724 bytes, expected: 941 bytes)
+Cases: 154
+Passed: 0/154 (0.00%)
+Failed: 0/154 (0.00%)
+Panicked: 0/154 (0.00%)
+Skipped: 154/154 (100.00%)
 
 babel-plugin-proposal-destructuring-private
 -------------------------------------------
-Cases: 71
-Passed: 0/71 (0.00%)
-Failed: 0/71 (0.00%)
-Panicked: 0/71 (0.00%)
-Skipped: 71/71 (100.00%)
+Cases: 72
+Passed: 0/72 (0.00%)
+Failed: 0/72 (0.00%)
+Panicked: 0/72 (0.00%)
+Skipped: 72/72 (100.00%)
 
 babel-plugin-proposal-discard-binding
 -------------------------------------
-Cases: 52
-Passed: 0/52 (0.00%)
-Failed: 5/52 (9.62%)
-Panicked: 0/52 (0.00%)
-Skipped: 47/52 (90.38%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-proposal-discard-binding/test/fixtures/basic/access-side-effect-multiple-void/input.js - input.js parse: Unexpected token ',' at 292..293
-Failed: fixtures/babel/packages/babel-plugin-proposal-discard-binding/test/fixtures/basic/access-side-effect/input.js - input.js parse: Unexpected token ',' at 262..263
-Failed: fixtures/babel/packages/babel-plugin-proposal-discard-binding/test/fixtures/integration-destructuring/access-side-effect/input.js - input.js parse: Unexpected token ',' at 262..263
-Failed: fixtures/babel/packages/babel-plugin-proposal-discard-binding/test/fixtures/integration-explicit-resource-management/named-evaluation/input.js - input.js parse: 'void' is reserved and cannot be used as a binding identifier at 22..26
-Failed: fixtures/babel/packages/babel-plugin-proposal-discard-binding/test/fixtures/integration-object-rest-spread/access-side-effect/input.js - input.js parse: Unexpected token ',' at 262..263
+Cases: 54
+Passed: 0/54 (0.00%)
+Failed: 0/54 (0.00%)
+Panicked: 0/54 (0.00%)
+Skipped: 54/54 (100.00%)
 
 babel-plugin-proposal-do-expressions
 ------------------------------------
-Cases: 44
-Passed: 0/44 (0.00%)
-Failed: 3/44 (6.82%)
-Panicked: 0/44 (0.00%)
-Skipped: 41/44 (93.18%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-proposal-do-expressions/test/fixtures/do-expressions/await-yield/input.js - input.js parse: 'do' is reserved and cannot be used as an identifier at 48..50
-Failed: fixtures/babel/packages/babel-plugin-proposal-do-expressions/test/fixtures/do-expressions/await/input.js - input.js parse: 'do' is reserved and cannot be used as an identifier at 34..36
-Failed: fixtures/babel/packages/babel-plugin-proposal-do-expressions/test/fixtures/do-expressions/yield/input.js - input.js parse: 'do' is reserved and cannot be used as an identifier at 29..31
+Cases: 45
+Passed: 0/45 (0.00%)
+Failed: 0/45 (0.00%)
+Panicked: 0/45 (0.00%)
+Skipped: 45/45 (100.00%)
+
+babel-plugin-proposal-export-default-from
+-----------------------------------------
+Cases: 6
+Passed: 0/6 (0.00%)
+Failed: 0/6 (0.00%)
+Panicked: 0/6 (0.00%)
+Skipped: 6/6 (100.00%)
 
 babel-plugin-proposal-function-bind
 -----------------------------------
-Cases: 5
-Passed: 0/5 (0.00%)
-Failed: 0/5 (0.00%)
-Panicked: 0/5 (0.00%)
-Skipped: 5/5 (100.00%)
+Cases: 7
+Passed: 0/7 (0.00%)
+Failed: 0/7 (0.00%)
+Panicked: 0/7 (0.00%)
+Skipped: 7/7 (100.00%)
 
 babel-plugin-proposal-function-sent
 -----------------------------------
-Cases: 10
-Passed: 0/10 (0.00%)
-Failed: 2/10 (20.00%)
-Panicked: 0/10 (0.00%)
-Skipped: 8/10 (80.00%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-proposal-function-sent/test/fixtures/function-sent/basic/input.js - input.js parse: Expected '(' to start parameter list, but found '.' at 41..42
-Failed: fixtures/babel/packages/babel-plugin-proposal-function-sent/test/fixtures/function-sent/multiple/input.js - input.js parse: Expected '(' to start parameter list, but found '.' at 36..37
+Cases: 13
+Passed: 0/13 (0.00%)
+Failed: 0/13 (0.00%)
+Panicked: 0/13 (0.00%)
+Skipped: 13/13 (100.00%)
+
+babel-plugin-proposal-import-defer
+----------------------------------
+Cases: 8
+Passed: 0/8 (0.00%)
+Failed: 0/8 (0.00%)
+Panicked: 0/8 (0.00%)
+Skipped: 8/8 (100.00%)
 
 babel-plugin-proposal-import-wasm-source
 ----------------------------------------
-Cases: 6
-Passed: 0/6 (0.00%)
-Failed: 1/6 (16.67%)
-Panicked: 0/6 (0.00%)
-Skipped: 5/6 (83.33%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-proposal-import-wasm-source/test/fixtures/node-cjs/import-meta-resolve-fallback/input.js - babel-plugin-proposal-import-wasm-source/test/fixtures/node-cjs/import-meta-resolve-fallback: transformed output differs from output.js at byte 0 (actual: 33 bytes, expected: 105 bytes)
+Cases: 28
+Passed: 0/28 (0.00%)
+Failed: 0/28 (0.00%)
+Panicked: 0/28 (0.00%)
+Skipped: 28/28 (100.00%)
 
 babel-plugin-proposal-optional-chaining-assign
 ----------------------------------------------
@@ -256,15 +269,9 @@ babel-plugin-proposal-pipeline-operator
 ---------------------------------------
 Cases: 128
 Passed: 0/128 (0.00%)
-Failed: 5/128 (3.91%)
+Failed: 0/128 (0.00%)
 Panicked: 0/128 (0.00%)
-Skipped: 123/128 (96.09%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-proposal-pipeline-operator/test/fixtures/hack-caret/pipe-body-with-await/input.js - input.js parse: Unexpected token '>' at 90..91
-Failed: fixtures/babel/packages/babel-plugin-proposal-pipeline-operator/test/fixtures/hack-double-at/pipe-body-with-await/input.js - input.js parse: Unexpected token '>' at 90..91
-Failed: fixtures/babel/packages/babel-plugin-proposal-pipeline-operator/test/fixtures/hack-double-caret/pipe-body-with-await/input.js - input.js parse: Unexpected token '>' at 90..91
-Failed: fixtures/babel/packages/babel-plugin-proposal-pipeline-operator/test/fixtures/hack-hash/pipe-body-with-await/input.js - input.js parse: Unexpected token '>' at 90..91
-Failed: fixtures/babel/packages/babel-plugin-proposal-pipeline-operator/test/fixtures/hack-percent/pipe-body-with-await/input.js - input.js parse: Unexpected token '>' at 90..91
+Skipped: 128/128 (100.00%)
 
 babel-plugin-proposal-throw-expressions
 ---------------------------------------
@@ -273,6 +280,16 @@ Passed: 0/12 (0.00%)
 Failed: 0/12 (0.00%)
 Panicked: 0/12 (0.00%)
 Skipped: 12/12 (100.00%)
+
+babel-plugin-syntax-typescript
+------------------------------
+Cases: 2
+Passed: 1/2 (50.00%)
+Failed: 1/2 (50.00%)
+Panicked: 0/2 (0.00%)
+Skipped: 0/2 (0.00%)
+Messages:
+Failed: fixtures/babel/packages/babel-plugin-syntax-typescript/test/fixtures/dts/enabled/input.ts - input.js parse: 'const' declarations must be initialized at 6..9
 
 babel-plugin-transform-arrow-functions
 --------------------------------------
@@ -294,23 +311,17 @@ babel-plugin-transform-async-generator-functions
 ------------------------------------------------
 Cases: 22
 Passed: 0/22 (0.00%)
-Failed: 1/22 (4.55%)
+Failed: 0/22 (0.00%)
 Panicked: 0/22 (0.00%)
-Skipped: 21/22 (95.45%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-transform-async-generator-functions/test/fixtures/for-await/lhs-member-expression/input.js - babel-plugin-transform-async-generator-functions/test/fixtures/for-await/lhs-member-expression: transformed output differs from output.js at byte 0 (actual: 57 bytes, expected: 658 bytes)
+Skipped: 22/22 (100.00%)
 
 babel-plugin-transform-async-to-generator
 -----------------------------------------
-Cases: 40
-Passed: 0/40 (0.00%)
-Failed: 3/40 (7.50%)
-Panicked: 0/40 (0.00%)
-Skipped: 37/40 (92.50%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-transform-async-to-generator/test/fixtures/async-to-generator/double-await/input.js - babel-plugin-transform-async-to-generator/test/fixtures/async-to-generator/double-await: transformed output differs from output.js at byte 0 (actual: 41 bytes, expected: 189 bytes)
-Failed: fixtures/babel/packages/babel-plugin-transform-async-to-generator/test/fixtures/regression/15978/input.js - babel-plugin-transform-async-to-generator/test/fixtures/regression/15978: transformed output differs from output.js at byte 0 (actual: 195 bytes, expected: 569 bytes)
-Failed: fixtures/babel/packages/babel-plugin-transform-async-to-generator/test/fixtures/regression/gh-6923/input.js - babel-plugin-transform-async-to-generator/test/fixtures/regression/gh-6923: transformed output differs from output.js at byte 0 (actual: 83 bytes, expected: 1140 bytes)
+Cases: 47
+Passed: 0/47 (0.00%)
+Failed: 0/47 (0.00%)
+Panicked: 0/47 (0.00%)
+Skipped: 47/47 (100.00%)
 
 babel-plugin-transform-block-scoped-functions
 ---------------------------------------------
@@ -322,26 +333,19 @@ Skipped: 5/5 (100.00%)
 
 babel-plugin-transform-block-scoping
 ------------------------------------
-Cases: 114
-Passed: 0/114 (0.00%)
-Failed: 2/114 (1.75%)
-Panicked: 0/114 (0.00%)
-Skipped: 112/114 (98.25%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-transform-block-scoping/test/fixtures/general/closure-in-generator-or-async/input.js - babel-plugin-transform-block-scoping/test/fixtures/general/closure-in-generator-or-async: transformed output differs from output.js at byte 18 (actual: 341 bytes, expected: 597 bytes)
-Failed: fixtures/babel/packages/babel-plugin-transform-block-scoping/test/fixtures/general/loop-closure-in-class/input.js - babel-plugin-transform-block-scoping/test/fixtures/general/loop-closure-in-class: transformed output differs from output.js at byte 0 (actual: 59 bytes, expected: 100 bytes)
+Cases: 117
+Passed: 0/117 (0.00%)
+Failed: 0/117 (0.00%)
+Panicked: 0/117 (0.00%)
+Skipped: 117/117 (100.00%)
 
 babel-plugin-transform-class-properties
 ---------------------------------------
-Cases: 241
-Passed: 2/241 (0.83%)
-Failed: 3/241 (1.24%)
-Panicked: 0/241 (0.00%)
-Skipped: 236/241 (97.93%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-transform-class-properties/test/fixtures/private-loose/canonical/input.js - babel-plugin-transform-class-properties/test/fixtures/private-loose/canonical: transformed output differs from output.js at byte 0 (actual: 385 bytes, expected: 1476 bytes)
-Failed: fixtures/babel/packages/babel-plugin-transform-class-properties/test/fixtures/private/canonical/input.js - babel-plugin-transform-class-properties/test/fixtures/private/canonical: transformed output differs from output.js at byte 0 (actual: 385 bytes, expected: 1284 bytes)
-Failed: fixtures/babel/packages/babel-plugin-transform-class-properties/test/fixtures/private/tagged-template/input.js - babel-plugin-transform-class-properties/test/fixtures/private/tagged-template: transformed output differs from output.js at byte 0 (actual: 65 bytes, expected: 400 bytes)
+Cases: 267
+Passed: 2/267 (0.75%)
+Failed: 0/267 (0.00%)
+Panicked: 0/267 (0.00%)
+Skipped: 265/267 (99.25%)
 
 babel-plugin-transform-class-static-block
 -----------------------------------------
@@ -353,35 +357,27 @@ Skipped: 24/24 (100.00%)
 
 babel-plugin-transform-classes
 ------------------------------
-Cases: 166
-Passed: 0/166 (0.00%)
-Failed: 7/166 (4.22%)
-Panicked: 0/166 (0.00%)
-Skipped: 159/166 (95.78%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-transform-classes/test/fixtures/assumption-superIsCallableConstructor/extend-builtins-es2017/input.js - babel-plugin-transform-classes/test/fixtures/assumption-superIsCallableConstructor/extend-builtins-es2017: transformed output differs from output.js at byte 0 (actual: 53 bytes, expected: 431 bytes)
-Failed: fixtures/babel/packages/babel-plugin-transform-classes/test/fixtures/assumption-superIsCallableConstructor/extend-builtins-es2020/input.js - babel-plugin-transform-classes/test/fixtures/assumption-superIsCallableConstructor/extend-builtins-es2020: transformed output differs from output.js at byte 0 (actual: 45 bytes, expected: 395 bytes)
-Failed: fixtures/babel/packages/babel-plugin-transform-classes/test/fixtures/assumption-superIsCallableConstructor/extend-builtins-es2021/input.js - babel-plugin-transform-classes/test/fixtures/assumption-superIsCallableConstructor/extend-builtins-es2021: transformed output differs from output.js at byte 0 (actual: 45 bytes, expected: 394 bytes)
-Failed: fixtures/babel/packages/babel-plugin-transform-classes/test/fixtures/assumption-superIsCallableConstructor/invalid-extend-builtins-Iterator/input.js - babel-plugin-transform-classes/test/fixtures/assumption-superIsCallableConstructor/invalid-extend-builtins-Iterator: transformed output differs from output.js at byte 153 (actual: 194 bytes, expected: 483 bytes)
-Failed: fixtures/babel/packages/babel-plugin-transform-classes/test/fixtures/get-set/change-computed-key/input.js - babel-plugin-transform-classes/test/fixtures/get-set/change-computed-key: transformed output differs from output.js at byte 0 (actual: 72 bytes, expected: 306 bytes)
-Failed: fixtures/babel/packages/babel-plugin-transform-classes/test/fixtures/get-set/method-conflict/input.js - babel-plugin-transform-classes/test/fixtures/get-set/method-conflict: transformed output differs from output.js at byte 0 (actual: 57 bytes, expected: 201 bytes)
-Failed: fixtures/babel/packages/babel-plugin-transform-classes/test/fixtures/spec/super-missing/input.js - babel-plugin-transform-classes/test/fixtures/spec/super-missing: transformed output differs from output.js at byte 0 (actual: 897 bytes, expected: 3315 bytes)
+Cases: 176
+Passed: 0/176 (0.00%)
+Failed: 0/176 (0.00%)
+Panicked: 0/176 (0.00%)
+Skipped: 176/176 (100.00%)
 
 babel-plugin-transform-computed-properties
 ------------------------------------------
-Cases: 29
-Passed: 0/29 (0.00%)
-Failed: 0/29 (0.00%)
-Panicked: 0/29 (0.00%)
-Skipped: 29/29 (100.00%)
+Cases: 30
+Passed: 0/30 (0.00%)
+Failed: 0/30 (0.00%)
+Panicked: 0/30 (0.00%)
+Skipped: 30/30 (100.00%)
 
 babel-plugin-transform-destructuring
 ------------------------------------
-Cases: 51
-Passed: 0/51 (0.00%)
-Failed: 0/51 (0.00%)
-Panicked: 0/51 (0.00%)
-Skipped: 51/51 (100.00%)
+Cases: 54
+Passed: 0/54 (0.00%)
+Failed: 0/54 (0.00%)
+Panicked: 0/54 (0.00%)
+Skipped: 54/54 (100.00%)
 
 babel-plugin-transform-dotall-regex
 -----------------------------------
@@ -409,19 +405,19 @@ Skipped: 10/10 (100.00%)
 
 babel-plugin-transform-dynamic-import
 -------------------------------------
-Cases: 20
-Passed: 0/20 (0.00%)
-Failed: 0/20 (0.00%)
-Panicked: 0/20 (0.00%)
-Skipped: 20/20 (100.00%)
+Cases: 32
+Passed: 0/32 (0.00%)
+Failed: 0/32 (0.00%)
+Panicked: 0/32 (0.00%)
+Skipped: 32/32 (100.00%)
 
 babel-plugin-transform-explicit-resource-management
 ---------------------------------------------------
-Cases: 16
-Passed: 0/16 (0.00%)
-Failed: 0/16 (0.00%)
-Panicked: 0/16 (0.00%)
-Skipped: 16/16 (100.00%)
+Cases: 28
+Passed: 0/28 (0.00%)
+Failed: 0/28 (0.00%)
+Panicked: 0/28 (0.00%)
+Skipped: 28/28 (100.00%)
 
 babel-plugin-transform-exponentiation-operator
 ----------------------------------------------
@@ -431,37 +427,45 @@ Failed: 0/7 (0.00%)
 Panicked: 0/7 (0.00%)
 Skipped: 7/7 (100.00%)
 
+babel-plugin-transform-export-namespace-from
+--------------------------------------------
+Cases: 4
+Passed: 0/4 (0.00%)
+Failed: 0/4 (0.00%)
+Panicked: 0/4 (0.00%)
+Skipped: 4/4 (100.00%)
+
 babel-plugin-transform-flow-comments
 ------------------------------------
-Cases: 29
-Passed: 0/29 (0.00%)
-Failed: 0/29 (0.00%)
-Panicked: 0/29 (0.00%)
-Skipped: 29/29 (100.00%)
+Cases: 32
+Passed: 0/32 (0.00%)
+Failed: 0/32 (0.00%)
+Panicked: 0/32 (0.00%)
+Skipped: 32/32 (100.00%)
 
 babel-plugin-transform-flow-strip-types
 ---------------------------------------
-Cases: 29
-Passed: 0/29 (0.00%)
-Failed: 0/29 (0.00%)
-Panicked: 0/29 (0.00%)
-Skipped: 29/29 (100.00%)
+Cases: 32
+Passed: 0/32 (0.00%)
+Failed: 0/32 (0.00%)
+Panicked: 0/32 (0.00%)
+Skipped: 32/32 (100.00%)
 
 babel-plugin-transform-for-of
 -----------------------------
-Cases: 68
-Passed: 0/68 (0.00%)
-Failed: 0/68 (0.00%)
-Panicked: 0/68 (0.00%)
-Skipped: 68/68 (100.00%)
+Cases: 76
+Passed: 0/76 (0.00%)
+Failed: 0/76 (0.00%)
+Panicked: 0/76 (0.00%)
+Skipped: 76/76 (100.00%)
 
 babel-plugin-transform-function-name
 ------------------------------------
-Cases: 18
-Passed: 0/18 (0.00%)
-Failed: 0/18 (0.00%)
-Panicked: 0/18 (0.00%)
-Skipped: 18/18 (100.00%)
+Cases: 33
+Passed: 0/33 (0.00%)
+Failed: 0/33 (0.00%)
+Panicked: 0/33 (0.00%)
+Skipped: 33/33 (100.00%)
 
 babel-plugin-transform-instanceof
 ---------------------------------
@@ -481,13 +485,11 @@ Skipped: 2/2 (100.00%)
 
 babel-plugin-transform-json-modules
 -----------------------------------
-Cases: 9
-Passed: 0/9 (0.00%)
-Failed: 1/9 (11.11%)
-Panicked: 0/9 (0.00%)
-Skipped: 8/9 (88.89%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-transform-json-modules/test/fixtures/node-cjs/import-meta-resolve-fallback/input.js - babel-plugin-transform-json-modules/test/fixtures/node-cjs/import-meta-resolve-fallback: transformed output differs from output.js at byte 0 (actual: 48 bytes, expected: 93 bytes)
+Cases: 32
+Passed: 0/32 (0.00%)
+Failed: 0/32 (0.00%)
+Panicked: 0/32 (0.00%)
+Skipped: 32/32 (100.00%)
 
 babel-plugin-transform-json-strings
 -----------------------------------
@@ -515,37 +517,35 @@ Skipped: 1/1 (100.00%)
 
 babel-plugin-transform-modules-amd
 ----------------------------------
-Cases: 5
-Passed: 0/5 (0.00%)
-Failed: 0/5 (0.00%)
-Panicked: 0/5 (0.00%)
-Skipped: 5/5 (100.00%)
+Cases: 108
+Passed: 0/108 (0.00%)
+Failed: 0/108 (0.00%)
+Panicked: 0/108 (0.00%)
+Skipped: 108/108 (100.00%)
 
 babel-plugin-transform-modules-commonjs
 ---------------------------------------
-Cases: 11
-Passed: 0/11 (0.00%)
-Failed: 0/11 (0.00%)
-Panicked: 0/11 (0.00%)
-Skipped: 11/11 (100.00%)
+Cases: 208
+Passed: 0/208 (0.00%)
+Failed: 0/208 (0.00%)
+Panicked: 0/208 (0.00%)
+Skipped: 208/208 (100.00%)
 
 babel-plugin-transform-modules-systemjs
 ---------------------------------------
-Cases: 2
-Passed: 0/2 (0.00%)
-Failed: 1/2 (50.00%)
-Panicked: 0/2 (0.00%)
-Skipped: 1/2 (50.00%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-transform-modules-systemjs/test/fixtures/preset-env/requeue-helpers/input.js - input.js parse: 'return' statement is only valid inside a function at 793..799
+Cases: 76
+Passed: 0/76 (0.00%)
+Failed: 0/76 (0.00%)
+Panicked: 0/76 (0.00%)
+Skipped: 76/76 (100.00%)
 
 babel-plugin-transform-modules-umd
 ----------------------------------
-Cases: 7
-Passed: 0/7 (0.00%)
-Failed: 0/7 (0.00%)
-Panicked: 0/7 (0.00%)
-Skipped: 7/7 (100.00%)
+Cases: 125
+Passed: 0/125 (0.00%)
+Failed: 0/125 (0.00%)
+Panicked: 0/125 (0.00%)
+Skipped: 125/125 (100.00%)
 
 babel-plugin-transform-named-capturing-groups-regex
 ---------------------------------------------------
@@ -581,14 +581,11 @@ Skipped: 2/2 (100.00%)
 
 babel-plugin-transform-object-rest-spread
 -----------------------------------------
-Cases: 62
-Passed: 0/62 (0.00%)
-Failed: 2/62 (3.23%)
-Panicked: 0/62 (0.00%)
-Skipped: 60/62 (96.77%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-transform-object-rest-spread/test/fixtures/assumption-setSpreadProperties/targets-support-object-assign/input.js - babel-plugin-transform-object-rest-spread/test/fixtures/assumption-setSpreadProperties/targets-support-object-assign: transformed output differs from output.js at byte 8 (actual: 24 bytes, expected: 36 bytes)
-Failed: fixtures/babel/packages/babel-plugin-transform-object-rest-spread/test/fixtures/object-spread-loose/targets-support-object-assign/input.js - babel-plugin-transform-object-rest-spread/test/fixtures/object-spread-loose/targets-support-object-assign: transformed output differs from output.js at byte 8 (actual: 24 bytes, expected: 36 bytes)
+Cases: 64
+Passed: 0/64 (0.00%)
+Failed: 0/64 (0.00%)
+Panicked: 0/64 (0.00%)
+Skipped: 64/64 (100.00%)
 
 babel-plugin-transform-object-super
 -----------------------------------
@@ -608,19 +605,19 @@ Skipped: 4/4 (100.00%)
 
 babel-plugin-transform-optional-chaining
 ----------------------------------------
-Cases: 36
-Passed: 0/36 (0.00%)
-Failed: 0/36 (0.00%)
-Panicked: 0/36 (0.00%)
-Skipped: 36/36 (100.00%)
+Cases: 45
+Passed: 0/45 (0.00%)
+Failed: 0/45 (0.00%)
+Panicked: 0/45 (0.00%)
+Skipped: 45/45 (100.00%)
 
 babel-plugin-transform-parameters
 ---------------------------------
-Cases: 62
-Passed: 0/62 (0.00%)
-Failed: 0/62 (0.00%)
-Panicked: 0/62 (0.00%)
-Skipped: 62/62 (100.00%)
+Cases: 70
+Passed: 0/70 (0.00%)
+Failed: 0/70 (0.00%)
+Panicked: 0/70 (0.00%)
+Skipped: 70/70 (100.00%)
 
 babel-plugin-transform-private-methods
 --------------------------------------
@@ -634,12 +631,9 @@ babel-plugin-transform-private-property-in-object
 -------------------------------------------------
 Cases: 59
 Passed: 0/59 (0.00%)
-Failed: 2/59 (3.39%)
+Failed: 0/59 (0.00%)
 Panicked: 0/59 (0.00%)
-Skipped: 57/59 (96.61%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-transform-private-property-in-object/test/fixtures/to-native-fields/half-constructed-instance/input.js - babel-plugin-transform-private-property-in-object/test/fixtures/to-native-fields/half-constructed-instance: transformed output differs from output.js at byte 0 (actual: 173 bytes, expected: 573 bytes)
-Failed: fixtures/babel/packages/babel-plugin-transform-private-property-in-object/test/fixtures/to-native-fields/half-constructed-static/input.js - babel-plugin-transform-private-property-in-object/test/fixtures/to-native-fields/half-constructed-static: transformed output differs from output.js at byte 0 (actual: 168 bytes, expected: 445 bytes)
+Skipped: 59/59 (100.00%)
 
 babel-plugin-transform-property-literals
 ----------------------------------------
@@ -659,60 +653,59 @@ Skipped: 3/3 (100.00%)
 
 babel-plugin-transform-react-constant-elements
 ----------------------------------------------
-Cases: 58
-Passed: 0/58 (0.00%)
-Failed: 0/58 (0.00%)
-Panicked: 0/58 (0.00%)
-Skipped: 58/58 (100.00%)
+Cases: 76
+Passed: 0/76 (0.00%)
+Failed: 0/76 (0.00%)
+Panicked: 0/76 (0.00%)
+Skipped: 76/76 (100.00%)
 
 babel-plugin-transform-react-display-name
 -----------------------------------------
-Cases: 9
-Passed: 0/9 (0.00%)
-Failed: 0/9 (0.00%)
-Panicked: 0/9 (0.00%)
-Skipped: 9/9 (100.00%)
+Cases: 16
+Passed: 0/16 (0.00%)
+Failed: 0/16 (0.00%)
+Panicked: 0/16 (0.00%)
+Skipped: 16/16 (100.00%)
 
 babel-plugin-transform-react-inline-elements
 --------------------------------------------
-Cases: 21
-Passed: 0/21 (0.00%)
-Failed: 0/21 (0.00%)
-Panicked: 0/21 (0.00%)
-Skipped: 21/21 (100.00%)
+Cases: 23
+Passed: 0/23 (0.00%)
+Failed: 0/23 (0.00%)
+Panicked: 0/23 (0.00%)
+Skipped: 23/23 (100.00%)
 
 babel-plugin-transform-react-jsx
 --------------------------------
-Cases: 73
-Passed: 0/73 (0.00%)
-Failed: 1/73 (1.37%)
-Panicked: 0/73 (0.00%)
-Skipped: 72/73 (98.63%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-transform-react-jsx/test/fixtures/react/jsx-with-retainlines-option/input.js - input.js parse: Unexpected token '<' at 10..11
+Cases: 135
+Passed: 0/135 (0.00%)
+Failed: 0/135 (0.00%)
+Panicked: 0/135 (0.00%)
+Skipped: 135/135 (100.00%)
 
 babel-plugin-transform-react-jsx-development
 --------------------------------------------
-Cases: 8
-Passed: 0/8 (0.00%)
-Failed: 0/8 (0.00%)
-Panicked: 0/8 (0.00%)
-Skipped: 8/8 (100.00%)
+Cases: 11
+Passed: 0/11 (0.00%)
+Failed: 0/11 (0.00%)
+Panicked: 0/11 (0.00%)
+Skipped: 11/11 (100.00%)
+
+babel-plugin-transform-react-pure-annotations
+---------------------------------------------
+Cases: 11
+Passed: 0/11 (0.00%)
+Failed: 0/11 (0.00%)
+Panicked: 0/11 (0.00%)
+Skipped: 11/11 (100.00%)
 
 babel-plugin-transform-regenerator
 ----------------------------------
-Cases: 27
-Passed: 0/27 (0.00%)
-Failed: 6/27 (22.22%)
-Panicked: 0/27 (0.00%)
-Skipped: 21/27 (77.78%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-transform-regenerator/test/fixtures/regression/17358/input.js - babel-plugin-transform-regenerator/test/fixtures/regression/17358: transformed output differs from output.js at byte 0 (actual: 176 bytes, expected: 618 bytes)
-Failed: fixtures/babel/packages/babel-plugin-transform-regenerator/test/fixtures/regression/17425/input.js - input.js parse: 'return' statement is only valid inside a function at 118..124
-Failed: fixtures/babel/packages/babel-plugin-transform-regenerator/test/fixtures/regression/break-default-in-end/input.js - babel-plugin-transform-regenerator/test/fixtures/regression/break-default-in-end: transformed output differs from output.js at byte 0 (actual: 146 bytes, expected: 499 bytes)
-Failed: fixtures/babel/packages/babel-plugin-transform-regenerator/test/fixtures/regression/star-rhs-iter-rtrn-no-rtrn/input.js - babel-plugin-transform-regenerator/test/fixtures/regression/star-rhs-iter-rtrn-no-rtrn: transformed output differs from output.js at byte 0 (actual: 1928 bytes, expected: 2452 bytes)
-Failed: fixtures/babel/packages/babel-plugin-transform-regenerator/test/fixtures/regression/star-rhs-iter-rtrn-res-done-no-value/input.js - babel-plugin-transform-regenerator/test/fixtures/regression/star-rhs-iter-rtrn-res-done-no-value: transformed output differs from output.js at byte 0 (actual: 2697 bytes, expected: 3230 bytes)
-Failed: fixtures/babel/packages/babel-plugin-transform-regenerator/test/fixtures/regression/yield-star-from-finally/input.js - babel-plugin-transform-regenerator/test/fixtures/regression/yield-star-from-finally: transformed output differs from output.js at byte 0 (actual: 1908 bytes, expected: 3221 bytes)
+Cases: 32
+Passed: 0/32 (0.00%)
+Failed: 0/32 (0.00%)
+Panicked: 0/32 (0.00%)
+Skipped: 32/32 (100.00%)
 
 babel-plugin-transform-regexp-modifiers
 ---------------------------------------
@@ -732,11 +725,11 @@ Skipped: 1/1 (100.00%)
 
 babel-plugin-transform-runtime
 ------------------------------
-Cases: 12
-Passed: 0/12 (0.00%)
-Failed: 0/12 (0.00%)
-Panicked: 0/12 (0.00%)
-Skipped: 12/12 (100.00%)
+Cases: 24
+Passed: 0/24 (0.00%)
+Failed: 0/24 (0.00%)
+Panicked: 0/24 (0.00%)
+Skipped: 24/24 (100.00%)
 
 babel-plugin-transform-shorthand-properties
 -------------------------------------------
@@ -748,13 +741,11 @@ Skipped: 1/7 (14.29%)
 
 babel-plugin-transform-spread
 -----------------------------
-Cases: 37
-Passed: 0/37 (0.00%)
-Failed: 1/37 (2.70%)
-Panicked: 0/37 (0.00%)
-Skipped: 36/37 (97.30%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-transform-spread/test/fixtures/call-context/parenthesized-expressions/input.js - babel-plugin-transform-spread/test/fixtures/call-context/parenthesized-expressions: transformed output differs from output.js at byte 0 (actual: 16 bytes, expected: 70 bytes)
+Cases: 43
+Passed: 0/43 (0.00%)
+Failed: 0/43 (0.00%)
+Panicked: 0/43 (0.00%)
+Skipped: 43/43 (100.00%)
 
 babel-plugin-transform-sticky-regex
 -----------------------------------
@@ -774,19 +765,27 @@ Skipped: 6/6 (100.00%)
 
 babel-plugin-transform-template-literals
 ----------------------------------------
-Cases: 31
-Passed: 0/31 (0.00%)
-Failed: 0/31 (0.00%)
-Panicked: 0/31 (0.00%)
-Skipped: 31/31 (100.00%)
+Cases: 32
+Passed: 0/32 (0.00%)
+Failed: 0/32 (0.00%)
+Panicked: 0/32 (0.00%)
+Skipped: 32/32 (100.00%)
 
 babel-plugin-transform-typeof-symbol
 ------------------------------------
-Cases: 3
-Passed: 0/3 (0.00%)
-Failed: 0/3 (0.00%)
-Panicked: 0/3 (0.00%)
-Skipped: 3/3 (100.00%)
+Cases: 6
+Passed: 0/6 (0.00%)
+Failed: 0/6 (0.00%)
+Panicked: 0/6 (0.00%)
+Skipped: 6/6 (100.00%)
+
+babel-plugin-transform-typescript
+---------------------------------
+Cases: 168
+Passed: 0/168 (0.00%)
+Failed: 0/168 (0.00%)
+Panicked: 0/168 (0.00%)
+Skipped: 168/168 (100.00%)
 
 babel-plugin-transform-unicode-escapes
 --------------------------------------
@@ -816,103 +815,46 @@ babel-plugin-transform-unicode-sets-regex
 -----------------------------------------
 Cases: 4
 Passed: 0/4 (0.00%)
-Failed: 2/4 (50.00%)
+Failed: 0/4 (0.00%)
 Panicked: 0/4 (0.00%)
-Skipped: 2/4 (50.00%)
-Messages:
-Failed: fixtures/babel/packages/babel-plugin-transform-unicode-sets-regex/test/fixtures/basic/string-properties/input.js - babel-plugin-transform-unicode-sets-regex/test/fixtures/basic/string-properties: transformed output differs from output.js at byte 1 (actual: 30 bytes, expected: 105 bytes)
-Failed: fixtures/babel/packages/babel-plugin-transform-unicode-sets-regex/test/fixtures/transform-u/string-properties/input.js - babel-plugin-transform-unicode-sets-regex/test/fixtures/transform-u/string-properties: transformed output differs from output.js at byte 1 (actual: 30 bytes, expected: 104 bytes)
+Skipped: 4/4 (100.00%)
 
 babel-preset-env
 ----------------
-Cases: 54
-Passed: 13/54 (24.07%)
-Failed: 39/54 (72.22%)
-Panicked: 0/54 (0.00%)
-Skipped: 2/54 (3.70%)
-Messages:
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/bugfixes-always-enabled/class-in-computed-field-firefox-50/input.js - babel-preset-env/test/fixtures/bugfixes-always-enabled/class-in-computed-field-firefox-50: transformed output differs from output.js at byte 0 (actual: 35 bytes, expected: 217 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/bugfixes-always-enabled/class-in-computed-field-firefox-90/input.js - babel-preset-env/test/fixtures/bugfixes-always-enabled/class-in-computed-field-firefox-90: transformed output differs from output.js at byte 19 (actual: 35 bytes, expected: 47 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/bugfixes-always-enabled/static-class-fields-chrome-70/input.js - babel-preset-env/test/fixtures/bugfixes-always-enabled/static-class-fields-chrome-70: transformed output differs from output.js at byte 10 (actual: 31 bytes, expected: 55 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/bugfixes-always-enabled/static-class-fields-chrome-90/input.js - babel-preset-env/test/fixtures/bugfixes-always-enabled/static-class-fields-chrome-90: transformed output differs from output.js at byte 0 (actual: 31 bytes, expected: 127 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/bugfixes-always-enabled/static-class-fields-chrome-96/input.js - babel-preset-env/test/fixtures/bugfixes-always-enabled/static-class-fields-chrome-96: transformed output differs from output.js at byte 19 (actual: 31 bytes, expected: 77 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/bugfixes-always-enabled/static-class-fields-chrome-97/input.js - babel-preset-env/test/fixtures/bugfixes-always-enabled/static-class-fields-chrome-97: transformed output differs from output.js at byte 19 (actual: 31 bytes, expected: 77 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/bugfixes/edge-default-params-chrome-40/input.js - babel-preset-env/test/fixtures/bugfixes/edge-default-params-chrome-40: transformed output differs from output.js at byte 1 (actual: 20 bytes, expected: 39 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/bugfixes/edge-default-params-edge-14/input.js - babel-preset-env/test/fixtures/bugfixes/edge-default-params-edge-14: transformed output differs from output.js at byte 1 (actual: 20 bytes, expected: 74 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/bugfixes/edge-default-params-edge-15/input.js - babel-preset-env/test/fixtures/bugfixes/edge-default-params-edge-15: transformed output differs from output.js at byte 4 (actual: 20 bytes, expected: 24 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/bugfixes/edge-default-params-edge-17/input.js - babel-preset-env/test/fixtures/bugfixes/edge-default-params-edge-17: transformed output differs from output.js at byte 4 (actual: 20 bytes, expected: 24 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/bugfixes/edge-function-name-edge-14/input.js - babel-preset-env/test/fixtures/bugfixes/edge-function-name-edge-14: transformed output differs from output.js at byte 16 (actual: 51 bytes, expected: 53 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/bugfixes/edge-function-name-edge-15/input.js - babel-preset-env/test/fixtures/bugfixes/edge-function-name-edge-15: transformed output differs from output.js at byte 16 (actual: 51 bytes, expected: 53 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/bugfixes/safari-block-scoping-safari-10/input.js - babel-preset-env/test/fixtures/bugfixes/safari-block-scoping-safari-10: transformed output differs from output.js at byte 20 (actual: 66 bytes, expected: 68 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/bugfixes/safari-block-scoping-safari-9/input.js - babel-preset-env/test/fixtures/bugfixes/safari-block-scoping-safari-9: transformed output differs from output.js at byte 16 (actual: 66 bytes, expected: 68 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/bugfixes/safari-id-destructuring-collision-in-function-expression-safari-15/input.js - babel-preset-env/test/fixtures/bugfixes/safari-id-destructuring-collision-in-function-expression-safari-15: transformed output differs from output.js at byte 34 (actual: 69 bytes, expected: 75 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/bugfixes/safari-rest-destructuring-rhs-array-safari-13.1/input.js - babel-preset-env/test/fixtures/bugfixes/safari-rest-destructuring-rhs-array-safari-13.1: transformed output differs from output.js at byte 5 (actual: 50 bytes, expected: 58 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/bugfixes/v8-spread-parameters-in-optional-chaining-chrome-89/input.js - babel-preset-env/test/fixtures/bugfixes/v8-spread-parameters-in-optional-chaining-chrome-89: transformed output differs from output.js at byte 0 (actual: 24 bytes, expected: 81 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/dynamic-import/modules-amd/input.js - babel-preset-env/test/fixtures/dynamic-import/modules-amd: transformed output differs from output.js at byte 0 (actual: 15 bytes, expected: 182 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/plugins-integration/block-scoping-inside-generator/input.js - babel-preset-env/test/fixtures/plugins-integration/block-scoping-inside-generator: transformed output differs from output.js at byte 0 (actual: 110 bytes, expected: 1281 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/plugins-integration/class-arrow-super-tagged-expr/input.js - babel-preset-env/test/fixtures/plugins-integration/class-arrow-super-tagged-expr: transformed output differs from output.js at byte 38 (actual: 383 bytes, expected: 1444 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/plugins-integration/class-features-node-12/input.js - babel-preset-env/test/fixtures/plugins-integration/class-features-node-12: transformed output differs from output.js at byte 18 (actual: 62 bytes, expected: 327 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/plugins-integration/for-of-array-block-scoping-2/input.js - babel-preset-env/test/fixtures/plugins-integration/for-of-array-block-scoping-2: transformed output differs from output.js at byte 18 (actual: 143 bytes, expected: 196 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/plugins-integration/for-of-array-block-scoping/input.js - babel-preset-env/test/fixtures/plugins-integration/for-of-array-block-scoping: transformed output differs from output.js at byte 18 (actual: 146 bytes, expected: 205 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/plugins-integration/issue-15012/input.js - babel-preset-env/test/fixtures/plugins-integration/issue-15012: transformed output differs from output.js at byte 8 (actual: 46 bytes, expected: 688 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/plugins-integration/issue-15170/input.js - babel-preset-env/test/fixtures/plugins-integration/issue-15170: transformed output differs from output.js at byte 0 (actual: 20 bytes, expected: 665 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/plugins-integration/issue-9935/input.js - babel-preset-env/test/fixtures/plugins-integration/issue-9935: transformed output differs from output.js at byte 36 (actual: 182 bytes, expected: 345 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/plugins-integration/spread-super-firefox-40/input.js - babel-preset-env/test/fixtures/plugins-integration/spread-super-firefox-40: transformed output differs from output.js at byte 0 (actual: 68 bytes, expected: 282 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/preset-options/destructuring-edge/input.js - babel-preset-env/test/fixtures/preset-options/destructuring-edge: transformed output differs from output.js at byte 9 (actual: 87 bytes, expected: 97 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/preset-options/duplicate-named-capturing-groups-regex-chrome-123/input.js - babel-preset-env/test/fixtures/preset-options/duplicate-named-capturing-groups-regex-chrome-123: transformed output differs from output.js at byte 2 (actual: 73 bytes, expected: 59 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/preset-options/regexp-modifiers-chrome-121/input.js - babel-preset-env/test/fixtures/preset-options/regexp-modifiers-chrome-121: transformed output differs from output.js at byte 3 (actual: 23 bytes, expected: 23 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/preset-options/safari-10_3-block-scoped/input.js - babel-preset-env/test/fixtures/preset-options/safari-10_3-block-scoped: transformed output differs from output.js at byte 8 (actual: 28 bytes, expected: 29 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/preset-options/safari-tagged-template-literals/input.js - babel-preset-env/test/fixtures/preset-options/safari-tagged-template-literals: transformed output differs from output.js at byte 0 (actual: 23 bytes, expected: 82 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/preset-options/unicode-property-regex-chrome-49/input.js - babel-preset-env/test/fixtures/preset-options/unicode-property-regex-chrome-49: transformed output differs from output.js at byte 1 (actual: 32 bytes, expected: 471 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/preset-options/unicode-sets-regex-chrome-111/input.js - babel-preset-env/test/fixtures/preset-options/unicode-sets-regex-chrome-111: transformed output differs from output.js at byte 1 (actual: 30 bytes, expected: 105 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/sanity/block-scoping-for-of/input.js - babel-preset-env/test/fixtures/sanity/block-scoping-for-of: transformed output differs from output.js at byte 46 (actual: 89 bytes, expected: 436 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/sanity/regex-dot-all/input.js - babel-preset-env/test/fixtures/sanity/regex-dot-all: transformed output differs from output.js at byte 1 (actual: 13 bytes, expected: 143 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/sanity/transform-duplicate-keys/input.js - babel-preset-env/test/fixtures/sanity/transform-duplicate-keys: transformed output differs from output.js at byte 8 (actual: 24 bytes, expected: 55 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/shipped-proposals/new-class-features-chrome-90/input.js - babel-preset-env/test/fixtures/shipped-proposals/new-class-features-chrome-90: transformed output differs from output.js at byte 0 (actual: 63 bytes, expected: 234 bytes)
-Failed: fixtures/babel/packages/babel-preset-env/test/fixtures/shipped-proposals/new-class-features-firefox-70/input.js - babel-preset-env/test/fixtures/shipped-proposals/new-class-features-firefox-70: transformed output differs from output.js at byte 0 (actual: 63 bytes, expected: 209 bytes)
+Cases: 111
+Passed: 0/111 (0.00%)
+Failed: 0/111 (0.00%)
+Panicked: 0/111 (0.00%)
+Skipped: 111/111 (100.00%)
 
 babel-preset-flow
 -----------------
 Cases: 2
 Passed: 0/2 (0.00%)
-Failed: 2/2 (100.00%)
+Failed: 0/2 (0.00%)
 Panicked: 0/2 (0.00%)
-Skipped: 0/2 (0.00%)
-Messages:
-Failed: fixtures/babel/packages/babel-preset-flow/test/fixtures/flow-parser/strip-with-directive/input.js - input.js parse: Expected ')' to close parameter list, but found ':' at 28..29
-Failed: fixtures/babel/packages/babel-preset-flow/test/fixtures/flow-parser/strip-without-directive/input.js - input.js parse: Expected ')' to close parameter list, but found ':' at 19..20
+Skipped: 2/2 (100.00%)
 
 babel-preset-react
 ------------------
-Cases: 7
-Passed: 0/7 (0.00%)
-Failed: 7/7 (100.00%)
-Panicked: 0/7 (0.00%)
-Skipped: 0/7 (0.00%)
-Messages:
-Failed: fixtures/babel/packages/babel-preset-react/test/fixtures/preset-options/development-no-source-self/input.js - input.js parse: Unexpected token '<' at 0..1
-Failed: fixtures/babel/packages/babel-preset-react/test/fixtures/preset-options/development-runtime-automatic/input.js - input.js parse: Unexpected token '<' at 0..1
-Failed: fixtures/babel/packages/babel-preset-react/test/fixtures/preset-options/development/input.js - input.js parse: Unexpected token '<' at 0..1
-Failed: fixtures/babel/packages/babel-preset-react/test/fixtures/preset-options/empty-options/input.js - input.js parse: Unexpected token '<' at 0..1
-Failed: fixtures/babel/packages/babel-preset-react/test/fixtures/preset-options/runtime-automatic/input.js - input.js parse: Unexpected token '<' at 0..1
-Failed: fixtures/babel/packages/babel-preset-react/test/fixtures/preset-options/runtime-classic-pragma-no-frag/input.js - input.js parse: Unexpected token '<' at 29..30
-Failed: fixtures/babel/packages/babel-preset-react/test/fixtures/preset-options/runtime-classic/input.js - input.js parse: Unexpected token '<' at 0..1
+Cases: 12
+Passed: 0/12 (0.00%)
+Failed: 0/12 (0.00%)
+Panicked: 0/12 (0.00%)
+Skipped: 12/12 (100.00%)
 
 babel-preset-typescript
 -----------------------
-Cases: 2
-Passed: 0/2 (0.00%)
-Failed: 2/2 (100.00%)
-Panicked: 0/2 (0.00%)
-Skipped: 0/2 (0.00%)
-Messages:
-Failed: fixtures/babel/packages/babel-preset-typescript/test/fixtures/flow-compat/js-valid/input.js - input.js parse: Expected a semicolon or an implicit semicolon after a statement, but found 'Foo' at 5..8
-Failed: fixtures/babel/packages/babel-preset-typescript/test/fixtures/jsx-compat/js-valid/input.js - input.js parse: Unexpected token '<' at 1..2
+Cases: 13
+Passed: 0/13 (0.00%)
+Failed: 0/13 (0.00%)
+Panicked: 0/13 (0.00%)
+Skipped: 13/13 (100.00%)
 
 babel-traverse
 --------------
-Cases: 33
-Passed: 5/33 (15.15%)
-Failed: 0/33 (0.00%)
-Panicked: 0/33 (0.00%)
-Skipped: 28/33 (84.85%)
+Cases: 37
+Passed: 6/37 (16.22%)
+Failed: 0/37 (0.00%)
+Panicked: 0/37 (0.00%)
+Skipped: 31/37 (83.78%)

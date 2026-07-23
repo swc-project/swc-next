@@ -50,7 +50,7 @@ fn update_snapshot(cases: Vec<BabelCase>) {
     let (runnable, skipped): (Vec<_>, Vec<_>) = cases.into_iter().partition(is_runnable);
     let results = runnable
         .par_iter()
-        .map(|case| run_snapshot_case(case))
+        .map(run_snapshot_case)
         .collect::<Vec<_>>();
     let snapshot = SnapshotReport::new(&results, &skipped).render();
     let snapshot_path = crate_root().join("snapshots").join(SNAPSHOT_FILE);
@@ -60,14 +60,24 @@ fn update_snapshot(cases: Vec<BabelCase>) {
 }
 
 fn is_runnable(case: &BabelCase) -> bool {
-    case.options.plugins.unsupported.is_empty()
+    case.options.plugins.errors.is_empty()
+        && case.options.plugins.unsupported.is_empty()
+        && case.options.presets.errors.is_empty()
+        && case.options.presets.unsupported.is_empty()
 }
 
 fn unsupported_reason(case: &BabelCase) -> String {
-    format!(
-        "unsupported plugins: {}",
-        case.options.plugins.unsupported.join(", ")
-    )
+    let entries = case
+        .options
+        .plugins
+        .errors
+        .iter()
+        .chain(&case.options.plugins.unsupported)
+        .chain(&case.options.presets.errors)
+        .chain(&case.options.presets.unsupported)
+        .cloned()
+        .collect::<Vec<_>>();
+    format!("unsupported options: {}", entries.join(", "))
 }
 
 // Snapshot execution
@@ -348,7 +358,13 @@ fn transform_input(case: &BabelCase) -> Result<Vec<u8>, String> {
     let source = case.input.as_bytes();
     let allocator = Allocator::new();
     let mut ast = Ast::new(source, &allocator);
-    let program = parse_program(&mut ast, source, case.source_type(), "input.js parse")?;
+    let program = parse_program(
+        &mut ast,
+        source,
+        case.source_type(),
+        case.lang(),
+        "input.js parse",
+    )?;
     let semantic = analyze(program, &mut ast);
     if let Some(diagnostic) = semantic
         .diagnostics()
@@ -369,7 +385,13 @@ fn normalize_expected_output(case: &BabelCase) -> Result<Vec<u8>, String> {
     let source = case.output.as_bytes();
     let allocator = Allocator::new();
     let mut ast = Ast::new(source, &allocator);
-    let program = parse_program(&mut ast, source, case.source_type(), "output.js parse")?;
+    let program = parse_program(
+        &mut ast,
+        source,
+        case.source_type(),
+        case.lang(),
+        "output.js parse",
+    )?;
     Ok(print(&allocator, &ast, program, CodegenOptions::default())
         .code
         .to_vec())
@@ -379,11 +401,12 @@ fn parse_program(
     ast: &mut Ast<'_>,
     source: &[u8],
     source_type: SourceType,
+    lang: Lang,
     stage: &str,
 ) -> Result<Program, String> {
     let options = ParserOptions {
         source_type,
-        lang: Lang::Js,
+        lang,
         ..ParserOptions::default()
     };
     let (program, error) = {
