@@ -46,7 +46,9 @@ with two runners:
 
 The six summaries are written to
 `tasks/testsuite/snapshots/{parser,codegen}_{test262,typescript,babel}.snap`.
-The process is parallel by default.
+The Babel parser and codegen runs exclude fixtures from
+`babel-plugin-proposal-*` packages, Flow-related fixtures, and unsupported
+Babel/V8-specific syntax fixtures. The process is parallel by default.
 
 Use filters to narrow a local investigation:
 

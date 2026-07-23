@@ -111,6 +111,42 @@ impl BabelCase {
         Ok(cases)
     }
 
+    pub fn is_proposal(&self) -> bool {
+        self.package_name.starts_with("babel-plugin-proposal-")
+    }
+
+    pub fn is_flow(&self) -> bool {
+        self.name.to_ascii_lowercase().contains("flow")
+            || self
+                .options
+                .plugins
+                .unsupported
+                .iter()
+                .chain(&self.options.presets.unsupported)
+                .any(|name| name.to_ascii_lowercase().contains("flow"))
+    }
+
+    pub fn has_non_standard_syntax(&self) -> bool {
+        const NON_STANDARD_SYNTAX_PATHS: &[&str] = &[
+            "/async-do-expressions/",
+            "/do-expression",
+            "/DoExpression",
+            "module-expression",
+            "/ModuleExpression",
+            "/discard-binding",
+            "/throw-expression",
+            "/ArgumentPlaceholder",
+            "/BindExpression",
+            "/TopicReference-",
+            "/misc/placeholders",
+            "/misc/V8IntrinsicIdentifier",
+        ];
+
+        NON_STANDARD_SYNTAX_PATHS
+            .iter()
+            .any(|path| self.name.contains(path))
+    }
+
     pub fn source_type(&self) -> SourceType {
         match self
             .path
@@ -153,6 +189,11 @@ impl Case for BabelCase {
 
     fn read() -> Vec<Self> {
         BabelCase::read()
+            .into_iter()
+            .filter(|case| {
+                !case.is_proposal() && !case.is_flow() && !case.has_non_standard_syntax()
+            })
+            .collect()
     }
 
     fn path(&self) -> &Path {
