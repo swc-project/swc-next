@@ -3029,7 +3029,7 @@ impl<'a> Printer<'a> {
                     }
                 }
                 if 2 + hex_buffer.len() - start < result.len() {
-                    result.truncate(0);
+                    result.clear();
                     result.extend_from_slice(b"0x");
                     result.extend_from_slice(&hex_buffer[start..]);
                 }
