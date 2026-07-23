@@ -12,4 +12,8 @@ version               = "0.11.0"
 unstable = []
 
 [dependencies]
-swc_next_ecma_ast  = { workspace = true }
+swc_next_ecma_ast = { workspace = true }
+
+[dev-dependencies]
+pico-args         = { workspace = true }
+swc_next_allocator = { workspace = true }
