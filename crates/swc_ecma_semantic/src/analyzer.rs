@@ -72,7 +72,7 @@ impl<'a> SemanticBuilder<'a> {
         let scopes = ScopeTree::new(
             program.node_id(),
             program.source_type(ast) == SourceType::Module,
-            has_use_strict_directive(program.body(ast), ast),
+            has_use_strict_directive(program.directives(ast), ast),
         );
         let current_scope = scopes.top_level_scope_id();
         let mut node_scopes = vec![current_scope; ast.node_count()];
@@ -527,14 +527,14 @@ impl<'a> SemanticBuilder<'a> {
     fn has_retroactive_use_strict(&self, body: Option<FunctionBody>, ast: &Ast<'a>) -> bool {
         // "use strict" applies retroactively to the whole function, including
         // its parameter list, so inspect the body before entering parameters.
-        body.is_some_and(|body| has_use_strict_directive(body.body(ast), ast))
+        body.is_some_and(|body| has_use_strict_directive(body.directives(ast), ast))
     }
 
     fn arrow_is_strict(&self, arrow: ArrowFunctionExpression, ast: &Ast<'a>) -> bool {
         self.inherited_flags().strict
             || match ast.arrow_function_body_data(arrow.body(ast)) {
                 ArrowFunctionBodyData::FunctionBody(body) => {
-                    has_use_strict_directive(body.body(ast), ast)
+                    has_use_strict_directive(body.directives(ast), ast)
                 }
                 ArrowFunctionBodyData::Expr(_) => false,
             }
@@ -1387,16 +1387,16 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
         let kind = node.kind(ctx.ast);
-        if matches!(kind, VariableKind::Using | VariableKind::AwaitUsing) {
-            let direct_parent = ctx.ancestors().nth(1);
-            if direct_parent.is_some_and(|parent| ctx.node_kind(parent) == NodeKind::Program)
-                && self.scopes.get(self.scopes.top_level_scope_id()).kind != ScopeKind::Module
-            {
-                self.diagnostics.push(Diagnostic::error(
-                    "A using declaration may not appear at the top level of a script",
-                    node.span(ctx.ast),
-                ));
-            }
+        if matches!(kind, VariableKind::Using | VariableKind::AwaitUsing)
+            && ctx
+                .parent()
+                .is_some_and(|owner| ctx.node_kind(owner) == NodeKind::Program)
+            && self.scopes.get(self.scopes.top_level_scope_id()).kind != ScopeKind::Module
+        {
+            self.diagnostics.push(Diagnostic::error(
+                "A using declaration may not appear at the top level of a script",
+                node.span(ctx.ast),
+            ));
         }
         let (flags, excludes, target) = match node.kind(ctx.ast) {
             VariableKind::Var => (
@@ -2303,21 +2303,11 @@ pub(crate) fn analyze_program<'a>(program: Program, ast: &mut Ast<'a>) -> Analys
     }
 }
 
-fn has_use_strict_directive(body: TypedSubRange<StatementListItem>, ast: &Ast<'_>) -> bool {
-    for index in 0..body.len() {
-        let item = body
-            .get_node(ast, index)
-            .expect("typed statement-list ranges contain valid nodes");
-        match ast.statement_list_item_data(item) {
-            StatementListItemData::Directive(directive) => {
-                if ast.string(directive.value(ast)) == b"use strict" {
-                    return true;
-                }
-            }
-            StatementListItemData::Stmt(_) => break,
-        }
-    }
-    false
+fn has_use_strict_directive(directives: TypedSubRange<Directive>, ast: &Ast<'_>) -> bool {
+    directives.iter().any(|id| {
+        let directive = ast.get_node_in_sub_range(id);
+        ast.string(directive.value(ast)) == b"use strict"
+    })
 }
 
 fn is_named_function_expression(function: Function, ast: &Ast<'_>) -> bool {
@@ -2339,18 +2329,18 @@ fn is_namespace_instantiated(body: Option<TsModuleBody>, ast: &Ast<'_>) -> bool 
         TsModuleBodyData::TsModuleDeclaration(declaration) => {
             is_namespace_instantiated(declaration.body(ast), ast)
         }
-        TsModuleBodyData::TsModuleBlock(block) => block
-            .body(ast)
-            .iter()
-            .map(|id| ast.get_node_in_sub_range(id))
-            .any(|item| is_instantiating_statement(item, ast)),
+        TsModuleBodyData::TsModuleBlock(block) => {
+            !block.directives(ast).is_empty()
+                || block
+                    .body(ast)
+                    .iter()
+                    .map(|id| ast.get_node_in_sub_range(id))
+                    .any(|statement| is_instantiating_statement(statement, ast))
+        }
     }
 }
 
-fn is_instantiating_statement(item: StatementListItem, ast: &Ast<'_>) -> bool {
-    let StatementListItemData::Stmt(statement) = ast.statement_list_item_data(item) else {
-        return true;
-    };
+fn is_instantiating_statement(statement: Stmt, ast: &Ast<'_>) -> bool {
     match ast.stmt_data(statement) {
         StmtData::TsImportEqualsDeclaration(_) => false,
         StmtData::Declaration(declaration) => match ast.decl_data(declaration) {
@@ -2366,8 +2356,7 @@ fn is_instantiating_statement(item: StatementListItem, ast: &Ast<'_>) -> bool {
                 false
             } else if let Some(declaration) = declaration.declaration(ast) {
                 let statement = Stmt::Declaration(declaration);
-                let item = StatementListItem::Stmt(statement);
-                is_instantiating_statement(item, ast)
+                is_instantiating_statement(statement, ast)
             } else {
                 declaration.source(ast).is_some()
             }
@@ -2455,9 +2444,9 @@ fn is_function_boundary(kind: NodeKind) -> bool {
 }
 
 fn is_at_program_level(ctx: &TraverseCtx<'_, '_>) -> bool {
-    ctx.parent().is_some_and(|parent| {
+    ctx.parent().is_some_and(|owner| {
         matches!(
-            ctx.node_kind(parent),
+            ctx.node_kind(owner),
             NodeKind::Program | NodeKind::TsModuleBlock
         )
     })

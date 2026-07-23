@@ -172,6 +172,7 @@ mod tests {
             Span::default(),
             SourceType::default(),
             TypedSubRange::empty(),
+            TypedSubRange::empty(),
             None,
         );
         let mut ctx = TraverseCtx::new(&mut ast, 0usize);

@@ -131,6 +131,11 @@ pub enum BodyKind {
     Other,
 }
 
+struct ParsedBody {
+    directives: TypedSubRange<Directive>,
+    body: TypedSubRange<Stmt>,
+}
+
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct ParserState {
     /// Start offset of an array or object cover grammar with a trailing comma.
@@ -649,7 +654,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             self.current_token = Token::eof(0);
         }
         self.ensure_capacity();
-        let body = self.parse_body(None, BodyKind::Program);
+        let ParsedBody { directives, body } = self.parse_body(None, BodyKind::Program);
         let end = self.current_token.span.end;
         if !self.preserve_parens {
             strip_parenthesized_nodes(self.ast);
@@ -660,9 +665,13 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             let value = self.ast.source_slice(start, end);
             self.ast.hashbang(Span::new(0, end), value)
         });
-        let program = self
-            .ast
-            .program(Span::new(0, end), self.source_type, body, hashbang);
+        let program = self.ast.program(
+            Span::new(0, end),
+            self.source_type,
+            directives,
+            body,
+            hashbang,
+        );
         build_line_starts(self.ast, self.source);
         Some(program)
     }
@@ -819,16 +828,26 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     where
         N: AstNode + ExtraDataCompact<'allocator>,
     {
-        debug_assert!(scratch_checkpoint <= self.scratch_statements.items.len());
+        let scratch_end = self.scratch_statements.items.len();
+        self.add_extra_from_scratch_statements_range(scratch_checkpoint, scratch_end)
+    }
+
+    fn add_extra_from_scratch_statements_range<N>(
+        &mut self,
+        scratch_start: usize,
+        scratch_end: usize,
+    ) -> TypedSubRange<N>
+    where
+        N: AstNode + ExtraDataCompact<'allocator>,
+    {
+        debug_assert!(scratch_start <= scratch_end);
+        debug_assert!(scratch_end <= self.scratch_statements.items.len());
         let range = self.ast.add_typed_sub_range(
-            self.scratch_statements.items[scratch_checkpoint..]
+            self.scratch_statements.items[scratch_start..scratch_end]
                 .iter()
                 .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
         );
-        debug_assert_eq!(
-            range.len(),
-            self.scratch_statements.items.len() - scratch_checkpoint
-        );
+        debug_assert_eq!(range.len(), scratch_end - scratch_start);
         range
     }
 
@@ -910,18 +929,15 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         self.scratch_decorators.items.reserve(128);
     }
 
-    fn parse_body(
-        &mut self,
-        terminator: Option<TokenTag>,
-        kind: BodyKind,
-    ) -> TypedSubRange<StatementListItem> {
+    fn parse_body(&mut self, terminator: Option<TokenTag>, kind: BodyKind) -> ParsedBody {
         self.context.directive_prologue = matches!(
             kind,
             BodyKind::Program | BodyKind::Function | BodyKind::ModuleBlock
         );
         let statements_checkpoint = self.scratch_statements.begin();
+        let mut directives_end = statements_checkpoint;
         while !self.is_at_body_end(terminator) {
-            let item = (|| {
+            let is_directive = (|| {
                 if self.context.directive_prologue
                     && self.current_token.tag == TokenTag::StringLiteral
                 {
@@ -930,28 +946,37 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                         self.parse_expression(Precedence::LOWEST, ParseExpressionOpts::default())?;
                     if let ExprData::StringLiteral(string_literal) = self.ast.expr_data(expression)
                     {
-                        return self.parse_directive(string_literal, string_literal.span(self.ast));
+                        let directive =
+                            self.parse_directive(string_literal, string_literal.span(self.ast))?;
+                        self.scratch_statements.append(directive);
+                        return Some(true);
                     }
                     let start = expression.span(self.ast).start;
-                    return self
-                        .parse_expression_statement_with_expression(start, expression)
-                        .map(StatementListItem::Stmt);
+                    let statement =
+                        self.parse_expression_statement_with_expression(start, expression)?;
+                    self.scratch_statements.append(statement);
+                    return Some(false);
                 }
-                self.parse_statement(ParseStatementOpts::default())
-                    .map(StatementListItem::Stmt)
+                let statement = self.parse_statement(ParseStatementOpts::default())?;
+                self.scratch_statements.append(statement);
+                Some(false)
             })();
-            if let Some(item) = item {
-                self.context.directive_prologue =
-                    self.context.directive_prologue && item.is_directive(self.ast);
-                self.scratch_statements.append(item);
+            if let Some(is_directive) = is_directive {
+                if is_directive {
+                    directives_end = self.scratch_statements.items.len();
+                }
+                self.context.directive_prologue = self.context.directive_prologue && is_directive;
             } else {
                 self.recover(terminator);
             }
         }
         self.context.directive_prologue = false;
-        let body = self.add_extra_from_scratch_statements(statements_checkpoint);
+        let statements_end = self.scratch_statements.items.len();
+        let directives =
+            self.add_extra_from_scratch_statements_range(statements_checkpoint, directives_end);
+        let body = self.add_extra_from_scratch_statements_range(directives_end, statements_end);
         self.scratch_statements.reset(statements_checkpoint);
-        body
+        ParsedBody { directives, body }
     }
 
     pub fn is_at_body_end(&self, terminator: Option<TokenTag>) -> bool {
@@ -1470,18 +1495,13 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         )
     }
 
-    fn parse_directive(
-        &mut self,
-        string_literal: StringLiteral,
-        span: Span,
-    ) -> Option<StatementListItem> {
+    fn parse_directive(&mut self, string_literal: StringLiteral, span: Span) -> Option<Directive> {
         let raw_value = self.ast.source_slice(span.start + 1, span.end - 1);
         let end = self.eat_semicolon(span.end)?;
-        Some(StatementListItem::Directive(self.ast.directive(
-            Span::new(span.start, end),
-            string_literal,
-            raw_value,
-        )))
+        Some(
+            self.ast
+                .directive(Span::new(span.start, end), string_literal, raw_value),
+        )
     }
 
     fn parse_variable_declaration(
@@ -2927,7 +2947,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         }
         let old_return = self.context.return_;
         self.context.return_ = true;
-        let body = self.parse_body(Some(TokenTag::RightBrace), BodyKind::Function);
+        let ParsedBody { directives, body } =
+            self.parse_body(Some(TokenTag::RightBrace), BodyKind::Function);
         self.context.return_ = old_return;
         let end = self.current_token.span.end;
         if !self.expect(
@@ -2939,7 +2960,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         ) {
             return None;
         }
-        Some(self.ast.function_body(Span::new(start, end), body))
+        Some(
+            self.ast
+                .function_body(Span::new(start, end), directives, body),
+        )
     }
 
     fn parse_import_declaration(&mut self) -> Option<Stmt> {
@@ -4528,7 +4552,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         ) {
             return None;
         }
-        let body = self.parse_body(Some(TokenTag::RightBrace), BodyKind::ModuleBlock);
+        let ParsedBody { directives, body } =
+            self.parse_body(Some(TokenTag::RightBrace), BodyKind::ModuleBlock);
         let end = self.current_token.span.end;
         if !self.expect(
             TokenTag::RightBrace,
@@ -4537,7 +4562,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         ) {
             return None;
         }
-        Some(self.ast.ts_module_block(Span::new(start, end), body))
+        Some(
+            self.ast
+                .ts_module_block(Span::new(start, end), directives, body),
+        )
     }
 
     fn parse_type_alias_body(&mut self) -> Option<TsType> {

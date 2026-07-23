@@ -2,8 +2,8 @@ use std::collections::HashSet;
 
 use swc_next_ecma_ast::{
     AssignmentOperator, Ast, Class, DUMMY_SP, Decl, Expr, Function, FunctionBody, GetSpan,
-    IdentifierReference, Program, StatementListItem, StaticBlock, Stmt, String as AstString,
-    TypedSubRange, VariableKind, VisitMut, VisitMutWith,
+    IdentifierReference, Program, StaticBlock, Stmt, String as AstString, TypedSubRange,
+    VariableKind, VisitMut, VisitMutWith,
 };
 use swc_next_ecma_semantic::{ReferenceKind, Semantic};
 
@@ -225,10 +225,8 @@ impl<'semantic> FnEnvHoister<'semantic> {
         let Some(declaration) = self.build_capture_declaration(frame, false, ast) else {
             return;
         };
-        let statement =
-            StatementListItem::Stmt(Stmt::Declaration(Decl::VariableDeclaration(declaration)));
-        let body = program.body(ast);
-        let body = prepend_statement_list_item(body, statement, ast);
+        let statement = Stmt::Declaration(Decl::VariableDeclaration(declaration));
+        let body = prepend_statement(program.body(ast), statement, ast);
         program.set_body(ast, body);
     }
 
@@ -251,9 +249,8 @@ impl<'semantic> FnEnvHoister<'semantic> {
         else {
             return;
         };
-        let statement =
-            StatementListItem::Stmt(Stmt::Declaration(Decl::VariableDeclaration(declaration)));
-        let statements = prepend_statement_list_item(body.body(ast), statement, ast);
+        let statement = Stmt::Declaration(Decl::VariableDeclaration(declaration));
+        let statements = prepend_statement(body.body(ast), statement, ast);
         body.set_body(ast, statements);
     }
 
@@ -267,26 +264,19 @@ impl<'semantic> FnEnvHoister<'semantic> {
             return;
         };
         let statement = Stmt::Declaration(Decl::VariableDeclaration(declaration));
-        let old = block.body(ast);
-        let mut statements = Vec::with_capacity(old.len() + 1);
-        statements.push(statement);
-        statements.extend(old.iter().map(|id| ast.get_node_in_sub_range(id)));
-        let statements = ast.add_typed_sub_range(statements);
+        let statements = prepend_statement(block.body(ast), statement, ast);
         block.set_body(ast, statements);
     }
 }
 
-fn prepend_statement_list_item(
-    old: TypedSubRange<StatementListItem>,
-    statement: StatementListItem,
+fn prepend_statement(
+    old: TypedSubRange<Stmt>,
+    statement: Stmt,
     ast: &mut Ast<'_>,
-) -> TypedSubRange<StatementListItem> {
-    let mut items: Vec<_> = old.iter().map(|id| ast.get_node_in_sub_range(id)).collect();
-    let insertion_index = items
-        .iter()
-        .position(|item| !item.is_directive(ast))
-        .unwrap_or(items.len());
-    items.insert(insertion_index, statement);
+) -> TypedSubRange<Stmt> {
+    let mut items = Vec::with_capacity(old.len() + 1);
+    items.push(statement);
+    items.extend(old.iter().map(|id| ast.get_node_in_sub_range(id)));
     ast.add_typed_sub_range(items)
 }
 

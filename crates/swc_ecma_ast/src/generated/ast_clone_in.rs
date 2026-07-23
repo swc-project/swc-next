@@ -7,9 +7,10 @@ impl<'a> CloneIn<'a> for Program {
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let span = self.span(ast).clone_in(ast);
         let source_type = self.source_type(ast).clone_in(ast);
+        let directives = self.directives(ast).clone_in(ast);
         let body = self.body(ast).clone_in(ast);
         let hashbang = self.hashbang(ast).clone_in(ast);
-        ast.program(span, source_type, body, hashbang)
+        ast.program(span, source_type, directives, body, hashbang)
     }
 }
 impl<'a> CloneIn<'a> for Stmt {
@@ -50,17 +51,6 @@ impl<'a> CloneIn<'a> for Stmt {
             StmtData::TsImportEqualsDeclaration(it) => {
                 Self::TsImportEqualsDeclaration(it.clone_in(ast))
             }
-        }
-    }
-}
-impl<'a> CloneIn<'a> for StatementListItem {
-    type Cloned = StatementListItem;
-    #[inline]
-    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
-        let data = ast.statement_list_item_data(*self);
-        match data {
-            StatementListItemData::Stmt(it) => Self::Stmt(it.clone_in(ast)),
-            StatementListItemData::Directive(it) => Self::Directive(it.clone_in(ast)),
         }
     }
 }
@@ -991,8 +981,9 @@ impl<'a> CloneIn<'a> for FunctionBody {
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let span = self.span(ast).clone_in(ast);
+        let directives = self.directives(ast).clone_in(ast);
         let body = self.body(ast).clone_in(ast);
-        ast.function_body(span, body)
+        ast.function_body(span, directives, body)
     }
 }
 impl<'a> CloneIn<'a> for BlockStatement {
@@ -2154,8 +2145,9 @@ impl<'a> CloneIn<'a> for TsModuleBlock {
     #[inline]
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let span = self.span(ast).clone_in(ast);
+        let directives = self.directives(ast).clone_in(ast);
         let body = self.body(ast).clone_in(ast);
-        ast.ts_module_block(span, body)
+        ast.ts_module_block(span, directives, body)
     }
 }
 impl<'a> CloneIn<'a> for TsGlobalDeclaration {

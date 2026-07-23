@@ -9,7 +9,7 @@ use crate::*;
 use oxc_index::Idx;
 impl Program {
     #[inline]
-    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<StatementListItem> {
+    pub fn directives<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Directive> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
     }
@@ -36,8 +36,28 @@ impl Program {
         }
     }
     #[inline]
-    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: TypedSubRange<StatementListItem>) {
-        let field_val: u64 = unsafe { body.to_extra_data(ast).other };
+    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Stmt> {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            ExtraDataCompact::from_extra_data(
+                *ast.extra_data.as_slice().get_unchecked(offset.index()),
+                ast,
+            )
+        }
+    }
+    #[inline]
+    pub fn set_directives<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        directives: TypedSubRange<Directive>,
+    ) {
+        let field_val: u64 = unsafe { directives.to_extra_data(ast).other };
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366841710300949110269842519228415u128)
             | (((field_val as u128) & 18446744073709551615u128) << 32usize);
@@ -62,6 +82,21 @@ impl Program {
             *ast.extra_data
                 .as_mut_slice()
                 .get_unchecked_mut(offset.index()) = source_type.to_extra_data(ast);
+        };
+    }
+    #[inline]
+    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: TypedSubRange<Stmt>) {
+        let offset = unsafe {
+            ExtraDataId::from_usize_unchecked(
+                ((ast.nodes.data_unchecked(self.0).0 >> 96usize) as u32 as usize)
+                    .wrapping_add(1usize),
+            )
+        };
+        debug_assert!(offset.index() < ast.extra_data.len());
+        unsafe {
+            *ast.extra_data
+                .as_mut_slice()
+                .get_unchecked_mut(offset.index()) = body.to_extra_data(ast);
         };
     }
 }
@@ -366,66 +401,6 @@ impl Stmt {
     ) -> Option<TsImportEqualsDeclaration> {
         match ast.stmt_data(self) {
             StmtData::TsImportEqualsDeclaration(it) => Some(it),
-            _ => None,
-        }
-    }
-}
-impl StatementListItem {
-    #[inline]
-    pub fn is_stmt(self, ast: &Ast<'_>) -> bool {
-        matches!(
-            ast.node_kind(self.0),
-            NodeKind::BlockStatement
-                | NodeKind::BreakStatement
-                | NodeKind::ContinueStatement
-                | NodeKind::DebuggerStatement
-                | NodeKind::DoWhileStatement
-                | NodeKind::EmptyStatement
-                | NodeKind::ExpressionStatement
-                | NodeKind::ForInStatement
-                | NodeKind::ForOfStatement
-                | NodeKind::ForStatement
-                | NodeKind::IfStatement
-                | NodeKind::LabeledStatement
-                | NodeKind::ReturnStatement
-                | NodeKind::SwitchStatement
-                | NodeKind::ThrowStatement
-                | NodeKind::TryStatement
-                | NodeKind::WhileStatement
-                | NodeKind::WithStatement
-                | NodeKind::VariableDeclaration
-                | NodeKind::Function
-                | NodeKind::Class
-                | NodeKind::TsTypeAliasDeclaration
-                | NodeKind::TsInterfaceDeclaration
-                | NodeKind::TsEnumDeclaration
-                | NodeKind::TsModuleDeclaration
-                | NodeKind::TsGlobalDeclaration
-                | NodeKind::TsImportEqualsDeclaration
-                | NodeKind::ImportDeclaration
-                | NodeKind::ExportNamedDeclaration
-                | NodeKind::ExportDefaultDeclaration
-                | NodeKind::ExportAllDeclaration
-                | NodeKind::TsExportAssignment
-                | NodeKind::TsNamespaceExportDeclaration
-                | NodeKind::TsImportEqualsDeclaration
-        )
-    }
-    #[inline]
-    pub fn is_directive(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Directive
-    }
-    #[inline]
-    pub fn as_stmt(self, ast: &Ast<'_>) -> Option<Stmt> {
-        match ast.statement_list_item_data(self) {
-            StatementListItemData::Stmt(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_directive(self, ast: &Ast<'_>) -> Option<Directive> {
-        match ast.statement_list_item_data(self) {
-            StatementListItemData::Directive(it) => Some(it),
             _ => None,
         }
     }
@@ -4274,16 +4249,32 @@ impl Function {
 }
 impl FunctionBody {
     #[inline]
-    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<StatementListItem> {
+    pub fn directives<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Directive> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
     }
     #[inline]
-    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: TypedSubRange<StatementListItem>) {
-        let field_val: u64 = unsafe { body.to_extra_data(ast).other };
+    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Stmt> {
+        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
+        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+    }
+    #[inline]
+    pub fn set_directives<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        directives: TypedSubRange<Directive>,
+    ) {
+        let field_val: u64 = unsafe { directives.to_extra_data(ast).other };
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
             | (((field_val as u128) & 18446744073709551615u128) << 0usize);
+    }
+    #[inline]
+    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: TypedSubRange<Stmt>) {
+        let field_val: u64 = unsafe { body.to_extra_data(ast).other };
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 18446744073709551615u128)
+            | (((field_val as u128) & 18446744073709551615u128) << 64usize);
     }
 }
 impl BlockStatement {
@@ -8245,16 +8236,32 @@ impl TsModuleDeclaration {
 }
 impl TsModuleBlock {
     #[inline]
-    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<StatementListItem> {
+    pub fn directives<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Directive> {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
     }
     #[inline]
-    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: TypedSubRange<StatementListItem>) {
-        let field_val: u64 = unsafe { body.to_extra_data(ast).other };
+    pub fn body<'a>(self, ast: &crate::Ast<'a>) -> TypedSubRange<Stmt> {
+        let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u64;
+        unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
+    }
+    #[inline]
+    pub fn set_directives<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        directives: TypedSubRange<Directive>,
+    ) {
+        let field_val: u64 = unsafe { directives.to_extra_data(ast).other };
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
             | (((field_val as u128) & 18446744073709551615u128) << 0usize);
+    }
+    #[inline]
+    pub fn set_body<'a>(self, ast: &mut crate::Ast<'a>, body: TypedSubRange<Stmt>) {
+        let field_val: u64 = unsafe { body.to_extra_data(ast).other };
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 18446744073709551615u128)
+            | (((field_val as u128) & 18446744073709551615u128) << 64usize);
     }
 }
 impl TsGlobalDeclaration {

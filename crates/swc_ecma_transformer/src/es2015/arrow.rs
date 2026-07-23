@@ -1,8 +1,8 @@
 use serde::Deserialize;
 use swc_next_ecma_ast::{
     Ast, Class, DUMMY_SP, Expr, FormalParameterKind, Function, FunctionType, GetSpan,
-    IdentifierReference, MethodDefinition, MethodDefinitionKind, Program, StatementListItem,
-    StaticBlock, Stmt, VisitMut, VisitMutWith,
+    IdentifierReference, MethodDefinition, MethodDefinitionKind, Program, StaticBlock, Stmt,
+    TypedSubRange, VisitMut, VisitMutWith,
 };
 use swc_next_ecma_semantic::Semantic;
 
@@ -73,12 +73,11 @@ impl<'visit, 'ast> ArrowVisitor<'visit, 'ast> {
                 .as_expr(self.ast)
                 .expect("an arrow body is either a function body or an expression");
             let return_statement = self.ast.return_statement(DUMMY_SP, Some(expression));
-            let body_items =
-                self.ast
-                    .add_typed_sub_range([StatementListItem::Stmt(Stmt::ReturnStatement(
-                        return_statement,
-                    ))]);
-            self.ast.function_body(DUMMY_SP, body_items)
+            let body_items = self
+                .ast
+                .add_typed_sub_range([Stmt::ReturnStatement(return_statement)]);
+            self.ast
+                .function_body(DUMMY_SP, TypedSubRange::empty(), body_items)
         };
 
         let function = self.ast.function(

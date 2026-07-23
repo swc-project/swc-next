@@ -351,14 +351,14 @@ impl<'a> ExtraDataCompact<'a> for Option<ImportPhase> {
 /// console.log(x);
 /// ```
 ///
-/// `hashbang` is the `#!` line if present. `body` contains directives
-/// (`"use strict";`), imports, and statements.
+/// `hashbang` is the `#!` line if present. `directives` contains the directive
+/// prologue (`"use strict";`), while `body` contains imports and statements.
 #[ast]
 pub struct Program {
     source_type: SourceType,
-    /// any statement or `directive`. Import and export declarations are
-    /// classified as statements.
-    body: Vec<StatementListItem>,
+    directives: Vec<Directive>,
+    /// Import and export declarations are classified as statements.
+    body: Vec<Stmt>,
     /// `null` when the file has no `#!` line.
     hashbang: Option<Hashbang>,
 }
@@ -391,12 +391,6 @@ pub enum Stmt {
     TsExportAssignment(TsExportAssignment),
     TsNamespaceExportDeclaration(TsNamespaceExportDeclaration),
     TsImportEqualsDeclaration(TsImportEqualsDeclaration),
-}
-
-#[ast(repr)]
-pub enum StatementListItem {
-    Stmt(Stmt),
-    Directive(Directive),
 }
 
 #[ast(repr)]
@@ -1521,8 +1515,8 @@ pub struct Function {
 /// See: <https://tc39.es/ecma262/#prod-FunctionBody>
 #[ast]
 pub struct FunctionBody {
-    /// any statement or `directive`.
-    body: Vec<StatementListItem>,
+    directives: Vec<Directive>,
+    body: Vec<Stmt>,
 }
 
 /// A braced block statement.

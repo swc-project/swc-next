@@ -12,19 +12,21 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         source_type: SourceType,
-        body: TypedSubRange<StatementListItem>,
+        directives: TypedSubRange<Directive>,
+        body: TypedSubRange<Stmt>,
         hashbang: Option<Hashbang>,
     ) -> Program {
-        let _f0 = self.add_extra(source_type.to_extra_data(self));
+        let _extra_data = [source_type.to_extra_data(self), body.to_extra_data(self)];
+        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
         Program(self.add_node(
             span,
             NodeKind::Program,
             NodePayload(
                 0u128
-                    | ((unsafe { body.to_extra_data(self).other } as u128) << 32usize)
+                    | ((unsafe { directives.to_extra_data(self).other } as u128) << 32usize)
                     | ((hashbang.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
                         << 0usize)
-                    | ((_f0.index() as u128) << 96usize),
+                    | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
     }
@@ -381,454 +383,6 @@ impl<'a> Ast<'a> {
             self.ts_import_equals_declaration(span, id, module_reference, import_kind)
                 .into(),
         )
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_block_statement(
-        &mut self,
-        span: Span,
-        body: TypedSubRange<Stmt>,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::BlockStatement(
-            self.block_statement(span, body).into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_break_statement(
-        &mut self,
-        span: Span,
-        label: Option<LabelIdentifier>,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::BreakStatement(
-            self.break_statement(span, label).into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_continue_statement(
-        &mut self,
-        span: Span,
-        label: Option<LabelIdentifier>,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::ContinueStatement(
-            self.continue_statement(span, label).into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_debugger_statement(&mut self, span: Span) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::DebuggerStatement(
-            self.debugger_statement(span).into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_do_while_statement(
-        &mut self,
-        span: Span,
-        body: Stmt,
-        test: Expr,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::DoWhileStatement(
-            self.do_while_statement(span, body, test).into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_empty_statement(&mut self, span: Span) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::EmptyStatement(self.empty_statement(span).into()))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_expression_statement(
-        &mut self,
-        span: Span,
-        expression: Expr,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::ExpressionStatement(
-            self.expression_statement(span, expression).into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_for_in_statement(
-        &mut self,
-        span: Span,
-        left: ForStatementLeft,
-        right: Expr,
-        body: Stmt,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::ForInStatement(
-            self.for_in_statement(span, left, right, body).into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_for_of_statement(
-        &mut self,
-        span: Span,
-        left: ForStatementLeft,
-        right: Expr,
-        body: Stmt,
-        r#await: bool,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::ForOfStatement(
-            self.for_of_statement(span, left, right, body, r#await)
-                .into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_for_statement(
-        &mut self,
-        span: Span,
-        init: Option<ForStatementInit>,
-        test: Option<Expr>,
-        update: Option<Expr>,
-        body: Stmt,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::ForStatement(
-            self.for_statement(span, init, test, update, body).into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_if_statement(
-        &mut self,
-        span: Span,
-        test: Expr,
-        consequent: Stmt,
-        alternate: Option<Stmt>,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::IfStatement(
-            self.if_statement(span, test, consequent, alternate).into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_labeled_statement(
-        &mut self,
-        span: Span,
-        label: LabelIdentifier,
-        body: Stmt,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::LabeledStatement(
-            self.labeled_statement(span, label, body).into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_return_statement(
-        &mut self,
-        span: Span,
-        argument: Option<Expr>,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::ReturnStatement(
-            self.return_statement(span, argument).into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_switch_statement(
-        &mut self,
-        span: Span,
-        discriminant: Expr,
-        cases: TypedSubRange<SwitchCase>,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::SwitchStatement(
-            self.switch_statement(span, discriminant, cases).into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_throw_statement(
-        &mut self,
-        span: Span,
-        argument: Expr,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::ThrowStatement(
-            self.throw_statement(span, argument).into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_try_statement(
-        &mut self,
-        span: Span,
-        block: BlockStatement,
-        handler: Option<CatchClause>,
-        finalizer: Option<BlockStatement>,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::TryStatement(
-            self.try_statement(span, block, handler, finalizer).into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_while_statement(
-        &mut self,
-        span: Span,
-        test: Expr,
-        body: Stmt,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::WhileStatement(
-            self.while_statement(span, test, body).into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_with_statement(
-        &mut self,
-        span: Span,
-        object: Expr,
-        body: Stmt,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::WithStatement(
-            self.with_statement(span, object, body).into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_decl_variable_declaration(
-        &mut self,
-        span: Span,
-        kind: VariableKind,
-        declarators: TypedSubRange<VariableDeclarator>,
-        declare: bool,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::Declaration(Decl::VariableDeclaration(
-            self.variable_declaration(span, kind, declarators, declare)
-                .into(),
-        )))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_decl_function(
-        &mut self,
-        span: Span,
-        function_type: FunctionType,
-        id: Option<BindingIdentifier>,
-        generator: bool,
-        r#async: bool,
-        declare: bool,
-        params: FormalParameters,
-        body: Option<FunctionBody>,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        return_type: Option<TsTypeAnnotation>,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::Declaration(Decl::Function(
-            self.function(
-                span,
-                function_type,
-                id,
-                generator,
-                r#async,
-                declare,
-                params,
-                body,
-                type_parameters,
-                return_type,
-            )
-            .into(),
-        )))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_decl_class(
-        &mut self,
-        span: Span,
-        class_type: ClassType,
-        decorators: TypedSubRange<Decorator>,
-        id: Option<BindingIdentifier>,
-        super_class: Option<Expr>,
-        body: ClassBody,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        super_type_arguments: Option<TsTypeParameterInstantiation>,
-        implements: TypedSubRange<TsClassImplements>,
-        r#abstract: bool,
-        declare: bool,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::Declaration(Decl::Class(
-            self.class(
-                span,
-                class_type,
-                decorators,
-                id,
-                super_class,
-                body,
-                type_parameters,
-                super_type_arguments,
-                implements,
-                r#abstract,
-                declare,
-            )
-            .into(),
-        )))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_decl_ts_type_alias_declaration(
-        &mut self,
-        span: Span,
-        id: BindingIdentifier,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        type_annotation: TsType,
-        declare: bool,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::Declaration(Decl::TsTypeAliasDeclaration(
-            self.ts_type_alias_declaration(span, id, type_parameters, type_annotation, declare)
-                .into(),
-        )))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_decl_ts_interface_declaration(
-        &mut self,
-        span: Span,
-        id: BindingIdentifier,
-        type_parameters: Option<TsTypeParameterDeclaration>,
-        extends: TypedSubRange<TsInterfaceHeritage>,
-        body: TsInterfaceBody,
-        declare: bool,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::Declaration(Decl::TsInterfaceDeclaration(
-            self.ts_interface_declaration(span, id, type_parameters, extends, body, declare)
-                .into(),
-        )))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_decl_ts_enum_declaration(
-        &mut self,
-        span: Span,
-        id: BindingIdentifier,
-        body: TsEnumBody,
-        is_const: bool,
-        declare: bool,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::Declaration(Decl::TsEnumDeclaration(
-            self.ts_enum_declaration(span, id, body, is_const, declare)
-                .into(),
-        )))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_decl_ts_module_declaration(
-        &mut self,
-        span: Span,
-        id: TsModuleName,
-        body: Option<TsModuleBody>,
-        kind: TsModuleDeclarationKind,
-        declare: bool,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::Declaration(Decl::TsModuleDeclaration(
-            self.ts_module_declaration(span, id, body, kind, declare)
-                .into(),
-        )))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_decl_ts_global_declaration(
-        &mut self,
-        span: Span,
-        id: IdentifierName,
-        body: TsModuleBlock,
-        declare: bool,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::Declaration(Decl::TsGlobalDeclaration(
-            self.ts_global_declaration(span, id, body, declare).into(),
-        )))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_decl_ts_import_equals_declaration(
-        &mut self,
-        span: Span,
-        id: BindingIdentifier,
-        module_reference: TsModuleReference,
-        import_kind: ImportOrExportKind,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::Declaration(Decl::TsImportEqualsDeclaration(
-            self.ts_import_equals_declaration(span, id, module_reference, import_kind)
-                .into(),
-        )))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_import_declaration(
-        &mut self,
-        span: Span,
-        specifiers: TypedSubRange<ImportDeclarationSpecifier>,
-        source: StringLiteral,
-        attributes: TypedSubRange<ImportAttribute>,
-        phase: Option<ImportPhase>,
-        import_kind: ImportOrExportKind,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::ImportDeclaration(
-            self.import_declaration(span, specifiers, source, attributes, phase, import_kind)
-                .into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_export_named_declaration(
-        &mut self,
-        span: Span,
-        declaration: Option<Decl>,
-        specifiers: TypedSubRange<ExportSpecifier>,
-        source: Option<StringLiteral>,
-        attributes: TypedSubRange<ImportAttribute>,
-        export_kind: ImportOrExportKind,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::ExportNamedDeclaration(
-            self.export_named_declaration(
-                span,
-                declaration,
-                specifiers,
-                source,
-                attributes,
-                export_kind,
-            )
-            .into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_export_default_declaration(
-        &mut self,
-        span: Span,
-        declaration: ExportDefaultDeclarationKind,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::ExportDefaultDeclaration(
-            self.export_default_declaration(span, declaration).into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_export_all_declaration(
-        &mut self,
-        span: Span,
-        exported: Option<ModuleExportName>,
-        source: StringLiteral,
-        attributes: TypedSubRange<ImportAttribute>,
-        export_kind: ImportOrExportKind,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::ExportAllDeclaration(
-            self.export_all_declaration(span, exported, source, attributes, export_kind)
-                .into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_ts_export_assignment(
-        &mut self,
-        span: Span,
-        expression: Expr,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::TsExportAssignment(
-            self.ts_export_assignment(span, expression).into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_ts_namespace_export_declaration(
-        &mut self,
-        span: Span,
-        id: IdentifierName,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::TsNamespaceExportDeclaration(
-            self.ts_namespace_export_declaration(span, id).into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_stmt_ts_import_equals_declaration(
-        &mut self,
-        span: Span,
-        id: BindingIdentifier,
-        module_reference: TsModuleReference,
-        import_kind: ImportOrExportKind,
-    ) -> StatementListItem {
-        StatementListItem::Stmt(Stmt::TsImportEqualsDeclaration(
-            self.ts_import_equals_declaration(span, id, module_reference, import_kind)
-                .into(),
-        ))
-    }
-    #[inline]
-    pub fn statement_list_item_directive(
-        &mut self,
-        span: Span,
-        expression: StringLiteral,
-        value: String,
-    ) -> StatementListItem {
-        StatementListItem::Directive(self.directive(span, expression, value).into())
     }
     #[inline]
     pub fn decl_variable_declaration(
@@ -3383,9 +2937,10 @@ impl<'a> Ast<'a> {
     pub fn arrow_function_body_function_body(
         &mut self,
         span: Span,
-        body: TypedSubRange<StatementListItem>,
+        directives: TypedSubRange<Directive>,
+        body: TypedSubRange<Stmt>,
     ) -> ArrowFunctionBody {
-        ArrowFunctionBody::FunctionBody(self.function_body(span, body).into())
+        ArrowFunctionBody::FunctionBody(self.function_body(span, directives, body).into())
     }
     #[inline]
     pub fn arrow_function_body_expr_identifier_reference(
@@ -5673,12 +5228,17 @@ impl<'a> Ast<'a> {
     pub fn function_body(
         &mut self,
         span: Span,
-        body: TypedSubRange<StatementListItem>,
+        directives: TypedSubRange<Directive>,
+        body: TypedSubRange<Stmt>,
     ) -> FunctionBody {
         FunctionBody(self.add_node(
             span,
             NodeKind::FunctionBody,
-            NodePayload(0u128 | ((unsafe { body.to_extra_data(self).other } as u128) << 0usize)),
+            NodePayload(
+                0u128
+                    | ((unsafe { directives.to_extra_data(self).other } as u128) << 0usize)
+                    | ((unsafe { body.to_extra_data(self).other } as u128) << 64usize),
+            ),
         ))
     }
     #[inline]
@@ -7678,9 +7238,10 @@ impl<'a> Ast<'a> {
     pub fn ts_module_body_ts_module_block(
         &mut self,
         span: Span,
-        body: TypedSubRange<StatementListItem>,
+        directives: TypedSubRange<Directive>,
+        body: TypedSubRange<Stmt>,
     ) -> TsModuleBody {
-        TsModuleBody::TsModuleBlock(self.ts_module_block(span, body).into())
+        TsModuleBody::TsModuleBlock(self.ts_module_block(span, directives, body).into())
     }
     #[inline]
     pub fn ts_module_body_ts_module_declaration(
@@ -8541,12 +8102,17 @@ impl<'a> Ast<'a> {
     pub fn ts_module_block(
         &mut self,
         span: Span,
-        body: TypedSubRange<StatementListItem>,
+        directives: TypedSubRange<Directive>,
+        body: TypedSubRange<Stmt>,
     ) -> TsModuleBlock {
         TsModuleBlock(self.add_node(
             span,
             NodeKind::TsModuleBlock,
-            NodePayload(0u128 | ((unsafe { body.to_extra_data(self).other } as u128) << 0usize)),
+            NodePayload(
+                0u128
+                    | ((unsafe { directives.to_extra_data(self).other } as u128) << 0usize)
+                    | ((unsafe { body.to_extra_data(self).other } as u128) << 64usize),
+            ),
         ))
     }
     #[inline]

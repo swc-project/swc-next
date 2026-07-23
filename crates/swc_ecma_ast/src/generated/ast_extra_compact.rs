@@ -26,18 +26,6 @@ impl<'a> ExtraDataCompact<'a> for Stmt {
         Self(unsafe { data.node_id })
     }
 }
-impl<'a> ExtraDataCompact<'a> for StatementListItem {
-    #[inline]
-    fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData {
-            node_id: self.node_id(),
-        }
-    }
-    #[inline]
-    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        Self(unsafe { data.node_id })
-    }
-}
 impl<'a> ExtraDataCompact<'a> for Decl {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {

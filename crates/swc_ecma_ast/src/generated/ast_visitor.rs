@@ -18,10 +18,6 @@ pub trait Visit<'a> {
         <Stmt as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_statement_list_item(&mut self, node: StatementListItem) {
-        <StatementListItem as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
     fn visit_decl(&mut self, node: Decl) {
         <Decl as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
@@ -1196,8 +1192,12 @@ pub trait Visit<'a> {
         self.leave_node(node.node_id());
     }
     #[inline]
-    fn visit_statement_list_items(&mut self, node: TypedSubRange<StatementListItem>) {
-        <TypedSubRange<StatementListItem> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    fn visit_directives(&mut self, node: TypedSubRange<Directive>) {
+        <TypedSubRange<Directive> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_stmts(&mut self, node: TypedSubRange<Stmt>) {
+        <TypedSubRange<Stmt> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
     fn visit_opt_hashbang(&mut self, node: Option<Hashbang>) {
@@ -1252,10 +1252,6 @@ pub trait Visit<'a> {
     #[inline]
     fn visit_switch_cases(&mut self, node: TypedSubRange<SwitchCase>) {
         <TypedSubRange<SwitchCase> as VisitWith<'a, Self>>::visit_children_with(node, self)
-    }
-    #[inline]
-    fn visit_stmts(&mut self, node: TypedSubRange<Stmt>) {
-        <TypedSubRange<Stmt> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
     fn visit_opt_for_statement_init(&mut self, node: Option<ForStatementInit>) {
@@ -1424,10 +1420,12 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Program {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_1 = self.body(visitor.ast());
-        let field_value_2 = self.hashbang(visitor.ast());
-        <TypedSubRange<StatementListItem> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Option<Hashbang> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        let field_value_1 = self.directives(visitor.ast());
+        let field_value_2 = self.body(visitor.ast());
+        let field_value_3 = self.hashbang(visitor.ast());
+        <TypedSubRange<Directive> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <Option<Hashbang> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Stmt {
@@ -1511,21 +1509,6 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Stmt {
             }
             StmtData::TsImportEqualsDeclaration(it) => {
                 <TsImportEqualsDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for StatementListItem {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_statement_list_item(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match visitor.ast().statement_list_item_data(self) {
-            StatementListItemData::Stmt(it) => <Stmt as VisitWith<'a, V>>::visit_with(it, visitor),
-            StatementListItemData::Directive(it) => {
-                <Directive as VisitWith<'a, V>>::visit_with(it, visitor)
             }
         }
     }
@@ -2630,8 +2613,10 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FunctionBody {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.body(visitor.ast());
-        <TypedSubRange<StatementListItem> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        let field_value_0 = self.directives(visitor.ast());
+        let field_value_1 = self.body(visitor.ast());
+        <TypedSubRange<Directive> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BlockStatement {
@@ -4145,8 +4130,10 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsModuleBlock {
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
-        let field_value_0 = self.body(visitor.ast());
-        <TypedSubRange<StatementListItem> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        let field_value_0 = self.directives(visitor.ast());
+        let field_value_1 = self.body(visitor.ast());
+        <TypedSubRange<Directive> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <TypedSubRange<Stmt> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsGlobalDeclaration {
@@ -4599,10 +4586,23 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for JsxSpreadChild {
         <Expr as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<StatementListItem> {
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Directive> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_statement_list_items(visitor, self)
+        <V as Visit<'a>>::visit_directives(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Stmt> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_stmts(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
@@ -4772,19 +4772,6 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<SwitchCase> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
         <V as Visit<'a>>::visit_switch_cases(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<Stmt> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_stmts(visitor, self)
     }
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
@@ -5258,10 +5245,6 @@ pub trait VisitMut<'a> {
     #[inline]
     fn visit_mut_stmt(&mut self, node: Stmt) {
         <Stmt as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
-    fn visit_mut_statement_list_item(&mut self, node: StatementListItem) {
-        <StatementListItem as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_decl(&mut self, node: Decl) {
@@ -6107,10 +6090,12 @@ pub trait VisitMut<'a> {
         <JsxSpreadChild as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_statement_list_items(&mut self, node: TypedSubRange<StatementListItem>) {
-        <TypedSubRange<StatementListItem> as VisitMutWith<'a, Self>>::visit_mut_children_with(
-            node, self,
-        );
+    fn visit_mut_directives(&mut self, node: TypedSubRange<Directive>) {
+        <TypedSubRange<Directive> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
+    }
+    #[inline]
+    fn visit_mut_stmts(&mut self, node: TypedSubRange<Stmt>) {
+        <TypedSubRange<Stmt> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
     }
     #[inline]
     fn visit_mut_opt_hashbang(&mut self, node: Option<Hashbang>) {
@@ -6171,10 +6156,6 @@ pub trait VisitMut<'a> {
     #[inline]
     fn visit_mut_switch_cases(&mut self, node: TypedSubRange<SwitchCase>) {
         <TypedSubRange<SwitchCase> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
-    }
-    #[inline]
-    fn visit_mut_stmts(&mut self, node: TypedSubRange<Stmt>) {
-        <TypedSubRange<Stmt> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self);
     }
     #[inline]
     fn visit_mut_opt_for_statement_init(&mut self, node: Option<ForStatementInit>) {
@@ -6373,11 +6354,10 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Program {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.directives(visitor.ast());
+        <TypedSubRange<Directive> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
         let field_value = self.body(visitor.ast());
-        <TypedSubRange<StatementListItem> as VisitMutWith<'a, V>>::visit_mut_with(
-            field_value,
-            visitor,
-        );
+        <TypedSubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
         let field_value = self.hashbang(visitor.ast());
         <Option<Hashbang> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
     }
@@ -6466,24 +6446,6 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Stmt {
             }
             StmtData::TsImportEqualsDeclaration(it) => {
                 <TsImportEqualsDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for StatementListItem {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_statement_list_item(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        let data = visitor.ast().statement_list_item_data(self);
-        match data {
-            StatementListItemData::Stmt(it) => {
-                <Stmt as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-            }
-            StatementListItemData::Directive(it) => {
-                <Directive as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
         }
     }
@@ -7631,11 +7593,10 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for FunctionBody {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.directives(visitor.ast());
+        <TypedSubRange<Directive> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
         let field_value = self.body(visitor.ast());
-        <TypedSubRange<StatementListItem> as VisitMutWith<'a, V>>::visit_mut_with(
-            field_value,
-            visitor,
-        );
+        <TypedSubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
     }
 }
 impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BlockStatement {
@@ -9205,11 +9166,10 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsModuleBlock {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.directives(visitor.ast());
+        <TypedSubRange<Directive> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
         let field_value = self.body(visitor.ast());
-        <TypedSubRange<StatementListItem> as VisitMutWith<'a, V>>::visit_mut_with(
-            field_value,
-            visitor,
-        );
+        <TypedSubRange<Stmt> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
     }
 }
 impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsGlobalDeclaration {
@@ -9676,10 +9636,23 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for JsxSpreadChild {
         <Expr as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<StatementListItem> {
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Directive> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_statement_list_items(visitor, self)
+        <V as VisitMut<'a>>::visit_mut_directives(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        for child_idx in self.iter() {
+            let child = visitor.ast().get_node_in_sub_range(child_idx);
+            child.visit_mut_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Stmt> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_stmts(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
@@ -9843,19 +9816,6 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<SwitchC
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
         <V as VisitMut<'a>>::visit_mut_switch_cases(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        for child_idx in self.iter() {
-            let child = visitor.ast().get_node_in_sub_range(child_idx);
-            child.visit_mut_with(visitor);
-        }
-    }
-}
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<Stmt> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_stmts(visitor, self)
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) {
@@ -12639,16 +12599,6 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
         walk_node(self.node_id(), traverser, ctx)
     }
 }
-impl<'a, State> TraverseWith<'a, State> for StatementListItem {
-    #[inline]
-    fn traverse_with<T: ?Sized + Traverse<'a, State>>(
-        self,
-        traverser: &mut T,
-        ctx: &mut TraverseCtx<'_, 'a, State>,
-    ) -> TraverseAction {
-        walk_node(self.node_id(), traverser, ctx)
-    }
-}
 impl<'a, State> TraverseWith<'a, State> for Decl {
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -14729,7 +14679,7 @@ impl<'a, State> TraverseWith<'a, State> for JsxSpreadChild {
         walk_node(self.node_id(), traverser, ctx)
     }
 }
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<StatementListItem> {
+impl<'a, State> TraverseWith<'a, State> for TypedSubRange<Directive> {
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
         self,
@@ -14738,7 +14688,25 @@ impl<'a, State> TraverseWith<'a, State> for TypedSubRange<StatementListItem> {
     ) -> TraverseAction {
         for child_idx in self.iter() {
             let child = ctx.ast.get_node_in_sub_range(child_idx);
-            if <StatementListItem as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+            if <Directive as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                return TraverseAction::Stop;
+            }
+        }
+        TraverseAction::Proceed
+    }
+}
+impl<'a, State> TraverseWith<'a, State> for TypedSubRange<Stmt> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a, State>,
+    ) -> TraverseAction {
+        for child_idx in self.iter() {
+            let child = ctx.ast.get_node_in_sub_range(child_idx);
+            if <Stmt as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
                 == TraverseAction::Stop
             {
                 return TraverseAction::Stop;
@@ -14948,24 +14916,6 @@ impl<'a, State> TraverseWith<'a, State> for TypedSubRange<SwitchCase> {
         for child_idx in self.iter() {
             let child = ctx.ast.get_node_in_sub_range(child_idx);
             if <SwitchCase as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
-                == TraverseAction::Stop
-            {
-                return TraverseAction::Stop;
-            }
-        }
-        TraverseAction::Proceed
-    }
-}
-impl<'a, State> TraverseWith<'a, State> for TypedSubRange<Stmt> {
-    #[inline]
-    fn traverse_with<T: ?Sized + Traverse<'a, State>>(
-        self,
-        traverser: &mut T,
-        ctx: &mut TraverseCtx<'_, 'a, State>,
-    ) -> TraverseAction {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            if <Stmt as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
                 == TraverseAction::Stop
             {
                 return TraverseAction::Stop;
@@ -15983,8 +15933,15 @@ fn walk_node<'a, State, T: ?Sized + Traverse<'a, State>>(
     let action = match current_kind {
         NodeKind::Program => 'traverse_children: {
             let node = Program(node_id);
+            let child = node.directives(ctx.ast);
+            if <TypedSubRange<Directive> as TraverseWith<'a, State>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
             let child = node.body(ctx.ast);
-            if <TypedSubRange<StatementListItem> as TraverseWith<'a, State>>::traverse_with(
+            if <TypedSubRange<Stmt> as TraverseWith<'a, State>>::traverse_with(
                 child, traverser, ctx,
             ) == TraverseAction::Stop
             {
@@ -16770,8 +16727,15 @@ fn walk_node<'a, State, T: ?Sized + Traverse<'a, State>>(
         }
         NodeKind::FunctionBody => 'traverse_children: {
             let node = FunctionBody(node_id);
+            let child = node.directives(ctx.ast);
+            if <TypedSubRange<Directive> as TraverseWith<'a, State>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
             let child = node.body(ctx.ast);
-            if <TypedSubRange<StatementListItem> as TraverseWith<'a, State>>::traverse_with(
+            if <TypedSubRange<Stmt> as TraverseWith<'a, State>>::traverse_with(
                 child, traverser, ctx,
             ) == TraverseAction::Stop
             {
@@ -18049,8 +18013,15 @@ fn walk_node<'a, State, T: ?Sized + Traverse<'a, State>>(
         }
         NodeKind::TsModuleBlock => 'traverse_children: {
             let node = TsModuleBlock(node_id);
+            let child = node.directives(ctx.ast);
+            if <TypedSubRange<Directive> as TraverseWith<'a, State>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
             let child = node.body(ctx.ast);
-            if <TypedSubRange<StatementListItem> as TraverseWith<'a, State>>::traverse_with(
+            if <TypedSubRange<Stmt> as TraverseWith<'a, State>>::traverse_with(
                 child, traverser, ctx,
             ) == TraverseAction::Stop
             {

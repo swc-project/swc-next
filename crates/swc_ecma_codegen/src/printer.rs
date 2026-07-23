@@ -338,17 +338,17 @@ impl<'a> Printer<'a> {
             self.print_bytes(ast_text(self.ast, hashbang.value(self.ast)));
             self.print("\n");
         }
+        for id in program.directives(self.ast).iter() {
+            let directive = self.ast.get_node_in_sub_range(id);
+            self.print_indent();
+            self.print_quoted(ast_text(self.ast, directive.value(self.ast)), false);
+            self.print(";");
+            self.print_newline();
+            self.print_semicolon_if_needed();
+        }
         for id in program.body(self.ast).iter() {
-            let item = self.ast.get_node_in_sub_range(id);
-            match self.ast.statement_list_item_data(item) {
-                StatementListItemData::Stmt(stmt) => self.print_stmt(stmt),
-                StatementListItemData::Directive(directive) => {
-                    self.print_indent();
-                    self.print_quoted(ast_text(self.ast, directive.value(self.ast)), false);
-                    self.print(";");
-                    self.print_newline();
-                }
-            }
+            let statement = self.ast.get_node_in_sub_range(id);
+            self.print_stmt(statement);
             self.print_semicolon_if_needed();
         }
         self.print_comments_before(self.ast.source().len() as u32, true, false);
@@ -1070,8 +1070,9 @@ impl<'a> Printer<'a> {
     fn print_function_body(&mut self, body: FunctionBody) {
         self.add_source_mapping(body.span(self.ast).start);
         self.print("{");
-        let items = body.body(self.ast);
-        if items.is_empty() {
+        let directives = body.directives(self.ast);
+        let statements = body.body(self.ast);
+        if directives.is_empty() && statements.is_empty() {
             let close_offset = body.span(self.ast).end.saturating_sub(1);
             if self.source_comments[self.next_comment..]
                 .iter()
@@ -1092,19 +1093,17 @@ impl<'a> Printer<'a> {
         }
         self.print_newline();
         self.indent += 1;
-        for id in items.iter() {
+        for id in directives.iter() {
             self.print_semicolon_if_needed();
-            match self
-                .ast
-                .statement_list_item_data(self.ast.get_node_in_sub_range(id))
-            {
-                StatementListItemData::Stmt(stmt) => self.print_stmt(stmt),
-                StatementListItemData::Directive(d) => {
-                    self.print_indent();
-                    self.print_quoted(ast_text(self.ast, d.value(self.ast)), false);
-                    self.print_semicolon_after_statement();
-                }
-            }
+            let directive = self.ast.get_node_in_sub_range(id);
+            self.print_indent();
+            self.print_quoted(ast_text(self.ast, directive.value(self.ast)), false);
+            self.print_semicolon_after_statement();
+        }
+        for id in statements.iter() {
+            self.print_semicolon_if_needed();
+            let statement = self.ast.get_node_in_sub_range(id);
+            self.print_stmt(statement);
         }
         self.needs_semicolon = false;
         self.print_comments_before(body.span(self.ast).end.saturating_sub(1), true, true);
@@ -4038,24 +4037,23 @@ impl<'a> Printer<'a> {
             TsModuleBodyData::TsModuleBlock(b) => {
                 self.add_source_mapping(b.span(self.ast).start);
                 self.print("{");
-                let items = b.body(self.ast);
-                if !items.is_empty() {
+                let directives = b.directives(self.ast);
+                let statements = b.body(self.ast);
+                if !directives.is_empty() || !statements.is_empty() {
                     self.print_newline();
                 }
                 self.indent += 1;
-                for id in items.iter() {
+                for id in directives.iter() {
                     self.print_semicolon_if_needed();
-                    match self
-                        .ast
-                        .statement_list_item_data(self.ast.get_node_in_sub_range(id))
-                    {
-                        StatementListItemData::Stmt(s) => self.print_stmt(s),
-                        StatementListItemData::Directive(d) => {
-                            self.print_indent();
-                            self.print_quoted(ast_text(self.ast, d.value(self.ast)), false);
-                            self.print_semicolon_after_statement();
-                        }
-                    }
+                    let directive = self.ast.get_node_in_sub_range(id);
+                    self.print_indent();
+                    self.print_quoted(ast_text(self.ast, directive.value(self.ast)), false);
+                    self.print_semicolon_after_statement();
+                }
+                for id in statements.iter() {
+                    self.print_semicolon_if_needed();
+                    let statement = self.ast.get_node_in_sub_range(id);
+                    self.print_stmt(statement);
                 }
                 self.needs_semicolon = false;
                 self.indent -= 1;
@@ -4079,19 +4077,21 @@ impl<'a> Printer<'a> {
         let b = d.body(self.ast);
         self.add_source_mapping(b.span(self.ast).start);
         self.print("{");
-        let items = b.body(self.ast);
-        if !items.is_empty() {
+        let directives = b.directives(self.ast);
+        let statements = b.body(self.ast);
+        if !directives.is_empty() || !statements.is_empty() {
             self.print_newline();
         }
         self.indent += 1;
-        for id in items.iter() {
+        // Keep the existing TS global behavior: directives participate in
+        // statement-list layout but are not emitted.
+        for _ in directives.iter() {
             self.print_semicolon_if_needed();
-            if let StatementListItemData::Stmt(s) = self
-                .ast
-                .statement_list_item_data(self.ast.get_node_in_sub_range(id))
-            {
-                self.print_stmt(s);
-            }
+        }
+        for id in statements.iter() {
+            self.print_semicolon_if_needed();
+            let statement = self.ast.get_node_in_sub_range(id);
+            self.print_stmt(statement);
         }
         self.needs_semicolon = false;
         self.indent -= 1;

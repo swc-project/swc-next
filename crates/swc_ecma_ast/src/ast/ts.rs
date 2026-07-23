@@ -1407,8 +1407,8 @@ pub struct TsModuleDeclaration {
 /// ```
 #[ast]
 pub struct TsModuleBlock {
-    /// any statement
-    body: Vec<StatementListItem>,
+    directives: Vec<Directive>,
+    body: Vec<Stmt>,
 }
 
 /// A TypeScript `declare global { ... }` augmentation block.

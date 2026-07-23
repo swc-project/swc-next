@@ -405,32 +405,6 @@ impl SetSpan for Stmt {
         }
     }
 }
-impl StatementListItem {
-    #[inline]
-    pub fn node_id(self) -> NodeId {
-        self.0
-    }
-}
-impl AstNode for StatementListItem {
-    #[inline]
-    fn node_id(self) -> NodeId {
-        self.0
-    }
-}
-impl GetSpan for StatementListItem {
-    #[inline]
-    fn span(self, ast: &Ast<'_>) -> crate::Span {
-        unsafe { *ast.nodes.span_unchecked(self.0) }
-    }
-}
-impl SetSpan for StatementListItem {
-    #[inline]
-    fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
-        unsafe {
-            *ast.nodes.span_mut_unchecked(self.0) = span;
-        }
-    }
-}
 impl Decl {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -6200,46 +6174,6 @@ impl<'a> Ast<'a> {
             NodeKind::TsNamespaceExportDeclaration => {
                 StmtData::TsNamespaceExportDeclaration(TsNamespaceExportDeclaration(node.0))
             }
-            _ => unsafe { std::hint::unreachable_unchecked() },
-        }
-    }
-    #[inline]
-    pub fn statement_list_item_data(&self, node: StatementListItem) -> StatementListItemData {
-        match unsafe { *self.nodes.kind_unchecked(node.0) } {
-            NodeKind::BlockStatement => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::BreakStatement => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::ContinueStatement => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::DebuggerStatement => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::DoWhileStatement => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::EmptyStatement => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::ExpressionStatement => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::ForInStatement => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::ForOfStatement => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::ForStatement => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::IfStatement => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::LabeledStatement => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::ReturnStatement => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::SwitchStatement => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::ThrowStatement => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::TryStatement => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::WhileStatement => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::WithStatement => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::VariableDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::Function => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::Class => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::TsTypeAliasDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::TsInterfaceDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::TsEnumDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::TsModuleDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::TsGlobalDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::TsImportEqualsDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::ImportDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::ExportNamedDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::ExportDefaultDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::ExportAllDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::TsExportAssignment => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::TsNamespaceExportDeclaration => StatementListItemData::Stmt(Stmt(node.0)),
-            NodeKind::Directive => StatementListItemData::Directive(Directive(node.0)),
             _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
