@@ -7,15 +7,6 @@ This project is an experimental version of [SWC](https://github.com/swc-project/
 1. It adopts a Flattening AST design, which allows for a higher performance.
 2. The AST structure (fields) of the SWC (experimental) remains largely consistent with that of SWC, making migration relatively straightforward.
 
-## Performance
-
-See [codspeed](https://codspeed.io/CPunisher/swc-experimental/benchmarks) for details.
-
-Local benchmark results with M3Pro:
-
-- Parser: **~1.5x** faster.
-- Visit: **~1.3x** faster.
-
 ## Roadmap
 
 There's a long way to go, but luckly it could be progressive.
@@ -35,7 +26,8 @@ Thanks to:
 
 - The [yuku](https://github.com/yuku-toolchain/yuku), which provides the prototype of ESTree AST design, parser and semantic analysis.
 - The [zig](https://github.com/ziglang/zig) compiler and the [rowan](https://github.com/rust-analyzer/rowan), which inspire the flattening AST design.
-- The [oxc](https://github.com/oxc-project/oxc), which inspires the ast-tools design.
+- The [oxc](https://github.com/oxc-project/oxc), which inspires the ast-tools / test harness design.
+- The [esbuild](https://github.com/evanw/esbuild), which provides the prototype of Code generator.
 
 ## License
 

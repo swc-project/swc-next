@@ -51,6 +51,9 @@ pub struct PrintResult<'a> {
 fn parse_small_int(bytes: &[u8]) -> i32 {
     let was_negative = bytes[0] == b'-';
     let bytes = if was_negative { &bytes[1..] } else { bytes };
+
+    // Parse without error checking. These integers are floating-point
+    // exponents, so they never get large enough to overflow.
     let mut n = 0;
     for &byte in bytes {
         n = n * 10 + i32::from(byte - b'0');
@@ -71,19 +74,21 @@ struct Printer<'a> {
     js: ArenaVec<'a, u8>,
     legal_comments: Vec<Comment>,
     source_comments: ArenaVec<'a, SourceComment>,
-    // esbuild intentionally uses one reusable heap stack for all iterative
-    // expression printing. Keep the same allocation shape even though this AST
-    // represents logical and binary expressions with different node types.
     expr_visitor_stack: ArenaVec<'a, BinaryExprVisitor>,
     builder: ChunkBuilder<'a>,
     next_comment: usize,
     indent: usize,
     print_next_indent_as_space: bool,
     needs_semicolon: bool,
+
+    // Byte offsets used to detect expression contexts where otherwise-valid
+    // syntax must be parenthesized.
     stmt_start: usize,
     export_default_start: usize,
     arrow_expr_start: usize,
     for_of_init_start: usize,
+
+    // State used to keep neighboring tokens lexically separate.
     prev_op_end: usize,
     prev_op: OperatorCode,
     need_space_before_dot: usize,
@@ -204,6 +209,8 @@ impl BinaryExprVisitor {
 
         match operator {
             BinaryishOperator::Logical(LogicalOperator::NullishCoalescing) => {
+                // "??" cannot directly contain "||" or "&&" without
+                // parentheses.
                 let needs_nullish_wrap = |child| {
                     matches!(
                         p.ast.expr_data(child),
@@ -222,6 +229,8 @@ impl BinaryExprVisitor {
                 }
             }
             BinaryishOperator::Binary(BinaryOperator::Exponent) => {
+                // The left-hand side of "**" cannot be certain unary
+                // expressions without parentheses.
                 if matches!(
                     p.ast.expr_data(e.left(p.ast)),
                     ExprData::UnaryExpression(_)
@@ -451,6 +460,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_indented_block_comment(&mut self, value: &[u8]) {
+        // Re-indent multi-line comments to match the surrounding statement.
         self.print("/*");
         let mut start = 0;
         while start < value.len() {
@@ -495,6 +505,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_comment_text(&mut self, text: &[u8]) {
+        // Avoid generating a comment containing the sequence "</script".
         let mut start = 0;
         for index in 0..text.len().saturating_sub(7) {
             if text[index] == b'<'
@@ -570,6 +581,14 @@ impl<'a> Printer<'a> {
     fn print_space_before_operator(&mut self, next: OperatorCode) {
         if self.prev_op_end == self.js.len() {
             let previous = self.prev_op;
+
+            // "+ + y" => "+ +y"
+            // "+ ++ y" => "+ ++y"
+            // "x + + y" => "x+ +y"
+            // "x ++ + y" => "x+++y"
+            // "x + ++ y" => "x+ ++y"
+            // "-- >" => "-- >"
+            // "< ! --" => "<! --"
             if (matches!(previous, OperatorCode::Add | OperatorCode::Positive)
                 && matches!(
                     next,
@@ -1623,6 +1642,8 @@ impl<'a> Printer<'a> {
                 self.print("null");
             }
             ExprData::RegExpLiteral(e) => {
+                // Avoid forming a single-line comment or a "</script"
+                // sequence across the token boundary.
                 if let Some(&last) = self.js.last()
                     && (last == b'/'
                         || (last == b'<'
@@ -1637,6 +1658,9 @@ impl<'a> Printer<'a> {
                 self.print_bytes(ast_text(self.ast, e.pattern(self.ast)));
                 self.print("/");
                 self.print_bytes(ast_text(self.ast, e.flags(self.ast)));
+
+                // The next identifier needs a separator or it would become
+                // part of the regular expression flags.
                 self.prev_reg_exp_end = self.js.len();
             }
             ExprData::TemplateLiteral(e) => self.print_template(e, false),
@@ -1916,6 +1940,8 @@ impl<'a> Printer<'a> {
     }
 
     fn print_binaryish(&mut self, e: Binaryish, level: Level) {
+        // Binary-expression printing is iterative instead of recursive to
+        // avoid overflowing the call stack for deeply nested ASTs.
         let operator = e.operator(self.ast);
         let mut visitor = BinaryExprVisitor {
             e,
@@ -2089,6 +2115,8 @@ impl<'a> Printer<'a> {
         } else {
             if !e.optional(self.ast) {
                 if need_space_before_dot {
+                    // "1.toString" is a syntax error, so print
+                    // "1 .toString" instead.
                     self.print(" ");
                 }
                 self.print(".");
@@ -2784,6 +2812,8 @@ impl<'a> Printer<'a> {
         if value.is_nan() {
             self.print_space_before_identifier();
             if self.with_nesting != 0 {
+                // "with (x) NaN" means "x.NaN", so avoid the identifier when
+                // a "with" statement is active.
                 let wrap = level >= Level::Multiply;
                 if wrap {
                     self.print("(");
@@ -2800,6 +2830,8 @@ impl<'a> Printer<'a> {
                 self.print("NaN");
             }
         } else if value.is_infinite() {
+            // "with (x) Infinity" means "x.Infinity", so avoid the identifier
+            // when a "with" statement is active.
             let wrap = (self.with_nesting != 0 && level >= Level::Multiply)
                 || (value.is_sign_negative() && level >= Level::Prefix);
             if wrap {
@@ -2826,6 +2858,8 @@ impl<'a> Printer<'a> {
             self.print_space_before_identifier();
             self.print_non_negative_float(abs_value);
         } else if level >= Level::Prefix {
+            // Expressions such as "(-1).toString" must wrap negative numbers.
+            // Testing the sign bit instead of `value < 0` also handles -0.
             self.print("(-");
             self.print_non_negative_float(abs_value);
             self.print(")");
@@ -2835,12 +2869,17 @@ impl<'a> Printer<'a> {
         }
     }
 
+    // Convert an integer to bytes without allocating.
     fn small_int_to_bytes(&mut self, mut n: i32) -> usize {
         let was_negative = n < 0;
         if was_negative {
+            // Negating i32::MIN is not a concern because these integers are
+            // floating-point exponents and never get that large.
             n = -n;
         }
         let mut start = self.int_to_bytes_buffer.len();
+
+        // Write the number from the end of the buffer toward the front.
         loop {
             start -= 1;
             self.int_to_bytes_buffer[start] = b'0' + (n % 10) as u8;
@@ -2850,6 +2889,7 @@ impl<'a> Printer<'a> {
             }
         }
         if was_negative {
+            // Put the negative sign immediately before the digits.
             start -= 1;
             self.int_to_bytes_buffer[start] = b'-';
         }
@@ -2857,18 +2897,27 @@ impl<'a> Printer<'a> {
     }
 
     fn print_non_negative_float(&mut self, abs_value: f64) {
+        // Avoid the slower general formatter for integers below 1000.
+        // Exponential notation is always longer here; at 1000, "1e3" wins.
         if abs_value < 1000.0 {
             let as_int = abs_value as i64;
             if abs_value == as_int as f64 {
                 let start = self.small_int_to_bytes(as_int as i32);
                 self.js
                     .extend_from_slice_copy(&self.int_to_bytes_buffer[start..]);
+
+                // A following "." needs a separator or it becomes a decimal
+                // point.
                 self.need_space_before_dot = self.js.len();
                 return;
             }
         }
 
+        // Format into a mutable byte buffer so subsequent shortening can
+        // happen in place.
         let mut result = format_float(abs_value);
+
+        // Simplify exponents: "e+05" becomes "e5" and "e-05" becomes "e-5".
         if let Some(e) = result.iter().rposition(|&byte| byte == b'e') {
             let mut from = e + 1;
             let mut to = from;
@@ -2889,12 +2938,15 @@ impl<'a> Printer<'a> {
 
         let dot = result.iter().position(|&byte| byte == b'.');
         if dot == Some(1) && result[0] == b'0' {
+            // Simplify numbers beginning with "0.".
             let mut after_dot = 2;
             if self.options.minify {
+                // "0.5" => ".5"
                 result.remove(0);
                 after_dot -= 1;
             }
             if result.get(after_dot) == Some(&b'0') {
+                // Try exponent notation: "0.001" => "1e-3".
                 let mut i = after_dot + 1;
                 while result.get(i) == Some(&b'0') {
                     i += 1;
@@ -2903,6 +2955,8 @@ impl<'a> Printer<'a> {
                 let start =
                     self.small_int_to_bytes(after_dot as i32 - i as i32 - remaining_len as i32);
                 let exponent = &self.int_to_bytes_buffer[start..];
+
+                // Only switch representations when it is actually shorter.
                 if result.len() > remaining_len + 1 + exponent.len() {
                     result.copy_within(i.., 0);
                     result.truncate(remaining_len);
@@ -2911,12 +2965,15 @@ impl<'a> Printer<'a> {
                 }
             }
         } else if let Some(dot) = dot {
+            // Try removing the decimal point and, when possible, the exponent.
             if let Some(e) = result.iter().rposition(|&byte| byte == b'e') {
                 let integer_len = dot;
                 let fraction_len = e - dot - 1;
                 let parsed_exponent = parse_small_int(&result[e + 1..]);
                 let exponent = parsed_exponent - fraction_len as i32;
                 if (0..=2).contains(&exponent) {
+                    // Small exponents can be replaced by appended zeros:
+                    // "1.2e1" => "12", "1.2e2" => "120".
                     let new_len = integer_len + fraction_len + exponent as usize;
                     if result.len() >= new_len {
                         result.copy_within(dot + 1..e, dot);
@@ -2924,6 +2981,7 @@ impl<'a> Printer<'a> {
                         result.resize(new_len, b'0');
                     }
                 } else {
+                    // "1.2e4" => "12e3"
                     let start = self.small_int_to_bytes(exponent);
                     let exponent_bytes = &self.int_to_bytes_buffer[start..];
                     if result.len() >= integer_len + fraction_len + 1 + exponent_bytes.len() {
@@ -2935,12 +2993,15 @@ impl<'a> Printer<'a> {
                 }
             }
         } else if result.last() == Some(&b'0') {
+            // Try exponent notation for trailing zeros: "1000" => "1e3".
             let mut i = result.len() - 1;
             while i > 0 && result[i - 1] == b'0' {
                 i -= 1;
             }
             let start = self.small_int_to_bytes((result.len() - i) as i32);
             let exponent = &self.int_to_bytes_buffer[start..];
+
+            // Only switch representations when it is actually shorter.
             if result.len() > i + 1 + exponent.len() {
                 result.truncate(i);
                 result.push(b'e');
@@ -2948,6 +3009,9 @@ impl<'a> Printer<'a> {
             }
         }
 
+        // Integers in this range may be one byte shorter in hexadecimal. The
+        // upper bound is the largest relevant exactly representable f64 below
+        // the point where conversion can no longer fit in u64.
         if self.options.minify
             && (1_000_000_000_000.0..=18_446_744_073_709_549_568.0).contains(&abs_value)
         {
@@ -2973,6 +3037,9 @@ impl<'a> Printer<'a> {
         }
 
         self.print_bytes(&result);
+
+        // A following "." needs a separator if it could be parsed as a decimal
+        // point.
         if !result
             .iter()
             .any(|&byte| matches!(byte, b'.' | b'e' | b'x'))

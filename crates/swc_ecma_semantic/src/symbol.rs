@@ -5,9 +5,12 @@ use swc_experimental_ecma_ast::{NodeId, ScopeId, Span, String as AstString, Symb
 use crate::scope::{ScopeKind, ScopeTree};
 
 oxc_index::define_index_type! {
+    /// Identifier for a [`Reference`].
     pub struct ReferenceId = u32;
 }
 
+/// Declaration kinds, modifiers, and namespace membership recorded for a
+/// symbol.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct SymbolFlags(u32);
 
@@ -35,6 +38,7 @@ impl SymbolFlags {
     pub const CAPTURED: Self = Self(1 << 20);
     pub const REASSIGNED: Self = Self(1 << 21);
 
+    /// Declarations visible in JavaScript value space at runtime.
     pub const VALUE_SPACE: Self = Self(
         Self::FUNCTION_SCOPED_VAR.0
             | Self::BLOCK_SCOPED_VAR.0
@@ -45,6 +49,7 @@ impl SymbolFlags {
             | Self::VALUE_MODULE.0
             | Self::IMPORT.0,
     );
+    /// Declarations visible in TypeScript type space.
     pub const TYPE_SPACE: Self = Self(
         Self::CLASS.0
             | Self::REGULAR_ENUM.0
@@ -59,6 +64,9 @@ impl SymbolFlags {
         Self(self.0 | other.0)
     }
 
+    /// Returns the union of two flag sets.
+    ///
+    /// This is used when compatible declarations merge into one symbol.
     pub const fn merge(self, other: Self) -> Self {
         self.union(other)
     }
@@ -67,6 +75,7 @@ impl SymbolFlags {
         Self(self.0 & !other.0)
     }
 
+    /// Returns true when the two sets have at least one flag in common.
     pub const fn intersects(self, other: Self) -> bool {
         self.0 & other.0 != 0
     }
@@ -75,21 +84,28 @@ impl SymbolFlags {
         self.0 & other.0 == other.0
     }
 
+    /// Returns true for a `var` that hoists past intermediate blocks.
+    ///
+    /// Parameters and catch variables are function-scoped but do not hoist.
     pub const fn is_hoisting_var(self) -> bool {
         self.contains(Self::FUNCTION_SCOPED_VAR)
             && !self.intersects(Self(Self::PARAMETER.0 | Self::CATCH_VAR.0))
     }
 
+    /// Returns true for declarations a hoisting `var` cannot pass through:
+    /// block-scoped bindings, classes, and functions.
     pub const fn is_block_scoped_like(self) -> bool {
         self.intersects(Self(
             Self::BLOCK_SCOPED_VAR.0 | Self::CLASS.0 | Self::FUNCTION.0,
         ))
     }
 
+    /// Returns true for a runtime value-space binding.
     pub const fn in_value_space(self) -> bool {
         self.intersects(Self::VALUE_SPACE)
     }
 
+    /// Returns true for a TypeScript type-space binding.
     pub const fn in_type_space(self) -> bool {
         self.intersects(Self::TYPE_SPACE)
     }
@@ -182,6 +198,7 @@ impl SymbolFlags {
         Self::type_space().without(Self::TYPE_PARAMETER)
     }
 
+    /// Returns a human-readable declaration category for diagnostics.
     pub fn to_kind_string(self) -> &'static str {
         if self.intersects(Self::FUNCTION) {
             "function"
@@ -211,43 +228,101 @@ impl SymbolFlags {
     }
 }
 
+/// A declared binding.
+///
+/// Declarations that legally share a name merge into one symbol, including
+/// `var` redeclarations, TypeScript overloads, and `class` + `interface`
+/// merging. [`Symbol::declarations`] contains every declaration site, while
+/// [`Symbol::flags`] describes the declaration kinds, modifiers, and spaces
+/// occupied by the symbol.
+///
+/// ## Example
+///
+/// ```ts
+/// interface Shape { kind: string }
+/// class Shape { kind = "circle" }
+/// //    ^^^^^ one symbol with two declarations in value and type space
+/// ```
 #[derive(Clone, Debug)]
 pub struct Symbol {
+    /// Interned declaration name.
     pub name: AstString,
+    /// Merged declaration kinds, modifiers, and namespace membership.
     pub flags: SymbolFlags,
+    /// Scope where the symbol is declared.
+    ///
+    /// For a hoisting `var`, this is the hoist target instead of the block
+    /// where the declaration was written.
     pub scope: ScopeId,
+    /// Declaration nodes in source order.
     pub declarations: Vec<NodeId>,
+    /// Spans parallel to [`Symbol::declarations`].
     pub declaration_spans: Vec<Span>,
+    /// References resolved to this symbol, in source order.
     pub references: Vec<ReferenceId>,
 }
 
+/// Declaration space in which a reference is resolved.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ReferenceKind {
+    /// A runtime value use.
     Value,
+    /// A type-position use.
     Type,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct ReferenceFlags {
+    /// The reference reads the current value.
     pub read: bool,
+    /// The reference reassigns its binding.
+    ///
+    /// This includes assignment targets, `++`/`--` operands, for-in/for-of
+    /// iteration variables, and destructuring-assignment leaves. Declaration
+    /// initializers are not writes.
     pub write: bool,
+    /// The reference crosses a function boundary.
     pub captured: bool,
+    /// Resolution can be intercepted by a surrounding `with` statement.
     pub dynamic: bool,
+    /// Access may throw because the binding is still in its temporal dead zone.
     pub may_throw_tdz: bool,
 }
 
+/// A use of a name.
+///
+/// One reference is recorded for each identifier reference, JSX component tag
+/// name, and TypeScript type-predicate parameter. Declaration sites are stored
+/// on [`Symbol`] instead.
+///
+/// ## Example
+///
+/// ```ts
+/// let a = b; a = 2;
+/// //      ^ read of `b`
+/// //         ^ write of `a`
+/// ```
 #[derive(Clone, Debug)]
 pub struct Reference {
+    /// Interned referenced name.
     pub name: AstString,
+    /// Scope containing the reference.
     pub scope: ScopeId,
+    /// AST node that references the name.
     pub node: NodeId,
+    /// Source span of the reference.
     pub span: Span,
+    /// Declaration space in which the name is resolved.
     pub kind: ReferenceKind,
+    /// Convenience mirror of [`ReferenceFlags::write`].
     pub is_write: bool,
+    /// Read/write and resolution metadata.
     pub flags: ReferenceFlags,
+    /// Declaring symbol, or `None` when no visible binding resolves the name.
     pub symbol_id: Option<SymbolId>,
 }
 
+/// Symbol and reference storage with per-scope name indexes.
 #[derive(Debug)]
 pub struct SymbolTable {
     symbols: IndexVec<SymbolId, Symbol>,
@@ -285,22 +360,27 @@ impl SymbolTable {
         self.hoisted_bindings.push(FxHashMap::default());
     }
 
+    /// Iterates symbols in declaration order.
     pub fn symbols(&self) -> impl Iterator<Item = (SymbolId, &Symbol)> {
         self.symbols.iter_enumerated()
     }
 
+    /// Returns the number of symbols.
     pub fn symbol_len(&self) -> usize {
         self.symbols.len()
     }
 
+    /// Iterates references in source order.
     pub fn references(&self) -> impl Iterator<Item = (ReferenceId, &Reference)> {
         self.references.iter_enumerated()
     }
 
+    /// Returns the number of references.
     pub fn reference_len(&self) -> usize {
         self.references.len()
     }
 
+    /// Iterates references that did not resolve to a visible symbol.
     pub fn unresolved_references(&self) -> impl Iterator<Item = (ReferenceId, &Reference)> {
         self.unresolved
             .iter()
@@ -308,23 +388,30 @@ impl SymbolTable {
             .map(|id| (id, &self.references[id]))
     }
 
+    /// Returns the symbol with the given ID.
     pub fn symbol(&self, id: SymbolId) -> &Symbol {
         &self.symbols[id]
     }
 
+    /// Returns the reference with the given ID.
     pub fn reference(&self, id: ReferenceId) -> &Reference {
         &self.references[id]
     }
 
+    /// Returns the binding declared directly in `scope`, excluding hoisted
+    /// variables passing through it.
     pub fn find_in_scope(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
         self.scope_bindings[scope].get(name).copied()
     }
 
+    /// Returns the binding at `scope`, including a hoisting `var` passing
+    /// through on the way to its target.
     pub fn find_in_scope_or_hoisted(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
         self.find_in_scope(scope, name)
             .or_else(|| self.hoisted_bindings[scope].get(name).copied())
     }
 
+    /// Finds the nearest binding visible from `scope` by walking outward.
     pub fn resolve(&self, scopes: &ScopeTree, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
         scopes
             .ancestors(scope)

@@ -61,6 +61,7 @@ struct SemanticBuilder<'a> {
     iteration_depth: u32,
     control_frames: Vec<(u32, u32, usize)>,
     labels: Vec<(AstString, bool, Span)>,
+    // A declaration file is ambient in its entirety.
     ambient: bool,
     diagnostics: Vec<Diagnostic<'static>>,
     marker: PhantomData<&'a ()>,
@@ -119,6 +120,8 @@ impl<'a> SemanticBuilder<'a> {
     }
 
     fn expr_name_scope(&mut self, node: NodeId, body_kind: ScopeKind, flags: ScopeFlags) {
+        // A named function/class expression's name lives in an intermediate
+        // scope between the outer scope and the body scope.
         self.push_scope(node, ScopeKind::ExpressionName, flags);
         self.enter_scope(node, body_kind, flags, 2);
     }
@@ -303,6 +306,11 @@ impl<'a> SemanticBuilder<'a> {
         }
     }
 
+    /// Materializes the pending binding context into a symbol.
+    ///
+    /// Compatible declarations merge into an existing symbol. Conflicting
+    /// declarations keep the existing flags but still attach the new node to
+    /// that symbol so tooling can map bindings in invalid source.
     fn declare_binding(&mut self, node: BindingIdentifier, ctx: &mut TraverseCtx<'_, 'a>) {
         if is_write_position(node.node_id(), ctx, &self.write_targets) {
             return;
@@ -318,6 +326,8 @@ impl<'a> SemanticBuilder<'a> {
             .skip(1)
             .any(|ancestor| is_type_node(ctx.node_kind(ancestor)));
         if in_type_position {
+            // Identifiers in type-position parameter lists are labels. Only
+            // type parameters and mapped-type keys are actual declarations.
             let is_type_parameter_name =
                 ctx.parent()
                     .is_some_and(|parent| match ctx.ast.kind_data(parent) {
@@ -378,6 +388,8 @@ impl<'a> SemanticBuilder<'a> {
             node.span(ctx.ast),
         );
         if binding.flags.is_hoisting_var() {
+            // Register the hoisting `var` in every block it passes through so
+            // block-scoped redeclarations can detect the conflict.
             if let Some(previous) = self.find_hoisting_conflict(name_bytes, binding.target) {
                 self.report(Diagnostic {
                     severity: Severity::Error,
@@ -460,6 +472,10 @@ impl<'a> SemanticBuilder<'a> {
         node.set_symbol_id(ctx.ast, Some(result.symbol_id));
     }
 
+    /// Finds a block-scoped declaration crossed by a hoisting `var`.
+    ///
+    /// ECMAScript 14.2.1 makes this an early error in every intermediate
+    /// lexical scope.
     fn find_hoisting_conflict(&self, name: &[u8], target: ScopeId) -> Option<Span> {
         for scope in self.scopes.ancestors(self.current_scope) {
             if scope == target {
@@ -509,6 +525,8 @@ impl<'a> SemanticBuilder<'a> {
     }
 
     fn has_retroactive_use_strict(&self, body: Option<FunctionBody>, ast: &Ast<'a>) -> bool {
+        // "use strict" applies retroactively to the whole function, including
+        // its parameter list, so inspect the body before entering parameters.
         body.is_some_and(|body| has_use_strict_directive(body.body(ast), ast))
     }
 
@@ -522,6 +540,8 @@ impl<'a> SemanticBuilder<'a> {
             }
     }
 
+    /// Checks the `ForBinding` restrictions from ECMAScript 14.7.5.1:
+    /// exactly one bound declaration and no initializer.
     fn check_for_in_of_initializer(&mut self, left: ForStatementLeft, ast: &Ast<'a>) {
         let ForStatementLeftData::VariableDeclaration(declaration) =
             ast.for_statement_left_data(left)
@@ -547,6 +567,9 @@ impl<'a> SemanticBuilder<'a> {
         }
     }
 
+    /// Checks whether `super()` is inside a derived constructor.
+    ///
+    /// Arrow functions are transparent; regular functions stop the search.
     fn super_call_validity(&self, ctx: &TraverseCtx<'_, 'a>) -> SuperCallValidity {
         let mut ancestors = ctx.ancestors().skip(1);
         while let Some(ancestor) = ancestors.next() {
@@ -581,6 +604,8 @@ impl<'a> SemanticBuilder<'a> {
         SuperCallValidity::NotInConstructor
     }
 
+    /// Checks whether `super.property` inherits a valid method or class-field
+    /// environment.
     fn is_super_property_valid(&self, ctx: &TraverseCtx<'_, 'a>) -> bool {
         let mut ancestors = ctx.ancestors().skip(1);
         while let Some(ancestor) = ancestors.next() {
@@ -666,6 +691,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         }
         let flags = ScopeFlags { strict };
         let binding_target = if is_named_function_expression(node, ctx.ast) {
+            // Expression names bind outside the function body but inside the
+            // surrounding scope.
             self.expr_name_scope(node.node_id(), ScopeKind::Function, flags);
             self.scopes
                 .get(self.current_scope)
@@ -733,6 +760,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         if let Some(params) =
             params.filter(|params| formal_parameters_are_non_simple(*params, ctx.ast))
         {
+            // FunctionBodyContainsUseStrict with a non-simple parameter list
+            // is an early error.
             self.diagnostics.push(Diagnostic {
                 severity: Severity::Error,
                 message: Cow::Borrowed(
@@ -763,6 +792,9 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: FormalParameters,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
+        // Duplicate parameters are only allowed for sloppy functions with a
+        // simple parameter list. Strict, arrow, unique, and non-simple lists
+        // use normal block-scoped conflict rules.
         let excludes = if self.scopes.get(self.current_scope).flags.strict
             || formal_parameters_are_non_simple(node, ctx.ast)
             || matches!(
@@ -796,6 +828,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: BlockStatement,
         _ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
+        // The catch parameter and its block body share one environment, so a
+        // catch body reuses the scope created by the catch clause.
         if self.catch_bodies.last().copied() != Some(node.node_id()) {
             self.push_scope(node.node_id(), ScopeKind::Block, self.inherited_flags());
         }
@@ -1160,6 +1194,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         let property_is_private =
             ctx.ast.node_kind(node.property(ctx.ast).node_id()) == NodeKind::PrivateIdentifier;
         if ctx.ast.node_kind(node.object(ctx.ast).node_id()) == NodeKind::Super {
+            // `super` only accepts an IdentifierName or computed expression as
+            // its property, never a PrivateIdentifier.
             if property_is_private {
                 self.diagnostics.push(Diagnostic::error(
                     "A private name may not be accessed on 'super'",
@@ -1172,6 +1208,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
                 ));
             }
         }
+        // AllPrivateIdentifiersValid: walk outward through class bodies until
+        // a matching private declaration is found.
         if let PropertyKeyData::PrivateIdentifier(private) =
             ctx.ast.property_key_data(node.property(ctx.ast))
         {
@@ -1400,6 +1438,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
 
     fn enter_class(&mut self, node: Class, ctx: &mut TraverseCtx<'_, 'a>) -> TraverseAction {
         let outer_scope = self.current_scope;
+        // Classes are always strict.
         let flags = ScopeFlags { strict: true };
         let binding_target = if is_named_class_expression(node, ctx.ast) {
             self.expr_name_scope(node.node_id(), ScopeKind::Class, flags);
@@ -1434,6 +1473,9 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: ClassBody,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
+        // Class early errors allow at most one implemented constructor.
+        // Private names must be unique except for a matching static or
+        // instance getter/setter pair.
         let mut first_constructor = None;
         let mut private_elements: Vec<(AstString, PrivateElementKind, bool, Span)> = Vec::new();
         for id in node.body(ctx.ast).iter() {
@@ -1499,6 +1541,8 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: ObjectExpression,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
+        // A colon-form "__proto__" property mutates the object prototype, so
+        // ECMAScript permits at most one per object initializer.
         let mut first_proto = None;
         for id in node.properties(ctx.ast).iter() {
             let property = ctx.ast.get_node_in_sub_range(id);
@@ -1772,6 +1816,9 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         node: TsModuleDeclaration,
         ctx: &mut TraverseCtx<'_, 'a>,
     ) -> TraverseAction {
+        // A namespace occupies value space when its body contains a
+        // value-producing statement. Body-less ambient modules are
+        // instantiated by specification.
         let instantiated = is_namespace_instantiated(node.body(ctx.ast), ctx.ast);
         self.set_binding_context(
             node.node_id(),
@@ -2039,6 +2086,8 @@ impl<'semantic> ReferenceResolver<'semantic> {
         }
     }
 
+    /// Records and resolves one identifier use after all declarations and
+    /// hoisted bindings are known.
     fn check_identifier_reference<'a>(
         &mut self,
         node: IdentifierReference,
@@ -2228,6 +2277,8 @@ impl<'a> Traverse<'a> for ReferenceResolver<'_> {
 }
 
 pub(crate) fn analyze_program<'a>(program: Program, ast: &mut Ast<'a>) -> AnalysisParts {
+    // First build scopes and declarations. References are resolved in a second
+    // traversal after every hoisted and merged binding is known.
     let mut builder = SemanticBuilder::new(program, ast);
     let mut traverse_ctx = TraverseCtx::new(ast, ());
     let _ = program.traverse_with(&mut builder, &mut traverse_ctx);
@@ -2419,6 +2470,9 @@ fn is_in_ts_namespace(ctx: &TraverseCtx<'_, '_>) -> bool {
 }
 
 fn is_arguments_available(ctx: &TraverseCtx<'_, '_>) -> bool {
+    // `arguments` is introduced by regular functions, while arrow functions
+    // are transparent. Class fields and static blocks form forbidden
+    // boundaries.
     for ancestor in ctx.ancestors().skip(1) {
         match ctx.node_kind(ancestor) {
             NodeKind::Function => return true,
@@ -2431,6 +2485,8 @@ fn is_arguments_available(ctx: &TraverseCtx<'_, '_>) -> bool {
 }
 
 fn is_private_name_declared(ctx: &TraverseCtx<'_, '_>, name: &[u8]) -> bool {
+    // ECMAScript AllPrivateIdentifiersValid checks ancestor ClassBody nodes
+    // and accepts a name declared by any enclosing class.
     for ancestor in ctx.ancestors().skip(1) {
         let NodeKindData::ClassBody(body) = ctx.ast.kind_data(ancestor) else {
             continue;
@@ -2510,6 +2566,8 @@ fn expression_is_identifier_reference(expression: Expr, ast: &Ast<'_>) -> bool {
 }
 
 fn unwrap_parens(mut expression: Expr, ast: &Ast<'_>) -> Expr {
+    // The parser creates at most one wrapper per syntactic nesting level, so
+    // this walk is bounded by source nesting depth.
     let mut depth = 0u32;
     loop {
         assert!(depth < 1_000_000);
@@ -2603,6 +2661,8 @@ fn check_assign_target_eval_arguments(
 }
 
 fn is_legacy_numeric_literal(raw: &[u8]) -> bool {
+    // A leading zero followed by another digit is either legacy octal (`077`)
+    // or a leading-zero decimal literal (`089`).
     raw.len() > 1 && raw[0] == b'0' && raw[1].is_ascii_digit()
 }
 

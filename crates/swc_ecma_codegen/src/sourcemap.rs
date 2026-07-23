@@ -81,9 +81,6 @@ pub(crate) struct Chunk<'a> {
 }
 
 pub(crate) struct LineOffsetTable<'a> {
-    // Source map columns are counts of UTF-16 code units. Keep a per-byte table
-    // only after the first non-ASCII byte, matching esbuild's memory-saving
-    // representation.
     columns_for_non_ascii: Option<&'a [i32]>,
     byte_offset_to_first_non_ascii: i32,
     byte_offset_to_start_of_line: i32,

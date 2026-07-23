@@ -1,3 +1,5 @@
+//! Module import and export records.
+
 use std::{borrow::Cow, string::String};
 
 use rustc_hash::FxHashMap;
@@ -8,38 +10,62 @@ use crate::{
     symbol::{SymbolFlags, SymbolTable},
 };
 
+/// Shape of a module-record name.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ModuleRecordNameKind {
+    /// A concrete imported, exported, or local name.
     Named,
+    /// A namespace (`*`) name.
     Star,
+    /// No name is present for this side of the record.
     None,
+    /// A TypeScript `export =` record.
     Equals,
+    /// A TypeScript `export as namespace` record.
     Global,
 }
 
+/// One dependency edge of the module.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ImportRecord {
+    /// Local binding, or `None` when the import binds nothing.
     pub symbol_id: Option<SymbolId>,
+    /// Shape of the imported name.
     pub name_kind: ModuleRecordNameKind,
+    /// Imported name; `"default"` for default imports.
     pub name: String,
+    /// Decoded module specifier.
     pub specifier: String,
+    /// Whether the import is value-only or type-only.
     pub kind: ImportOrExportKind,
+    /// Import phase modifier, or `None` for regular imports.
     pub phase: Option<ImportPhase>,
+    /// Smallest AST node that identifies this record.
     pub node: NodeId,
 }
 
+/// One exported name of the module.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExportRecord {
+    /// Shape of the exported name.
     pub name_kind: ModuleRecordNameKind,
+    /// Exported name.
     pub name: String,
+    /// Backing local binding, or `None` when no local symbol backs the export.
     pub symbol_id: Option<SymbolId>,
+    /// Shape of the name taken from a source module.
     pub from_kind: ModuleRecordNameKind,
+    /// Name taken from the source module for a re-export.
     pub from_name: String,
+    /// Decoded `from` specifier, empty for local exports.
     pub specifier: String,
+    /// Whether the export is value-only or type-only.
     pub kind: ImportOrExportKind,
+    /// Smallest AST node that identifies this record.
     pub node: NodeId,
 }
 
+/// Import and export records for one module.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ModuleRecord {
     imports: Vec<ImportRecord>,
@@ -47,10 +73,12 @@ pub struct ModuleRecord {
 }
 
 impl ModuleRecord {
+    /// Returns dependency edges in source order.
     pub fn imports(&self) -> &[ImportRecord] {
         &self.imports
     }
 
+    /// Returns exported names in source order.
     pub fn exports(&self) -> &[ExportRecord] {
         &self.exports
     }
@@ -86,6 +114,7 @@ struct Collector<'table, 'diagnostics> {
 }
 
 impl Collector<'_, '_> {
+    /// Records an exported name and reports a duplicate if already present.
     fn record_exported_name(&mut self, name: &str, span: Span) {
         if let Some(previous) = self.export_names.get(name).copied() {
             self.diagnostics.push(Diagnostic {
@@ -103,6 +132,8 @@ impl Collector<'_, '_> {
         }
     }
 
+    /// Resolves a local export against the top-level scope and reports an
+    /// undefined export.
     fn check_unresolved_exports(&mut self, name: &str, span: Span) -> Option<SymbolId> {
         let symbol = self.symbols.find_in_scope(self.top_scope, name.as_bytes());
         if symbol.is_none() {
@@ -401,6 +432,8 @@ impl<'ast> Traverse<'ast> for Collector<'_, '_> {
             return TraverseAction::Proceed;
         }
         let ast = &*ctx.ast;
+        // Only the external-module-reference form is a dependency edge. A
+        // qualified name aliases a namespace instead of another module.
         let TsModuleReferenceData::TsExternalModuleReference(reference) =
             ast.ts_module_reference_data(node.module_reference(ast))
         else {

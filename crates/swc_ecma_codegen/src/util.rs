@@ -666,6 +666,8 @@ pub(crate) fn quote_into(out: &mut ArenaVec<'_, u8>, value: &[u8], quote: u8, as
         i += size;
         match cp {
             0 => {
+                // Use "\x00" before a digit so the escape cannot consume the
+                // digit as part of a legacy octal escape.
                 if i < value.len() && value[i].is_ascii_digit() {
                     out.extend_from_slice(b"\\x00")
                 } else {
@@ -692,12 +694,17 @@ pub(crate) fn quote_into(out: &mut ArenaVec<'_, u8>, value: &[u8], quote: u8, as
                     .get(i..i.saturating_add(6))
                     .is_some_and(|tail| tail.eq_ignore_ascii_case(b"script")) =>
             {
+                // Avoid generating the sequence "</script" inside an inline
+                // script.
                 out.extend_from_slice(b"\\/")
             }
+            // U+2028 and U+2029 are JavaScript line terminators and must be
+            // escaped inside string literals. Escape the BOM as well.
             0x2028 => out.extend_from_slice(b"\\u2028"),
             0x2029 => out.extend_from_slice(b"\\u2029"),
             0xfeff => out.extend_from_slice(b"\\uFEFF"),
             36 if quote == b'`' && i < value.len() && value[i] == b'{' => {
+                // Avoid starting a template substitution.
                 out.extend_from_slice(b"\\$")
             }
             x if x == quote as u32 => {

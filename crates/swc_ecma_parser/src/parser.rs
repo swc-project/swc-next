@@ -1,3 +1,8 @@
+//! ECMAScript and TypeScript parser implementation.
+//!
+//! This module is a Rust port of the parser design from
+//! [yuku-toolchain/yuku](https://github.com/yuku-toolchain/yuku).
+
 use std::{borrow::Cow, string::String};
 
 use swc_experimental_ecma_ast::String as AstString;
@@ -11,6 +16,8 @@ use crate::{
     util::{decode_identifier_escapes, decode_string_escapes},
 };
 
+/// How comments are collected: not at all, as a flat list, attached to host
+/// nodes, or both.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum CommentMode {
     None,
@@ -36,11 +43,23 @@ impl CommentMode {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Options {
+    /// Determines how the source is parsed and evaluated.
+    ///
+    /// Defaults to module semantics, which enable strict mode.
     pub source_type: SourceType,
+    /// Determines which syntax features are enabled.
+    ///
+    /// Defaults to plain JavaScript.
     pub lang: Lang,
+    /// Represents parenthesized expressions as [`ParenthesizedExpression`]
+    /// nodes when true. Otherwise only the inner expression is kept.
     pub preserve_parens: bool,
+    /// Allows `return` statements outside functions when true.
     pub allow_return_outside_function: bool,
+    /// Reports semantic early errors during parsing when true.
     pub semantic_errors: bool,
+    /// Determines whether comments are collected as a flat list, attached to
+    /// AST nodes, both, or not collected.
     pub comments: CommentMode,
 }
 
@@ -59,18 +78,38 @@ impl Default for Options {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Context {
+    /// The grammar's `[In]` parameter.
     pub in_: bool,
+    /// The grammar's `[Yield]` parameter.
     pub yield_: bool,
+    /// The grammar's `[Await]` parameter.
     pub await_: bool,
+    /// The grammar's `[Return]` parameter.
     pub return_: bool,
+    /// Whether the current statement is the body of `if`, `while`, `for`,
+    /// `with`, or a labelled statement, where lexical declarations require a
+    /// block.
     pub single_statement: bool,
+    /// Whether the parser is in the directive prologue of a script, module,
+    /// function, or module-block body.
     pub directive_prologue: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct TsContext {
+    /// Whether parsing is inside a `declare`-prefixed declaration.
+    ///
+    /// Nested declarations inherit ambient-context rules such as body-less
+    /// functions and initializer-less `const` declarations.
     pub ambient: bool,
+    /// Whether a trailing `?` after a type is forbidden from starting a new
+    /// conditional type.
     pub disallow_conditional_types: bool,
+    /// Whether a speculatively parsed arrow with a return type can commit
+    /// without an outer `:`.
+    ///
+    /// This is false only while reparsing the consequent of a conditional
+    /// expression after a `(x): T => ...` arrow consumed the ternary `:`.
     pub allow_arrow_return_type: bool,
 }
 
@@ -94,7 +133,10 @@ pub enum BodyKind {
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct ParserState {
+    /// Start offset of an array or object cover grammar with a trailing comma.
     pub cover_has_trailing_comma: Option<u32>,
+    /// Whether the current cover grammar parsed a
+    /// `CoverInitializedName` (`{ a = 1 }`).
     pub cover_has_init_name: bool,
 }
 
@@ -480,10 +522,17 @@ pub struct Parser<'parser, 'allocator, 'source> {
     pub lexer: Lexer<'source>,
     pub diagnostics: Vec<Diagnostic<'static>>,
     pub current_token: Token,
+    /// End offset of the most recently consumed token.
+    ///
+    /// This is used for spans after a closing delimiter has been consumed,
+    /// where the parent node must end at that delimiter instead of at the next
+    /// token beyond whitespace or newlines.
     pub prev_token_end: u32,
     pub scratch_statements: ScratchBuffer,
     pub scratch_cover: ScratchBuffer,
     pub scratch_decorators: ScratchBuffer,
+    /// General-purpose scratch buffers used when two extra-data lists are
+    /// assembled at the same time.
     pub scratch_a: ScratchBuffer,
     pub scratch_b: ScratchBuffer,
     pub context: Context,
@@ -493,15 +542,19 @@ pub struct Parser<'parser, 'allocator, 'source> {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Checkpoint {
+    // Lexer state.
     pub lexer_cursor: u32,
     pub lexer_state: LexerState,
     pub lexer_mode: LexerMode,
     pub lexer_comments_len: usize,
+    // Parser token stream.
     pub current_token: Token,
     pub prev_token_end: u32,
+    // Append-only AST storage.
     pub nodes_len: usize,
     pub extra_len: usize,
     pub diagnostics_len: usize,
+    // Parser flags, copied by value.
     pub context: Context,
     pub ts_context: TsContext,
     pub state: ParserState,
@@ -587,6 +640,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     pub fn parse(&mut self) -> Option<Program> {
+        // ScriptBody: StatementList[~Yield, ~Await, ~Return]
+        // ModuleItemList: ModuleItem[~Yield, +Await, ~Return]
         self.context.yield_ = false;
         self.context.await_ = self.source_type == SourceType::Module;
         self.context.return_ = self.allow_return_outside_function;
@@ -612,6 +667,9 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         Some(program)
     }
 
+    /// Returns the resolved name for an identifier-like token.
+    ///
+    /// This strips `#` from private identifiers and decodes Unicode escapes.
     pub fn identifier_name(&mut self, token: Token) -> AstString {
         let is_private = token.tag == TokenTag::PrivateIdentifier;
         let start = token.span.start + u32::from(is_private);
@@ -621,6 +679,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         self.ast.source_slice(start, token.span.end)
     }
 
+    /// Returns the decoded string value without the surrounding quotes.
     pub fn string_value(&mut self, token: Token) -> AstString {
         if token.is_escaped() {
             return self.decode_escaped_string(token.span.start + 1, token.span.end - 1);
@@ -629,6 +688,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             .source_slice(token.span.start + 1, token.span.end - 1)
     }
 
+    /// Returns the decoded content of a template quasi span.
     pub fn template_element_value(&mut self, token: Token, span: Span) -> AstString {
         if !token.is_escaped() {
             return self.ast.source_slice(span.start, span.end);
@@ -772,6 +832,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         range
     }
 
+    /// Captures all state needed to commit or discard a speculative parse.
     pub fn checkpoint(&self) -> Checkpoint {
         Checkpoint {
             lexer_cursor: self.lexer.cursor,
@@ -789,6 +850,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         }
     }
 
+    /// Restores parser state captured by [`Parser::checkpoint`].
     pub fn rewind(&mut self, checkpoint: Checkpoint) {
         self.lexer.cursor = checkpoint.lexer_cursor;
         self.lexer.state = checkpoint.lexer_state;
@@ -814,6 +876,9 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         }
     }
 
+    /// Peeks at the token immediately after `current_token` without advancing.
+    ///
+    /// For multi-token lookahead, use [`Parser::begin_peek`].
     pub fn peek_ahead(&mut self) -> Option<Token> {
         let mut peek = self.begin_peek();
         let token = peek.next();
@@ -10807,6 +10872,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         None
     }
 
+    /// Advances to the next token.
+    ///
+    /// Reports an error when an escaped keyword is consumed in a keyword
+    /// position.
     pub fn advance(&mut self) -> Option<()> {
         self.check_escaped_keyword();
         self.prev_token_end = self.current_token.span.end;
@@ -10822,6 +10891,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         Some(matched)
     }
 
+    /// Advances without checking whether the current token is an escaped
+    /// keyword.
     pub fn advance_without_escape_check(&mut self) -> Option<()> {
         self.prev_token_end = self.current_token.span.end;
         self.next_token()
@@ -10847,17 +10918,26 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         });
     }
 
+    /// Reports an escaped-keyword error if `token` has the escaped flag.
+    ///
+    /// Use this for deferred checks where the token was consumed before its
+    /// syntactic role was known.
     pub fn report_if_escaped_keyword(&mut self, token: Token) {
         if token.is_escaped() {
             self.report_escaped_keyword(token.span);
         }
     }
 
+    /// Sets the current token to a rescanned token and advances.
+    ///
+    /// Use this after lexer rescan operations for JSX text, template
+    /// continuations, and similar context-sensitive tokens.
     pub fn advance_with_rescanned_token(&mut self, token: Token) -> Option<()> {
         self.current_token = token;
         self.advance()
     }
 
+    /// Retokenizes the current token in the current lexer mode.
     pub fn re_scan_current(&mut self) -> Option<()> {
         self.lexer.rewind_to(self.current_token.span.start);
         self.next_token()
@@ -10884,6 +10964,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         false
     }
 
+    /// Implements the ECMAScript
+    /// [automatic semicolon insertion rules](https://tc39.es/ecma262/#sec-rules-of-automatic-semicolon-insertion).
     pub fn can_insert_implicit_semicolon(&self, token: Token) -> bool {
         token.tag == TokenTag::Eof
             || token.has_line_terminator_before()
@@ -10910,6 +10992,11 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         Some(end)
     }
 
+    /// Lenient semicolon consumption for statements with special ASI
+    /// exceptions.
+    ///
+    /// ES2015+ allows the semicolon after a `do ... while (...)` statement to
+    /// be omitted even when another statement follows on the same line.
     pub fn eat_semicolon_lenient(&mut self, end: u32) -> Option<u32> {
         if self.current_token.tag == TokenTag::Semicolon {
             let semicolon_end = self.current_token.span.end;
@@ -10972,6 +11059,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         }
     }
 
+    /// Advances during error recovery, skipping bytes that cause lexical
+    /// errors.
     fn recover_next_token(&mut self) -> Token {
         loop {
             let mut token = Token::eof(self.lexer.cursor);
@@ -11363,6 +11452,7 @@ fn strip_parenthesized_nodes(ast: &mut Ast<'_>) {
         };
 
         let mut inner = parenthesized.expression(ast);
+        // Resolve nested wrappers to the innermost non-parenthesized node.
         while let ExprData::ParenthesizedExpression(parenthesized) = ast.expr_data(inner) {
             inner = parenthesized.expression(ast);
         }
