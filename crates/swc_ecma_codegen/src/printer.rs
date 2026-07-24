@@ -8,8 +8,8 @@ use crate::util::{
     AstAdapterState, Level, OperatorCode, assignment_operator, binary_operator_code,
     binding_pattern_identifier_name, can_omit_arrow_parens, conditional_in_was_reassociated,
     decorator_expression_needs_parentheses, decorator_omit_newline_after,
-    empty_import_attribute_offsets, export_default_expr_was_parenthesized, expr_was_parenthesized,
-    format_float, import_attribute_offsets, import_declaration_has_empty_clause, is_identifier,
+    empty_import_attribute_offsets, export_default_expr_was_parenthesized, format_float,
+    import_attribute_offsets, import_declaration_has_empty_clause, is_identifier,
     is_identifier_continue_byte, is_identifier_es5_and_esnext, is_jsx_tag_single_line,
     is_legal_comment, member_object_was_parenthesized, module_name_bytes, next_code_point,
     next_level, parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
@@ -2427,16 +2427,15 @@ impl<'a> Printer<'a> {
 
     fn print_arrow(&mut self, e: ArrowFunctionExpression, level: Level) {
         let old_forbid_in = self.forbid_in;
-        let wrap = level > Level::Assignment
-            || self.forbid_in
-            || expr_was_parenthesized(self.ast, e.span(self.ast));
+        let wrap = level > Level::Assignment || self.forbid_in;
         if wrap {
             self.print("(");
             self.forbid_in = false;
         }
         if e.r#async(self.ast) {
             self.add_source_mapping(e.span(self.ast).start);
-            self.print("async ");
+            self.print("async");
+            self.print_space();
         }
         if let Some(t) = e.type_parameters(self.ast) {
             self.print_ts_type_params(t);

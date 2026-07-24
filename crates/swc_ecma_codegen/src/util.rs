@@ -201,30 +201,6 @@ pub(crate) fn is_identifier_es5_and_esnext(name: &[u8]) -> bool {
         })
 }
 
-pub(crate) fn expr_was_parenthesized(ast: &Ast<'_>, span: Span) -> bool {
-    let source = ast.source();
-    let mut start = span.start as usize;
-    let mut end = span.end as usize;
-    while start > 0 && source[start - 1].is_ascii_whitespace() {
-        start -= 1;
-    }
-    while source.get(end).is_some_and(u8::is_ascii_whitespace) {
-        end += 1;
-    }
-    if start == 0 || source[start - 1] != b'(' || source.get(end) != Some(&b')') {
-        return false;
-    }
-    let mut before_open = start - 1;
-    while before_open > 0 && source[before_open - 1].is_ascii_whitespace() {
-        before_open -= 1;
-    }
-    before_open == 0
-        || !matches!(
-            source[before_open - 1],
-            b')' | b']' | b'_' | b'$' | b'0'..=b'9' | b'a'..=b'z' | b'A'..=b'Z'
-        )
-}
-
 pub(crate) fn import_declaration_has_empty_clause(
     ast: &Ast<'_>,
     declaration: ImportDeclaration,
