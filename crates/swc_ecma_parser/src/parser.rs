@@ -16,28 +16,17 @@ use crate::{
     util::{decode_identifier_escapes, decode_string_escapes},
 };
 
-/// How comments are collected: not at all, as a flat list, attached to host
-/// nodes, or both.
+/// Whether comments are attached to AST nodes.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum CommentMode {
     None,
     #[default]
-    Flat,
     Attached,
-    Both,
 }
 
 impl CommentMode {
     pub fn collects(self) -> bool {
-        self != Self::None
-    }
-
-    pub fn attaches(self) -> bool {
-        matches!(self, Self::Attached | Self::Both)
-    }
-
-    pub fn is_flat(self) -> bool {
-        matches!(self, Self::Flat | Self::Both)
+        self == Self::Attached
     }
 }
 
@@ -58,8 +47,7 @@ pub struct Options {
     pub allow_return_outside_function: bool,
     /// Reports semantic early errors during parsing when true.
     pub semantic_errors: bool,
-    /// Determines whether comments are collected as a flat list, attached to
-    /// AST nodes, both, or not collected.
+    /// Determines whether comments are attached to AST nodes.
     pub comments: CommentMode,
 }
 
@@ -71,7 +59,7 @@ impl Default for Options {
             preserve_parens: true,
             allow_return_outside_function: false,
             semantic_errors: false,
-            comments: CommentMode::Flat,
+            comments: CommentMode::Attached,
         }
     }
 }
@@ -671,12 +659,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         );
         build_line_starts(self.ast, self.source);
 
-        if self.comment_mode.attaches() {
+        if self.comment_mode == CommentMode::Attached {
             crate::comments::attach(self.ast, program, &self.lexer.comments);
-        }
-
-        if self.comment_mode.is_flat() {
-            self.ast.set_comments(&self.lexer.comments);
         }
 
         if !self.preserve_parens {
