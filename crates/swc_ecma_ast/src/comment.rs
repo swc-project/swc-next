@@ -36,4 +36,5 @@ pub struct AttachedComment {
     pub position: AttachedCommentPosition,
     pub same_line: bool,
     pub value: String,
+    pub span: Span,
 }

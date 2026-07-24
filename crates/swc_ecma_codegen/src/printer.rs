@@ -5,7 +5,7 @@ use swc_next_ecma_ast::*;
 
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator};
 use crate::util::{
-    AstAdapterState, Level, OperatorCode, SourceComment, append_lowered_template_name,
+    AstAdapterState, Level, OperatorCode, append_lowered_template_name,
     append_lowered_template_prefix, assignment_operator, ast_text, binary_operator_code,
     binding_pattern_identifier_name, can_omit_arrow_parens, conditional_in_was_reassociated,
     decorator_expression_needs_parentheses, decorator_omit_newline_after,
@@ -14,7 +14,7 @@ use crate::util::{
     is_identifier_continue_byte, is_identifier_es5_and_esnext, is_jsx_tag_single_line,
     is_legal_comment, member_object_was_parenthesized, module_name_bytes, next_code_point,
     next_level, parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
-    scan_comments, template_contains_closing_script, token_offset_after_decorators, unary_operator,
+    template_contains_closing_script, token_offset_after_decorators, unary_operator,
     unary_operator_code, update_operator_code,
 };
 
@@ -73,7 +73,7 @@ struct Printer<'a> {
     options: Options,
     js: ArenaVec<'a, u8>,
     legal_comments: Vec<Comment>,
-    source_comments: ArenaVec<'a, SourceComment>,
+    comments: &'a [AttachedComment],
     expr_visitor_stack: ArenaVec<'a, BinaryExprVisitor>,
     builder: ChunkBuilder<'a>,
     next_comment: usize,
@@ -106,19 +106,19 @@ pub fn print<'a>(
     options: Options,
 ) -> PrintResult<'a> {
     let wants_map = options.source_map_path.is_some();
-    let source_comments = scan_comments(tree.source(), allocator);
+    let comments = tree.comments();
     let line_offset_tables = if wants_map {
         generate_line_offset_tables(allocator, tree.source())
     } else {
         ArenaVec::new_in(allocator)
     };
-    let legal_comments = source_comments
+    let legal_comments = comments
         .iter()
-        .filter(|comment| is_legal_comment(tree.source(), **comment))
+        .filter(|comment| is_legal_comment(tree, **comment))
         .map(|comment| Comment {
             comment_type: comment.comment_type,
-            value: tree.source_slice(comment.value_start, comment.value_end),
-            span: Span::new(comment.start, comment.end),
+            value: comment.value,
+            span: comment.span,
         })
         .collect();
     let mut p = Printer {
@@ -127,7 +127,7 @@ pub fn print<'a>(
         options,
         js: ArenaVec::new_in(allocator),
         legal_comments,
-        source_comments,
+        comments,
         expr_visitor_stack: ArenaVec::new_in(allocator),
         builder: make_chunk_builder(allocator, line_offset_tables),
         next_comment: 0,
@@ -355,18 +355,15 @@ impl<'a> Printer<'a> {
     }
 
     fn print_comments_before(&mut self, offset: u32, statement: bool, preserve_all: bool) {
-        while self.next_comment < self.source_comments.len()
-            && self.source_comments[self.next_comment].end <= offset
+        while self.next_comment < self.comments.len()
+            && self.comments[self.next_comment].span.end <= offset
         {
-            let comment = self.source_comments[self.next_comment];
+            let comment = self.comments[self.next_comment];
             self.next_comment += 1;
-            if !self.options.comments
-                || (!preserve_all && !is_legal_comment(self.ast.source(), comment))
-            {
+            if !self.options.comments || (!preserve_all && !is_legal_comment(self.ast, comment)) {
                 continue;
             }
-            let value =
-                &self.ast.source()[comment.value_start as usize..comment.value_end as usize];
+            let value = ast_text(self.ast, comment.value);
             let mut trim_start = 0;
             while value[trim_start..]
                 .first()
@@ -414,42 +411,6 @@ impl<'a> Printer<'a> {
                 CommentType::Block => {
                     self.print_indented_block_comment(value);
                     if statement || value.contains(&b'\n') || comment_at_stmt_start {
-                        self.print_newline();
-                    } else {
-                        self.print(" ");
-                    }
-                }
-            }
-        }
-    }
-
-    fn print_attached_comments(
-        &mut self,
-        node: NodeId,
-        position: AttachedCommentPosition,
-        statement: bool,
-    ) {
-        if !self.options.comments {
-            return;
-        }
-        for comment in self.ast.comments_of(node) {
-            if comment.position != position {
-                continue;
-            }
-            if statement {
-                self.print_indent();
-            } else if self.js.last().is_some_and(|&c| !c.is_ascii_whitespace()) {
-                self.print(" ");
-            }
-            match comment.comment_type {
-                CommentType::Line => {
-                    self.print("//");
-                    self.print_comment_text(ast_text(self.ast, comment.value));
-                    self.print("\n");
-                }
-                CommentType::Block => {
-                    self.print_indented_block_comment(ast_text(self.ast, comment.value));
-                    if statement || !comment.same_line {
                         self.print_newline();
                     } else {
                         self.print(" ");
@@ -521,11 +482,12 @@ impl<'a> Printer<'a> {
     }
 
     fn discard_comments_before_trailing_comma(&mut self, close_offset: u32) {
-        while let Some(comment) = self.source_comments.get(self.next_comment).copied() {
-            if comment.end > close_offset || is_legal_comment(self.ast.source(), comment) {
+        while let Some(comment) = self.comments.get(self.next_comment).copied() {
+            if comment.span.end > close_offset || is_legal_comment(self.ast, comment) {
                 break;
             }
-            if !self.ast.source()[comment.end as usize..close_offset as usize].contains(&b',') {
+            if !self.ast.source()[comment.span.end as usize..close_offset as usize].contains(&b',')
+            {
                 break;
             }
             self.next_comment += 1;
@@ -537,13 +499,13 @@ impl<'a> Printer<'a> {
         args: TypedSubRange<Argument>,
         close_offset: u32,
     ) -> bool {
-        self.source_comments[self.next_comment..]
+        self.comments[self.next_comment..]
             .iter()
-            .take_while(|comment| comment.end <= close_offset)
+            .take_while(|comment| comment.span.end <= close_offset)
             .any(|comment| {
                 !args.iter().any(|id| {
                     let span = self.ast.get_node_in_sub_range(id).span(self.ast);
-                    span.start <= comment.start && comment.end <= span.end
+                    span.start <= comment.span.start && comment.span.end <= span.end
                 })
             })
     }
@@ -687,7 +649,6 @@ impl<'a> Printer<'a> {
 
     fn print_stmt(&mut self, stmt: Stmt) {
         self.print_comments_before(stmt.span(self.ast).start, true, true);
-        self.print_attached_comments(stmt.node_id(), AttachedCommentPosition::Before, true);
         self.add_source_mapping(stmt.span(self.ast).start);
         self.stmt_start = self.js.len();
         match self.ast.stmt_data(stmt) {
@@ -769,10 +730,10 @@ impl<'a> Printer<'a> {
                 self.print_space();
                 self.print("(");
                 let left = s.left(self.ast);
-                let leading_comment_end = self.source_comments[self.next_comment..]
+                let leading_comment_end = self.comments[self.next_comment..]
                     .first()
-                    .filter(|comment| comment.end <= left.span(self.ast).end)
-                    .map(|comment| comment.end);
+                    .filter(|comment| comment.span.end <= left.span(self.ast).end)
+                    .map(|comment| comment.span.end);
                 if !self.options.minify
                     && let Some(comment_end) = leading_comment_end
                 {
@@ -804,10 +765,10 @@ impl<'a> Printer<'a> {
                 self.print_space();
                 self.print("(");
                 let left = s.left(self.ast);
-                let leading_comment_end = self.source_comments[self.next_comment..]
+                let leading_comment_end = self.comments[self.next_comment..]
                     .first()
-                    .filter(|comment| comment.end <= left.span(self.ast).end)
-                    .map(|comment| comment.end);
+                    .filter(|comment| comment.span.end <= left.span(self.ast).end)
+                    .map(|comment| comment.span.end);
                 if !self.options.minify
                     && let Some(comment_end) = leading_comment_end
                 {
@@ -1020,8 +981,8 @@ impl<'a> Printer<'a> {
             self.print_block(block);
             self.print_newline();
         } else {
-            while self.next_comment < self.source_comments.len()
-                && self.source_comments[self.next_comment].end <= body.span(self.ast).start
+            while self.next_comment < self.comments.len()
+                && self.comments[self.next_comment].span.end <= body.span(self.ast).start
             {
                 self.next_comment += 1;
             }
@@ -1036,9 +997,9 @@ impl<'a> Printer<'a> {
         let body = block.body(self.ast);
         if body.is_empty() {
             let close_offset = block.span(self.ast).end.saturating_sub(1);
-            if self.source_comments[self.next_comment..]
+            if self.comments[self.next_comment..]
                 .iter()
-                .any(|comment| comment.end <= close_offset)
+                .any(|comment| comment.span.end <= close_offset)
             {
                 self.print_newline();
                 self.indent += 1;
@@ -1074,9 +1035,9 @@ impl<'a> Printer<'a> {
         let statements = body.body(self.ast);
         if directives.is_empty() && statements.is_empty() {
             let close_offset = body.span(self.ast).end.saturating_sub(1);
-            if self.source_comments[self.next_comment..]
+            if self.comments[self.next_comment..]
                 .iter()
-                .any(|comment| comment.end <= close_offset)
+                .any(|comment| comment.span.end <= close_offset)
             {
                 self.print_newline();
                 self.indent += 1;
@@ -1562,9 +1523,9 @@ impl<'a> Printer<'a> {
 
     fn will_print_expr_comments(&self, expr: Expr) -> bool {
         !self.options.minify
-            && self.source_comments[self.next_comment..]
+            && self.comments[self.next_comment..]
                 .first()
-                .is_some_and(|comment| comment.end <= expr.span(self.ast).start)
+                .is_some_and(|comment| comment.span.end <= expr.span(self.ast).start)
     }
 
     fn print_expr_without_leading_newline(&mut self, expr: Expr, level: Level) {
@@ -1586,7 +1547,6 @@ impl<'a> Printer<'a> {
 
     fn print_expr(&mut self, expr: Expr, level: Level) {
         self.print_comments_before(expr.span(self.ast).start, false, true);
-        self.print_attached_comments(expr.node_id(), AttachedCommentPosition::Before, false);
         match self.ast.expr_data(expr) {
             ExprData::IdentifierReference(e) => {
                 let name = ast_text(self.ast, e.name(self.ast));
@@ -1812,13 +1772,14 @@ impl<'a> Printer<'a> {
                 let source_span = e.source(self.ast).span(self.ast);
                 let options_span = e.options(self.ast).map(|options| options.span(self.ast));
                 let multiline = !self.options.minify
-                    && self.source_comments[self.next_comment..]
+                    && self.comments[self.next_comment..]
                         .iter()
-                        .take_while(|comment| comment.end <= close_offset)
+                        .take_while(|comment| comment.span.end <= close_offset)
                         .any(|comment| {
-                            !(source_span.start <= comment.start && comment.end <= source_span.end
+                            !(source_span.start <= comment.span.start
+                                && comment.span.end <= source_span.end
                                 || options_span.is_some_and(|span| {
-                                    span.start <= comment.start && comment.end <= span.end
+                                    span.start <= comment.span.start && comment.span.end <= span.end
                                 }))
                         });
                 if multiline {
@@ -1976,7 +1937,6 @@ impl<'a> Printer<'a> {
 
             // Manually run the code at the start of "print_expr".
             self.print_comments_before(left.span(self.ast).start, false, true);
-            self.print_attached_comments(left.node_id(), AttachedCommentPosition::Before, false);
 
             // Only allocate heap memory on the stack for nested binary-ish
             // expressions.
@@ -3335,10 +3295,10 @@ impl<'a> Printer<'a> {
                 let was_parenthesized =
                     is_function_or_class && export_default_expr_was_parenthesized(self.ast, d, e);
                 let has_leading_comments = !self.options.minify
-                    && self.source_comments[self.next_comment..]
+                    && self.comments[self.next_comment..]
                         .iter()
-                        .take_while(|comment| comment.end <= e.span(self.ast).start)
-                        .any(|comment| comment.start >= d.span(self.ast).start);
+                        .take_while(|comment| comment.span.end <= e.span(self.ast).start)
+                        .any(|comment| comment.span.start >= d.span(self.ast).start);
                 if was_parenthesized && has_leading_comments {
                     self.print("(");
                     self.print_newline();
@@ -4276,9 +4236,9 @@ impl<'a> Printer<'a> {
             JsxExpressionData::JsxEmptyExpression(_) => {
                 let close_offset = c.span(self.ast).end.saturating_sub(1);
                 if !self.options.minify
-                    && self.source_comments[self.next_comment..]
+                    && self.comments[self.next_comment..]
                         .iter()
-                        .any(|comment| comment.end <= close_offset)
+                        .any(|comment| comment.span.end <= close_offset)
                 {
                     self.print_newline();
                     self.indent += 1;

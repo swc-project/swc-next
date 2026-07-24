@@ -34,15 +34,6 @@ pub(crate) enum Level {
     Primary,
 }
 
-#[derive(Clone, Copy)]
-pub(crate) struct SourceComment {
-    pub(crate) comment_type: CommentType,
-    pub(crate) start: u32,
-    pub(crate) end: u32,
-    pub(crate) value_start: u32,
-    pub(crate) value_end: u32,
-}
-
 pub(crate) struct AstAdapterState {
     pub(crate) lowered_template_count: usize,
     pub(crate) next_lowered_template: usize,
@@ -819,85 +810,10 @@ pub(crate) fn next_code_point(bytes: &[u8], i: usize) -> (u32, usize) {
     }
 }
 
-pub(crate) fn scan_comments<'a>(
-    source: &[u8],
-    allocator: &'a Allocator,
-) -> ArenaVec<'a, SourceComment> {
-    let mut comments = ArenaVec::new_in(allocator);
-    let mut i = 0;
-    while i < source.len() {
-        match source[i] {
-            b'\'' | b'"' => {
-                let quote = source[i];
-                i += 1;
-                while i < source.len() {
-                    if source[i] == b'\\' {
-                        i = (i + 2).min(source.len());
-                    } else {
-                        let c = source[i];
-                        i += 1;
-                        if c == quote {
-                            break;
-                        }
-                    }
-                }
-            }
-            b'`' => {
-                i += 1;
-                while i < source.len() {
-                    if source[i] == b'\\' {
-                        i = (i + 2).min(source.len());
-                    } else {
-                        let c = source[i];
-                        i += 1;
-                        if c == b'`' {
-                            break;
-                        }
-                    }
-                }
-            }
-            b'/' if source.get(i + 1) == Some(&b'/') => {
-                let start = i;
-                i += 2;
-                let value_start = i;
-                while i < source.len() && !matches!(source[i], b'\r' | b'\n') {
-                    i += 1;
-                }
-                comments.push(SourceComment {
-                    comment_type: CommentType::Line,
-                    start: start as u32,
-                    end: i as u32,
-                    value_start: value_start as u32,
-                    value_end: i as u32,
-                });
-            }
-            b'/' if source.get(i + 1) == Some(&b'*') => {
-                let start = i;
-                i += 2;
-                let value_start = i;
-                while i + 1 < source.len() && !(source[i] == b'*' && source[i + 1] == b'/') {
-                    i += 1;
-                }
-                let value_end = i;
-                i = (i + 2).min(source.len());
-                comments.push(SourceComment {
-                    comment_type: CommentType::Block,
-                    start: start as u32,
-                    end: i as u32,
-                    value_start: value_start as u32,
-                    value_end: value_end as u32,
-                });
-            }
-            _ => i += 1,
-        }
-    }
-    comments
-}
-
-pub(crate) fn is_legal_comment(source: &[u8], comment: SourceComment) -> bool {
-    let value = &source[comment.value_start as usize..comment.value_end as usize];
-    source
-        .get(comment.start as usize..comment.start as usize + 3)
+pub(crate) fn is_legal_comment(ast: &Ast<'_>, comment: AttachedComment) -> bool {
+    let value = ast.string(comment.value);
+    ast.source()
+        .get(comment.span.start as usize..comment.span.start as usize + 3)
         .is_some_and(|prefix| prefix == b"/*!" || prefix == b"//!")
         || value.windows(8).any(|window| window == b"@license")
         || value.windows(9).any(|window| window == b"@preserve")

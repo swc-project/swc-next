@@ -68,7 +68,6 @@ pub(crate) fn attach(ast: &mut Ast<'_>, program: Program, raw: &[Comment]) {
     }
 
     debug_assert_eq!(ctx.out.len(), raw.len());
-    ctx.out.sort_by_key(|comment| comment.attached_to.index());
     ctx.ast.set_attached_comments(&ctx.out);
 }
 
@@ -150,6 +149,7 @@ impl AttachContext<'_, '_, '_> {
             position,
             same_line,
             value: raw.value,
+            span: raw.span,
         });
     }
 

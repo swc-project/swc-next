@@ -70,7 +70,7 @@ fn expect_printed_common(
         preserve_parens: false,
         allow_return_outside_function: true,
         semantic_errors: false,
-        comments: CommentMode::None,
+        comments: CommentMode::Attached,
     };
     let mut parser = Parser::init(&mut ast, source, parse_options);
     let Some(program) = parser.parse() else {

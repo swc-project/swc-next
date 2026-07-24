@@ -212,16 +212,9 @@ impl<'a> Ast<'a> {
         self.attached_comments.extend_from_slice_copy(comments);
     }
 
-    /// Returns comments attached to `node_id` in source order.
-    pub fn comments_of(&self, node_id: NodeId) -> &[AttachedComment] {
-        let index = node_id.index();
-        let start = self
-            .attached_comments
-            .partition_point(|comment| comment.attached_to.index() < index);
-        let end = self
-            .attached_comments
-            .partition_point(|comment| comment.attached_to.index() <= index);
-        &self.attached_comments[start..end]
+    /// Returns attached comments in source order.
+    pub fn comments(&self) -> &[AttachedComment] {
+        &self.attached_comments
     }
 
     #[inline]
