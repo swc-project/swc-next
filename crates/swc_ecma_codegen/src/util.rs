@@ -35,22 +35,14 @@ pub(crate) enum Level {
 }
 
 pub(crate) struct AstAdapterState {
-    pub(crate) next_lowered_template: usize,
     class_decorators_were_printed: bool,
 }
 
 impl AstAdapterState {
     pub(crate) fn new() -> Self {
         Self {
-            next_lowered_template: 0,
             class_decorators_were_printed: false,
         }
-    }
-
-    pub(crate) fn take_lowered_template_index(&mut self) -> usize {
-        let index = self.next_lowered_template;
-        self.next_lowered_template += 1;
-        index
     }
 
     pub(crate) fn mark_class_decorators_as_printed(&mut self) {
@@ -533,31 +525,6 @@ pub(crate) fn conditional_in_was_reassociated(
     let between = &ast.source()
         [conditional.span(ast).end as usize..binary.right(ast).span(ast).start as usize];
     (!between.contains(&b')')).then_some(conditional)
-}
-
-pub(crate) fn template_contains_closing_script(ast: &Ast<'_>, template: TemplateLiteral) -> bool {
-    template.quasis(ast).iter().any(|id| {
-        let quasi = ast.get_node_in_sub_range(id);
-        ast.string(quasi.raw(ast))
-            .windows(8)
-            .any(|window| window.eq_ignore_ascii_case(b"</script"))
-    })
-}
-
-pub(crate) fn append_lowered_template_name(output: &mut ArenaVec<'_, u8>, index: usize) {
-    const IDENTIFIER_CHARS: &[u8; 52] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    output.extend_from_slice(&[b'_', IDENTIFIER_CHARS[index % IDENTIFIER_CHARS.len()]]);
-    if index >= IDENTIFIER_CHARS.len() {
-        let mut digits = [0u8; 20];
-        let mut value = index / IDENTIFIER_CHARS.len() + 1;
-        let mut start = digits.len();
-        while value != 0 {
-            start -= 1;
-            digits[start] = b'0' + (value % 10) as u8;
-            value /= 10;
-        }
-        output.extend_from_slice(&digits[start..]);
-    }
 }
 
 pub(crate) fn remove_underscores(raw: &[u8]) -> Vec<u8> {

@@ -5,17 +5,15 @@ use swc_next_ecma_ast::*;
 
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator};
 use crate::util::{
-    AstAdapterState, Level, OperatorCode, append_lowered_template_name, assignment_operator,
-    binary_operator_code, binding_pattern_identifier_name, can_omit_arrow_parens,
-    conditional_in_was_reassociated, decorator_expression_needs_parentheses,
-    decorator_omit_newline_after, empty_import_attribute_offsets,
-    export_default_expr_was_parenthesized, expr_was_parenthesized, format_float,
-    import_attribute_offsets, import_declaration_has_empty_clause, is_identifier,
+    AstAdapterState, Level, OperatorCode, assignment_operator, binary_operator_code,
+    binding_pattern_identifier_name, can_omit_arrow_parens, conditional_in_was_reassociated,
+    decorator_expression_needs_parentheses, decorator_omit_newline_after,
+    empty_import_attribute_offsets, export_default_expr_was_parenthesized, expr_was_parenthesized,
+    format_float, import_attribute_offsets, import_declaration_has_empty_clause, is_identifier,
     is_identifier_continue_byte, is_identifier_es5_and_esnext, is_jsx_tag_single_line,
     is_legal_comment, member_object_was_parenthesized, module_name_bytes, next_code_point,
     next_level, parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
-    template_contains_closing_script, token_offset_after_decorators, unary_operator,
-    unary_operator_code, update_operator_code,
+    token_offset_after_decorators, unary_operator, unary_operator_code, update_operator_code,
 };
 
 use crate::{
@@ -1723,32 +1721,7 @@ impl<'a> Printer<'a> {
                 if let Some(args) = e.type_arguments(self.ast) {
                     self.print_ts_type_args(args);
                 }
-                let template = e.quasi(self.ast);
-                if template_contains_closing_script(self.ast, template) {
-                    let name = self.adapter.take_lowered_template_index();
-                    self.print("(");
-                    append_lowered_template_name(&mut self.js, name);
-                    self.print(" || (");
-                    append_lowered_template_name(&mut self.js, name);
-                    self.print(" = __template([");
-                    for (index, id) in template.quasis(self.ast).iter().enumerate() {
-                        if index != 0 {
-                            self.print(",");
-                            self.print_space();
-                        }
-                        let quasi = self.ast.get_node_in_sub_range(id);
-                        self.print_quoted(self.ast.string(quasi.raw(self.ast)), false);
-                    }
-                    self.print("]))");
-                    for id in template.expressions(self.ast).iter() {
-                        self.print(",");
-                        self.print_space();
-                        self.print_expr(self.ast.get_node_in_sub_range(id), Level::Assignment);
-                    }
-                    self.print(")");
-                } else {
-                    self.print_template(template, true);
-                }
+                self.print_template(e.quasi(self.ast), true);
             }
             ExprData::ArrowFunctionExpression(e) => self.print_arrow(e, level),
             ExprData::ArrayExpression(e) => self.print_array(e),
