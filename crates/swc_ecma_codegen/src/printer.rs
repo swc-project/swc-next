@@ -5,12 +5,12 @@ use swc_next_ecma_ast::*;
 
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator};
 use crate::util::{
-    AstAdapterState, Level, OperatorCode, append_lowered_template_name,
-    append_lowered_template_prefix, assignment_operator, ast_text, binary_operator_code,
-    binding_pattern_identifier_name, can_omit_arrow_parens, conditional_in_was_reassociated,
-    decorator_expression_needs_parentheses, decorator_omit_newline_after,
-    empty_import_attribute_offsets, export_default_expr_was_parenthesized, expr_was_parenthesized,
-    format_float, import_attribute_offsets, import_declaration_has_empty_clause, is_identifier,
+    AstAdapterState, Level, OperatorCode, append_lowered_template_name, assignment_operator,
+    ast_text, binary_operator_code, binding_pattern_identifier_name, can_omit_arrow_parens,
+    conditional_in_was_reassociated, decorator_expression_needs_parentheses,
+    decorator_omit_newline_after, empty_import_attribute_offsets,
+    export_default_expr_was_parenthesized, expr_was_parenthesized, format_float,
+    import_attribute_offsets, import_declaration_has_empty_clause, is_identifier,
     is_identifier_continue_byte, is_identifier_es5_and_esnext, is_jsx_tag_single_line,
     is_legal_comment, member_object_was_parenthesized, module_name_bytes, next_code_point,
     next_level, parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
@@ -141,9 +141,9 @@ pub fn print<'a>(
         with_nesting: 0,
         forbid_in: false,
         int_to_bytes_buffer: [0; 64],
-        adapter: AstAdapterState::new(tree, root),
+        adapter: AstAdapterState::new(),
     };
-    append_lowered_template_prefix(&mut p.js, p.adapter.lowered_template_count);
+
     p.print_program(root);
     let Printer {
         options,

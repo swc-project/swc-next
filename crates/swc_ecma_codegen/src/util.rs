@@ -35,7 +35,6 @@ pub(crate) enum Level {
 }
 
 pub(crate) struct AstAdapterState {
-    pub(crate) lowered_template_count: usize,
     pub(crate) next_lowered_template: usize,
     class_decorators_were_printed: bool,
 }
@@ -46,9 +45,8 @@ pub(crate) fn ast_text<'a>(ast: &'a Ast<'a>, value: String) -> &'a [u8] {
 }
 
 impl AstAdapterState {
-    pub(crate) fn new(ast: &Ast<'_>, root: Program) -> Self {
+    pub(crate) fn new() -> Self {
         Self {
-            lowered_template_count: count_templates_with_closing_script(ast, root),
             next_lowered_template: 0,
             class_decorators_were_printed: false,
         }
@@ -551,44 +549,6 @@ pub(crate) fn template_contains_closing_script(ast: &Ast<'_>, template: Template
     })
 }
 
-pub(crate) fn count_templates_with_closing_script(ast: &Ast<'_>, root: Program) -> usize {
-    // Avoid walking the AST at all in the overwhelmingly common case. This is
-    // also important for the printer's stack-safety contract: a source file
-    // containing a deeply nested binary expression must not be recursively
-    // traversed just to discover that there are no templates to lower.
-    if !ast
-        .source()
-        .windows(8)
-        .any(|window| window.eq_ignore_ascii_case(b"</script"))
-    {
-        return 0;
-    }
-
-    struct Counter<'ast, 'allocator> {
-        ast: &'ast Ast<'allocator>,
-        count: usize,
-    }
-
-    impl<'ast, 'allocator> Visit<'allocator> for Counter<'ast, 'allocator> {
-        fn ast(&self) -> &Ast<'allocator> {
-            self.ast
-        }
-
-        fn visit_tagged_template_expression(&mut self, node: TaggedTemplateExpression) {
-            if template_contains_closing_script(self.ast, node.quasi(self.ast)) {
-                self.count += 1;
-            }
-            <TaggedTemplateExpression as VisitWith<'allocator, Self>>::visit_children_with(
-                node, self,
-            );
-        }
-    }
-
-    let mut counter = Counter { ast, count: 0 };
-    root.visit_with(&mut counter);
-    counter.count
-}
-
 pub(crate) fn append_lowered_template_name(output: &mut ArenaVec<'_, u8>, index: usize) {
     const IDENTIFIER_CHARS: &[u8; 52] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     output.extend_from_slice(&[b'_', IDENTIFIER_CHARS[index % IDENTIFIER_CHARS.len()]]);
@@ -603,20 +563,6 @@ pub(crate) fn append_lowered_template_name(output: &mut ArenaVec<'_, u8>, index:
         }
         output.extend_from_slice(&digits[start..]);
     }
-}
-
-pub(crate) fn append_lowered_template_prefix(output: &mut ArenaVec<'_, u8>, template_count: usize) {
-    if template_count == 0 {
-        return;
-    }
-    output.extend_from_slice(b"import { __template } from \"<runtime>\";\nvar ");
-    for index in 0..template_count {
-        if index != 0 {
-            output.extend_from_slice(b", ");
-        }
-        append_lowered_template_name(output, index);
-    }
-    output.extend_from_slice(b";\n");
 }
 
 pub(crate) fn remove_underscores(raw: &[u8]) -> Vec<u8> {
