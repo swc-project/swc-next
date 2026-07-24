@@ -8,12 +8,12 @@ use crate::util::{
     AstAdapterState, Level, OperatorCode, assignment_operator, binary_operator_code,
     binding_pattern_identifier_name, can_omit_arrow_parens, conditional_in_was_reassociated,
     decorator_expression_needs_parentheses, decorator_omit_newline_after,
-    empty_import_attribute_offsets, export_default_expr_was_parenthesized, format_float,
-    import_attribute_offsets, import_declaration_has_empty_clause, is_identifier,
-    is_identifier_continue_byte, is_identifier_es5_and_esnext, is_jsx_tag_single_line,
-    is_legal_comment, member_object_was_parenthesized, module_name_bytes, next_code_point,
-    next_level, parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
-    token_offset_after_decorators, unary_operator, unary_operator_code, update_operator_code,
+    export_default_expr_was_parenthesized, format_float, import_declaration_has_empty_clause,
+    is_identifier, is_identifier_continue_byte, is_identifier_es5_and_esnext,
+    is_jsx_tag_single_line, is_legal_comment, member_object_was_parenthesized, module_name_bytes,
+    next_code_point, next_level, parse_numeric_literal, push_code_point_escape, push_u16_escape,
+    quote_into, token_offset_after_decorators, unary_operator, unary_operator_code,
+    update_operator_code,
 };
 
 use crate::{
@@ -936,11 +936,7 @@ impl<'a> Printer<'a> {
                 self.print_space();
                 self.add_source_mapping(s.source(self.ast).span(self.ast).start);
                 self.print_quoted(self.ast.string(s.source(self.ast).value(self.ast)), false);
-                self.print_import_attributes(
-                    s.attributes(self.ast),
-                    s.span(self.ast),
-                    s.source(self.ast).span(self.ast).end,
-                );
+                self.print_import_attributes(s.attributes(self.ast), s.span(self.ast));
                 self.print_semicolon_after_statement();
             }
             StmtData::TsExportAssignment(s) => {
@@ -3050,7 +3046,8 @@ impl<'a> Printer<'a> {
             if import_declaration_has_empty_clause(self.ast, d) {
                 self.print(" {} ");
                 self.print_space_before_identifier();
-                self.print("from ");
+                self.print("from");
+                self.print_space();
             } else {
                 self.print_space();
             }
@@ -3118,31 +3115,14 @@ impl<'a> Printer<'a> {
             self.add_source_mapping(d.source(self.ast).span(self.ast).start);
             self.print_quoted(self.ast.string(d.source(self.ast).value(self.ast)), false);
         }
-        self.print_import_attributes(
-            d.attributes(self.ast),
-            d.span(self.ast),
-            d.source(self.ast).span(self.ast).end,
-        );
+        self.print_import_attributes(d.attributes(self.ast), d.span(self.ast));
     }
 
-    fn print_import_attributes(
-        &mut self,
-        attrs: TypedSubRange<ImportAttribute>,
-        owner: Span,
-        search_start: u32,
-    ) {
-        let offsets = if attrs.is_empty() {
-            empty_import_attribute_offsets(self.ast, owner, search_start)
-        } else {
-            import_attribute_offsets(self.ast, attrs)
-        };
-        let Some((keyword, open, close, is_assert)) = offsets else {
-            return;
-        };
-        self.print(" ");
-        self.add_source_mapping(keyword);
-        self.print(if is_assert { "assert " } else { "with " });
-        self.add_source_mapping(open);
+    fn print_import_attributes(&mut self, attrs: TypedSubRange<ImportAttribute>, span: Span) {
+        self.print_space();
+        self.add_source_mapping(span.start);
+        self.print("with");
+        self.print_space();
         self.print("{");
         if !attrs.is_empty() {
             self.print_space();
@@ -3170,7 +3150,7 @@ impl<'a> Printer<'a> {
         if !attrs.is_empty() {
             self.print_space();
         }
-        self.add_source_mapping(close);
+        self.add_source_mapping(span.end);
         self.print("}");
     }
 
@@ -3274,13 +3254,7 @@ impl<'a> Printer<'a> {
             self.add_source_mapping(source.span(self.ast).start);
             self.print_quoted(self.ast.string(source.value(self.ast)), false);
         }
-        self.print_import_attributes(
-            d.attributes(self.ast),
-            d.span(self.ast),
-            d.source(self.ast)
-                .map(|source| source.span(self.ast).end)
-                .unwrap_or(d.span(self.ast).start),
-        );
+        self.print_import_attributes(d.attributes(self.ast), d.span(self.ast));
         self.print_semicolon_after_statement();
     }
 
