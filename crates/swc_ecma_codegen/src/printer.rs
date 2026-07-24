@@ -6,7 +6,7 @@ use swc_next_ecma_ast::*;
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator};
 use crate::util::{
     AstAdapterState, Level, OperatorCode, append_lowered_template_name, assignment_operator,
-    ast_text, binary_operator_code, binding_pattern_identifier_name, can_omit_arrow_parens,
+    binary_operator_code, binding_pattern_identifier_name, can_omit_arrow_parens,
     conditional_in_was_reassociated, decorator_expression_needs_parentheses,
     decorator_omit_newline_after, empty_import_attribute_offsets,
     export_default_expr_was_parenthesized, expr_was_parenthesized, format_float,
@@ -331,13 +331,13 @@ impl<'a> Printer<'a> {
     fn print_program(&mut self, program: Program) {
         if let Some(hashbang) = program.hashbang(self.ast) {
             self.print("#!");
-            self.print_bytes(ast_text(self.ast, hashbang.value(self.ast)));
+            self.print_bytes(self.ast.string(hashbang.value(self.ast)));
             self.print("\n");
         }
         for id in program.directives(self.ast).iter() {
             let directive = self.ast.get_node_in_sub_range(id);
             self.print_indent();
-            self.print_quoted(ast_text(self.ast, directive.value(self.ast)), false);
+            self.print_quoted(self.ast.string(directive.value(self.ast)), false);
             self.print(";");
             self.print_newline();
             self.print_semicolon_if_needed();
@@ -359,7 +359,7 @@ impl<'a> Printer<'a> {
             if !self.options.comments || (!preserve_all && !is_legal_comment(self.ast, comment)) {
                 continue;
             }
-            let value = ast_text(self.ast, comment.value(self.ast.source()));
+            let value = self.ast.string(comment.value(self.ast.source()));
             let mut trim_start = 0;
             while value[trim_start..]
                 .first()
@@ -659,7 +659,7 @@ impl<'a> Printer<'a> {
                 self.print("break");
                 if let Some(label) = s.label(self.ast) {
                     self.print(" ");
-                    let name = ast_text(self.ast, label.name(self.ast));
+                    let name = self.ast.string(label.name(self.ast));
                     self.add_source_mapping_for_name(label.span(self.ast).start, name);
                     self.print_identifier(name);
                 }
@@ -671,7 +671,7 @@ impl<'a> Printer<'a> {
                 self.print("continue");
                 if let Some(label) = s.label(self.ast) {
                     self.print(" ");
-                    let name = ast_text(self.ast, label.name(self.ast));
+                    let name = self.ast.string(label.name(self.ast));
                     self.add_source_mapping_for_name(label.span(self.ast).start, name);
                     self.print_identifier(name);
                 }
@@ -822,7 +822,7 @@ impl<'a> Printer<'a> {
             StmtData::LabeledStatement(s) => {
                 self.print_indent();
                 let label = s.label(self.ast);
-                let name = ast_text(self.ast, label.name(self.ast));
+                let name = self.ast.string(label.name(self.ast));
                 self.add_source_mapping_for_name(label.span(self.ast).start, name);
                 self.print_identifier(name);
                 self.print(":");
@@ -937,10 +937,7 @@ impl<'a> Printer<'a> {
                 self.print("from");
                 self.print_space();
                 self.add_source_mapping(s.source(self.ast).span(self.ast).start);
-                self.print_quoted(
-                    ast_text(self.ast, s.source(self.ast).value(self.ast)),
-                    false,
-                );
+                self.print_quoted(self.ast.string(s.source(self.ast).value(self.ast)), false);
                 self.print_import_attributes(
                     s.attributes(self.ast),
                     s.span(self.ast),
@@ -959,7 +956,7 @@ impl<'a> Printer<'a> {
                 self.print_indent();
                 self.add_source_mapping(stmt.span(self.ast).start);
                 self.print("export as namespace ");
-                self.print_identifier(ast_text(self.ast, s.id(self.ast).name(self.ast)));
+                self.print_identifier(self.ast.string(s.id(self.ast).name(self.ast)));
                 self.print_semicolon_after_statement();
             }
             StmtData::TsImportEqualsDeclaration(s) => {
@@ -1054,7 +1051,7 @@ impl<'a> Printer<'a> {
             self.print_semicolon_if_needed();
             let directive = self.ast.get_node_in_sub_range(id);
             self.print_indent();
-            self.print_quoted(ast_text(self.ast, directive.value(self.ast)), false);
+            self.print_quoted(self.ast.string(directive.value(self.ast)), false);
             self.print_semicolon_after_statement();
         }
         for id in statements.iter() {
@@ -1354,7 +1351,7 @@ impl<'a> Printer<'a> {
         if decorators {
             self.print_decorators(id.decorators(self.ast), PrintAfterDecorator::Space);
         }
-        let name = ast_text(self.ast, id.name(self.ast));
+        let name = self.ast.string(id.name(self.ast));
         self.add_source_mapping_for_name(id.span(self.ast).start, name);
         self.print_identifier(name);
         if id.optional(self.ast) {
@@ -1454,7 +1451,7 @@ impl<'a> Printer<'a> {
                 && match self.ast.property_key_data(prop.key(self.ast)) {
                     PropertyKeyData::IdentifierName(key) => {
                         binding_pattern_identifier_name(self.ast, value)
-                            == Some(ast_text(self.ast, key.name(self.ast)))
+                            == Some(self.ast.string(key.name(self.ast)))
                     }
                     _ => false,
                 };
@@ -1504,7 +1501,7 @@ impl<'a> Printer<'a> {
     fn print_simple_assignment_target(&mut self, target: SimpleAssignmentTarget) {
         match self.ast.simple_assignment_target_data(target) {
             SimpleAssignmentTargetData::IdentifierReference(i) => {
-                let name = ast_text(self.ast, i.name(self.ast));
+                let name = self.ast.string(i.name(self.ast));
                 let wrap = self.js.len() == self.for_of_init_start && name == b"let";
                 if wrap {
                     self.print("(");
@@ -1567,7 +1564,7 @@ impl<'a> Printer<'a> {
         self.print_comments_before(expr.span(self.ast).start, false, true);
         match self.ast.expr_data(expr) {
             ExprData::IdentifierReference(e) => {
-                let name = ast_text(self.ast, e.name(self.ast));
+                let name = self.ast.string(e.name(self.ast));
                 let wrap = self.js.len() == self.for_of_init_start && name == b"let";
                 if wrap {
                     self.print("(");
@@ -1588,21 +1585,21 @@ impl<'a> Printer<'a> {
             }
             ExprData::MetaProperty(e) => {
                 self.add_source_mapping(expr.span(self.ast).start);
-                self.print_identifier(ast_text(self.ast, e.meta(self.ast).name(self.ast)));
+                self.print_identifier(self.ast.string(e.meta(self.ast).name(self.ast)));
                 self.print(".");
-                self.print_identifier(ast_text(self.ast, e.property(self.ast).name(self.ast)));
+                self.print_identifier(self.ast.string(e.property(self.ast).name(self.ast)));
             }
             ExprData::StringLiteral(e) => {
                 self.add_source_mapping(expr.span(self.ast).start);
-                self.print_quoted(ast_text(self.ast, e.value(self.ast)), true)
+                self.print_quoted(self.ast.string(e.value(self.ast)), true)
             }
             ExprData::NumericLiteral(e) => {
                 self.add_source_mapping(expr.span(self.ast).start);
-                self.print_number(ast_text(self.ast, e.raw(self.ast)), level)
+                self.print_number(self.ast.string(e.raw(self.ast)), level)
             }
             ExprData::BigIntLiteral(e) => {
                 self.add_source_mapping(expr.span(self.ast).start);
-                let raw = ast_text(self.ast, e.raw(self.ast));
+                let raw = self.ast.string(e.raw(self.ast));
                 for &byte in raw {
                     if byte != b'_' {
                         self.js.push(byte);
@@ -1624,7 +1621,9 @@ impl<'a> Printer<'a> {
                 if let Some(&last) = self.js.last()
                     && (last == b'/'
                         || (last == b'<'
-                            && ast_text(self.ast, e.pattern(self.ast))
+                            && self
+                                .ast
+                                .string(e.pattern(self.ast))
                                 .get(..6)
                                 .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"script"))))
                 {
@@ -1632,9 +1631,9 @@ impl<'a> Printer<'a> {
                 }
                 self.add_source_mapping(expr.span(self.ast).start);
                 self.print("/");
-                self.print_bytes(ast_text(self.ast, e.pattern(self.ast)));
+                self.print_bytes(self.ast.string(e.pattern(self.ast)));
                 self.print("/");
-                self.print_bytes(ast_text(self.ast, e.flags(self.ast)));
+                self.print_bytes(self.ast.string(e.flags(self.ast)));
 
                 // The next identifier needs a separator or it would become
                 // part of the regular expression flags.
@@ -1738,7 +1737,7 @@ impl<'a> Printer<'a> {
                             self.print_space();
                         }
                         let quasi = self.ast.get_node_in_sub_range(id);
-                        self.print_quoted(ast_text(self.ast, quasi.raw(self.ast)), false);
+                        self.print_quoted(self.ast.string(quasi.raw(self.ast)), false);
                     }
                     self.print("]))");
                     for id in template.expressions(self.ast).iter() {
@@ -1861,7 +1860,7 @@ impl<'a> Printer<'a> {
                 }
             }
             ExprData::PrivateIdentifier(e) => {
-                let name = ast_text(self.ast, e.name(self.ast));
+                let name = self.ast.string(e.name(self.ast));
                 self.add_source_mapping_for_name(expr.span(self.ast).start, name);
                 self.print("#");
                 self.print_identifier(name);
@@ -2041,7 +2040,7 @@ impl<'a> Printer<'a> {
             && matches!(
                 self.ast.expr_data(object),
                 ExprData::IdentifierReference(identifier)
-                    if ast_text(self.ast, identifier.name(self.ast)) == b"let"
+                    if self.ast.string(identifier.name(self.ast)) == b"let"
             )
             || member_object_was_parenthesized(self.ast, e)
                 && matches!(self.ast.expr_data(object), ExprData::ObjectExpression(_));
@@ -2064,11 +2063,9 @@ impl<'a> Printer<'a> {
         let property = e.property(self.ast);
         let property_text = match self.ast.property_key_data(property) {
             PropertyKeyData::IdentifierName(identifier) => {
-                Some(ast_text(self.ast, identifier.name(self.ast)))
+                Some(self.ast.string(identifier.name(self.ast)))
             }
-            PropertyKeyData::StringLiteral(string) => {
-                Some(ast_text(self.ast, string.value(self.ast)))
-            }
+            PropertyKeyData::StringLiteral(string) => Some(self.ast.string(string.value(self.ast))),
             _ => None,
         };
         let force_computed = !e.computed(self.ast)
@@ -2364,7 +2361,7 @@ impl<'a> Printer<'a> {
             && !property.computed(self.ast)
             && match self.ast.property_key_data(property.key(self.ast)) {
                 PropertyKeyData::IdentifierName(identifier) => {
-                    self.can_print_identifier(ast_text(self.ast, identifier.name(self.ast)))
+                    self.can_print_identifier(self.ast.string(identifier.name(self.ast)))
                 }
                 _ => false,
             }
@@ -2384,20 +2381,20 @@ impl<'a> Printer<'a> {
     fn print_property_key_expr(&mut self, key: PropertyKey) {
         match self.ast.property_key_data(key) {
             PropertyKeyData::IdentifierName(e) => {
-                self.print_identifier(ast_text(self.ast, e.name(self.ast)))
+                self.print_identifier(self.ast.string(e.name(self.ast)))
             }
             PropertyKeyData::PrivateIdentifier(e) => {
                 self.print("#");
-                self.print_identifier(ast_text(self.ast, e.name(self.ast)));
+                self.print_identifier(self.ast.string(e.name(self.ast)));
             }
             PropertyKeyData::StringLiteral(e) => {
-                self.print_quoted(ast_text(self.ast, e.value(self.ast)), true)
+                self.print_quoted(self.ast.string(e.value(self.ast)), true)
             }
             PropertyKeyData::NumericLiteral(e) => {
-                self.print_number(ast_text(self.ast, e.raw(self.ast)), Level::Lowest)
+                self.print_number(self.ast.string(e.raw(self.ast)), Level::Lowest)
             }
             PropertyKeyData::BigIntLiteral(e) => {
-                for &byte in ast_text(self.ast, e.raw(self.ast)) {
+                for &byte in self.ast.string(e.raw(self.ast)) {
                     if byte != b'_' {
                         self.js.push(byte);
                     }
@@ -2411,7 +2408,7 @@ impl<'a> Printer<'a> {
     fn print_property_key_plain(&mut self, key: PropertyKey) {
         match self.ast.property_key_data(key) {
             PropertyKeyData::IdentifierName(value) => {
-                let name = ast_text(self.ast, value.name(self.ast));
+                let name = self.ast.string(value.name(self.ast));
                 if self.can_print_identifier(name) {
                     self.print_identifier(name);
                 } else {
@@ -2432,12 +2429,12 @@ impl<'a> Printer<'a> {
         for (i, id) in quasis.iter().enumerate() {
             let quasi = self.ast.get_node_in_sub_range(id);
             if is_tagged {
-                self.print_bytes(ast_text(self.ast, quasi.raw(self.ast)));
+                self.print_bytes(self.ast.string(quasi.raw(self.ast)));
             } else {
                 let cooked = if quasi.is_cooked_undefined(self.ast) {
-                    ast_text(self.ast, quasi.raw(self.ast))
+                    self.ast.string(quasi.raw(self.ast))
                 } else {
-                    ast_text(self.ast, quasi.cooked(self.ast))
+                    self.ast.string(quasi.cooked(self.ast))
                 };
                 let start = self.js.len();
                 quote_into(&mut self.js, cooked, b'`', self.options.ascii_only);
@@ -3086,10 +3083,7 @@ impl<'a> Printer<'a> {
                 self.print_space();
             }
             self.add_source_mapping(d.source(self.ast).span(self.ast).start);
-            self.print_quoted(
-                ast_text(self.ast, d.source(self.ast).value(self.ast)),
-                false,
-            );
+            self.print_quoted(self.ast.string(d.source(self.ast).value(self.ast)), false);
         } else {
             self.print_space();
             let mut first = true;
@@ -3134,7 +3128,7 @@ impl<'a> Printer<'a> {
                     }
                     self.print_module_name(s.imported(self.ast));
                     let imported = module_name_bytes(self.ast, s.imported(self.ast));
-                    let local = ast_text(self.ast, s.local(self.ast).name(self.ast));
+                    let local = self.ast.string(s.local(self.ast).name(self.ast));
                     if imported != local {
                         self.print_space();
                         self.print_space_before_identifier();
@@ -3150,10 +3144,7 @@ impl<'a> Printer<'a> {
             self.print("from");
             self.print_space();
             self.add_source_mapping(d.source(self.ast).span(self.ast).start);
-            self.print_quoted(
-                ast_text(self.ast, d.source(self.ast).value(self.ast)),
-                false,
-            );
+            self.print_quoted(self.ast.string(d.source(self.ast).value(self.ast)), false);
         }
         self.print_import_attributes(
             d.attributes(self.ast),
@@ -3195,14 +3186,14 @@ impl<'a> Printer<'a> {
                 self.ast.module_export_name_data(key)
             {
                 self.add_source_mapping(key.span(self.ast).start);
-                self.print_quoted(ast_text(self.ast, string.value(self.ast)), false);
+                self.print_quoted(self.ast.string(string.value(self.ast)), false);
             } else {
                 self.print_module_name(key);
             }
             self.print(":");
             self.print_space();
             self.add_source_mapping(a.value(self.ast).span(self.ast).start);
-            self.print_quoted(ast_text(self.ast, a.value(self.ast).value(self.ast)), false);
+            self.print_quoted(self.ast.string(a.value(self.ast).value(self.ast)), false);
         }
         if !attrs.is_empty() {
             self.print_space();
@@ -3214,12 +3205,12 @@ impl<'a> Printer<'a> {
     fn print_module_name(&mut self, name: ModuleExportName) {
         match self.ast.module_export_name_data(name) {
             ModuleExportNameData::IdentifierName(i) => {
-                let text = ast_text(self.ast, i.name(self.ast));
+                let text = self.ast.string(i.name(self.ast));
                 self.add_source_mapping_for_name(name.span(self.ast).start, text);
                 self.print_identifier(text)
             }
             ModuleExportNameData::StringLiteral(s) => {
-                let text = ast_text(self.ast, s.value(self.ast));
+                let text = self.ast.string(s.value(self.ast));
                 self.add_source_mapping(name.span(self.ast).start);
                 if is_identifier(text) {
                     self.print_identifier(text)
@@ -3309,7 +3300,7 @@ impl<'a> Printer<'a> {
             self.print("from");
             self.print_space();
             self.add_source_mapping(source.span(self.ast).start);
-            self.print_quoted(ast_text(self.ast, source.value(self.ast)), false);
+            self.print_quoted(self.ast.string(source.value(self.ast)), false);
         }
         self.print_import_attributes(
             d.attributes(self.ast),
@@ -3496,10 +3487,7 @@ impl<'a> Printer<'a> {
             TsTypeData::TsImportType(t) => {
                 self.print("import(");
                 self.add_source_mapping(t.source(self.ast).span(self.ast).start);
-                self.print_quoted(
-                    ast_text(self.ast, t.source(self.ast).value(self.ast)),
-                    false,
-                );
+                self.print_quoted(self.ast.string(t.source(self.ast).value(self.ast)), false);
                 if let Some(o) = t.options(self.ast) {
                     self.print(",");
                     self.print_space();
@@ -3520,10 +3508,10 @@ impl<'a> Printer<'a> {
                 let qs = t.quasis(self.ast);
                 let types = t.types(self.ast);
                 for (i, id) in qs.iter().enumerate() {
-                    self.print_bytes(ast_text(
-                        self.ast,
-                        self.ast.get_node_in_sub_range(id).raw(self.ast),
-                    ));
+                    self.print_bytes(
+                        self.ast
+                            .string(self.ast.get_node_in_sub_range(id).raw(self.ast)),
+                    );
                     if i < types.len() {
                         self.print("${");
                         self.print_ts_type(types.get_node(self.ast, i).unwrap(), Level::Lowest);
@@ -3666,7 +3654,7 @@ impl<'a> Printer<'a> {
                     .ts_type_predicate_name_data(t.parameter_name(self.ast))
                 {
                     TsTypePredicateNameData::IdentifierName(i) => {
-                        self.print_identifier(ast_text(self.ast, i.name(self.ast)))
+                        self.print_identifier(self.ast.string(i.name(self.ast)))
                     }
                     TsTypePredicateNameData::TsThisType(_) => self.print("this"),
                 };
@@ -3704,7 +3692,7 @@ impl<'a> Printer<'a> {
     fn print_ts_type_name(&mut self, n: TsTypeName) {
         match self.ast.ts_type_name_data(n) {
             TsTypeNameData::IdentifierReference(i) => {
-                let name = ast_text(self.ast, i.name(self.ast));
+                let name = self.ast.string(i.name(self.ast));
                 self.add_source_mapping_for_name(i.span(self.ast).start, name);
                 self.print_identifier(name)
             }
@@ -3714,17 +3702,17 @@ impl<'a> Printer<'a> {
     fn print_ts_qualified(&mut self, q: TsQualifiedName) {
         match self.ast.ts_qualified_name_left_data(q.left(self.ast)) {
             TsQualifiedNameLeftData::IdentifierReference(i) => {
-                let name = ast_text(self.ast, i.name(self.ast));
+                let name = self.ast.string(i.name(self.ast));
                 self.add_source_mapping_for_name(i.span(self.ast).start, name);
                 self.print_identifier(name)
             }
             TsQualifiedNameLeftData::IdentifierName(i) => {
-                let name = ast_text(self.ast, i.name(self.ast));
+                let name = self.ast.string(i.name(self.ast));
                 self.add_source_mapping_for_name(i.span(self.ast).start, name);
                 self.print_identifier(name)
             }
             TsQualifiedNameLeftData::BindingIdentifier(i) => {
-                let name = ast_text(self.ast, i.name(self.ast));
+                let name = self.ast.string(i.name(self.ast));
                 self.add_source_mapping_for_name(i.span(self.ast).start, name);
                 self.print_identifier(name)
             }
@@ -3733,14 +3721,14 @@ impl<'a> Printer<'a> {
         }
         self.print(".");
         let right = q.right(self.ast);
-        let name = ast_text(self.ast, right.name(self.ast));
+        let name = self.ast.string(right.name(self.ast));
         self.add_source_mapping_for_name(right.span(self.ast).start, name);
         self.print_identifier(name);
     }
     fn print_ts_import_qualifier(&mut self, q: TsImportTypeQualifier) {
         match self.ast.ts_import_type_qualifier_data(q) {
             TsImportTypeQualifierData::IdentifierName(i) => {
-                let name = ast_text(self.ast, i.name(self.ast));
+                let name = self.ast.string(i.name(self.ast));
                 self.add_source_mapping_for_name(i.span(self.ast).start, name);
                 self.print_identifier(name)
             }
@@ -3754,10 +3742,7 @@ impl<'a> Printer<'a> {
             TsTypeQueryExprNameData::TsImportType(t) => {
                 self.print("import(");
                 self.add_source_mapping(t.source(self.ast).span(self.ast).start);
-                self.print_quoted(
-                    ast_text(self.ast, t.source(self.ast).value(self.ast)),
-                    false,
-                );
+                self.print_quoted(self.ast.string(t.source(self.ast).value(self.ast)), false);
                 self.print(")");
             }
         }
@@ -3765,14 +3750,12 @@ impl<'a> Printer<'a> {
     fn print_ts_literal(&mut self, l: TsLiteral) {
         match self.ast.ts_literal_data(l) {
             TsLiteralData::StringLiteral(s) => {
-                self.print_quoted(ast_text(self.ast, s.value(self.ast)), true)
+                self.print_quoted(self.ast.string(s.value(self.ast)), true)
             }
             TsLiteralData::NumericLiteral(n) => {
-                self.print_number(ast_text(self.ast, n.raw(self.ast)), Level::Lowest)
+                self.print_number(self.ast.string(n.raw(self.ast)), Level::Lowest)
             }
-            TsLiteralData::BigIntLiteral(n) => {
-                self.print_bytes(ast_text(self.ast, n.raw(self.ast)))
-            }
+            TsLiteralData::BigIntLiteral(n) => self.print_bytes(self.ast.string(n.raw(self.ast))),
             TsLiteralData::BooleanLiteral(b) => {
                 self.print(if b.value(self.ast) { "true" } else { "false" })
             }
@@ -3785,7 +3768,7 @@ impl<'a> Printer<'a> {
             TsTupleElementData::TsType(t) => self.print_ts_type(t, Level::Lowest),
             TsTupleElementData::TsNamedTupleMember(n) => {
                 let label = n.label(self.ast);
-                let name = ast_text(self.ast, label.name(self.ast));
+                let name = self.ast.string(label.name(self.ast));
                 self.add_source_mapping_for_name(label.span(self.ast).start, name);
                 self.print_identifier(name);
                 if n.optional(self.ast) {
@@ -4015,13 +3998,13 @@ impl<'a> Printer<'a> {
         }
         match self.ast.ts_enum_member_name_data(n) {
             TsEnumMemberNameData::IdentifierName(i) => {
-                let name = ast_text(self.ast, i.name(self.ast));
+                let name = self.ast.string(i.name(self.ast));
                 self.add_source_mapping_for_name(i.span(self.ast).start, name);
                 self.print_identifier(name)
             }
             TsEnumMemberNameData::StringLiteral(s) => {
                 self.add_source_mapping(s.span(self.ast).start);
-                self.print_quoted(ast_text(self.ast, s.value(self.ast)), true)
+                self.print_quoted(self.ast.string(s.value(self.ast)), true)
             }
             TsEnumMemberNameData::TemplateLiteral(t) => self.print_template(t, false),
             TsEnumMemberNameData::Expr(e) => self.print_expr(e, Level::Lowest),
@@ -4050,7 +4033,7 @@ impl<'a> Printer<'a> {
             TsModuleNameData::BindingIdentifier(i) => self.print_binding_identifier(i, false),
             TsModuleNameData::StringLiteral(s) => {
                 self.add_source_mapping(s.span(self.ast).start);
-                self.print_quoted(ast_text(self.ast, s.value(self.ast)), false)
+                self.print_quoted(self.ast.string(s.value(self.ast)), false)
             }
             TsModuleNameData::TsQualifiedName(q) => self.print_ts_qualified(q),
         }
@@ -4070,7 +4053,7 @@ impl<'a> Printer<'a> {
                     self.print_semicolon_if_needed();
                     let directive = self.ast.get_node_in_sub_range(id);
                     self.print_indent();
-                    self.print_quoted(ast_text(self.ast, directive.value(self.ast)), false);
+                    self.print_quoted(self.ast.string(directive.value(self.ast)), false);
                     self.print_semicolon_after_statement();
                 }
                 for id in statements.iter() {
@@ -4093,7 +4076,7 @@ impl<'a> Printer<'a> {
             self.print("declare ");
         }
         let id = d.id(self.ast);
-        let name = ast_text(self.ast, id.name(self.ast));
+        let name = self.ast.string(id.name(self.ast));
         self.add_source_mapping_for_name(id.span(self.ast).start, name);
         self.print_identifier(name);
         self.print_space();
@@ -4152,7 +4135,7 @@ impl<'a> Printer<'a> {
                 self.print("require(");
                 self.add_source_mapping(r.expression(self.ast).span(self.ast).start);
                 self.print_quoted(
-                    ast_text(self.ast, r.expression(self.ast).value(self.ast)),
+                    self.ast.string(r.expression(self.ast).value(self.ast)),
                     false,
                 );
                 self.print(")");
@@ -4233,15 +4216,15 @@ impl<'a> Printer<'a> {
     fn print_jsx_name(&mut self, n: JsxElementName) {
         match self.ast.jsx_element_name_data(n) {
             JsxElementNameData::JsxIdentifier(i) => {
-                let name = ast_text(self.ast, i.name(self.ast));
+                let name = self.ast.string(i.name(self.ast));
                 self.add_source_mapping_for_name(n.span(self.ast).start, name);
                 self.print_bytes(name)
             }
             JsxElementNameData::JsxNamespacedName(x) => {
                 self.add_source_mapping(n.span(self.ast).start);
-                self.print_bytes(ast_text(self.ast, x.namespace(self.ast).name(self.ast)));
+                self.print_bytes(self.ast.string(x.namespace(self.ast).name(self.ast)));
                 self.print(":");
-                self.print_bytes(ast_text(self.ast, x.name(self.ast).name(self.ast)));
+                self.print_bytes(self.ast.string(x.name(self.ast).name(self.ast)));
             }
             JsxElementNameData::JsxMemberExpression(m) => self.print_jsx_member(m),
         }
@@ -4252,7 +4235,7 @@ impl<'a> Printer<'a> {
             .jsx_member_expression_object_data(m.object(self.ast))
         {
             JsxMemberExpressionObjectData::JsxIdentifier(i) => {
-                let name = ast_text(self.ast, i.name(self.ast));
+                let name = self.ast.string(i.name(self.ast));
                 self.add_source_mapping_for_name(i.span(self.ast).start, name);
                 self.print_bytes(name)
             }
@@ -4260,22 +4243,22 @@ impl<'a> Printer<'a> {
         }
         self.print(".");
         let property = m.property(self.ast);
-        let name = ast_text(self.ast, property.name(self.ast));
+        let name = self.ast.string(property.name(self.ast));
         self.add_source_mapping_for_name(property.span(self.ast).start, name);
         self.print_bytes(name);
     }
     fn print_jsx_attr_name(&mut self, n: JsxAttributeName) {
         match self.ast.jsx_attribute_name_data(n) {
             JsxAttributeNameData::JsxIdentifier(i) => {
-                let name = ast_text(self.ast, i.name(self.ast));
+                let name = self.ast.string(i.name(self.ast));
                 self.add_source_mapping_for_name(n.span(self.ast).start, name);
                 self.print_bytes(name)
             }
             JsxAttributeNameData::JsxNamespacedName(x) => {
                 self.add_source_mapping(n.span(self.ast).start);
-                self.print_bytes(ast_text(self.ast, x.namespace(self.ast).name(self.ast)));
+                self.print_bytes(self.ast.string(x.namespace(self.ast).name(self.ast)));
                 self.print(":");
-                self.print_bytes(ast_text(self.ast, x.name(self.ast).name(self.ast)));
+                self.print_bytes(self.ast.string(x.name(self.ast).name(self.ast)));
             }
         }
     }
@@ -4316,7 +4299,7 @@ impl<'a> Printer<'a> {
     fn print_jsx_child(&mut self, c: JsxChild) {
         match self.ast.jsx_child_data(c) {
             JsxChildData::JsxText(t) => {
-                self.print_bytes(ast_text(self.ast, t.value(self.ast)));
+                self.print_bytes(self.ast.string(t.value(self.ast)));
             }
             JsxChildData::JsxExpressionContainer(c) => self.print_jsx_container(c),
             JsxChildData::JsxSpreadChild(s) => {

@@ -39,11 +39,6 @@ pub(crate) struct AstAdapterState {
     class_decorators_were_printed: bool,
 }
 
-#[inline]
-pub(crate) fn ast_text<'a>(ast: &'a Ast<'a>, value: String) -> &'a [u8] {
-    ast.string(value)
-}
-
 impl AstAdapterState {
     pub(crate) fn new() -> Self {
         Self {
