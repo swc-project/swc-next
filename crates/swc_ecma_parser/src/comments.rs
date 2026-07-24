@@ -37,13 +37,12 @@ impl<'a> Traverse<'a, Vec<Vec<ChildInfo>>> for ChildCollector {
 }
 
 pub(crate) fn attach(ast: &mut Ast<'_>, program: Program, raw: &[Comment]) {
-    let node_count = ast.node_count();
-    let empty_offsets = vec![0; node_count + 1];
     if raw.is_empty() {
-        ast.set_attached_comments(&[], &empty_offsets);
+        ast.set_attached_comments(&[]);
         return;
     }
 
+    let node_count = ast.node_count();
     let children = {
         let state = vec![Vec::new(); node_count];
         let mut ctx = TraverseCtx::new(ast, state);
@@ -52,21 +51,13 @@ pub(crate) fn attach(ast: &mut Ast<'_>, program: Program, raw: &[Comment]) {
         ctx.state
     };
 
-    let first = raw[0];
-    let placeholder = AttachedComment {
-        comment_type: first.comment_type,
-        position: AttachedCommentPosition::Before,
-        same_line: false,
-        value: first.value,
-    };
     let root = program.node_id();
     let root_span = ast.span(root);
     let mut ctx = AttachContext {
         ast,
         raw,
         children,
-        host: vec![root; raw.len()],
-        out: vec![placeholder; raw.len()],
+        out: Vec::with_capacity(raw.len()),
         cursor: 0,
     };
     ctx.walk_at(root, root_span);
@@ -76,35 +67,15 @@ pub(crate) fn attach(ast: &mut Ast<'_>, program: Program, raw: &[Comment]) {
         ctx.cursor += 1;
     }
 
-    let mut counts = vec![0u32; node_count];
-    for host in &ctx.host {
-        counts[host.index()] += 1;
-    }
-
-    let mut offsets = vec![0u32; node_count + 1];
-    let mut sum = 0u32;
-    for (index, count) in counts.iter_mut().enumerate() {
-        offsets[index] = sum;
-        sum += *count;
-        *count = 0;
-    }
-    offsets[node_count] = sum;
-
-    let mut comments = vec![placeholder; raw.len()];
-    for (index, comment) in ctx.out.into_iter().enumerate() {
-        let host = ctx.host[index].index();
-        let output_index = offsets[host] + counts[host];
-        comments[output_index as usize] = comment;
-        counts[host] += 1;
-    }
-    ctx.ast.set_attached_comments(&comments, &offsets);
+    debug_assert_eq!(ctx.out.len(), raw.len());
+    ctx.out.sort_by_key(|comment| comment.attached_to.index());
+    ctx.ast.set_attached_comments(&ctx.out);
 }
 
 struct AttachContext<'comments, 'ast, 'allocator> {
     ast: &'ast mut Ast<'allocator>,
     raw: &'comments [Comment],
     children: Vec<Vec<ChildInfo>>,
-    host: Vec<NodeId>,
     out: Vec<AttachedComment>,
     cursor: usize,
 }
@@ -173,13 +144,13 @@ impl AttachContext<'_, '_, '_> {
 
     fn write(&mut self, host: NodeId, position: AttachedCommentPosition, same_line: bool) {
         let raw = self.raw[self.cursor];
-        self.host[self.cursor] = host;
-        self.out[self.cursor] = AttachedComment {
+        self.out.push(AttachedComment {
+            attached_to: host,
             comment_type: raw.comment_type,
             position,
             same_line,
             value: raw.value,
-        };
+        });
     }
 
     fn same_line(&self, a: u32, b: u32) -> bool {

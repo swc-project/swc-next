@@ -1,4 +1,4 @@
-use crate::{Span, String};
+use crate::{NodeId, Span, String};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum CommentType {
@@ -31,6 +31,7 @@ pub enum AttachedCommentPosition {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AttachedComment {
+    pub attached_to: NodeId,
     pub comment_type: CommentType,
     pub position: AttachedCommentPosition,
     pub same_line: bool,
