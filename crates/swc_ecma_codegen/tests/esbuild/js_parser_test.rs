@@ -2907,9 +2907,9 @@ fn test_jsx_single_line() {
     expect_printed_jsx(b"<x/>", b"<x />;\n");
     expect_printed_jsx(b"<x y/>", b"<x y />;\n");
     expect_printed_jsx(b"<x\n/>", b"<x />;\n");
-    expect_printed_jsx(b"<x\ny/>", b"<x\n  y\n/>;\n");
-    expect_printed_jsx(b"<x y\n/>", b"<x\n  y\n/>;\n");
-    expect_printed_jsx(b"<x\n{...y}/>", b"<x\n  {...y}\n/>;\n");
+    expect_printed_jsx(b"<x\ny/>", b"<x y />;\n");
+    expect_printed_jsx(b"<x y\n/>", b"<x y />;\n");
+    expect_printed_jsx(b"<x\n{...y}/>", b"<x {...y} />;\n");
 }
 
 #[test]

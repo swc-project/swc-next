@@ -8,9 +8,9 @@ use crate::util::{
     AstAdapterState, Level, OperatorCode, assignment_operator, binary_operator_code,
     can_omit_arrow_parens, conditional_in_was_reassociated, decorator_expression_needs_parentheses,
     decorator_omit_newline_after, format_float, import_declaration_has_empty_clause, is_identifier,
-    is_identifier_continue_byte, is_identifier_es5_and_esnext, is_jsx_tag_single_line,
-    is_legal_comment, member_object_was_parenthesized, module_name_bytes, next_code_point,
-    next_level, parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
+    is_identifier_continue_byte, is_identifier_es5_and_esnext, is_legal_comment,
+    member_object_was_parenthesized, module_name_bytes, next_code_point, next_level,
+    parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
     token_offset_after_decorators, unary_operator, unary_operator_code, update_operator_code,
 };
 
@@ -4062,22 +4062,13 @@ impl<'a> Printer<'a> {
 
     fn print_jsx_element(&mut self, e: JsxElement) {
         let o = e.opening_element(self.ast);
-        let is_tag_single_line = is_jsx_tag_single_line(self.ast, o);
         self.add_source_mapping(e.span(self.ast).start);
         self.print("<");
         self.print_jsx_name(o.name(self.ast));
-        if !is_tag_single_line {
-            self.indent += 1;
-        }
         for id in o.attributes(self.ast).iter() {
             let item = self.ast.get_node_in_sub_range(id);
             let data = self.ast.jsx_attribute_item_data(item);
-            if is_tag_single_line {
-                self.print_space();
-            } else {
-                self.print_newline();
-                self.print_indent();
-            }
+            self.print_space();
             match data {
                 JsxAttributeItemData::JsxAttribute(a) => {
                     self.print_space_before_identifier();
@@ -4095,17 +4086,8 @@ impl<'a> Printer<'a> {
                 }
             }
         }
-        if !is_tag_single_line {
-            self.indent -= 1;
-            if !o.attributes(self.ast).is_empty() {
-                self.print_newline();
-                self.print_indent();
-            }
-        }
         if e.children(self.ast).is_empty() {
-            if is_tag_single_line || o.attributes(self.ast).is_empty() {
-                self.print_space();
-            }
+            self.print_space();
             self.add_source_mapping(o.span(self.ast).end.saturating_sub(2));
             self.print("/>");
             return;

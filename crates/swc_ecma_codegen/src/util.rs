@@ -291,36 +291,6 @@ pub(crate) fn can_omit_arrow_parens(ast: &Ast<'_>, params: FormalParameters) -> 
         && !identifier.optional(ast)
 }
 
-pub(crate) fn is_jsx_tag_single_line(ast: &Ast<'_>, opening: JsxOpeningElement) -> bool {
-    let span = opening.span(ast);
-    let source = &ast.source()[span.start as usize..span.end as usize];
-    let mut quote = 0;
-    let mut brace_depth: u32 = 0;
-    let mut index = 0;
-    while index < source.len() {
-        let byte = source[index];
-        if quote != 0 {
-            if byte == b'\\' {
-                index += 2;
-                continue;
-            }
-            if byte == quote {
-                quote = 0;
-            }
-        } else {
-            match byte {
-                b'\'' | b'"' => quote = byte,
-                b'{' => brace_depth += 1,
-                b'}' => brace_depth = brace_depth.saturating_sub(1),
-                b'\n' | b'\r' if brace_depth == 0 => return false,
-                _ => {}
-            }
-        }
-        index += 1;
-    }
-    true
-}
-
 pub(crate) fn decorator_omit_newline_after(ast: &Ast<'_>, decorator: Decorator) -> bool {
     let source = ast.source();
     let mut index = decorator.span(ast).end as usize;
