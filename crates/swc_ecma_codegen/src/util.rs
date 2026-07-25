@@ -306,27 +306,6 @@ pub(crate) fn decorator_expression_needs_parentheses(ast: &Ast<'_>, mut expressi
     }
 }
 
-pub(crate) fn member_object_was_parenthesized(ast: &Ast<'_>, member: MemberExpression) -> bool {
-    let source = ast.source();
-    let mut index = member.object(ast).span(ast).start as usize;
-    loop {
-        while index > 0 && source[index - 1].is_ascii_whitespace() {
-            index -= 1;
-        }
-        if index >= 2 && &source[index - 2..index] == b"*/" {
-            let Some(start) = source[..index - 2]
-                .windows(2)
-                .rposition(|window| window == b"/*")
-            else {
-                return false;
-            };
-            index = start;
-            continue;
-        }
-        return index > 0 && source[index - 1] == b'(';
-    }
-}
-
 pub(crate) fn conditional_in_was_reassociated(
     ast: &Ast<'_>,
     binary: BinaryExpression,

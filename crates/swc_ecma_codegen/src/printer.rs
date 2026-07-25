@@ -8,10 +8,10 @@ use crate::util::{
     AstAdapterState, Level, OperatorCode, assignment_operator, binary_operator_code,
     conditional_in_was_reassociated, decorator_expression_needs_parentheses,
     decorator_omit_newline_after, import_declaration_has_empty_clause, is_identifier,
-    is_identifier_continue_byte, is_identifier_es5_and_esnext, is_legal_comment,
-    member_object_was_parenthesized, module_name_bytes, next_code_point, next_level,
-    parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
-    token_offset_after_decorators, unary_operator, unary_operator_code, update_operator_code,
+    is_identifier_continue_byte, is_identifier_es5_and_esnext, is_legal_comment, module_name_bytes,
+    next_code_point, next_level, parse_numeric_literal, push_code_point_escape, push_u16_escape,
+    quote_into, token_offset_after_decorators, unary_operator, unary_operator_code,
+    update_operator_code,
 };
 
 use crate::{
@@ -1563,7 +1563,11 @@ impl<'a> Printer<'a> {
     }
 
     fn print_expr(&mut self, expr: Expr, level: Level) {
+        let is_at_stmt_start = self.js.len() == self.stmt_start;
         self.print_comments_before(expr.span(self.ast).start, false, true);
+        if is_at_stmt_start {
+            self.stmt_start = self.js.len();
+        }
         match self.ast.expr_data(expr) {
             ExprData::IdentifierReference(e) => {
                 let name = self.ast.string(e.name(self.ast));
@@ -1995,14 +1999,15 @@ impl<'a> Printer<'a> {
 
     fn print_member(&mut self, e: MemberExpression) {
         let object = e.object(self.ast);
-        let wrap_object = member_object_was_parenthesized(self.ast, e)
+        // `let[0]` is ambiguous at the start of a statement because it can
+        // begin a lexical declaration. A static member such as `let.foo`
+        // doesn't have this ambiguity.
+        let wrap_object = e.computed(self.ast)
             && matches!(
                 self.ast.expr_data(object),
                 ExprData::IdentifierReference(identifier)
                     if self.ast.string(identifier.name(self.ast)) == b"let"
-            )
-            || member_object_was_parenthesized(self.ast, e)
-                && matches!(self.ast.expr_data(object), ExprData::ObjectExpression(_));
+            );
         if wrap_object {
             self.print("(");
         }
