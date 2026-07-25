@@ -6,14 +6,13 @@ use swc_next_ecma_ast::*;
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator};
 use crate::util::{
     AstAdapterState, Level, OperatorCode, assignment_operator, binary_operator_code,
-    binding_pattern_identifier_name, can_omit_arrow_parens, conditional_in_was_reassociated,
-    decorator_expression_needs_parentheses, decorator_omit_newline_after,
-    export_default_expr_was_parenthesized, format_float, import_declaration_has_empty_clause,
-    is_identifier, is_identifier_continue_byte, is_identifier_es5_and_esnext,
-    is_jsx_tag_single_line, is_legal_comment, member_object_was_parenthesized, module_name_bytes,
-    next_code_point, next_level, parse_numeric_literal, push_code_point_escape, push_u16_escape,
-    quote_into, token_offset_after_decorators, unary_operator, unary_operator_code,
-    update_operator_code,
+    can_omit_arrow_parens, conditional_in_was_reassociated, decorator_expression_needs_parentheses,
+    decorator_omit_newline_after, export_default_expr_was_parenthesized, format_float,
+    import_declaration_has_empty_clause, is_identifier, is_identifier_continue_byte,
+    is_identifier_es5_and_esnext, is_jsx_tag_single_line, is_legal_comment,
+    member_object_was_parenthesized, module_name_bytes, next_code_point, next_level,
+    parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
+    token_offset_after_decorators, unary_operator, unary_operator_code, update_operator_code,
 };
 
 use crate::{
@@ -1444,7 +1443,7 @@ impl<'a> Printer<'a> {
             let can_shorthand = !prop.computed(self.ast)
                 && match self.ast.property_key_data(prop.key(self.ast)) {
                     PropertyKeyData::IdentifierName(key) => {
-                        binding_pattern_identifier_name(self.ast, value)
+                        self.binding_pattern_identifier_name(value)
                             == Some(self.ast.string(key.name(self.ast)))
                     }
                     _ => false,
@@ -4255,6 +4254,25 @@ impl<'a> Printer<'a> {
             }
             JsxChildData::JsxElement(e) => self.print_jsx_element(e),
             JsxChildData::JsxFragment(e) => self.print_jsx_fragment(e),
+        }
+    }
+}
+
+impl Printer<'_> {
+    fn binding_pattern_identifier_name(&self, binding: BindingPattern) -> Option<&[u8]> {
+        match self.ast.binding_pattern_data(binding) {
+            BindingPatternData::BindingIdentifier(identifier) => {
+                Some(self.ast.string(identifier.name(self.ast)))
+            }
+            BindingPatternData::SimpleAssignmentTarget(target) => {
+                match self.ast.simple_assignment_target_data(target) {
+                    SimpleAssignmentTargetData::IdentifierReference(identifier) => {
+                        Some(self.ast.string(identifier.name(self.ast)))
+                    }
+                    _ => None,
+                }
+            }
+            _ => None,
         }
     }
 }

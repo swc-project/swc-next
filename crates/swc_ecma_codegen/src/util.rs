@@ -346,24 +346,6 @@ pub(crate) fn export_default_expr_was_parenthesized(
         == Some(&b'(')
 }
 
-pub(crate) fn binding_pattern_identifier_name<'a>(
-    ast: &'a Ast<'a>,
-    binding: BindingPattern,
-) -> Option<&'a [u8]> {
-    match ast.binding_pattern_data(binding) {
-        BindingPatternData::BindingIdentifier(identifier) => Some(ast.string(identifier.name(ast))),
-        BindingPatternData::SimpleAssignmentTarget(target) => {
-            match ast.simple_assignment_target_data(target) {
-                SimpleAssignmentTargetData::IdentifierReference(identifier) => {
-                    Some(ast.string(identifier.name(ast)))
-                }
-                _ => None,
-            }
-        }
-        _ => None,
-    }
-}
-
 pub(crate) fn decorator_omit_newline_after(ast: &Ast<'_>, decorator: Decorator) -> bool {
     let source = ast.source();
     let mut index = decorator.span(ast).end as usize;
