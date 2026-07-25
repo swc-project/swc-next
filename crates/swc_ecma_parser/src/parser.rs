@@ -10997,6 +10997,10 @@ impl<'parser, 'a> Parser<'parser, 'a> {
     }
 
     fn validate_identifier(&mut self, token: Token, as_what: &str) {
+        if token.tag == TokenTag::Identifier {
+            return;
+        }
+
         if !token.tag.is_identifier_like() {
             self.report_expected(
                 token.span,
