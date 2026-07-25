@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fs};
+use std::{collections::HashSet, fs, process::ExitCode};
 
 use pico_args::Arguments;
 use rayon::ThreadPoolBuilder;
@@ -15,7 +15,7 @@ pub struct AppArgs {
     pub runners: HashSet<String>,
 }
 
-pub fn main() {
+pub fn main() -> ExitCode {
     // Initialize args
     let mut args = Arguments::from_env();
     let args = AppArgs {
@@ -35,21 +35,35 @@ pub fn main() {
             .unwrap();
     }
 
-    update_snapshot::<ParserRunner, Test262Case>(&args);
-    update_snapshot::<ParserRunner, TypeScriptCase>(&args);
-    update_snapshot::<ParserRunner, BabelCase>(&args);
-    update_snapshot::<CodegenRunner, Test262Case>(&args);
-    update_snapshot::<CodegenRunner, TypeScriptCase>(&args);
-    update_snapshot::<CodegenRunner, BabelCase>(&args);
+    let panicked = [
+        update_snapshot::<ParserRunner, Test262Case>(&args),
+        update_snapshot::<ParserRunner, TypeScriptCase>(&args),
+        update_snapshot::<ParserRunner, BabelCase>(&args),
+        update_snapshot::<CodegenRunner, Test262Case>(&args),
+        update_snapshot::<CodegenRunner, TypeScriptCase>(&args),
+        update_snapshot::<CodegenRunner, BabelCase>(&args),
+    ]
+    .into_iter()
+    .any(|panicked| panicked);
+
+    if panicked {
+        eprintln!("Conformance run contained one or more panics");
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    }
 }
 
-fn update_snapshot<R: Runner, C: Case>(args: &AppArgs) {
+fn update_snapshot<R: Runner, C: Case>(args: &AppArgs) -> bool {
     if !args.runners.is_empty() && !args.runners.contains(R::NAME) {
-        return;
+        return false;
     }
 
     let cases = filter(args, C::read());
     let results = R::run(&cases, args.debug);
+    let panicked = results
+        .iter()
+        .any(|result| matches!(result, TestResult::Panic { .. }));
     let snapshot = to_snapshot(R::NAME, C::NAME, &results);
     let snapshot_path =
         crate_root()
@@ -57,6 +71,7 @@ fn update_snapshot<R: Runner, C: Case>(args: &AppArgs) {
             .join(format!("{}_{}.snap", R::NAME, C::NAME));
     fs::write(&snapshot_path, snapshot).unwrap();
     println!("Updated {}", snapshot_path.display());
+    panicked
 }
 
 fn to_snapshot(runner: &str, cases: &str, results: &[TestResult]) -> String {
