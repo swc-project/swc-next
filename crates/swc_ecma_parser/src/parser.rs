@@ -9452,16 +9452,25 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_optional_chain_element(&mut self, object: Expr, optional: bool) -> Option<Expr> {
-        match self.current_token.tag {
-            tag if tag.is_identifier_like() || tag == TokenTag::PrivateIdentifier => {
-                self.parse_member_property(object, optional)
+        let tag = self.current_token.tag;
+        if tag.is_identifier_like() || tag == TokenTag::PrivateIdentifier {
+            return self.parse_member_property(object, optional);
+        }
+
+        if self.lang.is_typescript() && is_angle_open(tag) {
+            let checkpoint = self.checkpoint();
+            let type_arguments = self.try_parse_type_arguments_in_expression()?;
+            if let Some(type_arguments) = type_arguments
+                && self.current_token.tag == TokenTag::LeftParen
+            {
+                return self.parse_call_expression(object, optional, Some(type_arguments));
             }
+            self.rewind(checkpoint);
+        }
+
+        match tag {
             TokenTag::LeftBracket => self.parse_computed_member_expression(object, optional),
             TokenTag::LeftParen => self.parse_call_expression(object, optional, None),
-            TokenTag::LessThan | TokenTag::LeftShift if self.lang.is_typescript() => {
-                let type_arguments = self.try_parse_type_arguments_in_expression()??;
-                self.parse_call_expression(object, optional, Some(type_arguments))
-            }
             TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => {
                 self.report(
                     self.current_token.span,

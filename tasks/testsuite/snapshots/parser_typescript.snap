@@ -1,8 +1,8 @@
 parser * typescript
 ========================
-Passed: 23246/25471 (91.26%)
+Passed: 23247/25471 (91.27%)
 Failed: 2224/25471 (8.73%)
-Panicked: 1/25471 (0.00%)
+Panicked: 0/25471 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration13.ts - ClassDeclaration13.ts: expected a parse or early error, but pipeline succeeded
@@ -2227,4 +2227,3 @@ Failed: fixtures/typescript/tests/cases/projects/privacyCheck-ImportInParent/tes
 Failed: fixtures/typescript/tests/cases/projects/privacyCheck-InsideModule/test.ts - test.ts: parser: expected an import-equals declaration after 'export' at 51..91
 Failed: fixtures/typescript/tests/cases/projects/privacyCheck-InsideModule/testGlo.ts - testGlo.ts: parser: expected an import-equals declaration after 'export' at 26..66
 Failed: fixtures/typescript/tests/cases/projects/privacyCheck-SimpleReference/test.ts - test.ts: parser: expected an import-equals declaration after 'export' at 7..47
-Panic: fixtures/typescript/tests/cases/conformance/types/typeParameters/typeArgumentLists/instantiationExpressionErrors.ts
