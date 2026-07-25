@@ -1,40 +1,52 @@
-use crate::{NodeId, Span, String};
+use crate::Span;
+use crate::String;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum CommentType {
+pub enum CommentKind {
     Line,
     Block,
 }
 
-impl CommentType {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Line => "Line",
-            Self::Block => "Block",
-        }
-    }
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum CommentPosition {
+    Leading,
+    Trailing,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Comment {
-    pub comment_type: CommentType,
-    pub value: String,
     pub span: Span,
+    pub kind: CommentKind,
+    pub attached_to: u32,
+    pub position: CommentPosition,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum AttachedCommentPosition {
-    Before,
-    After,
-    Inside,
-}
+impl Comment {
+    pub fn new(span: Span, kind: CommentKind) -> Self {
+        Self {
+            span,
+            kind,
+            attached_to: 0,
+            position: CommentPosition::Trailing,
+        }
+    }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct AttachedComment {
-    pub attached_to: NodeId,
-    pub comment_type: CommentType,
-    pub position: AttachedCommentPosition,
-    pub same_line: bool,
-    pub value: String,
-    pub span: Span,
+    pub fn value(&self, source: &[u8]) -> String {
+        let start = self.span.start;
+        let head = match source[start as usize] {
+            b'<' => 4,
+            b'-' => 3,
+            _ => 2,
+        };
+        let tail = if self.kind == CommentKind::Block {
+            2
+        } else {
+            0
+        };
+
+        String {
+            start: self.span.start + head,
+            end: self.span.end - tail,
+        }
+    }
 }

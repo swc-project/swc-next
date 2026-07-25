@@ -4,7 +4,6 @@
 #![deny(unused)]
 #![allow(clippy::too_many_arguments)]
 
-mod comments;
 mod lexer;
 mod parser;
 mod token;

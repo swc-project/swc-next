@@ -73,7 +73,7 @@ struct Printer<'a> {
     options: Options,
     js: ArenaVec<'a, u8>,
     legal_comments: Vec<Comment>,
-    comments: &'a [AttachedComment],
+    comments: &'a [Comment],
     expr_visitor_stack: ArenaVec<'a, BinaryExprVisitor>,
     builder: ChunkBuilder<'a>,
     next_comment: usize,
@@ -115,11 +115,7 @@ pub fn print<'a>(
     let legal_comments = comments
         .iter()
         .filter(|comment| is_legal_comment(tree, **comment))
-        .map(|comment| Comment {
-            comment_type: comment.comment_type,
-            value: comment.value,
-            span: comment.span,
-        })
+        .copied()
         .collect();
     let mut p = Printer {
         allocator,
@@ -363,7 +359,7 @@ impl<'a> Printer<'a> {
             if !self.options.comments || (!preserve_all && !is_legal_comment(self.ast, comment)) {
                 continue;
             }
-            let value = ast_text(self.ast, comment.value);
+            let value = ast_text(self.ast, comment.value(self.ast.source()));
             let mut trim_start = 0;
             while value[trim_start..]
                 .first()
@@ -376,7 +372,7 @@ impl<'a> Printer<'a> {
                 trim_end -= 1;
             }
             let trimmed = &value[trim_start..trim_end];
-            if comment.comment_type == CommentType::Block
+            if comment.kind == CommentKind::Block
                 && matches!(
                     trimmed,
                     b"@__PURE__" | b"#__PURE__" | b"@__NO_SIDE_EFFECTS__" | b"#__NO_SIDE_EFFECTS__"
@@ -399,8 +395,8 @@ impl<'a> Printer<'a> {
             } else if self.js.last().is_some_and(|&c| !c.is_ascii_whitespace()) {
                 self.print(" ");
             }
-            match comment.comment_type {
-                CommentType::Line => {
+            match comment.kind {
+                CommentKind::Line => {
                     self.print("//");
                     self.print_comment_text(value);
                     self.print("\n");
@@ -408,7 +404,7 @@ impl<'a> Printer<'a> {
                         self.print_indent();
                     }
                 }
-                CommentType::Block => {
+                CommentKind::Block => {
                     self.print_indented_block_comment(value);
                     if statement || value.contains(&b'\n') || comment_at_stmt_start {
                         self.print_newline();

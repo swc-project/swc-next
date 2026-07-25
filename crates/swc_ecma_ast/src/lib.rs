@@ -44,7 +44,7 @@ pub struct Ast<'a> {
 
     line_starts: Vec<u32>,
 
-    attached_comments: ArenaVec<'a, AttachedComment>,
+    attached_comments: ArenaVec<'a, Comment>,
 
     /// Flattening AST nodes.
     pub(crate) nodes: NodeData<'a>,
@@ -207,13 +207,13 @@ impl<'a> Ast<'a> {
     }
 
     /// Replaces the attached-comment table used by source consumers.
-    pub fn set_attached_comments(&mut self, comments: &[AttachedComment]) {
+    pub fn set_attached_comments(&mut self, comments: &[Comment]) {
         self.attached_comments.clear();
         self.attached_comments.extend_from_slice_copy(comments);
     }
 
     /// Returns attached comments in source order.
-    pub fn comments(&self) -> &[AttachedComment] {
+    pub fn comments(&self) -> &[Comment] {
         &self.attached_comments
     }
 

@@ -1,4 +1,6 @@
-use swc_next_ecma_ast::{Comment, CommentType, SourceType, Span, String as AstString};
+use swc_next_allocator::Allocator;
+use swc_next_allocator::vec::Vec as ArenaVec;
+use swc_next_ecma_ast::{Comment, CommentKind, CommentPosition, SourceType, Span};
 
 use super::token::{Token, TokenFlag, TokenTag, flag_mask};
 use super::unicode_id::{can_continue_id, can_start_id};
@@ -46,9 +48,23 @@ pub enum LexerMode {
     JsxTag,
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct LexerState {
     pub token_flags: u8,
+    processed_comments: usize,
+    saw_newline: bool,
+    previous_token_tag: Option<TokenTag>,
+}
+
+impl Default for LexerState {
+    fn default() -> Self {
+        Self {
+            token_flags: 0,
+            processed_comments: 0,
+            saw_newline: true,
+            previous_token_tag: None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -78,10 +94,10 @@ enum ConsumeUnicodeContext {
 }
 
 #[derive(Clone, Debug)]
-pub struct Lexer<'a> {
-    pub comments: Vec<Comment>,
+pub struct Lexer<'allocator, 'source> {
+    pub comments: ArenaVec<'allocator, Comment>,
     pub collect_comments: bool,
-    pub source: &'a [u8],
+    pub source: &'source [u8],
     pub cursor: u32,
     pub source_type: SourceType,
     pub hashbang: Option<Hashbang>,
@@ -89,11 +105,16 @@ pub struct Lexer<'a> {
     pub mode: LexerMode,
 }
 
-impl<'a> Lexer<'a> {
-    pub fn init(source: &'a [u8], source_type: SourceType, collect_comments: bool) -> Self {
+impl<'allocator, 'source> Lexer<'allocator, 'source> {
+    pub fn init(
+        allocator: &'allocator Allocator,
+        source: &'source [u8],
+        source_type: SourceType,
+        collect_comments: bool,
+    ) -> Self {
         debug_assert!(u32::try_from(source.len()).is_ok());
         let mut lexer = Self {
-            comments: Vec::new(),
+            comments: ArenaVec::new_in(allocator),
             collect_comments,
             source,
             cursor: 0,
@@ -125,6 +146,12 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn next_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
+        self.read_next_token(target)?;
+        self.handle_token(*target);
+        Ok(())
+    }
+
+    fn read_next_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
         debug_assert!((self.cursor as usize) <= self.source.len());
         self.clear_token_flags();
         self.skip_ws_and_comments()?;
@@ -167,6 +194,25 @@ impl<'a> Lexer<'a> {
             _ => self.scan_identifier_or_keyword()?,
         };
         Ok(())
+    }
+
+    #[inline]
+    pub(crate) fn handle_token(&mut self, token: Token) {
+        let len = self.comments.len();
+        if self.state.processed_comments < len {
+            self.attach_pending_leading_comments(token.span.start, len);
+        }
+        self.state.previous_token_tag = Some(token.tag);
+        self.state.saw_newline = false;
+    }
+
+    #[cold]
+    fn attach_pending_leading_comments(&mut self, attached_to: u32, len: usize) {
+        for comment in &mut self.comments[self.state.processed_comments..len] {
+            comment.position = CommentPosition::Leading;
+            comment.attached_to = attached_to;
+        }
+        self.state.processed_comments = len;
     }
 
     fn scan_simple_punctuation(&mut self) -> Token {
@@ -1025,6 +1071,7 @@ impl<'a> Lexer<'a> {
                 1 => pos += 1,
                 2 => {
                     self.set_token_flag(TokenFlag::LineTerminatorBefore);
+                    self.handle_newline();
                     can_be_html_close_comment = true;
                     pos += 1;
                 }
@@ -1072,6 +1119,7 @@ impl<'a> Lexer<'a> {
                     let us_len = unicode_separator_len(src, pos) as usize;
                     if us_len > 0 {
                         self.set_token_flag(TokenFlag::LineTerminatorBefore);
+                        self.handle_newline();
                         can_be_html_close_comment = true;
                         pos += us_len;
                         continue;
@@ -1093,9 +1141,34 @@ impl<'a> Lexer<'a> {
         Ok(())
     }
 
+    fn handle_newline(&mut self) {
+        let len = self.comments.len();
+        if self.state.processed_comments < len && !self.state.saw_newline {
+            self.mark_pending_comments_as_trailing(len);
+        }
+        self.state.saw_newline = true;
+    }
+
+    fn should_be_treated_as_trailing_comment(&self) -> bool {
+        !self.state.saw_newline
+            && !matches!(
+                self.state.previous_token_tag,
+                Some(TokenTag::Assign | TokenTag::LeftParen | TokenTag::Colon)
+            )
+    }
+
+    #[cold]
+    fn mark_pending_comments_as_trailing(&mut self, len: usize) {
+        for comment in &mut self.comments[self.state.processed_comments..len] {
+            comment.position = swc_next_ecma_ast::CommentPosition::Trailing;
+            comment.attached_to = 0;
+        }
+        self.state.processed_comments = len;
+    }
+
     fn record_comment(
         &mut self,
-        comment_type: CommentType,
+        kind: CommentKind,
         start: u32,
         end: u32,
     ) -> Result<(), LexicalError> {
@@ -1104,24 +1177,14 @@ impl<'a> Lexer<'a> {
         if !self.collect_comments {
             return Ok(());
         }
-        let head = match self.source[start as usize] {
-            b'<' => 4,
-            b'-' => 3,
-            _ => 2,
-        };
-        let tail = if comment_type == CommentType::Block {
-            2
-        } else {
-            0
-        };
-        self.comments.push(Comment {
-            comment_type,
-            value: AstString {
-                start: start + head,
-                end: end - tail,
-            },
-            span: Span { start, end },
-        });
+        self.comments
+            .push(Comment::new(Span::new(start, end), kind));
+        if kind == CommentKind::Line {
+            if self.should_be_treated_as_trailing_comment() {
+                self.mark_pending_comments_as_trailing(self.comments.len());
+            }
+            self.state.saw_newline = true;
+        }
         Ok(())
     }
 
@@ -1143,7 +1206,7 @@ impl<'a> Lexer<'a> {
             pos += 1;
         }
         self.cursor = pos as u32;
-        self.record_comment(CommentType::Line, start, pos as u32)
+        self.record_comment(CommentKind::Line, start, pos as u32)
     }
 
     fn scan_block_comment(&mut self) -> Result<(), LexicalError> {
@@ -1158,7 +1221,7 @@ impl<'a> Lexer<'a> {
                 b'*' if pos + 1 < src.len() && src[pos + 1] == b'/' => {
                     pos += 2;
                     self.cursor = pos as u32;
-                    return self.record_comment(CommentType::Block, start, pos as u32);
+                    return self.record_comment(CommentKind::Block, start, pos as u32);
                 }
                 b'*' => pos += 1,
                 b'\n' | b'\r' => {
@@ -1192,14 +1255,14 @@ impl<'a> Lexer<'a> {
             let c = self.source[self.cursor as usize];
             if c == b'-' && self.peek(1) == b'-' && self.peek(2) == b'>' {
                 self.cursor += 3;
-                return self.record_comment(CommentType::Line, start, self.cursor);
+                return self.record_comment(CommentKind::Line, start, self.cursor);
             }
             if self.is_line_terminator(c) {
                 break;
             }
             self.cursor += 1;
         }
-        self.record_comment(CommentType::Line, start, self.cursor)
+        self.record_comment(CommentKind::Line, start, self.cursor)
     }
 
     fn scan_html_close_comment(&mut self) -> Result<(), LexicalError> {
@@ -1216,7 +1279,7 @@ impl<'a> Lexer<'a> {
             }
             self.cursor += 1;
         }
-        self.record_comment(CommentType::Line, start, self.cursor)
+        self.record_comment(CommentKind::Line, start, self.cursor)
     }
 
     pub fn create_token(&mut self, tag: TokenTag, start: u32, end: u32) -> Token {

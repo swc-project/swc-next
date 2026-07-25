@@ -810,8 +810,8 @@ pub(crate) fn next_code_point(bytes: &[u8], i: usize) -> (u32, usize) {
     }
 }
 
-pub(crate) fn is_legal_comment(ast: &Ast<'_>, comment: AttachedComment) -> bool {
-    let value = ast.string(comment.value);
+pub(crate) fn is_legal_comment(ast: &Ast<'_>, comment: Comment) -> bool {
+    let value = ast.string(comment.value(ast.source()));
     ast.source()
         .get(comment.span.start as usize..comment.span.start as usize + 3)
         .is_some_and(|prefix| prefix == b"/*!" || prefix == b"//!")

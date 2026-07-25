@@ -24,12 +24,6 @@ pub enum CommentMode {
     Attached,
 }
 
-impl CommentMode {
-    pub fn collects(self) -> bool {
-        self == Self::Attached
-    }
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Options {
     /// Determines how the source is parsed and evaluated.
@@ -512,7 +506,7 @@ pub struct Parser<'parser, 'allocator, 'source> {
     pub preserve_parens: bool,
     pub allow_return_outside_function: bool,
     pub comment_mode: CommentMode,
-    pub lexer: Lexer<'source>,
+    pub lexer: Lexer<'allocator, 'source>,
     pub diagnostics: Vec<Diagnostic<'static>>,
     pub current_token: Token,
     /// End offset of the most recently consumed token.
@@ -608,7 +602,12 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             "Ast and Parser must be initialized with the same source"
         );
         ast.set_source_metadata(options.source_type, options.lang);
-        let lexer = Lexer::init(source, options.source_type, options.comments.collects());
+        let lexer = Lexer::init(
+            ast.allocator(),
+            source,
+            options.source_type,
+            options.comments == CommentMode::Attached,
+        );
         Self {
             ast,
             source,
@@ -658,9 +657,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             hashbang,
         );
         build_line_starts(self.ast, self.source);
-
         if self.comment_mode == CommentMode::Attached {
-            crate::comments::attach(self.ast, program, &self.lexer.comments);
+            self.ast.set_attached_comments(&self.lexer.comments);
+        } else {
+            self.ast.set_attached_comments(&[]);
         }
 
         if !self.preserve_parens {
@@ -5564,8 +5564,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 let element = self.add_template_element(continuation, tail, false);
                 self.scratch_a.append(element);
                 let end = continuation.span.end;
-                self.current_token = continuation;
-                self.advance()?;
+                self.advance_with_rescanned_token(continuation)?;
                 if tail {
                     break end;
                 }
@@ -7295,8 +7294,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 let element = self.add_template_element(continuation, tail, tagged);
                 self.scratch_a.append(element);
                 let end = continuation.span.end;
-                self.current_token = continuation;
-                self.advance()?;
+                self.advance_with_rescanned_token(continuation)?;
                 if tail {
                     break end;
                 }
@@ -9942,8 +9940,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                     let text = self.ast.jsx_child_jsx_text(text.span, value);
                     self.scratch_b.append(text);
                 }
-                self.current_token = text;
-                self.advance()?;
+                self.advance_with_rescanned_token(text)?;
                 match self.current_token.tag {
                     TokenTag::LessThan => {
                         if self.peek_ahead()?.tag == TokenTag::Slash {
@@ -10963,6 +10960,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     /// Use this after lexer rescan operations for JSX text, template
     /// continuations, and similar context-sensitive tokens.
     pub fn advance_with_rescanned_token(&mut self, token: Token) -> Option<()> {
+        self.lexer.handle_token(token);
         self.current_token = token;
         self.advance()
     }
