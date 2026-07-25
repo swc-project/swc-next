@@ -7,7 +7,7 @@ use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator};
 use crate::util::{
     AstAdapterState, Level, OperatorCode, assignment_operator, binary_operator_code,
     conditional_in_was_reassociated, decorator_expression_needs_parentheses,
-    decorator_omit_newline_after, format_float, import_declaration_has_empty_clause, is_identifier,
+    decorator_omit_newline_after, import_declaration_has_empty_clause, is_identifier,
     is_identifier_continue_byte, is_identifier_es5_and_esnext, is_legal_comment,
     member_object_was_parenthesized, module_name_bytes, next_code_point, next_level,
     parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
@@ -2898,7 +2898,7 @@ impl<'a> Printer<'a> {
 
         // Format into a mutable byte buffer so subsequent shortening can
         // happen in place.
-        let mut result = format_float(abs_value);
+        let mut result = abs_value.to_string().into_bytes();
 
         // Simplify exponents: "e+05" becomes "e5" and "e-05" becomes "e-5".
         if let Some(e) = result.iter().rposition(|&byte| byte == b'e') {

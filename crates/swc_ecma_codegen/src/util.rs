@@ -368,10 +368,6 @@ pub(crate) fn parse_numeric_literal(raw: &[u8]) -> Option<f64> {
     text.parse().ok()
 }
 
-pub(crate) fn format_float(value: f64) -> Vec<u8> {
-    value.to_string().into_bytes()
-}
-
 pub(crate) fn quote_into(out: &mut ArenaVec<'_, u8>, value: &[u8], quote: u8, ascii_only: bool) {
     out.push(quote);
     let mut i = 0;
