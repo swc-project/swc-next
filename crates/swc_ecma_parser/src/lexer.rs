@@ -1292,28 +1292,47 @@ impl<'allocator, 'source> Lexer<'allocator, 'source> {
 }
 
 const IDENTIFIER_BATCH_SIZE: usize = 32;
+const IDENTIFIER_CONTINUE: u8 = 1 << 3;
+const WS_CLASS_MASK: u8 = IDENTIFIER_CONTINUE - 1;
 
-const NOT_ASCII_IDENTIFIER_CONTINUE: [bool; 256] = {
-    let mut table = [true; 256];
+#[repr(align(128))]
+struct ByteClass([u8; 256]);
+
+static BYTE_CLASS: ByteClass = ByteClass({
+    let mut table = [0; 256];
     let mut byte = b'0' as usize;
     while byte <= b'9' as usize {
-        table[byte] = false;
+        table[byte] |= IDENTIFIER_CONTINUE;
         byte += 1;
     }
     byte = b'A' as usize;
     while byte <= b'Z' as usize {
-        table[byte] = false;
+        table[byte] |= IDENTIFIER_CONTINUE;
         byte += 1;
     }
     byte = b'a' as usize;
     while byte <= b'z' as usize {
-        table[byte] = false;
+        table[byte] |= IDENTIFIER_CONTINUE;
         byte += 1;
     }
-    table[b'_' as usize] = false;
-    table[b'$' as usize] = false;
+    table[b'_' as usize] |= IDENTIFIER_CONTINUE;
+    table[b'$' as usize] |= IDENTIFIER_CONTINUE;
+    table[b' ' as usize] = 1;
+    table[b'\t' as usize] = 1;
+    table[0x0B] = 1;
+    table[0x0C] = 1;
+    table[b'\n' as usize] = 2;
+    table[b'\r' as usize] = 2;
+    table[b'/' as usize] = 3;
+    table[b'<' as usize] = 4;
+    table[b'-' as usize] = 5;
+    byte = 0x80;
+    while byte <= 0xFF {
+        table[byte] = 6;
+        byte += 1;
+    }
     table
-};
+});
 
 #[inline(always)]
 fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
@@ -1324,14 +1343,16 @@ fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
     'search: while source.len() - position >= IDENTIFIER_BATCH_SIZE {
         let batch = &source[position..position + IDENTIFIER_BATCH_SIZE];
         for (offset, byte) in batch.iter().enumerate() {
-            if NOT_ASCII_IDENTIFIER_CONTINUE[*byte as usize] {
+            if BYTE_CLASS.0[*byte as usize] & IDENTIFIER_CONTINUE == 0 {
                 position += offset;
                 break 'search;
             }
         }
         position += IDENTIFIER_BATCH_SIZE;
     }
-    while position < source.len() && !NOT_ASCII_IDENTIFIER_CONTINUE[source[position] as usize] {
+    while position < source.len()
+        && BYTE_CLASS.0[source[position] as usize] & IDENTIFIER_CONTINUE != 0
+    {
         position += 1;
     }
 
@@ -1345,23 +1366,16 @@ fn is_ident_start_ascii(byte: u8) -> bool {
 }
 
 fn is_ident_continue_ascii(byte: u8) -> bool {
-    is_ident_start_ascii(byte) || byte.is_ascii_digit()
+    BYTE_CLASS.0[byte as usize] & IDENTIFIER_CONTINUE != 0
 }
 
 fn is_ident_continue_jsx_ascii(byte: u8) -> bool {
     is_ident_continue_ascii(byte) || byte == b'-'
 }
 
+#[inline(always)]
 fn ws_class(byte: u8) -> u8 {
-    match byte {
-        b' ' | b'\t' | 0x0B | 0x0C => 1,
-        b'\n' | b'\r' => 2,
-        b'/' => 3,
-        b'<' => 4,
-        b'-' => 5,
-        0x80..=0xFF => 6,
-        _ => 0,
-    }
+    BYTE_CLASS.0[byte as usize] & WS_CLASS_MASK
 }
 
 fn is_surrogate_codepoint(cp: u32) -> bool {
@@ -1635,5 +1649,157 @@ fn get_keyword_type(lexeme: &[u8]) -> TokenTag {
         b"implements" => TokenTag::Implements,
         b"instanceof" => TokenTag::Instanceof,
         _ => TokenTag::Identifier,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn scalar_ws_class(byte: u8) -> u8 {
+        match byte {
+            b' ' | b'\t' | 0x0B | 0x0C => 1,
+            b'\n' | b'\r' => 2,
+            b'/' => 3,
+            b'<' => 4,
+            b'-' => 5,
+            0x80..=0xFF => 6,
+            _ => 0,
+        }
+    }
+
+    #[test]
+    fn byte_class_matches_scalar_classifiers() {
+        for value in 0..=u8::MAX {
+            assert_eq!(ws_class(value), scalar_ws_class(value), "byte {value:#04x}");
+            assert_eq!(
+                is_ident_continue_ascii(value),
+                is_ident_start_ascii(value) || value.is_ascii_digit(),
+                "byte {value:#04x}"
+            );
+        }
+    }
+
+    #[test]
+    fn identifier_scan_stops_at_every_batch_position() {
+        for len in 0..=40 {
+            for terminator in 0..=len {
+                let mut source = vec![b'a'; len];
+                if terminator < len {
+                    source[terminator] = b'.';
+                }
+                assert_eq!(
+                    scan_ascii_identifier_continue(&source, 0),
+                    terminator as u32,
+                    "len={len}, terminator={terminator}"
+                );
+            }
+        }
+
+        assert_eq!(scan_ascii_identifier_continue(b"abc\\u0064", 0), 3);
+        assert_eq!(scan_ascii_identifier_continue(b"abc\xc3\xa9", 0), 3);
+    }
+
+    #[test]
+    fn all_keywords_require_an_exact_match() {
+        let keywords: &[(&[u8], TokenTag)] = &[
+            (b"if", TokenTag::If),
+            (b"of", TokenTag::Of),
+            (b"in", TokenTag::In),
+            (b"do", TokenTag::Do),
+            (b"as", TokenTag::As),
+            (b"is", TokenTag::Is),
+            (b"any", TokenTag::Any),
+            (b"for", TokenTag::For),
+            (b"get", TokenTag::Get),
+            (b"let", TokenTag::Let),
+            (b"new", TokenTag::New),
+            (b"out", TokenTag::Out),
+            (b"set", TokenTag::Set),
+            (b"try", TokenTag::Try),
+            (b"var", TokenTag::Var),
+            (b"case", TokenTag::Case),
+            (b"this", TokenTag::This),
+            (b"else", TokenTag::Else),
+            (b"enum", TokenTag::Enum),
+            (b"void", TokenTag::Void),
+            (b"with", TokenTag::With),
+            (b"null", TokenTag::NullLiteral),
+            (b"type", TokenTag::Type),
+            (b"true", TokenTag::True),
+            (b"from", TokenTag::From),
+            (b"await", TokenTag::Await),
+            (b"async", TokenTag::Async),
+            (b"break", TokenTag::Break),
+            (b"const", TokenTag::Const),
+            (b"class", TokenTag::Class),
+            (b"catch", TokenTag::Catch),
+            (b"defer", TokenTag::Defer),
+            (b"false", TokenTag::False),
+            (b"infer", TokenTag::Infer),
+            (b"keyof", TokenTag::Keyof),
+            (b"never", TokenTag::Never),
+            (b"super", TokenTag::Super),
+            (b"throw", TokenTag::Throw),
+            (b"using", TokenTag::Using),
+            (b"while", TokenTag::While),
+            (b"yield", TokenTag::Yield),
+            (b"assert", TokenTag::Assert),
+            (b"bigint", TokenTag::Bigint),
+            (b"delete", TokenTag::Delete),
+            (b"export", TokenTag::Export),
+            (b"global", TokenTag::Global),
+            (b"import", TokenTag::Import),
+            (b"module", TokenTag::Module),
+            (b"number", TokenTag::Number),
+            (b"object", TokenTag::Object),
+            (b"public", TokenTag::Public),
+            (b"return", TokenTag::Return),
+            (b"source", TokenTag::Source),
+            (b"static", TokenTag::Static),
+            (b"string", TokenTag::String),
+            (b"switch", TokenTag::Switch),
+            (b"symbol", TokenTag::Symbol),
+            (b"typeof", TokenTag::Typeof),
+            (b"unique", TokenTag::Unique),
+            (b"boolean", TokenTag::Boolean),
+            (b"declare", TokenTag::Declare),
+            (b"default", TokenTag::Default),
+            (b"extends", TokenTag::Extends),
+            (b"finally", TokenTag::Finally),
+            (b"package", TokenTag::Package),
+            (b"private", TokenTag::Private),
+            (b"require", TokenTag::Require),
+            (b"unknown", TokenTag::Unknown),
+            (b"abstract", TokenTag::Abstract),
+            (b"continue", TokenTag::Continue),
+            (b"debugger", TokenTag::Debugger),
+            (b"function", TokenTag::Function),
+            (b"readonly", TokenTag::Readonly),
+            (b"satisfies", TokenTag::Satisfies),
+            (b"undefined", TokenTag::Undefined),
+            (b"accessor", TokenTag::Accessor),
+            (b"interface", TokenTag::Interface),
+            (b"namespace", TokenTag::Namespace),
+            (b"protected", TokenTag::Protected),
+            (b"asserts", TokenTag::Asserts),
+            (b"intrinsic", TokenTag::Intrinsic),
+            (b"override", TokenTag::Override),
+            (b"constructor", TokenTag::Constructor),
+            (b"implements", TokenTag::Implements),
+            (b"instanceof", TokenTag::Instanceof),
+        ];
+
+        assert_eq!(keywords.len(), 85);
+        for &(word, tag) in keywords {
+            assert_eq!(get_keyword_type(word), tag, "{word:?}");
+            let mut near_miss = word.to_vec();
+            near_miss.push(b'_');
+            assert_eq!(
+                get_keyword_type(&near_miss),
+                TokenTag::Identifier,
+                "{near_miss:?}"
+            );
+        }
     }
 }
