@@ -1,7 +1,7 @@
 codegen * typescript
 ========================
-Passed: 20448/22023 (92.85%)
-Failed: 1575/22023 (7.15%)
+Passed: 20452/22023 (92.87%)
+Failed: 1571/22023 (7.13%)
 Panicked: 0/22023 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/APISample_jsdoc.ts - APISample_jsdoc.ts: second parse: Expected '=' in type alias declaration, but found 'Annotations' at 1532..1543
 Failed: fixtures/typescript/tests/cases/compiler/DeclarationErrorsNoEmitOnError.ts - DeclarationErrorsNoEmitOnError.ts: second parse: Expected '=' in type alias declaration, but found 'I' at 49..50
@@ -909,7 +909,6 @@ Failed: fixtures/typescript/tests/cases/compiler/reducibleIndexedAccessTypes.ts 
 Failed: fixtures/typescript/tests/cases/compiler/reexportNameAliasedAndHoisted.ts - gridview.ts: second parse: Expected '=' in type alias declaration, but found 'Sizing' at 17..23
 Failed: fixtures/typescript/tests/cases/compiler/reexportedMissingAlias.ts - second.d.ts: first parse: expected an import-equals declaration after 'export' at 23..60
 Failed: fixtures/typescript/tests/cases/compiler/referenceSatisfiesExpression.ts - referenceSatisfiesExpression.ts: second parse: Expected a semicolon or an implicit semicolon after a statement, but found '++' at 74..76
-Failed: fixtures/typescript/tests/cases/compiler/regExpWithSlashInCharClass.ts - regExpWithSlashInCharClass.ts: codegen output changed after reparse at byte 89 (first: 147 bytes, second: 159 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/reservedNameOnModuleImport.ts - reservedNameOnModuleImport.ts: first parse: expected an import-equals declaration after 'export' at 129..153
 Failed: fixtures/typescript/tests/cases/compiler/resolutionCandidateFromPackageJsonField2.ts - types/main.d.ts: first parse: 'const' declarations must be initialized at 13..14
 Failed: fixtures/typescript/tests/cases/compiler/resolveNameWithNamspace.ts - ns.ts: second parse: Expected '=' in type alias declaration, but found 'cool' at 74..78
@@ -1349,11 +1348,8 @@ Failed: fixtures/typescript/tests/cases/conformance/jsdoc/tsNoCheckForTypescript
 Failed: fixtures/typescript/tests/cases/conformance/jsdoc/tsNoCheckForTypescriptComments1.ts - file.ts: second parse: Expected '=' in type alias declaration, but found 'Aleph' at 214..219
 Failed: fixtures/typescript/tests/cases/conformance/jsdoc/tsNoCheckForTypescriptComments2.ts - file.ts: second parse: Expected '=' in type alias declaration, but found 'Aleph' at 215..220
 Failed: fixtures/typescript/tests/cases/conformance/jsx/checkJsxChildrenProperty16.tsx - checkJsxChildrenProperty16.tsx: second parse: Expected '=' in type alias declaration, but found 'Props' at 115..120
-Failed: fixtures/typescript/tests/cases/conformance/jsx/commentEmittingInPreserveJsx1.tsx - file.tsx: codegen output changed after reparse at byte 142 (first: 488 bytes, second: 599 bytes)
-Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxAttributeResolution14.tsx - file.tsx: codegen output changed after reparse at byte 321 (first: 476 bytes, second: 506 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxLibraryManagedAttributes.tsx - tsxLibraryManagedAttributes.tsx: first parse: 'const' declarations must be initialized at 698..704
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxOpeningClosingNames.tsx - file.tsx: first parse: Expected closing tag for '<A.B.C.D>' but found '</A . B . C.D>' at 107..118
-Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxReactEmitEntities.tsx - file.tsx: codegen output changed after reparse at byte 433 (first: 583 bytes, second: 500 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxSpreadInvalidType.tsx - a.tsx: second parse: Expected '=' in type alias declaration, but found 'IntrinsicElements' at 40..57
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxStatelessFunctionComponentOverload5.tsx - file.tsx: second parse: Expected '=' in type alias declaration, but found 'ClickableProps' at 97..111
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxStatelessFunctionComponentOverload6.tsx - file.tsx: second parse: Expected '=' in type alias declaration, but found 'ClickableProps' at 141..155

@@ -1,7 +1,7 @@
 codegen * test262
 ========================
-Passed: 90369/91092 (99.21%)
-Failed: 723/91092 (0.79%)
+Passed: 90373/91092 (99.21%)
+Failed: 719/91092 (0.79%)
 Panicked: 0/91092 (0.00%)
 Failed: fixtures/test262/test/built-ins/Array/fromAsync/asyncitems-arraylike-too-long.js - sloppy: codegen output changed after reparse at byte 668 (first: 800 bytes, second: 818 bytes)
 Failed: fixtures/test262/test/built-ins/Array/fromAsync/asyncitems-arraylike-too-long.js - strict: codegen output changed after reparse at byte 682 (first: 814 bytes, second: 832 bytes)
@@ -13,10 +13,6 @@ Failed: fixtures/test262/test/built-ins/Function/prototype/toString/getter-objec
 Failed: fixtures/test262/test/built-ins/Function/prototype/toString/getter-object.js - strict: codegen output changed after reparse at byte 385 (first: 1136 bytes, second: 1204 bytes)
 Failed: fixtures/test262/test/built-ins/Function/prototype/toString/setter-object.js - sloppy: codegen output changed after reparse at byte 371 (first: 1185 bytes, second: 1259 bytes)
 Failed: fixtures/test262/test/built-ins/Function/prototype/toString/setter-object.js - strict: codegen output changed after reparse at byte 385 (first: 1199 bytes, second: 1273 bytes)
-Failed: fixtures/test262/test/built-ins/RegExp/regexp-class-chars.js - sloppy: codegen output changed after reparse at byte 863 (first: 934 bytes, second: 979 bytes)
-Failed: fixtures/test262/test/built-ins/RegExp/regexp-class-chars.js - strict: codegen output changed after reparse at byte 877 (first: 948 bytes, second: 993 bytes)
-Failed: fixtures/test262/test/built-ins/RegExp/unicode_identity_escape.js - sloppy: codegen output changed after reparse at byte 1501 (first: 2569 bytes, second: 2624 bytes)
-Failed: fixtures/test262/test/built-ins/RegExp/unicode_identity_escape.js - strict: codegen output changed after reparse at byte 1515 (first: 2583 bytes, second: 2638 bytes)
 Failed: fixtures/test262/test/built-ins/Temporal/Duration/prototype/total/precision-exact-mathematical-values-5.js - sloppy: codegen output changed after reparse at byte 2178 (first: 2851 bytes, second: 2862 bytes)
 Failed: fixtures/test262/test/built-ins/Temporal/Duration/prototype/total/precision-exact-mathematical-values-5.js - strict: codegen output changed after reparse at byte 2192 (first: 2865 bytes, second: 2876 bytes)
 Failed: fixtures/test262/test/language/comments/hashbang/line-terminator-line-separator.js - sloppy: first parse: Unexpected token '}' at 56..57
