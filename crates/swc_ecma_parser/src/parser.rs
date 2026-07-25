@@ -37,10 +37,6 @@ pub struct Options {
     /// Represents parenthesized expressions as [`ParenthesizedExpression`]
     /// nodes when true. Otherwise only the inner expression is kept.
     pub preserve_parens: bool,
-    /// Allows `return` statements outside functions when true.
-    pub allow_return_outside_function: bool,
-    /// Reports semantic early errors during parsing when true.
-    pub semantic_errors: bool,
     /// Determines whether comments are attached to AST nodes.
     pub comments: CommentMode,
 }
@@ -51,8 +47,6 @@ impl Default for Options {
             source_type: SourceType::Module,
             lang: Lang::Js,
             preserve_parens: true,
-            allow_return_outside_function: false,
-            semantic_errors: false,
             comments: CommentMode::Attached,
         }
     }
@@ -645,7 +639,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             source_type: options.source_type,
             lang: options.lang,
             preserve_parens: options.preserve_parens,
-            allow_return_outside_function: options.allow_return_outside_function,
+            allow_return_outside_function: false,
             comment_mode: options.comments,
             lexer,
             diagnostics: Vec::new(),
