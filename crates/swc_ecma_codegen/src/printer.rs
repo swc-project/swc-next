@@ -6,7 +6,7 @@ use swc_next_ecma_ast::*;
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator};
 use crate::util::{
     AstAdapterState, Level, OperatorCode, assignment_operator, binary_operator_code,
-    can_omit_arrow_parens, conditional_in_was_reassociated, decorator_expression_needs_parentheses,
+    conditional_in_was_reassociated, decorator_expression_needs_parentheses,
     decorator_omit_newline_after, format_float, import_declaration_has_empty_clause, is_identifier,
     is_identifier_continue_byte, is_identifier_es5_and_esnext, is_legal_comment,
     member_object_was_parenthesized, module_name_bytes, next_code_point, next_level,
@@ -2428,7 +2428,7 @@ impl<'a> Printer<'a> {
         }
         let params = e.params(self.ast);
         let can_omit = self.options.minify
-            && can_omit_arrow_parens(self.ast, params)
+            && self.can_omit_arrow_parens(params)
             && e.type_parameters(self.ast).is_none()
             && e.return_type(self.ast).is_none();
         if can_omit {
@@ -4228,5 +4228,29 @@ impl Printer<'_> {
             }
             _ => None,
         }
+    }
+
+    fn can_omit_arrow_parens(&self, params: FormalParameters) -> bool {
+        let ast = self.ast;
+        if params.items(ast).len() != 1 || params.rest(ast).is_some() {
+            return false;
+        }
+        let item = params.items(ast).get_node(ast, 0).unwrap();
+        let FormalParameterItemData::FormalParameter(param) = ast.formal_parameter_item_data(item)
+        else {
+            return false;
+        };
+        let FormalParameterPatternData::BindingPattern(pattern) =
+            ast.formal_parameter_pattern_data(param.pattern(ast))
+        else {
+            return false;
+        };
+        let BindingPatternData::BindingIdentifier(identifier) = ast.binding_pattern_data(pattern)
+        else {
+            return false;
+        };
+        identifier.decorators(ast).is_empty()
+            && identifier.type_annotation(ast).is_none()
+            && !identifier.optional(ast)
     }
 }

@@ -268,29 +268,6 @@ pub(crate) fn token_offset_after_decorators(
     offset as u32
 }
 
-pub(crate) fn can_omit_arrow_parens(ast: &Ast<'_>, params: FormalParameters) -> bool {
-    if params.items(ast).len() != 1 || params.rest(ast).is_some() {
-        return false;
-    }
-    let item = params.items(ast).get_node(ast, 0).unwrap();
-    let FormalParameterItemData::FormalParameter(param) = ast.formal_parameter_item_data(item)
-    else {
-        return false;
-    };
-    let FormalParameterPatternData::BindingPattern(pattern) =
-        ast.formal_parameter_pattern_data(param.pattern(ast))
-    else {
-        return false;
-    };
-    let BindingPatternData::BindingIdentifier(identifier) = ast.binding_pattern_data(pattern)
-    else {
-        return false;
-    };
-    identifier.decorators(ast).is_empty()
-        && identifier.type_annotation(ast).is_none()
-        && !identifier.optional(ast)
-}
-
 pub(crate) fn decorator_omit_newline_after(ast: &Ast<'_>, decorator: Decorator) -> bool {
     let source = ast.source();
     let mut index = decorator.span(ast).end as usize;
