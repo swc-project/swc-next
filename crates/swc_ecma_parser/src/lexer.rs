@@ -1,3 +1,4 @@
+use memchr::{memchr, memchr3};
 use swc_next_allocator::Allocator;
 use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
@@ -313,27 +314,50 @@ impl<'a> Lexer<'a> {
         let start = self.cursor;
         self.cursor += 1;
 
-        while (self.cursor as usize) < self.source.len() {
-            let c = self.source[self.cursor as usize];
-            if c == b'\\' {
-                self.consume_escape(EscapeContext::Template)?;
-                continue;
-            }
-            if c == b'`' {
-                self.cursor += 1;
-                return Ok(self.create_token(TokenTag::NoSubstitutionTemplate, start, self.cursor));
-            }
-            if c == b'$' && self.peek(1) == b'{' {
-                self.cursor += 2;
-                return Ok(self.create_token(TokenTag::TemplateHead, start, self.cursor));
-            }
-            if c == b'\r' {
+        self.scan_template_segment(
+            start,
+            TokenTag::NoSubstitutionTemplate,
+            TokenTag::TemplateHead,
+        )
+    }
+
+    fn scan_template_segment(
+        &mut self,
+        start: u32,
+        tail_tag: TokenTag,
+        middle_tag: TokenTag,
+    ) -> Result<Token, LexicalError> {
+        loop {
+            let cursor = self.cursor as usize;
+            let source = &self.source[cursor..];
+            let special = memchr3(b'\\', b'`', b'$', source);
+            let plain_len = special.unwrap_or(source.len());
+            let has_carriage_return = !self.has_token_flag(TokenFlag::Escaped)
+                && memchr(b'\r', &source[..plain_len]).is_some();
+
+            self.cursor += plain_len as u32;
+            if has_carriage_return {
                 self.set_token_flag(TokenFlag::Escaped);
             }
-            self.cursor += 1;
-        }
 
-        Err(LexicalError::NonTerminatedTemplateLiteral)
+            let Some(_) = special else {
+                return Err(LexicalError::NonTerminatedTemplateLiteral);
+            };
+
+            match self.source[self.cursor as usize] {
+                b'\\' => self.consume_escape(EscapeContext::Template)?,
+                b'`' => {
+                    self.cursor += 1;
+                    return Ok(self.create_token(tail_tag, start, self.cursor));
+                }
+                b'$' if self.peek(1) == b'{' => {
+                    self.cursor += 2;
+                    return Ok(self.create_token(middle_tag, start, self.cursor));
+                }
+                b'$' => self.cursor += 1,
+                _ => unreachable!(),
+            }
+        }
     }
 
     fn consume_escape(&mut self, context: EscapeContext) -> Result<(), LexicalError> {
@@ -922,26 +946,7 @@ impl<'a> Lexer<'a> {
         let start = self.cursor;
         self.cursor += 1;
 
-        while (self.cursor as usize) < self.source.len() {
-            let c = self.source[self.cursor as usize];
-            if c == b'\\' {
-                self.consume_escape(EscapeContext::Template)?;
-                continue;
-            }
-            if c == b'`' {
-                self.cursor += 1;
-                return Ok(self.create_token(TokenTag::TemplateTail, start, self.cursor));
-            }
-            if c == b'$' && self.peek(1) == b'{' {
-                self.cursor += 2;
-                return Ok(self.create_token(TokenTag::TemplateMiddle, start, self.cursor));
-            }
-            if c == b'\r' {
-                self.set_token_flag(TokenFlag::Escaped);
-            }
-            self.cursor += 1;
-        }
-        Err(LexicalError::NonTerminatedTemplateLiteral)
+        self.scan_template_segment(start, TokenTag::TemplateTail, TokenTag::TemplateMiddle)
     }
 
     pub fn re_scan_greater_than(&mut self, token_start: u32) -> Token {
@@ -1633,5 +1638,63 @@ fn get_keyword_type(lexeme: &[u8]) -> TokenTag {
         b"implements" => TokenTag::Implements,
         b"instanceof" => TokenTag::Instanceof,
         _ => TokenTag::Identifier,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn next_template(source: &[u8]) -> Result<Token, LexicalError> {
+        let allocator = Allocator::new();
+        let mut lexer = Lexer::init(&allocator, source, SourceType::Module, false);
+        let mut token = Token::eof(0);
+        lexer.next_token(&mut token)?;
+        Ok(token)
+    }
+
+    #[test]
+    fn scans_template_sentinels() {
+        let token = next_template(b"`plain $ value`").unwrap();
+        assert_eq!(token.tag, TokenTag::NoSubstitutionTemplate);
+        assert_eq!(token.span, Span::new(0, 15));
+
+        let token = next_template(b"`head ${value}`").unwrap();
+        assert_eq!(token.tag, TokenTag::TemplateHead);
+        assert_eq!(token.span, Span::new(0, 8));
+
+        let token = next_template(b"`escaped \\` value`").unwrap();
+        assert_eq!(token.tag, TokenTag::NoSubstitutionTemplate);
+        assert!(token.is_escaped());
+    }
+
+    #[test]
+    fn marks_carriage_returns_for_template_normalization() {
+        let token = next_template(b"`first\r\nsecond`").unwrap();
+        assert_eq!(token.tag, TokenTag::NoSubstitutionTemplate);
+        assert!(token.is_escaped());
+    }
+
+    #[test]
+    fn scans_template_continuations() {
+        let allocator = Allocator::new();
+
+        let mut lexer = Lexer::init(&allocator, b"}middle ${value}", SourceType::Module, false);
+        let token = lexer.re_scan_template_continuation(0).unwrap();
+        assert_eq!(token.tag, TokenTag::TemplateMiddle);
+        assert_eq!(token.span, Span::new(0, 10));
+
+        let mut lexer = Lexer::init(&allocator, b"}tail`", SourceType::Module, false);
+        let token = lexer.re_scan_template_continuation(0).unwrap();
+        assert_eq!(token.tag, TokenTag::TemplateTail);
+        assert_eq!(token.span, Span::new(0, 6));
+    }
+
+    #[test]
+    fn reports_unterminated_templates() {
+        assert_eq!(
+            next_template(b"`unterminated"),
+            Err(LexicalError::NonTerminatedTemplateLiteral)
+        );
     }
 }
