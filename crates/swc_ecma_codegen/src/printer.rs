@@ -7,11 +7,10 @@ use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator};
 use crate::util::{
     AstAdapterState, Level, OperatorCode, assignment_operator, binary_operator_code,
     can_omit_arrow_parens, conditional_in_was_reassociated, decorator_expression_needs_parentheses,
-    decorator_omit_newline_after, export_default_expr_was_parenthesized, format_float,
-    import_declaration_has_empty_clause, is_identifier, is_identifier_continue_byte,
-    is_identifier_es5_and_esnext, is_jsx_tag_single_line, is_legal_comment,
-    member_object_was_parenthesized, module_name_bytes, next_code_point, next_level,
-    parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
+    decorator_omit_newline_after, format_float, import_declaration_has_empty_clause, is_identifier,
+    is_identifier_continue_byte, is_identifier_es5_and_esnext, is_jsx_tag_single_line,
+    is_legal_comment, member_object_was_parenthesized, module_name_bytes, next_code_point,
+    next_level, parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
     token_offset_after_decorators, unary_operator, unary_operator_code, update_operator_code,
 };
 
@@ -1236,6 +1235,13 @@ impl<'a> Printer<'a> {
     }
 
     fn print_function(&mut self, f: Function, declaration: bool) {
+        let is_expression = matches!(f.function_type(self.ast), FunctionType::FunctionExpression);
+        let offset = self.js.len();
+        let wrap =
+            is_expression && (offset == self.stmt_start || offset == self.export_default_start);
+        if wrap {
+            self.print("(");
+        }
         self.print_space_before_identifier();
         self.add_source_mapping(f.span(self.ast).start);
         if f.r#async(self.ast) {
@@ -1260,6 +1266,9 @@ impl<'a> Printer<'a> {
         }
         self.print_space();
         self.print_function_body(f.body(self.ast));
+        if wrap {
+            self.print(")");
+        }
     }
 
     fn print_ts_function(&mut self, f: TsFunction, declaration: bool) {
@@ -1726,26 +1735,8 @@ impl<'a> Printer<'a> {
                 self.print_expr(e.expression(self.ast), Level::Lowest);
                 self.print(")");
             }
-            ExprData::Function(e) => {
-                let wrap = self.js.len() == self.stmt_start || level >= Level::Call;
-                if wrap {
-                    self.print("(");
-                }
-                self.print_function(e, false);
-                if wrap {
-                    self.print(")");
-                }
-            }
-            ExprData::Class(e) => {
-                let wrap = self.js.len() == self.stmt_start || level >= Level::Call;
-                if wrap {
-                    self.print("(");
-                }
-                self.print_class(e, false);
-                if wrap {
-                    self.print(")");
-                }
-            }
+            ExprData::Function(e) => self.print_function(e, false),
+            ExprData::Class(e) => self.print_class(e, false),
             ExprData::ImportExpression(e) => {
                 self.add_source_mapping(expr.span(self.ast).start);
                 if e.phase(self.ast) == Some(ImportPhase::Source) {
@@ -2472,6 +2463,13 @@ impl<'a> Printer<'a> {
     }
 
     fn print_class(&mut self, c: Class, declaration: bool) {
+        let is_expression = c.class_type(self.ast) == ClassType::ClassExpression;
+        let offset = self.js.len();
+        let wrap =
+            is_expression && (offset == self.stmt_start || offset == self.export_default_start);
+        if wrap {
+            self.print("(");
+        }
         let omit_indent = if self.adapter.take_class_decorators_were_printed() {
             true
         } else {
@@ -2552,6 +2550,9 @@ impl<'a> Printer<'a> {
         self.print_indent();
         self.add_source_mapping(c.body(self.ast).span(self.ast).end.saturating_sub(1));
         self.print("}");
+        if wrap {
+            self.print(")");
+        }
     }
 
     fn print_class_element(&mut self, element: ClassElement) {
@@ -3283,46 +3284,17 @@ impl<'a> Printer<'a> {
             .export_default_declaration_kind_data(d.declaration(self.ast))
         {
             ExportDefaultDeclarationKindData::Expr(e) => {
-                let is_function_or_class = matches!(
-                    self.ast.expr_data(e),
-                    ExprData::Function(_) | ExprData::Class(_)
-                );
-                let was_parenthesized =
-                    is_function_or_class && export_default_expr_was_parenthesized(self.ast, d, e);
-                let has_leading_comments = !self.options.minify
-                    && self.comments[self.next_comment..]
-                        .iter()
-                        .take_while(|comment| comment.span.end <= e.span(self.ast).start)
-                        .any(|comment| comment.span.start >= d.span(self.ast).start);
-                if was_parenthesized && has_leading_comments {
-                    self.print("(");
-                    self.print_newline();
-                    self.indent += 1;
-                    self.print_comments_before(e.span(self.ast).start, true, true);
-                    self.print_indent();
-                    let wrap_function = matches!(self.ast.expr_data(e), ExprData::Function(_));
-                    if wrap_function {
-                        self.print("(");
+                // Flattened union lookup maps function and class nodes to `Expr`; use the
+                // node's own form to preserve declaration-style statement termination.
+                let is_declaration = match self.ast.expr_data(e) {
+                    ExprData::Function(f) => {
+                        f.function_type(self.ast) == FunctionType::FunctionDeclaration
                     }
-                    self.print_expr(e, Level::Assignment);
-                    if wrap_function {
-                        self.print(")");
-                    }
-                    self.print_newline();
-                    self.indent -= 1;
-                    self.print_indent();
-                    self.print(")");
-                    self.print_semicolon_after_statement();
-                    return;
-                }
-                if was_parenthesized {
-                    self.print("(");
-                }
+                    ExprData::Class(c) => c.class_type(self.ast) == ClassType::ClassDeclaration,
+                    _ => false,
+                };
                 self.print_expr(e, Level::Assignment);
-                if was_parenthesized {
-                    self.print(")");
-                    self.print_semicolon_after_statement();
-                } else if is_function_or_class {
+                if is_declaration {
                     self.print_newline();
                 } else {
                     self.print_semicolon_after_statement();

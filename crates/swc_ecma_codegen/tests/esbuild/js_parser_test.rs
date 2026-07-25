@@ -721,7 +721,7 @@ fn test_function() {
     );
     expect_printed(
         b"var x = function() { y() }()",
-        b"var x = (function() {\n  y();\n})();\n",
+        b"var x = function() {\n  y();\n}();\n",
     );
     // Depends on esbuild's parser-stage constant folding.
     // expect_printed(

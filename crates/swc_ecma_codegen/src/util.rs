@@ -321,31 +321,6 @@ pub(crate) fn is_jsx_tag_single_line(ast: &Ast<'_>, opening: JsxOpeningElement) 
     true
 }
 
-pub(crate) fn export_default_expr_was_parenthesized(
-    ast: &Ast<'_>,
-    declaration: ExportDefaultDeclaration,
-    expression: Expr,
-) -> bool {
-    let source = ast.source();
-    let start = declaration.span(ast).start as usize;
-    let end = expression.span(ast).start as usize;
-    if start > end {
-        return false;
-    }
-    let prefix = &source[start..end];
-    let Some(default_end) = prefix
-        .windows(b"default".len())
-        .position(|window| window == b"default")
-        .map(|index| index + b"default".len())
-    else {
-        return false;
-    };
-    prefix[default_end..]
-        .iter()
-        .find(|byte| !byte.is_ascii_whitespace())
-        == Some(&b'(')
-}
-
 pub(crate) fn decorator_omit_newline_after(ast: &Ast<'_>, decorator: Decorator) -> bool {
     let source = ast.source();
     let mut index = decorator.span(ast).end as usize;
