@@ -5,35 +5,6 @@ use unicode_id_start::{is_id_continue, is_id_start};
 
 const HEX: &[u8; 16] = b"0123456789ABCDEF";
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(u8)]
-#[allow(dead_code)] // Keep esbuild's complete precedence lattice.
-pub(crate) enum Level {
-    Lowest,
-    Comma,
-    Yield,
-    Assignment,
-    Conditional,
-    Nullish,
-    LogicalOr,
-    LogicalAnd,
-    BitwiseOr,
-    BitwiseXor,
-    BitwiseAnd,
-    Equality,
-    Compare,
-    Shift,
-    Add,
-    Multiply,
-    Exponent,
-    Prefix,
-    Postfix,
-    New,
-    Call,
-    Member,
-    Primary,
-}
-
 pub(crate) struct AstAdapterState {
     class_decorators_were_printed: bool,
 }
@@ -169,9 +140,6 @@ pub(crate) fn assignment_operator(op: AssignmentOperator) -> &'static str {
         LogicalAndAssign => "&&=",
         NullishAssign => "??=",
     }
-}
-pub(crate) fn next_level(level: Level) -> Level {
-    unsafe { std::mem::transmute((level as u8 + 1).min(Level::Primary as u8)) }
 }
 pub(crate) fn is_identifier_continue_byte(b: u8) -> bool {
     b.is_ascii_alphanumeric() || b == b'_' || b == b'$' || b >= 0x80

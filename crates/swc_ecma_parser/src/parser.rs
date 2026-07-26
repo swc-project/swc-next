@@ -12,7 +12,7 @@ use crate::{
     lexer::{
         Lexer, LexerMode, LexerState, LexicalError, lexical_error_help, lexical_error_message,
     },
-    token::{Precedence, Token, TokenTag},
+    token::{Token, TokenTag},
     util::{decode_identifier_escapes, decode_string_escapes},
 };
 
@@ -961,7 +961,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 {
                     self.context.single_statement = false;
                     let expression =
-                        self.parse_expression(Precedence::LOWEST, ParseExpressionOpts::default())?;
+                        self.parse_expression(Precedence::Lowest, ParseExpressionOpts::default())?;
                     if let ExprData::StringLiteral(string_literal) = self.ast.expr_data(expression)
                     {
                         let directive =
@@ -1257,7 +1257,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         if !self.expect(TokenTag::LeftParen, "Expected '(' after 'if'", None) {
             return None;
         }
-        let test = self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?;
+        let test = self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after if condition",
@@ -1292,7 +1292,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         if !self.expect(TokenTag::LeftParen, "Expected '(' after 'while'", None) {
             return None;
         }
-        let test = self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?;
+        let test = self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after while condition",
@@ -1327,7 +1327,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         if !self.expect(TokenTag::LeftParen, "Expected '(' after 'while'", None) {
             return None;
         }
-        let test = self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?;
+        let test = self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after while condition",
@@ -1366,7 +1366,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             ) {
             None
         } else {
-            Some(self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?)
+            Some(self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?)
         };
         let end = self.eat_semicolon(self.prev_token_end)?;
         Some(
@@ -1390,7 +1390,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 None
             };
         }
-        let argument = self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?;
+        let argument = self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
         let end = self.eat_semicolon(self.prev_token_end)?;
         Some(
             self.ast
@@ -1446,7 +1446,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         if !self.expect(TokenTag::LeftParen, "Expected '(' after 'with'", None) {
             return None;
         }
-        let object = self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?;
+        let object = self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after with expression",
@@ -1466,7 +1466,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_expression_or_labeled_statement_or_directive(&mut self) -> Option<Stmt> {
         let expression =
-            self.parse_expression(Precedence::LOWEST, ParseExpressionOpts::default())?;
+            self.parse_expression(Precedence::Lowest, ParseExpressionOpts::default())?;
         if self.ast.node_kind(expression.node_id()) == NodeKind::IdentifierReference
             && self.current_token.tag == TokenTag::Colon
         {
@@ -1478,7 +1478,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     fn parse_expression_statement(&mut self) -> Option<Stmt> {
         let start = self.current_token.span.start;
         let expression =
-            self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?;
+            self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
         self.parse_expression_statement_with_expression(start, expression)
     }
 
@@ -1633,7 +1633,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         }
         let init = if self.eat(TokenTag::Assign)? {
             let expression = self.parse_expression(
-                Precedence::ASSIGNMENT,
+                Precedence::Assignment,
                 ParseExpressionOpts {
                     respect_allow_in: true,
                     ..ParseExpressionOpts::default()
@@ -1730,7 +1730,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             return Some(left);
         }
         let right =
-            self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
+            self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
         let span = Span::new(left.span(self.ast).start, right.span(self.ast).end);
         let decorators = TypedSubRange::empty();
         Some(
@@ -2592,7 +2592,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             self.context.await_ = false;
             self.context.yield_ = false;
             let value =
-                self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default());
+                self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default());
             self.context.await_ = old_await;
             self.context.yield_ = old_yield;
             Some(value?)
@@ -3504,7 +3504,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     fn parse_ts_export_assignment(&mut self, start: u32) -> Option<Stmt> {
         self.advance()?;
         let expression =
-            self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
+            self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
         let end = self.eat_semicolon(self.prev_token_end)?;
         Some(
             self.ast
@@ -3639,7 +3639,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         } else {
             (
                 ExportDefaultDeclarationKind::Expr(
-                    self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?,
+                    self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?,
                 ),
                 true,
             )
@@ -4469,7 +4469,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let (id, computed) = self.parse_enum_member_name()?;
         let start = id.span(self.ast).start;
         let initializer = if self.eat(TokenTag::Assign)? {
-            Some(self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?)
+            Some(self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?)
         } else {
             None
         };
@@ -4493,7 +4493,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let token = self.current_token;
         if self.eat(TokenTag::LeftBracket)? {
             let expression =
-                self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
+                self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
             if !self.expect(
                 TokenTag::RightBracket,
                 "Expected ']' to close a computed enum member name",
@@ -5428,7 +5428,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             return Some(None);
         }
         let options =
-            self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
+            self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
         self.eat(TokenTag::Comma)?;
         Some(Some(options))
     }
@@ -6520,7 +6520,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let old_allow_in = self.context.in_;
         self.context.in_ = false;
         let expression = self.parse_expression(
-            Precedence::COMMA,
+            Precedence::Comma,
             ParseExpressionOpts {
                 respect_allow_in: true,
                 ..ParseExpressionOpts::default()
@@ -6584,7 +6584,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let test = if self.current_token.tag == TokenTag::Semicolon {
             None
         } else {
-            Some(self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?)
+            Some(self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?)
         };
         if !self.expect(
             TokenTag::Semicolon,
@@ -6596,7 +6596,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let update = if self.current_token.tag == TokenTag::RightParen {
             None
         } else {
-            Some(self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?)
+            Some(self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?)
         };
         if !self.expect(
             TokenTag::RightParen,
@@ -6634,7 +6634,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         }
         self.report_if_escaped_keyword(self.current_token);
         self.advance_without_escape_check()?;
-        let right = self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?;
+        let right = self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after for-in expression",
@@ -6661,7 +6661,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         self.report_if_escaped_keyword(self.current_token);
         self.advance_without_escape_check()?;
         let right =
-            self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
+            self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after for-of expression",
@@ -6727,7 +6727,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             return None;
         }
         let discriminant =
-            self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?;
+            self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after switch expression",
@@ -6777,7 +6777,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         ));
         let case_start = self.current_token.span.start;
         let test = if self.eat(TokenTag::Case)? {
-            Some(self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?)
+            Some(self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?)
         } else {
             self.advance()?;
             None
@@ -6898,7 +6898,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         )
     }
 
-    fn parse_expression(&mut self, minimum: u8, opts: ParseExpressionOpts) -> Option<Expr> {
+    fn parse_expression(&mut self, minimum: Precedence, opts: ParseExpressionOpts) -> Option<Expr> {
         let mut left = self.parse_prefix(opts.in_cover, minimum)?;
         let is_ts = self.lang.is_typescript();
 
@@ -6906,14 +6906,14 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             let token = self.current_token;
             if is_ts
                 && is_angle_open(token.tag)
-                && max_left_precedence(left, self.ast) >= Precedence::CALL
+                && max_left_precedence(left, self.ast) >= Precedence::Call
                 && let Some(expression) = self.parse_type_argumented_call_or_instantiation(left)?
             {
                 left = expression;
                 continue;
             }
             let precedence = self.infix_precedence(token);
-            if precedence < minimum || precedence == Precedence::LOWEST {
+            if precedence < minimum || precedence == Precedence::Lowest {
                 break;
             }
             if precedence > max_left_precedence(left, self.ast) {
@@ -6927,7 +6927,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         Some(left)
     }
 
-    fn parse_expression_in_cover(&mut self, precedence: u8) -> Option<Expr> {
+    fn parse_expression_in_cover(&mut self, precedence: Precedence) -> Option<Expr> {
         self.parse_expression(
             precedence,
             ParseExpressionOpts {
@@ -6938,26 +6938,26 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_assignment_expression_in_cover(&mut self) -> Option<Expr> {
-        self.parse_expression_in_cover(Precedence::ASSIGNMENT)
+        self.parse_expression_in_cover(Precedence::Assignment)
     }
 
-    fn infix_precedence(&self, token: Token) -> u8 {
+    fn infix_precedence(&self, token: Token) -> Precedence {
         match token.tag {
             TokenTag::Increment | TokenTag::Decrement | TokenTag::As | TokenTag::Satisfies
                 if token.has_line_terminator_before() =>
             {
-                Precedence::LOWEST
+                Precedence::Lowest
             }
             TokenTag::LogicalNot
                 if !self.lang.is_typescript() || token.has_line_terminator_before() =>
             {
-                Precedence::LOWEST
+                Precedence::Lowest
             }
             _ => token.tag.precedence(),
         }
     }
 
-    fn parse_infix(&mut self, precedence: u8, left: Expr) -> Option<Expr> {
+    fn parse_infix(&mut self, precedence: Precedence, left: Expr) -> Option<Expr> {
         let token = self.current_token;
 
         match token.tag {
@@ -6992,7 +6992,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             TokenTag::Increment | TokenTag::Decrement => {
                 self.parse_update_expression(false, Some(left))
             }
-            TokenTag::Question => self.parse_conditional_expression(precedence, left),
+            TokenTag::Question => self.parse_conditional_expression(left),
             TokenTag::Comma => self.parse_sequence_expression(precedence, left),
             TokenTag::Dot => self.parse_static_member_expression(left, false),
             TokenTag::LeftBracket => self.parse_computed_member_expression(left, false),
@@ -7021,7 +7021,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         }
     }
 
-    fn parse_prefix(&mut self, in_cover: bool, minimum: u8) -> Option<Expr> {
+    fn parse_prefix(&mut self, in_cover: bool, minimum: Precedence) -> Option<Expr> {
         let tag = self.current_token.tag;
 
         if tag == TokenTag::Identifier {
@@ -7058,7 +7058,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             return self.parse_await_expression(start);
         }
 
-        if tag == TokenTag::Yield && self.context.yield_ && minimum < Precedence::ADDITIVE {
+        if tag == TokenTag::Yield && self.context.yield_ && minimum < Precedence::Add {
             return self.parse_yield_expression();
         }
 
@@ -7322,7 +7322,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             self.advance()?;
             let end = loop {
                 let expression =
-                    self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?;
+                    self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
                 self.scratch_b.append(expression);
                 if self.current_token.tag != TokenTag::RightBrace {
                     self.report_expected(
@@ -7430,10 +7430,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     fn parse_parenthesized_or_arrow_function(
         &mut self,
         arrow_start: Option<u32>,
-        minimum: u8,
+        minimum: Precedence,
     ) -> Option<Expr> {
         let start = arrow_start.unwrap_or(self.current_token.span.start);
-        if self.lang.is_typescript() && minimum <= Precedence::ASSIGNMENT {
+        if self.lang.is_typescript() && minimum <= Precedence::Assignment {
             match self.classify_arrow_head() {
                 ArrowHead::Yes => {
                     return self.parse_arrow(false, start);
@@ -7449,7 +7449,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let cover = self.parse_parenthesized_cover()?;
         let is_arrow = self.current_token.tag == TokenTag::Arrow
             && !self.current_token.has_line_terminator_before()
-            && minimum <= Precedence::ASSIGNMENT;
+            && minimum <= Precedence::Assignment;
         if is_arrow {
             return self.cover_to_arrow_function(cover, false, start);
         }
@@ -7470,7 +7470,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 let element = if self.eat(TokenTag::Spread)? {
                     let spread_start = self.prev_token_end - 3;
                     let argument = self.parse_expression(
-                        Precedence::ASSIGNMENT,
+                        Precedence::Assignment,
                         ParseExpressionOpts {
                             in_cover: true,
                             ..ParseExpressionOpts::default()
@@ -7482,7 +7482,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                     ))
                 } else {
                     Argument::Expr(self.parse_expression(
-                        Precedence::ASSIGNMENT,
+                        Precedence::Assignment,
                         ParseExpressionOpts {
                             in_cover: true,
                             ..ParseExpressionOpts::default()
@@ -7724,7 +7724,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         self.expression_to_parameter(expression)
     }
 
-    fn parse_async_function_or_arrow(&mut self, minimum: u8) -> Option<Expr> {
+    fn parse_async_function_or_arrow(&mut self, minimum: Precedence) -> Option<Expr> {
         let token = self.current_token;
         let async_identifier = self.parse_identifier()?;
 
@@ -7790,10 +7790,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         &mut self,
         async_span: Span,
         async_identifier: Expr,
-        minimum: u8,
+        minimum: Precedence,
         escaped_async: bool,
     ) -> Option<Expr> {
-        if self.lang.is_typescript() && minimum <= Precedence::ASSIGNMENT {
+        if self.lang.is_typescript() && minimum <= Precedence::Assignment {
             let arrow = match self.classify_arrow_head() {
                 ArrowHead::Yes => Some(self.parse_arrow(true, async_span.start)?),
                 ArrowHead::Maybe => self.try_parse_arrow(true, async_span.start)?,
@@ -7815,7 +7815,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
         let is_arrow = self.current_token.tag == TokenTag::Arrow
             && !self.current_token.has_line_terminator_before()
-            && minimum <= Precedence::ASSIGNMENT;
+            && minimum <= Precedence::Assignment;
         if is_arrow {
             if escaped_async {
                 self.report_escaped_keyword(async_span);
@@ -8034,7 +8034,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             });
         }
         let expression =
-            self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
+            self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
         Some(ArrowBodyResult {
             body: ArrowFunctionBody::Expr(expression),
             is_expression: true,
@@ -8802,7 +8802,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 let property = if self.eat(TokenTag::Spread)? {
                     let spread_start = self.prev_token_end - 3;
                     let expression = self.parse_expression(
-                        Precedence::ASSIGNMENT,
+                        Precedence::Assignment,
                         ParseExpressionOpts {
                             in_cover: true,
                             ..ParseExpressionOpts::default()
@@ -8969,7 +8969,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         if self.current_token.tag == TokenTag::Colon {
             self.advance()?;
             let value = self.parse_expression(
-                Precedence::ASSIGNMENT,
+                Precedence::Assignment,
                 ParseExpressionOpts {
                     in_cover: true,
                     ..ParseExpressionOpts::default()
@@ -9020,7 +9020,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
             self.advance()?;
             let default_value = self.parse_expression(
-                Precedence::ASSIGNMENT,
+                Precedence::Assignment,
                 ParseExpressionOpts {
                     in_cover: true,
                     ..ParseExpressionOpts::default()
@@ -9201,7 +9201,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         if token.tag == TokenTag::LeftBracket {
             self.advance()?;
             let expression =
-                self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
+                self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
             if !self.expect(
                 TokenTag::RightBracket,
                 "Expected ']' after computed property key",
@@ -9254,7 +9254,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             TokenTag::LeftBracket => {
                 self.advance()?;
                 let expression = self.parse_expression(
-                    Precedence::ASSIGNMENT,
+                    Precedence::Assignment,
                     ParseExpressionOpts {
                         in_cover,
                         ..ParseExpressionOpts::default()
@@ -9330,7 +9330,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         self.advance()?;
         let old_allow_in = self.context.in_;
         self.context.in_ = true;
-        let expression = self.parse_expression(Precedence::LOWEST, ParseExpressionOpts::default());
+        let expression = self.parse_expression(Precedence::Lowest, ParseExpressionOpts::default());
         self.context.in_ = old_allow_in;
         let expression = expression?;
         let property = PropertyKey::Expr(expression);
@@ -9569,7 +9569,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 let argument = if self.eat(TokenTag::Spread)? {
                     let start = self.prev_token_end - 3;
                     let expression = self
-                        .parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
+                        .parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
                     Argument::SpreadElement(self.ast.spread_element(
                         Span::new(start, expression.span(self.ast).end),
                         expression,
@@ -9577,7 +9577,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 } else {
                     Argument::Expr(
                         self.parse_expression(
-                            Precedence::ASSIGNMENT,
+                            Precedence::Assignment,
                             ParseExpressionOpts::default(),
                         )?,
                     )
@@ -9721,12 +9721,12 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             return None;
         }
         let source =
-            self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?;
+            self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
         let options = if phase.is_none() && self.eat(TokenTag::Comma)? {
             let options = if self.current_token.tag == TokenTag::RightParen {
                 None
             } else {
-                Some(self.parse_expression(Precedence::ASSIGNMENT, ParseExpressionOpts::default())?)
+                Some(self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?)
             };
             self.eat(TokenTag::Comma)?;
             options
@@ -10055,7 +10055,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         }
         if self.eat(TokenTag::Spread)? {
             let expression =
-                self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?;
+                self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
             let end = self.expect_jsx_child_right_brace("JSX spread")?;
             return Some(
                 self.ast
@@ -10063,7 +10063,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             );
         }
         let expression =
-            self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?;
+            self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
         let end = self.expect_jsx_child_right_brace("JSX expression")?;
         Some(self.ast.jsx_child_jsx_expression_container(
             Span::new(start, end),
@@ -10309,7 +10309,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             ));
         }
         let expression =
-            self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?;
+            self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
         let end = self.current_token.span.end;
         if context == JsxExprContext::Tag {
             self.enter_jsx_tag();
@@ -10339,7 +10339,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         ) {
             return None;
         }
-        let argument = self.parse_expression(Precedence::COMMA, ParseExpressionOpts::default())?;
+        let argument = self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
         let end = self.current_token.span.end;
         self.enter_jsx_tag();
         if !self.expect(
@@ -10356,7 +10356,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_await_expression(&mut self, start: u32) -> Option<Expr> {
-        let argument = self.parse_expression(Precedence::UNARY, ParseExpressionOpts::default())?;
+        let argument = self.parse_expression(Precedence::Prefix, ParseExpressionOpts::default())?;
         if self.current_token.tag == TokenTag::Exponent {
             self.report(
                 Span::new(start, argument.span(self.ast).end),
@@ -10438,7 +10438,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             return None;
         }
         let expression =
-            self.parse_expression(Precedence::UNARY, ParseExpressionOpts::default())?;
+            self.parse_expression(Precedence::Prefix, ParseExpressionOpts::default())?;
         Some(self.ast.expr_ts_type_assertion(
             Span::new(start, expression.span(self.ast).end),
             type_annotation,
@@ -10498,7 +10498,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             None
         } else {
             Some(self.parse_expression(
-                Precedence::ASSIGNMENT,
+                Precedence::Assignment,
                 ParseExpressionOpts {
                     respect_allow_in: true,
                     ..ParseExpressionOpts::default()
@@ -10524,7 +10524,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         debug_assert!(self.current_token.tag.is_unary_operator());
         let token = self.current_token;
         self.advance()?;
-        let argument = self.parse_expression(Precedence::UNARY, ParseExpressionOpts::default())?;
+        let argument = self.parse_expression(Precedence::Prefix, ParseExpressionOpts::default())?;
         if self.current_token.tag == TokenTag::Exponent {
             self.report(
                 Span::new(token.span.start, argument.span(self.ast).end),
@@ -10558,7 +10558,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let token = self.current_token;
         self.advance()?;
         let argument = if prefix {
-            self.parse_expression(Precedence::UNARY, ParseExpressionOpts::default())?
+            self.parse_expression(Precedence::Prefix, ParseExpressionOpts::default())?
         } else {
             left.expect("a postfix update expression has a left operand")
         };
@@ -10606,7 +10606,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             if tag == TokenTag::Exponent {
                 precedence
             } else {
-                precedence + 1
+                precedence.next()
             },
             ParseExpressionOpts::default(),
         )?;
@@ -10630,7 +10630,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let start = left.span(self.ast).start;
         let precedence = tag.precedence();
         self.advance()?;
-        let right = self.parse_expression(precedence + 1, ParseExpressionOpts::default())?;
+        let right = self.parse_expression(precedence.next(), ParseExpressionOpts::default())?;
         let operator = match tag {
             TokenTag::LogicalAnd => LogicalOperator::And,
             TokenTag::LogicalOr => LogicalOperator::Or,
@@ -10666,7 +10666,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_assignment_expression(
         &mut self,
-        precedence: u8,
+        precedence: Precedence,
         left: Expr,
         tag: TokenTag,
     ) -> Option<Expr> {
@@ -10698,7 +10698,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         ))
     }
 
-    fn parse_conditional_expression(&mut self, precedence: u8, test: Expr) -> Option<Expr> {
+    fn parse_conditional_expression(&mut self, test: Expr) -> Option<Expr> {
         let start = test.span(self.ast).start;
         debug_assert_eq!(self.current_token.tag, TokenTag::Question);
         self.advance()?;
@@ -10706,7 +10706,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let old_allow_arrow_return_type = self.ts_context.allow_arrow_return_type;
         self.context.in_ = true;
         self.ts_context.allow_arrow_return_type = false;
-        let consequent = self.parse_expression(precedence, ParseExpressionOpts::default());
+        let consequent =
+            self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default());
         self.context.in_ = old_in;
         self.ts_context.allow_arrow_return_type = old_allow_arrow_return_type;
         let consequent = consequent?;
@@ -10720,7 +10721,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             return None;
         }
         let alternate = self.parse_expression(
-            precedence,
+            Precedence::Assignment,
             ParseExpressionOpts {
                 respect_allow_in: true,
                 ..ParseExpressionOpts::default()
@@ -10734,7 +10735,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         ))
     }
 
-    fn parse_sequence_expression(&mut self, precedence: u8, left: Expr) -> Option<Expr> {
+    fn parse_sequence_expression(&mut self, precedence: Precedence, left: Expr) -> Option<Expr> {
         let start = left.span(self.ast).start;
         let checkpoint = self.scratch_a.begin();
         self.scratch_a.append(left);
@@ -10742,7 +10743,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             let mut end = left.span(self.ast).end;
             while self.eat(TokenTag::Comma)? {
                 let expression =
-                    self.parse_expression(precedence + 1, ParseExpressionOpts::default())?;
+                    self.parse_expression(precedence.next(), ParseExpressionOpts::default())?;
                 end = expression.span(self.ast).end;
                 self.scratch_a.append(expression);
             }
@@ -11185,9 +11186,9 @@ fn member_expression_is_optional(member: MemberExpression, ast: &Ast<'_>) -> boo
     }
 }
 
-fn max_left_precedence(expression: Expr, ast: &Ast<'_>) -> u8 {
+fn max_left_precedence(expression: Expr, ast: &Ast<'_>) -> Precedence {
     match ast.node_kind(expression.node_id()) {
-        NodeKind::ArrowFunctionExpression | NodeKind::YieldExpression => Precedence::COMMA,
+        NodeKind::ArrowFunctionExpression | NodeKind::YieldExpression => Precedence::Comma,
         NodeKind::UpdateExpression
         | NodeKind::UnaryExpression
         | NodeKind::AwaitExpression
@@ -11197,8 +11198,8 @@ fn max_left_precedence(expression: Expr, ast: &Ast<'_>) -> u8 {
         | NodeKind::AssignmentExpression
         | NodeKind::SequenceExpression
         | NodeKind::TsAsExpression
-        | NodeKind::TsSatisfiesExpression => Precedence::UNARY,
-        _ => u8::MAX,
+        | NodeKind::TsSatisfiesExpression => Precedence::Prefix,
+        _ => Precedence::Primary,
     }
 }
 

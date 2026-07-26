@@ -6,6 +6,7 @@ mod diagnostic;
 mod node_id;
 mod semantic;
 mod strings;
+mod syntax;
 mod visit;
 
 mod generated {
@@ -30,6 +31,7 @@ pub use generated::ast_visitor::*;
 pub use node_id::{AstNode, ExtraDataCompact, ExtraDataId, NodeId, SubRange, TypedSubRange};
 pub use semantic::{ScopeId, SymbolId};
 pub use strings::{AstString as String, StringPool};
+pub use syntax::*;
 pub use visit::{TraverseAction, TraverseCtx};
 
 use swc_next_allocator::multi_index_vec;

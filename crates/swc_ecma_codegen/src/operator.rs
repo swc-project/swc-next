@@ -1,8 +1,6 @@
 use swc_next_ecma_ast::{
-    Ast, BinaryExpression, BinaryOperator, Expr, LogicalExpression, LogicalOperator,
+    Ast, BinaryExpression, BinaryOperator, Expr, LogicalExpression, LogicalOperator, Precedence,
 };
-
-use crate::util::Level;
 
 #[derive(Clone, Copy)]
 pub(crate) enum Binaryish {
@@ -72,34 +70,34 @@ impl BinaryishOperator {
         }
     }
 
-    pub(crate) fn precedence(self) -> Level {
+    pub(crate) fn precedence(self) -> Precedence {
         match self {
             Self::Binary(op) => match op {
                 BinaryOperator::Equal
                 | BinaryOperator::NotEqual
                 | BinaryOperator::StrictEqual
-                | BinaryOperator::StrictNotEqual => Level::Equality,
+                | BinaryOperator::StrictNotEqual => Precedence::Equality,
                 BinaryOperator::LessThan
                 | BinaryOperator::LessThanOrEqual
                 | BinaryOperator::GreaterThan
                 | BinaryOperator::GreaterThanOrEqual
                 | BinaryOperator::In
-                | BinaryOperator::Instanceof => Level::Compare,
-                BinaryOperator::Add | BinaryOperator::Subtract => Level::Add,
+                | BinaryOperator::Instanceof => Precedence::Compare,
+                BinaryOperator::Add | BinaryOperator::Subtract => Precedence::Add,
                 BinaryOperator::Multiply | BinaryOperator::Divide | BinaryOperator::Modulo => {
-                    Level::Multiply
+                    Precedence::Multiply
                 }
-                BinaryOperator::Exponent => Level::Exponent,
-                BinaryOperator::BitwiseOr => Level::BitwiseOr,
-                BinaryOperator::BitwiseXor => Level::BitwiseXor,
-                BinaryOperator::BitwiseAnd => Level::BitwiseAnd,
+                BinaryOperator::Exponent => Precedence::Exponent,
+                BinaryOperator::BitwiseOr => Precedence::BitwiseOr,
+                BinaryOperator::BitwiseXor => Precedence::BitwiseXor,
+                BinaryOperator::BitwiseAnd => Precedence::BitwiseAnd,
                 BinaryOperator::LeftShift
                 | BinaryOperator::RightShift
-                | BinaryOperator::UnsignedRightShift => Level::Shift,
+                | BinaryOperator::UnsignedRightShift => Precedence::Shift,
             },
-            Self::Logical(LogicalOperator::And) => Level::LogicalAnd,
-            Self::Logical(LogicalOperator::Or) => Level::LogicalOr,
-            Self::Logical(LogicalOperator::NullishCoalescing) => Level::Nullish,
+            Self::Logical(LogicalOperator::And) => Precedence::LogicalAnd,
+            Self::Logical(LogicalOperator::Or) => Precedence::LogicalOr,
+            Self::Logical(LogicalOperator::NullishCoalescing) => Precedence::Nullish,
         }
     }
 
@@ -122,16 +120,16 @@ impl BinaryishOperator {
 pub(crate) struct BinaryExprVisitor {
     // Inputs
     pub(crate) e: Binaryish,
-    pub(crate) level: Level,
+    pub(crate) level: Precedence,
     pub(crate) flags: bool,
 
     // Input for visiting the left child
-    pub(crate) left_level: Level,
+    pub(crate) left_level: Precedence,
     pub(crate) left_flags: bool,
 
     // Local variables passed from `check_and_prepare` to
     // `visit_right_and_finish`
     pub(crate) operator: BinaryishOperator,
     pub(crate) wrap: bool,
-    pub(crate) right_level: Level,
+    pub(crate) right_level: Precedence,
 }

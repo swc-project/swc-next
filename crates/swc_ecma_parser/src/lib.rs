@@ -17,7 +17,7 @@ pub use parser::{
     build_line_starts,
 };
 pub use swc_next_ecma_ast::{Diagnostic, Label, Lang, Severity};
-pub use token::{Precedence, Token, TokenFlag, TokenTag};
+pub use token::{Token, TokenFlag, TokenTag};
 
 use swc_next_ecma_ast::{Ast, Program};
 

@@ -1,4 +1,4 @@
-use swc_next_ecma_ast::Span;
+use swc_next_ecma_ast::{Precedence, Span};
 
 pub mod mask {
     pub const IS_NUMERIC_LITERAL: u32 = 1 << 13;
@@ -25,8 +25,8 @@ pub enum TokenTag {
     BigIntLiteral = 5 | mask::IS_NUMERIC_LITERAL,
     StringLiteral = 6,
     RegexLiteral = 7,
-    NoSubstitutionTemplate = 8 | (17 << mask::PREC_SHIFT),
-    TemplateHead = 9 | (17 << mask::PREC_SHIFT),
+    NoSubstitutionTemplate = 8 | ((Precedence::Call as u32) << mask::PREC_SHIFT),
+    TemplateHead = 9 | ((Precedence::Call as u32) << mask::PREC_SHIFT),
     TemplateMiddle = 10,
     TemplateTail = 11,
 
@@ -35,70 +35,92 @@ pub enum TokenTag {
     NullLiteral =
         14 | mask::IS_KEYWORD | mask::IS_UNCONDITIONALLY_RESERVED | mask::IS_IDENTIFIER_LIKE,
 
-    Plus = 15 | (11 << mask::PREC_SHIFT) | mask::IS_BINARY_OP | mask::IS_UNARY_OP,
-    Minus = 16 | (11 << mask::PREC_SHIFT) | mask::IS_BINARY_OP | mask::IS_UNARY_OP,
-    Star = 17 | (12 << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
-    Slash = 18 | (12 << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
-    Percent = 19 | (12 << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
-    Exponent = 20 | (13 << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
+    Plus = 15
+        | ((Precedence::Add as u32) << mask::PREC_SHIFT)
+        | mask::IS_BINARY_OP
+        | mask::IS_UNARY_OP,
+    Minus = 16
+        | ((Precedence::Add as u32) << mask::PREC_SHIFT)
+        | mask::IS_BINARY_OP
+        | mask::IS_UNARY_OP,
+    Star = 17 | ((Precedence::Multiply as u32) << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
+    Slash = 18 | ((Precedence::Multiply as u32) << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
+    Percent = 19 | ((Precedence::Multiply as u32) << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
+    Exponent = 20 | ((Precedence::Exponent as u32) << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
 
-    Assign = 21 | (2 << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
-    PlusAssign = 22 | (2 << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
-    MinusAssign = 23 | (2 << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
-    StarAssign = 24 | (2 << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
-    SlashAssign = 25 | (2 << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
-    PercentAssign = 26 | (2 << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
-    ExponentAssign = 27 | (2 << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
+    Assign = 21 | ((Precedence::Assignment as u32) << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
+    PlusAssign =
+        22 | ((Precedence::Assignment as u32) << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
+    MinusAssign =
+        23 | ((Precedence::Assignment as u32) << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
+    StarAssign =
+        24 | ((Precedence::Assignment as u32) << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
+    SlashAssign =
+        25 | ((Precedence::Assignment as u32) << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
+    PercentAssign =
+        26 | ((Precedence::Assignment as u32) << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
+    ExponentAssign =
+        27 | ((Precedence::Assignment as u32) << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
 
-    Increment = 28 | (15 << mask::PREC_SHIFT),
-    Decrement = 29 | (15 << mask::PREC_SHIFT),
+    Increment = 28 | ((Precedence::Postfix as u32) << mask::PREC_SHIFT),
+    Decrement = 29 | ((Precedence::Postfix as u32) << mask::PREC_SHIFT),
 
-    Equal = 30 | (8 << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
-    NotEqual = 31 | (8 << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
-    StrictEqual = 32 | (8 << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
-    StrictNotEqual = 33 | (8 << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
-    LessThan = 34 | (9 << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
-    GreaterThan = 35 | (9 << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
-    LessThanEqual = 36 | (9 << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
-    GreaterThanEqual = 37 | (9 << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
+    Equal = 30 | ((Precedence::Equality as u32) << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
+    NotEqual = 31 | ((Precedence::Equality as u32) << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
+    StrictEqual = 32 | ((Precedence::Equality as u32) << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
+    StrictNotEqual = 33 | ((Precedence::Equality as u32) << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
+    LessThan = 34 | ((Precedence::Compare as u32) << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
+    GreaterThan = 35 | ((Precedence::Compare as u32) << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
+    LessThanEqual = 36 | ((Precedence::Compare as u32) << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
+    GreaterThanEqual = 37 | ((Precedence::Compare as u32) << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
 
-    LogicalAnd = 38 | (4 << mask::PREC_SHIFT) | mask::IS_LOGICAL_OP,
-    LogicalOr = 39 | (3 << mask::PREC_SHIFT) | mask::IS_LOGICAL_OP,
-    LogicalNot = 40 | (14 << mask::PREC_SHIFT) | mask::IS_UNARY_OP,
+    LogicalAnd = 38 | ((Precedence::LogicalAnd as u32) << mask::PREC_SHIFT) | mask::IS_LOGICAL_OP,
+    LogicalOr = 39 | ((Precedence::LogicalOr as u32) << mask::PREC_SHIFT) | mask::IS_LOGICAL_OP,
+    LogicalNot = 40 | ((Precedence::Prefix as u32) << mask::PREC_SHIFT) | mask::IS_UNARY_OP,
 
-    BitwiseAnd = 41 | (7 << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
-    BitwiseOr = 42 | (5 << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
-    BitwiseXor = 43 | (6 << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
+    BitwiseAnd = 41 | ((Precedence::BitwiseAnd as u32) << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
+    BitwiseOr = 42 | ((Precedence::BitwiseOr as u32) << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
+    BitwiseXor = 43 | ((Precedence::BitwiseXor as u32) << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
     BitwiseNot = 44 | mask::IS_UNARY_OP,
-    LeftShift = 45 | (10 << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
-    RightShift = 46 | (10 << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
-    UnsignedRightShift = 47 | (10 << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
+    LeftShift = 45 | ((Precedence::Shift as u32) << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
+    RightShift = 46 | ((Precedence::Shift as u32) << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
+    UnsignedRightShift = 47 | ((Precedence::Shift as u32) << mask::PREC_SHIFT) | mask::IS_BINARY_OP,
 
-    BitwiseAndAssign = 48 | (2 << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
-    BitwiseOrAssign = 49 | (2 << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
-    BitwiseXorAssign = 50 | (2 << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
-    LeftShiftAssign = 51 | (2 << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
-    RightShiftAssign = 52 | (2 << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
-    UnsignedRightShiftAssign = 53 | (2 << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
+    BitwiseAndAssign =
+        48 | ((Precedence::Assignment as u32) << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
+    BitwiseOrAssign =
+        49 | ((Precedence::Assignment as u32) << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
+    BitwiseXorAssign =
+        50 | ((Precedence::Assignment as u32) << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
+    LeftShiftAssign =
+        51 | ((Precedence::Assignment as u32) << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
+    RightShiftAssign =
+        52 | ((Precedence::Assignment as u32) << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
+    UnsignedRightShiftAssign =
+        53 | ((Precedence::Assignment as u32) << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
 
-    NullishCoalescing = 54 | (3 << mask::PREC_SHIFT) | mask::IS_LOGICAL_OP,
-    NullishAssign = 55 | (2 << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
-    LogicalAndAssign = 56 | (2 << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
-    LogicalOrAssign = 57 | (2 << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
-    OptionalChaining = 58 | (17 << mask::PREC_SHIFT),
+    NullishCoalescing =
+        54 | ((Precedence::Nullish as u32) << mask::PREC_SHIFT) | mask::IS_LOGICAL_OP,
+    NullishAssign =
+        55 | ((Precedence::Assignment as u32) << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
+    LogicalAndAssign =
+        56 | ((Precedence::Assignment as u32) << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
+    LogicalOrAssign =
+        57 | ((Precedence::Assignment as u32) << mask::PREC_SHIFT) | mask::IS_ASSIGNMENT_OP,
+    OptionalChaining = 58 | ((Precedence::Call as u32) << mask::PREC_SHIFT),
 
-    LeftParen = 59 | (17 << mask::PREC_SHIFT),
+    LeftParen = 59 | ((Precedence::Call as u32) << mask::PREC_SHIFT),
     RightParen = 60,
     LeftBrace = 61,
     RightBrace = 62,
-    LeftBracket = 63 | (17 << mask::PREC_SHIFT),
+    LeftBracket = 63 | ((Precedence::Member as u32) << mask::PREC_SHIFT),
     RightBracket = 64,
     Semicolon = 65,
-    Comma = 66 | (1 << mask::PREC_SHIFT),
-    Dot = 67 | (17 << mask::PREC_SHIFT),
+    Comma = 66 | ((Precedence::Comma as u32) << mask::PREC_SHIFT),
+    Dot = 67 | ((Precedence::Member as u32) << mask::PREC_SHIFT),
     Spread = 68,
-    Arrow = 69 | (2 << mask::PREC_SHIFT),
-    Question = 70 | (2 << mask::PREC_SHIFT),
+    Arrow = 69 | ((Precedence::Assignment as u32) << mask::PREC_SHIFT),
+    Question = 70 | ((Precedence::Conditional as u32) << mask::PREC_SHIFT),
     Colon = 71,
     At = 72,
 
@@ -139,7 +161,10 @@ pub enum TokenTag {
     Import = 103 | mask::IS_KEYWORD | mask::IS_UNCONDITIONALLY_RESERVED | mask::IS_IDENTIFIER_LIKE,
     Export = 104 | mask::IS_KEYWORD | mask::IS_UNCONDITIONALLY_RESERVED | mask::IS_IDENTIFIER_LIKE,
     From = 105 | mask::IS_KEYWORD | mask::IS_IDENTIFIER_LIKE,
-    As = 106 | (9 << mask::PREC_SHIFT) | mask::IS_KEYWORD | mask::IS_IDENTIFIER_LIKE,
+    As = 106
+        | ((Precedence::Compare as u32) << mask::PREC_SHIFT)
+        | mask::IS_KEYWORD
+        | mask::IS_IDENTIFIER_LIKE,
     Namespace = 107 | mask::IS_KEYWORD | mask::IS_IDENTIFIER_LIKE,
     Assert = 108 | mask::IS_KEYWORD | mask::IS_IDENTIFIER_LIKE,
     Source = 109 | mask::IS_KEYWORD | mask::IS_IDENTIFIER_LIKE,
@@ -158,13 +183,13 @@ pub enum TokenTag {
         | mask::IS_UNCONDITIONALLY_RESERVED
         | mask::IS_IDENTIFIER_LIKE,
     Instanceof = 118
-        | (9 << mask::PREC_SHIFT)
+        | ((Precedence::Compare as u32) << mask::PREC_SHIFT)
         | mask::IS_BINARY_OP
         | mask::IS_KEYWORD
         | mask::IS_UNCONDITIONALLY_RESERVED
         | mask::IS_IDENTIFIER_LIKE,
     In = 119
-        | (9 << mask::PREC_SHIFT)
+        | ((Precedence::Compare as u32) << mask::PREC_SHIFT)
         | mask::IS_BINARY_OP
         | mask::IS_KEYWORD
         | mask::IS_UNCONDITIONALLY_RESERVED
@@ -202,7 +227,10 @@ pub enum TokenTag {
     Infer = 138 | mask::IS_KEYWORD | mask::IS_IDENTIFIER_LIKE,
     Out = 139 | mask::IS_KEYWORD | mask::IS_IDENTIFIER_LIKE,
     Asserts = 140 | mask::IS_KEYWORD | mask::IS_IDENTIFIER_LIKE,
-    Satisfies = 141 | (9 << mask::PREC_SHIFT) | mask::IS_KEYWORD | mask::IS_IDENTIFIER_LIKE,
+    Satisfies = 141
+        | ((Precedence::Compare as u32) << mask::PREC_SHIFT)
+        | mask::IS_KEYWORD
+        | mask::IS_IDENTIFIER_LIKE,
     Intrinsic = 142 | mask::IS_KEYWORD | mask::IS_IDENTIFIER_LIKE,
     Is = 143 | mask::IS_KEYWORD | mask::IS_IDENTIFIER_LIKE,
     Global = 144 | mask::IS_KEYWORD | mask::IS_IDENTIFIER_LIKE,
@@ -230,8 +258,12 @@ impl TokenTag {
         self as u32
     }
 
-    pub fn precedence(self) -> u8 {
-        ((self.raw() >> mask::PREC_SHIFT) & mask::PREC_OVERLAP) as u8
+    pub fn precedence(self) -> Precedence {
+        let precedence = ((self.raw() >> mask::PREC_SHIFT) & mask::PREC_OVERLAP) as u8;
+        debug_assert!(precedence <= Precedence::Primary as u8);
+        // SAFETY: `Precedence` is a contiguous `u8` enum starting at zero,
+        // and token precedence is restricted to its range above.
+        unsafe { std::mem::transmute(precedence) }
     }
 
     pub fn has_mask(self, mask: u32) -> bool {
@@ -441,30 +473,6 @@ impl TokenTag {
             | Self::JsxText => return None,
         })
     }
-}
-
-pub struct Precedence;
-
-impl Precedence {
-    pub const LOWEST: u8 = 0;
-    pub const COMMA: u8 = 1;
-    pub const ASSIGNMENT: u8 = 2;
-    pub const LOGICAL_OR: u8 = 3;
-    pub const LOGICAL_AND: u8 = 4;
-    pub const BITWISE_OR: u8 = 5;
-    pub const BITWISE_XOR: u8 = 6;
-    pub const BITWISE_AND: u8 = 7;
-    pub const EQUALITY: u8 = 8;
-    pub const RELATIONAL: u8 = 9;
-    pub const SHIFT: u8 = 10;
-    pub const ADDITIVE: u8 = 11;
-    pub const MULTIPLICATIVE: u8 = 12;
-    pub const EXPONENTIATION: u8 = 13;
-    pub const UNARY: u8 = 14;
-    pub const POSTFIX: u8 = 15;
-    pub const NEW: u8 = 16;
-    pub const CALL: u8 = 17;
-    pub const GROUPING: u8 = 18;
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
