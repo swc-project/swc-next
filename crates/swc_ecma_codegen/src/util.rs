@@ -154,6 +154,16 @@ pub(crate) fn decorator_expression_needs_parentheses(ast: &Ast<'_>, mut expressi
             ExprData::IdentifierReference(_) => return false,
             ExprData::CallExpression(call) => expression = call.callee(ast),
             ExprData::MemberExpression(member) if !member.computed(ast) => {
+                let name = match ast.property_key_data(member.property(ast)) {
+                    PropertyKeyData::IdentifierName(identifier) => ast.string(identifier.name(ast)),
+                    PropertyKeyData::PrivateIdentifier(identifier) => {
+                        ast.string(identifier.name(ast))
+                    }
+                    _ => return true,
+                };
+                if !is_identifier_es5_and_esnext(name) {
+                    return true;
+                }
                 expression = member.object(ast);
             }
             _ => return true,

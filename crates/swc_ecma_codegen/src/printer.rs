@@ -4229,6 +4229,6 @@ impl Printer<'_> {
     }
 
     fn can_print_identifier(&self, name: &[u8]) -> bool {
-        is_identifier_es5_and_es_next(name)
+        is_identifier_es5_and_esnext(name)
     }
 }

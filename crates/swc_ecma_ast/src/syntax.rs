@@ -208,25 +208,23 @@ pub fn is_ident_continue_ascii(byte: u8) -> bool {
     is_ident_start_ascii(byte) || byte.is_ascii_digit()
 }
 
-pub fn is_identifier_es5_and_es_next(text: &[u8]) -> bool {
+pub fn is_identifier_es5_and_esnext(text: &[u8]) -> bool {
     let Ok(text) = std::str::from_utf8(text) else {
         return false;
     };
     let mut chars = text.chars();
-    chars
-        .next()
-        .is_some_and(is_identifier_start_es5_and_es_next)
-        && chars.all(is_identifier_continue_es5_and_es_next)
+    chars.next().is_some_and(is_identifier_start_es5_and_esnext)
+        && chars.all(is_identifier_continue_es5_and_esnext)
 }
 
-pub fn is_identifier_start_es5_and_es_next(code_point: char) -> bool {
+pub fn is_identifier_start_es5_and_esnext(code_point: char) -> bool {
     matches!(code_point, '$' | '_')
         || (code_point <= '\u{ffff}'
             && !matches!(code_point, '\u{30fb}' | '\u{ff65}')
             && is_id_start(code_point))
 }
 
-pub fn is_identifier_continue_es5_and_es_next(code_point: char) -> bool {
+pub fn is_identifier_continue_es5_and_esnext(code_point: char) -> bool {
     matches!(code_point, '$' | '_' | '\u{200c}' | '\u{200d}')
         || (code_point <= '\u{ffff}'
             && !matches!(code_point, '\u{30fb}' | '\u{ff65}')
