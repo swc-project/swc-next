@@ -2977,6 +2977,12 @@ impl<'a> Printer<'a> {
         let specs = d.specifiers(self.ast);
         if specs.is_empty() {
             self.print_space();
+            if d.import_kind(self.ast) == ImportOrExportKind::Type {
+                self.print("{}");
+                self.print_space();
+                self.print("from");
+                self.print_space();
+            }
             self.add_source_mapping(d.source(self.ast).span(self.ast).start);
             self.print_quoted(self.ast.string(d.source(self.ast).value(self.ast)), false);
         } else {
