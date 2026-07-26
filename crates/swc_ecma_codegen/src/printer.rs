@@ -6,8 +6,8 @@ use swc_next_ecma_ast::*;
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator, OperatorCode};
 use crate::util::{
     AstAdapterState, decorator_expression_needs_parentheses, decorator_omit_newline_after,
-    is_legal_comment, module_name_bytes, next_code_point, parse_numeric_literal,
-    push_code_point_escape, push_u16_escape, quote_into, token_offset_after_decorators,
+    is_legal_comment, next_code_point, parse_numeric_literal, push_code_point_escape,
+    push_u16_escape, quote_into, token_offset_after_decorators,
 };
 
 use crate::{
@@ -3074,7 +3074,7 @@ impl<'a> Printer<'a> {
                         self.print("type ");
                     }
                     self.print_module_name(s.imported(self.ast));
-                    let imported = module_name_bytes(self.ast, s.imported(self.ast));
+                    let imported = self.module_name(s.imported(self.ast));
                     let local = self.ast.string(s.local(self.ast).name(self.ast));
                     if imported != local {
                         self.print_space();
@@ -3203,9 +3203,7 @@ impl<'a> Printer<'a> {
                 self.print("type ");
             }
             self.print_module_name(s.local(self.ast));
-            if module_name_bytes(self.ast, s.local(self.ast))
-                != module_name_bytes(self.ast, s.exported(self.ast))
-            {
+            if self.module_name(s.local(self.ast)) != self.module_name(s.exported(self.ast)) {
                 self.print_space();
                 self.print_space_before_identifier();
                 self.print("as");
@@ -4222,5 +4220,13 @@ impl Printer<'_> {
 
     fn can_print_identifier(&self, name: &[u8]) -> bool {
         is_identifier_es5_and_esnext(name)
+    }
+
+    fn module_name(&self, n: ModuleExportName) -> &[u8] {
+        let ast = self.ast;
+        match ast.module_export_name_data(n) {
+            ModuleExportNameData::IdentifierName(i) => ast.string(i.name(ast)),
+            ModuleExportNameData::StringLiteral(s) => ast.string(s.value(ast)),
+        }
     }
 }

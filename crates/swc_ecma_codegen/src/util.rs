@@ -82,13 +82,6 @@ pub(crate) fn push_code_point_escape(out: &mut ArenaVec<'_, u8>, code_point: u32
     out.push(b'}');
 }
 
-pub(crate) fn module_name_bytes<'a>(ast: &'a Ast<'a>, n: ModuleExportName) -> &'a [u8] {
-    match ast.module_export_name_data(n) {
-        ModuleExportNameData::IdentifierName(i) => ast.string(i.name(ast)),
-        ModuleExportNameData::StringLiteral(s) => ast.string(s.value(ast)),
-    }
-}
-
 pub(crate) fn token_offset_after_decorators(
     ast: &Ast<'_>,
     fallback: u32,
