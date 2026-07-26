@@ -1,7 +1,7 @@
 parser * typescript
 ========================
-Passed: 23247/25471 (91.27%)
-Failed: 2224/25471 (8.73%)
+Passed: 23249/25471 (91.28%)
+Failed: 2222/25471 (8.72%)
 Panicked: 0/25471 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -1043,7 +1043,6 @@ Failed: fixtures/typescript/tests/cases/compiler/withStatementNestedScope.ts - w
 Failed: fixtures/typescript/tests/cases/conformance/ambient/ambientDeclarationsPatterns.ts - declarations.d.ts: parser: 'const' declarations must be initialized at 143..146
 Failed: fixtures/typescript/tests/cases/conformance/ambient/ambientDeclarationsPatterns_merging3.ts - test.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/ambient/ambientDeclarationsPatterns_merging3.ts - types.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/ambient/ambientErrors.ts - ambientErrors.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/ambient/ambientExternalModuleInsideNonAmbient.ts - ambientExternalModuleInsideNonAmbient.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/ambient/ambientExternalModuleInsideNonAmbientExternalModule.ts - ambientExternalModuleInsideNonAmbientExternalModule.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/ambient/ambientShorthand_merging.ts - declarations2.d.ts: parser: 'const' declarations must be initialized at 40..43
@@ -2011,7 +2010,6 @@ Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ExportAss
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ExportAssignments/parserExportAssignment8.ts - parserExportAssignment8.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ExportAssignments/parserExportAssignment9.ts - parserExportAssignment9.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/FunctionDeclarations/parserFunctionDeclaration1.ts - parserFunctionDeclaration1.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/FunctionDeclarations/parserFunctionDeclaration2.ts - parserFunctionDeclaration2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/FunctionDeclarations/parserFunctionDeclaration3.ts - parserFunctionDeclaration3.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/FunctionDeclarations/parserFunctionDeclaration4.ts - parserFunctionDeclaration4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/FunctionDeclarations/parserFunctionDeclaration6.ts - parserFunctionDeclaration6.ts: expected a parse or early error, but pipeline succeeded
