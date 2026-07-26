@@ -5,10 +5,10 @@ use swc_next_ecma_ast::*;
 
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator, OperatorCode};
 use crate::util::{
-    AstAdapterState, conditional_in_was_reassociated, decorator_expression_needs_parentheses,
-    decorator_omit_newline_after, import_declaration_has_empty_clause, is_identifier,
-    is_identifier_continue_byte, is_identifier_es5_and_esnext, is_legal_comment, module_name_bytes,
-    next_code_point, parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
+    AstAdapterState, decorator_expression_needs_parentheses, decorator_omit_newline_after,
+    import_declaration_has_empty_clause, is_identifier, is_identifier_continue_byte,
+    is_identifier_es5_and_esnext, is_legal_comment, module_name_bytes, next_code_point,
+    parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
     token_offset_after_decorators,
 };
 
@@ -231,31 +231,6 @@ impl BinaryExprVisitor {
                 }
             }
             _ => {}
-        }
-
-        let Binaryish::Binary(binary) = e else {
-            return true;
-        };
-        if let Some(conditional) = conditional_in_was_reassociated(p.ast, binary) {
-            p.print_expr(conditional.test(p.ast), Precedence::Conditional);
-            p.print_space();
-            p.print("?");
-            p.print_space();
-            p.print_expr(conditional.consequent(p.ast), Precedence::Yield);
-            p.print_space();
-            p.print(":");
-            p.print_space();
-            p.print_expr(conditional.alternate(p.ast), precedence);
-            p.print_space();
-            p.print_space_before_identifier();
-            p.print(operator.as_str());
-            p.print(" ");
-            p.print_expr(e.right(p.ast), precedence.next());
-            if self.wrap {
-                p.print(")");
-            }
-            p.forbid_in = self.flags;
-            return false;
         }
 
         true
@@ -1681,22 +1656,27 @@ impl<'a> Printer<'a> {
                 }
             }
             ExprData::ConditionalExpression(e) => {
+                let old_forbid_in = self.forbid_in;
                 let wrap = level > Precedence::Conditional;
                 if wrap {
                     self.print("(");
+                    self.forbid_in = false;
                 }
-                self.print_expr(e.test(self.ast), Precedence::Conditional);
+                self.print_expr(e.test(self.ast), Precedence::Conditional.next());
                 self.print_space();
                 self.print("?");
                 self.print_space();
-                self.print_expr(e.consequent(self.ast), Precedence::Yield);
+                self.forbid_in = false;
+                self.print_expr_without_leading_newline(e.consequent(self.ast), Precedence::Yield);
                 self.print_space();
                 self.print(":");
                 self.print_space();
-                self.print_expr(e.alternate(self.ast), Precedence::Yield);
+                self.forbid_in = old_forbid_in && !wrap;
+                self.print_expr_without_leading_newline(e.alternate(self.ast), Precedence::Yield);
                 if wrap {
                     self.print(")");
                 }
+                self.forbid_in = old_forbid_in;
             }
             ExprData::SequenceExpression(e) => {
                 let wrap = level >= Precedence::Comma;

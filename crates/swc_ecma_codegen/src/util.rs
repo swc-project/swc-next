@@ -200,21 +200,6 @@ pub(crate) fn decorator_expression_needs_parentheses(ast: &Ast<'_>, mut expressi
     }
 }
 
-pub(crate) fn conditional_in_was_reassociated(
-    ast: &Ast<'_>,
-    binary: BinaryExpression,
-) -> Option<ConditionalExpression> {
-    if binary.operator(ast) != BinaryOperator::In {
-        return None;
-    }
-    let ExprData::ConditionalExpression(conditional) = ast.expr_data(binary.left(ast)) else {
-        return None;
-    };
-    let between = &ast.source()
-        [conditional.span(ast).end as usize..binary.right(ast).span(ast).start as usize];
-    (!between.contains(&b')')).then_some(conditional)
-}
-
 pub(crate) fn remove_underscores(raw: &[u8]) -> Vec<u8> {
     raw.iter().copied().filter(|&b| b != b'_').collect()
 }
