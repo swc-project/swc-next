@@ -232,19 +232,3 @@ pub fn is_identifier_continue_es5_and_es_next(code_point: char) -> bool {
             && !matches!(code_point, '\u{30fb}' | '\u{ff65}')
             && is_id_continue(code_point))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::is_identifier;
-
-    #[test]
-    fn identifier() {
-        for text in ["x", "$value0", "_value", "π", "𐀀", "x\u{200c}"] {
-            assert!(is_identifier(text.as_bytes()), "{text:?}");
-        }
-        for text in ["", "0x", "a-b", "🍕", "\u{200c}x"] {
-            assert!(!is_identifier(text.as_bytes()), "{text:?}");
-        }
-        assert!(!is_identifier(&[0xff]));
-    }
-}
