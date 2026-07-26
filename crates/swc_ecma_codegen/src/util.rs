@@ -67,10 +67,6 @@ pub(crate) fn finalize_source_map<'a>(
     }
 }
 
-pub(crate) fn is_identifier_continue_byte(b: u8) -> bool {
-    b.is_ascii_alphanumeric() || b == b'_' || b == b'$' || b >= 0x80
-}
-
 pub(crate) fn is_identifier(name: &[u8]) -> bool {
     let Ok(name) = std::str::from_utf8(name) else {
         return false;

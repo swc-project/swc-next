@@ -185,3 +185,15 @@ impl Precedence {
         }
     }
 }
+
+pub fn is_ident_start_ascii(byte: u8) -> bool {
+    byte.is_ascii_alphabetic() || byte == b'_' || byte == b'$'
+}
+
+pub fn is_ident_continue_ascii(byte: u8) -> bool {
+    is_ident_start_ascii(byte) || byte.is_ascii_digit()
+}
+
+pub fn is_ident_continue_jsx_ascii(byte: u8) -> bool {
+    is_ident_continue_ascii(byte) || byte == b'-'
+}

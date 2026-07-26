@@ -1,6 +1,9 @@
 use swc_next_allocator::Allocator;
 use swc_next_allocator::vec::Vec as ArenaVec;
-use swc_next_ecma_ast::{Comment, CommentKind, CommentPosition, SourceType, Span};
+use swc_next_ecma_ast::{
+    Comment, CommentKind, CommentPosition, SourceType, Span, is_ident_continue_ascii,
+    is_ident_continue_jsx_ascii, is_ident_start_ascii,
+};
 
 use super::token::{Token, TokenFlag, TokenTag, flag_mask};
 use super::unicode_id::{can_continue_id, can_start_id};
@@ -1338,18 +1341,6 @@ fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
     debug_assert!(position >= start as usize);
     debug_assert!(position <= source.len());
     position as u32
-}
-
-fn is_ident_start_ascii(byte: u8) -> bool {
-    byte.is_ascii_alphabetic() || byte == b'_' || byte == b'$'
-}
-
-fn is_ident_continue_ascii(byte: u8) -> bool {
-    is_ident_start_ascii(byte) || byte.is_ascii_digit()
-}
-
-fn is_ident_continue_jsx_ascii(byte: u8) -> bool {
-    is_ident_continue_ascii(byte) || byte == b'-'
 }
 
 fn ws_class(byte: u8) -> u8 {
