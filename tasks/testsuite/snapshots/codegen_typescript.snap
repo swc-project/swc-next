@@ -1,7 +1,7 @@
 codegen * typescript
 ========================
-Passed: 20560/22023 (93.36%)
-Failed: 1463/22023 (6.64%)
+Passed: 20562/22023 (93.37%)
+Failed: 1461/22023 (6.63%)
 Panicked: 0/22023 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/APISample_jsdoc.ts - APISample_jsdoc.ts: second parse: Expected '=' in type alias declaration, but found 'Annotations' at 1532..1543
 Failed: fixtures/typescript/tests/cases/compiler/DeclarationErrorsNoEmitOnError.ts - DeclarationErrorsNoEmitOnError.ts: second parse: Expected '=' in type alias declaration, but found 'I' at 49..50
@@ -1170,7 +1170,6 @@ Failed: fixtures/typescript/tests/cases/conformance/externalModules/typeOnly/pre
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/typeOnly/preserveValueImports_errors.ts - a.ts: second parse: Expected '=' in type alias declaration, but found 'A' at 17..18
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/typeOnly/preserveValueImports_importsNotUsedAsValues.ts - /mod.ts: second parse: Expected '=' in type alias declaration, but found 'A' at 17..18
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/typeOnly/preserveValueImports_mixedImports.ts - /exports.ts: second parse: Expected '=' in type alias declaration, but found 'ComponentProps' at 54..68
-Failed: fixtures/typescript/tests/cases/conformance/externalModules/typeOnly/typeOnlyESMImportFromCJS.ts - common.cts: second parse: Expected 'from' after import clause, but found '"./module.mts"' at 12..26
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/typeValueMerge1.ts - other.ts: second parse: Expected '=' in type alias declaration, but found 'A' at 17..18
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/typesOnlyExternalModuleStillHasInstance.ts - foo_0.ts: second parse: Expected '=' in type alias declaration, but found 'Person' at 22..28
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/umd-augmentation-1.ts - node_modules/math2d/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'Point' at 50..55
@@ -1257,7 +1256,6 @@ Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxOpeningClosingNames.t
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxSpreadInvalidType.tsx - a.tsx: second parse: Expected '=' in type alias declaration, but found 'IntrinsicElements' at 40..57
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxStatelessFunctionComponentOverload5.tsx - file.tsx: second parse: Expected '=' in type alias declaration, but found 'ClickableProps' at 97..111
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxStatelessFunctionComponentOverload6.tsx - file.tsx: second parse: Expected '=' in type alias declaration, but found 'ClickableProps' at 141..155
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/allowImportingTsExtensions.ts - /b.ts: second parse: Expected 'from' after import clause, but found '"./ts.d.ts"' at 48..59
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/allowImportingTypesDtsExtension.ts - /types.d.ts: second parse: Expected '=' in type alias declaration, but found 'type' at 20..24
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/bundler/bundlerCommonJS.ts - /node_modules/pkg/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'const' at 20..25
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/bundler/bundlerSyntaxRestrictions.ts - /ambient.d.ts: first parse: 'const' declarations must be initialized at 202..205
