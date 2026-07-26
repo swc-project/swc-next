@@ -6,9 +6,8 @@ use swc_next_ecma_ast::*;
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator, OperatorCode};
 use crate::util::{
     AstAdapterState, decorator_expression_needs_parentheses, decorator_omit_newline_after,
-    import_declaration_has_empty_clause, is_legal_comment, module_name_bytes, next_code_point,
-    parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
-    token_offset_after_decorators,
+    is_legal_comment, module_name_bytes, next_code_point, parse_numeric_literal,
+    push_code_point_escape, push_u16_escape, quote_into, token_offset_after_decorators,
 };
 
 use crate::{
@@ -3029,14 +3028,7 @@ impl<'a> Printer<'a> {
         }
         let specs = d.specifiers(self.ast);
         if specs.is_empty() {
-            if import_declaration_has_empty_clause(self.ast, d) {
-                self.print(" {} ");
-                self.print_space_before_identifier();
-                self.print("from");
-                self.print_space();
-            } else {
-                self.print_space();
-            }
+            self.print_space();
             self.add_source_mapping(d.source(self.ast).span(self.ast).start);
             self.print_quoted(self.ast.string(d.source(self.ast).value(self.ast)), false);
         } else {

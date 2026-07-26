@@ -66,16 +66,6 @@ pub(crate) fn finalize_source_map<'a>(
     }
 }
 
-pub(crate) fn import_declaration_has_empty_clause(
-    ast: &Ast<'_>,
-    declaration: ImportDeclaration,
-) -> bool {
-    let source = ast.source();
-    let start = declaration.span(ast).start as usize;
-    let end = declaration.source(ast).span(ast).start as usize;
-    source[start..end].windows(2).any(|window| window == b"{}")
-}
-
 pub(crate) fn push_code_point_escape(out: &mut ArenaVec<'_, u8>, code_point: u32) {
     out.extend_from_slice(b"\\u{");
     let mut shift = 28;
