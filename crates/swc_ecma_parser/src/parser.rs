@@ -7461,6 +7461,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let start = self.current_token.span.start;
         self.advance()?;
         let checkpoint = self.scratch_cover.begin();
+        let old_allow_in = self.context.in_;
+        self.context.in_ = true;
         let result = (|| {
             let mut end = start + 1;
             let mut has_trailing_comma = false;
@@ -7531,6 +7533,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 has_trailing_comma,
             })
         })();
+        self.context.in_ = old_allow_in;
         self.scratch_cover.reset(checkpoint);
         result
     }
