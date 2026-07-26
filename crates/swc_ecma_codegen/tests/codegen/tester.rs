@@ -3,9 +3,6 @@ use swc_next_ecma_ast::{Ast, Lang, SourceType};
 use swc_next_ecma_codegen::{Options as PrintOptions, print};
 use swc_next_ecma_parser::{CommentMode, Options as ParseOptions, Parser};
 
-mod js_parser_test;
-mod js_printer_test;
-
 #[track_caller]
 pub fn expect_printed(source: &[u8], expected: &[u8]) {
     expect_printed_common(source, expected, Lang::Js, SourceType::Module, false, false);

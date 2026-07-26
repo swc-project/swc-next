@@ -1,5 +1,5 @@
 // Ported from upstream esbuild's internal/js_printer/js_printer_test.go.
-use super::{
+use crate::{
     expect_printed, expect_printed_ascii, expect_printed_jsx, expect_printed_jsx_ascii,
     expect_printed_jsx_minify, expect_printed_minify, expect_printed_minify_ascii,
     expect_printed_ts,

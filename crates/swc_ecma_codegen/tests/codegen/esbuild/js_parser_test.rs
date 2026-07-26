@@ -1,5 +1,5 @@
 // Ported from upstream esbuild's internal/js_parser/js_parser_test.go.
-use super::{expect_printed, expect_printed_jsx, expect_printed_script};
+use crate::{expect_printed, expect_printed_jsx, expect_printed_script};
 
 #[test]
 fn test_un_op() {
