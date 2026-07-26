@@ -3124,14 +3124,16 @@ impl<'a> Printer<'a> {
     }
 
     fn print_import_attributes(&mut self, attrs: TypedSubRange<ImportAttribute>, span: Span) {
+        if attrs.is_empty() {
+            return;
+        }
+
         self.print_space();
         self.add_source_mapping(span.start);
         self.print("with");
         self.print_space();
         self.print("{");
-        if !attrs.is_empty() {
-            self.print_space();
-        }
+        self.print_space();
         for (i, id) in attrs.iter().enumerate() {
             if i != 0 {
                 self.print(",");
@@ -3152,9 +3154,7 @@ impl<'a> Printer<'a> {
             self.add_source_mapping(a.value(self.ast).span(self.ast).start);
             self.print_quoted(self.ast.string(a.value(self.ast).value(self.ast)), false);
         }
-        if !attrs.is_empty() {
-            self.print_space();
-        }
+        self.print_space();
         self.add_source_mapping(span.end);
         self.print("}");
     }
