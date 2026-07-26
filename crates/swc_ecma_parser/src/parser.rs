@@ -723,7 +723,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             scratch_b: ScratchBuffer::default(),
             context: Context::default(),
             statement_context: StatementContext::default(),
-            ts_context: TsContext::default(),
+            ts_context: TsContext {
+                ambient: options.lang == Lang::Dts,
+                ..TsContext::default()
+            },
             state: ParserState::default(),
         }
     }
@@ -1913,9 +1916,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             let params_end = params.span(self.ast).end;
             let return_type_end =
                 return_type.map_or(params_end, |return_type| return_type.span(self.ast).end);
-            let ambient_declaration =
-                (opts.is_declare || self.ts_context.ambient) && !is_function_expression;
-            if ambient_declaration && self.current_token.tag == TokenTag::LeftBrace {
+            let explicit_ambient_declaration = opts.is_declare && !is_function_expression;
+            if explicit_ambient_declaration && self.current_token.tag == TokenTag::LeftBrace {
                 self.report(
                     self.current_token.span,
                     "An implementation cannot be declared in ambient contexts",
@@ -1923,7 +1925,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 );
                 return None;
             }
-            let has_body = !ambient_declaration
+            let has_body = !explicit_ambient_declaration
                 && (!self.lang.is_typescript()
                     || is_function_expression
                     || self.current_token.tag == TokenTag::LeftBrace);
@@ -4612,7 +4614,11 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         } else {
             self.parse_module_name()?
         };
-        let body = self.parse_optional_module_block()?;
+        let outer_ambient = self.ts_context.ambient;
+        self.ts_context.ambient |= declare;
+        let body = self.parse_optional_module_block();
+        self.ts_context.ambient = outer_ambient;
+        let body = body?;
         let end = if let Some(body) = body {
             body.span(self.ast).end
         } else {
@@ -4630,7 +4636,11 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         self.advance()?;
         let name = self.identifier_name(token);
         let id = self.ast.identifier_name(token.span, name);
-        let body = self.parse_module_block()?;
+        let outer_ambient = self.ts_context.ambient;
+        self.ts_context.ambient |= declare;
+        let body = self.parse_module_block();
+        self.ts_context.ambient = outer_ambient;
+        let body = body?;
         let end = body.span(self.ast).end;
         let declaration = self
             .ast

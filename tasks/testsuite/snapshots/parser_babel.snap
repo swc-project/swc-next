@@ -1,6 +1,6 @@
 parser * babel
 ========================
-Positive Passed: 3288/3350 (98.15%)
+Positive Passed: 3296/3350 (98.39%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/3350 (0.00%)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/comments/source-phase-import-inner-comment/input.mjs - babel-generator/test/fixtures/comments/source-phase-import-inner-comment: parser: Expected module specifier, but found 'from' at 47..51
@@ -19,14 +19,10 @@ Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/ExportSpecif
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/PrivateName/input.js - babel-generator/test/fixtures/types/PrivateName: parser: Unexpected token '#x' as property key at 58..60
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/UnaryExpression/input.js - babel-generator/test/fixtures/types/UnaryExpression: semantic: Deleting an unqualified identifier is forbidden in strict mode at 7..15
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/WithStatement/input.js - babel-generator/test/fixtures/types/WithStatement: semantic: 'with' statements are not allowed in strict mode at 0..13
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/class-abstract/input.js - babel-generator/test/fixtures/typescript/class-abstract: semantic: Duplicate export 'default' at 187..189
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/import-export-import-require/input.js - babel-generator/test/fixtures/typescript/import-export-import-require: parser: expected an import-equals declaration after 'export' at 7..31
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/import-export-import/input.js - babel-generator/test/fixtures/typescript/import-export-import: parser: expected an import-equals declaration after 'export' at 7..22
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/module-namespace-body-declare/input.js - babel-generator/test/fixtures/typescript/module-namespace-body-declare: parser: 'const' declarations must be initialized at 32..33
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/module-namespace-body-nested-declare/input.js - babel-generator/test/fixtures/typescript/module-namespace-body-nested-declare: parser: 'const' declarations must be initialized at 54..55
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/variance-annotations-with-jsx/input.tsx - babel-generator/test/fixtures/typescript/variance-annotations-with-jsx: parser: Expected a semicolon or an implicit semicolon after a statement, but found '<' at 27..28
 Failed: fixtures/babel/packages/babel-helpers/test/fixtures/misc/arguments-identifier-in-function/input.js - babel-helpers/test/fixtures/misc/arguments-identifier-in-function: semantic: 'arguments' is not allowed as a binding identifier in strict mode at 4..13
-Failed: fixtures/babel/packages/babel-plugin-syntax-typescript/test/fixtures/dts/enabled/input.ts - babel-plugin-syntax-typescript/test/fixtures/dts/enabled: parser: 'const' declarations must be initialized at 6..9
 Failed: fixtures/babel/packages/babel-plugin-transform-arrow-functions/test/fixtures/arrow-functions/arguments-global-var/input.js - babel-plugin-transform-arrow-functions/test/fixtures/arrow-functions/arguments-global-var: semantic: 'arguments' is not allowed as a binding identifier in strict mode at 4..13
 Failed: fixtures/babel/packages/babel-plugin-transform-arrow-functions/test/fixtures/arrow-functions/arguments/input.js - babel-plugin-transform-arrow-functions/test/fixtures/arrow-functions/arguments: semantic: 'arguments' is not allowed as a binding identifier in strict mode at 753..762
 Failed: fixtures/babel/packages/babel-plugin-transform-async-to-generator/test/fixtures/assumption-ignoreFunctionLength-true/basic/input.mjs - babel-plugin-transform-async-to-generator/test/fixtures/assumption-ignoreFunctionLength-true/basic: parser: Expected a semicolon or an implicit semicolon after a statement, but found '(' at 291..292
@@ -58,10 +54,6 @@ Failed: fixtures/babel/packages/babel-plugin-transform-regenerator/test/fixtures
 Failed: fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/class/abstract-class-decorated/input.ts - babel-plugin-transform-typescript/test/fixtures/class/abstract-class-decorated: parser: Expected 'class' keyword, but found 'abstract' at 50..58
 Failed: fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/class/private-method-override-transform-private/input.ts - babel-plugin-transform-typescript/test/fixtures/class/private-method-override-transform-private: semantic: Duplicate private name '#f' at 40..42
 Failed: fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/class/private-method-override/input.ts - babel-plugin-transform-typescript/test/fixtures/class/private-method-override: semantic: Duplicate private name '#f' at 40..42
-Failed: fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/exports/declare-shadowed/input.ts - babel-plugin-transform-typescript/test/fixtures/exports/declare-shadowed: semantic: Identifier 'Signal2' has already been declared at 225..232
-Failed: fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/exports/declared-types/input.ts - babel-plugin-transform-typescript/test/fixtures/exports/declared-types: semantic: Duplicate export 'default' at 790..809
-Failed: fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/exports/default-function/input.ts - babel-plugin-transform-typescript/test/fixtures/exports/default-function: semantic: Duplicate export 'default' at 72..143
 Failed: fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/exports/export-import=/input.ts - babel-plugin-transform-typescript/test/fixtures/exports/export-import=: parser: expected an import-equals declaration after 'export' at 46..78
-Failed: fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/namespace/alias/input.ts - babel-plugin-transform-typescript/test/fixtures/namespace/alias: parser: 'const' declarations must be initialized at 83..86
 Failed: fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/namespace/clobber-import/input.ts - babel-plugin-transform-typescript/test/fixtures/namespace/clobber-import: semantic: Identifier 'N' has already been declared at 30..31
 Failed: fixtures/babel/packages/babel-preset-typescript/test/fixtures/node-extensions/import-in-cts/input.cts - babel-preset-typescript/test/fixtures/node-extensions/import-in-cts: semantic: An import declaration is only valid in module code at 0..11

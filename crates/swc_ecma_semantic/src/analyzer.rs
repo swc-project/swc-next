@@ -1522,11 +1522,15 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             self.push_scope(node.node_id(), ScopeKind::Class, flags);
             outer_scope
         };
+        let mut excludes = SymbolFlags::class_excludes();
+        if ctx.ast.lang().is_typescript() {
+            excludes = excludes.without(SymbolFlags::FUNCTION);
+        }
         self.set_binding_context(
             node.node_id(),
             BindingContext {
                 flags: SymbolFlags::CLASS,
-                excludes: SymbolFlags::class_excludes(),
+                excludes,
                 target: binding_target,
                 export_state: ExportState::None,
                 ambient: node.declare(ctx.ast) || self.ambient,

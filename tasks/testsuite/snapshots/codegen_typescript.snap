@@ -1,6 +1,6 @@
 codegen * typescript
 ========================
-Positive Passed: 20562/22023 (93.37%)
+Positive Passed: 20644/22023 (93.74%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/22023 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/APISample_jsdoc.ts - APISample_jsdoc.ts: second parse: Expected '=' in type alias declaration, but found 'Annotations' at 1532..1543
@@ -152,8 +152,6 @@ Failed: fixtures/typescript/tests/cases/compiler/conditionalEqualityTestingNulla
 Failed: fixtures/typescript/tests/cases/compiler/conditionalTypeAssignabilityWhenDeferred.ts - conditionalTypeAssignabilityWhenDeferred.ts: second parse: Expected '=' in type alias declaration, but found 'FilterPropsByType' at 17..34
 Failed: fixtures/typescript/tests/cases/compiler/conditionalTypeDoesntSpinForever.ts - conditionalTypeDoesntSpinForever.ts: second parse: Expected '=' in type alias declaration, but found 'PubSubRecord' at 343..355
 Failed: fixtures/typescript/tests/cases/compiler/conditionalTypeRelaxingConstraintAssignability.ts - conditionalTypeRelaxingConstraintAssignability.ts: second parse: Expected '=' in type alias declaration, but found 'ElChildren' at 17..27
-Failed: fixtures/typescript/tests/cases/compiler/constDeclarations-access4.ts - constDeclarations-access4.ts: first parse: 'const' declarations must be initialized at 32..33
-Failed: fixtures/typescript/tests/cases/compiler/constDeclarations-ambient.ts - constDeclarations-ambient.ts: first parse: 'const' declarations must be initialized at 137..139
 Failed: fixtures/typescript/tests/cases/compiler/constEnumDeclarations.ts - constEnumDeclarations.ts: codegen output changed after reparse at byte 49 (first: 87 bytes, second: 91 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/constEnumExternalModule.ts - m1.ts: codegen output changed after reparse at byte 29 (first: 41 bytes, second: 43 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/constEnumMergingWithValues1.ts - m1.ts: codegen output changed after reparse at byte 64 (first: 80 bytes, second: 84 bytes)
@@ -243,10 +241,8 @@ Failed: fixtures/typescript/tests/cases/compiler/declarationEmitExportDeclaratio
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitExpressionInExtends3.ts - declarationEmitExpressionInExtends3.ts: second parse: Expected '=' in type alias declaration, but found 'ExportedInterface' at 107..124
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitExpressionInExtends5.ts - declarationEmitExpressionInExtends5.ts: second parse: Expected '=' in type alias declaration, but found 'IFace' at 41..46
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitForGlobalishSpecifierSymlink.ts - /p1/node_modules/typescript-fsa/src/impl.d.ts: codegen output changed after reparse at byte 53 (first: 53 bytes, second: 55 bytes)
-Failed: fixtures/typescript/tests/cases/compiler/declarationEmitForGlobalishSpecifierSymlink.ts - /p2/index.d.ts: first parse: 'const' declarations must be initialized at 13..14
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitForGlobalishSpecifierSymlink.ts - /p2/node_modules/typescript-fsa/src/impl.d.ts: codegen output changed after reparse at byte 53 (first: 53 bytes, second: 55 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitForGlobalishSpecifierSymlink2.ts - /cache/typescript-fsa/src/impl.d.ts: codegen output changed after reparse at byte 53 (first: 53 bytes, second: 55 bytes)
-Failed: fixtures/typescript/tests/cases/compiler/declarationEmitForGlobalishSpecifierSymlink2.ts - /p2/index.d.ts: first parse: 'const' declarations must be initialized at 13..14
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitForTypesWhichNeedImportTypes.ts - b.ts: second parse: Expected '=' in type alias declaration, but found 'Named' at 22..27
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitGlobalThisPreserved.ts - declarationEmitGlobalThisPreserved.ts: second parse: Expected '=' in type alias declaration, but found 'a4Return' at 916..924
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitHigherOrderRetainedGenerics.ts - declarationEmitHigherOrderRetainedGenerics.ts: second parse: Expected '=' in type alias declaration, but found 'TypeLambda' at 22..32
@@ -320,7 +316,7 @@ Failed: fixtures/typescript/tests/cases/compiler/declarationMapsWithoutDeclarati
 Failed: fixtures/typescript/tests/cases/compiler/declarationQuotedMembers.ts - declarationQuotedMembers.ts: second parse: Expected '=' in type alias declaration, but found 'const' at 20..25
 Failed: fixtures/typescript/tests/cases/compiler/declarationsForFileShadowingGlobalNoError.ts - custom.ts: second parse: Expected '=' in type alias declaration, but found 'Node' at 17..21
 Failed: fixtures/typescript/tests/cases/compiler/declarationsForFileShadowingGlobalNoError.ts - dom.ts: second parse: Expected '=' in type alias declaration, but found 'DOMNode' at 17..24
-Failed: fixtures/typescript/tests/cases/compiler/declarationsIndirectGeneratedAliasReference.ts - node_modules/mod/ctor.d.ts: first parse: 'const' declarations must be initialized at 216..220
+Failed: fixtures/typescript/tests/cases/compiler/declarationsIndirectGeneratedAliasReference.ts - node_modules/mod/ctor.d.ts: second parse: Expected '=' in type alias declaration, but found 'Ctor' at 22..26
 Failed: fixtures/typescript/tests/cases/compiler/declarationsWithRecursiveInternalTypesProduceUniqueTypeParams.ts - declarationsWithRecursiveInternalTypesProduceUniqueTypeParams.ts: second parse: Expected '=' in type alias declaration, but found 'Key' at 311..314
 Failed: fixtures/typescript/tests/cases/compiler/declareExternalModuleWithExportAssignedFundule.ts - declareExternalModuleWithExportAssignedFundule.ts: second parse: Expected '=' in type alias declaration, but found 'ExpressServer' at 140..153
 Failed: fixtures/typescript/tests/cases/compiler/declareFileExportAssignment.ts - declareFileExportAssignment.ts: second parse: Expected '=' in type alias declaration, but found 'connectModule' at 39..52
@@ -349,14 +345,7 @@ Failed: fixtures/typescript/tests/cases/compiler/duplicateIdentifierRelatedSpans
 Failed: fixtures/typescript/tests/cases/compiler/duplicateIdentifierRelatedSpans7.ts - file2.ts: second parse: Expected '=' in type alias declaration, but found 'TopLevel' at 84..92
 Failed: fixtures/typescript/tests/cases/compiler/duplicateIdentifierShouldNotShortCircuitBaseTypeBinding.ts - duplicateIdentifierShouldNotShortCircuitBaseTypeBinding_0.ts: second parse: Expected '=' in type alias declaration, but found 'IPoint' at 22..28
 Failed: fixtures/typescript/tests/cases/compiler/duplicateLocalVariable4.ts - duplicateLocalVariable4.ts: codegen output changed after reparse at byte 17 (first: 41 bytes, second: 43 bytes)
-Failed: fixtures/typescript/tests/cases/compiler/duplicatePackage.ts - /node_modules/b/index.d.ts: first parse: 'const' declarations must be initialized at 32..33
 Failed: fixtures/typescript/tests/cases/compiler/duplicatePackage.ts - /node_modules/b/node_modules/x/index.d.ts: first parse: Expected a semicolon or an implicit semicolon after a statement, but found 'not' at 8..11
-Failed: fixtures/typescript/tests/cases/compiler/duplicatePackage.ts - /node_modules/c/index.d.ts: first parse: 'const' declarations must be initialized at 32..33
-Failed: fixtures/typescript/tests/cases/compiler/duplicatePackage_packageIdIncludesSubModule.ts - /node_modules/foo/Bar.d.ts: first parse: 'const' declarations must be initialized at 40..41
-Failed: fixtures/typescript/tests/cases/compiler/duplicatePackage_referenceTypes.ts - /node_modules/a/index.d.ts: first parse: 'const' declarations must be initialized at 70..73
-Failed: fixtures/typescript/tests/cases/compiler/duplicatePackage_relativeImportWithinPackage.ts - /node_modules/a/index.d.ts: first parse: 'const' declarations must be initialized at 38..39
-Failed: fixtures/typescript/tests/cases/compiler/duplicatePackage_relativeImportWithinPackage_scoped.ts - /node_modules/a/index.d.ts: first parse: 'const' declarations must be initialized at 43..44
-Failed: fixtures/typescript/tests/cases/compiler/duplicatePackage_subModule.ts - /node_modules/a/index.d.ts: first parse: 'const' declarations must be initialized at 40..41
 Failed: fixtures/typescript/tests/cases/compiler/dynamicNames.ts - main.ts: second parse: Expected '=' in type alias declaration, but found 'T4' at 207..209
 Failed: fixtures/typescript/tests/cases/compiler/dynamicNames.ts - module.ts: second parse: Expected '=' in type alias declaration, but found 'T0' at 94..96
 Failed: fixtures/typescript/tests/cases/compiler/dynamicNamesErrors.ts - dynamicNamesErrors.ts: second parse: Expected '=' in type alias declaration, but found 'InterfaceMemberVisibility' at 351..376
@@ -427,8 +416,6 @@ Failed: fixtures/typescript/tests/cases/compiler/es6ModuleConstEnumDeclaration.t
 Failed: fixtures/typescript/tests/cases/compiler/es6ModuleConstEnumDeclaration2.ts - es6ModuleConstEnumDeclaration2.ts: codegen output changed after reparse at byte 41 (first: 490 bytes, second: 510 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/es6ModuleEnumDeclaration.ts - es6ModuleEnumDeclaration.ts: codegen output changed after reparse at byte 35 (first: 454 bytes, second: 474 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/es6ModuleInternalImport.ts - es6ModuleInternalImport.ts: first parse: expected an import-equals declaration after 'export' at 53..69
-Failed: fixtures/typescript/tests/cases/compiler/esModuleInteropImportTSLibHasImport.ts - types.d.ts: first parse: 'const' declarations must be initialized at 38..50
-Failed: fixtures/typescript/tests/cases/compiler/esModuleInteropWithExportStar.ts - fs.d.ts: first parse: 'const' declarations must be initialized at 13..14
 Failed: fixtures/typescript/tests/cases/compiler/exactSpellingSuggestion.ts - exactSpellingSuggestion.ts: codegen output changed after reparse at byte 160 (first: 170 bytes, second: 172 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/excessPropertyCheckWithMultipleDiscriminants.ts - excessPropertyCheckWithMultipleDiscriminants.ts: second parse: Expected '=' in type alias declaration, but found 'BaseAttribute' at 1865..1878
 Failed: fixtures/typescript/tests/cases/compiler/excessPropertyChecksWithNestedIntersections.ts - excessPropertyChecksWithNestedIntersections.ts: second parse: Expected '=' in type alias declaration, but found 'MyType' at 633..639
@@ -444,9 +431,9 @@ Failed: fixtures/typescript/tests/cases/compiler/exportClassExtendingIntersectio
 Failed: fixtures/typescript/tests/cases/compiler/exportClassExtendingIntersection.ts - MixinClass.ts: second parse: Expected '=' in type alias declaration, but found 'MyMixin' at 78..85
 Failed: fixtures/typescript/tests/cases/compiler/exportDeclarationForModuleOrEnumWithMemberOfSameName.ts - exportDeclarationForModuleOrEnumWithMemberOfSameName.ts: codegen output changed after reparse at byte 125 (first: 139 bytes, second: 141 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/exportDefaultForNonInstantiatedModule.ts - exportDefaultForNonInstantiatedModule.ts: second parse: Expected '=' in type alias declaration, but found 'foo' at 38..41
-Failed: fixtures/typescript/tests/cases/compiler/exportDefaultProperty.ts - declarations.d.ts: first parse: 'const' declarations must be initialized at 149..150
+Failed: fixtures/typescript/tests/cases/compiler/exportDefaultProperty.ts - declarations.d.ts: second parse: Expected '=' in type alias declaration, but found 'X' at 122..123
 Failed: fixtures/typescript/tests/cases/compiler/exportDefaultProperty2.ts - a.ts: second parse: Expected '=' in type alias declaration, but found 'B' at 146..147
-Failed: fixtures/typescript/tests/cases/compiler/exportEqualsProperty.ts - declarations.d.ts: first parse: 'const' declarations must be initialized at 144..145
+Failed: fixtures/typescript/tests/cases/compiler/exportEqualsProperty.ts - declarations.d.ts: second parse: Expected '=' in type alias declaration, but found 'X' at 117..118
 Failed: fixtures/typescript/tests/cases/compiler/exportEqualsProperty2.ts - a.ts: second parse: Expected '=' in type alias declaration, but found 'B' at 141..142
 Failed: fixtures/typescript/tests/cases/compiler/exportImport.ts - exporter.ts: first parse: expected an import-equals declaration after 'export' at 7..34
 Failed: fixtures/typescript/tests/cases/compiler/exportImportAndClodule.ts - exportImportAndClodule.ts: first parse: expected an import-equals declaration after 'export' at 260..275
@@ -519,7 +506,7 @@ Failed: fixtures/typescript/tests/cases/compiler/genericTypeWithMultipleBases1.t
 Failed: fixtures/typescript/tests/cases/compiler/genericTypeWithMultipleBases2.ts - genericTypeWithMultipleBases2.ts: second parse: Expected '=' in type alias declaration, but found 'I1' at 22..24
 Failed: fixtures/typescript/tests/cases/compiler/identicalGenericConditionalsWithInferRelated.ts - identicalGenericConditionalsWithInferRelated.ts: second parse: Expected '=' in type alias declaration, but found 'Constructor' at 336..347
 Failed: fixtures/typescript/tests/cases/compiler/implicitIndexSignatures.ts - implicitIndexSignatures.ts: codegen output changed after reparse at byte 1256 (first: 1568 bytes, second: 1580 bytes)
-Failed: fixtures/typescript/tests/cases/compiler/impliedNodeFormatInterop1.ts - /node_modules/highlight.js/index.d.ts: first parse: 'const' declarations must be initialized at 115..119
+Failed: fixtures/typescript/tests/cases/compiler/impliedNodeFormatInterop1.ts - /node_modules/highlight.js/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'HighlightAPI' at 56..68
 Failed: fixtures/typescript/tests/cases/compiler/importAliasAnExternalModuleInsideAnInternalModule.ts - importAliasAnExternalModuleInsideAnInternalModule_file1.ts: first parse: expected an import-equals declaration after 'export' at 164..177
 Failed: fixtures/typescript/tests/cases/compiler/importAliasFromNamespace.ts - internal.ts: codegen output changed after reparse at byte 124 (first: 126 bytes, second: 130 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/importDeclTypes.ts - /node_modules/@types/foo-bar/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'Foo' at 22..25
@@ -534,8 +521,6 @@ Failed: fixtures/typescript/tests/cases/compiler/importHelpersBundler.ts - /node
 Failed: fixtures/typescript/tests/cases/compiler/importHelpersCommonJSJavaScript.ts - /node_modules/tslib/tslib.d.ts: second parse: Expected '=' in type alias declaration, but found 'var' at 20..23
 Failed: fixtures/typescript/tests/cases/compiler/importHelpersDeclarations.ts - declaration.d.ts: second parse: Expected '=' in type alias declaration, but found 'class' at 20..25
 Failed: fixtures/typescript/tests/cases/compiler/importHelpersES6.ts - tslib.d.ts: second parse: Expected '=' in type alias declaration, but found 'function' at 20..28
-Failed: fixtures/typescript/tests/cases/compiler/importHelpersInAmbientContext.ts - a.d.ts: first parse: Destructuring declaration must have an initializer at 273..284
-Failed: fixtures/typescript/tests/cases/compiler/importHelpersInAmbientContext.ts - b.ts: first parse: Destructuring declaration must have an initializer at 271..282
 Failed: fixtures/typescript/tests/cases/compiler/importHelpersInAmbientContext.ts - tslib.d.ts: second parse: Expected '=' in type alias declaration, but found 'function' at 20..28
 Failed: fixtures/typescript/tests/cases/compiler/importHelpersInIsolatedModules.ts - node_modules/tslib/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'function' at 20..28
 Failed: fixtures/typescript/tests/cases/compiler/importHelpersInTsx.tsx - node_modules/tslib/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'function' at 20..28
@@ -549,7 +534,6 @@ Failed: fixtures/typescript/tests/cases/compiler/importTypeAssertionDeprecationI
 Failed: fixtures/typescript/tests/cases/compiler/importTypeGenericArrowTypeParenthesized.ts - module.d.ts: second parse: Expected '=' in type alias declaration, but found 'Modifier' at 50..58
 Failed: fixtures/typescript/tests/cases/compiler/importTypeResolutionJSDocEOF.ts - interfaces.d.ts: second parse: Expected '=' in type alias declaration, but found 'Bar' at 22..25
 Failed: fixtures/typescript/tests/cases/compiler/importTypeTypeofClassStaticLookup.ts - a.d.ts: second parse: Expected '=' in type alias declaration, but found 'class' at 20..25
-Failed: fixtures/typescript/tests/cases/compiler/importTypeTypeofClassStaticLookup.ts - index.d.ts: first parse: 'const' declarations must be initialized at 13..16
 Failed: fixtures/typescript/tests/cases/compiler/importTypeWithUnparenthesizedGenericFunctionParsed.ts - importTypeWithUnparenthesizedGenericFunctionParsed.ts: second parse: Expected '=' in type alias declaration, but found 'const' at 20..25
 Failed: fixtures/typescript/tests/cases/compiler/importUsedAsTypeWithErrors.ts - test.ts: second parse: Expected '=' in type alias declaration, but found 'T' at 22..23
 Failed: fixtures/typescript/tests/cases/compiler/importUsedInGenericImportResolves.ts - test1.d.ts: second parse: Expected '=' in type alias declaration, but found 'T' at 22..23
@@ -627,7 +611,7 @@ Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesExportImportUnin
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesExportImportUninstantiatedNamespace.ts - jsx.ts: second parse: Expected '=' in type alias declaration, but found 'HTMLAttributes' at 50..64
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesGlobalNamespacesAndEnums.ts - enum1.ts: codegen output changed after reparse at byte 30 (first: 79 bytes, second: 83 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesGlobalNamespacesAndEnums.ts - enum2.ts: codegen output changed after reparse at byte 78 (first: 110 bytes, second: 114 bytes)
-Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesGlobalNamespacesAndEnums.ts - script-namespaces.ts: first parse: 'const' declarations must be initialized at 153..154
+Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesGlobalNamespacesAndEnums.ts - script-namespaces.ts: second parse: Expected '=' in type alias declaration, but found 'T' at 95..96
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesImportConstEnum.ts - file2.ts: codegen output changed after reparse at byte 34 (first: 34 bytes, second: 36 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesImportConstEnumTypeOnly.ts - enum.ts: codegen output changed after reparse at byte 34 (first: 34 bytes, second: 36 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesNonAmbientConstEnum.ts - file1.ts: codegen output changed after reparse at byte 31 (first: 58 bytes, second: 60 bytes)
@@ -641,7 +625,6 @@ Failed: fixtures/typescript/tests/cases/compiler/jsDocDeclarationEmitDoesNotUseN
 Failed: fixtures/typescript/tests/cases/compiler/jsExportMemberMergedWithModuleAugmentation3.ts - /y.d.ts: second parse: Expected '=' in type alias declaration, but found 'type' at 20..24
 Failed: fixtures/typescript/tests/cases/compiler/jsNoImplicitAnyNoCascadingReferenceErrors.ts - somelib.d.ts: second parse: Expected '=' in type alias declaration, but found 'class' at 20..25
 Failed: fixtures/typescript/tests/cases/compiler/jsdocAccessEnumType.ts - /a.ts: codegen output changed after reparse at byte 24 (first: 24 bytes, second: 26 bytes)
-Failed: fixtures/typescript/tests/cases/compiler/jsdocImportTypeNodeNamespace.ts - GeometryType.d.ts: first parse: 'const' declarations must be initialized at 55..60
 Failed: fixtures/typescript/tests/cases/compiler/jsdocReferenceGlobalTypeInCommonJs.ts - puppet.d.ts: second parse: Expected '=' in type alias declaration, but found 'Keyboard' at 53..61
 Failed: fixtures/typescript/tests/cases/compiler/jsxCallbackWithDestructuring.tsx - jsxCallbackWithDestructuring.tsx: second parse: Expected '=' in type alias declaration, but found 'RouteProps' at 602..612
 Failed: fixtures/typescript/tests/cases/compiler/jsxChildrenGenericContextualTypes.tsx - jsxChildrenGenericContextualTypes.tsx: second parse: Expected '=' in type alias declaration, but found 'Element' at 40..47
@@ -651,11 +634,11 @@ Failed: fixtures/typescript/tests/cases/compiler/jsxContainsOnlyTriviaWhiteSpace
 Failed: fixtures/typescript/tests/cases/compiler/jsxElementClassTooManyParams.tsx - jsxElementClassTooManyParams.tsx: second parse: Expected '=' in type alias declaration, but found 'Element' at 40..47
 Failed: fixtures/typescript/tests/cases/compiler/jsxLibraryManagedAttributesUnusedGeneric.tsx - jsxLibraryManagedAttributesUnusedGeneric.tsx: second parse: Expected '=' in type alias declaration, but found 'Element' at 155..162
 Failed: fixtures/typescript/tests/cases/compiler/jsxLocalNamespaceIndexSignatureNoCrash.tsx - index.tsx: second parse: Expected '=' in type alias declaration, but found 'IntrinsicElements' at 147..164
-Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceGlobalReexport.tsx - /node_modules/preact/index.d.ts: first parse: 'const' declarations must be initialized at 992..1000
+Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceGlobalReexport.tsx - /node_modules/preact/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'ComponentType' at 958..971
 Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceGlobalReexport.tsx - /node_modules/preact/jsx-runtime/index.d.ts: first parse: expected an import-equals declaration after 'export' at 1456..1481
-Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceGlobalReexportMissingAliasTarget.tsx - /node_modules/preact/index.d.ts: first parse: 'const' declarations must be initialized at 992..1000
+Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceGlobalReexportMissingAliasTarget.tsx - /node_modules/preact/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'ComponentType' at 958..971
 Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceGlobalReexportMissingAliasTarget.tsx - /node_modules/preact/jsx-runtime/index.d.ts: first parse: expected an import-equals declaration after 'export' at 1296..1318
-Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceImplicitImportJSXNamespace.tsx - /node_modules/preact/index.d.ts: first parse: 'const' declarations must be initialized at 992..1000
+Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceImplicitImportJSXNamespace.tsx - /node_modules/preact/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'ComponentType' at 958..971
 Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceImplicitImportJSXNamespace.tsx - /node_modules/preact/jsx-runtime/index.d.ts: first parse: expected an import-equals declaration after 'export' at 1259..1284
 Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceReexports.tsx - library.ts: second parse: Expected '=' in type alias declaration, but found 'IntrinsicElements' at 121..138
 Failed: fixtures/typescript/tests/cases/compiler/jsxNestedWithinTernaryParsesCorrectly.tsx - jsxNestedWithinTernaryParsesCorrectly.tsx: codegen output changed after reparse at byte 80 (first: 209 bytes, second: 202 bytes)
@@ -673,7 +656,6 @@ Failed: fixtures/typescript/tests/cases/compiler/mappedTypeUnionConstraintInfere
 Failed: fixtures/typescript/tests/cases/compiler/matchReturnTypeInAllBranches.ts - matchReturnTypeInAllBranches.ts: codegen output changed after reparse at byte 825 (first: 1133 bytes, second: 1134 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/mergeMultipleInterfacesReexported.ts - eventList.ts: second parse: Expected '=' in type alias declaration, but found 'EventList' at 22..31
 Failed: fixtures/typescript/tests/cases/compiler/mergedDeclarations2.ts - mergedDeclarations2.ts: codegen output changed after reparse at byte 19 (first: 80 bytes, second: 84 bytes)
-Failed: fixtures/typescript/tests/cases/compiler/mergedDeclarations7.ts - passport.d.ts: first parse: 'const' declarations must be initialized at 238..246
 Failed: fixtures/typescript/tests/cases/compiler/mergedEnumDeclarationCodeGen.ts - mergedEnumDeclarationCodeGen.ts: codegen output changed after reparse at byte 26 (first: 47 bytes, second: 51 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/mergedModuleDeclarationCodeGen5.ts - mergedModuleDeclarationCodeGen5.ts: codegen output changed after reparse at byte 208 (first: 432 bytes, second: 436 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/metadataOfEventAlias.ts - event.ts: second parse: Expected '=' in type alias declaration, but found 'Event' at 22..27
@@ -702,7 +684,6 @@ Failed: fixtures/typescript/tests/cases/compiler/moduleAugmentationExtendFileMod
 Failed: fixtures/typescript/tests/cases/compiler/moduleAugmentationImportsAndExports4.ts - f3.ts: second parse: Expected '=' in type alias declaration, but found 'Ifc' at 144..147
 Failed: fixtures/typescript/tests/cases/compiler/moduleAugmentationImportsAndExports5.ts - f3.ts: second parse: Expected '=' in type alias declaration, but found 'Ifc' at 144..147
 Failed: fixtures/typescript/tests/cases/compiler/moduleAugmentationImportsAndExports6.ts - f3.ts: second parse: Expected '=' in type alias declaration, but found 'Ifc' at 151..154
-Failed: fixtures/typescript/tests/cases/compiler/moduleAugmentationNoNewNames.ts - map.ts: first parse: Destructuring declaration must have an initializer at 264..277
 Failed: fixtures/typescript/tests/cases/compiler/moduleAugmentationNoNewNames.ts - observable.ts: second parse: Expected '=' in type alias declaration, but found 'class' at 20..25
 Failed: fixtures/typescript/tests/cases/compiler/moduleCodeGenTest5.ts - moduleCodeGenTest5.ts: codegen output changed after reparse at byte 208 (first: 258 bytes, second: 262 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/moduleCrashBug1.ts - moduleCrashBug1.ts: second parse: Expected '=' in type alias declaration, but found 'IMode' at 43..48
@@ -714,20 +695,9 @@ Failed: fixtures/typescript/tests/cases/compiler/moduleMemberWithoutTypeAnnotati
 Failed: fixtures/typescript/tests/cases/compiler/moduleMemberWithoutTypeAnnotation2.ts - moduleMemberWithoutTypeAnnotation2.ts: second parse: Expected '=' in type alias declaration, but found 'IDiagnosticWriter' at 90..107
 Failed: fixtures/typescript/tests/cases/compiler/moduleMergeConstructor.ts - foo-ext.d.ts: second parse: Expected '=' in type alias declaration, but found 'Foo' at 47..50
 Failed: fixtures/typescript/tests/cases/compiler/moduleOuterQualification.ts - moduleOuterQualification.ts: second parse: Expected '=' in type alias declaration, but found 'Beta' at 144..148
-Failed: fixtures/typescript/tests/cases/compiler/modulePreserve2.ts - /node_modules/dep/import.d.mts: first parse: 'const' declarations must be initialized at 13..16
 Failed: fixtures/typescript/tests/cases/compiler/modulePreserveImportHelpers.ts - /node_modules/tslib/tslib.d.ts: second parse: Expected '=' in type alias declaration, but found 'function' at 20..28
 Failed: fixtures/typescript/tests/cases/compiler/moduleReopenedTypeOtherBlock.ts - moduleReopenedTypeOtherBlock.ts: second parse: Expected '=' in type alias declaration, but found 'I' at 62..63
 Failed: fixtures/typescript/tests/cases/compiler/moduleReopenedTypeSameBlock.ts - moduleReopenedTypeSameBlock.ts: second parse: Expected '=' in type alias declaration, but found 'I' at 78..79
-Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionAsTypeReferenceDirective.ts - /typings/phaser/types/phaser.d.ts: first parse: 'const' declarations must be initialized at 13..15
-Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionAsTypeReferenceDirectiveAmbient.ts - /typings/phaser/types/phaser.d.ts: first parse: 'const' declarations must be initialized at 43..45
-Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionAsTypeReferenceDirectiveScoped.ts - /a/node_modules/@scoped/nodemodulescache/index.d.ts: first parse: 'const' declarations must be initialized at 13..29
-Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionAsTypeReferenceDirectiveScoped.ts - /a/node_modules/@types/@scoped/attypescache/index.d.ts: first parse: 'const' declarations must be initialized at 13..25
-Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionAsTypeReferenceDirectiveScoped.ts - /a/node_modules/@types/mangled__attypescache/index.d.ts: first parse: 'const' declarations must be initialized at 13..32
-Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionAsTypeReferenceDirectiveScoped.ts - /a/node_modules/mangled__nodemodulescache/index.d.ts: first parse: 'const' declarations must be initialized at 13..31
-Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionAsTypeReferenceDirectiveScoped.ts - /a/types/@scoped/typescache/index.d.ts: first parse: 'const' declarations must be initialized at 13..23
-Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionAsTypeReferenceDirectiveScoped.ts - /a/types/dummy/index.d.ts: first parse: 'const' declarations must be initialized at 13..18
-Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionAsTypeReferenceDirectiveScoped.ts - /a/types/mangled__typescache/index.d.ts: first parse: 'const' declarations must be initialized at 13..25
-Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionPackageIdWithRelativeAndAbsolutePath.ts - /shared/lib/app.d.ts: first parse: 'const' declarations must be initialized at 111..127
 Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionWithExtensions_withPaths.ts - /node_modules/foo/lib/test.d.ts: second parse: Expected '=' in type alias declaration, but found 'function' at 20..28
 Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionWithExtensions_withPaths.ts - /relative.d.ts: second parse: Expected '=' in type alias declaration, but found 'function' at 20..28
 Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionWithModule.ts - node_modules/pkg/entrypoint.d.ts: second parse: Expected '=' in type alias declaration, but found 'function' at 20..28
@@ -737,13 +707,8 @@ Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionWithSuffixes_on
 Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionWithSuffixes_one_externalModulePath.ts - /node_modules/some-library/foo.ios.d.ts: second parse: Expected '=' in type alias declaration, but found 'function' at 20..28
 Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionWithSuffixes_one_externalModule_withPaths.ts - /node_modules/some-library/lib/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'function' at 20..28
 Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionWithSuffixes_one_externalModule_withPaths.ts - /node_modules/some-library/lib/index.ios.d.ts: second parse: Expected '=' in type alias declaration, but found 'function' at 20..28
-Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionWithSymlinks_preserveSymlinks.ts - /app/node_modules/real/index.d.ts: first parse: 'const' declarations must be initialized at 13..17
-Failed: fixtures/typescript/tests/cases/compiler/moduleResolution_packageJson_notAtPackageRoot.ts - /node_modules/foo/bar/types.d.ts: first parse: 'const' declarations must be initialized at 13..14
-Failed: fixtures/typescript/tests/cases/compiler/moduleResolution_packageJson_notAtPackageRoot_fakeScopedPackage.ts - /node_modules/foo/@bar/types.d.ts: first parse: 'const' declarations must be initialized at 13..14
-Failed: fixtures/typescript/tests/cases/compiler/moduleResolution_packageJson_scopedPackage.ts - /node_modules/@foo/bar/types.d.ts: first parse: 'const' declarations must be initialized at 13..14
 Failed: fixtures/typescript/tests/cases/compiler/moduleResolution_packageJson_yesAtPackageRoot.ts - /node_modules/foo/bar/index.js: first parse: Expected a semicolon or an implicit semicolon after a statement, but found 'read' at 4..8
 Failed: fixtures/typescript/tests/cases/compiler/moduleResolution_packageJson_yesAtPackageRoot_fakeScopedPackage.ts - /node_modules/foo/@bar/index.js: first parse: Expected a semicolon or an implicit semicolon after a statement, but found 'read' at 129..133
-Failed: fixtures/typescript/tests/cases/compiler/moduleResolution_packageJson_yesAtPackageRoot_mainFieldInSubDirectory.ts - /node_modules/foo/src/index.d.ts: first parse: 'const' declarations must be initialized at 13..14
 Failed: fixtures/typescript/tests/cases/compiler/moduleSameValueDuplicateExportedBindings2.ts - c.ts: codegen output changed after reparse at byte 41 (first: 41 bytes, second: 43 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/moduleSharesNameWithImportDeclarationInsideIt2.ts - moduleSharesNameWithImportDeclarationInsideIt2.ts: first parse: expected an import-equals declaration after 'export' at 120..135
 Failed: fixtures/typescript/tests/cases/compiler/moduleSymbolMerging.ts - A.ts: second parse: Expected '=' in type alias declaration, but found 'I' at 38..39
@@ -758,13 +723,11 @@ Failed: fixtures/typescript/tests/cases/compiler/multipleBaseInterfaesWithIncomp
 Failed: fixtures/typescript/tests/cases/compiler/namespaceDisambiguationInUnion.ts - namespaceDisambiguationInUnion.ts: second parse: Expected '=' in type alias declaration, but found 'Yep' at 35..38
 Failed: fixtures/typescript/tests/cases/compiler/namespaces1.ts - namespaces1.ts: second parse: Expected '=' in type alias declaration, but found 'Z' at 63..64
 Failed: fixtures/typescript/tests/cases/compiler/namespacesDeclaration1.ts - namespacesDeclaration1.ts: second parse: Expected '=' in type alias declaration, but found 'I' at 91..92
-Failed: fixtures/typescript/tests/cases/compiler/narrowedImports.ts - /a.d.ts: first parse: 'const' declarations must be initialized at 70..72
-Failed: fixtures/typescript/tests/cases/compiler/narrowedImports_assumeInitialized.ts - /a.d.ts: first parse: 'const' declarations must be initialized at 39..40
 Failed: fixtures/typescript/tests/cases/compiler/narrowingUnionWithBang.ts - narrowingUnionWithBang.ts: second parse: Expected '=' in type alias declaration, but found 'FixedType' at 1371..1380
 Failed: fixtures/typescript/tests/cases/compiler/nestedExcessPropertyChecking.ts - nestedExcessPropertyChecking.ts: codegen output changed after reparse at byte 317 (first: 1694 bytes, second: 1696 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/nestedGenericConditionalTypeWithGenericImportType.ts - name.ts: second parse: Expected '=' in type alias declaration, but found 'Name' at 27..31
 Failed: fixtures/typescript/tests/cases/compiler/neverAsDiscriminantType.ts - neverAsDiscriminantType.ts: second parse: Expected '=' in type alias declaration, but found 'GatewayPayloadStructure' at 348..371
-Failed: fixtures/typescript/tests/cases/compiler/newNamesInGlobalAugmentations1.ts - f1.d.ts: first parse: Destructuring declaration must have an initializer at 176..182
+Failed: fixtures/typescript/tests/cases/compiler/newNamesInGlobalAugmentations1.ts - f1.d.ts: first parse: expected an import-equals declaration after 'export' at 205..223
 Failed: fixtures/typescript/tests/cases/compiler/noAsConstNameLookup.ts - noAsConstNameLookup.ts: second parse: Expected '=' in type alias declaration, but found 'Cleaner' at 67..74
 Failed: fixtures/typescript/tests/cases/compiler/noCrashUMDMergedWithGlobalValue.ts - /other.d.ts: second parse: Expected '=' in type alias declaration, but found 'Action' at 52..58
 Failed: fixtures/typescript/tests/cases/compiler/noImplicitAnyDestructuringInPrivateMethod.ts - noImplicitAnyDestructuringInPrivateMethod.ts: second parse: Expected '=' in type alias declaration, but found 'class' at 124..129
@@ -772,8 +735,6 @@ Failed: fixtures/typescript/tests/cases/compiler/noImplicitReturnsExclusions.ts 
 Failed: fixtures/typescript/tests/cases/compiler/noSubtypeReduction.ts - noSubtypeReduction.ts: second parse: Expected '=' in type alias declaration, but found 'IA' at 43..45
 Failed: fixtures/typescript/tests/cases/compiler/noUncheckedIndexAccess.ts - noUncheckedIndexAccess.ts: codegen output changed after reparse at byte 35 (first: 443 bytes, second: 449 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/noUnusedLocals_selfReference.ts - noUnusedLocals_selfReference.ts: second parse: Expected '=' in type alias declaration, but found 'A' at 431..432
-Failed: fixtures/typescript/tests/cases/compiler/nodeColonModuleResolution.ts - /a/b/node_modules/@types/node/ph.d.ts: first parse: 'const' declarations must be initialized at 62..87
-Failed: fixtures/typescript/tests/cases/compiler/nodeColonModuleResolution2.ts - /a/b/node_modules/fake/thing/index.d.ts: first parse: 'const' declarations must be initialized at 39..64
 Failed: fixtures/typescript/tests/cases/compiler/nodeModuleReexportFromDottedPath.ts - /node_modules/.prisma/client/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'PrismaClientOptions' at 22..41
 Failed: fixtures/typescript/tests/cases/compiler/nodeNextModuleResolution1.ts - /a/node_modules/foo.d.ts: second parse: Expected '=' in type alias declaration, but found 'let' at 20..23
 Failed: fixtures/typescript/tests/cases/compiler/nodeNextModuleResolution2.ts - /a/node_modules/foo/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'let' at 20..23
@@ -792,8 +753,6 @@ Failed: fixtures/typescript/tests/cases/compiler/overload2.ts - overload2.ts: co
 Failed: fixtures/typescript/tests/cases/compiler/overloadResolutionOverNonCTObjectLit.ts - overloadResolutionOverNonCTObjectLit.ts: second parse: Expected '=' in type alias declaration, but found 'IToken' at 41..47
 Failed: fixtures/typescript/tests/cases/compiler/parenthesisDoesNotBlockAliasSymbolCreation.ts - parenthesisDoesNotBlockAliasSymbolCreation.ts: second parse: Expected '=' in type alias declaration, but found 'InvalidKeys' at 17..28
 Failed: fixtures/typescript/tests/cases/compiler/parseEntityNameWithReservedWord.ts - parseEntityNameWithReservedWord.ts: codegen output changed after reparse at byte 24 (first: 58 bytes, second: 60 bytes)
-Failed: fixtures/typescript/tests/cases/compiler/pathMappingBasedModuleResolution_withExtensionInName.ts - /foo/zone.js/index.d.ts: first parse: 'const' declarations must be initialized at 13..14
-Failed: fixtures/typescript/tests/cases/compiler/pathMappingBasedModuleResolution_withExtensionInName.ts - /foo/zone.tsx/index.d.ts: first parse: 'const' declarations must be initialized at 13..14
 Failed: fixtures/typescript/tests/cases/compiler/performanceComparisonOfStructurallyIdenticalInterfacesWithGenericSignatures.ts - performanceComparisonOfStructurallyIdenticalInterfacesWithGenericSignatures.ts: second parse: Expected '=' in type alias declaration, but found 'type' at 20..24
 Failed: fixtures/typescript/tests/cases/compiler/preserveConstEnums.ts - preserveConstEnums.ts: codegen output changed after reparse at byte 49 (first: 49 bytes, second: 51 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/preserveUnusedImports.ts - a.ts: second parse: Expected '=' in type alias declaration, but found 'A' at 17..18
@@ -831,10 +790,10 @@ Failed: fixtures/typescript/tests/cases/compiler/promiseIdentity2.ts - promiseId
 Failed: fixtures/typescript/tests/cases/compiler/promiseIdentityWithAny.ts - promiseIdentityWithAny.ts: second parse: Expected '=' in type alias declaration, but found 'IPromise' at 22..30
 Failed: fixtures/typescript/tests/cases/compiler/promiseIdentityWithAny2.ts - promiseIdentityWithAny2.ts: second parse: Expected '=' in type alias declaration, but found 'IPromise' at 22..30
 Failed: fixtures/typescript/tests/cases/compiler/promiseIdentityWithConstraints.ts - promiseIdentityWithConstraints.ts: second parse: Expected '=' in type alias declaration, but found 'IPromise' at 22..30
-Failed: fixtures/typescript/tests/cases/compiler/propTypeValidatorInference.ts - node_modules/prop-types/index.d.ts: first parse: 'const' declarations must be initialized at 13..28
+Failed: fixtures/typescript/tests/cases/compiler/propTypeValidatorInference.ts - node_modules/prop-types/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'IsOptional' at 62..72
 Failed: fixtures/typescript/tests/cases/compiler/qualify.ts - qualify.ts: second parse: Expected '=' in type alias declaration, but found 'I' at 200..201
 Failed: fixtures/typescript/tests/cases/compiler/ramdaToolsNoInfinite.ts - ramdaToolsNoInfinite.ts: second parse: Expected '=' in type alias declaration, but found 'Placeholder' at 1730..1741
-Failed: fixtures/typescript/tests/cases/compiler/ramdaToolsNoInfinite2.ts - ramdaToolsNoInfinite2.ts: first parse: 'const' declarations must be initialized at 20434..20440
+Failed: fixtures/typescript/tests/cases/compiler/ramdaToolsNoInfinite2.ts - ramdaToolsNoInfinite2.ts: second parse: Expected '=' in type alias declaration, but found 'Kind' at 124..128
 Failed: fixtures/typescript/tests/cases/compiler/reachabilityChecks1.ts - reachabilityChecks1.ts: codegen output changed after reparse at byte 360 (first: 714 bytes, second: 728 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/reachabilityChecks11.ts - reachabilityChecks11.ts: codegen output changed after reparse at byte 362 (first: 716 bytes, second: 730 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/reachabilityChecks2.ts - reachabilityChecks2.ts: codegen output changed after reparse at byte 40 (first: 129 bytes, second: 137 bytes)
@@ -858,7 +817,6 @@ Failed: fixtures/typescript/tests/cases/compiler/reexportNameAliasedAndHoisted.t
 Failed: fixtures/typescript/tests/cases/compiler/reexportedMissingAlias.ts - second.d.ts: first parse: expected an import-equals declaration after 'export' at 23..60
 Failed: fixtures/typescript/tests/cases/compiler/referenceSatisfiesExpression.ts - referenceSatisfiesExpression.ts: second parse: Expected a semicolon or an implicit semicolon after a statement, but found '++' at 74..76
 Failed: fixtures/typescript/tests/cases/compiler/reservedNameOnModuleImport.ts - reservedNameOnModuleImport.ts: first parse: expected an import-equals declaration after 'export' at 129..153
-Failed: fixtures/typescript/tests/cases/compiler/resolutionCandidateFromPackageJsonField2.ts - types/main.d.ts: first parse: 'const' declarations must be initialized at 13..14
 Failed: fixtures/typescript/tests/cases/compiler/resolveNameWithNamspace.ts - ns.ts: second parse: Expected '=' in type alias declaration, but found 'cool' at 74..78
 Failed: fixtures/typescript/tests/cases/compiler/restInvalidArgumentType.ts - restInvalidArgumentType.ts: codegen output changed after reparse at byte 26 (first: 1711 bytes, second: 1713 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/reverseMappedPartiallyInferableTypes.ts - reverseMappedPartiallyInferableTypes.ts: second parse: Expected '=' in type alias declaration, but found 'Prop' at 38..42
@@ -867,10 +825,7 @@ Failed: fixtures/typescript/tests/cases/compiler/singletonLabeledTuple.ts - sing
 Failed: fixtures/typescript/tests/cases/compiler/sourceMap-LineBreaks.ts - sourceMap-LineBreaks.ts: first parse: Invalid character at start of identifier at 100..100
 Failed: fixtures/typescript/tests/cases/compiler/sourceMapValidationImport.ts - sourceMapValidationImport.ts: first parse: expected an import-equals declaration after 'export' at 73..88
 Failed: fixtures/typescript/tests/cases/compiler/specedNoStackBlown.ts - specedNoStackBlown.ts: second parse: Expected '=' in type alias declaration, but found 'Spec' at 642..646
-Failed: fixtures/typescript/tests/cases/compiler/spellingSuggestionGlobal1.ts - spellingSuggestionGlobal1.ts: first parse: 'const' declarations must be initialized at 33..34
-Failed: fixtures/typescript/tests/cases/compiler/spellingSuggestionGlobal2.ts - spellingSuggestionGlobal2.ts: first parse: 'const' declarations must be initialized at 33..34
 Failed: fixtures/typescript/tests/cases/compiler/spellingSuggestionLeadingUnderscores01.ts - spellingSuggestionLeadingUnderscores01.ts: second parse: Expected '=' in type alias declaration, but found 'let' at 40..43
-Failed: fixtures/typescript/tests/cases/compiler/spellingSuggestionModule.ts - spellingSuggestionModule.ts: first parse: 'const' declarations must be initialized at 39..40
 Failed: fixtures/typescript/tests/cases/compiler/spreadInvalidArgumentType.ts - spreadInvalidArgumentType.ts: codegen output changed after reparse at byte 26 (first: 1697 bytes, second: 1699 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/spreadTupleAccessedByTypeParameter.ts - spreadTupleAccessedByTypeParameter.ts: codegen output changed after reparse at byte 113 (first: 154 bytes, second: 156 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/spuriousCircularityOnTypeImport.ts - index.ts: second parse: Expected '=' in type alias declaration, but found 'SelectorMap' at 17..28
@@ -912,12 +867,8 @@ Failed: fixtures/typescript/tests/cases/compiler/systemNamespaceAliasEmit.ts - s
 Failed: fixtures/typescript/tests/cases/compiler/templateExpressionAsPossiblyDiscriminantValue.ts - templateExpressionAsPossiblyDiscriminantValue.ts: second parse: Expected '=' in type alias declaration, but found 'ClickableDiscriminatedUnion' at 259..286
 Failed: fixtures/typescript/tests/cases/compiler/thislessFunctionsNotContextSensitive1.ts - thislessFunctionsNotContextSensitive1.ts: second parse: Expected '=' in type alias declaration, but found 'StateFunction' at 896..909
 Failed: fixtures/typescript/tests/cases/compiler/trackedSymbolsNoCrash.ts - ast.ts: second parse: Expected '=' in type alias declaration, but found 'Node0' at 1040..1045
-Failed: fixtures/typescript/tests/cases/compiler/transformNestedGeneratorsWithTry.ts - bluebird.d.ts: first parse: 'const' declarations must be initialized at 73..81
 Failed: fixtures/typescript/tests/cases/compiler/trivialSubtypeReductionNoStructuralCheck.ts - trivialSubtypeReductionNoStructuralCheck.ts: second parse: Expected '=' in type alias declaration, but found 'WizardStepProps' at 162..177
 Failed: fixtures/typescript/tests/cases/compiler/trivialSubtypeReductionNoStructuralCheck2.ts - trivialSubtypeReductionNoStructuralCheck2.ts: second parse: Expected '=' in type alias declaration, but found 'WizardStepProps' at 172..187
-Failed: fixtures/typescript/tests/cases/compiler/tslibMissingHelper.ts - /node_modules/tslib/tslib.d.ts: first parse: 'const' declarations must be initialized at 13..23
-Failed: fixtures/typescript/tests/cases/compiler/tslibMultipleMissingHelper.ts - /package1/node_modules/tslib/tslib.d.ts: first parse: 'const' declarations must be initialized at 13..23
-Failed: fixtures/typescript/tests/cases/compiler/tslibMultipleMissingHelper.ts - /package2/node_modules/tslib/tslib.d.ts: first parse: 'const' declarations must be initialized at 13..23
 Failed: fixtures/typescript/tests/cases/compiler/tslibNotFoundDifferentModules.ts - /package1/node_modules/tslib/tslib.d.ts: second parse: Expected '=' in type alias declaration, but found 'function' at 424..432
 Failed: fixtures/typescript/tests/cases/compiler/tslibReExportHelpers.ts - /node_modules/tslib/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'function' at 20..28
 Failed: fixtures/typescript/tests/cases/compiler/tslibReExportHelpers2.ts - /node_modules/tslib/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'function' at 20..28
@@ -943,10 +894,6 @@ Failed: fixtures/typescript/tests/cases/compiler/typeReferenceDirectives13.ts - 
 Failed: fixtures/typescript/tests/cases/compiler/typeReferenceDirectives5.ts - /app.ts: second parse: Expected '=' in type alias declaration, but found 'A' at 78..79
 Failed: fixtures/typescript/tests/cases/compiler/typeReferenceDirectives5.ts - /ref.d.ts: second parse: Expected '=' in type alias declaration, but found '$' at 22..23
 Failed: fixtures/typescript/tests/cases/compiler/typeResolution.ts - typeResolution.ts: second parse: Expected '=' in type alias declaration, but found 'InterfaceX' at 2108..2118
-Failed: fixtures/typescript/tests/cases/compiler/typeRootsFromMultipleNodeModulesDirectories.ts - /foo/node_modules/@types/grumpy/index.d.ts: first parse: 'const' declarations must be initialized at 40..41
-Failed: fixtures/typescript/tests/cases/compiler/typeRootsFromMultipleNodeModulesDirectories.ts - /foo/node_modules/@types/sneezy/index.d.ts: first parse: 'const' declarations must be initialized at 40..41
-Failed: fixtures/typescript/tests/cases/compiler/typeRootsFromMultipleNodeModulesDirectories.ts - /node_modules/@types/dopey/index.d.ts: first parse: 'const' declarations must be initialized at 40..41
-Failed: fixtures/typescript/tests/cases/compiler/typeRootsFromNodeModulesInParentDirectory.ts - /node_modules/@types/foo/index.d.ts: first parse: 'const' declarations must be initialized at 40..41
 Failed: fixtures/typescript/tests/cases/compiler/typeUsedAsValueError2.ts - helloNamespace.ts: second parse: Expected '=' in type alias declaration, but found 'world' at 46..51
 Failed: fixtures/typescript/tests/cases/compiler/typeVariableConstraintedToAliasNotAssignableToUnion.ts - typeVariableConstraintedToAliasNotAssignableToUnion.ts: second parse: Expected '=' in type alias declaration, but found 'Table' at 68..73
 Failed: fixtures/typescript/tests/cases/compiler/typeofEnum.ts - typeofEnum.ts: codegen output changed after reparse at byte 24 (first: 49 bytes, second: 51 bytes)
@@ -961,7 +908,6 @@ Failed: fixtures/typescript/tests/cases/compiler/uniqueSymbolAllowsIndexInObject
 Failed: fixtures/typescript/tests/cases/compiler/uniqueSymbolPropertyDeclarationEmit.ts - po.d.ts: second parse: Expected '=' in type alias declaration, but found 'const' at 20..25
 Failed: fixtures/typescript/tests/cases/compiler/unmetTypeConstraintInImportCall.ts - file1.ts: second parse: Expected '=' in type alias declaration, but found 'Foo' at 17..20
 Failed: fixtures/typescript/tests/cases/compiler/unspecializedConstraints.ts - unspecializedConstraints.ts: codegen output changed after reparse at byte 2007 (first: 3945 bytes, second: 3953 bytes)
-Failed: fixtures/typescript/tests/cases/compiler/untypedModuleImport_withAugmentation2.ts - /node_modules/augmenter/index.d.ts: first parse: 'const' declarations must be initialized at 180..181
 Failed: fixtures/typescript/tests/cases/compiler/untypedModuleImport_withAugmentation2.ts - /node_modules/js/index.js: first parse: Expected a semicolon or an implicit semicolon after a statement, but found 'file' at 5..9
 Failed: fixtures/typescript/tests/cases/compiler/unusedIdentifiersConsolidated1.ts - unusedIdentifiersConsolidated1.ts: second parse: Expected '=' in type alias declaration, but found 'StringValidator' at 627..642
 Failed: fixtures/typescript/tests/cases/compiler/unusedInterfaceinNamespace2.ts - unusedInterfaceinNamespace2.ts: second parse: Expected '=' in type alias declaration, but found 'i2' at 67..69
@@ -973,7 +919,7 @@ Failed: fixtures/typescript/tests/cases/compiler/unusedInvalidTypeArguments.ts -
 Failed: fixtures/typescript/tests/cases/compiler/unusedLocalsAndParametersTypeAliases.ts - unusedLocalsAndParametersTypeAliases.ts: second parse: Expected '=' in type alias declaration, but found 'I1' at 75..77
 Failed: fixtures/typescript/tests/cases/compiler/unwitnessedTypeParameterVariance.ts - unwitnessedTypeParameterVariance.ts: second parse: Expected '=' in type alias declaration, but found 'CalcObj' at 44..51
 Failed: fixtures/typescript/tests/cases/compiler/useBeforeDeclaration_jsx.tsx - useBeforeDeclaration_jsx.tsx: second parse: Expected '=' in type alias declaration, but found 'Element' at 40..47
-Failed: fixtures/typescript/tests/cases/compiler/useBeforeDefinitionInDeclarationFiles.ts - declaration.d.ts: first parse: 'const' declarations must be initialized at 209..236
+Failed: fixtures/typescript/tests/cases/compiler/useBeforeDefinitionInDeclarationFiles.ts - declaration.d.ts: second parse: Expected '=' in type alias declaration, but found 'class' at 20..25
 Failed: fixtures/typescript/tests/cases/compiler/usingModuleWithExportImportInValuePosition.ts - usingModuleWithExportImportInValuePosition.ts: first parse: expected an import-equals declaration after 'export' at 254..267
 Failed: fixtures/typescript/tests/cases/compiler/varArgsOnConstructorTypes.ts - varArgsOnConstructorTypes.ts: second parse: Expected '=' in type alias declaration, but found 'I1' at 249..251
 Failed: fixtures/typescript/tests/cases/compiler/vardecl.ts - vardecl.ts: second parse: Expected '=' in type alias declaration, but found 'var' at 1140..1143
@@ -985,12 +931,10 @@ Failed: fixtures/typescript/tests/cases/compiler/visibilityOfCrossModuleTypeUsag
 Failed: fixtures/typescript/tests/cases/compiler/withExportDecl.ts - withExportDecl.ts: second parse: Expected '=' in type alias declaration, but found 'var' at 480..483
 Failed: fixtures/typescript/tests/cases/compiler/yieldExpressionInnerCommentEmit.ts - yieldExpressionInnerCommentEmit.ts: codegen output changed after reparse at byte 54 (first: 193 bytes, second: 160 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/ambient/ambientDeclarations.ts - ambientDeclarations.ts: codegen output changed after reparse at byte 862 (first: 1482 bytes, second: 1488 bytes)
-Failed: fixtures/typescript/tests/cases/conformance/ambient/ambientDeclarationsPatterns.ts - declarations.d.ts: first parse: 'const' declarations must be initialized at 143..146
 Failed: fixtures/typescript/tests/cases/conformance/ambient/ambientEnumDeclaration1.ts - ambientEnumDeclaration1.ts: codegen output changed after reparse at byte 237 (first: 237 bytes, second: 239 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/ambient/ambientEnumDeclaration2.ts - ambientEnumDeclaration2.ts: codegen output changed after reparse at byte 249 (first: 300 bytes, second: 304 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/ambient/ambientInsideNonAmbient.ts - ambientInsideNonAmbient.ts: second parse: Expected '=' in type alias declaration, but found 'var' at 36..39
 Failed: fixtures/typescript/tests/cases/conformance/ambient/ambientInsideNonAmbientExternalModule.ts - ambientInsideNonAmbientExternalModule.ts: second parse: Expected '=' in type alias declaration, but found 'var' at 20..23
-Failed: fixtures/typescript/tests/cases/conformance/ambient/ambientShorthand_merging.ts - declarations2.d.ts: first parse: 'const' declarations must be initialized at 40..43
 Failed: fixtures/typescript/tests/cases/conformance/classes/members/instanceAndStaticMembers/superInStaticMembers1.ts - constEnumInContainingScopeStaticBlock.ts: codegen output changed after reparse at byte 76 (first: 162 bytes, second: 164 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/classes/members/instanceAndStaticMembers/superInStaticMembers1.ts - constEnumInContainingScopeStaticField.ts: codegen output changed after reparse at byte 76 (first: 156 bytes, second: 158 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/classes/members/instanceAndStaticMembers/superInStaticMembers1.ts - enumInContainingScopeStaticBlock.ts: codegen output changed after reparse at byte 70 (first: 156 bytes, second: 158 bytes)
@@ -1130,7 +1074,6 @@ Failed: fixtures/typescript/tests/cases/conformance/expressions/valuesAndReferen
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/amdImportAsPrimaryExpression.ts - foo_0.ts: codegen output changed after reparse at byte 35 (first: 35 bytes, second: 37 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/amdImportNotAsPrimaryExpression.ts - foo_0.ts: second parse: Expected '=' in type alias declaration, but found 'I1' at 73..75
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/commonJSImportNotAsPrimaryExpression.ts - foo_0.ts: second parse: Expected '=' in type alias declaration, but found 'I1' at 73..75
-Failed: fixtures/typescript/tests/cases/conformance/externalModules/commonJsImportBindingElementNarrowType.ts - /foo.d.ts: first parse: 'const' declarations must be initialized at 46..47
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/es6/es6modulekindWithES5Target12.ts - es6modulekindWithES5Target12.ts: codegen output changed after reparse at byte 92 (first: 346 bytes, second: 350 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/es6/es6modulekindWithES5Target5.ts - es6modulekindWithES5Target5.ts: codegen output changed after reparse at byte 30 (first: 66 bytes, second: 70 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/es6/es6modulekindWithES5Target7.ts - es6modulekindWithES5Target7.ts: second parse: Expected '=' in type alias declaration, but found 'I' at 82..83
@@ -1184,7 +1127,6 @@ Failed: fixtures/typescript/tests/cases/conformance/externalModules/verbatimModu
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/verbatimModuleSyntaxConstEnumUsage.ts - foo.ts: codegen output changed after reparse at byte 40 (first: 40 bytes, second: 42 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/verbatimModuleSyntaxInternalImportEquals.ts - verbatimModuleSyntaxInternalImportEquals.ts: second parse: Expected '=' in type alias declaration, but found 'T' at 95..96
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/verbatimModuleSyntaxNoElisionESM.ts - /a.ts: second parse: Expected '=' in type alias declaration, but found 'A' at 37..38
-Failed: fixtures/typescript/tests/cases/conformance/externalModules/verbatimModuleSyntaxRestrictionsESM.ts - /ambient.d.ts: first parse: 'const' declarations must be initialized at 37..44
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/verbatimModuleSyntaxRestrictionsESM.ts - /ns.ts: codegen output changed after reparse at byte 44 (first: 46 bytes, second: 50 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/generators/generatorYieldContextualType.ts - generatorYieldContextualType.ts: codegen output changed after reparse at byte 373 (first: 2619 bytes, second: 2621 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/importDefer/importDeferDeclaration.ts - a.ts: second parse: Expected '=' in type alias declaration, but found 'Foo' at 22..25
@@ -1221,7 +1163,7 @@ Failed: fixtures/typescript/tests/cases/conformance/internalModules/moduleDeclar
 Failed: fixtures/typescript/tests/cases/conformance/internalModules/moduleDeclarations/instantiatedModule.ts - instantiatedModule.ts: second parse: Expected '=' in type alias declaration, but found 'Point' at 90..95
 Failed: fixtures/typescript/tests/cases/conformance/internalModules/moduleDeclarations/nestedModules.ts - nestedModules.ts: second parse: Expected '=' in type alias declaration, but found 'Point' at 42..47
 Failed: fixtures/typescript/tests/cases/conformance/internalModules/moduleDeclarations/nonInstantiatedModule.ts - nonInstantiatedModule.ts: second parse: Expected '=' in type alias declaration, but found 'Point' at 38..43
-Failed: fixtures/typescript/tests/cases/conformance/internalModules/moduleDeclarations/reExportAliasMakesInstantiated.ts - reExportAliasMakesInstantiated.ts: first parse: 'const' declarations must be initialized at 34..39
+Failed: fixtures/typescript/tests/cases/conformance/internalModules/moduleDeclarations/reExportAliasMakesInstantiated.ts - reExportAliasMakesInstantiated.ts: first parse: expected an import-equals declaration after 'export' at 156..183
 Failed: fixtures/typescript/tests/cases/conformance/jsdoc/declarations/jsDeclarationsClassImplementsGenericsSerialization.ts - interface.ts: second parse: Expected '=' in type alias declaration, but found 'Encoder' at 22..29
 Failed: fixtures/typescript/tests/cases/conformance/jsdoc/importTag1.ts - /types.ts: second parse: Expected '=' in type alias declaration, but found 'Foo' at 22..25
 Failed: fixtures/typescript/tests/cases/conformance/jsdoc/importTag16.ts - a.ts: second parse: Expected '=' in type alias declaration, but found 'I' at 54..55
@@ -1251,49 +1193,29 @@ Failed: fixtures/typescript/tests/cases/conformance/jsdoc/tsNoCheckForTypescript
 Failed: fixtures/typescript/tests/cases/conformance/jsdoc/tsNoCheckForTypescriptComments1.ts - file.ts: second parse: Expected '=' in type alias declaration, but found 'Aleph' at 214..219
 Failed: fixtures/typescript/tests/cases/conformance/jsdoc/tsNoCheckForTypescriptComments2.ts - file.ts: second parse: Expected '=' in type alias declaration, but found 'Aleph' at 215..220
 Failed: fixtures/typescript/tests/cases/conformance/jsx/checkJsxChildrenProperty16.tsx - checkJsxChildrenProperty16.tsx: second parse: Expected '=' in type alias declaration, but found 'Props' at 115..120
-Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxLibraryManagedAttributes.tsx - tsxLibraryManagedAttributes.tsx: first parse: 'const' declarations must be initialized at 698..704
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxOpeningClosingNames.tsx - file.tsx: first parse: Expected closing tag for '<A.B.C.D>' but found '</A . B . C.D>' at 107..118
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxSpreadInvalidType.tsx - a.tsx: second parse: Expected '=' in type alias declaration, but found 'IntrinsicElements' at 40..57
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxStatelessFunctionComponentOverload5.tsx - file.tsx: second parse: Expected '=' in type alias declaration, but found 'ClickableProps' at 97..111
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxStatelessFunctionComponentOverload6.tsx - file.tsx: second parse: Expected '=' in type alias declaration, but found 'ClickableProps' at 141..155
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/allowImportingTypesDtsExtension.ts - /types.d.ts: second parse: Expected '=' in type alias declaration, but found 'type' at 20..24
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/bundler/bundlerCommonJS.ts - /node_modules/pkg/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'const' at 20..25
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/bundler/bundlerSyntaxRestrictions.ts - /ambient.d.ts: first parse: 'const' declarations must be initialized at 202..205
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/node10IsNode_node.ts - /node_modules/fancy-lib/definitely-not-index.d.ts: second parse: Expected '=' in type alias declaration, but found 'const' at 20..25
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/node10IsNode_node.ts - /node_modules/fancy-lib/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'const' at 20..25
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/node10IsNode_node10.ts - /node_modules/fancy-lib/definitely-not-index.d.ts: second parse: Expected '=' in type alias declaration, but found 'const' at 20..25
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/node10IsNode_node10.ts - /node_modules/fancy-lib/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'const' at 20..25
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/resolutionModeImportType1.ts - /node_modules/@types/foo/index.d.cts: second parse: Expected '=' in type alias declaration, but found 'const' at 20..25
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/resolutionModeImportType1.ts - /node_modules/@types/foo/index.d.mts: second parse: Expected '=' in type alias declaration, but found 'const' at 20..25
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/resolutionModeTripleSlash1.ts - /node_modules/@types/foo/index.d.cts: first parse: 'const' declarations must be initialized at 36..42
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/resolutionModeTripleSlash1.ts - /node_modules/@types/foo/index.d.mts: first parse: 'const' declarations must be initialized at 36..42
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/resolutionModeTripleSlash2.ts - /node_modules/@types/foo/index.d.cts: first parse: 'const' declarations must be initialized at 36..42
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/resolutionModeTripleSlash2.ts - /node_modules/@types/foo/index.d.mts: first parse: 'const' declarations must be initialized at 36..42
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/resolutionModeTripleSlash3.ts - /node_modules/@types/foo/index.d.cts: first parse: 'const' declarations must be initialized at 36..42
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/resolutionModeTripleSlash3.ts - /node_modules/@types/foo/index.d.mts: first parse: 'const' declarations must be initialized at 36..42
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/resolutionModeTripleSlash4.ts - /node_modules/@types/foo/index.d.cts: first parse: 'const' declarations must be initialized at 36..42
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/resolutionModeTripleSlash4.ts - /node_modules/@types/foo/index.d.mts: first parse: 'const' declarations must be initialized at 36..42
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/resolutionModeTripleSlash5.ts - /node_modules/@types/foo/index.d.cts: first parse: 'const' declarations must be initialized at 36..42
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/resolutionModeTripleSlash5.ts - /node_modules/@types/foo/index.d.mts: first parse: 'const' declarations must be initialized at 36..42
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/resolutionModeTypeOnlyImport1.ts - /node_modules/@types/foo/index.d.cts: second parse: Expected '=' in type alias declaration, but found 'const' at 20..25
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/resolutionModeTypeOnlyImport1.ts - /node_modules/@types/foo/index.d.mts: second parse: Expected '=' in type alias declaration, but found 'const' at 20..25
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/scopedPackages.ts - /node_modules/@cow/boy/index.d.ts: first parse: 'const' declarations must be initialized at 13..14
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/scopedPackages.ts - /node_modules/@types/be__bop/e/z.d.ts: first parse: 'const' declarations must be initialized at 13..14
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/scopedPackages.ts - /node_modules/@types/be__bop/index.d.ts: first parse: 'const' declarations must be initialized at 13..14
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport.ts - /node_modules/foo/index.js: first parse: Expected a semicolon or an implicit semicolon after a statement, but found 'file' at 146..150
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_noImplicitAny.ts - /node_modules/foo/index.js: first parse: Expected a semicolon or an implicit semicolon after a statement, but found 'file' at 5..9
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_noImplicitAny_relativePath.ts - /node_modules/foo/index.js: first parse: Expected a semicolon or an implicit semicolon after a statement, but found 'file' at 5..9
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_noImplicitAny_scoped.ts - /node_modules/@foo/bar/index.js: first parse: Expected a semicolon or an implicit semicolon after a statement, but found 'file' at 5..9
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_noImplicitAny_typesForPackageExist.ts - /node_modules/@types/foo/index.d.ts: first parse: 'const' declarations must be initialized at 13..16
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_noImplicitAny_typesForPackageExist.ts - /node_modules/@types/scope__foo/index.d.ts: first parse: 'const' declarations must be initialized at 13..16
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_vsAmbient.ts - /declarations.d.ts: first parse: 'const' declarations must be initialized at 40..41
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_vsAmbient.ts - /node_modules/foo/index.js: first parse: Expected a semicolon or an implicit semicolon after a statement, but found 'file' at 84..88
-Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_withAugmentation.ts - /a.ts: first parse: 'const' declarations must be initialized at 40..41
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/untypedModuleImport_withAugmentation.ts - /node_modules/foo/index.js: first parse: Expected a semicolon or an implicit semicolon after a statement, but found 'file' at 68..72
-Failed: fixtures/typescript/tests/cases/conformance/node/allowJs/nodeAllowJsPackageSelfName2.ts - /types/src/foo.d.ts: first parse: 'const' declarations must be initialized at 13..16
-Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesExportsSpecifierGenerationConditions.ts - node_modules/inner/other.d.ts: first parse: 'const' declarations must be initialized at 58..59
-Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesExportsSpecifierGenerationDirectory.ts - node_modules/inner/other.d.ts: first parse: 'const' declarations must be initialized at 58..59
-Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesExportsSpecifierGenerationPattern.ts - node_modules/inner/other.d.ts: first parse: 'const' declarations must be initialized at 58..59
+Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesExportsSpecifierGenerationConditions.ts - node_modules/inner/other.d.ts: second parse: Expected '=' in type alias declaration, but found 'Thing' at 41..46
+Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesExportsSpecifierGenerationDirectory.ts - node_modules/inner/other.d.ts: second parse: Expected '=' in type alias declaration, but found 'Thing' at 41..46
+Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesExportsSpecifierGenerationPattern.ts - node_modules/inner/other.d.ts: second parse: Expected '=' in type alias declaration, but found 'Thing' at 41..46
 Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesImportAssignments.ts - file.ts: first parse: expected an import-equals declaration after 'export' at 119..146
 Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesImportAssignments.ts - index.ts: first parse: expected an import-equals declaration after 'export' at 66..93
 Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesImportAssignments.ts - subfolder/index.ts: first parse: expected an import-equals declaration after 'export' at 66..93
@@ -1369,7 +1291,7 @@ Failed: fixtures/typescript/tests/cases/conformance/types/contextualTypes/jsxAtt
 Failed: fixtures/typescript/tests/cases/conformance/types/contextualTypes/jsxAttributes/contextuallyTypedStringLiteralsInJsxAttributes02.tsx - file.tsx: second parse: Expected '=' in type alias declaration, but found 'ClickableProps' at 160..174
 Failed: fixtures/typescript/tests/cases/conformance/types/import/importTypeAmdBundleRewrite.ts - a/b/c.ts: second parse: Expected '=' in type alias declaration, but found 'Foo' at 22..25
 Failed: fixtures/typescript/tests/cases/conformance/types/import/importTypeGenericTypes.ts - foo2.ts: second parse: Expected '=' in type alias declaration, but found 'I' at 40..41
-Failed: fixtures/typescript/tests/cases/conformance/types/import/importTypeInJSDoc.ts - externs.d.ts: first parse: 'const' declarations must be initialized at 252..255
+Failed: fixtures/typescript/tests/cases/conformance/types/import/importTypeInJSDoc.ts - externs.d.ts: second parse: Expected '=' in type alias declaration, but found 'Bar' at 52..55
 Failed: fixtures/typescript/tests/cases/conformance/types/import/importTypeLocal.ts - foo2.ts: second parse: Expected '=' in type alias declaration, but found 'I' at 40..41
 Failed: fixtures/typescript/tests/cases/conformance/types/import/importTypeLocalMissing.ts - foo2.ts: second parse: Expected '=' in type alias declaration, but found 'I' at 40..41
 Failed: fixtures/typescript/tests/cases/conformance/types/intersection/intersectionMemberOfUnionNarrowsCorrectly.ts - intersectionMemberOfUnionNarrowsCorrectly.ts: second parse: Expected '=' in type alias declaration, but found 'U' at 17..18
@@ -1439,16 +1361,12 @@ Failed: fixtures/typescript/tests/cases/conformance/types/typeRelationships/type
 Failed: fixtures/typescript/tests/cases/conformance/types/typeRelationships/typeInference/unionTypeInference.ts - unionTypeInference.ts: second parse: Expected '=' in type alias declaration, but found 'Foo' at 796..799
 Failed: fixtures/typescript/tests/cases/conformance/types/union/contextualTypeWithUnionTypeCallSignatures.ts - contextualTypeWithUnionTypeCallSignatures.ts: codegen output changed after reparse at byte 1337 (first: 1528 bytes, second: 1518 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/types/union/discriminatedUnionTypes4.ts - discriminatedUnionTypes4.ts: codegen output changed after reparse at byte 107 (first: 980 bytes, second: 982 bytes)
-Failed: fixtures/typescript/tests/cases/conformance/types/uniqueSymbol/uniqueSymbols.ts - uniqueSymbols.ts: first parse: 'const' declarations must be initialized at 4905..4906
-Failed: fixtures/typescript/tests/cases/conformance/types/uniqueSymbol/uniqueSymbolsDeclarations.ts - uniqueSymbolsDeclarations.ts: first parse: 'const' declarations must be initialized at 4783..4784
 Failed: fixtures/typescript/tests/cases/conformance/types/uniqueSymbol/uniqueSymbolsDeclarationsErrors.ts - uniqueSymbolsDeclarationsErrors.ts: second parse: Expected '=' in type alias declaration, but found 'InterfaceWithPrivateNamedProperties' at 551..586
 Failed: fixtures/typescript/tests/cases/conformance/types/unknown/unknownType2.ts - unknownType2.ts: codegen output changed after reparse at byte 1776 (first: 4935 bytes, second: 4939 bytes)
-Failed: fixtures/typescript/tests/cases/conformance/typings/typingsLookup4.ts - /node_modules/@types/jquery/jquery.d.ts: first parse: 'const' declarations must be initialized at 13..14
-Failed: fixtures/typescript/tests/cases/conformance/typings/typingsLookup4.ts - /node_modules/@types/kquery/kquery.d.ts: first parse: 'const' declarations must be initialized at 13..14
 Failed: fixtures/typescript/tests/cases/conformance/typings/typingsLookupAmd.ts - /node_modules/@types/a/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'class' at 20..25
 Failed: fixtures/typescript/tests/cases/conformance/typings/typingsLookupAmd.ts - /x/node_modules/@types/b/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'class' at 43..48
 Failed: fixtures/typescript/tests/cases/fourslash/completionListInScope.ts - completionListInScope.ts: codegen output changed after reparse at byte 1536 (first: 2232 bytes, second: 2242 bytes)
-Failed: fixtures/typescript/tests/cases/fourslash/fourslash.ts - lib.d.ts: first parse: 'const' declarations must be initialized at 1939..1950
+Failed: fixtures/typescript/tests/cases/fourslash/fourslash.ts - lib.d.ts: first parse: Rest parameter must be the last parameter at 15032..15033
 Failed: fixtures/typescript/tests/cases/fourslash/jsFileJsdocTypedefTagTypeExpressionCompletion.ts - jsFileJsdocTypedefTagTypeExpressionCompletion_typedef.js: first parse: 'const' declarations must be initialized at 451..456
 Failed: fixtures/typescript/tests/cases/fourslash/jsFileJsdocTypedefTagTypeExpressionCompletion2.ts - jsFileJsdocTypedefTagTypeExpressionCompletion2_typedef.js: first parse: Expected ')' to close parameter list, but found ':' at 494..495
 Failed: fixtures/typescript/tests/cases/fourslash/jsFileJsdocTypedefTagTypeExpressionCompletion3.ts - jsFileJsdocTypedefTagTypeExpressionCompletion3_typedef.js: first parse: Expected ',' or ')' in parenthesized expression, but found ':' at 744..745

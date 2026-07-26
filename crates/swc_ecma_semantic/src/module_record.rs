@@ -96,6 +96,7 @@ pub(crate) fn collect<'a>(
         top_scope: scopes.top_level_scope_id(),
         symbols,
         diagnostics,
+        check_duplicate_exports: !ast.lang().is_typescript(),
         export_names: FxHashMap::default(),
         default_export_bindings: Vec::new(),
     };
@@ -109,6 +110,7 @@ struct Collector<'table, 'diagnostics> {
     top_scope: ScopeId,
     symbols: &'table SymbolTable,
     diagnostics: &'diagnostics mut Vec<Diagnostic<'static>>,
+    check_duplicate_exports: bool,
     export_names: FxHashMap<String, Span>,
     default_export_bindings: Vec<bool>,
 }
@@ -116,6 +118,12 @@ struct Collector<'table, 'diagnostics> {
 impl Collector<'_, '_> {
     /// Records an exported name and reports a duplicate if already present.
     fn record_exported_name(&mut self, name: &str, span: Span) {
+        // TypeScript declarations can merge across symbol spaces. Until this
+        // pass resolves those spaces, rejecting repeated spellings can report
+        // valid exports as duplicates.
+        if !self.check_duplicate_exports {
+            return;
+        }
         if let Some(previous) = self.export_names.get(name).copied() {
             self.diagnostics.push(Diagnostic {
                 severity: Severity::Error,
