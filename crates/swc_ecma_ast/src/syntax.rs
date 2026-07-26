@@ -2,6 +2,7 @@ use crate::{
     AssignmentOperator, BinaryOperator, LogicalOperator, TsTypeOperatorKind, UnaryOperator,
     UpdateOperator,
 };
+use unicode_id_start::{is_id_continue, is_id_start};
 
 impl BinaryOperator {
     pub const fn as_str(self) -> &'static str {
@@ -186,6 +187,19 @@ impl Precedence {
     }
 }
 
+pub fn is_identifier(text: &[u8]) -> bool {
+    let Ok(text) = std::str::from_utf8(text) else {
+        return false;
+    };
+    let mut chars = text.chars();
+    chars
+        .next()
+        .is_some_and(|code_point| matches!(code_point, '$' | '_') || is_id_start(code_point))
+        && chars.all(|code_point| {
+            matches!(code_point, '$' | '_' | '\u{200c}' | '\u{200d}') || is_id_continue(code_point)
+        })
+}
+
 pub fn is_ident_start_ascii(byte: u8) -> bool {
     byte.is_ascii_alphabetic() || byte == b'_' || byte == b'$'
 }
@@ -194,6 +208,43 @@ pub fn is_ident_continue_ascii(byte: u8) -> bool {
     is_ident_start_ascii(byte) || byte.is_ascii_digit()
 }
 
-pub fn is_ident_continue_jsx_ascii(byte: u8) -> bool {
-    is_ident_continue_ascii(byte) || byte == b'-'
+pub fn is_identifier_es5_and_es_next(text: &[u8]) -> bool {
+    let Ok(text) = std::str::from_utf8(text) else {
+        return false;
+    };
+    let mut chars = text.chars();
+    chars
+        .next()
+        .is_some_and(is_identifier_start_es5_and_es_next)
+        && chars.all(is_identifier_continue_es5_and_es_next)
+}
+
+pub fn is_identifier_start_es5_and_es_next(code_point: char) -> bool {
+    matches!(code_point, '$' | '_')
+        || (code_point <= '\u{ffff}'
+            && !matches!(code_point, '\u{30fb}' | '\u{ff65}')
+            && is_id_start(code_point))
+}
+
+pub fn is_identifier_continue_es5_and_es_next(code_point: char) -> bool {
+    matches!(code_point, '$' | '_' | '\u{200c}' | '\u{200d}')
+        || (code_point <= '\u{ffff}'
+            && !matches!(code_point, '\u{30fb}' | '\u{ff65}')
+            && is_id_continue(code_point))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_identifier;
+
+    #[test]
+    fn identifier() {
+        for text in ["x", "$value0", "_value", "π", "𐀀", "x\u{200c}"] {
+            assert!(is_identifier(text.as_bytes()), "{text:?}");
+        }
+        for text in ["", "0x", "a-b", "🍕", "\u{200c}x"] {
+            assert!(!is_identifier(text.as_bytes()), "{text:?}");
+        }
+        assert!(!is_identifier(&[0xff]));
+    }
 }

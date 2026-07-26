@@ -2,7 +2,7 @@ use swc_next_allocator::Allocator;
 use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
     Comment, CommentKind, CommentPosition, SourceType, Span, is_ident_continue_ascii,
-    is_ident_continue_jsx_ascii, is_ident_start_ascii,
+    is_ident_start_ascii,
 };
 
 use super::token::{Token, TokenFlag, TokenTag, flag_mask};
@@ -661,7 +661,8 @@ impl<'allocator, 'source> Lexer<'allocator, 'source> {
         loop {
             while pos < src.len()
                 && if is_jsx_tag {
-                    is_ident_continue_jsx_ascii(src[pos])
+                    let byte = src[pos];
+                    is_ident_continue_ascii(byte) || byte == b'-'
                 } else {
                     is_ident_continue_ascii(src[pos])
                 }

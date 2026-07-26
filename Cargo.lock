@@ -2097,6 +2097,7 @@ dependencies = [
  "oxc_index",
  "swc_next_allocator",
  "swc_next_ast_macros",
+ "unicode-id-start",
 ]
 
 [[package]]
@@ -2106,7 +2107,6 @@ dependencies = [
  "swc_next_allocator",
  "swc_next_ecma_ast",
  "swc_next_ecma_parser",
- "unicode-id-start",
 ]
 
 [[package]]

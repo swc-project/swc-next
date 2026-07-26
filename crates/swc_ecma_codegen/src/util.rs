@@ -1,7 +1,6 @@
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 
 use swc_next_ecma_ast::*;
-use unicode_id_start::{is_id_continue, is_id_start};
 
 const HEX: &[u8; 16] = b"0123456789ABCDEF";
 
@@ -65,30 +64,6 @@ pub(crate) fn finalize_source_map<'a>(
         names,
         mappings,
     }
-}
-
-pub(crate) fn is_identifier(name: &[u8]) -> bool {
-    let Ok(name) = std::str::from_utf8(name) else {
-        return false;
-    };
-    let mut chars = name.chars();
-    let Some(first) = chars.next() else {
-        return false;
-    };
-    (first == '$' || first == '_' || is_id_start(first))
-        && chars.all(|c| c == '$' || c == '\u{200c}' || c == '\u{200d}' || is_id_continue(c))
-}
-
-pub(crate) fn is_identifier_es5_and_esnext(name: &[u8]) -> bool {
-    is_identifier(name)
-        && std::str::from_utf8(name).is_ok_and(|name| {
-            name.chars().all(|character| {
-                // esbuild uses the intersection of ES5's Unicode tables and
-                // the current ECMAScript tables here. Its intersection table
-                // contains only BMP code points.
-                character <= '\u{ffff}' && character != '\u{30fb}' && character != '\u{ff65}'
-            })
-        })
 }
 
 pub(crate) fn import_declaration_has_empty_clause(
@@ -179,16 +154,6 @@ pub(crate) fn decorator_expression_needs_parentheses(ast: &Ast<'_>, mut expressi
             ExprData::IdentifierReference(_) => return false,
             ExprData::CallExpression(call) => expression = call.callee(ast),
             ExprData::MemberExpression(member) if !member.computed(ast) => {
-                let name = match ast.property_key_data(member.property(ast)) {
-                    PropertyKeyData::IdentifierName(identifier) => ast.string(identifier.name(ast)),
-                    PropertyKeyData::PrivateIdentifier(identifier) => {
-                        ast.string(identifier.name(ast))
-                    }
-                    _ => return true,
-                };
-                if !is_identifier_es5_and_esnext(name) {
-                    return true;
-                }
                 expression = member.object(ast);
             }
             _ => return true,

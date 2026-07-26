@@ -6,9 +6,9 @@ use swc_next_ecma_ast::*;
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator, OperatorCode};
 use crate::util::{
     AstAdapterState, decorator_expression_needs_parentheses, decorator_omit_newline_after,
-    import_declaration_has_empty_clause, is_identifier, is_identifier_es5_and_esnext,
-    is_legal_comment, module_name_bytes, next_code_point, parse_numeric_literal,
-    push_code_point_escape, push_u16_escape, quote_into, token_offset_after_decorators,
+    import_declaration_has_empty_clause, is_legal_comment, module_name_bytes, next_code_point,
+    parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
+    token_offset_after_decorators,
 };
 
 use crate::{
@@ -571,7 +571,7 @@ impl<'a> Printer<'a> {
             || self
                 .js
                 .last()
-                .is_some_and(|&last| is_ident_continue_ascii(last) || last == b'\\')
+                .is_some_and(|&last| is_ident_continue_ascii(last) || last == b'\\' || last >= 0x80)
         {
             self.print(" ");
         }
@@ -595,10 +595,6 @@ impl<'a> Printer<'a> {
                 push_code_point_escape(&mut self.js, cp);
             }
         }
-    }
-
-    fn can_print_identifier(&self, name: &[u8]) -> bool {
-        is_identifier_es5_and_esnext(name)
     }
 
     fn print_quoted(&mut self, value: &[u8], allow_backtick: bool) {
@@ -4230,5 +4226,9 @@ impl Printer<'_> {
         identifier.decorators(ast).is_empty()
             && identifier.type_annotation(ast).is_none()
             && !identifier.optional(ast)
+    }
+
+    fn can_print_identifier(&self, name: &[u8]) -> bool {
+        is_identifier_es5_and_es_next(name)
     }
 }

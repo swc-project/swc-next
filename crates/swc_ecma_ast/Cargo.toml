@@ -13,6 +13,7 @@ shared_string_allocator = []
 
 [dependencies]
 oxc_index        = { workspace = true }
+unicode-id-start = { workspace = true }
 
 swc_next_allocator  = { workspace = true }
 swc_next_ast_macros = { workspace = true }
