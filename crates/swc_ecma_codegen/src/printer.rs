@@ -5,8 +5,8 @@ use swc_next_ecma_ast::*;
 
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator, OperatorCode};
 use crate::util::{
-    decorator_expression_needs_parentheses, next_code_point, parse_numeric_literal,
-    push_code_point_escape, push_u16_escape, quote_into, token_offset_after_decorators,
+    next_code_point, parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
+    token_offset_after_decorators,
 };
 
 use crate::{
@@ -2688,16 +2688,37 @@ impl<'a> Printer<'a> {
     }
 
     fn print_decorators(&mut self, decorators: TypedSubRange<Decorator>) {
+        fn need_wrap(ast: &Ast<'_>, mut expression: Expr) -> bool {
+            loop {
+                match ast.expr_data(expression) {
+                    ExprData::IdentifierReference(_) => return false,
+                    ExprData::CallExpression(call) => expression = call.callee(ast),
+                    ExprData::MemberExpression(member) if !member.computed(ast) => {
+                        let name = match ast.property_key_data(member.property(ast)) {
+                            PropertyKeyData::IdentifierName(identifier) => {
+                                ast.string(identifier.name(ast))
+                            }
+                            PropertyKeyData::PrivateIdentifier(identifier) => {
+                                ast.string(identifier.name(ast))
+                            }
+                            _ => return true,
+                        };
+                        if !is_identifier_es5_and_esnext(name) {
+                            return true;
+                        }
+                        expression = member.object(ast);
+                    }
+                    _ => return true,
+                }
+            }
+        }
+
         for id in decorators.iter() {
             let decorator = self.ast.get_node_in_sub_range(id);
             self.add_source_mapping(decorator.span(self.ast).start);
             self.print("@");
             let expression = decorator.expression(self.ast);
-            let wrap = decorator_expression_needs_parentheses(self.ast, expression)
-                && !matches!(
-                    self.ast.expr_data(expression),
-                    ExprData::ArrowFunctionExpression(_)
-                );
+            let wrap = need_wrap(self.ast, expression);
             if wrap {
                 self.print("(");
             }

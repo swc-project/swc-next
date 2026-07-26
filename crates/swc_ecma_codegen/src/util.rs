@@ -54,29 +54,6 @@ pub(crate) fn token_offset_after_decorators(
     offset as u32
 }
 
-pub(crate) fn decorator_expression_needs_parentheses(ast: &Ast<'_>, mut expression: Expr) -> bool {
-    loop {
-        match ast.expr_data(expression) {
-            ExprData::IdentifierReference(_) => return false,
-            ExprData::CallExpression(call) => expression = call.callee(ast),
-            ExprData::MemberExpression(member) if !member.computed(ast) => {
-                let name = match ast.property_key_data(member.property(ast)) {
-                    PropertyKeyData::IdentifierName(identifier) => ast.string(identifier.name(ast)),
-                    PropertyKeyData::PrivateIdentifier(identifier) => {
-                        ast.string(identifier.name(ast))
-                    }
-                    _ => return true,
-                };
-                if !is_identifier_es5_and_esnext(name) {
-                    return true;
-                }
-                expression = member.object(ast);
-            }
-            _ => return true,
-        }
-    }
-}
-
 pub(crate) fn remove_underscores(raw: &[u8]) -> Vec<u8> {
     raw.iter().copied().filter(|&b| b != b'_').collect()
 }

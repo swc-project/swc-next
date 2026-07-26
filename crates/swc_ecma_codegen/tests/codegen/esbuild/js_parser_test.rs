@@ -1415,7 +1415,6 @@ fn test_auto_accessors() {
 }
 
 #[test]
-#[ignore = "depends on esbuild decorator AST placement"]
 fn test_decorators() {
     expect_printed(b"@x @y class Foo {}", b"@x @y class Foo {\n}\n");
     expect_printed(
@@ -1463,7 +1462,7 @@ fn test_decorators() {
     );
     expect_printed(
         b"@\na\n(\n)\n@\n(\nb\n)\nclass\nFoo\n{\n}\n",
-        b"@a()\n@b\nclass Foo {\n}\n",
+        b"@a() @b class Foo {\n}\n",
     );
     expect_printed(b"@(a, b) class Foo {}", b"@(a, b) class Foo {\n}\n");
     expect_printed(b"@x() class Foo {}", b"@x() class Foo {\n}\n");
