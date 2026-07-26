@@ -349,6 +349,7 @@ impl<'a> SemanticBuilder<'a> {
                 .skip(1)
                 .find_map(|ancestor| match ctx.node_kind(ancestor) {
                     NodeKind::Function
+                    | NodeKind::TsFunction
                     | NodeKind::ArrowFunctionExpression
                     | NodeKind::FunctionBody
                     | NodeKind::ClassBody
@@ -524,10 +525,10 @@ impl<'a> SemanticBuilder<'a> {
         self.inherited_flags().strict || self.has_retroactive_use_strict(function.body(ast), ast)
     }
 
-    fn has_retroactive_use_strict(&self, body: Option<FunctionBody>, ast: &Ast<'a>) -> bool {
+    fn has_retroactive_use_strict(&self, body: FunctionBody, ast: &Ast<'a>) -> bool {
         // "use strict" applies retroactively to the whole function, including
         // its parameter list, so inspect the body before entering parameters.
-        body.is_some_and(|body| has_use_strict_directive(body.directives(ast), ast))
+        has_use_strict_directive(body.directives(ast), ast)
     }
 
     fn arrow_is_strict(&self, arrow: ArrowFunctionExpression, ast: &Ast<'a>) -> bool {
@@ -538,6 +539,42 @@ impl<'a> SemanticBuilder<'a> {
                 }
                 ArrowFunctionBodyData::Expr(_) => false,
             }
+    }
+
+    fn check_function_declaration_position(
+        &mut self,
+        node: impl AstNode + GetSpan,
+        strict: bool,
+        ctx: &TraverseCtx<'_, 'a>,
+    ) {
+        let mut through_label = false;
+        let parent = ctx.ancestors().skip(1).find(|ancestor| {
+            if ctx.node_kind(*ancestor) == NodeKind::LabeledStatement {
+                through_label = true;
+                false
+            } else {
+                true
+            }
+        });
+        let valid = parent.is_some_and(|parent| match ctx.node_kind(parent) {
+            NodeKind::Program
+            | NodeKind::FunctionBody
+            | NodeKind::ClassBody
+            | NodeKind::StaticBlock
+            | NodeKind::BlockStatement
+            | NodeKind::SwitchCase
+            | NodeKind::ExportNamedDeclaration
+            | NodeKind::ExportDefaultDeclaration
+            | NodeKind::TsModuleBlock => !strict || !through_label,
+            NodeKind::IfStatement => !strict && !through_label,
+            _ => false,
+        });
+        if !valid {
+            self.diagnostics.push(Diagnostic::error(
+                "A function declaration is not allowed in this statement position",
+                node.span(ctx.ast),
+            ));
+        }
     }
 
     /// Checks the `ForBinding` restrictions from ECMAScript 14.7.5.1:
@@ -575,10 +612,17 @@ impl<'a> SemanticBuilder<'a> {
         while let Some(ancestor) = ancestors.next() {
             match ctx.ast.kind_data(ancestor) {
                 NodeKindData::ArrowFunctionExpression(_) => {}
-                NodeKindData::Function(_) => {
+                NodeKindData::Function(_) | NodeKindData::TsFunction(_) => {
                     if let Some(parent) = ancestors.next()
-                        && let NodeKindData::MethodDefinition(method) = ctx.ast.kind_data(parent)
-                        && method.kind(ctx.ast) == MethodDefinitionKind::Constructor
+                        && match ctx.ast.kind_data(parent) {
+                            NodeKindData::MethodDefinition(method) => {
+                                method.kind(ctx.ast) == MethodDefinitionKind::Constructor
+                            }
+                            NodeKindData::TsMethodDefinition(method) => {
+                                method.kind(ctx.ast) == MethodDefinitionKind::Constructor
+                            }
+                            _ => false,
+                        }
                     {
                         return if ancestors.any(|ancestor| {
                             matches!(
@@ -611,10 +655,11 @@ impl<'a> SemanticBuilder<'a> {
         while let Some(ancestor) = ancestors.next() {
             match ctx.ast.kind_data(ancestor) {
                 NodeKindData::ArrowFunctionExpression(_) => {}
-                NodeKindData::Function(_) => {
+                NodeKindData::Function(_) | NodeKindData::TsFunction(_) => {
                     return ancestors.next().is_some_and(|parent| {
                         match ctx.ast.kind_data(parent) {
-                            NodeKindData::MethodDefinition(_) => true,
+                            NodeKindData::MethodDefinition(_)
+                            | NodeKindData::TsMethodDefinition(_) => true,
                             NodeKindData::ObjectProperty(property) => {
                                 property.method(ctx.ast)
                                     || property.kind(ctx.ast) != PropertyKind::Init
@@ -660,39 +705,63 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         let outer_scope = self.current_scope;
         let strict = self.function_is_strict(node, ctx.ast);
         if node.function_type(ctx.ast) == FunctionType::FunctionDeclaration {
-            let mut through_label = false;
-            let parent = ctx.ancestors().skip(1).find(|ancestor| {
-                if ctx.node_kind(*ancestor) == NodeKind::LabeledStatement {
-                    through_label = true;
-                    false
-                } else {
-                    true
-                }
-            });
-            let valid = parent.is_some_and(|parent| match ctx.node_kind(parent) {
-                NodeKind::Program
-                | NodeKind::FunctionBody
-                | NodeKind::ClassBody
-                | NodeKind::StaticBlock
-                | NodeKind::BlockStatement
-                | NodeKind::SwitchCase
-                | NodeKind::ExportNamedDeclaration
-                | NodeKind::ExportDefaultDeclaration
-                | NodeKind::TsModuleBlock => !strict || !through_label,
-                NodeKind::IfStatement => !strict && !through_label,
-                _ => false,
-            });
-            if !valid {
-                self.diagnostics.push(Diagnostic::error(
-                    "A function declaration is not allowed in this statement position",
-                    node.span(ctx.ast),
-                ));
-            }
+            self.check_function_declaration_position(node, strict, ctx);
         }
         let flags = ScopeFlags { strict };
         let binding_target = if is_named_function_expression(node, ctx.ast) {
             // Expression names bind outside the function body but inside the
             // surrounding scope.
+            self.expr_name_scope(node.node_id(), ScopeKind::Function, flags);
+            self.scopes
+                .get(self.current_scope)
+                .parent
+                .expect("named function expression has a name scope")
+        } else {
+            self.push_scope(node.node_id(), ScopeKind::Function, flags);
+            outer_scope
+        };
+        let target_kind = self.scopes.get(binding_target).kind;
+        let allow_overload = ctx.ast.lang().is_typescript()
+            || matches!(
+                target_kind,
+                ScopeKind::Function | ScopeKind::Global | ScopeKind::StaticBlock
+            );
+        self.set_binding_context(
+            node.node_id(),
+            BindingContext {
+                flags: SymbolFlags::FUNCTION,
+                excludes: SymbolFlags::function_excludes(allow_overload),
+                target: binding_target,
+                export_state: ExportState::None,
+                ambient: self.ambient,
+            },
+        );
+        TraverseAction::Proceed
+    }
+
+    fn exit_function(&mut self, node: Function, _ctx: &mut TraverseCtx<'_, 'a>) {
+        self.exit_binding_context(node.node_id());
+        self.exit_scope(node.node_id());
+        self.exit_control_boundary();
+    }
+
+    fn enter_ts_function(
+        &mut self,
+        node: TsFunction,
+        ctx: &mut TraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        self.enter_control_boundary();
+        let outer_scope = self.current_scope;
+        let flags = self.inherited_flags();
+        let is_method = ctx
+            .parent()
+            .is_some_and(|parent| ctx.node_kind(parent) == NodeKind::TsMethodDefinition);
+        if !is_method {
+            self.check_function_declaration_position(node, flags.strict, ctx);
+        }
+        let binding_target = if is_method && node.id(ctx.ast).is_some() {
+            // A malformed named method still follows the old empty-body
+            // function-expression scoping rules.
             self.expr_name_scope(node.node_id(), ScopeKind::Function, flags);
             self.scopes
                 .get(self.current_scope)
@@ -721,7 +790,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
         TraverseAction::Proceed
     }
 
-    fn exit_function(&mut self, node: Function, _ctx: &mut TraverseCtx<'_, 'a>) {
+    fn exit_ts_function(&mut self, node: TsFunction, _ctx: &mut TraverseCtx<'_, 'a>) {
         self.exit_binding_context(node.node_id());
         self.exit_scope(node.node_id());
         self.exit_control_boundary();
@@ -1116,7 +1185,10 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             .take_while(|ancestor| {
                 !matches!(
                     ctx.node_kind(*ancestor),
-                    NodeKind::Function | NodeKind::ArrowFunctionExpression | NodeKind::Program
+                    NodeKind::Function
+                        | NodeKind::TsFunction
+                        | NodeKind::ArrowFunctionExpression
+                        | NodeKind::Program
                 )
             })
             .any(|ancestor| ctx.node_kind(ancestor) == NodeKind::StaticBlock)
@@ -1482,7 +1554,6 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             let element = ctx.ast.get_node_in_sub_range(id);
             if let ClassElementData::MethodDefinition(method) = ctx.ast.class_element_data(element)
                 && method.kind(ctx.ast) == MethodDefinitionKind::Constructor
-                && method.value(ctx.ast).body(ctx.ast).is_some()
             {
                 if let Some(previous) = first_constructor {
                     self.diagnostics.push(Diagnostic {
@@ -2311,10 +2382,7 @@ fn has_use_strict_directive(directives: TypedSubRange<Directive>, ast: &Ast<'_>)
 }
 
 fn is_named_function_expression(function: Function, ast: &Ast<'_>) -> bool {
-    matches!(
-        function.function_type(ast),
-        FunctionType::FunctionExpression | FunctionType::TsEmptyBodyFunctionExpression
-    ) && function.id(ast).is_some()
+    function.function_type(ast) == FunctionType::FunctionExpression && function.id(ast).is_some()
 }
 
 fn is_named_class_expression(class: Class, ast: &Ast<'_>) -> bool {
@@ -2439,7 +2507,10 @@ fn is_iteration(statement: Stmt, ast: &Ast<'_>) -> bool {
 fn is_function_boundary(kind: NodeKind) -> bool {
     matches!(
         kind,
-        NodeKind::Function | NodeKind::ArrowFunctionExpression | NodeKind::StaticBlock
+        NodeKind::Function
+            | NodeKind::TsFunction
+            | NodeKind::ArrowFunctionExpression
+            | NodeKind::StaticBlock
     )
 }
 
@@ -2464,7 +2535,7 @@ fn is_arguments_available(ctx: &TraverseCtx<'_, '_>) -> bool {
     // boundaries.
     for ancestor in ctx.ancestors().skip(1) {
         match ctx.node_kind(ancestor) {
-            NodeKind::Function => return true,
+            NodeKind::Function | NodeKind::TsFunction => return true,
             NodeKind::PropertyDefinition | NodeKind::StaticBlock => return false,
             NodeKind::ArrowFunctionExpression | NodeKind::Program => {}
             _ => {}
@@ -2484,6 +2555,7 @@ fn is_private_name_declared(ctx: &TraverseCtx<'_, '_>, name: &[u8]) -> bool {
             let element = ctx.ast.get_node_in_sub_range(id);
             let key = match ctx.ast.class_element_data(element) {
                 ClassElementData::MethodDefinition(method) => method.key(ctx.ast),
+                ClassElementData::TsMethodDefinition(method) => method.key(ctx.ast),
                 ClassElementData::PropertyDefinition(property) => property.key(ctx.ast),
                 ClassElementData::StaticBlock(_) | ClassElementData::TsIndexSignature(_) => {
                     continue;
@@ -2502,6 +2574,7 @@ fn is_private_name_declared(ctx: &TraverseCtx<'_, '_>, name: &[u8]) -> bool {
 fn private_element_name(element: ClassElement, ast: &Ast<'_>) -> Option<(AstString, Span)> {
     let key = match ast.class_element_data(element) {
         ClassElementData::MethodDefinition(method) => method.key(ast),
+        ClassElementData::TsMethodDefinition(method) => method.key(ast),
         ClassElementData::PropertyDefinition(property) => property.key(ast),
         ClassElementData::StaticBlock(_) | ClassElementData::TsIndexSignature(_) => return None,
     };
@@ -2520,6 +2593,13 @@ fn private_element_kind(element: ClassElement, ast: &Ast<'_>) -> PrivateElementK
                 PrivateElementKind::Method
             }
         },
+        ClassElementData::TsMethodDefinition(method) => match method.kind(ast) {
+            MethodDefinitionKind::Get => PrivateElementKind::Getter,
+            MethodDefinitionKind::Set => PrivateElementKind::Setter,
+            MethodDefinitionKind::Constructor | MethodDefinitionKind::Method => {
+                PrivateElementKind::Method
+            }
+        },
         ClassElementData::PropertyDefinition(_) => PrivateElementKind::Field,
         ClassElementData::StaticBlock(_) | ClassElementData::TsIndexSignature(_) => {
             unreachable!("static blocks and index signatures do not have private names")
@@ -2530,6 +2610,7 @@ fn private_element_kind(element: ClassElement, ast: &Ast<'_>) -> PrivateElementK
 fn private_element_is_static(element: ClassElement, ast: &Ast<'_>) -> bool {
     match ast.class_element_data(element) {
         ClassElementData::MethodDefinition(method) => method.r#static(ast),
+        ClassElementData::TsMethodDefinition(method) => method.r#static(ast),
         ClassElementData::PropertyDefinition(property) => property.r#static(ast),
         ClassElementData::StaticBlock(_) | ClassElementData::TsIndexSignature(_) => {
             unreachable!("static blocks and index signatures do not have private names")
@@ -2659,7 +2740,10 @@ fn is_new_target_available(ctx: &TraverseCtx<'_, '_>) -> bool {
     ctx.ancestors().skip(1).any(|ancestor| {
         matches!(
             ctx.node_kind(ancestor),
-            NodeKind::Function | NodeKind::PropertyDefinition | NodeKind::StaticBlock
+            NodeKind::Function
+                | NodeKind::TsFunction
+                | NodeKind::PropertyDefinition
+                | NodeKind::StaticBlock
         )
     })
 }
@@ -2696,6 +2780,7 @@ fn is_read_write_position(node: NodeId, ctx: &TraverseCtx<'_, '_>) -> bool {
             }
             NodeKindData::MemberExpression(_)
             | NodeKindData::Function(_)
+            | NodeKindData::TsFunction(_)
             | NodeKindData::ArrowFunctionExpression(_)
             | NodeKindData::Program(_) => return false,
             _ if ancestor == node => {}

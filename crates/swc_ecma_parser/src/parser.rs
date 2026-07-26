@@ -202,6 +202,37 @@ struct ParseFunctionOpts {
     is_default_export: bool,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ParsedFunction {
+    Function(Function),
+    TsFunction(TsFunction),
+}
+
+impl ParsedFunction {
+    fn into_declaration(self) -> Decl {
+        match self {
+            Self::Function(function) => Decl::Function(function),
+            Self::TsFunction(function) => Decl::TsFunction(function),
+        }
+    }
+
+    fn into_default_export_declaration(self) -> ExportDefaultDeclarationKind {
+        match self {
+            Self::Function(function) => ExportDefaultDeclarationKind::Function(function),
+            Self::TsFunction(function) => ExportDefaultDeclarationKind::TsFunction(function),
+        }
+    }
+
+    fn into_function_expression(self) -> Function {
+        match self {
+            Self::Function(function) => function,
+            Self::TsFunction(_) => {
+                unreachable!("function expressions always have a body")
+            }
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 struct ParseStatementOpts {
     can_be_single_statement_context: bool,
@@ -1005,9 +1036,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             TokenTag::Break => self.parse_break_statement(),
             TokenTag::Continue => self.parse_continue_statement(),
             TokenTag::Debugger => self.parse_debugger_statement(),
-            TokenTag::Function => Some(Stmt::Declaration(Decl::Function(
-                self.parse_function(ParseFunctionOpts::default(), None)?,
-            ))),
+            TokenTag::Function => Some(Stmt::Declaration(
+                self.parse_function(ParseFunctionOpts::default(), None)?
+                    .into_declaration(),
+            )),
             TokenTag::Async => self.parse_async_function_or_expression(),
             TokenTag::For => self.parse_for_statement(),
             TokenTag::Class => Some(Stmt::Declaration(Decl::Class(
@@ -1147,7 +1179,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                     },
                     Some(start),
                 )
-                .map(|function| Stmt::Declaration(Decl::Function(function)));
+                .map(|function| Stmt::Declaration(function.into_declaration()));
         }
         self.parse_expression_or_labeled_statement_or_directive()
     }
@@ -1752,7 +1784,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         &mut self,
         opts: ParseFunctionOpts,
         start_from_param: Option<u32>,
-    ) -> Option<Function> {
+    ) -> Option<ParsedFunction> {
         debug_assert!(start_from_param.is_some() || self.current_token.tag == TokenTag::Function);
         let start = start_from_param.unwrap_or(self.current_token.span.start);
         if !self.expect(TokenTag::Function, "Expected 'function' keyword", None) {
@@ -1812,7 +1844,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             let params_end = params.span(self.ast).end;
             let return_type_end =
                 return_type.map_or(params_end, |return_type| return_type.span(self.ast).end);
-            let ambient_declaration = self.ts_context.ambient && !is_function_expression;
+            let ambient_declaration =
+                (opts.is_declare || self.ts_context.ambient) && !is_function_expression;
             if ambient_declaration && self.current_token.tag == TokenTag::LeftBrace {
                 self.report(
                     self.current_token.span,
@@ -1840,13 +1873,6 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         self.context.yield_ = outer_yield;
         self.context.await_ = outer_await;
         let (params, body, type_parameters, return_type, params_end, end) = tail?;
-        let function_type = if is_function_expression {
-            FunctionType::FunctionExpression
-        } else if body.is_none() {
-            FunctionType::TsDeclareFunction
-        } else {
-            FunctionType::FunctionDeclaration
-        };
         if self.context.single_statement {
             if opts.is_async {
                 self.report(
@@ -1863,18 +1889,38 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 );
             }
         }
-        Some(self.ast.function(
-            Span::new(start, end),
-            function_type,
-            id,
-            generator,
-            opts.is_async,
-            opts.is_declare,
-            params,
-            body,
-            type_parameters,
-            return_type,
-        ))
+        let span = Span::new(start, end);
+        if let Some(body) = body {
+            let function_type = if is_function_expression {
+                FunctionType::FunctionExpression
+            } else {
+                FunctionType::FunctionDeclaration
+            };
+            let function = self.ast.function(
+                span,
+                function_type,
+                id,
+                generator,
+                opts.is_async,
+                params,
+                body,
+                type_parameters,
+                return_type,
+            );
+            Some(ParsedFunction::Function(function))
+        } else {
+            let function = self.ast.ts_function(
+                span,
+                id,
+                generator,
+                opts.is_async,
+                opts.is_declare,
+                params,
+                type_parameters,
+                return_type,
+            );
+            Some(ParsedFunction::TsFunction(function))
+        }
     }
 
     fn parse_class(
@@ -2451,24 +2497,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             if self.current_token.tag == TokenTag::LeftBrace {
                 let body = self.parse_function_body()?;
                 let end = body.span(self.ast).end;
-                Some((
-                    params,
-                    type_parameters,
-                    return_type,
-                    Some(body),
-                    FunctionType::FunctionExpression,
-                    end,
-                ))
+                Some((params, type_parameters, return_type, Some(body), end))
             } else if self.lang.is_typescript() {
                 let end = self.eat_semicolon(self.prev_token_end)?;
-                Some((
-                    params,
-                    type_parameters,
-                    return_type,
-                    None,
-                    FunctionType::TsEmptyBodyFunctionExpression,
-                    end,
-                ))
+                Some((params, type_parameters, return_type, None, end))
             } else {
                 self.report_expected(
                     self.current_token.span,
@@ -2479,33 +2511,61 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             }
         })();
         self.restore_method_context(old_await, old_yield);
-        let (params, type_parameters, return_type, body, function_type, end) = result?;
-        let function = self.ast.function(
-            Span::new(function_start, end),
-            function_type,
-            None,
-            modifiers.is_generator,
-            modifiers.is_async,
-            false,
-            params,
-            body,
-            type_parameters,
-            return_type,
-        );
-        let method = self.ast.method_definition(
-            Span::new(start, end),
-            decorators,
-            key,
-            function,
-            modifiers.kind,
-            modifiers.computed,
-            modifiers.is_static,
-            modifiers.r#override,
-            optional,
-            modifiers.r#abstract,
-            modifiers.accessibility,
-        );
-        Some(ClassElement::MethodDefinition(method))
+        let (params, type_parameters, return_type, body, end) = result?;
+        let function_span = Span::new(function_start, end);
+        let method_span = Span::new(start, end);
+        if let Some(body) = body {
+            let function = self.ast.function(
+                function_span,
+                FunctionType::FunctionExpression,
+                None,
+                modifiers.is_generator,
+                modifiers.is_async,
+                params,
+                body,
+                type_parameters,
+                return_type,
+            );
+            let method = self.ast.method_definition(
+                method_span,
+                decorators,
+                key,
+                function,
+                modifiers.kind,
+                modifiers.computed,
+                modifiers.is_static,
+                modifiers.r#override,
+                optional,
+                modifiers.r#abstract,
+                modifiers.accessibility,
+            );
+            Some(ClassElement::MethodDefinition(method))
+        } else {
+            let function = self.ast.ts_function(
+                function_span,
+                None,
+                modifiers.is_generator,
+                modifiers.is_async,
+                false,
+                params,
+                type_parameters,
+                return_type,
+            );
+            let method = self.ast.ts_method_definition(
+                method_span,
+                decorators,
+                key,
+                function,
+                modifiers.kind,
+                modifiers.computed,
+                modifiers.is_static,
+                modifiers.r#override,
+                optional,
+                modifiers.r#abstract,
+                modifiers.accessibility,
+            );
+            Some(ClassElement::TsMethodDefinition(method))
+        }
     }
 
     fn parse_property_definition(
@@ -3512,7 +3572,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                     Some(async_start),
                 )?;
                 return Some(DefaultExportPart {
-                    declaration: ExportDefaultDeclarationKind::Function(function),
+                    declaration: function.into_default_export_declaration(),
                     needs_semi: false,
                 });
             }
@@ -3534,7 +3594,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 },
                 None,
             )?;
-            (ExportDefaultDeclarationKind::Function(function), false)
+            (function.into_default_export_declaration(), false)
         } else if self.current_token.tag == TokenTag::Class {
             let class = self.parse_class(
                 ParseClassOpts {
@@ -3758,13 +3818,14 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 } else {
                     None
                 };
-                Decl::Function(self.parse_function(
+                self.parse_function(
                     ParseFunctionOpts {
                         is_async,
                         ..ParseFunctionOpts::default()
                     },
                     function_start,
-                )?)
+                )?
+                .into_declaration()
             };
             let end = declaration.span(self.ast).end;
             let specifiers = TypedSubRange::empty();
@@ -3807,7 +3868,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             DeclData::VariableDeclaration(node) => {
                 import_or_export_kind_for_declare(node.declare(self.ast))
             }
-            DeclData::Function(node) => import_or_export_kind_for_declare(node.declare(self.ast)),
+            DeclData::Function(_) => ImportOrExportKind::Value,
+            DeclData::TsFunction(node) => import_or_export_kind_for_declare(node.declare(self.ast)),
             DeclData::Class(node) => import_or_export_kind_for_declare(node.declare(self.ast)),
             DeclData::TsImportEqualsDeclaration(_) => ImportOrExportKind::Value,
         }
@@ -4165,23 +4227,29 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 )?;
                 Some(Stmt::Declaration(Decl::VariableDeclaration(declaration)))
             }
-            TokenTag::Function => Some(Stmt::Declaration(Decl::Function(self.parse_function(
-                ParseFunctionOpts {
-                    is_declare: modifiers.declare,
-                    ..ParseFunctionOpts::default()
-                },
-                Some(start),
-            )?))),
-            TokenTag::Async => {
-                self.advance()?;
-                Some(Stmt::Declaration(Decl::Function(self.parse_function(
+            TokenTag::Function => Some(Stmt::Declaration(
+                self.parse_function(
                     ParseFunctionOpts {
-                        is_async: true,
                         is_declare: modifiers.declare,
                         ..ParseFunctionOpts::default()
                     },
                     Some(start),
-                )?)))
+                )?
+                .into_declaration(),
+            )),
+            TokenTag::Async => {
+                self.advance()?;
+                Some(Stmt::Declaration(
+                    self.parse_function(
+                        ParseFunctionOpts {
+                            is_async: true,
+                            is_declare: modifiers.declare,
+                            ..ParseFunctionOpts::default()
+                        },
+                        Some(start),
+                    )?
+                    .into_declaration(),
+                ))
             }
             TokenTag::Class => Some(Stmt::Declaration(Decl::Class(self.parse_class(
                 ParseClassOpts {
@@ -7063,13 +7131,16 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             TokenTag::Slash | TokenTag::SlashAssign => self.parse_regexp_literal(),
             TokenTag::LeftBracket => self.parse_array_expression(in_cover),
             TokenTag::LeftBrace => self.parse_object_expression(in_cover),
-            TokenTag::Function => Some(Expr::Function(self.parse_function(
-                ParseFunctionOpts {
-                    is_expression: true,
-                    ..ParseFunctionOpts::default()
-                },
-                None,
-            )?)),
+            TokenTag::Function => Some(Expr::Function(
+                self.parse_function(
+                    ParseFunctionOpts {
+                        is_expression: true,
+                        ..ParseFunctionOpts::default()
+                    },
+                    None,
+                )?
+                .into_function_expression(),
+            )),
             TokenTag::Class => Some(Expr::Class(self.parse_class(
                 ParseClassOpts {
                     is_expression: true,
@@ -7672,14 +7743,17 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 if token.is_escaped() {
                     self.report_escaped_keyword(token.span);
                 }
-                Some(Expr::Function(self.parse_function(
-                    ParseFunctionOpts {
-                        is_async: true,
-                        is_expression: true,
-                        ..ParseFunctionOpts::default()
-                    },
-                    Some(token.span.start),
-                )?))
+                Some(Expr::Function(
+                    self.parse_function(
+                        ParseFunctionOpts {
+                            is_async: true,
+                            is_expression: true,
+                            ..ParseFunctionOpts::default()
+                        },
+                        Some(token.span.start),
+                    )?
+                    .into_function_expression(),
+                ))
             }
             TokenTag::LeftParen => {
                 if token.is_escaped() {
@@ -9101,9 +9175,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             None,
             generator,
             async_function,
-            false,
             params,
-            Some(body),
+            body,
             type_parameters,
             return_type,
         );

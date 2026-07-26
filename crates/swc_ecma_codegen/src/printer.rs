@@ -1208,6 +1208,7 @@ impl<'a> Printer<'a> {
         match self.ast.decl_data(decl) {
             DeclData::VariableDeclaration(v) => self.print_variable_decl(v, true),
             DeclData::Function(f) => self.print_function(f, true),
+            DeclData::TsFunction(f) => self.print_ts_function(f, true),
             DeclData::Class(c) => self.print_class(c, true),
             DeclData::TsTypeAliasDeclaration(d) => self.print_ts_type_alias(d),
             DeclData::TsInterfaceDeclaration(d) => self.print_ts_interface(d),
@@ -1247,6 +1248,33 @@ impl<'a> Printer<'a> {
     fn print_function(&mut self, f: Function, declaration: bool) {
         self.print_space_before_identifier();
         self.add_source_mapping(f.span(self.ast).start);
+        if f.r#async(self.ast) {
+            self.print("async ");
+        }
+        self.print("function");
+        if f.generator(self.ast) {
+            self.print("*");
+        }
+        if let Some(id) = f.id(self.ast) {
+            self.print_space();
+            self.print_binding_identifier(id, false);
+        } else if declaration || f.generator(self.ast) {
+            self.print_space();
+        }
+        if let Some(params) = f.type_parameters(self.ast) {
+            self.print_ts_type_params(params);
+        }
+        self.print_formal_parameters(f.params(self.ast));
+        if let Some(ret) = f.return_type(self.ast) {
+            self.print_ts_annotation(ret);
+        }
+        self.print_space();
+        self.print_function_body(f.body(self.ast));
+    }
+
+    fn print_ts_function(&mut self, f: TsFunction, declaration: bool) {
+        self.print_space_before_identifier();
+        self.add_source_mapping(f.span(self.ast).start);
         if f.declare(self.ast) {
             self.print("declare ");
         }
@@ -1269,12 +1297,6 @@ impl<'a> Printer<'a> {
         self.print_formal_parameters(f.params(self.ast));
         if let Some(ret) = f.return_type(self.ast) {
             self.print_ts_annotation(ret);
-        }
-        if let Some(body) = f.body(self.ast) {
-            self.print_space();
-            self.print_function_body(body);
-        } else {
-            self.print(";");
         }
     }
 
@@ -2325,10 +2347,8 @@ impl<'a> Printer<'a> {
             if let Some(t) = f.return_type(self.ast) {
                 self.print_ts_annotation(t);
             }
-            if let Some(body) = f.body(self.ast) {
-                self.print_space();
-                self.print_function_body(body);
-            }
+            self.print_space();
+            self.print_function_body(f.body(self.ast));
             return;
         }
         self.print_property_key(p.key(self.ast), p.computed(self.ast));
@@ -2617,13 +2637,56 @@ impl<'a> Printer<'a> {
                 if let Some(t) = f.return_type(self.ast) {
                     self.print_ts_annotation(t);
                 }
-                if let Some(body) = f.body(self.ast) {
-                    self.print_space();
-                    self.print_function_body(body);
-                    self.print_newline();
-                } else {
-                    self.print_semicolon_after_statement();
+                self.print_space();
+                self.print_function_body(f.body(self.ast));
+                self.print_newline();
+            }
+            ClassElementData::TsMethodDefinition(m) => {
+                let omit_indent =
+                    self.print_decorators(m.decorators(self.ast), PrintAfterDecorator::Newline);
+                if !omit_indent {
+                    self.print_indent();
                 }
+                self.add_source_mapping(token_offset_after_decorators(
+                    self.ast,
+                    element.span(self.ast).start,
+                    m.decorators(self.ast),
+                    element.span(self.ast).end,
+                ));
+                self.print_accessibility(m.accessibility(self.ast));
+                if m.r#static(self.ast) {
+                    self.print("static ");
+                }
+                if m.r#abstract(self.ast) {
+                    self.print("abstract ");
+                }
+                if m.r#override(self.ast) {
+                    self.print("override ");
+                }
+                let f = m.value(self.ast);
+                if f.r#async(self.ast) {
+                    self.print("async ");
+                }
+                match m.kind(self.ast) {
+                    MethodDefinitionKind::Get => self.print("get "),
+                    MethodDefinitionKind::Set => self.print("set "),
+                    _ => {}
+                }
+                if f.generator(self.ast) {
+                    self.print("*");
+                }
+                self.print_property_key(m.key(self.ast), m.computed(self.ast));
+                if m.optional(self.ast) {
+                    self.print("?");
+                }
+                if let Some(t) = f.type_parameters(self.ast) {
+                    self.print_ts_type_params(t);
+                }
+                self.print_formal_parameters(f.params(self.ast));
+                if let Some(t) = f.return_type(self.ast) {
+                    self.print_ts_annotation(t);
+                }
+                self.print_semicolon_after_statement();
             }
             ClassElementData::PropertyDefinition(p) => {
                 let omit_indent =
@@ -3332,6 +3395,10 @@ impl<'a> Printer<'a> {
             ExportDefaultDeclarationKindData::Function(f) => {
                 self.print_function(f, true);
                 self.print_newline();
+            }
+            ExportDefaultDeclarationKindData::TsFunction(f) => {
+                self.print_ts_function(f, false);
+                self.print_semicolon_after_statement();
             }
             ExportDefaultDeclarationKindData::Class(c) => {
                 self.print_class(c, true);

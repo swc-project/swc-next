@@ -2,6 +2,7 @@
 use super::{
     expect_printed, expect_printed_ascii, expect_printed_jsx, expect_printed_jsx_ascii,
     expect_printed_jsx_minify, expect_printed_minify, expect_printed_minify_ascii,
+    expect_printed_ts,
 };
 
 #[test]
@@ -758,6 +759,14 @@ fn test_import() {
 
 #[test]
 fn test_export_default() {
+    expect_printed_ts(
+        b"export default function(): void;",
+        b"export default function(): void;\n",
+    );
+    expect_printed_ts(
+        b"export default async function<T>(): Promise<T>;",
+        b"export default async function<T>(): Promise<T>;\n",
+    );
     expect_printed(
         b"export default function() {}",
         b"export default function() {\n}\n",

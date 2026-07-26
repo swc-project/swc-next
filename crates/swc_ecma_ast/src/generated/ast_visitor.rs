@@ -648,6 +648,18 @@ pub trait Visit<'a> {
         <TsModuleReference as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
+    fn visit_ts_function(&mut self, node: TsFunction) {
+        self.enter_node(node.node_id());
+        <TsFunction as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
+    fn visit_ts_method_definition(&mut self, node: TsMethodDefinition) {
+        self.enter_node(node.node_id());
+        <TsMethodDefinition as VisitWith<'a, Self>>::visit_children_with(node, self);
+        self.leave_node(node.node_id());
+    }
+    #[inline]
     fn visit_ts_type_annotation(&mut self, node: TsTypeAnnotation) {
         self.enter_node(node.node_id());
         <TsTypeAnnotation as VisitWith<'a, Self>>::visit_children_with(node, self);
@@ -1300,10 +1312,6 @@ pub trait Visit<'a> {
         <TypedSubRange<ClassElement> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_opt_function_body(&mut self, node: Option<FunctionBody>) {
-        <Option<FunctionBody> as VisitWith<'a, Self>>::visit_children_with(node, self);
-    }
-    #[inline]
     fn visit_formal_parameter_items(&mut self, node: TypedSubRange<FormalParameterItem>) {
         <TypedSubRange<FormalParameterItem> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
@@ -1526,6 +1534,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Decl {
             }
             DeclData::Function(it) => <Function as VisitWith<'a, V>>::visit_with(it, visitor),
             DeclData::Class(it) => <Class as VisitWith<'a, V>>::visit_with(it, visitor),
+            DeclData::TsFunction(it) => <TsFunction as VisitWith<'a, V>>::visit_with(it, visitor),
             DeclData::TsTypeAliasDeclaration(it) => {
                 <TsTypeAliasDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
@@ -1918,6 +1927,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ClassElement {
             ClassElementData::StaticBlock(it) => {
                 <StaticBlock as VisitWith<'a, V>>::visit_with(it, visitor)
             }
+            ClassElementData::TsMethodDefinition(it) => {
+                <TsMethodDefinition as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
             ClassElementData::TsIndexSignature(it) => {
                 <TsIndexSignature as VisitWith<'a, V>>::visit_with(it, visitor)
             }
@@ -1960,6 +1972,9 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ExportDefaultDeclarationKin
             }
             ExportDefaultDeclarationKindData::Class(it) => {
                 <Class as VisitWith<'a, V>>::visit_with(it, visitor)
+            }
+            ExportDefaultDeclarationKindData::TsFunction(it) => {
+                <TsFunction as VisitWith<'a, V>>::visit_with(it, visitor)
             }
             ExportDefaultDeclarationKindData::TsInterfaceDeclaration(it) => {
                 <TsInterfaceDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
@@ -2592,18 +2607,18 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Function {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_1 = self.id(visitor.ast());
-        let field_value_5 = self.params(visitor.ast());
-        let field_value_6 = self.body(visitor.ast());
-        let field_value_7 = self.type_parameters(visitor.ast());
-        let field_value_8 = self.return_type(visitor.ast());
+        let field_value_4 = self.params(visitor.ast());
+        let field_value_5 = self.body(visitor.ast());
+        let field_value_6 = self.type_parameters(visitor.ast());
+        let field_value_7 = self.return_type(visitor.ast());
         <Option<BindingIdentifier> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <FormalParameters as VisitWith<'a, V>>::visit_with(field_value_5, visitor);
-        <Option<FunctionBody> as VisitWith<'a, V>>::visit_with(field_value_6, visitor);
+        <FormalParameters as VisitWith<'a, V>>::visit_with(field_value_4, visitor);
+        <FunctionBody as VisitWith<'a, V>>::visit_with(field_value_5, visitor);
         <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
-            field_value_7,
+            field_value_6,
             visitor,
         );
-        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_8, visitor);
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_7, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FunctionBody {
@@ -3407,6 +3422,41 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsModuleReference {
                 <TsExternalModuleReference as VisitWith<'a, V>>::visit_with(it, visitor)
             }
         }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsFunction {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_function(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.id(visitor.ast());
+        let field_value_4 = self.params(visitor.ast());
+        let field_value_5 = self.type_parameters(visitor.ast());
+        let field_value_6 = self.return_type(visitor.ast());
+        <Option<BindingIdentifier> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <FormalParameters as VisitWith<'a, V>>::visit_with(field_value_4, visitor);
+        <Option<TsTypeParameterDeclaration> as VisitWith<'a, V>>::visit_with(
+            field_value_5,
+            visitor,
+        );
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_6, visitor);
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsMethodDefinition {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_ts_method_definition(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        let field_value_0 = self.decorators(visitor.ast());
+        let field_value_1 = self.key(visitor.ast());
+        let field_value_2 = self.value(visitor.ast());
+        <TypedSubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
+        <PropertyKey as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <TsFunction as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTypeAnnotation {
@@ -4898,19 +4948,6 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<ClassElement>
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<FunctionBody> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_opt_function_body(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match self {
-            Some(it) => it.visit_with(visitor),
-            None => {}
-        }
-    }
-}
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TypedSubRange<FormalParameterItem> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
@@ -5709,6 +5746,14 @@ pub trait VisitMut<'a> {
         <TsModuleReference as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
+    fn visit_mut_ts_function(&mut self, node: TsFunction) {
+        <TsFunction as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
+    fn visit_mut_ts_method_definition(&mut self, node: TsMethodDefinition) {
+        <TsMethodDefinition as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
+    }
+    #[inline]
     fn visit_mut_ts_type_annotation(&mut self, node: TsTypeAnnotation) {
         <TsTypeAnnotation as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
@@ -6208,10 +6253,6 @@ pub trait VisitMut<'a> {
         );
     }
     #[inline]
-    fn visit_mut_opt_function_body(&mut self, node: Option<FunctionBody>) {
-        <Option<FunctionBody> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
     fn visit_mut_formal_parameter_items(&mut self, node: TypedSubRange<FormalParameterItem>) {
         <TypedSubRange<FormalParameterItem> as VisitMutWith<'a, Self>>::visit_mut_children_with(
             node, self,
@@ -6466,6 +6507,9 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Decl {
                 <Function as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
             DeclData::Class(it) => <Class as VisitMutWith<'a, V>>::visit_mut_with(it, visitor),
+            DeclData::TsFunction(it) => {
+                <TsFunction as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
             DeclData::TsTypeAliasDeclaration(it) => {
                 <TsTypeAliasDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
@@ -6884,6 +6928,9 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ClassElement {
             ClassElementData::StaticBlock(it) => {
                 <StaticBlock as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
+            ClassElementData::TsMethodDefinition(it) => {
+                <TsMethodDefinition as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
             ClassElementData::TsIndexSignature(it) => {
                 <TsIndexSignature as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
@@ -6928,6 +6975,9 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ExportDefaultDeclarat
             }
             ExportDefaultDeclarationKindData::Class(it) => {
                 <Class as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
+            }
+            ExportDefaultDeclarationKindData::TsFunction(it) => {
+                <TsFunction as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
             ExportDefaultDeclarationKindData::TsInterfaceDeclaration(it) => {
                 <TsInterfaceDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
@@ -7576,7 +7626,7 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Function {
         let field_value = self.params(visitor.ast());
         <FormalParameters as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
         let field_value = self.body(visitor.ast());
-        <Option<FunctionBody> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        <FunctionBody as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
         let field_value = self.type_parameters(visitor.ast());
         <Option<TsTypeParameterDeclaration> as VisitMutWith<'a, V>>::visit_mut_with(
             field_value,
@@ -8428,6 +8478,41 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsModuleReference {
                 <TsExternalModuleReference as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
             }
         }
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsFunction {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_function(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.id(visitor.ast());
+        <Option<BindingIdentifier> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.params(visitor.ast());
+        <FormalParameters as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.type_parameters(visitor.ast());
+        <Option<TsTypeParameterDeclaration> as VisitMutWith<'a, V>>::visit_mut_with(
+            field_value,
+            visitor,
+        );
+        let field_value = self.return_type(visitor.ast());
+        <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsMethodDefinition {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) {
+        <V as VisitMut<'a>>::visit_mut_ts_method_definition(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) {
+        let field_value = self.decorators(visitor.ast());
+        <TypedSubRange<Decorator> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.key(visitor.ast());
+        <PropertyKey as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
+        let field_value = self.value(visitor.ast());
+        <TsFunction as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor);
     }
 }
 impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTypeAnnotation {
@@ -9935,18 +10020,6 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<ClassEl
         }
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<FunctionBody> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) {
-        <V as VisitMut<'a>>::visit_mut_opt_function_body(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) {
-        if let Some(it) = self {
-            it.visit_mut_with(visitor);
-        }
-    }
-}
 impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TypedSubRange<FormalParameterItem> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) {
@@ -11391,6 +11464,31 @@ pub trait Traverse<'a, State = ()> {
     }
     #[inline]
     fn exit_hashbang(&mut self, node: Hashbang, ctx: &mut TraverseCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_ts_function(
+        &mut self,
+        node: TsFunction,
+        ctx: &mut TraverseCtx<'_, 'a, State>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_function(&mut self, node: TsFunction, ctx: &mut TraverseCtx<'_, 'a, State>) {}
+    #[inline]
+    fn enter_ts_method_definition(
+        &mut self,
+        node: TsMethodDefinition,
+        ctx: &mut TraverseCtx<'_, 'a, State>,
+    ) -> TraverseAction {
+        TraverseAction::Proceed
+    }
+    #[inline]
+    fn exit_ts_method_definition(
+        &mut self,
+        node: TsMethodDefinition,
+        ctx: &mut TraverseCtx<'_, 'a, State>,
+    ) {
+    }
     #[inline]
     fn enter_ts_type_annotation(
         &mut self,
@@ -13749,6 +13847,26 @@ impl<'a, State> TraverseWith<'a, State> for TsModuleReference {
         walk_node(self.node_id(), traverser, ctx)
     }
 }
+impl<'a, State> TraverseWith<'a, State> for TsFunction {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a, State>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
+impl<'a, State> TraverseWith<'a, State> for TsMethodDefinition {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a, State>,
+    ) -> TraverseAction {
+        walk_node(self.node_id(), traverser, ctx)
+    }
+}
 impl<'a, State> TraverseWith<'a, State> for TsTypeAnnotation {
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -15059,19 +15177,6 @@ impl<'a, State> TraverseWith<'a, State> for TypedSubRange<ClassElement> {
         TraverseAction::Proceed
     }
 }
-impl<'a, State> TraverseWith<'a, State> for Option<FunctionBody> {
-    #[inline]
-    fn traverse_with<T: ?Sized + Traverse<'a, State>>(
-        self,
-        traverser: &mut T,
-        ctx: &mut TraverseCtx<'_, 'a, State>,
-    ) -> TraverseAction {
-        if let Some(it) = self {
-            return <FunctionBody as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx);
-        }
-        TraverseAction::Proceed
-    }
-}
 impl<'a, State> TraverseWith<'a, State> for TypedSubRange<FormalParameterItem> {
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -15706,6 +15811,10 @@ fn walk_node<'a, State, T: ?Sized + Traverse<'a, State>>(
                 traverser.enter_export_specifier(ExportSpecifier(node_id), ctx)
             }
             NodeKind::Hashbang => traverser.enter_hashbang(Hashbang(node_id), ctx),
+            NodeKind::TsFunction => traverser.enter_ts_function(TsFunction(node_id), ctx),
+            NodeKind::TsMethodDefinition => {
+                traverser.enter_ts_method_definition(TsMethodDefinition(node_id), ctx)
+            }
             NodeKind::TsTypeAnnotation => {
                 traverser.enter_ts_type_annotation(TsTypeAnnotation(node_id), ctx)
             }
@@ -16703,9 +16812,8 @@ fn walk_node<'a, State, T: ?Sized + Traverse<'a, State>>(
                 break 'traverse_children TraverseAction::Stop;
             }
             let child = node.body(ctx.ast);
-            if <Option<FunctionBody> as TraverseWith<'a, State>>::traverse_with(
-                child, traverser, ctx,
-            ) == TraverseAction::Stop
+            if <FunctionBody as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
             {
                 break 'traverse_children TraverseAction::Stop;
             }
@@ -17239,6 +17347,60 @@ fn walk_node<'a, State, T: ?Sized + Traverse<'a, State>>(
         }
         NodeKind::Hashbang => 'traverse_children: {
             let node = Hashbang(node_id);
+            TraverseAction::Proceed
+        }
+        NodeKind::TsFunction => 'traverse_children: {
+            let node = TsFunction(node_id);
+            let child = node.id(ctx.ast);
+            if <Option<BindingIdentifier> as TraverseWith<'a, State>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.params(ctx.ast);
+            if <FormalParameters as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.type_parameters(ctx.ast);
+            if <Option<TsTypeParameterDeclaration> as TraverseWith<'a, State>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.return_type(ctx.ast);
+            if <Option<TsTypeAnnotation> as TraverseWith<'a, State>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            TraverseAction::Proceed
+        }
+        NodeKind::TsMethodDefinition => 'traverse_children: {
+            let node = TsMethodDefinition(node_id);
+            let child = node.decorators(ctx.ast);
+            if <TypedSubRange<Decorator> as TraverseWith<'a, State>>::traverse_with(
+                child, traverser, ctx,
+            ) == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.key(ctx.ast);
+            if <PropertyKey as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
+            let child = node.value(ctx.ast);
+            if <TsFunction as TraverseWith<'a, State>>::traverse_with(child, traverser, ctx)
+                == TraverseAction::Stop
+            {
+                break 'traverse_children TraverseAction::Stop;
+            }
             TraverseAction::Proceed
         }
         NodeKind::TsTypeAnnotation => 'traverse_children: {
@@ -18533,6 +18695,10 @@ fn walk_node<'a, State, T: ?Sized + Traverse<'a, State>>(
         }
         NodeKind::ExportSpecifier => traverser.exit_export_specifier(ExportSpecifier(node_id), ctx),
         NodeKind::Hashbang => traverser.exit_hashbang(Hashbang(node_id), ctx),
+        NodeKind::TsFunction => traverser.exit_ts_function(TsFunction(node_id), ctx),
+        NodeKind::TsMethodDefinition => {
+            traverser.exit_ts_method_definition(TsMethodDefinition(node_id), ctx)
+        }
         NodeKind::TsTypeAnnotation => {
             traverser.exit_ts_type_annotation(TsTypeAnnotation(node_id), ctx)
         }

@@ -168,9 +168,8 @@ impl<'a> Ast<'a> {
         id: Option<BindingIdentifier>,
         generator: bool,
         r#async: bool,
-        declare: bool,
         params: FormalParameters,
-        body: Option<FunctionBody>,
+        body: FunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
         return_type: Option<TsTypeAnnotation>,
     ) -> Stmt {
@@ -181,7 +180,6 @@ impl<'a> Ast<'a> {
                 id,
                 generator,
                 r#async,
-                declare,
                 params,
                 body,
                 type_parameters,
@@ -218,6 +216,32 @@ impl<'a> Ast<'a> {
                 implements,
                 r#abstract,
                 declare,
+            )
+            .into(),
+        ))
+    }
+    #[inline]
+    pub fn stmt_decl_ts_function(
+        &mut self,
+        span: Span,
+        id: Option<BindingIdentifier>,
+        generator: bool,
+        r#async: bool,
+        declare: bool,
+        params: FormalParameters,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        return_type: Option<TsTypeAnnotation>,
+    ) -> Stmt {
+        Stmt::Declaration(Decl::TsFunction(
+            self.ts_function(
+                span,
+                id,
+                generator,
+                r#async,
+                declare,
+                params,
+                type_parameters,
+                return_type,
             )
             .into(),
         ))
@@ -405,9 +429,8 @@ impl<'a> Ast<'a> {
         id: Option<BindingIdentifier>,
         generator: bool,
         r#async: bool,
-        declare: bool,
         params: FormalParameters,
-        body: Option<FunctionBody>,
+        body: FunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
         return_type: Option<TsTypeAnnotation>,
     ) -> Decl {
@@ -418,7 +441,6 @@ impl<'a> Ast<'a> {
                 id,
                 generator,
                 r#async,
-                declare,
                 params,
                 body,
                 type_parameters,
@@ -455,6 +477,32 @@ impl<'a> Ast<'a> {
                 implements,
                 r#abstract,
                 declare,
+            )
+            .into(),
+        )
+    }
+    #[inline]
+    pub fn decl_ts_function(
+        &mut self,
+        span: Span,
+        id: Option<BindingIdentifier>,
+        generator: bool,
+        r#async: bool,
+        declare: bool,
+        params: FormalParameters,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        return_type: Option<TsTypeAnnotation>,
+    ) -> Decl {
+        Decl::TsFunction(
+            self.ts_function(
+                span,
+                id,
+                generator,
+                r#async,
+                declare,
+                params,
+                type_parameters,
+                return_type,
             )
             .into(),
         )
@@ -789,9 +837,8 @@ impl<'a> Ast<'a> {
         id: Option<BindingIdentifier>,
         generator: bool,
         r#async: bool,
-        declare: bool,
         params: FormalParameters,
-        body: Option<FunctionBody>,
+        body: FunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
         return_type: Option<TsTypeAnnotation>,
     ) -> Expr {
@@ -802,7 +849,6 @@ impl<'a> Ast<'a> {
                 id,
                 generator,
                 r#async,
-                declare,
                 params,
                 body,
                 type_parameters,
@@ -1607,9 +1653,8 @@ impl<'a> Ast<'a> {
         id: Option<BindingIdentifier>,
         generator: bool,
         r#async: bool,
-        declare: bool,
         params: FormalParameters,
-        body: Option<FunctionBody>,
+        body: FunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
         return_type: Option<TsTypeAnnotation>,
     ) -> PropertyKey {
@@ -1620,7 +1665,6 @@ impl<'a> Ast<'a> {
                 id,
                 generator,
                 r#async,
-                declare,
                 params,
                 body,
                 type_parameters,
@@ -2099,9 +2143,8 @@ impl<'a> Ast<'a> {
         id: Option<BindingIdentifier>,
         generator: bool,
         r#async: bool,
-        declare: bool,
         params: FormalParameters,
-        body: Option<FunctionBody>,
+        body: FunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
         return_type: Option<TsTypeAnnotation>,
     ) -> Argument {
@@ -2112,7 +2155,6 @@ impl<'a> Ast<'a> {
                 id,
                 generator,
                 r#async,
-                declare,
                 params,
                 body,
                 type_parameters,
@@ -2619,9 +2661,8 @@ impl<'a> Ast<'a> {
         id: Option<BindingIdentifier>,
         generator: bool,
         r#async: bool,
-        declare: bool,
         params: FormalParameters,
-        body: Option<FunctionBody>,
+        body: FunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
         return_type: Option<TsTypeAnnotation>,
     ) -> ForStatementInit {
@@ -2632,7 +2673,6 @@ impl<'a> Ast<'a> {
                 id,
                 generator,
                 r#async,
-                declare,
                 params,
                 body,
                 type_parameters,
@@ -3248,9 +3288,8 @@ impl<'a> Ast<'a> {
         id: Option<BindingIdentifier>,
         generator: bool,
         r#async: bool,
-        declare: bool,
         params: FormalParameters,
-        body: Option<FunctionBody>,
+        body: FunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
         return_type: Option<TsTypeAnnotation>,
     ) -> ArrowFunctionBody {
@@ -3261,7 +3300,6 @@ impl<'a> Ast<'a> {
                 id,
                 generator,
                 r#async,
-                declare,
                 params,
                 body,
                 type_parameters,
@@ -3714,6 +3752,38 @@ impl<'a> Ast<'a> {
         ClassElement::StaticBlock(self.static_block(span, body).into())
     }
     #[inline]
+    pub fn class_element_ts_method_definition(
+        &mut self,
+        span: Span,
+        decorators: TypedSubRange<Decorator>,
+        key: PropertyKey,
+        value: TsFunction,
+        kind: MethodDefinitionKind,
+        computed: bool,
+        r#static: bool,
+        r#override: bool,
+        optional: bool,
+        r#abstract: bool,
+        accessibility: Accessibility,
+    ) -> ClassElement {
+        ClassElement::TsMethodDefinition(
+            self.ts_method_definition(
+                span,
+                decorators,
+                key,
+                value,
+                kind,
+                computed,
+                r#static,
+                r#override,
+                optional,
+                r#abstract,
+                accessibility,
+            )
+            .into(),
+        )
+    }
+    #[inline]
     pub fn class_element_ts_index_signature(
         &mut self,
         span: Span,
@@ -4077,9 +4147,8 @@ impl<'a> Ast<'a> {
         id: Option<BindingIdentifier>,
         generator: bool,
         r#async: bool,
-        declare: bool,
         params: FormalParameters,
-        body: Option<FunctionBody>,
+        body: FunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
         return_type: Option<TsTypeAnnotation>,
     ) -> ExportDefaultDeclarationKind {
@@ -4090,7 +4159,6 @@ impl<'a> Ast<'a> {
                 id,
                 generator,
                 r#async,
-                declare,
                 params,
                 body,
                 type_parameters,
@@ -4266,9 +4334,8 @@ impl<'a> Ast<'a> {
         id: Option<BindingIdentifier>,
         generator: bool,
         r#async: bool,
-        declare: bool,
         params: FormalParameters,
-        body: Option<FunctionBody>,
+        body: FunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
         return_type: Option<TsTypeAnnotation>,
     ) -> ExportDefaultDeclarationKind {
@@ -4279,7 +4346,6 @@ impl<'a> Ast<'a> {
                 id,
                 generator,
                 r#async,
-                declare,
                 params,
                 body,
                 type_parameters,
@@ -4316,6 +4382,32 @@ impl<'a> Ast<'a> {
                 implements,
                 r#abstract,
                 declare,
+            )
+            .into(),
+        )
+    }
+    #[inline]
+    pub fn export_default_declaration_kind_ts_function(
+        &mut self,
+        span: Span,
+        id: Option<BindingIdentifier>,
+        generator: bool,
+        r#async: bool,
+        declare: bool,
+        params: FormalParameters,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        return_type: Option<TsTypeAnnotation>,
+    ) -> ExportDefaultDeclarationKind {
+        ExportDefaultDeclarationKind::TsFunction(
+            self.ts_function(
+                span,
+                id,
+                generator,
+                r#async,
+                declare,
+                params,
+                type_parameters,
+                return_type,
             )
             .into(),
         )
@@ -5196,9 +5288,8 @@ impl<'a> Ast<'a> {
         id: Option<BindingIdentifier>,
         generator: bool,
         r#async: bool,
-        declare: bool,
         params: FormalParameters,
-        body: Option<FunctionBody>,
+        body: FunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
         return_type: Option<TsTypeAnnotation>,
     ) -> Function {
@@ -5215,11 +5306,10 @@ impl<'a> Ast<'a> {
                 0u128
                     | ((function_type as u32 as u128) << 0usize)
                     | ((id.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
-                        << 32usize)
+                        << 24usize)
                     | ((generator as u32 as u128) << 8usize)
                     | ((r#async as u32 as u128) << 16usize)
-                    | ((declare as u32 as u128) << 24usize)
-                    | ((params.node_id().index() as u32 as u128) << 64usize)
+                    | ((params.node_id().index() as u32 as u128) << 56usize)
                     | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
@@ -7020,9 +7110,8 @@ impl<'a> Ast<'a> {
         id: Option<BindingIdentifier>,
         generator: bool,
         r#async: bool,
-        declare: bool,
         params: FormalParameters,
-        body: Option<FunctionBody>,
+        body: FunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
         return_type: Option<TsTypeAnnotation>,
     ) -> TsEnumMemberName {
@@ -7033,7 +7122,6 @@ impl<'a> Ast<'a> {
                 id,
                 generator,
                 r#async,
-                declare,
                 params,
                 body,
                 type_parameters,
@@ -7288,6 +7376,72 @@ impl<'a> Ast<'a> {
         TsModuleReference::TsExternalModuleReference(
             self.ts_external_module_reference(span, expression).into(),
         )
+    }
+    #[inline]
+    pub fn ts_function(
+        &mut self,
+        span: Span,
+        id: Option<BindingIdentifier>,
+        generator: bool,
+        r#async: bool,
+        declare: bool,
+        params: FormalParameters,
+        type_parameters: Option<TsTypeParameterDeclaration>,
+        return_type: Option<TsTypeAnnotation>,
+    ) -> TsFunction {
+        let _extra_data = [
+            type_parameters.to_extra_data(self),
+            return_type.to_extra_data(self),
+        ];
+        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
+        TsFunction(self.add_node(
+            span,
+            NodeKind::TsFunction,
+            NodePayload(
+                0u128
+                    | ((id.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
+                        << 24usize)
+                    | ((generator as u32 as u128) << 0usize)
+                    | ((r#async as u32 as u128) << 8usize)
+                    | ((declare as u32 as u128) << 16usize)
+                    | ((params.node_id().index() as u32 as u128) << 56usize)
+                    | ((_extra_data_range.start.index() as u128) << 96usize),
+            ),
+        ))
+    }
+    #[inline]
+    pub fn ts_method_definition(
+        &mut self,
+        span: Span,
+        decorators: TypedSubRange<Decorator>,
+        key: PropertyKey,
+        value: TsFunction,
+        kind: MethodDefinitionKind,
+        computed: bool,
+        r#static: bool,
+        r#override: bool,
+        optional: bool,
+        r#abstract: bool,
+        accessibility: Accessibility,
+    ) -> TsMethodDefinition {
+        let _extra_data = [decorators.to_extra_data(self), value.to_extra_data(self)];
+        let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
+        TsMethodDefinition(self.add_node(
+            span,
+            NodeKind::TsMethodDefinition,
+            NodePayload(
+                0u128
+                    | ((key.node_id().index() as u32 as u128) << 56usize)
+                    | ((kind as u32 as u128) << 0usize)
+                    | ((computed as u32 as u128) << 8usize)
+                    | ((r#static as u32 as u128) << 16usize)
+                    | ((r#override as u32 as u128) << 24usize)
+                    | ((optional as u32 as u128) << 32usize)
+                    | ((r#abstract as u32 as u128) << 40usize)
+                    | ((accessibility as u32 as u128) << 48usize)
+                    | ((_extra_data_range.start.index() as u128) << 96usize),
+            ),
+        ))
     }
     #[inline]
     pub fn ts_type_annotation(&mut self, span: Span, type_annotation: TsType) -> TsTypeAnnotation {
@@ -8729,9 +8883,8 @@ impl<'a> Ast<'a> {
         id: Option<BindingIdentifier>,
         generator: bool,
         r#async: bool,
-        declare: bool,
         params: FormalParameters,
-        body: Option<FunctionBody>,
+        body: FunctionBody,
         type_parameters: Option<TsTypeParameterDeclaration>,
         return_type: Option<TsTypeAnnotation>,
     ) -> JsxExpression {
@@ -8742,7 +8895,6 @@ impl<'a> Ast<'a> {
                 id,
                 generator,
                 r#async,
-                declare,
                 params,
                 body,
                 type_parameters,

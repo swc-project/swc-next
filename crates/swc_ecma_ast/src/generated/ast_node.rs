@@ -90,6 +90,8 @@ pub enum NodeKind {
     ExportAllDeclaration,
     ExportSpecifier,
     Hashbang,
+    TsFunction,
+    TsMethodDefinition,
     TsTypeAnnotation,
     TsAnyKeyword,
     TsUnknownKeyword,
@@ -266,6 +268,8 @@ pub enum NodeKindData {
     ExportAllDeclaration(ExportAllDeclaration),
     ExportSpecifier(ExportSpecifier),
     Hashbang(Hashbang),
+    TsFunction(TsFunction),
+    TsMethodDefinition(TsMethodDefinition),
     TsTypeAnnotation(TsTypeAnnotation),
     TsAnyKeyword(TsAnyKeyword),
     TsUnknownKeyword(TsUnknownKeyword),
@@ -3395,6 +3399,58 @@ impl SetSpan for TsModuleReference {
         }
     }
 }
+impl TsFunction {
+    #[inline]
+    pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for TsFunction {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl GetSpan for TsFunction {
+    #[inline]
+    fn span(self, ast: &Ast<'_>) -> crate::Span {
+        unsafe { *ast.nodes.span_unchecked(self.0) }
+    }
+}
+impl SetSpan for TsFunction {
+    #[inline]
+    fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
+        unsafe {
+            *ast.nodes.span_mut_unchecked(self.0) = span;
+        }
+    }
+}
+impl TsMethodDefinition {
+    #[inline]
+    pub fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl AstNode for TsMethodDefinition {
+    #[inline]
+    fn node_id(self) -> NodeId {
+        self.0
+    }
+}
+impl GetSpan for TsMethodDefinition {
+    #[inline]
+    fn span(self, ast: &Ast<'_>) -> crate::Span {
+        unsafe { *ast.nodes.span_unchecked(self.0) }
+    }
+}
+impl SetSpan for TsMethodDefinition {
+    #[inline]
+    fn set_span(self, ast: &mut Ast<'_>, span: crate::Span) {
+        unsafe {
+            *ast.nodes.span_mut_unchecked(self.0) = span;
+        }
+    }
+}
 impl TsTypeAnnotation {
     #[inline]
     pub fn node_id(self) -> NodeId {
@@ -5952,6 +6008,10 @@ impl<'a> Ast<'a> {
             }
             NodeKind::ExportSpecifier => NodeKindData::ExportSpecifier(ExportSpecifier(node_id)),
             NodeKind::Hashbang => NodeKindData::Hashbang(Hashbang(node_id)),
+            NodeKind::TsFunction => NodeKindData::TsFunction(TsFunction(node_id)),
+            NodeKind::TsMethodDefinition => {
+                NodeKindData::TsMethodDefinition(TsMethodDefinition(node_id))
+            }
             NodeKind::TsTypeAnnotation => NodeKindData::TsTypeAnnotation(TsTypeAnnotation(node_id)),
             NodeKind::TsAnyKeyword => NodeKindData::TsAnyKeyword(TsAnyKeyword(node_id)),
             NodeKind::TsUnknownKeyword => NodeKindData::TsUnknownKeyword(TsUnknownKeyword(node_id)),
@@ -6152,6 +6212,7 @@ impl<'a> Ast<'a> {
             NodeKind::VariableDeclaration => StmtData::Declaration(Decl(node.0)),
             NodeKind::Function => StmtData::Declaration(Decl(node.0)),
             NodeKind::Class => StmtData::Declaration(Decl(node.0)),
+            NodeKind::TsFunction => StmtData::Declaration(Decl(node.0)),
             NodeKind::TsTypeAliasDeclaration => StmtData::Declaration(Decl(node.0)),
             NodeKind::TsInterfaceDeclaration => StmtData::Declaration(Decl(node.0)),
             NodeKind::TsEnumDeclaration => StmtData::Declaration(Decl(node.0)),
@@ -6185,6 +6246,7 @@ impl<'a> Ast<'a> {
             }
             NodeKind::Function => DeclData::Function(Function(node.0)),
             NodeKind::Class => DeclData::Class(Class(node.0)),
+            NodeKind::TsFunction => DeclData::TsFunction(TsFunction(node.0)),
             NodeKind::TsTypeAliasDeclaration => {
                 DeclData::TsTypeAliasDeclaration(TsTypeAliasDeclaration(node.0))
             }
@@ -6674,6 +6736,9 @@ impl<'a> Ast<'a> {
                 ClassElementData::PropertyDefinition(PropertyDefinition(node.0))
             }
             NodeKind::StaticBlock => ClassElementData::StaticBlock(StaticBlock(node.0)),
+            NodeKind::TsMethodDefinition => {
+                ClassElementData::TsMethodDefinition(TsMethodDefinition(node.0))
+            }
             NodeKind::TsIndexSignature => {
                 ClassElementData::TsIndexSignature(TsIndexSignature(node.0))
             }
@@ -6756,6 +6821,9 @@ impl<'a> Ast<'a> {
             }
             NodeKind::JsxElement => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
             NodeKind::JsxFragment => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
+            NodeKind::TsFunction => {
+                ExportDefaultDeclarationKindData::TsFunction(TsFunction(node.0))
+            }
             NodeKind::TsInterfaceDeclaration => {
                 ExportDefaultDeclarationKindData::TsInterfaceDeclaration(TsInterfaceDeclaration(
                     node.0,

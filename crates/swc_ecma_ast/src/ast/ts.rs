@@ -204,6 +204,70 @@ pub enum TsModuleReference {
     TsExternalModuleReference(TsExternalModuleReference),
 }
 
+/// A body-less TypeScript function declaration or overload signature.
+///
+/// ## Example
+/// ```ts
+/// declare function foo<T>(x: T): T;
+/// //^^^^^^^ declare
+/// //               ^^^ id
+/// //                  ^^^ type_parameters
+/// //                     ^^^^^^ params
+/// //                           ^^^ return_type
+/// ```
+#[ast]
+pub struct TsFunction {
+    /// `binding_identifier`. `None` for anonymous default exports and method
+    /// definitions.
+    id: Option<BindingIdentifier>,
+    generator: bool,
+    r#async: bool,
+    /// true when preceded by the `declare` modifier. Distinguishes a real
+    /// ambient declaration from a plain overload signature.
+    declare: bool,
+    /// `formal_parameters`
+    params: FormalParameters,
+    /// `ts_type_parameter_declaration`. `None` when absent.
+    type_parameters: Option<TsTypeParameterDeclaration>,
+    /// `ts_type_annotation`. `None` when absent.
+    return_type: Option<TsTypeAnnotation>,
+}
+
+/// A body-less TypeScript method, accessor, or constructor signature in a
+/// class body.
+///
+/// ## Example
+/// ```ts
+/// abstract class C { public abstract foo?<T>(x: T): void; }
+/// //                 ^^^^^^ accessibility
+/// //                        ^^^^^^^^ abstract
+/// //                                 ^^^ key
+/// //                                    ^ optional
+/// //                                     ^^^ type_parameters
+/// //                                        ^^^^^^ params
+/// //                                              ^^^^^ return_type
+/// ```
+#[ast]
+pub struct TsMethodDefinition {
+    /// `decorator[]`
+    decorators: Vec<Decorator>,
+    /// `identifier_name`, `string_literal`, `numeric_literal`,
+    /// `private_identifier` (class members only), or any expression when `computed = true`
+    key: PropertyKey,
+    /// `id` is always `None`; `declare` is always `false`.
+    value: TsFunction,
+    kind: MethodDefinitionKind,
+    /// true when the key is written inside `[...]`.
+    computed: bool,
+    r#static: bool,
+    r#override: bool,
+    /// true for an optional method (`foo?()`).
+    optional: bool,
+    r#abstract: bool,
+    /// `None` when no accessibility modifier was written.
+    accessibility: Accessibility,
+}
+
 /// A `: Type` annotation wrapper.
 ///
 /// The span starts at the `:` token and covers the inner type.

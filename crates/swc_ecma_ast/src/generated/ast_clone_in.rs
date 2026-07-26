@@ -63,6 +63,7 @@ impl<'a> CloneIn<'a> for Decl {
             DeclData::VariableDeclaration(it) => Self::VariableDeclaration(it.clone_in(ast)),
             DeclData::Function(it) => Self::Function(it.clone_in(ast)),
             DeclData::Class(it) => Self::Class(it.clone_in(ast)),
+            DeclData::TsFunction(it) => Self::TsFunction(it.clone_in(ast)),
             DeclData::TsTypeAliasDeclaration(it) => Self::TsTypeAliasDeclaration(it.clone_in(ast)),
             DeclData::TsInterfaceDeclaration(it) => Self::TsInterfaceDeclaration(it.clone_in(ast)),
             DeclData::TsEnumDeclaration(it) => Self::TsEnumDeclaration(it.clone_in(ast)),
@@ -317,6 +318,7 @@ impl<'a> CloneIn<'a> for ClassElement {
             ClassElementData::MethodDefinition(it) => Self::MethodDefinition(it.clone_in(ast)),
             ClassElementData::PropertyDefinition(it) => Self::PropertyDefinition(it.clone_in(ast)),
             ClassElementData::StaticBlock(it) => Self::StaticBlock(it.clone_in(ast)),
+            ClassElementData::TsMethodDefinition(it) => Self::TsMethodDefinition(it.clone_in(ast)),
             ClassElementData::TsIndexSignature(it) => Self::TsIndexSignature(it.clone_in(ast)),
         }
     }
@@ -348,6 +350,7 @@ impl<'a> CloneIn<'a> for ExportDefaultDeclarationKind {
             ExportDefaultDeclarationKindData::Expr(it) => Self::Expr(it.clone_in(ast)),
             ExportDefaultDeclarationKindData::Function(it) => Self::Function(it.clone_in(ast)),
             ExportDefaultDeclarationKindData::Class(it) => Self::Class(it.clone_in(ast)),
+            ExportDefaultDeclarationKindData::TsFunction(it) => Self::TsFunction(it.clone_in(ast)),
             ExportDefaultDeclarationKindData::TsInterfaceDeclaration(it) => {
                 Self::TsInterfaceDeclaration(it.clone_in(ast))
             }
@@ -957,7 +960,6 @@ impl<'a> CloneIn<'a> for Function {
         let id = self.id(ast).clone_in(ast);
         let generator = self.generator(ast).clone_in(ast);
         let r#async = self.r#async(ast).clone_in(ast);
-        let declare = self.declare(ast).clone_in(ast);
         let params = self.params(ast).clone_in(ast);
         let body = self.body(ast).clone_in(ast);
         let type_parameters = self.type_parameters(ast).clone_in(ast);
@@ -968,7 +970,6 @@ impl<'a> CloneIn<'a> for Function {
             id,
             generator,
             r#async,
-            declare,
             params,
             body,
             type_parameters,
@@ -1547,6 +1548,60 @@ impl<'a> CloneIn<'a> for TsModuleReference {
                 Self::TsExternalModuleReference(it.clone_in(ast))
             }
         }
+    }
+}
+impl<'a> CloneIn<'a> for TsFunction {
+    type Cloned = TsFunction;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let id = self.id(ast).clone_in(ast);
+        let generator = self.generator(ast).clone_in(ast);
+        let r#async = self.r#async(ast).clone_in(ast);
+        let declare = self.declare(ast).clone_in(ast);
+        let params = self.params(ast).clone_in(ast);
+        let type_parameters = self.type_parameters(ast).clone_in(ast);
+        let return_type = self.return_type(ast).clone_in(ast);
+        ast.ts_function(
+            span,
+            id,
+            generator,
+            r#async,
+            declare,
+            params,
+            type_parameters,
+            return_type,
+        )
+    }
+}
+impl<'a> CloneIn<'a> for TsMethodDefinition {
+    type Cloned = TsMethodDefinition;
+    #[inline]
+    fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
+        let span = self.span(ast).clone_in(ast);
+        let decorators = self.decorators(ast).clone_in(ast);
+        let key = self.key(ast).clone_in(ast);
+        let value = self.value(ast).clone_in(ast);
+        let kind = self.kind(ast).clone_in(ast);
+        let computed = self.computed(ast).clone_in(ast);
+        let r#static = self.r#static(ast).clone_in(ast);
+        let r#override = self.r#override(ast).clone_in(ast);
+        let optional = self.optional(ast).clone_in(ast);
+        let r#abstract = self.r#abstract(ast).clone_in(ast);
+        let accessibility = self.accessibility(ast).clone_in(ast);
+        ast.ts_method_definition(
+            span,
+            decorators,
+            key,
+            value,
+            kind,
+            computed,
+            r#static,
+            r#override,
+            optional,
+            r#abstract,
+            accessibility,
+        )
     }
 }
 impl<'a> CloneIn<'a> for TsTypeAnnotation {

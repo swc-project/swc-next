@@ -86,9 +86,8 @@ impl<'visit, 'ast> ArrowVisitor<'visit, 'ast> {
             None,
             false,
             is_async,
-            false,
             params,
-            Some(body),
+            body,
             None,
             None,
         );

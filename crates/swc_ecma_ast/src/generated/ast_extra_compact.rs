@@ -1406,6 +1406,30 @@ impl<'a> ExtraDataCompact<'a> for TsModuleReference {
         Self(unsafe { data.node_id })
     }
 }
+impl<'a> ExtraDataCompact<'a> for TsFunction {
+    #[inline]
+    fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
+        ExtraData {
+            node_id: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
+        Self(unsafe { data.node_id })
+    }
+}
+impl<'a> ExtraDataCompact<'a> for TsMethodDefinition {
+    #[inline]
+    fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
+        ExtraData {
+            node_id: self.node_id(),
+        }
+    }
+    #[inline]
+    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
+        Self(unsafe { data.node_id })
+    }
+}
 impl<'a> ExtraDataCompact<'a> for TsTypeAnnotation {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
@@ -2689,19 +2713,6 @@ impl<'a> ExtraDataCompact<'a> for Option<TsTypeParameterInstantiation> {
     unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
         let node_id = unsafe { data.node_id };
         (node_id.index() != u32::MAX as usize).then_some(TsTypeParameterInstantiation(node_id))
-    }
-}
-impl<'a> ExtraDataCompact<'a> for Option<FunctionBody> {
-    #[inline]
-    fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-        ExtraData {
-            node_id: self.map_or(NodeId::from_raw_unchecked(u32::MAX), |node| node.node_id()),
-        }
-    }
-    #[inline]
-    unsafe fn from_extra_data(data: ExtraData, _ast: &Ast<'a>) -> Self {
-        let node_id = unsafe { data.node_id };
-        (node_id.index() != u32::MAX as usize).then_some(FunctionBody(node_id))
     }
 }
 impl<'a> ExtraDataCompact<'a> for Option<Argument> {

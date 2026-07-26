@@ -218,18 +218,11 @@ impl VariableKind {
 ///
 /// `FunctionDeclaration` for `function foo() {}`.
 /// `FunctionExpression` for `const x = function () {}`.
-/// `TsDeclareFunction` for body-less function declarations. Covers
-/// ambient `declare function` and plain overload signatures.
-/// `TsEmptyBodyFunctionExpression` for body-less function expressions.
-/// Used as the `value` of body-less class methods (overloads, abstract
-/// methods, ambient methods).
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum FunctionType {
     FunctionDeclaration,
     FunctionExpression,
-    TsDeclareFunction,
-    TsEmptyBodyFunctionExpression,
 }
 
 /// Which grammar production the parameter list came from.
@@ -398,6 +391,7 @@ pub enum Decl {
     VariableDeclaration(VariableDeclaration),
     Function(Function),
     Class(Class),
+    TsFunction(TsFunction),
     TsTypeAliasDeclaration(TsTypeAliasDeclaration),
     TsInterfaceDeclaration(TsInterfaceDeclaration),
     TsEnumDeclaration(TsEnumDeclaration),
@@ -540,6 +534,7 @@ pub enum ClassElement {
     MethodDefinition(MethodDefinition),
     PropertyDefinition(PropertyDefinition),
     StaticBlock(StaticBlock),
+    TsMethodDefinition(TsMethodDefinition),
     TsIndexSignature(TsIndexSignature),
 }
 
@@ -555,6 +550,7 @@ pub enum ExportDefaultDeclarationKind {
     Expr(Expr),
     Function(Function),
     Class(Class),
+    TsFunction(TsFunction),
     TsInterfaceDeclaration(TsInterfaceDeclaration),
 }
 
@@ -1496,14 +1492,10 @@ pub struct Function {
     id: Option<BindingIdentifier>,
     generator: bool,
     r#async: bool,
-    /// true when preceded by the `declare` modifier. Distinguishes a real
-    /// ambient declaration from a plain overload signature, which share the
-    /// `TsDeclareFunction` shape.
-    declare: bool,
     /// `formal_parameters`
     params: FormalParameters,
-    /// `function_body`. `None` for body-less declarations and signatures.
-    body: Option<FunctionBody>,
+    /// `function_body`
+    body: FunctionBody,
     /// `ts_type_parameter_declaration`. `None` when absent.
     type_parameters: Option<TsTypeParameterDeclaration>,
     /// `ts_type_annotation`. `None` when absent.

@@ -17,6 +17,11 @@ pub fn expect_printed_minify(source: &[u8], expected: &[u8]) {
 }
 
 #[track_caller]
+pub fn expect_printed_ts(source: &[u8], expected: &[u8]) {
+    expect_printed_common(source, expected, Lang::Ts, SourceType::Module, false, false);
+}
+
+#[track_caller]
 pub fn expect_printed_jsx(source: &[u8], expected: &[u8]) {
     expect_printed_common(
         source,

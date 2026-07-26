@@ -237,9 +237,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
         derived_constructor: bool,
         ast: &mut Ast<'_>,
     ) {
-        let Some(body) = function.body(ast) else {
-            return;
-        };
+        let body = function.body(ast);
 
         if derived_constructor && let Some(this_name) = frame.this {
             rewrite_derived_super_calls(body, this_name, ast);
