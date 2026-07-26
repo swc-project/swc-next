@@ -30,6 +30,27 @@ impl BinaryOperator {
             Self::Instanceof => "instanceof",
         }
     }
+
+    pub const fn precedence(self) -> Precedence {
+        match self {
+            Self::Equal | Self::NotEqual | Self::StrictEqual | Self::StrictNotEqual => {
+                Precedence::Equality
+            }
+            Self::LessThan
+            | Self::LessThanOrEqual
+            | Self::GreaterThan
+            | Self::GreaterThanOrEqual
+            | Self::In
+            | Self::Instanceof => Precedence::Compare,
+            Self::Add | Self::Subtract => Precedence::Add,
+            Self::Multiply | Self::Divide | Self::Modulo => Precedence::Multiply,
+            Self::Exponent => Precedence::Exponent,
+            Self::BitwiseOr => Precedence::BitwiseOr,
+            Self::BitwiseXor => Precedence::BitwiseXor,
+            Self::BitwiseAnd => Precedence::BitwiseAnd,
+            Self::LeftShift | Self::RightShift | Self::UnsignedRightShift => Precedence::Shift,
+        }
+    }
 }
 
 impl LogicalOperator {
@@ -38,6 +59,14 @@ impl LogicalOperator {
             Self::And => "&&",
             Self::Or => "||",
             Self::NullishCoalescing => "??",
+        }
+    }
+
+    pub const fn precedence(self) -> Precedence {
+        match self {
+            Self::And => Precedence::LogicalAnd,
+            Self::Or => Precedence::LogicalOr,
+            Self::NullishCoalescing => Precedence::Nullish,
         }
     }
 }

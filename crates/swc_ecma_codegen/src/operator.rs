@@ -48,32 +48,8 @@ impl BinaryishOperator {
 
     pub(crate) fn precedence(self) -> Precedence {
         match self {
-            Self::Binary(op) => match op {
-                BinaryOperator::Equal
-                | BinaryOperator::NotEqual
-                | BinaryOperator::StrictEqual
-                | BinaryOperator::StrictNotEqual => Precedence::Equality,
-                BinaryOperator::LessThan
-                | BinaryOperator::LessThanOrEqual
-                | BinaryOperator::GreaterThan
-                | BinaryOperator::GreaterThanOrEqual
-                | BinaryOperator::In
-                | BinaryOperator::Instanceof => Precedence::Compare,
-                BinaryOperator::Add | BinaryOperator::Subtract => Precedence::Add,
-                BinaryOperator::Multiply | BinaryOperator::Divide | BinaryOperator::Modulo => {
-                    Precedence::Multiply
-                }
-                BinaryOperator::Exponent => Precedence::Exponent,
-                BinaryOperator::BitwiseOr => Precedence::BitwiseOr,
-                BinaryOperator::BitwiseXor => Precedence::BitwiseXor,
-                BinaryOperator::BitwiseAnd => Precedence::BitwiseAnd,
-                BinaryOperator::LeftShift
-                | BinaryOperator::RightShift
-                | BinaryOperator::UnsignedRightShift => Precedence::Shift,
-            },
-            Self::Logical(LogicalOperator::And) => Precedence::LogicalAnd,
-            Self::Logical(LogicalOperator::Or) => Precedence::LogicalOr,
-            Self::Logical(LogicalOperator::NullishCoalescing) => Precedence::Nullish,
+            Self::Binary(op) => op.precedence(),
+            Self::Logical(op) => op.precedence(),
         }
     }
 
