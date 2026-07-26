@@ -4,26 +4,6 @@ use swc_next_ecma_ast::*;
 
 const HEX: &[u8; 16] = b"0123456789ABCDEF";
 
-pub(crate) struct AstAdapterState {
-    class_decorators_were_printed: bool,
-}
-
-impl AstAdapterState {
-    pub(crate) fn new() -> Self {
-        Self {
-            class_decorators_were_printed: false,
-        }
-    }
-
-    pub(crate) fn mark_class_decorators_as_printed(&mut self) {
-        self.class_decorators_were_printed = true;
-    }
-
-    pub(crate) fn take_class_decorators_were_printed(&mut self) -> bool {
-        std::mem::take(&mut self.class_decorators_were_printed)
-    }
-}
-
 pub(crate) fn push_code_point_escape(out: &mut ArenaVec<'_, u8>, code_point: u32) {
     out.extend_from_slice(b"\\u{");
     let mut shift = 28;

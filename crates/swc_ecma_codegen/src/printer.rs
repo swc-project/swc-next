@@ -5,8 +5,8 @@ use swc_next_ecma_ast::*;
 
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator, OperatorCode};
 use crate::util::{
-    AstAdapterState, decorator_expression_needs_parentheses, decorator_omit_newline_after,
-    next_code_point, parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
+    decorator_expression_needs_parentheses, decorator_omit_newline_after, next_code_point,
+    parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
     token_offset_after_decorators,
 };
 
@@ -87,7 +87,6 @@ struct Printer<'a> {
     with_nesting: usize,
     forbid_in: bool,
     int_to_bytes_buffer: [u8; 64],
-    adapter: AstAdapterState,
 }
 
 pub fn print<'a>(
@@ -126,7 +125,6 @@ pub fn print<'a>(
         with_nesting: 0,
         forbid_in: false,
         int_to_bytes_buffer: [0; 64],
-        adapter: AstAdapterState::new(),
     };
 
     p.print_program(root);
@@ -2449,18 +2447,14 @@ impl<'a> Printer<'a> {
         if wrap {
             self.print("(");
         }
-        let omit_indent = if self.adapter.take_class_decorators_were_printed() {
-            true
-        } else {
-            self.print_decorators(
-                c.decorators(self.ast),
-                if declaration {
-                    PrintAfterDecorator::Newline
-                } else {
-                    PrintAfterDecorator::Space
-                },
-            )
-        };
+        let omit_indent = self.print_decorators(
+            c.decorators(self.ast),
+            if declaration {
+                PrintAfterDecorator::Newline
+            } else {
+                PrintAfterDecorator::Space
+            },
+        );
         if declaration && !omit_indent {
             self.print_indent();
         }
@@ -3146,23 +3140,21 @@ impl<'a> Printer<'a> {
     }
 
     fn print_export_named(&mut self, d: ExportNamedDeclaration) {
-        if let Some(DeclData::Class(class)) = d.declaration(self.ast).map(|d| self.ast.decl_data(d))
-        {
-            let omit_indent =
-                self.print_decorators(class.decorators(self.ast), PrintAfterDecorator::Newline);
-            if !omit_indent {
-                self.print_indent();
-            }
-            self.adapter.mark_class_decorators_as_printed();
-        } else {
-            self.print_indent();
-        }
+        self.print_indent();
         self.add_source_mapping(d.span(self.ast).start);
         self.print("export");
         if d.export_kind(self.ast) == ImportOrExportKind::Type {
             self.print(" type ");
         } else if d.declaration(self.ast).is_some() {
-            self.print(" ");
+            let decorated_class = matches!(
+                d.declaration(self.ast).map(|d| self.ast.decl_data(d)),
+                Some(DeclData::Class(class)) if !class.decorators(self.ast).is_empty()
+            );
+            if decorated_class {
+                self.print_space();
+            } else {
+                self.print(" ");
+            }
         } else {
             self.print_space();
         }
@@ -3174,7 +3166,11 @@ impl<'a> Printer<'a> {
                     | DeclData::TsInterfaceDeclaration(_)
                     | DeclData::TsModuleDeclaration(_)
             );
-            self.print_decl(decl);
+            if let DeclData::Class(class) = self.ast.decl_data(decl) {
+                self.print_class(class, false);
+            } else {
+                self.print_decl(decl);
+            }
             if block {
                 self.print_newline();
             } else {
@@ -3229,25 +3225,20 @@ impl<'a> Printer<'a> {
     }
 
     fn print_export_default(&mut self, d: ExportDefaultDeclaration) {
-        let class = match self
-            .ast
-            .export_default_declaration_kind_data(d.declaration(self.ast))
-        {
-            ExportDefaultDeclarationKindData::Class(class) => Some(class),
-            _ => None,
-        };
-        if let Some(class) = class {
-            let omit_indent =
-                self.print_decorators(class.decorators(self.ast), PrintAfterDecorator::Newline);
-            if !omit_indent {
-                self.print_indent();
-            }
-            self.adapter.mark_class_decorators_as_printed();
-        } else {
-            self.print_indent();
-        }
+        self.print_indent();
         self.add_source_mapping(d.span(self.ast).start);
-        self.print("export default ");
+        self.print("export default");
+        let decorated_class = matches!(
+            self.ast
+                .export_default_declaration_kind_data(d.declaration(self.ast)),
+            ExportDefaultDeclarationKindData::Class(class)
+                if !class.decorators(self.ast).is_empty()
+        );
+        if decorated_class {
+            self.print_space();
+        } else {
+            self.print(" ");
+        }
         self.export_default_start = self.js.len();
         match self
             .ast
@@ -3262,7 +3253,7 @@ impl<'a> Printer<'a> {
                 self.print_semicolon_after_statement();
             }
             ExportDefaultDeclarationKindData::Class(c) => {
-                self.print_class(c, true);
+                self.print_class(c, false);
                 self.print_newline();
             }
             ExportDefaultDeclarationKindData::TsInterfaceDeclaration(i) => {

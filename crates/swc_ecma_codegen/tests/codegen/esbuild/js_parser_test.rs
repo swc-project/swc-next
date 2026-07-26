@@ -1420,11 +1420,11 @@ fn test_decorators() {
     expect_printed(b"@x @y class Foo {}", b"@x @y class Foo {\n}\n");
     expect_printed(
         b"@x @y export class Foo {}",
-        b"@x @y export class Foo {\n}\n",
+        b"export @x @y class Foo {\n}\n",
     );
     expect_printed(
         b"@x @y export default class Foo {}",
-        b"@x @y export default class Foo {\n}\n",
+        b"export default @x @y class Foo {\n}\n",
     );
     expect_printed(b"_ = @x @y class {}", b"_ = @x @y class {\n};\n");
     expect_printed(b"class Foo { @x y }", b"class Foo {\n  @x y;\n}\n");
@@ -1476,23 +1476,23 @@ fn test_decorators() {
         b"class Foo { #x = @y.#x.y.#x class {} }",
         b"class Foo {\n  #x = @y.#x.y.#x class {\n  };\n}\n",
     );
-    expect_printed(b"@x export class Foo {}", b"@x export class Foo {\n}\n");
-    expect_printed(b"export @x class Foo {}", b"@x export class Foo {\n}\n");
+    expect_printed(b"@x export class Foo {}", b"export @x class Foo {\n}\n");
+    expect_printed(b"export @x class Foo {}", b"export @x class Foo {\n}\n");
     expect_printed(
         b"@x export default class {}",
-        b"@x export default class {\n}\n",
+        b"export default @x class {\n}\n",
     );
     expect_printed(
         b"export default @x class {}",
-        b"@x export default class {\n}\n",
+        b"export default @x class {\n}\n",
     );
     expect_printed(
         b"@x export default class Foo {}",
-        b"@x export default class Foo {\n}\n",
+        b"export default @x class Foo {\n}\n",
     );
     expect_printed(
         b"export default @x class Foo {}",
-        b"@x export default class Foo {\n}\n",
+        b"export default @x class Foo {\n}\n",
     );
     expect_printed(
         b"export default (@x class {})",
