@@ -1,3 +1,103 @@
+use crate::{
+    AssignmentOperator, BinaryOperator, LogicalOperator, TsTypeOperatorKind, UnaryOperator,
+    UpdateOperator,
+};
+
+impl BinaryOperator {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Equal => "==",
+            Self::NotEqual => "!=",
+            Self::StrictEqual => "===",
+            Self::StrictNotEqual => "!==",
+            Self::LessThan => "<",
+            Self::LessThanOrEqual => "<=",
+            Self::GreaterThan => ">",
+            Self::GreaterThanOrEqual => ">=",
+            Self::Add => "+",
+            Self::Subtract => "-",
+            Self::Multiply => "*",
+            Self::Divide => "/",
+            Self::Modulo => "%",
+            Self::Exponent => "**",
+            Self::BitwiseOr => "|",
+            Self::BitwiseXor => "^",
+            Self::BitwiseAnd => "&",
+            Self::LeftShift => "<<",
+            Self::RightShift => ">>",
+            Self::UnsignedRightShift => ">>>",
+            Self::In => "in",
+            Self::Instanceof => "instanceof",
+        }
+    }
+}
+
+impl LogicalOperator {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::And => "&&",
+            Self::Or => "||",
+            Self::NullishCoalescing => "??",
+        }
+    }
+}
+
+impl UnaryOperator {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Negate => "-",
+            Self::Positive => "+",
+            Self::LogicalNot => "!",
+            Self::BitwiseNot => "~",
+            Self::Typeof => "typeof",
+            Self::Void => "void",
+            Self::Delete => "delete",
+        }
+    }
+}
+
+impl UpdateOperator {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Increment => "++",
+            Self::Decrement => "--",
+        }
+    }
+}
+
+impl AssignmentOperator {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Assign => "=",
+            Self::AddAssign => "+=",
+            Self::SubtractAssign => "-=",
+            Self::MultiplyAssign => "*=",
+            Self::DivideAssign => "/=",
+            Self::ModuloAssign => "%=",
+            Self::ExponentAssign => "**=",
+            Self::LeftShiftAssign => "<<=",
+            Self::RightShiftAssign => ">>=",
+            Self::UnsignedRightShiftAssign => ">>>=",
+            Self::BitwiseOrAssign => "|=",
+            Self::BitwiseXorAssign => "^=",
+            Self::BitwiseAndAssign => "&=",
+            Self::LogicalOrAssign => "||=",
+            Self::LogicalAndAssign => "&&=",
+            Self::NullishAssign => "??=",
+        }
+    }
+}
+
+impl TsTypeOperatorKind {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Keyof => "keyof",
+            Self::Unique => "unique",
+            Self::Readonly => "readonly",
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum Precedence {

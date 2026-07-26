@@ -3,14 +3,16 @@ use std::path::PathBuf;
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::*;
 
-use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator};
+use crate::operator::{
+    BinaryExprVisitor, Binaryish, BinaryishOperator, OperatorCode, binary_operator_code,
+    unary_operator_code, update_operator_code,
+};
 use crate::util::{
-    AstAdapterState, OperatorCode, assignment_operator, binary_operator_code,
-    conditional_in_was_reassociated, decorator_expression_needs_parentheses,
+    AstAdapterState, conditional_in_was_reassociated, decorator_expression_needs_parentheses,
     decorator_omit_newline_after, import_declaration_has_empty_clause, is_identifier,
     is_identifier_continue_byte, is_identifier_es5_and_esnext, is_legal_comment, module_name_bytes,
     next_code_point, parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
-    token_offset_after_decorators, unary_operator, unary_operator_code, update_operator_code,
+    token_offset_after_decorators,
 };
 
 use crate::{
@@ -249,7 +251,7 @@ impl BinaryExprVisitor {
             p.print_expr(conditional.alternate(p.ast), precedence);
             p.print_space();
             p.print_space_before_identifier();
-            p.print(operator.text());
+            p.print(operator.as_str());
             p.print(" ");
             p.print_expr(e.right(p.ast), precedence.next());
             if self.wrap {
@@ -266,7 +268,7 @@ impl BinaryExprVisitor {
         p.print_space();
         if self.operator.is_keyword() {
             p.print_space_before_identifier();
-            p.print(self.operator.text());
+            p.print(self.operator.as_str());
             // This separator is syntactically required even when whitespace
             // minification is enabled (`in this`, not `inthis`).
             p.print(" ");
@@ -275,11 +277,11 @@ impl BinaryExprVisitor {
                 BinaryishOperator::Binary(operator) => {
                     let operator_code = binary_operator_code(operator);
                     p.print_space_before_operator(operator_code);
-                    p.print(self.operator.text());
+                    p.print(self.operator.as_str());
                     p.prev_op = operator_code;
                     p.prev_op_end = p.js.len();
                 }
-                BinaryishOperator::Logical(_) => p.print(self.operator.text()),
+                BinaryishOperator::Logical(_) => p.print(self.operator.as_str()),
             }
         }
         if !self.operator.is_keyword() {
@@ -1665,7 +1667,7 @@ impl<'a> Printer<'a> {
                 }
                 self.print_assignment_target(e.left(self.ast));
                 self.print_space();
-                self.print(assignment_operator(e.operator(self.ast)));
+                self.print(e.operator(self.ast).as_str());
                 self.print_space();
                 self.print_expr(e.right(self.ast), Precedence::Assignment);
                 if wrap {
@@ -1948,7 +1950,7 @@ impl<'a> Printer<'a> {
         if wrap {
             self.print("(");
         }
-        let op = unary_operator(e.operator(self.ast));
+        let op = e.operator(self.ast).as_str();
         if op.as_bytes()[0].is_ascii_alphabetic() {
             self.print_space_before_identifier();
             self.add_source_mapping(e.span(self.ast).start);
@@ -1973,11 +1975,7 @@ impl<'a> Printer<'a> {
         if wrap {
             self.print("(");
         }
-        let op = if e.operator(self.ast) == UpdateOperator::Increment {
-            "++"
-        } else {
-            "--"
-        };
+        let op = e.operator(self.ast).as_str();
         let operator_code = update_operator_code(e.operator(self.ast), e.prefix(self.ast));
         if e.prefix(self.ast) {
             self.print_space_before_operator(operator_code);
@@ -3522,11 +3520,8 @@ impl<'a> Printer<'a> {
                 }
             }
             TsTypeData::TsTypeOperator(t) => {
-                self.print(match t.operator(self.ast) {
-                    TsTypeOperatorKind::Keyof => "keyof ",
-                    TsTypeOperatorKind::Unique => "unique ",
-                    TsTypeOperatorKind::Readonly => "readonly ",
-                });
+                self.print(t.operator(self.ast).as_str());
+                self.print(" ");
                 self.print_ts_type(t.type_annotation(self.ast), Precedence::Prefix);
             }
             TsTypeData::TsParenthesizedType(t) => {

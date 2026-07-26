@@ -1,5 +1,6 @@
 use swc_next_ecma_ast::{
     Ast, BinaryExpression, BinaryOperator, Expr, LogicalExpression, LogicalOperator, Precedence,
+    UnaryOperator, UpdateOperator,
 };
 
 #[derive(Clone, Copy)]
@@ -38,35 +39,10 @@ pub(crate) enum BinaryishOperator {
 }
 
 impl BinaryishOperator {
-    pub(crate) fn text(self) -> &'static str {
+    pub(crate) fn as_str(self) -> &'static str {
         match self {
-            Self::Binary(op) => match op {
-                BinaryOperator::Equal => "==",
-                BinaryOperator::NotEqual => "!=",
-                BinaryOperator::StrictEqual => "===",
-                BinaryOperator::StrictNotEqual => "!==",
-                BinaryOperator::LessThan => "<",
-                BinaryOperator::LessThanOrEqual => "<=",
-                BinaryOperator::GreaterThan => ">",
-                BinaryOperator::GreaterThanOrEqual => ">=",
-                BinaryOperator::Add => "+",
-                BinaryOperator::Subtract => "-",
-                BinaryOperator::Multiply => "*",
-                BinaryOperator::Divide => "/",
-                BinaryOperator::Modulo => "%",
-                BinaryOperator::Exponent => "**",
-                BinaryOperator::BitwiseOr => "|",
-                BinaryOperator::BitwiseXor => "^",
-                BinaryOperator::BitwiseAnd => "&",
-                BinaryOperator::LeftShift => "<<",
-                BinaryOperator::RightShift => ">>",
-                BinaryOperator::UnsignedRightShift => ">>>",
-                BinaryOperator::In => "in",
-                BinaryOperator::Instanceof => "instanceof",
-            },
-            Self::Logical(LogicalOperator::And) => "&&",
-            Self::Logical(LogicalOperator::Or) => "||",
-            Self::Logical(LogicalOperator::NullishCoalescing) => "??",
+            Self::Binary(op) => op.as_str(),
+            Self::Logical(op) => op.as_str(),
         }
     }
 
@@ -110,6 +86,48 @@ impl BinaryishOperator {
 
     pub(crate) fn is_right_associative(self) -> bool {
         self == Self::Binary(BinaryOperator::Exponent)
+    }
+}
+
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) enum OperatorCode {
+    Add,
+    Subtract,
+    Positive,
+    Negative,
+    PreIncrement,
+    PreDecrement,
+    PostDecrement,
+    GreaterThan,
+    Not,
+    #[default]
+    Other,
+}
+
+pub(crate) fn binary_operator_code(operator: BinaryOperator) -> OperatorCode {
+    match operator {
+        BinaryOperator::Add => OperatorCode::Add,
+        BinaryOperator::Subtract => OperatorCode::Subtract,
+        BinaryOperator::GreaterThan => OperatorCode::GreaterThan,
+        _ => OperatorCode::Other,
+    }
+}
+
+pub(crate) fn unary_operator_code(operator: UnaryOperator) -> OperatorCode {
+    match operator {
+        UnaryOperator::Positive => OperatorCode::Positive,
+        UnaryOperator::Negate => OperatorCode::Negative,
+        UnaryOperator::LogicalNot => OperatorCode::Not,
+        _ => OperatorCode::Other,
+    }
+}
+
+pub(crate) fn update_operator_code(operator: UpdateOperator, prefix: bool) -> OperatorCode {
+    match (operator, prefix) {
+        (UpdateOperator::Increment, true) => OperatorCode::PreIncrement,
+        (UpdateOperator::Decrement, true) => OperatorCode::PreDecrement,
+        (UpdateOperator::Decrement, false) => OperatorCode::PostDecrement,
+        _ => OperatorCode::Other,
     }
 }
 
