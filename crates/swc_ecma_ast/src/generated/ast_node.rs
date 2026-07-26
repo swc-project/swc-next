@@ -6806,8 +6806,22 @@ impl<'a> Ast<'a> {
             NodeKind::ParenthesizedExpression => {
                 ExportDefaultDeclarationKindData::Expr(Expr(node.0))
             }
-            NodeKind::Function => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
-            NodeKind::Class => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
+            NodeKind::Function => {
+                let function = Function(node.0);
+                if function.function_type(self) == FunctionType::FunctionDeclaration {
+                    ExportDefaultDeclarationKindData::Function(function)
+                } else {
+                    ExportDefaultDeclarationKindData::Expr(Expr(node.0))
+                }
+            }
+            NodeKind::Class => {
+                let class = Class(node.0);
+                if class.class_type(self) == ClassType::ClassDeclaration {
+                    ExportDefaultDeclarationKindData::Class(class)
+                } else {
+                    ExportDefaultDeclarationKindData::Expr(Expr(node.0))
+                }
+            }
             NodeKind::ImportExpression => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
             NodeKind::AwaitExpression => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),
             NodeKind::YieldExpression => ExportDefaultDeclarationKindData::Expr(Expr(node.0)),

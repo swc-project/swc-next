@@ -318,6 +318,7 @@ fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
     let name = format_ident!("{}", ast.name);
     let data_name = format_ident!("{}Data", ast.name);
     let data_fn_name = format_ident!("{}_data", ast.name.to_case(Case::Snake));
+    let has_contextual_variants = ast.name == "ExportDefaultDeclarationKind";
 
     let mut is_variant = TokenStream::new();
     let mut as_variant = TokenStream::new();
@@ -325,14 +326,18 @@ fn generate_property_for_enum(ast: &AstEnum, schema: &Schema) -> TokenStream {
     for variant in ast.variants.iter() {
         let variant_name = format_ident!("{}", variant.name);
         let is_fn_name = format_ident!("is_{}", variant.name.to_case(Case::Snake));
-        let node_kinds: Vec<_> = concrete_node_kinds(variant.type_id.unwrap(), schema)
-            .into_iter()
-            .map(|name| format_ident!("{name}"))
-            .collect();
-        let kind_check = if let [node_kind] = node_kinds.as_slice() {
-            quote!(ast.node_kind(self.0) == NodeKind::#node_kind)
+        let kind_check = if has_contextual_variants {
+            quote!(matches!(ast.#data_fn_name(self), #data_name::#variant_name(_)))
         } else {
-            quote!(matches!(ast.node_kind(self.0), #(NodeKind::#node_kinds)|*))
+            let node_kinds: Vec<_> = concrete_node_kinds(variant.type_id.unwrap(), schema)
+                .into_iter()
+                .map(|name| format_ident!("{name}"))
+                .collect();
+            if let [node_kind] = node_kinds.as_slice() {
+                quote!(ast.node_kind(self.0) == NodeKind::#node_kind)
+            } else {
+                quote!(matches!(ast.node_kind(self.0), #(NodeKind::#node_kinds)|*))
+            }
         };
         is_variant.extend(quote! {
             #[inline]

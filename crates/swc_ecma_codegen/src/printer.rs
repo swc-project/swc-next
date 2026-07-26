@@ -1196,7 +1196,7 @@ impl<'a> Printer<'a> {
     fn print_decl(&mut self, decl: Decl) {
         match self.ast.decl_data(decl) {
             DeclData::VariableDeclaration(v) => self.print_variable_decl(v, true),
-            DeclData::Function(f) => self.print_function(f, true),
+            DeclData::Function(f) => self.print_function(f),
             DeclData::TsFunction(f) => self.print_ts_function(f, true),
             DeclData::Class(c) => self.print_class(c, true),
             DeclData::TsTypeAliasDeclaration(d) => self.print_ts_type_alias(d),
@@ -1234,7 +1234,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_function(&mut self, f: Function, declaration: bool) {
+    fn print_function(&mut self, f: Function) {
         let is_expression = matches!(f.function_type(self.ast), FunctionType::FunctionExpression);
         let offset = self.js.len();
         let wrap =
@@ -1250,12 +1250,11 @@ impl<'a> Printer<'a> {
         self.print("function");
         if f.generator(self.ast) {
             self.print("*");
+            self.print_space();
         }
         if let Some(id) = f.id(self.ast) {
-            self.print_space();
+            self.print_space_before_identifier();
             self.print_binding_identifier(id, false);
-        } else if declaration || f.generator(self.ast) {
-            self.print_space();
         }
         if let Some(params) = f.type_parameters(self.ast) {
             self.print_ts_type_params(params);
@@ -1564,9 +1563,13 @@ impl<'a> Printer<'a> {
 
     fn print_expr(&mut self, expr: Expr, level: Level) {
         let is_at_stmt_start = self.js.len() == self.stmt_start;
+        let is_at_export_default_start = self.js.len() == self.export_default_start;
         self.print_comments_before(expr.span(self.ast).start, false, true);
         if is_at_stmt_start {
             self.stmt_start = self.js.len();
+        }
+        if is_at_export_default_start {
+            self.export_default_start = self.js.len();
         }
         match self.ast.expr_data(expr) {
             ExprData::IdentifierReference(e) => {
@@ -1689,7 +1692,7 @@ impl<'a> Printer<'a> {
                 }
             }
             ExprData::SequenceExpression(e) => {
-                let wrap = level > Level::Comma;
+                let wrap = level >= Level::Comma;
                 if wrap {
                     self.print("(");
                 }
@@ -1698,7 +1701,7 @@ impl<'a> Printer<'a> {
                         self.print(",");
                         self.print_space();
                     }
-                    self.print_expr(self.ast.get_node_in_sub_range(id), Level::Comma);
+                    self.print_expr(self.ast.get_node_in_sub_range(id), Level::Lowest);
                 }
                 if wrap {
                     self.print(")");
@@ -1739,7 +1742,7 @@ impl<'a> Printer<'a> {
                 self.print_expr(e.expression(self.ast), Level::Lowest);
                 self.print(")");
             }
-            ExprData::Function(e) => self.print_function(e, false),
+            ExprData::Function(e) => self.print_function(e),
             ExprData::Class(e) => self.print_class(e, false),
             ExprData::ImportExpression(e) => {
                 self.add_source_mapping(expr.span(self.ast).start);
@@ -3288,25 +3291,8 @@ impl<'a> Printer<'a> {
             .ast
             .export_default_declaration_kind_data(d.declaration(self.ast))
         {
-            ExportDefaultDeclarationKindData::Expr(e) => {
-                // Flattened union lookup maps function and class nodes to `Expr`; use the
-                // node's own form to preserve declaration-style statement termination.
-                let is_declaration = match self.ast.expr_data(e) {
-                    ExprData::Function(f) => {
-                        f.function_type(self.ast) == FunctionType::FunctionDeclaration
-                    }
-                    ExprData::Class(c) => c.class_type(self.ast) == ClassType::ClassDeclaration,
-                    _ => false,
-                };
-                self.print_expr(e, Level::Assignment);
-                if is_declaration {
-                    self.print_newline();
-                } else {
-                    self.print_semicolon_after_statement();
-                }
-            }
             ExportDefaultDeclarationKindData::Function(f) => {
-                self.print_function(f, true);
+                self.print_function(f);
                 self.print_newline();
             }
             ExportDefaultDeclarationKindData::TsFunction(f) => {
@@ -3320,6 +3306,11 @@ impl<'a> Printer<'a> {
             ExportDefaultDeclarationKindData::TsInterfaceDeclaration(i) => {
                 self.print_ts_interface(i);
                 self.print_newline();
+            }
+            ExportDefaultDeclarationKindData::Expr(e) => {
+                self.export_default_start = self.js.len();
+                self.print_expr(e, Level::Comma);
+                self.print_semicolon_after_statement();
             }
         }
     }

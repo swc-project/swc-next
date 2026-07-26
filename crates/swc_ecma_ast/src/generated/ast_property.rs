@@ -1700,64 +1700,37 @@ impl ExportDefaultDeclarationKind {
     #[inline]
     pub fn is_expr(self, ast: &Ast<'_>) -> bool {
         matches!(
-            ast.node_kind(self.0),
-            NodeKind::IdentifierReference
-                | NodeKind::ThisExpression
-                | NodeKind::Super
-                | NodeKind::MetaProperty
-                | NodeKind::StringLiteral
-                | NodeKind::NumericLiteral
-                | NodeKind::BigIntLiteral
-                | NodeKind::BooleanLiteral
-                | NodeKind::NullLiteral
-                | NodeKind::RegExpLiteral
-                | NodeKind::TemplateLiteral
-                | NodeKind::BinaryExpression
-                | NodeKind::LogicalExpression
-                | NodeKind::UnaryExpression
-                | NodeKind::UpdateExpression
-                | NodeKind::AssignmentExpression
-                | NodeKind::ConditionalExpression
-                | NodeKind::SequenceExpression
-                | NodeKind::MemberExpression
-                | NodeKind::CallExpression
-                | NodeKind::ChainExpression
-                | NodeKind::NewExpression
-                | NodeKind::TaggedTemplateExpression
-                | NodeKind::ArrowFunctionExpression
-                | NodeKind::ArrayExpression
-                | NodeKind::ObjectExpression
-                | NodeKind::ParenthesizedExpression
-                | NodeKind::Function
-                | NodeKind::Class
-                | NodeKind::ImportExpression
-                | NodeKind::AwaitExpression
-                | NodeKind::YieldExpression
-                | NodeKind::PrivateIdentifier
-                | NodeKind::TsAsExpression
-                | NodeKind::TsSatisfiesExpression
-                | NodeKind::TsTypeAssertion
-                | NodeKind::TsNonNullExpression
-                | NodeKind::TsInstantiationExpression
-                | NodeKind::JsxElement
-                | NodeKind::JsxFragment
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::Expr(_)
         )
     }
     #[inline]
     pub fn is_function(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Function
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::Function(_)
+        )
     }
     #[inline]
     pub fn is_class(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::Class
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::Class(_)
+        )
     }
     #[inline]
     pub fn is_ts_function(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::TsFunction
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::TsFunction(_)
+        )
     }
     #[inline]
     pub fn is_ts_interface_declaration(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::TsInterfaceDeclaration
+        matches!(
+            ast.export_default_declaration_kind_data(self),
+            ExportDefaultDeclarationKindData::TsInterfaceDeclaration(_)
+        )
     }
     #[inline]
     pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {

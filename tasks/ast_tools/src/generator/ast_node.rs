@@ -88,14 +88,43 @@ fn generate_data_accessor(ast: &AstEnum, schema: &Schema) -> TokenStream {
         let variant_ident = format_ident!("{}", variant.name);
         let payload_ident = schema.types[type_id].repr_ident(schema);
         let node_kinds = concrete_node_kinds(type_id, schema);
-        for node_kind in node_kinds {
-            if !seen.insert(node_kind.clone()) {
+        for node_kind_name in node_kinds {
+            if !seen.insert(node_kind_name.clone()) {
                 continue;
             }
-            let node_kind = format_ident!("{node_kind}");
-            arms.extend(quote! {
-                NodeKind::#node_kind => #data_ident::#variant_ident(#payload_ident(node.0)),
-            });
+            let node_kind = format_ident!("{node_kind_name}");
+            let arm = match (
+                ast.name.as_str(),
+                variant.name.as_str(),
+                node_kind_name.as_str(),
+            ) {
+                // `Expr` also contains function and class nodes. Recover their
+                // declaration/expression form from the concrete node payload.
+                ("ExportDefaultDeclarationKind", "Expr", "Function") => quote! {
+                    NodeKind::Function => {
+                        let function = Function(node.0);
+                        if function.function_type(self) == FunctionType::FunctionDeclaration {
+                            #data_ident::Function(function)
+                        } else {
+                            #data_ident::Expr(#payload_ident(node.0))
+                        }
+                    },
+                },
+                ("ExportDefaultDeclarationKind", "Expr", "Class") => quote! {
+                    NodeKind::Class => {
+                        let class = Class(node.0);
+                        if class.class_type(self) == ClassType::ClassDeclaration {
+                            #data_ident::Class(class)
+                        } else {
+                            #data_ident::Expr(#payload_ident(node.0))
+                        }
+                    },
+                },
+                _ => quote! {
+                    NodeKind::#node_kind => #data_ident::#variant_ident(#payload_ident(node.0)),
+                },
+            };
+            arms.extend(arm);
         }
     }
 
