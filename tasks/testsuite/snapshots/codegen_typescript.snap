@@ -1,7 +1,7 @@
 codegen * typescript
 ========================
-Passed: 20566/22023 (93.38%)
-Failed: 1457/22023 (6.62%)
+Passed: 20561/22023 (93.36%)
+Failed: 1462/22023 (6.64%)
 Panicked: 0/22023 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/APISample_jsdoc.ts - APISample_jsdoc.ts: second parse: Expected '=' in type alias declaration, but found 'Annotations' at 1532..1543
 Failed: fixtures/typescript/tests/cases/compiler/DeclarationErrorsNoEmitOnError.ts - DeclarationErrorsNoEmitOnError.ts: second parse: Expected '=' in type alias declaration, but found 'I' at 49..50
@@ -340,6 +340,7 @@ Failed: fixtures/typescript/tests/cases/compiler/detachedCommentAtStartOfLambdaF
 Failed: fixtures/typescript/tests/cases/compiler/detachedCommentAtStartOfLambdaFunction2.ts - detachedCommentAtStartOfLambdaFunction2.ts: codegen output changed after reparse at byte 104 (first: 273 bytes, second: 256 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/discriminantPropertyCheck.ts - discriminantPropertyCheck.ts: codegen output changed after reparse at byte 1130 (first: 3620 bytes, second: 3624 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/discriminantsAndPrimitives.ts - discriminantsAndPrimitives.ts: codegen output changed after reparse at byte 831 (first: 1250 bytes, second: 1252 bytes)
+Failed: fixtures/typescript/tests/cases/compiler/discriminateWithOptionalProperty4.ts - discriminateWithOptionalProperty4.ts: codegen output changed after reparse at byte 155 (first: 435 bytes, second: 426 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/discriminatedUnionJsxElement.tsx - discriminatedUnionJsxElement.tsx: codegen output changed after reparse at byte 536 (first: 595 bytes, second: 597 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/discriminatedUnionWithIndexSignature.ts - discriminatedUnionWithIndexSignature.ts: second parse: Expected '=' in type alias declaration, but found 'UnionAltA' at 22..31
 Failed: fixtures/typescript/tests/cases/compiler/divideAndConquerIntersections.ts - divideAndConquerIntersections.ts: second parse: Expected '=' in type alias declaration, but found 'Update' at 382..388
@@ -657,6 +658,7 @@ Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceGlobalReexportMissi
 Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceImplicitImportJSXNamespace.tsx - /node_modules/preact/index.d.ts: first parse: 'const' declarations must be initialized at 992..1000
 Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceImplicitImportJSXNamespace.tsx - /node_modules/preact/jsx-runtime/index.d.ts: first parse: expected an import-equals declaration after 'export' at 1259..1284
 Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceReexports.tsx - library.ts: second parse: Expected '=' in type alias declaration, but found 'IntrinsicElements' at 121..138
+Failed: fixtures/typescript/tests/cases/compiler/jsxNestedWithinTernaryParsesCorrectly.tsx - jsxNestedWithinTernaryParsesCorrectly.tsx: codegen output changed after reparse at byte 80 (first: 209 bytes, second: 202 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/jsxPreserveWithJsInput.ts - c.js: first parse: Unexpected token '<' at 12..13
 Failed: fixtures/typescript/tests/cases/compiler/lambdaASIEmit.ts - lambdaASIEmit.ts: codegen output changed after reparse at byte 36 (first: 65 bytes, second: 60 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/lateBoundConstraintTypeChecksCorrectly.ts - lateBoundConstraintTypeChecksCorrectly.ts: second parse: Expected '=' in type alias declaration, but found 'Foo' at 148..151
@@ -1108,6 +1110,9 @@ Failed: fixtures/typescript/tests/cases/conformance/expressions/typeAssertions/c
 Failed: fixtures/typescript/tests/cases/conformance/expressions/typeGuards/TypeGuardWithEnumUnion.ts - TypeGuardWithEnumUnion.ts: codegen output changed after reparse at byte 31 (first: 544 bytes, second: 546 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/expressions/typeGuards/typeGuardEnums.ts - typeGuardEnums.ts: codegen output changed after reparse at byte 11 (first: 210 bytes, second: 214 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/expressions/typeGuards/typeGuardNarrowsPrimitiveIntersection.ts - typeGuardNarrowsPrimitiveIntersection.ts: codegen output changed after reparse at byte 306 (first: 551 bytes, second: 553 bytes)
+Failed: fixtures/typescript/tests/cases/conformance/expressions/typeGuards/typeGuardsInConditionalExpression.ts - typeGuardsInConditionalExpression.ts: codegen output changed after reparse at byte 563 (first: 2844 bytes, second: 2713 bytes)
+Failed: fixtures/typescript/tests/cases/conformance/expressions/typeGuards/typeGuardsInFunctionAndModuleBlock.ts - typeGuardsInFunctionAndModuleBlock.ts: codegen output changed after reparse at byte 238 (first: 2164 bytes, second: 2078 bytes)
+Failed: fixtures/typescript/tests/cases/conformance/expressions/typeGuards/typeGuardsInRightOperandOfAndAndOperator.ts - typeGuardsInRightOperandOfAndAndOperator.ts: codegen output changed after reparse at byte 1275 (first: 1775 bytes, second: 1737 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/expressions/typeSatisfaction/typeSatisfaction_propertyValueConformance3.ts - typeSatisfaction_propertyValueConformance3.ts: second parse: Expected '=' in type alias declaration, but found 'Color' at 17..22
 Failed: fixtures/typescript/tests/cases/conformance/expressions/unaryOperators/bitwiseNotOperator/bitwiseNotOperatorWithEnumType.ts - bitwiseNotOperatorWithEnumType.ts: codegen output changed after reparse at byte 61 (first: 361 bytes, second: 363 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/expressions/unaryOperators/incrementOperator/incrementOperatorWithEnumType.ts - incrementOperatorWithEnumType.ts: codegen output changed after reparse at byte 62 (first: 198 bytes, second: 200 bytes)
