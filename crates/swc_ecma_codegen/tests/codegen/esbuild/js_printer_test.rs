@@ -716,8 +716,9 @@ fn test_private_identifiers() {
 #[test]
 fn test_decorators() {
     let example = b"class Foo {\n@w\nw; @x x; @a1\n@b1@b2\n@c1@c2@c3\ny = @y1 @y2 class {}; @a1\n@b1@b2\n@c1@c2@c3 z =\n@z1\n@z2\nclass {}}";
-    expect_printed(example, b"class Foo {\n  @w\n  w;\n  @x x;\n  @a1\n  @b1 @b2\n  @c1 @c2 @c3\n  y = @y1 @y2 class {\n  };\n  @a1\n  @b1 @b2\n  @c1 @c2 @c3 z = @z1 @z2 class {\n  };\n}\n");
-    expect_printed_minify(example, b"class Foo{@w w;@x x;@a1@b1@b2@c1@c2@c3 y=@y1@y2 class{};@a1@b1@b2@c1@c2@c3 z=@z1@z2 class{}}");
+    expect_printed(example, b"class Foo {\n  @w w;\n  @x x;\n  @a1 @b1 @b2 @c1 @c2 @c3 y = @y1 @y2 class {\n  };\n  @a1 @b1 @b2 @c1 @c2 @c3 z = @z1 @z2 class {\n  };\n}\n");
+    expect_printed_minify(example, b"class Foo{@w w;@x x;@a1 @b1 @b2 @c1 @c2 @c3 y=@y1 @y2 class{};@a1 @b1 @b2 @c1 @c2 @c3 z=@z1 @z2 class{}}");
+    expect_printed_minify(b"class C { @dec static x }", b"class C{@dec static x}");
 }
 
 #[test]

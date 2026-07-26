@@ -54,21 +54,6 @@ pub(crate) fn token_offset_after_decorators(
     offset as u32
 }
 
-pub(crate) fn decorator_omit_newline_after(ast: &Ast<'_>, decorator: Decorator) -> bool {
-    let source = ast.source();
-    let mut index = decorator.span(ast).end as usize;
-    while let Some(&byte) = source.get(index) {
-        if byte == b'\n' || byte == b'\r' {
-            return false;
-        }
-        if !byte.is_ascii_whitespace() {
-            return true;
-        }
-        index += 1;
-    }
-    false
-}
-
 pub(crate) fn decorator_expression_needs_parentheses(ast: &Ast<'_>, mut expression: Expr) -> bool {
     loop {
         match ast.expr_data(expression) {

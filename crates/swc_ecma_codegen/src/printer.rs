@@ -5,9 +5,8 @@ use swc_next_ecma_ast::*;
 
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator, OperatorCode};
 use crate::util::{
-    decorator_expression_needs_parentheses, decorator_omit_newline_after, next_code_point,
-    parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
-    token_offset_after_decorators,
+    decorator_expression_needs_parentheses, next_code_point, parse_numeric_literal,
+    push_code_point_escape, push_u16_escape, quote_into, token_offset_after_decorators,
 };
 
 use crate::{
@@ -51,12 +50,6 @@ fn parse_small_int(bytes: &[u8]) -> i32 {
         n = n * 10 + i32::from(byte - b'0');
     }
     if was_negative { -n } else { n }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum PrintAfterDecorator {
-    Newline,
-    Space,
 }
 
 struct Printer<'a> {
@@ -1318,7 +1311,7 @@ impl<'a> Printer<'a> {
 
     fn print_binding_identifier(&mut self, id: BindingIdentifier, decorators: bool) {
         if decorators {
-            self.print_decorators(id.decorators(self.ast), PrintAfterDecorator::Space);
+            self.print_decorators(id.decorators(self.ast));
         }
         let name = self.ast.string(id.name(self.ast));
         self.add_source_mapping_for_name(id.span(self.ast).start, name);
@@ -1336,7 +1329,7 @@ impl<'a> Printer<'a> {
             BindingPatternData::BindingIdentifier(id) => self.print_binding_identifier(id, true),
             BindingPatternData::SimpleAssignmentTarget(t) => self.print_simple_assignment_target(t),
             BindingPatternData::AssignmentPattern(p) => {
-                self.print_decorators(p.decorators(self.ast), PrintAfterDecorator::Space);
+                self.print_decorators(p.decorators(self.ast));
                 self.print_binding(p.left(self.ast));
                 if p.optional(self.ast) {
                     self.print("?");
@@ -1350,7 +1343,7 @@ impl<'a> Printer<'a> {
                 self.print_expr(p.right(self.ast), Precedence::Assignment);
             }
             BindingPatternData::BindingRestElement(r) => {
-                self.print_decorators(r.decorators(self.ast), PrintAfterDecorator::Space);
+                self.print_decorators(r.decorators(self.ast));
                 self.add_source_mapping(r.span(self.ast).start);
                 self.print("...");
                 self.print_binding(r.argument(self.ast));
@@ -1367,7 +1360,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_array_pattern(&mut self, a: ArrayPattern) {
-        self.print_decorators(a.decorators(self.ast), PrintAfterDecorator::Space);
+        self.print_decorators(a.decorators(self.ast));
         self.add_source_mapping(a.span(self.ast).start);
         self.print("[");
         let elements = a.elements(self.ast);
@@ -1402,7 +1395,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_object_pattern(&mut self, o: ObjectPattern) {
-        self.print_decorators(o.decorators(self.ast), PrintAfterDecorator::Space);
+        self.print_decorators(o.decorators(self.ast));
         self.add_source_mapping(o.span(self.ast).start);
         self.print("{");
         let props = o.properties(self.ast);
@@ -2447,17 +2440,10 @@ impl<'a> Printer<'a> {
         if wrap {
             self.print("(");
         }
-        let omit_indent = self.print_decorators(
-            c.decorators(self.ast),
-            if declaration {
-                PrintAfterDecorator::Newline
-            } else {
-                PrintAfterDecorator::Space
-            },
-        );
-        if declaration && !omit_indent {
+        if declaration {
             self.print_indent();
         }
+        self.print_decorators(c.decorators(self.ast));
         self.add_source_mapping(token_offset_after_decorators(
             self.ast,
             c.span(self.ast).start,
@@ -2531,11 +2517,8 @@ impl<'a> Printer<'a> {
     fn print_class_element(&mut self, element: ClassElement) {
         match self.ast.class_element_data(element) {
             ClassElementData::MethodDefinition(m) => {
-                let omit_indent =
-                    self.print_decorators(m.decorators(self.ast), PrintAfterDecorator::Newline);
-                if !omit_indent {
-                    self.print_indent();
-                }
+                self.print_indent();
+                self.print_decorators(m.decorators(self.ast));
                 self.add_source_mapping(token_offset_after_decorators(
                     self.ast,
                     element.span(self.ast).start,
@@ -2580,11 +2563,8 @@ impl<'a> Printer<'a> {
                 self.print_newline();
             }
             ClassElementData::TsMethodDefinition(m) => {
-                let omit_indent =
-                    self.print_decorators(m.decorators(self.ast), PrintAfterDecorator::Newline);
-                if !omit_indent {
-                    self.print_indent();
-                }
+                self.print_indent();
+                self.print_decorators(m.decorators(self.ast));
                 self.add_source_mapping(token_offset_after_decorators(
                     self.ast,
                     element.span(self.ast).start,
@@ -2627,11 +2607,8 @@ impl<'a> Printer<'a> {
                 self.print_semicolon_after_statement();
             }
             ClassElementData::PropertyDefinition(p) => {
-                let omit_indent =
-                    self.print_decorators(p.decorators(self.ast), PrintAfterDecorator::Newline);
-                if !omit_indent {
-                    self.print_indent();
-                }
+                self.print_indent();
+                self.print_decorators(p.decorators(self.ast));
                 self.add_source_mapping(token_offset_after_decorators(
                     self.ast,
                     element.span(self.ast).start,
@@ -2710,23 +2687,10 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_decorators(
-        &mut self,
-        decorators: TypedSubRange<Decorator>,
-        default_mode: PrintAfterDecorator,
-    ) -> bool {
-        let mut old_mode = default_mode;
+    fn print_decorators(&mut self, decorators: TypedSubRange<Decorator>) {
         for id in decorators.iter() {
             let decorator = self.ast.get_node_in_sub_range(id);
-            let mode = if decorator_omit_newline_after(self.ast, decorator) {
-                PrintAfterDecorator::Space
-            } else {
-                default_mode
-            };
             self.add_source_mapping(decorator.span(self.ast).start);
-            if old_mode == PrintAfterDecorator::Newline {
-                self.print_indent();
-            }
             self.print("@");
             let expression = decorator.expression(self.ast);
             let wrap = decorator_expression_needs_parentheses(self.ast, expression)
@@ -2741,13 +2705,9 @@ impl<'a> Printer<'a> {
             if wrap {
                 self.print(")");
             }
-            match mode {
-                PrintAfterDecorator::Newline => self.print_newline(),
-                PrintAfterDecorator::Space => self.print_space(),
-            }
-            old_mode = mode;
+            self.print_space();
+            self.print_space_before_identifier();
         }
-        old_mode == PrintAfterDecorator::Space
     }
 
     fn print_accessibility(&mut self, a: Accessibility) {
@@ -3972,7 +3932,7 @@ impl<'a> Printer<'a> {
         self.print("}");
     }
     fn print_ts_parameter_property(&mut self, p: TsParameterProperty) {
-        self.print_decorators(p.decorators(self.ast), PrintAfterDecorator::Space);
+        self.print_decorators(p.decorators(self.ast));
         self.print_accessibility(p.accessibility(self.ast));
         if p.r#override(self.ast) {
             self.print("override ");
