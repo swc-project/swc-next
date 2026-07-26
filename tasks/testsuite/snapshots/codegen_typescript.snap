@@ -1,7 +1,7 @@
 codegen * typescript
 ========================
-Passed: 20561/22023 (93.36%)
-Failed: 1462/22023 (6.64%)
+Passed: 20560/22023 (93.36%)
+Failed: 1463/22023 (6.64%)
 Panicked: 0/22023 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/APISample_jsdoc.ts - APISample_jsdoc.ts: second parse: Expected '=' in type alias declaration, but found 'Annotations' at 1532..1543
 Failed: fixtures/typescript/tests/cases/compiler/DeclarationErrorsNoEmitOnError.ts - DeclarationErrorsNoEmitOnError.ts: second parse: Expected '=' in type alias declaration, but found 'I' at 49..50
@@ -328,7 +328,7 @@ Failed: fixtures/typescript/tests/cases/compiler/declareFileExportAssignmentWith
 Failed: fixtures/typescript/tests/cases/compiler/decoratorMetadataElidedImport.ts - observable.d.ts: second parse: Expected '=' in type alias declaration, but found 'class' at 20..25
 Failed: fixtures/typescript/tests/cases/compiler/decoratorMetadataElidedImportOnDeclare.ts - observable.d.ts: second parse: Expected '=' in type alias declaration, but found 'class' at 20..25
 Failed: fixtures/typescript/tests/cases/compiler/decoratorMetadataTypeOnlyImport.ts - ./a.ts: second parse: Expected '=' in type alias declaration, but found 'MyList' at 56..62
-Failed: fixtures/typescript/tests/cases/compiler/decoratorUsedBeforeDeclaration.ts - decoratorUsedBeforeDeclaration.ts: codegen output changed after reparse at byte 595 (first: 1142 bytes, second: 1144 bytes)
+Failed: fixtures/typescript/tests/cases/compiler/decoratorUsedBeforeDeclaration.ts - decoratorUsedBeforeDeclaration.ts: codegen output changed after reparse at byte 583 (first: 1118 bytes, second: 1120 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/deeplyNestedMappedTypes.ts - deeplyNestedMappedTypes.ts: second parse: Expected '=' in type alias declaration, but found 'Input' at 2120..2125
 Failed: fixtures/typescript/tests/cases/compiler/deeplyNestedTemplateLiteralIntersection.ts - deeplyNestedTemplateLiteralIntersection.ts: second parse: Expected '=' in type alias declaration, but found 'Props' at 180..185
 Failed: fixtures/typescript/tests/cases/compiler/defaultDeclarationEmitNamedCorrectly.ts - defaultDeclarationEmitNamedCorrectly.ts: second parse: Expected '=' in type alias declaration, but found 'Things' at 22..28
@@ -372,7 +372,7 @@ Failed: fixtures/typescript/tests/cases/compiler/emitClassExpressionInDeclaratio
 Failed: fixtures/typescript/tests/cases/compiler/emitClassExpressionInDeclarationFile2.ts - emitClassExpressionInDeclarationFile2.ts: second parse: Expected '=' in type alias declaration, but found 'Constructor' at 286..297
 Failed: fixtures/typescript/tests/cases/compiler/emitClassMergedWithConstNamespaceNotElided.ts - enum.d.ts: codegen output changed after reparse at byte 116 (first: 176 bytes, second: 180 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/emitDecoratorMetadata_isolatedModules.ts - type2.ts: second parse: Expected '=' in type alias declaration, but found 'T2' at 22..24
-Failed: fixtures/typescript/tests/cases/compiler/emptyDeclarationEmitIsModule.ts - index.ts: second parse: Expected '=' in type alias declaration, but found 'Bar' at 49..52
+Failed: fixtures/typescript/tests/cases/compiler/emptyDeclarationEmitIsModule.ts - index.ts: second parse: Expected '=' in type alias declaration, but found 'Bar' at 41..44
 Failed: fixtures/typescript/tests/cases/compiler/emptyEnum.ts - emptyEnum.ts: codegen output changed after reparse at byte 11 (first: 11 bytes, second: 13 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/enumAssignmentCompat.ts - enumAssignmentCompat.ts: codegen output changed after reparse at byte 66 (first: 428 bytes, second: 430 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/enumAssignmentCompat2.ts - enumAssignmentCompat2.ts: codegen output changed after reparse at byte 27 (first: 428 bytes, second: 430 bytes)
@@ -677,7 +677,7 @@ Failed: fixtures/typescript/tests/cases/compiler/mergedDeclarations7.ts - passpo
 Failed: fixtures/typescript/tests/cases/compiler/mergedEnumDeclarationCodeGen.ts - mergedEnumDeclarationCodeGen.ts: codegen output changed after reparse at byte 26 (first: 47 bytes, second: 51 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/mergedModuleDeclarationCodeGen5.ts - mergedModuleDeclarationCodeGen5.ts: codegen output changed after reparse at byte 208 (first: 432 bytes, second: 436 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/metadataOfEventAlias.ts - event.ts: second parse: Expected '=' in type alias declaration, but found 'Event' at 22..27
-Failed: fixtures/typescript/tests/cases/compiler/metadataOfUnion.ts - metadataOfUnion.ts: codegen output changed after reparse at byte 215 (first: 326 bytes, second: 328 bytes)
+Failed: fixtures/typescript/tests/cases/compiler/metadataOfUnion.ts - metadataOfUnion.ts: codegen output changed after reparse at byte 209 (first: 312 bytes, second: 314 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/methodContainingLocalFunction.ts - methodContainingLocalFunction.ts: codegen output changed after reparse at byte 1029 (first: 1029 bytes, second: 1031 bytes)
 Failed: fixtures/typescript/tests/cases/compiler/mixedExports.ts - mixedExports.ts: second parse: Expected '=' in type alias declaration, but found 'Foo' at 132..135
 Failed: fixtures/typescript/tests/cases/compiler/mixedTypeEnumComparison.ts - mixedTypeEnumComparison.ts: codegen output changed after reparse at byte 69 (first: 481 bytes, second: 485 bytes)
@@ -1000,7 +1000,7 @@ Failed: fixtures/typescript/tests/cases/conformance/classes/members/instanceAndS
 Failed: fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameEmitHelpers.ts - node_modules/tslib/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'function' at 114..122
 Failed: fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameStaticEmitHelpers.ts - node_modules/tslib/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'function' at 114..122
 Failed: fixtures/typescript/tests/cases/conformance/classes/propertyMemberDeclarations/accessorsOverrideProperty9.ts - accessorsOverrideProperty9.ts: second parse: Expected '=' in type alias declaration, but found 'Constructor' at 76..87
-Failed: fixtures/typescript/tests/cases/conformance/classes/propertyMemberDeclarations/staticAutoAccessorsWithDecorators.ts - staticAutoAccessorsWithDecorators.ts: codegen output changed after reparse at byte 70 (first: 202 bytes, second: 206 bytes)
+Failed: fixtures/typescript/tests/cases/conformance/classes/propertyMemberDeclarations/staticAutoAccessorsWithDecorators.ts - staticAutoAccessorsWithDecorators.ts: codegen output changed after reparse at byte 70 (first: 198 bytes, second: 202 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/classes/propertyMemberDeclarations/staticPropertyNameConflictsInAmbientContext.ts - decl.d.ts: first parse: Classes may not have a static property named 'prototype' at 438..447
 Failed: fixtures/typescript/tests/cases/conformance/classes/propertyMemberDeclarations/strictPropertyInitialization.ts - strictPropertyInitialization.ts: codegen output changed after reparse at byte 2466 (first: 2538 bytes, second: 2540 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/constEnums/constEnum1.ts - constEnum1.ts: codegen output changed after reparse at byte 423 (first: 423 bytes, second: 425 bytes)
@@ -1028,8 +1028,8 @@ Failed: fixtures/typescript/tests/cases/conformance/declarationEmit/typesVersion
 Failed: fixtures/typescript/tests/cases/conformance/declarationEmit/typesVersionsDeclarationEmit.multiFileBackReferenceToSelf.ts - node_modules/ext/other.d.ts: second parse: Expected '=' in type alias declaration, but found 'B' at 22..23
 Failed: fixtures/typescript/tests/cases/conformance/declarationEmit/typesVersionsDeclarationEmit.multiFileBackReferenceToUnmapped.ts - node_modules/ext/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'A' at 22..23
 Failed: fixtures/typescript/tests/cases/conformance/declarationEmit/typesVersionsDeclarationEmit.multiFileBackReferenceToUnmapped.ts - node_modules/ext/other.d.ts: second parse: Expected '=' in type alias declaration, but found 'A2' at 22..24
-Failed: fixtures/typescript/tests/cases/conformance/decorators/class/decoratorChecksFunctionBodies.ts - decoratorChecksFunctionBodies.ts: codegen output changed after reparse at byte 65 (first: 141 bytes, second: 143 bytes)
-Failed: fixtures/typescript/tests/cases/conformance/decorators/legacyDecorators-contextualTypes.ts - legacyDecorators-contextualTypes.ts: codegen output changed after reparse at byte 4 (first: 588 bytes, second: 612 bytes)
+Failed: fixtures/typescript/tests/cases/conformance/decorators/class/decoratorChecksFunctionBodies.ts - decoratorChecksFunctionBodies.ts: codegen output changed after reparse at byte 65 (first: 139 bytes, second: 141 bytes)
+Failed: fixtures/typescript/tests/cases/conformance/decorators/legacyDecorators-contextualTypes.ts - legacyDecorators-contextualTypes.ts: codegen output changed after reparse at byte 4 (first: 572 bytes, second: 596 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/enums/enumBasics.ts - enumBasics.ts: codegen output changed after reparse at byte 110 (first: 1444 bytes, second: 1462 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/enums/enumClassification.ts - enumClassification.ts: codegen output changed after reparse at byte 373 (first: 988 bytes, second: 1012 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/enums/enumConstantMemberWithString.ts - enumConstantMemberWithString.ts: codegen output changed after reparse at byte 96 (first: 303 bytes, second: 315 bytes)
@@ -1070,18 +1070,17 @@ Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImport
 Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImports3-es6.ts - t1.ts: first parse: expected an import-equals declaration after 'export' at 276..291
 Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImports3.ts - t1.ts: first parse: expected an import-equals declaration after 'export' at 276..291
 Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImports5.ts - a.ts: second parse: Expected '=' in type alias declaration, but found 'A' at 22..23
-Failed: fixtures/typescript/tests/cases/conformance/es6/yieldExpressions/generatorTypeCheck59.ts - generatorTypeCheck59.ts: codegen output changed after reparse at byte 35 (first: 72 bytes, second: 74 bytes)
-Failed: fixtures/typescript/tests/cases/conformance/es6/yieldExpressions/generatorTypeCheck61.ts - generatorTypeCheck61.ts: codegen output changed after reparse at byte 21 (first: 53 bytes, second: 55 bytes)
+Failed: fixtures/typescript/tests/cases/conformance/es6/yieldExpressions/generatorTypeCheck59.ts - generatorTypeCheck59.ts: codegen output changed after reparse at byte 35 (first: 68 bytes, second: 70 bytes)
+Failed: fixtures/typescript/tests/cases/conformance/es6/yieldExpressions/generatorTypeCheck61.ts - generatorTypeCheck61.ts: codegen output changed after reparse at byte 21 (first: 51 bytes, second: 53 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/es6/yieldExpressions/generatorTypeCheck62.ts - generatorTypeCheck62.ts: second parse: Expected '=' in type alias declaration, but found 'StrategicState' at 43..57
 Failed: fixtures/typescript/tests/cases/conformance/es6/yieldExpressions/generatorTypeCheck63.ts - generatorTypeCheck63.ts: second parse: Expected '=' in type alias declaration, but found 'StrategicState' at 43..57
 Failed: fixtures/typescript/tests/cases/conformance/es7/exponentiationOperator/exponentiationOperatorWithEnum.ts - exponentiationOperatorWithEnum.ts: codegen output changed after reparse at byte 99 (first: 374 bytes, second: 376 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/es7/exponentiationOperator/exponentiationOperatorWithEnumUnion.ts - exponentiationOperatorWithEnumUnion.ts: codegen output changed after reparse at byte 99 (first: 400 bytes, second: 404 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/es7/exponentiationOperator/exponentiationOperatorWithInvalidOperands.ts - exponentiationOperatorWithInvalidOperands.ts: codegen output changed after reparse at byte 134 (first: 1333 bytes, second: 1335 bytes)
-Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-commentPreservation.ts - file3.ts: codegen output changed after reparse at byte 7 (first: 130 bytes, second: 126 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/esDecorators-arguments.ts - esDecorators-arguments.ts: codegen output changed after reparse at byte 4 (first: 165 bytes, second: 175 bytes)
-Failed: fixtures/typescript/tests/cases/conformance/esDecorators/esDecorators-contextualTypes.ts - esDecorators-contextualTypes.ts: codegen output changed after reparse at byte 4 (first: 931 bytes, second: 973 bytes)
+Failed: fixtures/typescript/tests/cases/conformance/esDecorators/esDecorators-contextualTypes.ts - esDecorators-contextualTypes.ts: codegen output changed after reparse at byte 4 (first: 891 bytes, second: 933 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/esDecorators-decoratorExpression.2.ts - esDecorators-decoratorExpression.2.ts: codegen output changed after reparse at byte 114 (first: 1132 bytes, second: 1180 bytes)
-Failed: fixtures/typescript/tests/cases/conformance/esDecorators/esDecorators-preservesThis.ts - esDecorators-preservesThis.ts: codegen output changed after reparse at byte 291 (first: 669 bytes, second: 679 bytes)
+Failed: fixtures/typescript/tests/cases/conformance/esDecorators/esDecorators-preservesThis.ts - esDecorators-preservesThis.ts: codegen output changed after reparse at byte 289 (first: 645 bytes, second: 655 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/expressions/arrayLiterals/arrayLiteralInference.ts - arrayLiteralInference.ts: codegen output changed after reparse at byte 323 (first: 855 bytes, second: 859 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/expressions/assignmentOperator/compoundAdditionAssignmentLHSCannotBeAssigned.ts - compoundAdditionAssignmentLHSCannotBeAssigned.ts: codegen output changed after reparse at byte 109 (first: 283 bytes, second: 285 bytes)
 Failed: fixtures/typescript/tests/cases/conformance/expressions/binaryOperators/additionOperator/additionOperatorWithAnyAndEveryType.ts - additionOperatorWithAnyAndEveryType.ts: codegen output changed after reparse at byte 99 (first: 737 bytes, second: 739 bytes)
@@ -1171,6 +1170,7 @@ Failed: fixtures/typescript/tests/cases/conformance/externalModules/typeOnly/pre
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/typeOnly/preserveValueImports_errors.ts - a.ts: second parse: Expected '=' in type alias declaration, but found 'A' at 17..18
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/typeOnly/preserveValueImports_importsNotUsedAsValues.ts - /mod.ts: second parse: Expected '=' in type alias declaration, but found 'A' at 17..18
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/typeOnly/preserveValueImports_mixedImports.ts - /exports.ts: second parse: Expected '=' in type alias declaration, but found 'ComponentProps' at 54..68
+Failed: fixtures/typescript/tests/cases/conformance/externalModules/typeOnly/typeOnlyESMImportFromCJS.ts - common.cts: second parse: Expected 'from' after import clause, but found '"./module.mts"' at 12..26
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/typeValueMerge1.ts - other.ts: second parse: Expected '=' in type alias declaration, but found 'A' at 17..18
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/typesOnlyExternalModuleStillHasInstance.ts - foo_0.ts: second parse: Expected '=' in type alias declaration, but found 'Person' at 22..28
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/umd-augmentation-1.ts - node_modules/math2d/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'Point' at 50..55
@@ -1257,6 +1257,7 @@ Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxOpeningClosingNames.t
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxSpreadInvalidType.tsx - a.tsx: second parse: Expected '=' in type alias declaration, but found 'IntrinsicElements' at 40..57
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxStatelessFunctionComponentOverload5.tsx - file.tsx: second parse: Expected '=' in type alias declaration, but found 'ClickableProps' at 97..111
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxStatelessFunctionComponentOverload6.tsx - file.tsx: second parse: Expected '=' in type alias declaration, but found 'ClickableProps' at 141..155
+Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/allowImportingTsExtensions.ts - /b.ts: second parse: Expected 'from' after import clause, but found '"./ts.d.ts"' at 48..59
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/allowImportingTypesDtsExtension.ts - /types.d.ts: second parse: Expected '=' in type alias declaration, but found 'type' at 20..24
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/bundler/bundlerCommonJS.ts - /node_modules/pkg/index.d.ts: second parse: Expected '=' in type alias declaration, but found 'const' at 20..25
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/bundler/bundlerSyntaxRestrictions.ts - /ambient.d.ts: first parse: 'const' declarations must be initialized at 202..205
