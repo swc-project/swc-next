@@ -140,12 +140,7 @@ pub fn print<'a>(
         let path = options.source_map_path.as_deref().unwrap();
         let path = path.as_os_str().as_encoded_bytes();
         let chunk = builder.generate_chunk(js.as_slice());
-        Some(crate::util::finalize_source_map(
-            allocator,
-            tree.source(),
-            path,
-            chunk,
-        ))
+        Some(chunk.finalize(allocator, tree.source(), path))
     } else {
         None
     };

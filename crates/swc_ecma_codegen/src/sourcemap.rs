@@ -80,6 +80,45 @@ pub(crate) struct Chunk<'a> {
     pub(crate) should_ignore: bool,
 }
 
+impl<'a> Chunk<'a> {
+    pub(crate) fn finalize(
+        self,
+        allocator: &'a Allocator,
+        source: &'a [u8],
+        source_path: &[u8],
+    ) -> SourceMap<'a> {
+        let mut path = ArenaVec::with_capacity_in(source_path.len(), allocator);
+        path.extend_from_slice_copy(source_path);
+        let path = path.into_bump_slice() as &'a [u8];
+
+        let mut sources = ArenaVec::with_capacity_in(1, allocator);
+        sources.push(path);
+        let sources = sources.into_bump_slice() as &'a [&'a [u8]];
+
+        let mut sources_content = ArenaVec::with_capacity_in(1, allocator);
+        sources_content.push(Some(source));
+        let sources_content = sources_content.into_bump_slice() as &'a [Option<&'a [u8]>];
+
+        // Chunk joining and JSON assembly are intentionally outside sourcemap.rs:
+        // they adapt esbuild's chunk-oriented API to this crate's arena-backed,
+        // single-source public result type.
+        let Chunk {
+            buffer: MappingsBuffer { data: mappings, .. },
+            quoted_names: names,
+            ..
+        } = self;
+        SourceMap {
+            version: 3,
+            file: None,
+            source_root: None,
+            sources,
+            sources_content: Some(sources_content),
+            names,
+            mappings,
+        }
+    }
+}
+
 pub(crate) struct LineOffsetTable<'a> {
     columns_for_non_ascii: Option<&'a [i32]>,
     byte_offset_to_first_non_ascii: i32,

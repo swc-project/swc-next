@@ -1,4 +1,4 @@
-use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
+use swc_next_allocator::vec::Vec as ArenaVec;
 
 use swc_next_ecma_ast::*;
 
@@ -21,48 +21,6 @@ impl AstAdapterState {
 
     pub(crate) fn take_class_decorators_were_printed(&mut self) -> bool {
         std::mem::take(&mut self.class_decorators_were_printed)
-    }
-}
-
-use crate::{
-    SourceMap,
-    sourcemap::{Chunk, MappingsBuffer},
-};
-
-pub(crate) fn finalize_source_map<'a>(
-    allocator: &'a Allocator,
-    source: &'a [u8],
-    source_path: &[u8],
-    chunk: Chunk<'a>,
-) -> SourceMap<'a> {
-    let mut path = ArenaVec::with_capacity_in(source_path.len(), allocator);
-    path.extend_from_slice_copy(source_path);
-    let path = path.into_bump_slice() as &'a [u8];
-
-    let mut sources = ArenaVec::with_capacity_in(1, allocator);
-    sources.push(path);
-    let sources = sources.into_bump_slice() as &'a [&'a [u8]];
-
-    let mut sources_content = ArenaVec::with_capacity_in(1, allocator);
-    sources_content.push(Some(source));
-    let sources_content = sources_content.into_bump_slice() as &'a [Option<&'a [u8]>];
-
-    // Chunk joining and JSON assembly are intentionally outside sourcemap.rs:
-    // they adapt esbuild's chunk-oriented API to this crate's arena-backed,
-    // single-source public result type.
-    let Chunk {
-        buffer: MappingsBuffer { data: mappings, .. },
-        quoted_names: names,
-        ..
-    } = chunk;
-    SourceMap {
-        version: 3,
-        file: None,
-        source_root: None,
-        sources,
-        sources_content: Some(sources_content),
-        names,
-        mappings,
     }
 }
 
