@@ -340,12 +340,3 @@ pub(crate) fn next_code_point(bytes: &[u8], i: usize) -> (u32, usize) {
         _ => (0xfffd, 1),
     }
 }
-
-pub(crate) fn is_legal_comment(ast: &Ast<'_>, comment: Comment) -> bool {
-    let value = ast.string(comment.value(ast.source()));
-    ast.source()
-        .get(comment.span.start as usize..comment.span.start as usize + 3)
-        .is_some_and(|prefix| prefix == b"/*!" || prefix == b"//!")
-        || value.windows(8).any(|window| window == b"@license")
-        || value.windows(9).any(|window| window == b"@preserve")
-}

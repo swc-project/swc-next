@@ -6,8 +6,8 @@ use swc_next_ecma_ast::*;
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator, OperatorCode};
 use crate::util::{
     AstAdapterState, decorator_expression_needs_parentheses, decorator_omit_newline_after,
-    is_legal_comment, next_code_point, parse_numeric_literal, push_code_point_escape,
-    push_u16_escape, quote_into, token_offset_after_decorators,
+    next_code_point, parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
+    token_offset_after_decorators,
 };
 
 use crate::{
@@ -64,7 +64,6 @@ struct Printer<'a> {
     ast: &'a Ast<'a>,
     options: Options,
     js: ArenaVec<'a, u8>,
-    legal_comments: Vec<Comment>,
     comments: &'a [Comment],
     expr_visitor_stack: ArenaVec<'a, BinaryExprVisitor>,
     builder: ChunkBuilder<'a>,
@@ -104,17 +103,11 @@ pub fn print<'a>(
     } else {
         ArenaVec::new_in(allocator)
     };
-    let legal_comments = comments
-        .iter()
-        .filter(|comment| is_legal_comment(tree, **comment))
-        .copied()
-        .collect();
     let mut p = Printer {
         allocator,
         ast: tree,
         options,
         js: ArenaVec::new_in(allocator),
-        legal_comments,
         comments,
         expr_visitor_stack: ArenaVec::new_in(allocator),
         builder: make_chunk_builder(allocator, line_offset_tables),
@@ -140,7 +133,6 @@ pub fn print<'a>(
     let Printer {
         options,
         js,
-        legal_comments,
         builder,
         ..
     } = p;
@@ -157,7 +149,14 @@ pub fn print<'a>(
     } else {
         None
     };
+
     let code = js.into_bump_slice();
+    let legal_comments = comments
+        .iter()
+        .filter(|comment| is_legal_comment(tree, **comment))
+        .copied()
+        .collect();
+
     PrintResult {
         code,
         legal_comments,
@@ -4229,4 +4228,13 @@ impl Printer<'_> {
             ModuleExportNameData::StringLiteral(s) => ast.string(s.value(ast)),
         }
     }
+}
+
+fn is_legal_comment(ast: &Ast, comment: Comment) -> bool {
+    let value = ast.string(comment.value(ast.source()));
+    ast.source()
+        .get(comment.span.start as usize..comment.span.start as usize + 3)
+        .is_some_and(|prefix| prefix == b"/*!" || prefix == b"//!")
+        || value.windows(8).any(|window| window == b"@license")
+        || value.windows(9).any(|window| window == b"@preserve")
 }
