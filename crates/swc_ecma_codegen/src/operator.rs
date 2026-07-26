@@ -65,46 +65,11 @@ impl BinaryishOperator {
     }
 }
 
-#[derive(Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum OperatorCode {
-    Add,
-    Subtract,
-    Positive,
-    Negative,
-    PreIncrement,
-    PreDecrement,
-    PostDecrement,
-    GreaterThan,
-    Not,
-    #[default]
-    Other,
-}
-
-pub(crate) fn binary_operator_code(operator: BinaryOperator) -> OperatorCode {
-    match operator {
-        BinaryOperator::Add => OperatorCode::Add,
-        BinaryOperator::Subtract => OperatorCode::Subtract,
-        BinaryOperator::GreaterThan => OperatorCode::GreaterThan,
-        _ => OperatorCode::Other,
-    }
-}
-
-pub(crate) fn unary_operator_code(operator: UnaryOperator) -> OperatorCode {
-    match operator {
-        UnaryOperator::Positive => OperatorCode::Positive,
-        UnaryOperator::Negate => OperatorCode::Negative,
-        UnaryOperator::LogicalNot => OperatorCode::Not,
-        _ => OperatorCode::Other,
-    }
-}
-
-pub(crate) fn update_operator_code(operator: UpdateOperator, prefix: bool) -> OperatorCode {
-    match (operator, prefix) {
-        (UpdateOperator::Increment, true) => OperatorCode::PreIncrement,
-        (UpdateOperator::Decrement, true) => OperatorCode::PreDecrement,
-        (UpdateOperator::Decrement, false) => OperatorCode::PostDecrement,
-        _ => OperatorCode::Other,
-    }
+    Binary(BinaryOperator),
+    Unary(UnaryOperator),
+    Update(UpdateOperator, bool),
 }
 
 // Binary and logical expressions share this visitor because either kind can

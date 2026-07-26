@@ -3,10 +3,7 @@ use std::path::PathBuf;
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::*;
 
-use crate::operator::{
-    BinaryExprVisitor, Binaryish, BinaryishOperator, OperatorCode, binary_operator_code,
-    unary_operator_code, update_operator_code,
-};
+use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator, OperatorCode};
 use crate::util::{
     AstAdapterState, conditional_in_was_reassociated, decorator_expression_needs_parentheses,
     decorator_omit_newline_after, import_declaration_has_empty_clause, is_identifier,
@@ -87,7 +84,7 @@ struct Printer<'a> {
 
     // State used to keep neighboring tokens lexically separate.
     prev_op_end: usize,
-    prev_op: OperatorCode,
+    prev_op: Option<OperatorCode>,
     need_space_before_dot: usize,
     prev_reg_exp_end: usize,
     with_nesting: usize,
@@ -132,7 +129,7 @@ pub fn print<'a>(
         arrow_expr_start: usize::MAX,
         for_of_init_start: usize::MAX,
         prev_op_end: usize::MAX,
-        prev_op: OperatorCode::Other,
+        prev_op: None,
         need_space_before_dot: usize::MAX,
         prev_reg_exp_end: usize::MAX,
         with_nesting: 0,
@@ -275,10 +272,10 @@ impl BinaryExprVisitor {
         } else {
             match self.operator {
                 BinaryishOperator::Binary(operator) => {
-                    let operator_code = binary_operator_code(operator);
+                    let operator_code = OperatorCode::Binary(operator);
                     p.print_space_before_operator(operator_code);
                     p.print(self.operator.as_str());
-                    p.prev_op = operator_code;
+                    p.prev_op = Some(operator_code);
                     p.prev_op_end = p.js.len();
                 }
                 BinaryishOperator::Logical(_) => p.print(self.operator.as_str()),
@@ -535,7 +532,9 @@ impl<'a> Printer<'a> {
     #[inline]
     fn print_space_before_operator(&mut self, next: OperatorCode) {
         if self.prev_op_end == self.js.len() {
-            let previous = self.prev_op;
+            let Some(previous) = self.prev_op else {
+                return;
+            };
 
             // "+ + y" => "+ +y"
             // "+ ++ y" => "+ ++y"
@@ -544,21 +543,28 @@ impl<'a> Printer<'a> {
             // "x + ++ y" => "x+ ++y"
             // "-- >" => "-- >"
             // "< ! --" => "<! --"
-            if (matches!(previous, OperatorCode::Add | OperatorCode::Positive)
-                && matches!(
-                    next,
-                    OperatorCode::Add | OperatorCode::Positive | OperatorCode::PreIncrement
-                ))
-                || (matches!(previous, OperatorCode::Subtract | OperatorCode::Negative)
-                    && matches!(
-                        next,
-                        OperatorCode::Subtract
-                            | OperatorCode::Negative
-                            | OperatorCode::PreDecrement
-                    ))
-                || (previous == OperatorCode::PostDecrement && next == OperatorCode::GreaterThan)
-                || (previous == OperatorCode::Not
-                    && next == OperatorCode::PreDecrement
+            if (matches!(
+                previous,
+                OperatorCode::Binary(BinaryOperator::Add)
+                    | OperatorCode::Unary(UnaryOperator::Positive)
+            ) && matches!(
+                next,
+                OperatorCode::Binary(BinaryOperator::Add)
+                    | OperatorCode::Unary(UnaryOperator::Positive)
+                    | OperatorCode::Update(UpdateOperator::Increment, true)
+            )) || (matches!(
+                previous,
+                OperatorCode::Binary(BinaryOperator::Subtract)
+                    | OperatorCode::Unary(UnaryOperator::Negate)
+            ) && matches!(
+                next,
+                OperatorCode::Binary(BinaryOperator::Subtract)
+                    | OperatorCode::Unary(UnaryOperator::Negate)
+                    | OperatorCode::Update(UpdateOperator::Decrement, true)
+            )) || (previous == OperatorCode::Update(UpdateOperator::Decrement, false)
+                && next == OperatorCode::Binary(BinaryOperator::GreaterThan))
+                || (previous == OperatorCode::Unary(UnaryOperator::LogicalNot)
+                    && next == OperatorCode::Update(UpdateOperator::Decrement, true)
                     && self.js.len() > 1
                     && self.js[self.js.len() - 2] == b'<')
             {
@@ -1957,11 +1963,11 @@ impl<'a> Printer<'a> {
             self.print(op);
             self.print(" ");
         } else {
-            let operator_code = unary_operator_code(e.operator(self.ast));
+            let operator_code = OperatorCode::Unary(e.operator(self.ast));
             self.print_space_before_operator(operator_code);
             self.add_source_mapping(e.span(self.ast).start);
             self.print(op);
-            self.prev_op = operator_code;
+            self.prev_op = Some(operator_code);
             self.prev_op_end = self.js.len();
         }
         self.print_expr(e.argument(self.ast), Precedence::Prefix);
@@ -1976,12 +1982,12 @@ impl<'a> Printer<'a> {
             self.print("(");
         }
         let op = e.operator(self.ast).as_str();
-        let operator_code = update_operator_code(e.operator(self.ast), e.prefix(self.ast));
+        let operator_code = OperatorCode::Update(e.operator(self.ast), e.prefix(self.ast));
         if e.prefix(self.ast) {
             self.print_space_before_operator(operator_code);
             self.add_source_mapping(e.span(self.ast).start);
             self.print(op);
-            self.prev_op = operator_code;
+            self.prev_op = Some(operator_code);
             self.prev_op_end = self.js.len();
             self.print_simple_assignment_target(e.argument(self.ast));
         } else {
@@ -1989,7 +1995,7 @@ impl<'a> Printer<'a> {
             self.print_space_before_operator(operator_code);
             self.add_source_mapping(e.span(self.ast).end.saturating_sub(2));
             self.print(op);
-            self.prev_op = operator_code;
+            self.prev_op = Some(operator_code);
             self.prev_op_end = self.js.len();
         }
         if wrap {
