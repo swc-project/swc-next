@@ -1,7 +1,5 @@
 use swc_next_allocator::vec::Vec as ArenaVec;
 
-use swc_next_ecma_ast::*;
-
 const HEX: &[u8; 16] = b"0123456789ABCDEF";
 
 pub(crate) fn push_code_point_escape(out: &mut ArenaVec<'_, u8>, code_point: u32) {
@@ -18,40 +16,6 @@ pub(crate) fn push_code_point_escape(out: &mut ArenaVec<'_, u8>, code_point: u32
         shift -= 4;
     }
     out.push(b'}');
-}
-
-pub(crate) fn token_offset_after_decorators(
-    ast: &Ast<'_>,
-    fallback: u32,
-    decorators: TypedSubRange<Decorator>,
-    end: u32,
-) -> u32 {
-    let mut offset = decorators
-        .last()
-        .map(|id| ast.get_node_in_sub_range(id).span(ast).end)
-        .unwrap_or(fallback) as usize;
-    let end = end as usize;
-    let source = ast.source();
-    while offset < end {
-        match source[offset] {
-            byte if byte.is_ascii_whitespace() => offset += 1,
-            b'/' if source.get(offset + 1) == Some(&b'/') => {
-                offset += 2;
-                while offset < end && !matches!(source[offset], b'\r' | b'\n') {
-                    offset += 1;
-                }
-            }
-            b'/' if source.get(offset + 1) == Some(&b'*') => {
-                offset += 2;
-                while offset + 1 < end && !(source[offset] == b'*' && source[offset + 1] == b'/') {
-                    offset += 1;
-                }
-                offset = (offset + 2).min(end);
-            }
-            _ => break,
-        }
-    }
-    offset as u32
 }
 
 pub(crate) fn remove_underscores(raw: &[u8]) -> Vec<u8> {

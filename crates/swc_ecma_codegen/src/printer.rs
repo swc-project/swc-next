@@ -6,7 +6,6 @@ use swc_next_ecma_ast::*;
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator, OperatorCode};
 use crate::util::{
     next_code_point, parse_numeric_literal, push_code_point_escape, push_u16_escape, quote_into,
-    token_offset_after_decorators,
 };
 
 use crate::{
@@ -2444,12 +2443,7 @@ impl<'a> Printer<'a> {
             self.print_indent();
         }
         self.print_decorators(c.decorators(self.ast));
-        self.add_source_mapping(token_offset_after_decorators(
-            self.ast,
-            c.span(self.ast).start,
-            c.decorators(self.ast),
-            c.span(self.ast).end,
-        ));
+        self.add_source_mapping(c.span(self.ast).start);
         if c.declare(self.ast) {
             self.print("declare ");
         }
@@ -2518,13 +2512,8 @@ impl<'a> Printer<'a> {
         match self.ast.class_element_data(element) {
             ClassElementData::MethodDefinition(m) => {
                 self.print_indent();
+                self.add_source_mapping(element.span(self.ast).start);
                 self.print_decorators(m.decorators(self.ast));
-                self.add_source_mapping(token_offset_after_decorators(
-                    self.ast,
-                    element.span(self.ast).start,
-                    m.decorators(self.ast),
-                    element.span(self.ast).end,
-                ));
                 self.print_accessibility(m.accessibility(self.ast));
                 if m.r#static(self.ast) {
                     self.print("static ");
@@ -2564,13 +2553,8 @@ impl<'a> Printer<'a> {
             }
             ClassElementData::TsMethodDefinition(m) => {
                 self.print_indent();
+                self.add_source_mapping(element.span(self.ast).start);
                 self.print_decorators(m.decorators(self.ast));
-                self.add_source_mapping(token_offset_after_decorators(
-                    self.ast,
-                    element.span(self.ast).start,
-                    m.decorators(self.ast),
-                    element.span(self.ast).end,
-                ));
                 self.print_accessibility(m.accessibility(self.ast));
                 if m.r#static(self.ast) {
                     self.print("static ");
@@ -2608,13 +2592,8 @@ impl<'a> Printer<'a> {
             }
             ClassElementData::PropertyDefinition(p) => {
                 self.print_indent();
+                self.add_source_mapping(element.span(self.ast).start);
                 self.print_decorators(p.decorators(self.ast));
-                self.add_source_mapping(token_offset_after_decorators(
-                    self.ast,
-                    element.span(self.ast).start,
-                    p.decorators(self.ast),
-                    element.span(self.ast).end,
-                ));
                 self.print_accessibility(p.accessibility(self.ast));
                 if p.r#static(self.ast) {
                     self.print("static ");
