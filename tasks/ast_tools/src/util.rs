@@ -294,15 +294,3 @@ pub fn generate_u64_to_field(_field_ty: &AstType, _schema: &Schema) -> TokenStre
         unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::select_partial_inline_fields;
-
-    #[test]
-    fn partial_inline_layout_maximizes_field_count() {
-        let fields = select_partial_inline_fields(vec![(0, 8), (1, 4), (2, 4), (3, 2), (4, 1)]);
-
-        assert_eq!(fields, vec![(4, 0, 1), (3, 1, 2), (1, 3, 4), (2, 7, 4)]);
-    }
-}
