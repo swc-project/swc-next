@@ -7218,6 +7218,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 },
                 None,
             )?)),
+            // `import.meta` is a PrimaryExpression and can therefore be the
+            // constructor target in `new import.meta()`. Import calls share
+            // this parser entry and are rejected by `parse_new_expression`.
+            TokenTag::Import => self.parse_import_expression(),
             tag if tag.is_identifier_like() => self.parse_identifier(),
             _ => {
                 let found = self.describe_token(token);
@@ -9674,6 +9678,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         if self.current_token.tag == TokenTag::Dot {
             return self.parse_new_target(meta);
         }
+        let callee_starts_with_import = self.current_token.tag == TokenTag::Import;
         let mut callee = match self.current_token.tag {
             TokenTag::LeftParen => self.parse_parenthesized_expression()?,
             TokenTag::New => self.parse_new_expression()?,
@@ -9699,6 +9704,20 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 }
                 _ => break,
             };
+        }
+        if callee_starts_with_import
+            && is_import_expression_or_member_access_on_import_expression(callee, self.ast)
+        {
+            self.report(
+                callee.span(self.ast),
+                "Dynamic import cannot be used as the target of 'new'",
+                ReportOptions {
+                    help: Some(Cow::Borrowed(
+                        "Parenthesize the import call if its result should be constructed",
+                    )),
+                    ..ReportOptions::default()
+                },
+            );
         }
         let type_arguments = if self.lang.is_typescript() {
             self.try_parse_type_arguments_in_expression()?
@@ -11251,6 +11270,20 @@ fn member_expression_is_optional(member: MemberExpression, ast: &Ast<'_>) -> boo
             ast.node_kind(parenthesized.expression(ast).node_id()) == NodeKind::ChainExpression
         }
         _ => false,
+    }
+}
+
+fn is_import_expression_or_member_access_on_import_expression(
+    mut expression: Expr,
+    ast: &Ast<'_>,
+) -> bool {
+    loop {
+        expression = match ast.expr_data(expression) {
+            ExprData::ImportExpression(_) => return true,
+            ExprData::MemberExpression(member) => member.object(ast),
+            ExprData::TaggedTemplateExpression(tagged) => tagged.tag(ast),
+            _ => return false,
+        };
     }
 }
 
