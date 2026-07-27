@@ -14,9 +14,6 @@ saphyr     = { workspace = true }
 serde      = { workspace = true }
 serde_json = { workspace = true }
 
-# TODO(flat-ast): Re-enable when the legacy conformance runner is ported.
-# swc_core = { workspace = true, features = ["__ecma_transforms", "ecma_parser_unstable"] }
-
 swc_next_allocator        = { workspace = true }
 swc_next_ecma_ast         = { workspace = true }
 swc_next_ecma_codegen     = { workspace = true }
