@@ -1,10 +1,9 @@
 parser * babel
 ========================
-Positive Passed: 3287/3350 (98.12%)
+Positive Passed: 3288/3350 (98.15%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/3350 (0.00%)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/comments/source-phase-import-inner-comment/input.mjs - babel-generator/test/fixtures/comments/source-phase-import-inner-comment: parser: Expected module specifier, but found 'from' at 47..51
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/let-identifier/input.js - babel-generator/test/fixtures/edgecase/let-identifier: parser: Keywords cannot contain escape characters at 31..39
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/unary-op/input.js - babel-generator/test/fixtures/edgecase/unary-op: semantic: Deleting an unqualified identifier is forbidden in strict mode at 7..15
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/import-phases/source-expression-comments/input.js - babel-generator/test/fixtures/import-phases/source-expression-comments: parser: Expected ')' after import(), but found ',' at 61..62
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/import-phases/source-expression-options-comments/input.js - babel-generator/test/fixtures/import-phases/source-expression-options-comments: parser: Expected ')' after import(), but found ',' at 61..62

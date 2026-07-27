@@ -4,8 +4,8 @@ babel transform
 Total
 -----
 Cases: 4069
-Passed: 436/4069 (10.72%)
-Failed: 67/4069 (1.65%)
+Passed: 437/4069 (10.74%)
+Failed: 66/4069 (1.62%)
 Panicked: 0/4069 (0.00%)
 Skipped: 3566/4069 (87.64%)
 
@@ -23,8 +23,8 @@ Skipped: 12/21 (57.14%)
 babel-generator
 ---------------
 Cases: 560
-Passed: 409/560 (73.04%)
-Failed: 59/560 (10.54%)
+Passed: 410/560 (73.21%)
+Failed: 58/560 (10.36%)
 Panicked: 0/560 (0.00%)
 Skipped: 92/560 (16.43%)
 Messages:
@@ -39,7 +39,6 @@ Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/bitwise-p
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/floating-point/input.js - babel-generator/test/fixtures/edgecase/floating-point: transformed output differs from output.js at byte 15 (actual: 34 bytes, expected: 32 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/for-in-no-in/input.js - babel-generator/test/fixtures/edgecase/for-in-no-in: transformed output differs from output.js at byte 345 (actual: 402 bytes, expected: 400 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/large-file-concise/input.js - babel-generator/test/fixtures/edgecase/large-file-concise: transformed output differs from output.js at byte 307039 (actual: 3380923 bytes, expected: 3380831 bytes)
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/let-identifier/input.js - input.js parse: Keywords cannot contain escape characters at 31..39
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/new-precedence/input.js - babel-generator/test/fixtures/edgecase/new-precedence: transformed output differs from output.js at byte 36 (actual: 193 bytes, expected: 185 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/return-with-retainlines-and-compact-option/input.js - babel-generator/test/fixtures/edgecase/return-with-retainlines-and-compact-option: transformed output differs from output.js at byte 28 (actual: 43 bytes, expected: 34 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/unary-op/input.js - input.js semantic: Deleting an unqualified identifier is forbidden in strict mode at 7..15

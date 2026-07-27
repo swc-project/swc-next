@@ -1,6 +1,6 @@
 codegen * babel
 ========================
-Positive Passed: 3235/3350 (96.57%)
+Positive Passed: 3236/3350 (96.60%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/3350 (0.00%)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/comments/source-phase-import-inner-comment/input.mjs - babel-generator/test/fixtures/comments/source-phase-import-inner-comment: first parse: Expected module specifier, but found 'from' at 47..51
@@ -12,7 +12,6 @@ Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/for-async
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/for-in-no-in/input.js - babel-generator/test/fixtures/edgecase/for-in-no-in: codegen output changed after reparse at byte 233 (first: 402 bytes, second: 414 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/for-loop-in/input.js - babel-generator/test/fixtures/edgecase/for-loop-in: codegen output changed after reparse at byte 7 (first: 88 bytes, second: 92 bytes)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/large-file-concise/input.js - babel-generator/test/fixtures/edgecase/large-file-concise: codegen output changed after reparse at byte 2129 (first: 3380923 bytes, second: 3382632 bytes)
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/let-identifier/input.js - babel-generator/test/fixtures/edgecase/let-identifier: first parse: Keywords cannot contain escape characters at 31..39
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/import-phases/source-expression-comments/input.js - babel-generator/test/fixtures/import-phases/source-expression-comments: first parse: Expected ')' after import(), but found ',' at 61..62
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/import-phases/source-expression-options-comments/input.js - babel-generator/test/fixtures/import-phases/source-expression-options-comments: first parse: Expected ')' after import(), but found ',' at 61..62
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/import-phases/source-expression-options-trailing-comma/input.js - babel-generator/test/fixtures/import-phases/source-expression-options-trailing-comma: first parse: Expected ')' after import(), but found ',' at 17..18

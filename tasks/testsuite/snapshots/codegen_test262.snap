@@ -1,6 +1,6 @@
 codegen * test262
 ========================
-Positive Passed: 90511/91092 (99.36%)
+Positive Passed: 90528/91092 (99.38%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/91092 (0.00%)
 Failed: fixtures/test262/test/built-ins/Array/fromAsync/asyncitems-arraylike-too-long.js - sloppy: codegen output changed after reparse at byte 668 (first: 800 bytes, second: 818 bytes)
@@ -465,10 +465,6 @@ Failed: fixtures/test262/test/language/statements/for-await-of/async-gen-dstr-va
 Failed: fixtures/test262/test/language/statements/for-await-of/async-gen-dstr-var-async-ary-ptrn-rest-id-elision.js - strict: codegen output changed after reparse at byte 1780 (first: 2140 bytes, second: 2142 bytes)
 Failed: fixtures/test262/test/language/statements/for-await-of/async-gen-dstr-var-async-ary-ptrn-rest-id-exhausted.js - sloppy: codegen output changed after reparse at byte 1727 (first: 1958 bytes, second: 1960 bytes)
 Failed: fixtures/test262/test/language/statements/for-await-of/async-gen-dstr-var-async-ary-ptrn-rest-id-exhausted.js - strict: codegen output changed after reparse at byte 1741 (first: 1972 bytes, second: 1974 bytes)
-Failed: fixtures/test262/test/language/statements/for-await-of/let-block-with-newline.js - sloppy: first parse: Destructuring declaration must have an initializer at 552..554
-Failed: fixtures/test262/test/language/statements/for-await-of/let-identifier-with-newline.js - sloppy: first parse: Lexical declaration cannot appear in a single-statement context at 558..577
-Failed: fixtures/test262/test/language/statements/for-in/let-block-with-newline.js - sloppy: first parse: Destructuring declaration must have an initializer at 494..496
-Failed: fixtures/test262/test/language/statements/for-in/let-identifier-with-newline.js - sloppy: first parse: Lexical declaration cannot appear in a single-statement context at 502..519
 Failed: fixtures/test262/test/language/statements/for-of/dstr/array-rest-after-elision.js - sloppy: codegen output changed after reparse at byte 1076 (first: 1241 bytes, second: 1243 bytes)
 Failed: fixtures/test262/test/language/statements/for-of/dstr/array-rest-after-elision.js - strict: codegen output changed after reparse at byte 1090 (first: 1255 bytes, second: 1257 bytes)
 Failed: fixtures/test262/test/language/statements/for-of/dstr/array-rest-elision-iter-abpt.js - sloppy: codegen output changed after reparse at byte 1786 (first: 1949 bytes, second: 1951 bytes)
@@ -497,8 +493,6 @@ Failed: fixtures/test262/test/language/statements/for-of/head-lhs-async-escaped.
 Failed: fixtures/test262/test/language/statements/for-of/head-lhs-async-escaped.js - strict: second parse: 'for (async of ...)' is not allowed, it is ambiguous with 'for await' at 536..541
 Failed: fixtures/test262/test/language/statements/for-of/head-lhs-async-parens.js - sloppy: second parse: 'for (async of ...)' is not allowed, it is ambiguous with 'for await' at 516..521
 Failed: fixtures/test262/test/language/statements/for-of/head-lhs-async-parens.js - strict: second parse: 'for (async of ...)' is not allowed, it is ambiguous with 'for await' at 530..535
-Failed: fixtures/test262/test/language/statements/for-of/let-block-with-newline.js - sloppy: first parse: Destructuring declaration must have an initializer at 492..494
-Failed: fixtures/test262/test/language/statements/for-of/let-identifier-with-newline.js - sloppy: first parse: Lexical declaration cannot appear in a single-statement context at 500..517
 Failed: fixtures/test262/test/language/statements/for/dstr/const-ary-ptrn-elem-id-init-fn-name-arrow.js - sloppy: codegen output changed after reparse at byte 1760 (first: 1923 bytes, second: 1925 bytes)
 Failed: fixtures/test262/test/language/statements/for/dstr/const-ary-ptrn-elem-id-init-fn-name-arrow.js - strict: codegen output changed after reparse at byte 1774 (first: 1937 bytes, second: 1939 bytes)
 Failed: fixtures/test262/test/language/statements/for/dstr/const-ary-ptrn-rest-id-elision-next-err.js - sloppy: codegen output changed after reparse at byte 1808 (first: 1850 bytes, second: 1852 bytes)
@@ -531,8 +525,6 @@ Failed: fixtures/test262/test/language/statements/for/dstr/var-obj-ptrn-id-init-
 Failed: fixtures/test262/test/language/statements/for/dstr/var-obj-ptrn-id-init-fn-name-arrow.js - strict: codegen output changed after reparse at byte 1569 (first: 1733 bytes, second: 1735 bytes)
 Failed: fixtures/test262/test/language/statements/for/head-init-async-of.js - sloppy: codegen output changed after reparse at byte 340 (first: 421 bytes, second: 423 bytes)
 Failed: fixtures/test262/test/language/statements/for/head-init-async-of.js - strict: codegen output changed after reparse at byte 354 (first: 435 bytes, second: 437 bytes)
-Failed: fixtures/test262/test/language/statements/for/let-block-with-newline.js - sloppy: first parse: Destructuring declaration must have an initializer at 475..477
-Failed: fixtures/test262/test/language/statements/for/let-identifier-with-newline.js - sloppy: first parse: Lexical declaration cannot appear in a single-statement context at 483..500
 Failed: fixtures/test262/test/language/statements/function/dstr/ary-ptrn-rest-id-elision-next-err.js - sloppy: codegen output changed after reparse at byte 1723 (first: 1792 bytes, second: 1794 bytes)
 Failed: fixtures/test262/test/language/statements/function/dstr/ary-ptrn-rest-id-elision-next-err.js - strict: codegen output changed after reparse at byte 1737 (first: 1806 bytes, second: 1808 bytes)
 Failed: fixtures/test262/test/language/statements/function/dstr/ary-ptrn-rest-id-elision.js - sloppy: codegen output changed after reparse at byte 1693 (first: 1995 bytes, second: 1997 bytes)
@@ -557,17 +549,12 @@ Failed: fixtures/test262/test/language/statements/generators/dstr/dflt-ary-ptrn-
 Failed: fixtures/test262/test/language/statements/generators/dstr/dflt-ary-ptrn-rest-id-elision.js - strict: codegen output changed after reparse at byte 1784 (first: 2106 bytes, second: 2108 bytes)
 Failed: fixtures/test262/test/language/statements/generators/dstr/dflt-ary-ptrn-rest-id-exhausted.js - sloppy: codegen output changed after reparse at byte 1731 (first: 1932 bytes, second: 1934 bytes)
 Failed: fixtures/test262/test/language/statements/generators/dstr/dflt-ary-ptrn-rest-id-exhausted.js - strict: codegen output changed after reparse at byte 1745 (first: 1946 bytes, second: 1948 bytes)
-Failed: fixtures/test262/test/language/statements/if/let-block-with-newline.js - sloppy: first parse: Destructuring declaration must have an initializer at 469..471
-Failed: fixtures/test262/test/language/statements/if/let-identifier-with-newline.js - sloppy: first parse: Lexical declaration cannot appear in a single-statement context at 477..494
-Failed: fixtures/test262/test/language/statements/labeled/let-block-with-newline.js - sloppy: first parse: Destructuring declaration must have an initializer at 557..559
-Failed: fixtures/test262/test/language/statements/labeled/let-identifier-with-newline.js - sloppy: first parse: Lexical declaration cannot appear in a single-statement context at 561..582
 Failed: fixtures/test262/test/language/statements/let/dstr/ary-ptrn-rest-id-elision-next-err.js - sloppy: codegen output changed after reparse at byte 1299 (first: 1319 bytes, second: 1321 bytes)
 Failed: fixtures/test262/test/language/statements/let/dstr/ary-ptrn-rest-id-elision-next-err.js - strict: codegen output changed after reparse at byte 1313 (first: 1333 bytes, second: 1335 bytes)
 Failed: fixtures/test262/test/language/statements/let/dstr/ary-ptrn-rest-id-elision.js - sloppy: codegen output changed after reparse at byte 1207 (first: 1395 bytes, second: 1397 bytes)
 Failed: fixtures/test262/test/language/statements/let/dstr/ary-ptrn-rest-id-elision.js - strict: codegen output changed after reparse at byte 1221 (first: 1409 bytes, second: 1411 bytes)
 Failed: fixtures/test262/test/language/statements/let/dstr/ary-ptrn-rest-id-exhausted.js - sloppy: codegen output changed after reparse at byte 1168 (first: 1243 bytes, second: 1245 bytes)
 Failed: fixtures/test262/test/language/statements/let/dstr/ary-ptrn-rest-id-exhausted.js - strict: codegen output changed after reparse at byte 1182 (first: 1257 bytes, second: 1259 bytes)
-Failed: fixtures/test262/test/language/statements/let/syntax/escaped-let.js - sloppy: first parse: Keywords cannot contain escape characters at 846..854
 Failed: fixtures/test262/test/language/statements/try/dstr/ary-ptrn-rest-id-elision-next-err.js - sloppy: codegen output changed after reparse at byte 1151 (first: 1170 bytes, second: 1172 bytes)
 Failed: fixtures/test262/test/language/statements/try/dstr/ary-ptrn-rest-id-elision-next-err.js - strict: codegen output changed after reparse at byte 1165 (first: 1184 bytes, second: 1186 bytes)
 Failed: fixtures/test262/test/language/statements/try/dstr/ary-ptrn-rest-id-elision.js - sloppy: codegen output changed after reparse at byte 1079 (first: 1337 bytes, second: 1339 bytes)
@@ -580,7 +567,3 @@ Failed: fixtures/test262/test/language/statements/variable/dstr/ary-ptrn-rest-id
 Failed: fixtures/test262/test/language/statements/variable/dstr/ary-ptrn-rest-id-elision.js - strict: codegen output changed after reparse at byte 1152 (first: 1340 bytes, second: 1342 bytes)
 Failed: fixtures/test262/test/language/statements/variable/dstr/ary-ptrn-rest-id-exhausted.js - sloppy: codegen output changed after reparse at byte 1099 (first: 1174 bytes, second: 1176 bytes)
 Failed: fixtures/test262/test/language/statements/variable/dstr/ary-ptrn-rest-id-exhausted.js - strict: codegen output changed after reparse at byte 1113 (first: 1188 bytes, second: 1190 bytes)
-Failed: fixtures/test262/test/language/statements/while/let-block-with-newline.js - sloppy: first parse: Destructuring declaration must have an initializer at 475..477
-Failed: fixtures/test262/test/language/statements/while/let-identifier-with-newline.js - sloppy: first parse: Lexical declaration cannot appear in a single-statement context at 483..500
-Failed: fixtures/test262/test/language/statements/with/let-block-with-newline.js - sloppy: first parse: Destructuring declaration must have an initializer at 559..561
-Failed: fixtures/test262/test/language/statements/with/let-identifier-with-newline.js - sloppy: first parse: Lexical declaration cannot appear in a single-statement context at 563..584

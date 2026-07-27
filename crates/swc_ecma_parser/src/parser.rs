@@ -1093,7 +1093,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 .parse_variable_declaration(ParseVariableDeclarationOpts::default(), None)
                 .map(|declaration| Stmt::Declaration(Decl::VariableDeclaration(declaration))),
             TokenTag::Const => self.parse_const_or_const_enum(),
-            TokenTag::Let => self.parse_let(),
+            TokenTag::Let if !self.current_token.is_escaped() => self.parse_let(),
             TokenTag::Using => self.parse_using_or_expression(),
             TokenTag::LeftBrace => Some(Stmt::BlockStatement(self.parse_block_statement()?)),
             TokenTag::Semicolon => self.parse_empty_statement(),
@@ -1276,6 +1276,17 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     fn is_let_identifier(&mut self) -> Option<bool> {
         debug_assert_eq!(self.current_token.tag, TokenTag::Let);
         let next = self.peek_ahead()?;
+
+        // Lexical declarations cannot be single statements. In this context,
+        // `let` therefore starts an ExpressionStatement unless the
+        // ExpressionStatement lookahead restriction `let [` applies.
+        //
+        // This also lets ASI terminate `let` before a binding-looking token:
+        // `if (false) let\nvalue = 1`.
+        if !self.statement_context.permits_declaration() && next.tag != TokenTag::LeftBracket {
+            return Some(true);
+        }
+
         Some(!can_start_let_binding(next.tag))
     }
 
@@ -6444,7 +6455,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 let kind = self.parse_variable_kind(false)?;
                 self.parse_for_with_declaration(start, is_for_await, kind, declaration_start)
             }
-            TokenTag::Let => {
+            TokenTag::Let if !self.current_token.is_escaped() => {
                 let next = self.peek_ahead()?;
                 if !can_start_let_binding(next.tag) {
                     return self.parse_for_with_expression(start, is_for_await);

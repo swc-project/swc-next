@@ -1,6 +1,6 @@
 parser * test262
 ========================
-Positive Passed: 91018/91092 (99.92%)
+Positive Passed: 91035/91092 (99.94%)
 Negative Passed: 7936/8648 (91.77%)
 Panicked: 0/99740 (0.00%)
 Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-a-func-no-skip-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1812..1813
@@ -772,20 +772,3 @@ Failed: fixtures/test262/test/language/literals/regexp/unicode-escape-nls-err.js
 Failed: fixtures/test262/test/language/statements/class/decorator/syntax/valid/decorator-call-expr-identifier-reference-yield.js - sloppy: semantic: 'yield' is reserved in strict mode and cannot be used as an identifier reference at 1422..1427
 Failed: fixtures/test262/test/language/statements/class/decorator/syntax/valid/decorator-member-expr-identifier-reference-yield.js - sloppy: semantic: 'yield' is reserved in strict mode and cannot be used as an identifier reference at 1038..1043
 Failed: fixtures/test262/test/language/statements/class/decorator/syntax/valid/decorator-parenthesized-expr-identifier-reference-yield.js - sloppy: semantic: 'yield' is reserved in strict mode and cannot be used as an identifier reference at 1626..1631
-Failed: fixtures/test262/test/language/statements/for-await-of/let-block-with-newline.js - sloppy: parser: Destructuring declaration must have an initializer at 552..554
-Failed: fixtures/test262/test/language/statements/for-await-of/let-identifier-with-newline.js - sloppy: parser: Lexical declaration cannot appear in a single-statement context at 558..577
-Failed: fixtures/test262/test/language/statements/for-in/let-block-with-newline.js - sloppy: parser: Destructuring declaration must have an initializer at 494..496
-Failed: fixtures/test262/test/language/statements/for-in/let-identifier-with-newline.js - sloppy: parser: Lexical declaration cannot appear in a single-statement context at 502..519
-Failed: fixtures/test262/test/language/statements/for-of/let-block-with-newline.js - sloppy: parser: Destructuring declaration must have an initializer at 492..494
-Failed: fixtures/test262/test/language/statements/for-of/let-identifier-with-newline.js - sloppy: parser: Lexical declaration cannot appear in a single-statement context at 500..517
-Failed: fixtures/test262/test/language/statements/for/let-block-with-newline.js - sloppy: parser: Destructuring declaration must have an initializer at 475..477
-Failed: fixtures/test262/test/language/statements/for/let-identifier-with-newline.js - sloppy: parser: Lexical declaration cannot appear in a single-statement context at 483..500
-Failed: fixtures/test262/test/language/statements/if/let-block-with-newline.js - sloppy: parser: Destructuring declaration must have an initializer at 469..471
-Failed: fixtures/test262/test/language/statements/if/let-identifier-with-newline.js - sloppy: parser: Lexical declaration cannot appear in a single-statement context at 477..494
-Failed: fixtures/test262/test/language/statements/labeled/let-block-with-newline.js - sloppy: parser: Destructuring declaration must have an initializer at 557..559
-Failed: fixtures/test262/test/language/statements/labeled/let-identifier-with-newline.js - sloppy: parser: Lexical declaration cannot appear in a single-statement context at 561..582
-Failed: fixtures/test262/test/language/statements/let/syntax/escaped-let.js - sloppy: parser: Keywords cannot contain escape characters at 846..854
-Failed: fixtures/test262/test/language/statements/while/let-block-with-newline.js - sloppy: parser: Destructuring declaration must have an initializer at 475..477
-Failed: fixtures/test262/test/language/statements/while/let-identifier-with-newline.js - sloppy: parser: Lexical declaration cannot appear in a single-statement context at 483..500
-Failed: fixtures/test262/test/language/statements/with/let-block-with-newline.js - sloppy: parser: Destructuring declaration must have an initializer at 559..561
-Failed: fixtures/test262/test/language/statements/with/let-identifier-with-newline.js - sloppy: parser: Lexical declaration cannot appear in a single-statement context at 563..584
