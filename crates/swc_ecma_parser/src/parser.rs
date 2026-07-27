@@ -67,6 +67,38 @@ pub struct Context {
     pub r#return: bool,
 }
 
+/// Enters a derived grammatical context and returns the previous context.
+///
+/// The modifiers mirror ECMA-262 grammatical arguments: `+` enables a
+/// parameter, `~` disables it, and `?` inherits its current value.
+macro_rules! enter_grammar_context {
+    (@set $context:ident, $modifier:tt In) => {
+        enter_grammar_context!(@apply $context.r#in, $modifier);
+    };
+    (@set $context:ident, $modifier:tt Yield) => {
+        enter_grammar_context!(@apply $context.r#yield, $modifier);
+    };
+    (@set $context:ident, $modifier:tt Await) => {
+        enter_grammar_context!(@apply $context.r#await, $modifier);
+    };
+    (@set $context:ident, $modifier:tt Return) => {
+        enter_grammar_context!(@apply $context.r#return, $modifier);
+    };
+    (@apply $parameter:expr, +) => {
+        $parameter = true;
+    };
+    (@apply $parameter:expr, ~) => {
+        $parameter = false;
+    };
+    (@apply $parameter:expr, ?) => {};
+    ($context:expr, $($modifier:tt $parameter:ident),+ $(,)?) => {{
+        let context = $context;
+        let previous = *context;
+        $(enter_grammar_context!(@set context, $modifier $parameter);)+
+        previous
+    }};
+}
+
 impl Default for Context {
     fn default() -> Self {
         Self {
@@ -209,6 +241,20 @@ struct ParseFunctionOpts {
     is_expression: bool,
     is_declare: bool,
     is_default_export: bool,
+}
+
+#[inline]
+fn enter_function_grammar_context(
+    context: &mut Context,
+    generator: bool,
+    async_function: bool,
+) -> Context {
+    match (generator, async_function) {
+        (false, false) => enter_grammar_context![context, ~Yield, ~Await],
+        (true, false) => enter_grammar_context![context, +Yield, ~Await],
+        (false, true) => enter_grammar_context![context, ~Yield, +Await],
+        (true, true) => enter_grammar_context![context, +Yield, +Await],
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1031,48 +1077,51 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_statement(&mut self, statement_context: StatementContext) -> Option<Stmt> {
         let statement_context = mem::replace(&mut self.statement_context, statement_context);
-        let result = (|| {
-            if self.is_start_of_ts_declaration()? {
-                return self.parse_ts_declaration();
-            }
-            match self.current_token.tag {
-                TokenTag::Await => self.parse_await_using_or_expression(),
-                TokenTag::Var => self
-                    .parse_variable_declaration(ParseVariableDeclarationOpts::default(), None)
-                    .map(|declaration| Stmt::Declaration(Decl::VariableDeclaration(declaration))),
-                TokenTag::Const => self.parse_const_or_const_enum(),
-                TokenTag::Let => self.parse_let(),
-                TokenTag::Using => self.parse_using_or_expression(),
-                TokenTag::LeftBrace => Some(Stmt::BlockStatement(self.parse_block_statement()?)),
-                TokenTag::Semicolon => self.parse_empty_statement(),
-                TokenTag::If => self.parse_if_statement(),
-                TokenTag::While => self.parse_while_statement(),
-                TokenTag::Do => self.parse_do_while_statement(),
-                TokenTag::Return => self.parse_return_statement(),
-                TokenTag::Throw => self.parse_throw_statement(),
-                TokenTag::Break => self.parse_break_statement(),
-                TokenTag::Continue => self.parse_continue_statement(),
-                TokenTag::Debugger => self.parse_debugger_statement(),
-                TokenTag::Function => Some(Stmt::Declaration(
-                    self.parse_function(ParseFunctionOpts::default(), None)?
-                        .into_declaration(),
-                )),
-                TokenTag::Async => self.parse_async_function_or_expression(),
-                TokenTag::For => self.parse_for_statement(),
-                TokenTag::Class => Some(Stmt::Declaration(Decl::Class(
-                    self.parse_class(ParseClassOpts::default(), None)?,
-                ))),
-                TokenTag::At => self.parse_decorated_statement(),
-                TokenTag::Switch => self.parse_switch_statement(),
-                TokenTag::Try => self.parse_try_statement(),
-                TokenTag::With => self.parse_with_statement(),
-                TokenTag::Import => self.parse_import_declaration_or_expression(),
-                TokenTag::Export => self.parse_export_declaration(),
-                _ => self.parse_expression_or_labeled_statement(),
-            }
-        })();
+        let result = self.parse_statement_inner();
         self.statement_context = statement_context;
         result
+    }
+
+    #[inline]
+    fn parse_statement_inner(&mut self) -> Option<Stmt> {
+        if self.is_start_of_ts_declaration()? {
+            return self.parse_ts_declaration();
+        }
+        match self.current_token.tag {
+            TokenTag::Await => self.parse_await_using_or_expression(),
+            TokenTag::Var => self
+                .parse_variable_declaration(ParseVariableDeclarationOpts::default(), None)
+                .map(|declaration| Stmt::Declaration(Decl::VariableDeclaration(declaration))),
+            TokenTag::Const => self.parse_const_or_const_enum(),
+            TokenTag::Let => self.parse_let(),
+            TokenTag::Using => self.parse_using_or_expression(),
+            TokenTag::LeftBrace => Some(Stmt::BlockStatement(self.parse_block_statement()?)),
+            TokenTag::Semicolon => self.parse_empty_statement(),
+            TokenTag::If => self.parse_if_statement(),
+            TokenTag::While => self.parse_while_statement(),
+            TokenTag::Do => self.parse_do_while_statement(),
+            TokenTag::Return => self.parse_return_statement(),
+            TokenTag::Throw => self.parse_throw_statement(),
+            TokenTag::Break => self.parse_break_statement(),
+            TokenTag::Continue => self.parse_continue_statement(),
+            TokenTag::Debugger => self.parse_debugger_statement(),
+            TokenTag::Function => Some(Stmt::Declaration(
+                self.parse_function(ParseFunctionOpts::default(), None)?
+                    .into_declaration(),
+            )),
+            TokenTag::Async => self.parse_async_function_or_expression(),
+            TokenTag::For => self.parse_for_statement(),
+            TokenTag::Class => Some(Stmt::Declaration(Decl::Class(
+                self.parse_class(ParseClassOpts::default(), None)?,
+            ))),
+            TokenTag::At => self.parse_decorated_statement(),
+            TokenTag::Switch => self.parse_switch_statement(),
+            TokenTag::Try => self.parse_try_statement(),
+            TokenTag::With => self.parse_with_statement(),
+            TokenTag::Import => self.parse_import_declaration_or_expression(),
+            TokenTag::Export => self.parse_export_declaration(),
+            _ => self.parse_expression_or_labeled_statement(),
+        }
     }
 
     fn parse_decorated_statement(&mut self) -> Option<Stmt> {
@@ -1809,13 +1858,12 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             return None;
         }
         let generator = self.eat(TokenTag::Star)?;
-        let outer_yield = self.context.r#yield;
-        let outer_await = self.context.r#await;
         let is_function_expression = opts.is_expression && !opts.is_default_export;
-        if is_function_expression {
-            self.context.r#yield = generator;
-            self.context.r#await = opts.is_async;
-        }
+        let context = if is_function_expression {
+            enter_function_grammar_context(&mut self.context, generator, opts.is_async)
+        } else {
+            enter_grammar_context![&mut self.context, ?Yield, ?Await]
+        };
         let id = if self.current_token.tag.is_identifier_like() {
             self.parse_binding_identifier().map(Some)
         } else {
@@ -1833,11 +1881,9 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             }
             Some(None)
         };
-        self.context.r#yield = outer_yield;
-        self.context.r#await = outer_await;
+        self.context = context;
         let id = id?;
-        self.context.r#yield = generator;
-        self.context.r#await = opts.is_async;
+        let context = enter_function_grammar_context(&mut self.context, generator, opts.is_async);
         let tail = (|| {
             let type_parameters =
                 if self.lang.is_typescript() && self.current_token.tag == TokenTag::LessThan {
@@ -1888,8 +1934,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             };
             Some((params, body, type_parameters, return_type, params_end, end))
         })();
-        self.context.r#yield = outer_yield;
-        self.context.r#await = outer_await;
+        self.context = context;
         let (params, body, type_parameters, return_type, params_end, end) = tail?;
         if !self.statement_context.permits_declaration() {
             if opts.is_async {
@@ -2328,12 +2373,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         ) {
             return None;
         }
-        let old_await = self.context.r#await;
-        let old_yield = self.context.r#yield;
-        let old_return = self.context.r#return;
-        self.context.r#return = false;
-        self.context.r#yield = false;
-        self.context.r#await = true;
+        let context = enter_grammar_context![&mut self.context, ~Yield, +Await, ~Return];
         let checkpoint = self.scratch_statements.begin();
         let body = {
             while !matches!(self.current_token.tag, TokenTag::RightBrace | TokenTag::Eof) {
@@ -2344,9 +2384,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             }
             self.add_extra_from_scratch_statements(checkpoint)
         };
-        self.context.r#await = old_await;
-        self.context.r#yield = old_yield;
-        self.context.r#return = old_return;
+        self.context = context;
         self.scratch_statements.reset(checkpoint);
         let end = self.current_token.span.end;
         if !self.expect(
@@ -2472,11 +2510,6 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         }
     }
 
-    fn restore_method_context(&mut self, await_: bool, yield_: bool) {
-        self.context.r#await = await_;
-        self.context.r#yield = yield_;
-    }
-
     fn parse_method_definition(
         &mut self,
         start: u32,
@@ -2491,10 +2524,11 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         }
 
         let function_start = self.current_token.span.start;
-        let old_await = self.context.r#await;
-        let old_yield = self.context.r#yield;
-        self.context.r#await = modifiers.is_async;
-        self.context.r#yield = modifiers.is_generator;
+        let context = enter_function_grammar_context(
+            &mut self.context,
+            modifiers.is_generator,
+            modifiers.is_async,
+        );
         let result = (|| {
             let type_parameters =
                 if self.lang.is_typescript() && is_angle_open(self.current_token.tag) {
@@ -2529,7 +2563,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 None
             }
         })();
-        self.restore_method_context(old_await, old_yield);
+        self.context = context;
         let (params, type_parameters, return_type, body, end) = result?;
         let function_span = Span::new(function_start, end);
         let method_span = Span::new(start, end);
@@ -2612,14 +2646,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             };
 
         let value = if self.eat(TokenTag::Assign)? {
-            let old_await = self.context.r#await;
-            let old_yield = self.context.r#yield;
-            self.context.r#await = false;
-            self.context.r#yield = false;
+            let context = enter_grammar_context![&mut self.context, ~Yield, ~Await];
             let value =
                 self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default());
-            self.context.r#await = old_await;
-            self.context.r#yield = old_yield;
+            self.context = context;
             Some(value?)
         } else {
             None
@@ -3017,13 +3047,12 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         ) {
             return None;
         }
-        let old_return = self.context.r#return;
-        self.context.r#return = true;
+        let context = enter_grammar_context![&mut self.context, +Return];
         let ParsedBody { directives, body } = self.parse_body(
             Some(TokenTag::RightBrace),
             StatementContext::StatementListItem,
         );
-        self.context.r#return = old_return;
+        self.context = context;
         let end = self.current_token.span.end;
         if !self.expect(
             TokenTag::RightBrace,
@@ -4634,11 +4663,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         ) {
             return None;
         }
-        let outer_return = self.context.r#return;
-        self.context.r#return = false;
+        let context = enter_grammar_context![&mut self.context, ~Return];
         let ParsedBody { directives, body } =
             self.parse_body(Some(TokenTag::RightBrace), StatementContext::ModuleItem);
-        self.context.r#return = outer_return;
+        self.context = context;
         let end = self.current_token.span.end;
         if !self.expect(
             TokenTag::RightBrace,
@@ -6484,8 +6512,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         kind: VariableKind,
         declaration_start: u32,
     ) -> Option<Stmt> {
-        let old_in = self.context.r#in;
-        self.context.r#in = false;
+        let context = enter_grammar_context![&mut self.context, ~In];
         let checkpoint = self.scratch_a.begin();
         let declarators_result = (|| {
             let first = self.parse_variable_declarator(kind, DeclaratorCtx::ForLoop)?;
@@ -6499,7 +6526,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             let declarators = self.add_extra_from_scratch_a(checkpoint);
             Some((declarators, declaration_end))
         })();
-        self.context.r#in = old_in;
+        self.context = context;
         self.scratch_a.reset(checkpoint);
         let (declarators, declaration_end) = declarators_result?;
         let declaration = self.ast.variable_declaration(
@@ -6549,8 +6576,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_for_with_expression(&mut self, start: u32, is_for_await: bool) -> Option<Stmt> {
-        let old_in = self.context.r#in;
-        self.context.r#in = false;
+        let context = enter_grammar_context![&mut self.context, ~In];
         let expression = self.parse_expression(
             Precedence::Comma,
             ParseExpressionOpts {
@@ -6558,7 +6584,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 ..ParseExpressionOpts::default()
             },
         );
-        self.context.r#in = old_in;
+        self.context = context;
         let expression = expression?;
 
         if self.current_token.tag == TokenTag::In {
@@ -7487,8 +7513,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let start = self.current_token.span.start;
         self.advance()?;
         let checkpoint = self.scratch_cover.begin();
-        let old_in = self.context.r#in;
-        self.context.r#in = true;
+        let context = enter_grammar_context![&mut self.context, +In];
         let result = (|| {
             let mut end = start + 1;
             let mut has_trailing_comma = false;
@@ -7559,7 +7584,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
                 has_trailing_comma,
             })
         })();
-        self.context.r#in = old_in;
+        self.context = context;
         self.scratch_cover.reset(checkpoint);
         result
     }
@@ -7836,10 +7861,9 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             }
         }
 
-        let old_await = self.context.r#await;
-        self.context.r#await = true;
+        let context = enter_grammar_context![&mut self.context, +Await];
         let cover = self.parse_parenthesized_cover();
-        self.context.r#await = old_await;
+        self.context = context;
         let cover = cover?;
 
         let is_arrow = self.current_token.tag == TokenTag::Arrow
@@ -7989,12 +8013,13 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_arrow(&mut self, is_async: bool, start: u32) -> Option<Expr> {
-        let old_await = self.context.r#await;
-        if is_async {
-            self.context.r#await = true;
-        }
+        let context = if is_async {
+            enter_grammar_context![&mut self.context, ?Yield, +Await]
+        } else {
+            enter_grammar_context![&mut self.context, ?Yield, ?Await]
+        };
         let result = self.parse_arrow_inner(is_async, start);
-        self.context.r#await = old_await;
+        self.context = context;
         result
     }
 
@@ -8031,13 +8056,9 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         return_type: Option<TsTypeAnnotation>,
     ) -> Option<Expr> {
         self.advance()?;
-        let old_await = self.context.r#await;
-        let old_yield = self.context.r#yield;
-        self.context.r#await = async_function;
-        self.context.r#yield = false;
+        let context = enter_function_grammar_context(&mut self.context, false, async_function);
         let body = self.parse_arrow_body();
-        self.context.r#await = old_await;
-        self.context.r#yield = old_yield;
+        self.context = context;
         let ArrowBodyResult {
             body,
             is_expression,
@@ -9164,10 +9185,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             }
         }
         let function_start = self.current_token.span.start;
-        let old_await = self.context.r#await;
-        let old_yield = self.context.r#yield;
-        self.context.r#await = async_function;
-        self.context.r#yield = generator;
+        let context = enter_function_grammar_context(&mut self.context, generator, async_function);
         let result = (|| {
             let type_parameters =
                 if self.lang.is_typescript() && is_angle_open(self.current_token.tag) {
@@ -9189,7 +9207,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             let body = self.parse_function_body()?;
             Some((params, type_parameters, return_type, body))
         })();
-        self.restore_method_context(old_await, old_yield);
+        self.context = context;
         let (params, type_parameters, return_type, body) = result?;
         let span = Span::new(start, body.span(self.ast).end);
         let function = self.ast.function(
@@ -9357,10 +9375,9 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let start = object.span(self.ast).start;
         let open_bracket_span = self.current_token.span;
         self.advance()?;
-        let old_in = self.context.r#in;
-        self.context.r#in = true;
+        let context = enter_grammar_context![&mut self.context, +In];
         let expression = self.parse_expression(Precedence::Lowest, ParseExpressionOpts::default());
-        self.context.r#in = old_in;
+        self.context = context;
         let expression = expression?;
         let property = PropertyKey::Expr(expression);
         let end = self.current_token.span.end;
@@ -9589,8 +9606,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     fn parse_arguments(&mut self) -> Option<TypedSubRange<Argument>> {
         let checkpoint = self.scratch_a.begin();
-        let old_in = self.context.r#in;
-        self.context.r#in = true;
+        let context = enter_grammar_context![&mut self.context, +In];
         let result = (|| {
             while self.current_token.tag != TokenTag::RightParen
                 && self.current_token.tag != TokenTag::Eof
@@ -9618,7 +9634,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
             }
             Some(self.add_extra_from_scratch_a(checkpoint))
         })();
-        self.context.r#in = old_in;
+        self.context = context;
         self.scratch_a.reset(checkpoint);
         result
     }
@@ -10731,13 +10747,12 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let start = test.span(self.ast).start;
         debug_assert_eq!(self.current_token.tag, TokenTag::Question);
         self.advance()?;
-        let old_in = self.context.r#in;
+        let context = enter_grammar_context![&mut self.context, +In];
         let old_allow_arrow_return_type = self.ts_context.allow_arrow_return_type;
-        self.context.r#in = true;
         self.ts_context.allow_arrow_return_type = false;
         let consequent =
             self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default());
-        self.context.r#in = old_in;
+        self.context = context;
         self.ts_context.allow_arrow_return_type = old_allow_arrow_return_type;
         let consequent = consequent?;
         if !self.expect(
