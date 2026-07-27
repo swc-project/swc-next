@@ -9,6 +9,7 @@ use std::{
 };
 
 use jwalk::WalkDir;
+use rayon::prelude::*;
 use regex::Regex;
 use serde_json::Value;
 use swc_next_ecma_ast::{Lang, SourceType};
@@ -54,55 +55,35 @@ impl Case for TypeScriptCase {
     const NAME: &'static str = "typescript";
 
     fn read() -> Vec<Self> {
-        let mut cases = Vec::new();
         let test_dir = fixtures().join("typescript/tests/cases");
         let error_codes = read_error_codes();
 
-        for file in WalkDir::new(test_dir) {
-            let Ok(file) = file else { continue };
-            if !file.file_type().is_file() {
-                continue;
-            }
+        WalkDir::new(test_dir)
+            .into_iter()
+            .filter_map(|file| {
+                let file = file.ok()?;
+                if !file.file_type().is_file() {
+                    return None;
+                }
 
-            let path = file.path();
-            let path_str = path.to_string_lossy();
-            let ext = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
-            if !matches!(
-                ext,
-                "ts" | "tsx" | "js" | "jsx" | "mts" | "cts" | "mjs" | "cjs"
-            ) || path_str.ends_with(".d.ts")
-                || path_str.contains("_FIXTURE")
-                || path_str.contains("transpile")
-                || IGNORED_TESTS
-                    .iter()
-                    .any(|ignored| path_str.replace('\\', "/").contains(ignored))
-            {
-                continue;
-            }
-
-            let Ok(code) = read_to_string(&path) else {
-                continue;
-            };
-            let mut parsed = parse_test_files_and_symlinks(&code, &path_str);
-            merge_tsconfig_options(&path, &mut parsed.global_options);
-            let expects_error = should_fail(&path, &parsed.global_options, &error_codes);
-
-            for unit in parsed.test_units {
-                let Some(lang) = lang_from_path(&unit.name) else {
-                    continue;
-                };
-                cases.push(Self {
-                    path: path.clone(),
-                    source_type: source_type(&unit.name, &unit.content),
-                    lang,
-                    name: unit.name,
-                    code: unit.content,
-                    expects_error,
-                });
-            }
-        }
-
-        cases
+                let path = file.path();
+                let path_str = path.to_string_lossy();
+                let ext = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
+                (matches!(
+                    ext,
+                    "ts" | "tsx" | "js" | "jsx" | "mts" | "cts" | "mjs" | "cjs"
+                ) && !path_str.ends_with(".d.ts")
+                    && !path_str.contains("_FIXTURE")
+                    && !path_str.contains("transpile")
+                    && !IGNORED_TESTS
+                        .iter()
+                        .any(|ignored| path_str.replace('\\', "/").contains(ignored)))
+                .then_some(path)
+            })
+            .collect::<Vec<_>>()
+            .into_par_iter()
+            .flat_map(|path| Self::read_file(path, &error_codes))
+            .collect()
     }
 
     fn path(&self) -> &Path {
@@ -130,37 +111,79 @@ impl Case for TypeScriptCase {
     }
 }
 
+impl TypeScriptCase {
+    fn read_file(path: PathBuf, error_codes: &HashMap<String, HashSet<String>>) -> Vec<Self> {
+        let Ok(code) = read_to_string(&path) else {
+            return Vec::new();
+        };
+        let path_str = path.to_string_lossy();
+        let mut parsed = parse_test_files_and_symlinks(&code, &path_str);
+        merge_tsconfig_options(&path, &mut parsed.global_options);
+        let expects_error = should_fail(&path, &parsed.global_options, error_codes);
+
+        parsed
+            .test_units
+            .into_iter()
+            .filter_map(|unit| {
+                let lang = lang_from_path(&unit.name)?;
+                Some(Self {
+                    path: path.clone(),
+                    source_type: source_type(&unit.name, &unit.content),
+                    lang,
+                    name: unit.name,
+                    code: unit.content,
+                    expects_error,
+                })
+            })
+            .collect()
+    }
+}
+
 fn read_error_codes() -> HashMap<String, HashSet<String>> {
-    let mut error_codes = HashMap::<String, HashSet<String>>::new();
     let baselines = fixtures().join("typescript/tests/baselines/reference");
 
-    for file in WalkDir::new(baselines) {
-        let Ok(file) = file else { continue };
-        if !file.file_type().is_file() {
-            continue;
-        }
-
-        let file_name = file.file_name().to_string_lossy();
-        let Some(baseline_name) = file_name.strip_suffix(".errors.txt") else {
-            continue;
-        };
-        // Option variants have names such as `foo(target=es5).errors.txt`.
-        // Variants are flattened in this harness, so merge their diagnostics.
-        let test_name = baseline_name
-            .split_once('(')
-            .map_or(baseline_name, |(name, _)| name);
-        let Ok(baseline) = read_to_string(file.path()) else {
-            continue;
-        };
-        let codes = error_codes.entry(test_name.to_string()).or_default();
-        for captures in TS_ERROR_CODE_REGEX.captures_iter(&baseline) {
-            if let Some(code) = captures.name("code") {
-                codes.insert(code.as_str().to_string());
+    WalkDir::new(baselines)
+        .into_iter()
+        .filter_map(|file| {
+            let file = file.ok()?;
+            if !file.file_type().is_file() {
+                return None;
             }
-        }
-    }
 
-    error_codes
+            let file_name = file.file_name().to_string_lossy();
+            let baseline_name = file_name.strip_suffix(".errors.txt")?;
+            // Option variants have names such as `foo(target=es5).errors.txt`.
+            // Variants are flattened in this harness, so merge their diagnostics.
+            let test_name = baseline_name
+                .split_once('(')
+                .map_or(baseline_name, |(name, _)| name)
+                .to_string();
+            Some((test_name, file.path()))
+        })
+        .collect::<Vec<_>>()
+        .into_par_iter()
+        .filter_map(|(test_name, path)| {
+            let baseline = read_to_string(path).ok()?;
+            let codes = TS_ERROR_CODE_REGEX
+                .captures_iter(&baseline)
+                .filter_map(|captures| captures.name("code").map(|code| code.as_str().to_string()))
+                .collect::<HashSet<_>>();
+            Some((test_name, codes))
+        })
+        .fold(
+            HashMap::<String, HashSet<String>>::new,
+            |mut error_codes, (test_name, new_codes)| {
+                let codes = error_codes.entry(test_name).or_default();
+                codes.extend(new_codes);
+                error_codes
+            },
+        )
+        .reduce(HashMap::new, |mut error_codes, new_error_codes| {
+            for (test_name, new_codes) in new_error_codes {
+                error_codes.entry(test_name).or_default().extend(new_codes);
+            }
+            error_codes
+        })
 }
 
 fn should_fail(

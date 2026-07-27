@@ -5,6 +5,7 @@ use std::{
 };
 
 use jwalk::WalkDir;
+use rayon::prelude::*;
 use swc_next_ecma_ast::{Lang, SourceType};
 
 use crate::cases::{Case, fixtures};
@@ -46,6 +47,12 @@ pub struct BabelCase {
     pub options: BabelOptions,
 }
 
+struct BabelCasePaths {
+    package_name: String,
+    input: PathBuf,
+    output: PathBuf,
+}
+
 impl BabelCase {
     pub fn read() -> Vec<Self> {
         Self::try_read().unwrap_or_else(|error| panic!("failed to read Babel fixtures: {error}"))
@@ -53,7 +60,7 @@ impl BabelCase {
 
     pub fn try_read() -> io::Result<Vec<Self>> {
         let packages_dir = fixtures().join("babel/packages");
-        let mut cases = Vec::new();
+        let mut case_paths = Vec::new();
 
         for package in fs::read_dir(&packages_dir)? {
             let package = package?;
@@ -87,26 +94,36 @@ impl BabelCase {
                     continue;
                 };
 
-                let options = BabelOptions::from_test_path(case_dir)?;
+                case_paths.push(BabelCasePaths {
+                    package_name: package_name.clone(),
+                    input: input_path,
+                    output: output_path,
+                });
+            }
+        }
 
+        let mut cases = case_paths
+            .into_par_iter()
+            .map(|paths| {
+                let case_dir = paths.input.parent().unwrap();
+                let options = BabelOptions::from_test_path(case_dir)?;
                 let name = case_dir
                     .strip_prefix(&packages_dir)
                     .unwrap_or(case_dir)
                     .to_string_lossy()
                     .replace('\\', "/");
-                let input = read_to_string(&input_path)?;
-                let output = read_to_string(output_path)?;
-                cases.push(Self {
-                    package_name: package_name.clone(),
-                    path: input_path,
+                let input = read_to_string(&paths.input)?;
+                let output = read_to_string(paths.output)?;
+                Ok(Self {
+                    package_name: paths.package_name,
+                    path: paths.input,
                     name,
                     input,
                     output,
                     options,
-                });
-            }
-        }
-
+                })
+            })
+            .collect::<io::Result<Vec<_>>>()?;
         cases.sort_unstable_by(|left, right| left.path.cmp(&right.path));
         Ok(cases)
     }
