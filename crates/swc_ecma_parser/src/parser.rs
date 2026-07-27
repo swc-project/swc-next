@@ -2317,7 +2317,10 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         let Some(next) = self.peek_ahead() else {
             return Some(ClassModifierStep::None);
         };
+        let accessor_before_star =
+            next.tag == TokenTag::Star && matches!(token.tag, TokenTag::Get | TokenTag::Set);
         let consume_as_modifier = can_start_element_key(next.tag)
+            && !accessor_before_star
             && !(requires_same_line(token.tag) && next.has_line_terminator_before())
             && !modifiers.conflicts(token.tag);
 

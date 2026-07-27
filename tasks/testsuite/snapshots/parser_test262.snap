@@ -1,6 +1,6 @@
 parser * test262
 ========================
-Positive Passed: 91011/91092 (99.91%)
+Positive Passed: 91015/91092 (99.92%)
 Negative Passed: 7936/8648 (91.77%)
 Panicked: 0/99740 (0.00%)
 Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-a-func-no-skip-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1812..1813
@@ -775,10 +775,6 @@ Failed: fixtures/test262/test/language/literals/regexp/unicode-escape-nls-err.js
 Failed: fixtures/test262/test/language/statements/class/decorator/syntax/valid/decorator-call-expr-identifier-reference-yield.js - sloppy: semantic: 'yield' is reserved in strict mode and cannot be used as an identifier reference at 1422..1427
 Failed: fixtures/test262/test/language/statements/class/decorator/syntax/valid/decorator-member-expr-identifier-reference-yield.js - sloppy: semantic: 'yield' is reserved in strict mode and cannot be used as an identifier reference at 1038..1043
 Failed: fixtures/test262/test/language/statements/class/decorator/syntax/valid/decorator-parenthesized-expr-identifier-reference-yield.js - sloppy: semantic: 'yield' is reserved in strict mode and cannot be used as an identifier reference at 1626..1631
-Failed: fixtures/test262/test/language/statements/class/elements/syntax/valid/grammar-field-named-get-followed-by-generator-asi.js - sloppy: parser: Getter cannot be a generator at 916..917
-Failed: fixtures/test262/test/language/statements/class/elements/syntax/valid/grammar-field-named-get-followed-by-generator-asi.js - strict: parser: Getter cannot be a generator at 930..931
-Failed: fixtures/test262/test/language/statements/class/elements/syntax/valid/grammar-field-named-set-followed-by-generator-asi.js - sloppy: parser: Setter cannot be a generator at 902..903
-Failed: fixtures/test262/test/language/statements/class/elements/syntax/valid/grammar-field-named-set-followed-by-generator-asi.js - strict: parser: Setter cannot be a generator at 916..917
 Failed: fixtures/test262/test/language/statements/for-await-of/let-block-with-newline.js - sloppy: parser: Destructuring declaration must have an initializer at 552..554
 Failed: fixtures/test262/test/language/statements/for-await-of/let-identifier-with-newline.js - sloppy: parser: Lexical declaration cannot appear in a single-statement context at 558..577
 Failed: fixtures/test262/test/language/statements/for-in/let-block-with-newline.js - sloppy: parser: Destructuring declaration must have an initializer at 494..496

@@ -1,6 +1,6 @@
 codegen * test262
 ========================
-Positive Passed: 90504/91092 (99.35%)
+Positive Passed: 90508/91092 (99.36%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/91092 (0.00%)
 Failed: fixtures/test262/test/built-ins/Array/fromAsync/asyncitems-arraylike-too-long.js - sloppy: codegen output changed after reparse at byte 668 (first: 800 bytes, second: 818 bytes)
@@ -394,10 +394,6 @@ Failed: fixtures/test262/test/language/statements/class/dstr/private-meth-static
 Failed: fixtures/test262/test/language/statements/class/dstr/private-meth-static-dflt-ary-ptrn-rest-id-elision.js - strict: codegen output changed after reparse at byte 2471 (first: 2852 bytes, second: 2854 bytes)
 Failed: fixtures/test262/test/language/statements/class/dstr/private-meth-static-dflt-ary-ptrn-rest-id-exhausted.js - sloppy: codegen output changed after reparse at byte 2418 (first: 2670 bytes, second: 2672 bytes)
 Failed: fixtures/test262/test/language/statements/class/dstr/private-meth-static-dflt-ary-ptrn-rest-id-exhausted.js - strict: codegen output changed after reparse at byte 2432 (first: 2684 bytes, second: 2686 bytes)
-Failed: fixtures/test262/test/language/statements/class/elements/syntax/valid/grammar-field-named-get-followed-by-generator-asi.js - sloppy: first parse: Getter cannot be a generator at 916..917
-Failed: fixtures/test262/test/language/statements/class/elements/syntax/valid/grammar-field-named-get-followed-by-generator-asi.js - strict: first parse: Getter cannot be a generator at 930..931
-Failed: fixtures/test262/test/language/statements/class/elements/syntax/valid/grammar-field-named-set-followed-by-generator-asi.js - sloppy: first parse: Setter cannot be a generator at 902..903
-Failed: fixtures/test262/test/language/statements/class/elements/syntax/valid/grammar-field-named-set-followed-by-generator-asi.js - strict: first parse: Setter cannot be a generator at 916..917
 Failed: fixtures/test262/test/language/statements/const/dstr/ary-ptrn-rest-id-elision-next-err.js - sloppy: codegen output changed after reparse at byte 1305 (first: 1325 bytes, second: 1327 bytes)
 Failed: fixtures/test262/test/language/statements/const/dstr/ary-ptrn-rest-id-elision-next-err.js - strict: codegen output changed after reparse at byte 1319 (first: 1339 bytes, second: 1341 bytes)
 Failed: fixtures/test262/test/language/statements/const/dstr/ary-ptrn-rest-id-elision.js - sloppy: codegen output changed after reparse at byte 1213 (first: 1401 bytes, second: 1403 bytes)
