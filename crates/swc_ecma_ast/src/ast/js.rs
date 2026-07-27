@@ -336,6 +336,9 @@ impl<'a> ExtraDataCompact<'a> for Option<ImportPhase> {
 /// See: <https://tc39.es/ecma262/#prod-Script>,
 /// <https://tc39.es/ecma262/#prod-Module>
 ///
+/// CommonJS sources use Script statement grammar with the top-level
+/// allowances of an ordinary function body.
+///
 /// ## Example
 /// ```js
 /// #!/usr/bin/env node

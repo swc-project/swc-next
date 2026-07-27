@@ -15,21 +15,24 @@ use crate::{Ast, ExtraData, ExtraDataCompact};
 
 /// Source type of a JavaScript or TypeScript file.
 ///
-/// Determines whether the file is parsed as an ES module or a classic script.
+/// Determines whether the file is parsed as an ES module, a CommonJS module,
+/// or a classic script.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash)]
 pub enum SourceType {
-    Script,
     #[default]
-    Module,
+    Module = 0,
+    Script = 1,
+    CommonJs = 2,
 }
 
 impl SourceType {
     /// Returns the conventional lowercase name of this source type.
     pub fn as_str(self) -> &'static str {
         match self {
-            Self::Script => "script",
             Self::Module => "module",
+            Self::Script => "script",
+            Self::CommonJs => "commonjs",
         }
     }
 

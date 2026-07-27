@@ -12,9 +12,8 @@ mod util;
 
 pub use lexer::{Hashbang, Lexer, LexerMode, LexicalError, RegexResult};
 pub use parser::{
-    ArrayCover, BodyKind, Checkpoint, CommentMode, Context, ObjectCover, Options,
-    ParenthesizedCover, Parser, ParserState, Peek, ReportOptions, ScratchBuffer, TsContext,
-    build_line_starts,
+    ArrayCover, Checkpoint, CommentMode, Context, ObjectCover, Options, ParenthesizedCover, Parser,
+    ParserState, Peek, ReportOptions, ScratchBuffer, TsContext, build_line_starts,
 };
 pub use swc_next_ecma_ast::{Diagnostic, Label, Lang, Severity};
 pub use token::{Token, TokenFlag, TokenTag};

@@ -154,12 +154,13 @@ impl BabelCase {
             .and_then(|extension| extension.to_str())
         {
             Some("mjs" | "mts") => return SourceType::Module,
-            Some("cjs" | "cts") => return SourceType::Script,
+            Some("cjs" | "cts") => return SourceType::CommonJs,
             _ => {}
         }
 
         match self.options.source_type.as_deref() {
-            Some("script" | "commonjs") => SourceType::Script,
+            Some("script") => SourceType::Script,
+            Some("commonjs") => SourceType::CommonJs,
             Some("module" | "unambiguous") | None => SourceType::Module,
             Some(_) => SourceType::Module,
         }

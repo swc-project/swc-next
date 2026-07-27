@@ -1,8 +1,7 @@
 use swc_next_allocator::Allocator;
 use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
-    Comment, CommentKind, CommentPosition, SourceType, Span, is_ident_continue_ascii,
-    is_ident_start_ascii,
+    Comment, CommentKind, CommentPosition, Span, is_ident_continue_ascii, is_ident_start_ascii,
 };
 
 use super::token::{Token, TokenFlag, TokenTag, flag_mask};
@@ -102,7 +101,8 @@ pub struct Lexer<'allocator, 'source> {
     pub collect_comments: bool,
     pub source: &'source [u8],
     pub cursor: u32,
-    pub source_type: SourceType,
+    /// Whether Annex B HTML-like comments are recognized.
+    pub allow_html_like_comments: bool,
     pub hashbang: Option<Hashbang>,
     pub state: LexerState,
     pub mode: LexerMode,
@@ -112,7 +112,7 @@ impl<'allocator, 'source> Lexer<'allocator, 'source> {
     pub fn init(
         allocator: &'allocator Allocator,
         source: &'source [u8],
-        source_type: SourceType,
+        allow_html_like_comments: bool,
         collect_comments: bool,
     ) -> Self {
         debug_assert!(u32::try_from(source.len()).is_ok());
@@ -121,7 +121,7 @@ impl<'allocator, 'source> Lexer<'allocator, 'source> {
             collect_comments,
             source,
             cursor: 0,
-            source_type,
+            allow_html_like_comments,
             hashbang: None,
             state: LexerState::default(),
             mode: LexerMode::Normal,
@@ -1094,7 +1094,7 @@ impl<'allocator, 'source> Lexer<'allocator, 'source> {
                     pos = self.cursor as usize;
                 }
                 4 => {
-                    if self.source_type != SourceType::Script
+                    if !self.allow_html_like_comments
                         || pos + 3 >= src.len()
                         || src[pos + 1] != b'!'
                         || src[pos + 2] != b'-'
@@ -1107,7 +1107,7 @@ impl<'allocator, 'source> Lexer<'allocator, 'source> {
                     pos = self.cursor as usize;
                 }
                 5 => {
-                    if self.source_type != SourceType::Script
+                    if !self.allow_html_like_comments
                         || !can_be_html_close_comment
                         || pos + 2 >= src.len()
                         || src[pos + 1] != b'-'
@@ -1249,7 +1249,7 @@ impl<'allocator, 'source> Lexer<'allocator, 'source> {
     }
 
     fn scan_html_comment(&mut self) -> Result<(), LexicalError> {
-        debug_assert_eq!(self.source_type, SourceType::Script);
+        debug_assert!(self.allow_html_like_comments);
         debug_assert!(((self.cursor + 3) as usize) < self.source.len());
         debug_assert_eq!(self.source[self.cursor as usize], b'<');
         debug_assert_eq!(self.source[self.cursor as usize + 1], b'!');
@@ -1270,7 +1270,7 @@ impl<'allocator, 'source> Lexer<'allocator, 'source> {
     }
 
     fn scan_html_close_comment(&mut self) -> Result<(), LexicalError> {
-        debug_assert_eq!(self.source_type, SourceType::Script);
+        debug_assert!(self.allow_html_like_comments);
         debug_assert!(((self.cursor + 2) as usize) < self.source.len());
         debug_assert_eq!(self.source[self.cursor as usize], b'-');
         debug_assert_eq!(self.source[self.cursor as usize + 1], b'-');

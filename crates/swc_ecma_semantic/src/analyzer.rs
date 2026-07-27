@@ -71,7 +71,7 @@ impl<'a> SemanticBuilder<'a> {
     fn new(program: Program, ast: &Ast<'a>) -> Self {
         let scopes = ScopeTree::new(
             program.node_id(),
-            program.source_type(ast) == SourceType::Module,
+            program.source_type(ast),
             has_use_strict_directive(program.directives(ast), ast),
         );
         let current_scope = scopes.top_level_scope_id();
@@ -1463,7 +1463,7 @@ impl<'a> Traverse<'a> for SemanticBuilder<'a> {
             && ctx
                 .parent()
                 .is_some_and(|owner| ctx.node_kind(owner) == NodeKind::Program)
-            && self.scopes.get(self.scopes.top_level_scope_id()).kind != ScopeKind::Module
+            && program_source_type(ctx) == Some(SourceType::Script)
         {
             self.diagnostics.push(Diagnostic::error(
                 "A using declaration may not appear at the top level of a script",
@@ -2737,14 +2737,31 @@ fn is_legacy_numeric_literal(raw: &[u8]) -> bool {
 }
 
 fn is_new_target_available(ctx: &TraverseCtx<'_, '_>) -> bool {
-    ctx.ancestors().skip(1).any(|ancestor| {
-        matches!(
-            ctx.node_kind(ancestor),
+    for ancestor in ctx.ancestors().skip(1) {
+        match ctx.node_kind(ancestor) {
             NodeKind::Function
-                | NodeKind::TsFunction
-                | NodeKind::PropertyDefinition
-                | NodeKind::StaticBlock
-        )
+            | NodeKind::TsFunction
+            | NodeKind::PropertyDefinition
+            | NodeKind::StaticBlock => return true,
+            NodeKind::TsModuleBlock => return false,
+            NodeKind::Program => {
+                let NodeKindData::Program(program) = ctx.ast.kind_data(ancestor) else {
+                    unreachable!();
+                };
+                return program.source_type(ctx.ast) == SourceType::CommonJs;
+            }
+            _ => {}
+        }
+    }
+    false
+}
+
+fn program_source_type(ctx: &TraverseCtx<'_, '_>) -> Option<SourceType> {
+    ctx.ancestors().skip(1).find_map(|ancestor| {
+        let NodeKindData::Program(program) = ctx.ast.kind_data(ancestor) else {
+            return None;
+        };
+        Some(program.source_type(ctx.ast))
     })
 }
 

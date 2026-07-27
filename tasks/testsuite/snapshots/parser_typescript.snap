@@ -1,7 +1,7 @@
 parser * typescript
 ========================
 Positive Passed: 21612/22023 (98.13%)
-Negative Passed: 1637/3448 (47.48%)
+Negative Passed: 1638/3448 (47.51%)
 Panicked: 0/25471 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -2118,7 +2118,6 @@ Failed: fixtures/typescript/tests/cases/conformance/scanner/ecmascript5/scannerN
 Failed: fixtures/typescript/tests/cases/conformance/scanner/ecmascript5/scannerNumericLiteral8.ts - scannerNumericLiteral8.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/scanner/ecmascript5/scannerNumericLiteral9.ts - scannerNumericLiteral9.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/statements/VariableStatements/usingDeclarations/awaitUsingDeclarations.14.ts - awaitUsingDeclarations.14.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/statements/VariableStatements/usingDeclarations/awaitUsingDeclarationsInForOf.4.ts - awaitUsingDeclarationsInForOf.4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/statements/VariableStatements/usingDeclarations/usingDeclarations.14.ts - usingDeclarations.14.ts: semantic: A using declaration may not appear at the top level of a script at 0..13
 Failed: fixtures/typescript/tests/cases/conformance/statements/VariableStatements/usingDeclarations/usingDeclarationsInForOf.4.ts - usingDeclarationsInForOf.4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/statements/for-inStatements/for-inStatementsArrayErrors.ts - for-inStatementsArrayErrors.ts: expected a parse or early error, but pipeline succeeded

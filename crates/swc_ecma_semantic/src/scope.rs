@@ -1,5 +1,5 @@
 use oxc_index::{Idx, IndexVec};
-use swc_next_ecma_ast::{NodeId, ScopeId};
+use swc_next_ecma_ast::{NodeId, ScopeId, SourceType};
 
 /// Kind of JavaScript or TypeScript construct that created a scope.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -90,8 +90,9 @@ pub struct ScopeTree {
 }
 
 impl ScopeTree {
-    pub(crate) fn new(root_node: NodeId, module: bool, script_strict: bool) -> Self {
+    pub(crate) fn new(root_node: NodeId, source_type: SourceType, source_strict: bool) -> Self {
         let mut scopes = IndexVec::new();
+        let global_strict = source_type == SourceType::Script && source_strict;
         let root: ScopeId = scopes.push(Scope {
             node: root_node,
             parent: None,
@@ -100,32 +101,40 @@ impl ScopeTree {
             next_sibling: None,
             kind: ScopeKind::Global,
             flags: ScopeFlags {
-                strict: script_strict,
+                strict: global_strict,
             },
-            strict: script_strict,
+            strict: global_strict,
             has_direct_eval: false,
             has_with: false,
             rename_unsafe: false,
         });
         debug_assert_eq!(root.index(), 0);
-        let top_level = if module {
-            let module_scope = scopes.push(Scope {
-                node: root_node,
-                parent: Some(root),
-                hoist_target: ScopeId::from_usize(1),
-                first_child: None,
-                next_sibling: None,
-                kind: ScopeKind::Module,
-                flags: ScopeFlags { strict: true },
-                strict: true,
-                has_direct_eval: false,
-                has_with: false,
-                rename_unsafe: false,
-            });
-            debug_assert_eq!(module_scope.index(), 1);
-            module_scope
-        } else {
-            root
+        let top_level = match source_type {
+            SourceType::Script => root,
+            SourceType::CommonJs | SourceType::Module => {
+                let top_level = ScopeId::from_usize(scopes.len());
+                let (kind, strict) = match source_type {
+                    SourceType::CommonJs => (ScopeKind::Function, source_strict),
+                    SourceType::Module => (ScopeKind::Module, true),
+                    SourceType::Script => unreachable!(),
+                };
+                let scope = scopes.push(Scope {
+                    node: root_node,
+                    parent: Some(root),
+                    hoist_target: top_level,
+                    first_child: None,
+                    next_sibling: None,
+                    kind,
+                    flags: ScopeFlags { strict },
+                    strict,
+                    has_direct_eval: false,
+                    has_with: false,
+                    rename_unsafe: false,
+                });
+                debug_assert_eq!(scope, top_level);
+                scopes[root].first_child = Some(scope);
+                scope
+            }
         };
         Self {
             scopes,
@@ -141,7 +150,8 @@ impl ScopeTree {
 
     /// Returns the source file's top-level scope.
     ///
-    /// This is the module scope for modules and the global scope for scripts.
+    /// This is the module scope for ES modules, the wrapper function scope for
+    /// CommonJS modules, and the global scope for scripts.
     pub fn top_level_scope_id(&self) -> ScopeId {
         self.top_level
     }

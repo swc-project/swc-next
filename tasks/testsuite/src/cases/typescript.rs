@@ -300,7 +300,7 @@ fn source_type(path: &str, code: &str) -> SourceType {
     if path.ends_with(".mts") || path.ends_with(".mjs") {
         SourceType::Module
     } else if path.ends_with(".cts") || path.ends_with(".cjs") {
-        SourceType::Script
+        SourceType::CommonJs
     } else if code.lines().any(|line| {
         let line = line.trim_start();
         line.starts_with("import ")
