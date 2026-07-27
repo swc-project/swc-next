@@ -1276,13 +1276,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     fn is_let_identifier(&mut self) -> Option<bool> {
         debug_assert_eq!(self.current_token.tag, TokenTag::Let);
         let next = self.peek_ahead()?;
-        if next.tag == TokenTag::Semicolon {
-            return Some(true);
-        }
-        if !self.statement_context.permits_declaration() && !can_start_binding(next.tag) {
-            return Some(true);
-        }
-        Some(false)
+        Some(!can_start_let_binding(next.tag))
     }
 
     fn is_using_identifier(&mut self) -> Option<bool> {
@@ -6443,9 +6437,22 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
         let declaration_start = self.current_token.span.start;
         match self.current_token.tag {
-            TokenTag::Var | TokenTag::Let | TokenTag::Const => {
+            TokenTag::Var | TokenTag::Const => {
                 let kind = self.parse_variable_kind(false)?;
                 self.parse_for_with_declaration(start, is_for_await, kind, declaration_start)
+            }
+            TokenTag::Let => {
+                let next = self.peek_ahead()?;
+                if !can_start_let_binding(next.tag) {
+                    return self.parse_for_with_expression(start, is_for_await);
+                }
+                self.advance()?;
+                self.parse_for_with_declaration(
+                    start,
+                    is_for_await,
+                    VariableKind::Let,
+                    declaration_start,
+                )
             }
             TokenTag::Using => {
                 let next = self.peek_ahead()?;
@@ -6576,6 +6583,8 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     }
 
     fn parse_for_with_expression(&mut self, start: u32, is_for_await: bool) -> Option<Stmt> {
+        let head = self.current_token;
+        let head_is_let = head.tag == TokenTag::Let && !head.is_escaped();
         let context = enter_grammar_context![&mut self.context, ~In];
         let expression = self.parse_expression(
             Precedence::Comma,
@@ -6595,6 +6604,18 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         }
 
         if self.current_token.tag == TokenTag::Of {
+            if head_is_let {
+                self.report(
+                    head.span,
+                    "The left-hand side of a for-of statement may not start with 'let'",
+                    ReportOptions {
+                        help: Some(Cow::Borrowed(
+                            "Rename the variable or wrap it in parentheses: 'for ((let).x of ...)'",
+                        )),
+                        ..ReportOptions::default()
+                    },
+                );
+            }
             if !is_for_await && self.is_async_identifier(expression) {
                 self.report(
                     expression.span(self.ast),
@@ -11394,6 +11415,14 @@ pub fn build_line_starts(ast: &mut Ast<'_>, source: &[u8]) {
 
 fn can_start_binding(tag: TokenTag) -> bool {
     tag.is_identifier_like() || matches!(tag, TokenTag::LeftBracket | TokenTag::LeftBrace)
+}
+
+fn can_start_binding_identifier(tag: TokenTag) -> bool {
+    tag.is_identifier_like() && !tag.is_unconditionally_reserved()
+}
+
+fn can_start_let_binding(tag: TokenTag) -> bool {
+    matches!(tag, TokenTag::LeftBracket | TokenTag::LeftBrace) || can_start_binding_identifier(tag)
 }
 
 fn is_parameter_property_modifier_tag(tag: TokenTag) -> bool {

@@ -1,7 +1,7 @@
 parser * typescript
 ========================
 Positive Passed: 21612/22023 (98.13%)
-Negative Passed: 1638/3448 (47.51%)
+Negative Passed: 1636/3448 (47.45%)
 Panicked: 0/25471 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -280,6 +280,7 @@ Failed: fixtures/typescript/tests/cases/compiler/detachedCommentAtStartOfFunctio
 Failed: fixtures/typescript/tests/cases/compiler/detachedCommentAtStartOfFunctionBody2.ts - detachedCommentAtStartOfFunctionBody2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/didYouMeanSuggestionErrors.ts - didYouMeanSuggestionErrors.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/downlevelLetConst16.ts - downlevelLetConst16.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/downlevelLetConst6.ts - downlevelLetConst6.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/duplicateClassElements.ts - duplicateClassElements.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/duplicateErrorNameNotFound.ts - duplicateErrorNameNotFound.ts: semantic: Export 'RoomInterface' is not defined at 43..56
 Failed: fixtures/typescript/tests/cases/compiler/duplicateIdentifierComputedName.ts - duplicateIdentifierComputedName.ts: expected a parse or early error, but pipeline succeeded
@@ -1313,6 +1314,7 @@ Failed: fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/u
 Failed: fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions14.ts - unicodeExtendedEscapesInRegularExpressions14.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions17.ts - unicodeExtendedEscapesInRegularExpressions17.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions19.ts - unicodeExtendedEscapesInRegularExpressions19.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/es6/variableDeclarations/VariableDeclaration6_es6.ts - VariableDeclaration6_es6.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/yieldExpressions/YieldExpression1_es6.ts - YieldExpression1_es6.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/yieldExpressions/YieldExpression8_es6.ts - YieldExpression8_es6.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/yieldExpressions/YieldStarExpression1_es6.ts - YieldStarExpression1_es6.ts: expected a parse or early error, but pipeline succeeded

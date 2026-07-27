@@ -1,6 +1,6 @@
 codegen * test262
 ========================
-Positive Passed: 90499/91092 (99.35%)
+Positive Passed: 90504/91092 (99.35%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/91092 (0.00%)
 Failed: fixtures/test262/test/built-ins/Array/fromAsync/asyncitems-arraylike-too-long.js - sloppy: codegen output changed after reparse at byte 668 (first: 800 bytes, second: 818 bytes)
@@ -269,7 +269,6 @@ Failed: fixtures/test262/test/language/statements/async-generator/dstr/dflt-ary-
 Failed: fixtures/test262/test/language/statements/async-generator/dstr/dflt-ary-ptrn-rest-id-elision.js - strict: codegen output changed after reparse at byte 1224 (first: 1564 bytes, second: 1566 bytes)
 Failed: fixtures/test262/test/language/statements/async-generator/dstr/dflt-ary-ptrn-rest-id-exhausted.js - sloppy: codegen output changed after reparse at byte 1171 (first: 1390 bytes, second: 1392 bytes)
 Failed: fixtures/test262/test/language/statements/async-generator/dstr/dflt-ary-ptrn-rest-id-exhausted.js - strict: codegen output changed after reparse at byte 1185 (first: 1404 bytes, second: 1406 bytes)
-Failed: fixtures/test262/test/language/statements/await-using/syntax/await-using-declaring-let-split-across-two-lines.js - sloppy: first parse: Unexpected token '=' in binding pattern at 513..514
 Failed: fixtures/test262/test/language/statements/class/decorator/syntax/valid/class-element-decorator-parenthesized-expr-identifier-reference.js - sloppy: codegen output changed after reparse at byte 1662 (first: 2005 bytes, second: 2061 bytes)
 Failed: fixtures/test262/test/language/statements/class/decorator/syntax/valid/class-element-decorator-parenthesized-expr-identifier-reference.js - strict: codegen output changed after reparse at byte 1676 (first: 2019 bytes, second: 2075 bytes)
 Failed: fixtures/test262/test/language/statements/class/decorator/syntax/valid/decorator-parenthesized-expr-identifier-reference-yield.js - sloppy: codegen output changed after reparse at byte 1487 (first: 1507 bytes, second: 1509 bytes)
@@ -475,8 +474,6 @@ Failed: fixtures/test262/test/language/statements/for-await-of/async-gen-dstr-va
 Failed: fixtures/test262/test/language/statements/for-await-of/async-gen-dstr-var-async-ary-ptrn-rest-id-exhausted.js - strict: codegen output changed after reparse at byte 1741 (first: 1972 bytes, second: 1974 bytes)
 Failed: fixtures/test262/test/language/statements/for-await-of/let-block-with-newline.js - sloppy: first parse: Destructuring declaration must have an initializer at 552..554
 Failed: fixtures/test262/test/language/statements/for-await-of/let-identifier-with-newline.js - sloppy: first parse: Lexical declaration cannot appear in a single-statement context at 558..577
-Failed: fixtures/test262/test/language/statements/for-in/head-lhs-let.js - sloppy: first parse: 'in' is reserved and cannot be used as a binding identifier at 672..674
-Failed: fixtures/test262/test/language/statements/for-in/identifier-let-allowed-as-lefthandside-expression-not-strict.js - sloppy: first parse: 'in' is reserved and cannot be used as a binding identifier at 440..442
 Failed: fixtures/test262/test/language/statements/for-in/let-block-with-newline.js - sloppy: first parse: Destructuring declaration must have an initializer at 494..496
 Failed: fixtures/test262/test/language/statements/for-in/let-identifier-with-newline.js - sloppy: first parse: Lexical declaration cannot appear in a single-statement context at 502..519
 Failed: fixtures/test262/test/language/statements/for-of/dstr/array-rest-after-elision.js - sloppy: codegen output changed after reparse at byte 1076 (first: 1241 bytes, second: 1243 bytes)
@@ -541,7 +538,6 @@ Failed: fixtures/test262/test/language/statements/for/dstr/var-obj-ptrn-id-init-
 Failed: fixtures/test262/test/language/statements/for/dstr/var-obj-ptrn-id-init-fn-name-arrow.js - strict: codegen output changed after reparse at byte 1569 (first: 1733 bytes, second: 1735 bytes)
 Failed: fixtures/test262/test/language/statements/for/head-init-async-of.js - sloppy: codegen output changed after reparse at byte 340 (first: 421 bytes, second: 423 bytes)
 Failed: fixtures/test262/test/language/statements/for/head-init-async-of.js - strict: codegen output changed after reparse at byte 354 (first: 435 bytes, second: 437 bytes)
-Failed: fixtures/test262/test/language/statements/for/head-lhs-let.js - sloppy: first parse: Unexpected token '=' in binding pattern at 684..685
 Failed: fixtures/test262/test/language/statements/for/let-block-with-newline.js - sloppy: first parse: Destructuring declaration must have an initializer at 475..477
 Failed: fixtures/test262/test/language/statements/for/let-identifier-with-newline.js - sloppy: first parse: Lexical declaration cannot appear in a single-statement context at 483..500
 Failed: fixtures/test262/test/language/statements/function/dstr/ary-ptrn-rest-id-elision-next-err.js - sloppy: codegen output changed after reparse at byte 1723 (first: 1792 bytes, second: 1794 bytes)
@@ -585,7 +581,6 @@ Failed: fixtures/test262/test/language/statements/try/dstr/ary-ptrn-rest-id-elis
 Failed: fixtures/test262/test/language/statements/try/dstr/ary-ptrn-rest-id-elision.js - strict: codegen output changed after reparse at byte 1093 (first: 1351 bytes, second: 1353 bytes)
 Failed: fixtures/test262/test/language/statements/try/dstr/ary-ptrn-rest-id-exhausted.js - sloppy: codegen output changed after reparse at byte 1040 (first: 1177 bytes, second: 1179 bytes)
 Failed: fixtures/test262/test/language/statements/try/dstr/ary-ptrn-rest-id-exhausted.js - strict: codegen output changed after reparse at byte 1054 (first: 1191 bytes, second: 1193 bytes)
-Failed: fixtures/test262/test/language/statements/using/syntax/using-declaring-let-split-across-two-lines.js - sloppy: first parse: Unexpected token '=' in binding pattern at 432..433
 Failed: fixtures/test262/test/language/statements/variable/dstr/ary-ptrn-rest-id-elision-next-err.js - sloppy: codegen output changed after reparse at byte 1230 (first: 1250 bytes, second: 1252 bytes)
 Failed: fixtures/test262/test/language/statements/variable/dstr/ary-ptrn-rest-id-elision-next-err.js - strict: codegen output changed after reparse at byte 1244 (first: 1264 bytes, second: 1266 bytes)
 Failed: fixtures/test262/test/language/statements/variable/dstr/ary-ptrn-rest-id-elision.js - sloppy: codegen output changed after reparse at byte 1138 (first: 1326 bytes, second: 1328 bytes)
