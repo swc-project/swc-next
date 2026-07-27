@@ -1,7 +1,7 @@
 parser * babel
 ========================
-Passed: 3287/3350 (98.12%)
-Failed: 63/3350 (1.88%)
+Positive Passed: 3287/3350 (98.12%)
+Negative Passed: 0/0 (0.00%)
 Panicked: 0/3350 (0.00%)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/comments/source-phase-import-inner-comment/input.mjs - babel-generator/test/fixtures/comments/source-phase-import-inner-comment: parser: Expected module specifier, but found 'from' at 47..51
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/let-identifier/input.js - babel-generator/test/fixtures/edgecase/let-identifier: parser: Keywords cannot contain escape characters at 31..39

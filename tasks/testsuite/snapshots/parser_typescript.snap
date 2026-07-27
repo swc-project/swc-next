@@ -1,7 +1,7 @@
 parser * typescript
 ========================
-Passed: 23249/25471 (91.28%)
-Failed: 2222/25471 (8.72%)
+Positive Passed: 21612/22023 (98.13%)
+Negative Passed: 1637/3448 (47.48%)
 Panicked: 0/25471 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded

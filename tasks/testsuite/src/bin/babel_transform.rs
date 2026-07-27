@@ -94,9 +94,19 @@ fn run_snapshot_case(case: &BabelCase) -> CaseExecution {
         .unwrap_or(&case.path)
         .to_path_buf();
     let result = match catch_unwind(AssertUnwindSafe(|| validate_case(case))) {
-        Ok(Ok(())) => TestResult::Passed { path },
-        Ok(Err(error)) => TestResult::Failed { path, error },
-        Err(_) => TestResult::Panic { path },
+        Ok(Ok(())) => TestResult::Passed {
+            path,
+            negative: false,
+        },
+        Ok(Err(error)) => TestResult::Failed {
+            path,
+            error,
+            negative: false,
+        },
+        Err(_) => TestResult::Panic {
+            path,
+            negative: false,
+        },
     };
 
     CaseExecution {
@@ -249,10 +259,10 @@ impl PackageReport {
         self.summary.record_result(result);
         match result {
             TestResult::Passed { .. } => {}
-            TestResult::Failed { path, error } => self
+            TestResult::Failed { path, error, .. } => self
                 .messages
                 .push(format!("Failed: {} - {error}", normalize_path(path))),
-            TestResult::Panic { path } => self
+            TestResult::Panic { path, .. } => self
                 .messages
                 .push(format!("Panic: {}", normalize_path(path))),
         }

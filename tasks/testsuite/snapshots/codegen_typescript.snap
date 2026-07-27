@@ -1,7 +1,7 @@
 codegen * typescript
 ========================
-Passed: 20562/22023 (93.37%)
-Failed: 1461/22023 (6.63%)
+Positive Passed: 20562/22023 (93.37%)
+Negative Passed: 0/0 (0.00%)
 Panicked: 0/22023 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/APISample_jsdoc.ts - APISample_jsdoc.ts: second parse: Expected '=' in type alias declaration, but found 'Annotations' at 1532..1543
 Failed: fixtures/typescript/tests/cases/compiler/DeclarationErrorsNoEmitOnError.ts - DeclarationErrorsNoEmitOnError.ts: second parse: Expected '=' in type alias declaration, but found 'I' at 49..50

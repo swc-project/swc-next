@@ -1,7 +1,7 @@
 parser * test262
 ========================
-Passed: 98942/99740 (99.20%)
-Failed: 798/99740 (0.80%)
+Positive Passed: 91006/91092 (99.91%)
+Negative Passed: 7936/8648 (91.77%)
 Panicked: 0/99740 (0.00%)
 Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-a-func-no-skip-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1812..1813
 Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-a-func-skip-early-err-block.js - sloppy: semantic: Identifier 'f' has already been declared at 1545..1546

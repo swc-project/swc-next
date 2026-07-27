@@ -76,20 +76,35 @@ fn update_snapshot<R: Runner, C: Case>(args: &AppArgs) -> bool {
 
 fn to_snapshot(runner: &str, cases: &str, results: &[TestResult]) -> String {
     let total = results.len();
-    let mut passed = 0;
-    let mut failed = 0;
+    let mut positive = 0;
+    let mut negative = 0;
+    let mut positive_passed = 0;
+    let mut negative_passed = 0;
     let mut panicked = 0;
     let mut diagnostics = Vec::new();
 
     for result in results {
+        let is_negative = match result {
+            TestResult::Passed { negative, .. }
+            | TestResult::Failed { negative, .. }
+            | TestResult::Panic { negative, .. } => *negative,
+        };
+        if is_negative {
+            negative += 1;
+        } else {
+            positive += 1;
+        }
+
         match result {
-            TestResult::Passed { .. } => passed += 1,
-            TestResult::Failed { path, error } => {
-                failed += 1;
+            TestResult::Passed {
+                negative: false, ..
+            } => positive_passed += 1,
+            TestResult::Passed { negative: true, .. } => negative_passed += 1,
+            TestResult::Failed { path, error, .. } => {
                 let path = path.display().to_string().replace('\\', "/");
                 diagnostics.push(format!("Failed: {path} - {error}"));
             }
-            TestResult::Panic { path } => {
+            TestResult::Panic { path, .. } => {
                 panicked += 1;
                 let path = path.display().to_string().replace('\\', "/");
                 diagnostics.push(format!("Panic: {path}"));
@@ -98,25 +113,25 @@ fn to_snapshot(runner: &str, cases: &str, results: &[TestResult]) -> String {
     }
 
     diagnostics.sort();
-    let rate = |count| {
-        if total == 0 {
+    let rate = |count, denominator| {
+        if denominator == 0 {
             0.0
         } else {
-            (count as f64 / total as f64) * 100.0
+            (count as f64 / denominator as f64) * 100.0
         }
     };
     let mut snapshot = format!("{runner} * {cases}\n========================\n");
     snapshot.push_str(&format!(
-        "Passed: {passed}/{total} ({:.2}%)\n",
-        rate(passed),
+        "Positive Passed: {positive_passed}/{positive} ({:.2}%)\n",
+        rate(positive_passed, positive),
     ));
     snapshot.push_str(&format!(
-        "Failed: {failed}/{total} ({:.2}%)\n",
-        rate(failed),
+        "Negative Passed: {negative_passed}/{negative} ({:.2}%)\n",
+        rate(negative_passed, negative),
     ));
     snapshot.push_str(&format!(
         "Panicked: {panicked}/{total} ({:.2}%)\n",
-        rate(panicked),
+        rate(panicked, total),
     ));
     for diagnostic in diagnostics {
         snapshot.push_str(&diagnostic);

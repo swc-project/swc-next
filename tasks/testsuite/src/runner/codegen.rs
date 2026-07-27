@@ -26,9 +26,19 @@ impl Runner for CodegenRunner {
                 let path = case.relative_path().to_path_buf();
                 let result = catch_unwind(AssertUnwindSafe(|| run_case(case)));
                 match result {
-                    Ok(Ok(())) => TestResult::Passed { path },
-                    Ok(Err(error)) => TestResult::Failed { path, error },
-                    Err(_) => TestResult::Panic { path },
+                    Ok(Ok(())) => TestResult::Passed {
+                        path,
+                        negative: false,
+                    },
+                    Ok(Err(error)) => TestResult::Failed {
+                        path,
+                        error,
+                        negative: false,
+                    },
+                    Err(_) => TestResult::Panic {
+                        path,
+                        negative: false,
+                    },
                 }
             })
             .collect()

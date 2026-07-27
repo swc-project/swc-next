@@ -24,10 +24,15 @@ impl Runner for ParserRunner {
 
                 let path = case.relative_path().to_path_buf();
                 let result = catch_unwind(AssertUnwindSafe(|| run_case(case)));
+                let negative = case.expects_error();
                 match result {
-                    Ok(Ok(())) => TestResult::Passed { path },
-                    Ok(Err(error)) => TestResult::Failed { path, error },
-                    Err(_) => TestResult::Panic { path },
+                    Ok(Ok(())) => TestResult::Passed { path, negative },
+                    Ok(Err(error)) => TestResult::Failed {
+                        path,
+                        error,
+                        negative,
+                    },
+                    Err(_) => TestResult::Panic { path, negative },
                 }
             })
             .collect()

@@ -1,7 +1,7 @@
 codegen * babel
 ========================
-Passed: 3235/3350 (96.57%)
-Failed: 115/3350 (3.43%)
+Positive Passed: 3235/3350 (96.57%)
+Negative Passed: 0/0 (0.00%)
 Panicked: 0/3350 (0.00%)
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/comments/source-phase-import-inner-comment/input.mjs - babel-generator/test/fixtures/comments/source-phase-import-inner-comment: first parse: Expected module specifier, but found 'from' at 47..51
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/comments/yield-star-inner-comment/input.js - babel-generator/test/fixtures/comments/yield-star-inner-comment: codegen output changed after reparse at byte 29 (first: 72 bytes, second: 57 bytes)
