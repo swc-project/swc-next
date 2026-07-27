@@ -26,13 +26,13 @@ fn main() {
     });
 }
 
-struct ScopeDisplayVisitor<'visit, 'ast> {
-    ast: &'visit Ast<'ast>,
-    semantic: &'visit Semantic,
+struct ScopeDisplayVisitor<'a> {
+    ast: &'a Ast<'a>,
+    semantic: &'a Semantic,
 }
 
-impl<'ast> Visit<'ast> for ScopeDisplayVisitor<'_, 'ast> {
-    fn ast(&self) -> &Ast<'ast> {
+impl<'a> Visit<'a> for ScopeDisplayVisitor<'a> {
+    fn ast(&self) -> &Ast<'a> {
         self.ast
     }
 

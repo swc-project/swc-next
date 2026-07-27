@@ -33,7 +33,7 @@ fn main() -> Result<(), String> {
         ..Options::default()
     };
     let diagnostics = {
-        let mut parser = Parser::init(&mut ast, source, options);
+        let mut parser = Parser::init(&mut ast, options);
         let _ = parser.parse();
         std::mem::take(&mut parser.diagnostics)
     };

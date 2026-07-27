@@ -15,13 +15,13 @@ fn bench_visit(b: &mut Bencher, src: &'static str) {
     let mut ast = Ast::new(src.as_bytes(), &allocator);
     let program = parse(&mut ast, src.as_bytes(), Options::default()).unwrap();
 
-    struct Counter<'visit, 'ast> {
-        ast: &'visit Ast<'ast>,
+    struct Counter<'a> {
+        ast: &'a Ast<'a>,
         count: usize,
     }
 
-    impl<'ast> Visit<'ast> for Counter<'_, 'ast> {
-        fn ast(&self) -> &Ast<'ast> {
+    impl<'a> Visit<'a> for Counter<'a> {
+        fn ast(&self) -> &Ast<'a> {
             self.ast
         }
 

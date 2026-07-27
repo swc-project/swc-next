@@ -593,14 +593,14 @@ impl From<MethodDefinitionKind> for PropertyOrMethodKind {
 }
 
 /// Parser state and typed AST writer.
-pub struct Parser<'parser, 'allocator, 'source> {
-    pub ast: &'parser mut Ast<'allocator>,
-    pub source: &'source [u8],
+pub struct Parser<'parser, 'a> {
+    pub ast: &'parser mut Ast<'a>,
+    pub source: &'a [u8],
     pub source_type: SourceType,
     pub lang: Lang,
     pub preserve_parens: bool,
     pub comment_mode: CommentMode,
-    pub lexer: Lexer<'allocator, 'source>,
+    pub lexer: Lexer<'a>,
     pub diagnostics: Vec<Diagnostic<'static>>,
     pub current_token: Token,
     /// End offset of the most recently consumed token.
@@ -643,41 +643,41 @@ pub struct Checkpoint {
     pub state: ParserState,
 }
 
-pub struct Peek<'peek, 'parser, 'allocator, 'source> {
-    parser: &'peek mut Parser<'parser, 'allocator, 'source>,
+pub struct Peek<'peek, 'a> {
+    lexer: &'peek mut Lexer<'a>,
     state: LexerState,
     cursor: u32,
     comments_len: usize,
     active: bool,
 }
 
-impl<'parser, 'allocator, 'source> Peek<'_, 'parser, 'allocator, 'source> {
+impl Peek<'_, '_> {
     pub fn end(mut self) {
         self.restore();
     }
 
     fn restore(&mut self) {
         debug_assert!(self.active);
-        debug_assert!(self.comments_len <= self.parser.lexer.comments.len());
-        self.parser.lexer.state = self.state;
-        self.parser.lexer.cursor = self.cursor;
-        self.parser.lexer.comments.truncate(self.comments_len);
+        debug_assert!(self.comments_len <= self.lexer.comments.len());
+        self.lexer.state = self.state;
+        self.lexer.cursor = self.cursor;
+        self.lexer.comments.truncate(self.comments_len);
         self.active = false;
     }
 }
 
-impl Iterator for Peek<'_, '_, '_, '_> {
+impl Iterator for Peek<'_, '_> {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
         debug_assert!(self.active);
-        let mut token = Token::eof(self.parser.lexer.cursor);
-        self.parser.lexer.next_token(&mut token).ok()?;
+        let mut token = Token::eof(self.lexer.cursor);
+        self.lexer.next_token(&mut token).ok()?;
         Some(token)
     }
 }
 
-impl Drop for Peek<'_, '_, '_, '_> {
+impl Drop for Peek<'_, '_> {
     fn drop(&mut self) {
         if self.active {
             self.restore();
@@ -685,18 +685,10 @@ impl Drop for Peek<'_, '_, '_, '_> {
     }
 }
 
-impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
-    pub fn init(
-        ast: &'parser mut Ast<'allocator>,
-        source: &'source [u8],
-        options: Options,
-    ) -> Self {
+impl<'parser, 'a> Parser<'parser, 'a> {
+    pub fn init(ast: &'parser mut Ast<'a>, options: Options) -> Self {
+        let source = ast.source();
         assert!(source.len() <= u32::MAX as usize);
-        assert_eq!(
-            ast.source(),
-            source,
-            "Ast and Parser must be initialized with the same source"
-        );
         ast.set_source_metadata(options.source_type, options.lang);
         let allow_html_like_comments = options.source_type != SourceType::Module;
         let lexer = Lexer::init(
@@ -807,7 +799,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         self.ast.add_string(&decoded)
     }
 
-    pub fn describe_token(&self, token: Token) -> Cow<'source, [u8]> {
+    pub fn describe_token(&self, token: Token) -> Cow<'a, [u8]> {
         if token.tag == TokenTag::Eof {
             return Cow::Borrowed(b"end of file");
         }
@@ -822,7 +814,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         self.lexer.mode = mode;
     }
 
-    pub fn span_text(&self, span: Span) -> &'source [u8] {
+    pub fn span_text(&self, span: Span) -> &'a [u8] {
         &self.source[span.start as usize..span.end as usize]
     }
 
@@ -832,7 +824,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         scratch_checkpoint: usize,
     ) -> TypedSubRange<N>
     where
-        N: AstNode + ExtraDataCompact<'allocator>,
+        N: AstNode + ExtraDataCompact<'a>,
     {
         debug_assert!(scratch_checkpoint <= scratch.items.len());
         let range = self.ast.add_typed_sub_range(
@@ -847,7 +839,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
     // field-specific helpers avoid allocating scratch copies while splitting mutable borrows
     pub fn add_extra_from_scratch_a<N>(&mut self, scratch_checkpoint: usize) -> TypedSubRange<N>
     where
-        N: AstNode + ExtraDataCompact<'allocator>,
+        N: AstNode + ExtraDataCompact<'a>,
     {
         debug_assert!(scratch_checkpoint <= self.scratch_a.items.len());
         let range = self.ast.add_typed_sub_range(
@@ -861,7 +853,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     pub fn add_extra_from_scratch_b<N>(&mut self, scratch_checkpoint: usize) -> TypedSubRange<N>
     where
-        N: AstNode + ExtraDataCompact<'allocator>,
+        N: AstNode + ExtraDataCompact<'a>,
     {
         debug_assert!(scratch_checkpoint <= self.scratch_b.items.len());
         let range = self.ast.add_typed_sub_range(
@@ -875,7 +867,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
 
     pub fn add_extra_from_scratch_cover<N>(&mut self, scratch_checkpoint: usize) -> TypedSubRange<N>
     where
-        N: AstNode + ExtraDataCompact<'allocator>,
+        N: AstNode + ExtraDataCompact<'a>,
     {
         debug_assert!(scratch_checkpoint <= self.scratch_cover.items.len());
         let range = self.ast.add_typed_sub_range(
@@ -895,7 +887,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         scratch_checkpoint: usize,
     ) -> TypedSubRange<N>
     where
-        N: AstNode + ExtraDataCompact<'allocator>,
+        N: AstNode + ExtraDataCompact<'a>,
     {
         debug_assert!(scratch_checkpoint <= self.scratch_decorators.items.len());
         let range = self.ast.add_typed_sub_range(
@@ -915,7 +907,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         scratch_checkpoint: usize,
     ) -> TypedSubRange<N>
     where
-        N: AstNode + ExtraDataCompact<'allocator>,
+        N: AstNode + ExtraDataCompact<'a>,
     {
         let scratch_end = self.scratch_statements.items.len();
         self.add_extra_from_scratch_statements_range(scratch_checkpoint, scratch_end)
@@ -927,7 +919,7 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         scratch_end: usize,
     ) -> TypedSubRange<N>
     where
-        N: AstNode + ExtraDataCompact<'allocator>,
+        N: AstNode + ExtraDataCompact<'a>,
     {
         debug_assert!(scratch_start <= scratch_end);
         debug_assert!(scratch_end <= self.scratch_statements.items.len());
@@ -976,13 +968,13 @@ impl<'parser, 'allocator, 'source> Parser<'parser, 'allocator, 'source> {
         self.state = checkpoint.state;
     }
 
-    pub fn begin_peek(&mut self) -> Peek<'_, 'parser, 'allocator, 'source> {
+    pub fn begin_peek(&mut self) -> Peek<'_, 'a> {
         Peek {
             state: self.lexer.state,
             cursor: self.lexer.cursor,
             comments_len: self.lexer.comments.len(),
             active: true,
-            parser: self,
+            lexer: &mut self.lexer,
         }
     }
 

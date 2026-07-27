@@ -88,7 +88,7 @@ fn parse_and_codegen(
     };
 
     let (program, error) = {
-        let mut parser = Parser::init(&mut ast, source, options);
+        let mut parser = Parser::init(&mut ast, options);
         let program = parser.parse();
         let error = parser
             .diagnostics

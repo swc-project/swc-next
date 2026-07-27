@@ -72,7 +72,7 @@ fn expect_printed_common(
         preserve_parens: false,
         comments: CommentMode::Attached,
     };
-    let mut parser = Parser::init(&mut ast, source, parse_options);
+    let mut parser = Parser::init(&mut ast, parse_options);
     let Some(program) = parser.parse() else {
         panic!(
             "failed to parse {}\ndiagnostics: {:#?}",

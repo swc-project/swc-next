@@ -105,17 +105,17 @@ pub(crate) fn collect<'a>(
     collector.record
 }
 
-struct Collector<'table, 'diagnostics> {
+struct Collector<'a> {
     record: ModuleRecord,
     top_scope: ScopeId,
-    symbols: &'table SymbolTable,
-    diagnostics: &'diagnostics mut Vec<Diagnostic<'static>>,
+    symbols: &'a SymbolTable,
+    diagnostics: &'a mut Vec<Diagnostic<'static>>,
     check_duplicate_exports: bool,
     export_names: FxHashMap<String, Span>,
     default_export_bindings: Vec<bool>,
 }
 
-impl Collector<'_, '_> {
+impl Collector<'_> {
     /// Records an exported name and reports a duplicate if already present.
     fn record_exported_name(&mut self, name: &str, span: Span) {
         // TypeScript declarations can merge across symbol spaces. Until this
@@ -189,7 +189,7 @@ impl Collector<'_, '_> {
     }
 }
 
-impl<'ast> Traverse<'ast> for Collector<'_, '_> {
+impl<'ast> Traverse<'ast> for Collector<'_> {
     fn enter_binding_identifier(
         &mut self,
         node: BindingIdentifier,

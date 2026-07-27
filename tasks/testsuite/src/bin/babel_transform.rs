@@ -368,13 +368,7 @@ fn transform_input(case: &BabelCase) -> Result<Vec<u8>, String> {
     let source = case.input.as_bytes();
     let allocator = Allocator::new();
     let mut ast = Ast::new(source, &allocator);
-    let program = parse_program(
-        &mut ast,
-        source,
-        case.source_type(),
-        case.lang(),
-        "input.js parse",
-    )?;
+    let program = parse_program(&mut ast, case.source_type(), case.lang(), "input.js parse")?;
     let semantic = analyze(program, &mut ast);
     if let Some(diagnostic) = semantic
         .diagnostics()
@@ -395,13 +389,7 @@ fn normalize_expected_output(case: &BabelCase) -> Result<Vec<u8>, String> {
     let source = case.output.as_bytes();
     let allocator = Allocator::new();
     let mut ast = Ast::new(source, &allocator);
-    let program = parse_program(
-        &mut ast,
-        source,
-        case.source_type(),
-        case.lang(),
-        "output.js parse",
-    )?;
+    let program = parse_program(&mut ast, case.source_type(), case.lang(), "output.js parse")?;
     Ok(print(&allocator, &ast, program, CodegenOptions::default())
         .code
         .to_vec())
@@ -409,7 +397,6 @@ fn normalize_expected_output(case: &BabelCase) -> Result<Vec<u8>, String> {
 
 fn parse_program(
     ast: &mut Ast<'_>,
-    source: &[u8],
     source_type: SourceType,
     lang: Lang,
     stage: &str,
@@ -420,7 +407,7 @@ fn parse_program(
         ..ParserOptions::default()
     };
     let (program, error) = {
-        let mut parser = Parser::init(ast, source, options);
+        let mut parser = Parser::init(ast, options);
         let program = parser.parse();
         let error = parser
             .diagnostics

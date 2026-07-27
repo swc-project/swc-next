@@ -96,10 +96,10 @@ enum ConsumeUnicodeContext {
 }
 
 #[derive(Clone, Debug)]
-pub struct Lexer<'allocator, 'source> {
-    pub comments: ArenaVec<'allocator, Comment>,
+pub struct Lexer<'a> {
+    pub comments: ArenaVec<'a, Comment>,
     pub collect_comments: bool,
-    pub source: &'source [u8],
+    pub source: &'a [u8],
     pub cursor: u32,
     /// Whether Annex B HTML-like comments are recognized.
     pub allow_html_like_comments: bool,
@@ -108,10 +108,10 @@ pub struct Lexer<'allocator, 'source> {
     pub mode: LexerMode,
 }
 
-impl<'allocator, 'source> Lexer<'allocator, 'source> {
+impl<'a> Lexer<'a> {
     pub fn init(
-        allocator: &'allocator Allocator,
-        source: &'source [u8],
+        allocator: &'a Allocator,
+        source: &'a [u8],
         allow_html_like_comments: bool,
         collect_comments: bool,
     ) -> Self {
