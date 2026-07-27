@@ -36,12 +36,9 @@ pub fn main() -> ExitCode {
     }
 
     let panicked = [
-        update_snapshot::<ParserRunner, Test262Case>(&args),
-        update_snapshot::<ParserRunner, TypeScriptCase>(&args),
-        update_snapshot::<ParserRunner, BabelCase>(&args),
-        update_snapshot::<CodegenRunner, Test262Case>(&args),
-        update_snapshot::<CodegenRunner, TypeScriptCase>(&args),
-        update_snapshot::<CodegenRunner, BabelCase>(&args),
+        update_snapshots::<Test262Case>(&args),
+        update_snapshots::<TypeScriptCase>(&args),
+        update_snapshots::<BabelCase>(&args),
     ]
     .into_iter()
     .any(|panicked| panicked);
@@ -54,13 +51,24 @@ pub fn main() -> ExitCode {
     }
 }
 
-fn update_snapshot<R: Runner, C: Case>(args: &AppArgs) -> bool {
-    if !args.runners.is_empty() && !args.runners.contains(R::NAME) {
+fn update_snapshots<C: Case>(args: &AppArgs) -> bool {
+    let run_parser = args.runners.is_empty() || args.runners.contains(ParserRunner::NAME);
+    let run_codegen = args.runners.is_empty() || args.runners.contains(CodegenRunner::NAME);
+    if !run_parser && !run_codegen {
         return false;
     }
 
     let cases = filter(args, C::read());
-    let results = R::run(&cases, args.debug);
+    [
+        run_parser && update_snapshot::<ParserRunner, C>(&cases, args.debug),
+        run_codegen && update_snapshot::<CodegenRunner, C>(&cases, args.debug),
+    ]
+    .into_iter()
+    .any(|panicked| panicked)
+}
+
+fn update_snapshot<R: Runner, C: Case>(cases: &[C], debug: bool) -> bool {
+    let results = R::run(cases, debug);
     let panicked = results
         .iter()
         .any(|result| matches!(result, TestResult::Panic { .. }));
