@@ -4,3 +4,4 @@ callgrind*
 input.*
 profile.json
 local
+tasks/testsuite/fixtures
