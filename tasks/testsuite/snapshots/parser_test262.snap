@@ -1,6 +1,6 @@
 parser * test262
 ========================
-Positive Passed: 91015/91092 (99.92%)
+Positive Passed: 91017/91092 (99.92%)
 Negative Passed: 7936/8648 (91.77%)
 Panicked: 0/99740 (0.00%)
 Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-a-func-no-skip-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1812..1813
@@ -436,8 +436,6 @@ Failed: fixtures/test262/test/built-ins/RegExp/prototype/unicodeSets/breaking-ch
 Failed: fixtures/test262/test/built-ins/RegExp/prototype/unicodeSets/breaking-change-from-u-to-v-27.js - strict: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/built-ins/RegExp/prototype/unicodeSets/breaking-change-from-u-to-v-28.js - sloppy: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/built-ins/RegExp/prototype/unicodeSets/breaking-change-from-u-to-v-28.js - strict: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/test262/test/language/comments/hashbang/line-terminator-line-separator.js - sloppy: parser: Unexpected token '}' at 56..57
-Failed: fixtures/test262/test/language/comments/hashbang/line-terminator-paragraph-separator.js - sloppy: parser: Unexpected token '}' at 61..62
 Failed: fixtures/test262/test/language/expressions/class/decorator/syntax/valid/decorator-call-expr-identifier-reference-yield.js - sloppy: semantic: 'yield' is reserved in strict mode and cannot be used as an identifier reference at 1350..1355
 Failed: fixtures/test262/test/language/expressions/class/decorator/syntax/valid/decorator-member-expr-identifier-reference-yield.js - sloppy: semantic: 'yield' is reserved in strict mode and cannot be used as an identifier reference at 966..971
 Failed: fixtures/test262/test/language/expressions/class/decorator/syntax/valid/decorator-parenthesized-expr-identifier-reference-yield.js - sloppy: semantic: 'yield' is reserved in strict mode and cannot be used as an identifier reference at 1554..1559

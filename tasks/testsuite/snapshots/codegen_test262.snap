@@ -1,6 +1,6 @@
 codegen * test262
 ========================
-Positive Passed: 90508/91092 (99.36%)
+Positive Passed: 90510/91092 (99.36%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/91092 (0.00%)
 Failed: fixtures/test262/test/built-ins/Array/fromAsync/asyncitems-arraylike-too-long.js - sloppy: codegen output changed after reparse at byte 668 (first: 800 bytes, second: 818 bytes)
@@ -15,8 +15,6 @@ Failed: fixtures/test262/test/built-ins/Function/prototype/toString/setter-objec
 Failed: fixtures/test262/test/built-ins/Function/prototype/toString/setter-object.js - strict: codegen output changed after reparse at byte 385 (first: 1199 bytes, second: 1273 bytes)
 Failed: fixtures/test262/test/built-ins/Temporal/Duration/prototype/total/precision-exact-mathematical-values-5.js - sloppy: codegen output changed after reparse at byte 2178 (first: 2851 bytes, second: 2862 bytes)
 Failed: fixtures/test262/test/built-ins/Temporal/Duration/prototype/total/precision-exact-mathematical-values-5.js - strict: codegen output changed after reparse at byte 2192 (first: 2865 bytes, second: 2876 bytes)
-Failed: fixtures/test262/test/language/comments/hashbang/line-terminator-line-separator.js - sloppy: first parse: Unexpected token '}' at 56..57
-Failed: fixtures/test262/test/language/comments/hashbang/line-terminator-paragraph-separator.js - sloppy: first parse: Unexpected token '}' at 61..62
 Failed: fixtures/test262/test/language/destructuring/binding/syntax/array-rest-elements.js - sloppy: codegen output changed after reparse at byte 601 (first: 724 bytes, second: 728 bytes)
 Failed: fixtures/test262/test/language/destructuring/binding/syntax/array-rest-elements.js - strict: codegen output changed after reparse at byte 615 (first: 738 bytes, second: 742 bytes)
 Failed: fixtures/test262/test/language/directive-prologue/14.1-4-s.js - sloppy: codegen output changed after reparse at byte 298 (first: 367 bytes, second: 370 bytes)

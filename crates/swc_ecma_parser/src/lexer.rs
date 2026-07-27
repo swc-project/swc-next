@@ -134,10 +134,16 @@ impl<'allocator, 'source> Lexer<'allocator, 'source> {
         debug_assert_eq!(self.cursor, 0);
         if self.source.len() >= 2 && self.source[0] == b'#' && self.source[1] == b'!' {
             let mut end = 2u32;
-            while (end as usize) < self.source.len()
-                && self.source[end as usize] != b'\n'
-                && self.source[end as usize] != b'\r'
-            {
+            // HashbangComment uses SingleLineCommentChars, so all four
+            // ECMAScript line terminators end it: LF, CR, LS, and PS.
+            while (end as usize) < self.source.len() {
+                let byte = self.source[end as usize];
+                if byte == b'\n'
+                    || byte == b'\r'
+                    || (byte == 0xE2 && unicode_separator_len(self.source, end as usize) > 0)
+                {
+                    break;
+                }
                 end += 1;
             }
             self.hashbang = Some(Hashbang {
