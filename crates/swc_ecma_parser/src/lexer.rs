@@ -1114,7 +1114,6 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    #[cold]
     #[inline(never)]
     fn skip_ws_and_comments_slow(
         &mut self,
