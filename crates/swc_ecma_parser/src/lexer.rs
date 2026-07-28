@@ -623,29 +623,33 @@ impl<'a> Lexer<'a> {
         F: Fn(u8) -> bool,
     {
         debug_assert!((self.cursor as usize) <= self.source.len());
+        let source = self.source;
+        let mut pos = self.cursor as usize;
 
-        if (self.cursor as usize) < self.source.len() && self.source[self.cursor as usize] == b'_' {
+        if pos < source.len() && source[pos] == b'_' {
             return Err(LexicalError::NumericSeparatorMisuse);
         }
 
         let mut last_was_separator = false;
 
-        while (self.cursor as usize) < self.source.len() {
-            let c = self.source[self.cursor as usize];
+        while pos < source.len() {
+            let c = source[pos];
             if is_valid_digit(c) {
-                self.cursor += 1;
+                pos += 1;
                 last_was_separator = false;
             } else if c == b'_' {
                 if last_was_separator {
+                    self.cursor = pos as u32;
                     return Err(LexicalError::ConsecutiveNumericSeparators);
                 }
-                self.cursor += 1;
+                pos += 1;
                 last_was_separator = true;
             } else {
                 break;
             }
         }
 
+        self.cursor = pos as u32;
         if last_was_separator {
             return Err(LexicalError::NumericSeparatorMisuse);
         }
@@ -1767,5 +1771,30 @@ mod tests {
             next_template(b"`unterminated"),
             Err(LexicalError::NonTerminatedTemplateLiteral)
         );
+    }
+
+    #[test]
+    fn preserves_numeric_separator_error_positions() {
+        let allocator = Allocator::new();
+        let mut token = Token::eof(0);
+
+        let mut lexer = Lexer::init(&allocator, b"1__2", false, false);
+        assert_eq!(
+            lexer.next_token(&mut token),
+            Err(LexicalError::ConsecutiveNumericSeparators)
+        );
+        assert_eq!(lexer.cursor, 2);
+
+        let mut lexer = Lexer::init(&allocator, b"1_", false, false);
+        assert_eq!(
+            lexer.next_token(&mut token),
+            Err(LexicalError::NumericSeparatorMisuse)
+        );
+        assert_eq!(lexer.cursor, 2);
+
+        let mut lexer = Lexer::init(&allocator, b"123_456", false, false);
+        lexer.next_token(&mut token).unwrap();
+        assert_eq!(token.tag, TokenTag::NumericLiteral);
+        assert_eq!(token.span, Span::new(0, 7));
     }
 }
