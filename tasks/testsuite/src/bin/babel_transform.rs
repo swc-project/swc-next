@@ -420,7 +420,7 @@ fn parse_program(
     if let Some(error) = error {
         return Err(error);
     }
-    program.ok_or_else(|| format!("{stage}: parsing stopped without producing an error diagnostic"))
+    Ok(program)
 }
 
 fn format_diagnostic(stage: &str, diagnostic: &swc_next_ecma_ast::Diagnostic<'_>) -> String {

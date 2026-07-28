@@ -76,18 +76,15 @@ fn run_source(
         (result, diagnostic)
     };
 
-    match parse_result {
-        None => parser_diagnostic
-            .or_else(|| Some("parser: parsing stopped without producing a diagnostic".to_string())),
-        Some(_) if parser_diagnostic.is_some() => parser_diagnostic,
-        Some(program) => {
-            let semantic = analyze(program, &mut ast);
-            semantic.diagnostics().first().map(|diagnostic| {
-                format!(
-                    "semantic: {} at {}..{}",
-                    diagnostic.message, diagnostic.span.start, diagnostic.span.end
-                )
-            })
-        }
+    if parser_diagnostic.is_some() {
+        return parser_diagnostic;
     }
+
+    let semantic = analyze(parse_result, &mut ast);
+    semantic.diagnostics().first().map(|diagnostic| {
+        format!(
+            "semantic: {} at {}..{}",
+            diagnostic.message, diagnostic.span.start, diagnostic.span.end
+        )
+    })
 }

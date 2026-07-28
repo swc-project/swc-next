@@ -11,5 +11,5 @@ fn main() {
         .unwrap_or(include_str!("../files/typescript.js").to_owned());
     let allocator = Allocator::new();
     let mut ast = Ast::new(source.as_bytes(), &allocator);
-    let _root = parse(&mut ast, source.as_bytes(), Options::default()).unwrap();
+    let _root = parse(&mut ast, source.as_bytes(), Options::default());
 }

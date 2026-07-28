@@ -12,7 +12,7 @@ fn main() {
         .unwrap_or(include_str!("../files/typescript.js").to_owned());
     let allocator = Allocator::new();
     let mut ast = Ast::new(source.as_bytes(), &allocator);
-    let root = parse(&mut ast, source.as_bytes(), Options::default()).unwrap();
+    let root = parse(&mut ast, source.as_bytes(), Options::default());
     let semantic = analyze(root, &mut ast);
 
     println!("Top level: {:?}", semantic.top_level_scope_id());

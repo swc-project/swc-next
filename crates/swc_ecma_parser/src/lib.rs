@@ -21,7 +21,7 @@ pub use token::{Token, TokenFlag, TokenTag};
 use swc_next_ecma_ast::{Ast, Program};
 
 /// Parse one source file into `ast`.
-pub fn parse(ast: &mut Ast<'_>, source: &[u8], options: Options) -> Option<Program> {
+pub fn parse(ast: &mut Ast<'_>, source: &[u8], options: Options) -> Program {
     assert_eq!(
         ast.source(),
         source,

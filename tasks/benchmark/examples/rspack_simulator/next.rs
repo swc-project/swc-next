@@ -15,7 +15,7 @@ pub fn run(src: &'static str) {
         src.as_bytes(),
         swc_next_ecma_parser::Options::default(),
     );
-    drop((ast, program.unwrap()));
+    drop((ast, program));
 }
 
 // #[inline(never)]

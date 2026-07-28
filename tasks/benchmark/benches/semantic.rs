@@ -21,7 +21,7 @@ fn bench_semantic(c: &mut Criterion) {
             b.iter_batched(
                 || {
                     let mut ast = Ast::new(source.as_bytes(), &allocator);
-                    let program = parse(&mut ast, source.as_bytes(), Options::default()).unwrap();
+                    let program = parse(&mut ast, source.as_bytes(), Options::default());
                     (program, ast)
                 },
                 |(program, mut ast)| {

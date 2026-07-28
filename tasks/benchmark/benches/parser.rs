@@ -10,7 +10,7 @@ fn bench_new(b: &mut Bencher, src: &'static str) {
     b.iter(|| {
         let allocator = Allocator::new();
         let mut ast = Ast::new(src.as_bytes(), &allocator);
-        parse(&mut ast, src.as_bytes(), Options::default()).unwrap();
+        parse(&mut ast, src.as_bytes(), Options::default());
     });
 }
 

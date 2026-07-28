@@ -731,7 +731,7 @@ impl<'parser, 'a> Parser<'parser, 'a> {
         }
     }
 
-    pub fn parse(&mut self) -> Option<Program> {
+    pub fn parse(&mut self) -> Program {
         self.context = self.source_type.into();
         if self.advance().is_none() {
             self.current_token = Token::eof(0);
@@ -762,7 +762,7 @@ impl<'parser, 'a> Parser<'parser, 'a> {
         if !self.preserve_parens {
             strip_parenthesized_nodes(self.ast);
         }
-        Some(program)
+        program
     }
 
     /// Returns the resolved name for an identifier-like token.

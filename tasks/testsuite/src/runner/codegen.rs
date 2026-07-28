@@ -106,11 +106,6 @@ fn parse_and_codegen(
     if let Some(error) = error {
         return Err(error);
     }
-    let Some(program) = program else {
-        return Err(format!(
-            "{stage}: parsing stopped without producing an error diagnostic"
-        ));
-    };
 
     Ok(print(&allocator, &ast, program, CodegenOptions::default())
         .code

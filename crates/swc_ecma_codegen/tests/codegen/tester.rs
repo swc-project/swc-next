@@ -73,13 +73,7 @@ fn expect_printed_common(
         comments: CommentMode::Attached,
     };
     let mut parser = Parser::init(&mut ast, parse_options);
-    let Some(program) = parser.parse() else {
-        panic!(
-            "failed to parse {}\ndiagnostics: {:#?}",
-            String::from_utf8_lossy(source),
-            parser.diagnostics,
-        );
-    };
+    let program = parser.parse();
     let has_errors = parser
         .diagnostics
         .iter()
