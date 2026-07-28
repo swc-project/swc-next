@@ -117,8 +117,18 @@ impl<'a> Lexer<'a> {
         collect_comments: bool,
     ) -> Self {
         debug_assert!(u32::try_from(source.len()).is_ok());
+        // Large generated files commonly contain enough comments for repeated
+        // growth to show up in parser profiles. Keep the estimate proportional
+        // to the source while bounding the reservation to a small fraction of
+        // its size. Below 2 MiB, the bounded growth cost is lower than the
+        // up-front allocation on comment-light sources.
+        let comment_capacity = if collect_comments && source.len() >= 2 * 1024 * 1024 {
+            source.len() / 256
+        } else {
+            0
+        };
         let mut lexer = Self {
-            comments: ArenaVec::new_in(allocator),
+            comments: ArenaVec::with_capacity_in(comment_capacity, allocator),
             collect_comments,
             source,
             cursor: 0,
@@ -1656,6 +1666,22 @@ mod tests {
         let mut token = Token::eof(0);
         lexer.next_token(&mut token).unwrap();
         token
+    }
+
+    #[test]
+    fn reserves_capacity_only_when_collecting_comments() {
+        let allocator = Allocator::new();
+        let small_source = [b' '; 512];
+
+        let small = Lexer::init(&allocator, &small_source, false, true);
+        assert_eq!(small.comments.capacity(), 0);
+
+        let large_source = vec![b' '; 2 * 1024 * 1024];
+        let collecting = Lexer::init(&allocator, &large_source, false, true);
+        assert_eq!(collecting.comments.capacity(), large_source.len() / 256);
+
+        let ignoring = Lexer::init(&allocator, &large_source, false, false);
+        assert_eq!(ignoring.comments.capacity(), 0);
     }
 
     #[test]
