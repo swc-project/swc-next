@@ -1563,94 +1563,158 @@ pub fn lexical_error_help(error_type: LexicalError) -> &'static str {
     }
 }
 
+const KEYWORD_HASH_MULTIPLIER: u32 = 0x90DF_9C57;
+const KEYWORD_HASH_SHIFT: u32 = 23;
+const EMPTY_KEYWORD_INDEX: u8 = u8::MAX;
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct KeywordCandidate {
+    word: [u8; 11],
+    len: u8,
+    tag: TokenTag,
+}
+
+const fn keyword_candidate(word: &[u8], tag: TokenTag) -> KeywordCandidate {
+    assert!(word.len() >= 2 && word.len() <= 11);
+    let mut padded = [0; 11];
+    let mut index = 0;
+    while index < word.len() {
+        padded[index] = word[index];
+        index += 1;
+    }
+    KeywordCandidate {
+        word: padded,
+        len: word.len() as u8,
+        tag,
+    }
+}
+
+static KEYWORDS: [KeywordCandidate; 85] = [
+    keyword_candidate(b"if", TokenTag::If),
+    keyword_candidate(b"of", TokenTag::Of),
+    keyword_candidate(b"in", TokenTag::In),
+    keyword_candidate(b"do", TokenTag::Do),
+    keyword_candidate(b"as", TokenTag::As),
+    keyword_candidate(b"is", TokenTag::Is),
+    keyword_candidate(b"any", TokenTag::Any),
+    keyword_candidate(b"for", TokenTag::For),
+    keyword_candidate(b"get", TokenTag::Get),
+    keyword_candidate(b"let", TokenTag::Let),
+    keyword_candidate(b"new", TokenTag::New),
+    keyword_candidate(b"out", TokenTag::Out),
+    keyword_candidate(b"set", TokenTag::Set),
+    keyword_candidate(b"try", TokenTag::Try),
+    keyword_candidate(b"var", TokenTag::Var),
+    keyword_candidate(b"case", TokenTag::Case),
+    keyword_candidate(b"this", TokenTag::This),
+    keyword_candidate(b"else", TokenTag::Else),
+    keyword_candidate(b"enum", TokenTag::Enum),
+    keyword_candidate(b"void", TokenTag::Void),
+    keyword_candidate(b"with", TokenTag::With),
+    keyword_candidate(b"null", TokenTag::NullLiteral),
+    keyword_candidate(b"type", TokenTag::Type),
+    keyword_candidate(b"true", TokenTag::True),
+    keyword_candidate(b"from", TokenTag::From),
+    keyword_candidate(b"await", TokenTag::Await),
+    keyword_candidate(b"async", TokenTag::Async),
+    keyword_candidate(b"break", TokenTag::Break),
+    keyword_candidate(b"const", TokenTag::Const),
+    keyword_candidate(b"class", TokenTag::Class),
+    keyword_candidate(b"catch", TokenTag::Catch),
+    keyword_candidate(b"defer", TokenTag::Defer),
+    keyword_candidate(b"false", TokenTag::False),
+    keyword_candidate(b"infer", TokenTag::Infer),
+    keyword_candidate(b"keyof", TokenTag::Keyof),
+    keyword_candidate(b"never", TokenTag::Never),
+    keyword_candidate(b"super", TokenTag::Super),
+    keyword_candidate(b"throw", TokenTag::Throw),
+    keyword_candidate(b"using", TokenTag::Using),
+    keyword_candidate(b"while", TokenTag::While),
+    keyword_candidate(b"yield", TokenTag::Yield),
+    keyword_candidate(b"assert", TokenTag::Assert),
+    keyword_candidate(b"bigint", TokenTag::Bigint),
+    keyword_candidate(b"delete", TokenTag::Delete),
+    keyword_candidate(b"export", TokenTag::Export),
+    keyword_candidate(b"global", TokenTag::Global),
+    keyword_candidate(b"import", TokenTag::Import),
+    keyword_candidate(b"module", TokenTag::Module),
+    keyword_candidate(b"number", TokenTag::Number),
+    keyword_candidate(b"object", TokenTag::Object),
+    keyword_candidate(b"public", TokenTag::Public),
+    keyword_candidate(b"return", TokenTag::Return),
+    keyword_candidate(b"source", TokenTag::Source),
+    keyword_candidate(b"static", TokenTag::Static),
+    keyword_candidate(b"string", TokenTag::String),
+    keyword_candidate(b"switch", TokenTag::Switch),
+    keyword_candidate(b"symbol", TokenTag::Symbol),
+    keyword_candidate(b"typeof", TokenTag::Typeof),
+    keyword_candidate(b"unique", TokenTag::Unique),
+    keyword_candidate(b"boolean", TokenTag::Boolean),
+    keyword_candidate(b"declare", TokenTag::Declare),
+    keyword_candidate(b"default", TokenTag::Default),
+    keyword_candidate(b"extends", TokenTag::Extends),
+    keyword_candidate(b"finally", TokenTag::Finally),
+    keyword_candidate(b"package", TokenTag::Package),
+    keyword_candidate(b"private", TokenTag::Private),
+    keyword_candidate(b"require", TokenTag::Require),
+    keyword_candidate(b"unknown", TokenTag::Unknown),
+    keyword_candidate(b"abstract", TokenTag::Abstract),
+    keyword_candidate(b"continue", TokenTag::Continue),
+    keyword_candidate(b"debugger", TokenTag::Debugger),
+    keyword_candidate(b"function", TokenTag::Function),
+    keyword_candidate(b"readonly", TokenTag::Readonly),
+    keyword_candidate(b"satisfies", TokenTag::Satisfies),
+    keyword_candidate(b"undefined", TokenTag::Undefined),
+    keyword_candidate(b"accessor", TokenTag::Accessor),
+    keyword_candidate(b"interface", TokenTag::Interface),
+    keyword_candidate(b"namespace", TokenTag::Namespace),
+    keyword_candidate(b"protected", TokenTag::Protected),
+    keyword_candidate(b"asserts", TokenTag::Asserts),
+    keyword_candidate(b"intrinsic", TokenTag::Intrinsic),
+    keyword_candidate(b"override", TokenTag::Override),
+    keyword_candidate(b"constructor", TokenTag::Constructor),
+    keyword_candidate(b"implements", TokenTag::Implements),
+    keyword_candidate(b"instanceof", TokenTag::Instanceof),
+];
+
+static KEYWORD_INDEX: [u8; 512] = {
+    let mut table = [EMPTY_KEYWORD_INDEX; 512];
+    let mut index = 0;
+    while index < KEYWORDS.len() {
+        let candidate = &KEYWORDS[index];
+        let len = candidate.len as usize;
+        let key = ((len as u32) << 24)
+            | ((candidate.word[0] as u32) << 16)
+            | ((candidate.word[1] as u32) << 8)
+            | candidate.word[len - 1] as u32;
+        let hash = (key.wrapping_mul(KEYWORD_HASH_MULTIPLIER) >> KEYWORD_HASH_SHIFT) as usize;
+        assert!(table[hash] == EMPTY_KEYWORD_INDEX);
+        table[hash] = index as u8;
+        index += 1;
+    }
+    table
+};
+
 fn get_keyword_type(lexeme: &[u8]) -> TokenTag {
-    match lexeme {
-        b"if" => TokenTag::If,
-        b"of" => TokenTag::Of,
-        b"in" => TokenTag::In,
-        b"do" => TokenTag::Do,
-        b"as" => TokenTag::As,
-        b"is" => TokenTag::Is,
-        b"any" => TokenTag::Any,
-        b"for" => TokenTag::For,
-        b"get" => TokenTag::Get,
-        b"let" => TokenTag::Let,
-        b"new" => TokenTag::New,
-        b"out" => TokenTag::Out,
-        b"set" => TokenTag::Set,
-        b"try" => TokenTag::Try,
-        b"var" => TokenTag::Var,
-        b"case" => TokenTag::Case,
-        b"this" => TokenTag::This,
-        b"else" => TokenTag::Else,
-        b"enum" => TokenTag::Enum,
-        b"void" => TokenTag::Void,
-        b"with" => TokenTag::With,
-        b"null" => TokenTag::NullLiteral,
-        b"type" => TokenTag::Type,
-        b"true" => TokenTag::True,
-        b"from" => TokenTag::From,
-        b"await" => TokenTag::Await,
-        b"async" => TokenTag::Async,
-        b"break" => TokenTag::Break,
-        b"const" => TokenTag::Const,
-        b"class" => TokenTag::Class,
-        b"catch" => TokenTag::Catch,
-        b"defer" => TokenTag::Defer,
-        b"false" => TokenTag::False,
-        b"infer" => TokenTag::Infer,
-        b"keyof" => TokenTag::Keyof,
-        b"never" => TokenTag::Never,
-        b"super" => TokenTag::Super,
-        b"throw" => TokenTag::Throw,
-        b"using" => TokenTag::Using,
-        b"while" => TokenTag::While,
-        b"yield" => TokenTag::Yield,
-        b"assert" => TokenTag::Assert,
-        b"bigint" => TokenTag::Bigint,
-        b"delete" => TokenTag::Delete,
-        b"export" => TokenTag::Export,
-        b"global" => TokenTag::Global,
-        b"import" => TokenTag::Import,
-        b"module" => TokenTag::Module,
-        b"number" => TokenTag::Number,
-        b"object" => TokenTag::Object,
-        b"public" => TokenTag::Public,
-        b"return" => TokenTag::Return,
-        b"source" => TokenTag::Source,
-        b"static" => TokenTag::Static,
-        b"string" => TokenTag::String,
-        b"switch" => TokenTag::Switch,
-        b"symbol" => TokenTag::Symbol,
-        b"typeof" => TokenTag::Typeof,
-        b"unique" => TokenTag::Unique,
-        b"boolean" => TokenTag::Boolean,
-        b"declare" => TokenTag::Declare,
-        b"default" => TokenTag::Default,
-        b"extends" => TokenTag::Extends,
-        b"finally" => TokenTag::Finally,
-        b"package" => TokenTag::Package,
-        b"private" => TokenTag::Private,
-        b"require" => TokenTag::Require,
-        b"unknown" => TokenTag::Unknown,
-        b"abstract" => TokenTag::Abstract,
-        b"continue" => TokenTag::Continue,
-        b"debugger" => TokenTag::Debugger,
-        b"function" => TokenTag::Function,
-        b"readonly" => TokenTag::Readonly,
-        b"satisfies" => TokenTag::Satisfies,
-        b"undefined" => TokenTag::Undefined,
-        b"accessor" => TokenTag::Accessor,
-        b"interface" => TokenTag::Interface,
-        b"namespace" => TokenTag::Namespace,
-        b"protected" => TokenTag::Protected,
-        b"asserts" => TokenTag::Asserts,
-        b"intrinsic" => TokenTag::Intrinsic,
-        b"override" => TokenTag::Override,
-        b"constructor" => TokenTag::Constructor,
-        b"implements" => TokenTag::Implements,
-        b"instanceof" => TokenTag::Instanceof,
-        _ => TokenTag::Identifier,
+    let len = lexeme.len();
+    if !(2..=11).contains(&len) {
+        return TokenTag::Identifier;
+    }
+    let key = ((len as u32) << 24)
+        | ((lexeme[0] as u32) << 16)
+        | ((lexeme[1] as u32) << 8)
+        | lexeme[len - 1] as u32;
+    let hash = (key.wrapping_mul(KEYWORD_HASH_MULTIPLIER) >> KEYWORD_HASH_SHIFT) as usize;
+    let index = KEYWORD_INDEX[hash];
+    if index == EMPTY_KEYWORD_INDEX {
+        return TokenTag::Identifier;
+    }
+    let candidate = &KEYWORDS[index as usize];
+    if len == candidate.len as usize && lexeme == &candidate.word[..len] {
+        candidate.tag
+    } else {
+        TokenTag::Identifier
     }
 }
 
@@ -1729,6 +1793,50 @@ mod tests {
         let token = next_after_trivia(b"<!-- comment", false);
         assert_eq!(token.tag, TokenTag::LessThan);
         assert_eq!(token.span, Span::new(0, 1));
+    }
+
+    #[test]
+    fn compact_keyword_lookup_requires_exact_matches() {
+        assert_eq!(std::mem::size_of::<KeywordCandidate>(), 16);
+        assert_eq!(
+            KEYWORD_INDEX
+                .iter()
+                .filter(|&&index| index != EMPTY_KEYWORD_INDEX)
+                .count(),
+            KEYWORDS.len()
+        );
+
+        for candidate in KEYWORDS {
+            let len = candidate.len as usize;
+            let word = &candidate.word[..len];
+            assert_eq!(get_keyword_type(word), candidate.tag, "{word:?}");
+
+            let mut near_miss = word.to_vec();
+            near_miss.push(b'_');
+            assert_eq!(
+                get_keyword_type(&near_miss),
+                TokenTag::Identifier,
+                "{near_miss:?}"
+            );
+
+            if len > 3 {
+                let mut same_key = word.to_vec();
+                same_key[2] = if same_key[2] == b'z' {
+                    b'y'
+                } else {
+                    same_key[2] + 1
+                };
+                assert_eq!(
+                    get_keyword_type(&same_key),
+                    TokenTag::Identifier,
+                    "{same_key:?}"
+                );
+            }
+        }
+
+        assert_eq!(get_keyword_type(b""), TokenTag::Identifier);
+        assert_eq!(get_keyword_type(b"a"), TokenTag::Identifier);
+        assert_eq!(get_keyword_type(b"identifier12"), TokenTag::Identifier);
     }
 
     #[test]
