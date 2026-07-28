@@ -11007,11 +11007,18 @@ impl<'parser, 'a> Parser<'parser, 'a> {
         Some(self.ast.label_identifier(token.span, name))
     }
 
+    #[inline]
     fn validate_identifier(&mut self, token: Token, as_what: &str) {
         if token.tag == TokenTag::Identifier {
             return;
         }
 
+        self.validate_identifier_slow(token, as_what);
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn validate_identifier_slow(&mut self, token: Token, as_what: &str) {
         if !token.tag.is_identifier_like() {
             self.report_expected(
                 token.span,
@@ -11690,5 +11697,45 @@ fn strip_parenthesized_nodes(ast: &mut Ast<'_>) {
             inner = parenthesized.expression(ast);
         }
         ast.set_data(node, inner.node_id());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use swc_next_allocator::Allocator;
+
+    use super::*;
+
+    #[test]
+    fn validates_identifier_fast_and_diagnostic_paths() {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new(b"name", &allocator);
+        let mut parser = Parser::init(&mut ast, Options::default());
+        parser.validate_identifier(
+            Token {
+                span: Span::new(0, 4),
+                tag: TokenTag::Identifier,
+                flags: 0,
+            },
+            "an identifier",
+        );
+        assert!(parser.diagnostics.is_empty());
+
+        let allocator = Allocator::new();
+        let mut ast = Ast::new(b"if", &allocator);
+        let mut parser = Parser::init(&mut ast, Options::default());
+        parser.validate_identifier(
+            Token {
+                span: Span::new(0, 2),
+                tag: TokenTag::If,
+                flags: 0,
+            },
+            "an identifier",
+        );
+        assert_eq!(parser.diagnostics.len(), 1);
+        assert_eq!(
+            parser.diagnostics[0].message,
+            "'if' is reserved and cannot be used as an identifier"
+        );
     }
 }
