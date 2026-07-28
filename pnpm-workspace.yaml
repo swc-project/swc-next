@@ -2,5 +2,6 @@ packages:
   - napi/*
 
 catalog:
+  '@napi-rs/cli': ^3.7.4
 
 catalogMode: prefer

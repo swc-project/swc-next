@@ -8,12 +8,15 @@ name                  = "swc_next_core_napi"
 repository.workspace  = true
 version               = "0.1.0"
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
-napi                    = { workspace = true }
-napi-derive             = { workspace = true }
-swc_next_allocator      = { workspace = true }
-swc_next_ecma_ast       = { workspace = true }
-swc_next_ecma_parser    = { workspace = true }
+napi                 = { workspace = true }
+napi-derive          = { workspace = true }
+swc_next_allocator   = { workspace = true }
+swc_next_ecma_ast    = { workspace = true }
+swc_next_ecma_parser = { workspace = true }
 
 [build-dependencies]
 napi-build = { workspace = true }
