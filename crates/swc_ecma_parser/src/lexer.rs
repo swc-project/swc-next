@@ -337,13 +337,33 @@ impl<'a> Lexer<'a> {
         tail_tag: TokenTag,
         middle_tag: TokenTag,
     ) -> Result<Token, LexicalError> {
+        const SCALAR_PREFIX_LEN: usize = 16;
+
         loop {
             let cursor = self.cursor as usize;
             let source = &self.source[cursor..];
-            let special = memchr3(b'\\', b'`', b'$', source);
+            let prefix_end = source.len().min(SCALAR_PREFIX_LEN);
+            let mut prefix_len = 0;
+            let mut prefix_has_carriage_return = false;
+            while prefix_len < prefix_end {
+                match source[prefix_len] {
+                    b'\\' | b'`' | b'$' => break,
+                    b'\r' => prefix_has_carriage_return = true,
+                    _ => {}
+                }
+                prefix_len += 1;
+            }
+
+            let special = if prefix_len < prefix_end {
+                Some(prefix_len)
+            } else {
+                memchr3(b'\\', b'`', b'$', &source[prefix_end..]).map(|offset| prefix_end + offset)
+            };
             let plain_len = special.unwrap_or(source.len());
             let has_carriage_return = !self.has_token_flag(TokenFlag::Escaped)
-                && memchr(b'\r', &source[..plain_len]).is_some();
+                && (prefix_has_carriage_return
+                    || (plain_len > prefix_end
+                        && memchr(b'\r', &source[prefix_end..plain_len]).is_some()));
 
             self.cursor += plain_len as u32;
             if has_carriage_return {
@@ -1737,6 +1757,17 @@ mod tests {
         let token = next_template(b"`escaped \\` value`").unwrap();
         assert_eq!(token.tag, TokenTag::NoSubstitutionTemplate);
         assert!(token.is_escaped());
+    }
+
+    #[test]
+    fn scans_template_scalar_prefix_boundary() {
+        let token = next_template(b"`123456789012345`").unwrap();
+        assert_eq!(token.tag, TokenTag::NoSubstitutionTemplate);
+        assert_eq!(token.span, Span::new(0, 17));
+
+        let token = next_template(b"`1234567890123456`").unwrap();
+        assert_eq!(token.tag, TokenTag::NoSubstitutionTemplate);
+        assert_eq!(token.span, Span::new(0, 18));
     }
 
     #[test]
