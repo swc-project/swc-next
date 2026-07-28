@@ -271,40 +271,51 @@ impl<'a> Lexer<'a> {
         let start = self.cursor;
         let quote = self.source[start as usize];
         debug_assert!(quote == b'"' || quote == b'\'');
-        let mut pos = self.cursor + 1;
+        let mut pos = self.cursor as usize + 1;
 
         if self.mode == LexerMode::Normal {
-            while (pos as usize) < self.source.len() {
-                let c = self.source[pos as usize];
-                if c == quote {
-                    pos += 1;
-                    self.cursor = pos;
-                    return Ok(self.create_token(TokenTag::StringLiteral, start, pos));
-                }
-                if c == b'\\' {
-                    self.cursor = pos;
-                    self.consume_escape(EscapeContext::String)?;
-                    pos = self.cursor;
-                    continue;
-                }
-                if c == b'\n' || c == b'\r' {
-                    self.cursor = pos;
+            loop {
+                let remaining = &self.source[pos..];
+                let special = memchr3(quote, b'\\', b'\n', remaining);
+                let plain_len = special.unwrap_or(remaining.len());
+
+                if let Some(carriage_return) = memchr(b'\r', &remaining[..plain_len]) {
+                    self.cursor = (pos + carriage_return) as u32;
                     return Err(LexicalError::UnterminatedString);
                 }
-                pos += 1;
+                pos += plain_len;
+
+                let Some(_) = special else {
+                    break;
+                };
+                match self.source[pos] {
+                    c if c == quote => {
+                        let end = (pos + 1) as u32;
+                        self.cursor = end;
+                        return Ok(self.create_token(TokenTag::StringLiteral, start, end));
+                    }
+                    b'\\' => {
+                        self.cursor = pos as u32;
+                        self.consume_escape(EscapeContext::String)?;
+                        pos = self.cursor as usize;
+                    }
+                    b'\n' => {
+                        self.cursor = pos as u32;
+                        return Err(LexicalError::UnterminatedString);
+                    }
+                    _ => unreachable!(),
+                }
             }
         } else {
-            while (pos as usize) < self.source.len() {
-                if self.source[pos as usize] == quote {
-                    pos += 1;
-                    self.cursor = pos;
-                    return Ok(self.create_token(TokenTag::StringLiteral, start, pos));
-                }
-                pos += 1;
+            if let Some(end) = memchr(quote, &self.source[pos..]) {
+                let end = (pos + end + 1) as u32;
+                self.cursor = end;
+                return Ok(self.create_token(TokenTag::StringLiteral, start, end));
             }
+            pos = self.source.len();
         }
 
-        self.cursor = pos;
+        self.cursor = pos as u32;
         Err(LexicalError::UnterminatedString)
     }
 
@@ -1650,6 +1661,15 @@ mod tests {
         Ok(token)
     }
 
+    fn next_string(source: &[u8], mode: LexerMode) -> (Result<Token, LexicalError>, u32) {
+        let allocator = Allocator::new();
+        let mut lexer = Lexer::init(&allocator, source, false, false);
+        lexer.mode = mode;
+        let mut token = Token::eof(0);
+        let result = lexer.next_token(&mut token).map(|()| token);
+        (result, lexer.cursor)
+    }
+
     fn next_after_trivia(source: &[u8], allow_html_like_comments: bool) -> Token {
         let allocator = Allocator::new();
         let mut lexer = Lexer::init(&allocator, source, allow_html_like_comments, false);
@@ -1696,6 +1716,27 @@ mod tests {
             assert_eq!(token.span, Span::new(start, start + 4));
             assert!(token.has_line_terminator_before());
         }
+    }
+
+    #[test]
+    fn scans_string_special_bytes() {
+        let (token, cursor) = next_string(br#""ordinary""#, LexerMode::Normal);
+        assert_eq!(token.unwrap().span, Span::new(0, 10));
+        assert_eq!(cursor, 10);
+
+        let (token, cursor) = next_string(br#""escaped \" quote""#, LexerMode::Normal);
+        assert!(token.unwrap().is_escaped());
+        assert_eq!(cursor, 18);
+
+        for source in [b"\"line\nnext\"".as_slice(), b"\"line\rnext\""] {
+            let (token, cursor) = next_string(source, LexerMode::Normal);
+            assert_eq!(token, Err(LexicalError::UnterminatedString));
+            assert_eq!(cursor, 5);
+        }
+
+        let (token, cursor) = next_string(b"\"line\nnext\"", LexerMode::JsxTag);
+        assert_eq!(token.unwrap().span, Span::new(0, 11));
+        assert_eq!(cursor, 11);
     }
 
     #[test]
