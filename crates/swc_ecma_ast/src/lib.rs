@@ -3,6 +3,7 @@ mod ast;
 mod comment;
 mod derive;
 mod diagnostic;
+pub mod ffi;
 mod node_id;
 mod semantic;
 mod strings;

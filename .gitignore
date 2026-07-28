@@ -5,3 +5,8 @@ input.*
 profile.json
 local
 tasks/testsuite/fixtures
+
+node_modules
+*.node
+*.wasm
+dist

@@ -1,5 +1,5 @@
 [workspace]
-members  = ["crates/*", "tasks/ast_tools", "tasks/benchmark", "tasks/testsuite"]
+members  = ["crates/*", "napi/*", "tasks/ast_tools", "tasks/benchmark", "tasks/testsuite"]
 resolver = "3"
 
 [workspace.package]
@@ -33,6 +33,11 @@ swc_core = { version = "71.0.3", features = [
     "__parser",
     "__ecma_transforms",
 ] }
+
+# NAPI-RS
+napi        = "3.12.0"
+napi-build  = "2.4.0"
+napi-derive = "3.6.1"
 
 # Ast tool
 convert_case = "0.11.0"
