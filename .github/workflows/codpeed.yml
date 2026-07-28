@@ -29,11 +29,11 @@ jobs:
           tool: cargo-codspeed
 
       - name: Build benchmark
-        run: cargo codspeed build --bench ${{ matrix.bench }} --features codspeed
+        run: cargo codspeed build --bench ${{ matrix.bench }} --features codspeed --measurement-mode simulation,walltime
 
       - name: Run the benchmarks
         uses: CodSpeedHQ/action@d872884a306dd4853acf0f584f4b706cf0cc72a2
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
-          mode: simulation
+          mode: simulation,walltime
           run: cargo codspeed run
