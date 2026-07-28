@@ -11093,10 +11093,10 @@ impl<'parser, 'a> Parser<'parser, 'a> {
     ///
     /// Reports an error when an escaped keyword is consumed in a keyword
     /// position.
+    #[inline]
     pub fn advance(&mut self) -> Option<()> {
         self.check_escaped_keyword();
-        self.prev_token_end = self.current_token.span.end;
-        self.next_token()
+        self.advance_without_escape_check()
     }
 
     #[inline]
@@ -11110,11 +11110,13 @@ impl<'parser, 'a> Parser<'parser, 'a> {
 
     /// Advances without checking whether the current token is an escaped
     /// keyword.
+    #[inline]
     pub fn advance_without_escape_check(&mut self) -> Option<()> {
         self.prev_token_end = self.current_token.span.end;
         self.next_token()
     }
 
+    #[inline]
     pub fn check_escaped_keyword(&mut self) {
         let current_token = self.current_token;
         if !current_token.is_escaped() {
@@ -11125,6 +11127,8 @@ impl<'parser, 'a> Parser<'parser, 'a> {
         }
     }
 
+    #[cold]
+    #[inline(never)]
     pub fn report_escaped_keyword(&mut self, span: Span) {
         self.diagnostics.push(Diagnostic {
             severity: Severity::Error,
@@ -11705,6 +11709,7 @@ mod tests {
     use swc_next_allocator::Allocator;
 
     use super::*;
+    use crate::token::{TokenFlag, flag_mask};
 
     #[test]
     fn validates_identifier_fast_and_diagnostic_paths() {
@@ -11736,6 +11741,26 @@ mod tests {
         assert_eq!(
             parser.diagnostics[0].message,
             "'if' is reserved and cannot be used as an identifier"
+        );
+    }
+
+    #[test]
+    fn reports_escaped_keyword_on_advance() {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new(b"var", &allocator);
+        let mut parser = Parser::init(&mut ast, Options::default());
+        parser.current_token = Token {
+            span: Span::new(0, 3),
+            tag: TokenTag::Var,
+            flags: flag_mask(TokenFlag::Escaped),
+        };
+
+        parser.advance().unwrap();
+
+        assert_eq!(parser.diagnostics.len(), 1);
+        assert_eq!(
+            parser.diagnostics[0].message,
+            "Keywords cannot contain escape characters"
         );
     }
 }
