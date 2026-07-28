@@ -11110,6 +11110,7 @@ impl<'parser, 'a> Parser<'parser, 'a> {
 
     /// Advances without checking whether the current token is an escaped
     /// keyword.
+    #[inline]
     pub fn advance_without_escape_check(&mut self) -> Option<()> {
         self.prev_token_end = self.current_token.span.end;
         self.next_token()
