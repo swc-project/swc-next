@@ -26,7 +26,7 @@ Thanks to:
 
 - The [yuku](https://github.com/yuku-toolchain/yuku), which provides the prototype of ESTree AST design, parser and semantic analysis.
 - The [zig](https://github.com/ziglang/zig) compiler and the [rowan](https://github.com/rust-analyzer/rowan), which inspire the flattening AST design.
-- The [oxc](https://github.com/oxc-project/oxc), which inspires the ast-tools / test harness design.
+- The [oxc](https://github.com/oxc-project/oxc), which provides high-performance arena data structures, and inspires the ast-tools / test harness design.
 - The [esbuild](https://github.com/evanw/esbuild), which provides the prototype of Code generator.
 
 ## License
