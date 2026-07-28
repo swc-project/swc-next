@@ -2,11 +2,17 @@
   "name": "@swc-next/core",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src-js/index.js",
   "type": "module",
+  "types": "./src-js/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./src-js/index.js",
+      "types": "./src-js/index.d.ts"
+    }
+  },
   "scripts": {
-    "build": "napi build --esm --platform --js binding.js --dts binding.d.ts --output-dir src-js",
-    "build:release": "pnpm build:rs --release"
+    "build": "napi build --esm --platform --js binding.js --dts binding.d.ts --output-dir src-js"
   },
   "keywords": [],
   "author": "",
