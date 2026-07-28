@@ -1095,10 +1095,26 @@ impl<'a> Lexer<'a> {
             }
 
             self.cursor = pos as u32;
-            if pos == src.len()
-                || !matches!(src[pos], b'/' | b'<' | b'-' | 0x80..=0xFF)
-                || !self.skip_ws_and_comments_slow(at_start_of_source)?
-            {
+            if pos == src.len() {
+                return Ok(());
+            }
+
+            let has_slow_trivia = match src[pos] {
+                b'/' => matches!(src.get(pos + 1).copied(), Some(b'/' | b'*')),
+                b'<' => {
+                    self.allow_html_like_comments && src.get(pos + 1..pos + 4) == Some(&b"!--"[..])
+                }
+                b'-' => {
+                    let can_be_html_close_comment =
+                        at_start_of_source || self.has_token_flag(TokenFlag::LineTerminatorBefore);
+                    self.allow_html_like_comments
+                        && can_be_html_close_comment
+                        && src.get(pos + 1..pos + 3) == Some(&b"->"[..])
+                }
+                0x80..=0xFF => true,
+                _ => false,
+            };
+            if !has_slow_trivia || !self.skip_ws_and_comments_slow(at_start_of_source)? {
                 return Ok(());
             }
         }
@@ -1696,6 +1712,23 @@ mod tests {
             assert_eq!(token.span, Span::new(start, start + 4));
             assert!(token.has_line_terminator_before());
         }
+    }
+
+    #[test]
+    fn keeps_non_trivia_operator_prefixes() {
+        for (source, tag) in [
+            (b"/value".as_slice(), TokenTag::Slash),
+            (b"<value", TokenTag::LessThan),
+            (b"-value", TokenTag::Minus),
+        ] {
+            let token = next_after_trivia(source, true);
+            assert_eq!(token.tag, tag);
+            assert_eq!(token.span, Span::new(0, 1));
+        }
+
+        let token = next_after_trivia(b"<!-- comment", false);
+        assert_eq!(token.tag, TokenTag::LessThan);
+        assert_eq!(token.span, Span::new(0, 1));
     }
 
     #[test]
