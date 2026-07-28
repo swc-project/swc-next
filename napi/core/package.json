@@ -11,13 +11,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "^11.12.0",
-      "onFail": "download"
-    }
-  },
   "napi": {
     "binaryName": "swc-next",
     "packageName": "@swc-next/binding",
