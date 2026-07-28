@@ -1548,92 +1548,113 @@ pub fn lexical_error_help(error_type: LexicalError) -> &'static str {
 }
 
 fn get_keyword_type(lexeme: &[u8]) -> TokenTag {
-    match lexeme {
-        b"if" => TokenTag::If,
-        b"of" => TokenTag::Of,
-        b"in" => TokenTag::In,
-        b"do" => TokenTag::Do,
-        b"as" => TokenTag::As,
-        b"is" => TokenTag::Is,
-        b"any" => TokenTag::Any,
-        b"for" => TokenTag::For,
-        b"get" => TokenTag::Get,
-        b"let" => TokenTag::Let,
-        b"new" => TokenTag::New,
-        b"out" => TokenTag::Out,
-        b"set" => TokenTag::Set,
-        b"try" => TokenTag::Try,
-        b"var" => TokenTag::Var,
-        b"case" => TokenTag::Case,
-        b"this" => TokenTag::This,
-        b"else" => TokenTag::Else,
-        b"enum" => TokenTag::Enum,
-        b"void" => TokenTag::Void,
-        b"with" => TokenTag::With,
-        b"null" => TokenTag::NullLiteral,
-        b"type" => TokenTag::Type,
-        b"true" => TokenTag::True,
-        b"from" => TokenTag::From,
-        b"await" => TokenTag::Await,
-        b"async" => TokenTag::Async,
-        b"break" => TokenTag::Break,
-        b"const" => TokenTag::Const,
-        b"class" => TokenTag::Class,
-        b"catch" => TokenTag::Catch,
-        b"defer" => TokenTag::Defer,
-        b"false" => TokenTag::False,
-        b"infer" => TokenTag::Infer,
-        b"keyof" => TokenTag::Keyof,
-        b"never" => TokenTag::Never,
-        b"super" => TokenTag::Super,
-        b"throw" => TokenTag::Throw,
-        b"using" => TokenTag::Using,
-        b"while" => TokenTag::While,
-        b"yield" => TokenTag::Yield,
-        b"assert" => TokenTag::Assert,
-        b"bigint" => TokenTag::Bigint,
-        b"delete" => TokenTag::Delete,
-        b"export" => TokenTag::Export,
-        b"global" => TokenTag::Global,
-        b"import" => TokenTag::Import,
-        b"module" => TokenTag::Module,
-        b"number" => TokenTag::Number,
-        b"object" => TokenTag::Object,
-        b"public" => TokenTag::Public,
-        b"return" => TokenTag::Return,
-        b"source" => TokenTag::Source,
-        b"static" => TokenTag::Static,
-        b"string" => TokenTag::String,
-        b"switch" => TokenTag::Switch,
-        b"symbol" => TokenTag::Symbol,
-        b"typeof" => TokenTag::Typeof,
-        b"unique" => TokenTag::Unique,
-        b"boolean" => TokenTag::Boolean,
-        b"declare" => TokenTag::Declare,
-        b"default" => TokenTag::Default,
-        b"extends" => TokenTag::Extends,
-        b"finally" => TokenTag::Finally,
-        b"package" => TokenTag::Package,
-        b"private" => TokenTag::Private,
-        b"require" => TokenTag::Require,
-        b"unknown" => TokenTag::Unknown,
-        b"abstract" => TokenTag::Abstract,
-        b"continue" => TokenTag::Continue,
-        b"debugger" => TokenTag::Debugger,
-        b"function" => TokenTag::Function,
-        b"readonly" => TokenTag::Readonly,
-        b"satisfies" => TokenTag::Satisfies,
-        b"undefined" => TokenTag::Undefined,
-        b"accessor" => TokenTag::Accessor,
-        b"interface" => TokenTag::Interface,
-        b"namespace" => TokenTag::Namespace,
-        b"protected" => TokenTag::Protected,
-        b"asserts" => TokenTag::Asserts,
-        b"intrinsic" => TokenTag::Intrinsic,
-        b"override" => TokenTag::Override,
-        b"constructor" => TokenTag::Constructor,
-        b"implements" => TokenTag::Implements,
-        b"instanceof" => TokenTag::Instanceof,
+    let Some((&first, rest)) = lexeme.split_first() else {
+        return TokenTag::Identifier;
+    };
+    let last = rest.last().copied().unwrap_or(first);
+
+    macro_rules! keyword {
+        ($text:literal, $tag:ident) => {
+            if lexeme == $text {
+                TokenTag::$tag
+            } else {
+                TokenTag::Identifier
+            }
+        };
+    }
+
+    match (lexeme.len(), first, last) {
+        (2, b'i', b'f') => keyword!(b"if", If),
+        (2, b'o', b'f') => keyword!(b"of", Of),
+        (2, b'i', b'n') => keyword!(b"in", In),
+        (2, b'd', b'o') => keyword!(b"do", Do),
+        (2, b'a', b's') => keyword!(b"as", As),
+        (2, b'i', b's') => keyword!(b"is", Is),
+        (3, b'a', b'y') => keyword!(b"any", Any),
+        (3, b'f', b'r') => keyword!(b"for", For),
+        (3, b'g', b't') => keyword!(b"get", Get),
+        (3, b'l', b't') => keyword!(b"let", Let),
+        (3, b'n', b'w') => keyword!(b"new", New),
+        (3, b'o', b't') => keyword!(b"out", Out),
+        (3, b's', b't') => keyword!(b"set", Set),
+        (3, b't', b'y') => keyword!(b"try", Try),
+        (3, b'v', b'r') => keyword!(b"var", Var),
+        (4, b'c', b'e') => keyword!(b"case", Case),
+        (4, b't', b's') => keyword!(b"this", This),
+        (4, b'e', b'e') => keyword!(b"else", Else),
+        (4, b'e', b'm') => keyword!(b"enum", Enum),
+        (4, b'v', b'd') => keyword!(b"void", Void),
+        (4, b'w', b'h') => keyword!(b"with", With),
+        (4, b'n', b'l') => keyword!(b"null", NullLiteral),
+        (4, b't', b'e') => match lexeme {
+            b"type" => TokenTag::Type,
+            b"true" => TokenTag::True,
+            _ => TokenTag::Identifier,
+        },
+        (4, b'f', b'm') => keyword!(b"from", From),
+        (5, b'a', b't') => keyword!(b"await", Await),
+        (5, b'a', b'c') => keyword!(b"async", Async),
+        (5, b'b', b'k') => keyword!(b"break", Break),
+        (5, b'c', b't') => keyword!(b"const", Const),
+        (5, b'c', b's') => keyword!(b"class", Class),
+        (5, b'c', b'h') => keyword!(b"catch", Catch),
+        (5, b'd', b'r') => keyword!(b"defer", Defer),
+        (5, b'f', b'e') => keyword!(b"false", False),
+        (5, b'i', b'r') => keyword!(b"infer", Infer),
+        (5, b'k', b'f') => keyword!(b"keyof", Keyof),
+        (5, b'n', b'r') => keyword!(b"never", Never),
+        (5, b's', b'r') => keyword!(b"super", Super),
+        (5, b't', b'w') => keyword!(b"throw", Throw),
+        (5, b'u', b'g') => keyword!(b"using", Using),
+        (5, b'w', b'e') => keyword!(b"while", While),
+        (5, b'y', b'd') => keyword!(b"yield", Yield),
+        (6, b'a', b't') => keyword!(b"assert", Assert),
+        (6, b'b', b't') => keyword!(b"bigint", Bigint),
+        (6, b'd', b'e') => keyword!(b"delete", Delete),
+        (6, b'e', b't') => keyword!(b"export", Export),
+        (6, b'g', b'l') => keyword!(b"global", Global),
+        (6, b'i', b't') => keyword!(b"import", Import),
+        (6, b'm', b'e') => keyword!(b"module", Module),
+        (6, b'n', b'r') => keyword!(b"number", Number),
+        (6, b'o', b't') => keyword!(b"object", Object),
+        (6, b'p', b'c') => keyword!(b"public", Public),
+        (6, b'r', b'n') => keyword!(b"return", Return),
+        (6, b's', b'e') => keyword!(b"source", Source),
+        (6, b's', b'c') => keyword!(b"static", Static),
+        (6, b's', b'g') => keyword!(b"string", String),
+        (6, b's', b'h') => keyword!(b"switch", Switch),
+        (6, b's', b'l') => keyword!(b"symbol", Symbol),
+        (6, b't', b'f') => keyword!(b"typeof", Typeof),
+        (6, b'u', b'e') => keyword!(b"unique", Unique),
+        (7, b'b', b'n') => keyword!(b"boolean", Boolean),
+        (7, b'd', b'e') => keyword!(b"declare", Declare),
+        (7, b'd', b't') => keyword!(b"default", Default),
+        (7, b'e', b's') => keyword!(b"extends", Extends),
+        (7, b'f', b'y') => keyword!(b"finally", Finally),
+        (7, b'p', b'e') => match lexeme {
+            b"package" => TokenTag::Package,
+            b"private" => TokenTag::Private,
+            _ => TokenTag::Identifier,
+        },
+        (7, b'r', b'e') => keyword!(b"require", Require),
+        (7, b'u', b'n') => keyword!(b"unknown", Unknown),
+        (8, b'a', b't') => keyword!(b"abstract", Abstract),
+        (8, b'c', b'e') => keyword!(b"continue", Continue),
+        (8, b'd', b'r') => keyword!(b"debugger", Debugger),
+        (8, b'f', b'n') => keyword!(b"function", Function),
+        (8, b'r', b'y') => keyword!(b"readonly", Readonly),
+        (9, b's', b's') => keyword!(b"satisfies", Satisfies),
+        (9, b'u', b'd') => keyword!(b"undefined", Undefined),
+        (8, b'a', b'r') => keyword!(b"accessor", Accessor),
+        (9, b'i', b'e') => keyword!(b"interface", Interface),
+        (9, b'n', b'e') => keyword!(b"namespace", Namespace),
+        (9, b'p', b'd') => keyword!(b"protected", Protected),
+        (7, b'a', b's') => keyword!(b"asserts", Asserts),
+        (9, b'i', b'c') => keyword!(b"intrinsic", Intrinsic),
+        (8, b'o', b'e') => keyword!(b"override", Override),
+        (11, b'c', b'r') => keyword!(b"constructor", Constructor),
+        (10, b'i', b's') => keyword!(b"implements", Implements),
+        (10, b'i', b'f') => keyword!(b"instanceof", Instanceof),
         _ => TokenTag::Identifier,
     }
 }
@@ -1656,6 +1677,25 @@ mod tests {
         let mut token = Token::eof(0);
         lexer.next_token(&mut token).unwrap();
         token
+    }
+
+    #[test]
+    fn distinguishes_keywords_from_matching_identifier_shapes() {
+        assert_eq!(get_keyword_type(b"type"), TokenTag::Type);
+        assert_eq!(get_keyword_type(b"true"), TokenTag::True);
+        assert_eq!(get_keyword_type(b"package"), TokenTag::Package);
+        assert_eq!(get_keyword_type(b"private"), TokenTag::Private);
+
+        for identifier in [
+            b"tyxe".as_slice(),
+            b"trxe",
+            b"passage",
+            b"primate",
+            b"constructorName",
+            b"",
+        ] {
+            assert_eq!(get_keyword_type(identifier), TokenTag::Identifier);
+        }
     }
 
     #[test]
