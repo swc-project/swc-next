@@ -97,22 +97,24 @@ export function decode(buffer, source) {
   const byteOffset = buffer.byteOffset ?? 0;
   const byteLength = buffer.byteLength;
   const bytes = new Uint8Array(arrayBuffer, byteOffset, byteLength);
+  const _u32 = new Uint32Array(arrayBuffer, byteOffset, byteLength >> 2);
   const _dv = new DataView(arrayBuffer, byteOffset, byteLength);
-  const nodeCount = _dv.getUint32(0, true);
-  const extraCount = _dv.getUint32(4, true);
-  const stringPoolLength = _dv.getUint32(8, true);
-  const sourceLength = _dv.getUint32(12, true);
-  const programIndex = _dv.getUint32(28, true);
-  const isTs = (_dv.getUint32(32, true) & 1) !== 0;
+  const nodeCount = _u32[0];
+  const extraCount = _u32[1];
+  const stringPoolLength = _u32[2];
+  const sourceLength = _u32[3];
+  const programIndex = _u32[7];
+  const isTs = (_u32[8] & 1) !== 0;
 
   const spans = HEADER_SIZE;
   const kinds = spans + nodeCount * 8;
   const payloads = (kinds + nodeCount + 3) & ~3;
   const extra = payloads + nodeCount * 16;
   const strings = extra + extraCount * 8;
-  const positions = buildPosMap(source, sourceLength);
+  const positions =
+    source.length === sourceLength ? null : buildPosMap(source, sourceLength);
 
-  const pos = byte => positions[byte];
+  const pos = positions === null ? byte => byte : byte => positions[byte];
   const str = (start, end) => {
     if (start === end) return "";
     if (start < sourceLength) return source.slice(pos(start), pos(end));
@@ -131,7 +133,7 @@ export function decode(buffer, source) {
   const nodeArray = (start, end, holes) => {
     const result = new Array(end - start);
     for (let i = start; i < end; i++) {
-      const index = _dv.getUint32(extra + i * 8, true);
+      const index = _u32[(extra >> 2) + i * 2];
       result[i - start] = holes && index === NULL ? null : node(index);
     }
     return result;
@@ -142,18 +144,18 @@ export function decode(buffer, source) {
     const cached = cache[index];
     if (cached !== undefined) return cached;
     const span = spans + index * 8;
-    const start = pos(_dv.getUint32(span, true));
-    const end = pos(_dv.getUint32(span + 4, true));
+    const start = pos(_u32[span >> 2]);
+    const end = pos(_u32[(span >> 2) + 1]);
     const payload = payloads + index * 16;
     let result;
     switch (bytes[kinds + index]) {
       case 0: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
           sourceType: enumValue("SourceType", _dv.getUint8(extra + (extraId + 0) * 8)),
-          directives: nodeArray(_dv.getUint32(payload + 4, true), _dv.getUint32(payload + 4 + 4, true), false),
-          body: nodeArray(_dv.getUint32(extra + (extraId + 1) * 8, true), _dv.getUint32(extra + (extraId + 1) * 8 + 4, true), false),
-          hashbang: optionalNode(_dv.getUint32(payload + 0, true)),
+          directives: nodeArray(_u32[(payload + 4) >> 2], _u32[(payload + 4 + 4) >> 2], false),
+          body: nodeArray(_u32[(extra + (extraId + 1) * 8) >> 2], _u32[(extra + (extraId + 1) * 8 + 4) >> 2], false),
+          hashbang: optionalNode(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("Program", f, start, end);
         break;
@@ -172,8 +174,8 @@ export function decode(buffer, source) {
       }
       case 3: {
         const f = {
-          value: str(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true)),
-          raw: str(_dv.getUint32(payload + 8, true), _dv.getUint32(payload + 8 + 4, true)),
+          value: str(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2]),
+          raw: str(_u32[(payload + 8) >> 2], _u32[(payload + 8 + 4) >> 2]),
         };
         result = makeNode("StringLiteral", f, start, end);
         break;
@@ -181,14 +183,14 @@ export function decode(buffer, source) {
       case 4: {
         const f = {
           kind: enumValue("NumericLiteralKind", _dv.getUint8(payload + 8)),
-          raw: str(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true)),
+          raw: str(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2]),
         };
         result = makeNode("NumericLiteral", f, start, end);
         break;
       }
       case 5: {
         const f = {
-          raw: str(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true)),
+          raw: str(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2]),
         };
         result = makeNode("BigIntLiteral", f, start, end);
         break;
@@ -208,25 +210,25 @@ export function decode(buffer, source) {
       }
       case 8: {
         const f = {
-          pattern: str(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true)),
-          flags: str(_dv.getUint32(payload + 8, true), _dv.getUint32(payload + 8 + 4, true)),
+          pattern: str(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2]),
+          flags: str(_u32[(payload + 8) >> 2], _u32[(payload + 8 + 4) >> 2]),
         };
         result = makeNode("RegExpLiteral", f, start, end);
         break;
       }
       case 9: {
         const f = {
-          quasis: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
-          expressions: nodeArray(_dv.getUint32(payload + 8, true), _dv.getUint32(payload + 8 + 4, true), false),
+          quasis: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
+          expressions: nodeArray(_u32[(payload + 8) >> 2], _u32[(payload + 8 + 4) >> 2], false),
         };
         result = makeNode("TemplateLiteral", f, start, end);
         break;
       }
       case 10: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
           cooked: str(_dv.getUint32(payload + 2, true), _dv.getUint32(payload + 2 + 4, true)),
-          raw: str(_dv.getUint32(extra + (extraId + 0) * 8, true), _dv.getUint32(extra + (extraId + 0) * 8 + 4, true)),
+          raw: str(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2]),
           tail: _dv.getUint8(payload + 0) !== 0,
           isCookedUndefined: _dv.getUint8(payload + 1) !== 0,
         };
@@ -235,23 +237,23 @@ export function decode(buffer, source) {
       }
       case 11: {
         const f = {
-          name: str(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true)),
+          name: str(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2]),
         };
         result = makeNode("IdentifierReference", f, start, end);
         break;
       }
       case 12: {
         const f = {
-          name: str(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true)),
+          name: str(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2]),
         };
         result = makeNode("PrivateIdentifier", f, start, end);
         break;
       }
       case 13: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
-          name: str(_dv.getUint32(extra + (extraId + 0) * 8, true), _dv.getUint32(extra + (extraId + 0) * 8 + 4, true)),
-          decorators: nodeArray(_dv.getUint32(extra + (extraId + 1) * 8, true), _dv.getUint32(extra + (extraId + 1) * 8 + 4, true), false),
+          name: str(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2]),
+          decorators: nodeArray(_u32[(extra + (extraId + 1) * 8) >> 2], _u32[(extra + (extraId + 1) * 8 + 4) >> 2], false),
           typeAnnotation: optionalNode(_dv.getUint32(payload + 1, true)),
           optional: _dv.getUint8(payload + 0) !== 0,
         };
@@ -260,35 +262,35 @@ export function decode(buffer, source) {
       }
       case 14: {
         const f = {
-          name: str(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true)),
+          name: str(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2]),
         };
         result = makeNode("IdentifierName", f, start, end);
         break;
       }
       case 15: {
         const f = {
-          name: str(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true)),
+          name: str(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2]),
         };
         result = makeNode("LabelIdentifier", f, start, end);
         break;
       }
       case 16: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
           left: node(_dv.getUint32(payload + 1, true)),
           right: node(_dv.getUint32(payload + 5, true)),
-          decorators: nodeArray(_dv.getUint32(extra + (extraId + 0) * 8, true), _dv.getUint32(extra + (extraId + 0) * 8 + 4, true), false),
-          typeAnnotation: optionalNode(_dv.getUint32(extra + (extraId + 1) * 8, true)),
+          decorators: nodeArray(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
+          typeAnnotation: optionalNode(_u32[(extra + (extraId + 1) * 8) >> 2]),
           optional: _dv.getUint8(payload + 0) !== 0,
         };
         result = makeNode("AssignmentPattern", f, start, end);
         break;
       }
       case 17: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
           argument: node(_dv.getUint32(payload + 1, true)),
-          decorators: nodeArray(_dv.getUint32(extra + (extraId + 0) * 8, true), _dv.getUint32(extra + (extraId + 0) * 8 + 4, true), false),
+          decorators: nodeArray(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
           typeAnnotation: optionalNode(_dv.getUint32(payload + 5, true)),
           optional: _dv.getUint8(payload + 0) !== 0,
         };
@@ -296,11 +298,11 @@ export function decode(buffer, source) {
         break;
       }
       case 18: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
-          elements: nodeArray(_dv.getUint32(extra + (extraId + 0) * 8, true), _dv.getUint32(extra + (extraId + 0) * 8 + 4, true), true),
+          elements: nodeArray(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2], true),
           rest: optionalNode(_dv.getUint32(payload + 1, true)),
-          decorators: nodeArray(_dv.getUint32(extra + (extraId + 1) * 8, true), _dv.getUint32(extra + (extraId + 1) * 8 + 4, true), false),
+          decorators: nodeArray(_u32[(extra + (extraId + 1) * 8) >> 2], _u32[(extra + (extraId + 1) * 8 + 4) >> 2], false),
           typeAnnotation: optionalNode(_dv.getUint32(payload + 5, true)),
           optional: _dv.getUint8(payload + 0) !== 0,
         };
@@ -308,11 +310,11 @@ export function decode(buffer, source) {
         break;
       }
       case 19: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
-          properties: nodeArray(_dv.getUint32(extra + (extraId + 0) * 8, true), _dv.getUint32(extra + (extraId + 0) * 8 + 4, true), false),
+          properties: nodeArray(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
           rest: optionalNode(_dv.getUint32(payload + 1, true)),
-          decorators: nodeArray(_dv.getUint32(extra + (extraId + 1) * 8, true), _dv.getUint32(extra + (extraId + 1) * 8 + 4, true), false),
+          decorators: nodeArray(_u32[(extra + (extraId + 1) * 8) >> 2], _u32[(extra + (extraId + 1) * 8 + 4) >> 2], false),
           typeAnnotation: optionalNode(_dv.getUint32(payload + 5, true)),
           optional: _dv.getUint8(payload + 0) !== 0,
         };
@@ -321,8 +323,8 @@ export function decode(buffer, source) {
       }
       case 20: {
         const f = {
-          key: node(_dv.getUint32(payload + 0, true)),
-          value: node(_dv.getUint32(payload + 4, true)),
+          key: node(_u32[(payload + 0) >> 2]),
+          value: node(_u32[(payload + 4) >> 2]),
           shorthand: _dv.getUint8(payload + 8) !== 0,
           computed: _dv.getUint8(payload + 9) !== 0,
         };
@@ -331,8 +333,8 @@ export function decode(buffer, source) {
       }
       case 21: {
         const f = {
-          left: node(_dv.getUint32(payload + 0, true)),
-          right: node(_dv.getUint32(payload + 4, true)),
+          left: node(_u32[(payload + 0) >> 2]),
+          right: node(_u32[(payload + 4) >> 2]),
           operator: enumValue("BinaryOperator", _dv.getUint8(payload + 8)),
         };
         result = makeNode("BinaryExpression", f, start, end);
@@ -340,8 +342,8 @@ export function decode(buffer, source) {
       }
       case 22: {
         const f = {
-          left: node(_dv.getUint32(payload + 0, true)),
-          right: node(_dv.getUint32(payload + 4, true)),
+          left: node(_u32[(payload + 0) >> 2]),
+          right: node(_u32[(payload + 4) >> 2]),
           operator: enumValue("LogicalOperator", _dv.getUint8(payload + 8)),
         };
         result = makeNode("LogicalExpression", f, start, end);
@@ -349,16 +351,16 @@ export function decode(buffer, source) {
       }
       case 23: {
         const f = {
-          test: node(_dv.getUint32(payload + 0, true)),
-          consequent: node(_dv.getUint32(payload + 4, true)),
-          alternate: node(_dv.getUint32(payload + 8, true)),
+          test: node(_u32[(payload + 0) >> 2]),
+          consequent: node(_u32[(payload + 4) >> 2]),
+          alternate: node(_u32[(payload + 8) >> 2]),
         };
         result = makeNode("ConditionalExpression", f, start, end);
         break;
       }
       case 24: {
         const f = {
-          argument: node(_dv.getUint32(payload + 0, true)),
+          argument: node(_u32[(payload + 0) >> 2]),
           operator: enumValue("UnaryOperator", _dv.getUint8(payload + 4)),
         };
         result = makeNode("UnaryExpression", f, start, end);
@@ -366,7 +368,7 @@ export function decode(buffer, source) {
       }
       case 25: {
         const f = {
-          argument: node(_dv.getUint32(payload + 0, true)),
+          argument: node(_u32[(payload + 0) >> 2]),
           operator: enumValue("UpdateOperator", _dv.getUint8(payload + 4)),
           prefix: _dv.getUint8(payload + 5) !== 0,
         };
@@ -375,8 +377,8 @@ export function decode(buffer, source) {
       }
       case 26: {
         const f = {
-          left: node(_dv.getUint32(payload + 0, true)),
-          right: node(_dv.getUint32(payload + 4, true)),
+          left: node(_u32[(payload + 0) >> 2]),
+          right: node(_u32[(payload + 4) >> 2]),
           operator: enumValue("AssignmentOperator", _dv.getUint8(payload + 8)),
         };
         result = makeNode("AssignmentExpression", f, start, end);
@@ -385,7 +387,7 @@ export function decode(buffer, source) {
       case 27: {
         const f = {
           kind: enumValue("VariableKind", _dv.getUint8(payload + 8)),
-          declarations: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
+          declarations: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
           declare: _dv.getUint8(payload + 9) !== 0,
         };
         result = makeNode("VariableDeclaration", f, start, end);
@@ -393,8 +395,8 @@ export function decode(buffer, source) {
       }
       case 28: {
         const f = {
-          id: node(_dv.getUint32(payload + 0, true)),
-          init: optionalNode(_dv.getUint32(payload + 4, true)),
+          id: node(_u32[(payload + 0) >> 2]),
+          init: optionalNode(_u32[(payload + 4) >> 2]),
           definite: _dv.getUint8(payload + 8) !== 0,
         };
         result = makeNode("VariableDeclarator", f, start, end);
@@ -402,53 +404,53 @@ export function decode(buffer, source) {
       }
       case 29: {
         const f = {
-          test: node(_dv.getUint32(payload + 0, true)),
-          consequent: node(_dv.getUint32(payload + 4, true)),
-          alternate: optionalNode(_dv.getUint32(payload + 8, true)),
+          test: node(_u32[(payload + 0) >> 2]),
+          consequent: node(_u32[(payload + 4) >> 2]),
+          alternate: optionalNode(_u32[(payload + 8) >> 2]),
         };
         result = makeNode("IfStatement", f, start, end);
         break;
       }
       case 30: {
         const f = {
-          discriminant: node(_dv.getUint32(payload + 8, true)),
-          cases: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
+          discriminant: node(_u32[(payload + 8) >> 2]),
+          cases: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
         };
         result = makeNode("SwitchStatement", f, start, end);
         break;
       }
       case 31: {
         const f = {
-          test: optionalNode(_dv.getUint32(payload + 8, true)),
-          consequent: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
+          test: optionalNode(_u32[(payload + 8) >> 2]),
+          consequent: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
         };
         result = makeNode("SwitchCase", f, start, end);
         break;
       }
       case 32: {
         const f = {
-          init: optionalNode(_dv.getUint32(payload + 0, true)),
-          test: optionalNode(_dv.getUint32(payload + 4, true)),
-          update: optionalNode(_dv.getUint32(payload + 8, true)),
-          body: node(_dv.getUint32(payload + 12, true)),
+          init: optionalNode(_u32[(payload + 0) >> 2]),
+          test: optionalNode(_u32[(payload + 4) >> 2]),
+          update: optionalNode(_u32[(payload + 8) >> 2]),
+          body: node(_u32[(payload + 12) >> 2]),
         };
         result = makeNode("ForStatement", f, start, end);
         break;
       }
       case 33: {
         const f = {
-          left: node(_dv.getUint32(payload + 0, true)),
-          right: node(_dv.getUint32(payload + 4, true)),
-          body: node(_dv.getUint32(payload + 8, true)),
+          left: node(_u32[(payload + 0) >> 2]),
+          right: node(_u32[(payload + 4) >> 2]),
+          body: node(_u32[(payload + 8) >> 2]),
         };
         result = makeNode("ForInStatement", f, start, end);
         break;
       }
       case 34: {
         const f = {
-          left: node(_dv.getUint32(payload + 0, true)),
-          right: node(_dv.getUint32(payload + 4, true)),
-          body: node(_dv.getUint32(payload + 8, true)),
+          left: node(_u32[(payload + 0) >> 2]),
+          right: node(_u32[(payload + 4) >> 2]),
+          body: node(_u32[(payload + 8) >> 2]),
           await: _dv.getUint8(payload + 12) !== 0,
         };
         result = makeNode("ForOfStatement", f, start, end);
@@ -456,60 +458,60 @@ export function decode(buffer, source) {
       }
       case 35: {
         const f = {
-          block: node(_dv.getUint32(payload + 0, true)),
-          handler: optionalNode(_dv.getUint32(payload + 4, true)),
-          finalizer: optionalNode(_dv.getUint32(payload + 8, true)),
+          block: node(_u32[(payload + 0) >> 2]),
+          handler: optionalNode(_u32[(payload + 4) >> 2]),
+          finalizer: optionalNode(_u32[(payload + 8) >> 2]),
         };
         result = makeNode("TryStatement", f, start, end);
         break;
       }
       case 36: {
         const f = {
-          param: optionalNode(_dv.getUint32(payload + 0, true)),
-          body: node(_dv.getUint32(payload + 4, true)),
+          param: optionalNode(_u32[(payload + 0) >> 2]),
+          body: node(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("CatchClause", f, start, end);
         break;
       }
       case 37: {
         const f = {
-          label: optionalNode(_dv.getUint32(payload + 0, true)),
+          label: optionalNode(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("BreakStatement", f, start, end);
         break;
       }
       case 38: {
         const f = {
-          label: optionalNode(_dv.getUint32(payload + 0, true)),
+          label: optionalNode(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("ContinueStatement", f, start, end);
         break;
       }
       case 39: {
         const f = {
-          label: node(_dv.getUint32(payload + 0, true)),
-          body: node(_dv.getUint32(payload + 4, true)),
+          label: node(_u32[(payload + 0) >> 2]),
+          body: node(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("LabeledStatement", f, start, end);
         break;
       }
       case 40: {
         const f = {
-          expression: node(_dv.getUint32(payload + 0, true)),
+          expression: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("ExpressionStatement", f, start, end);
         break;
       }
       case 41: {
         const f = {
-          argument: optionalNode(_dv.getUint32(payload + 0, true)),
+          argument: optionalNode(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("ReturnStatement", f, start, end);
         break;
       }
       case 42: {
         const f = {
-          argument: node(_dv.getUint32(payload + 0, true)),
+          argument: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("ThrowStatement", f, start, end);
         break;
@@ -528,30 +530,30 @@ export function decode(buffer, source) {
       }
       case 45: {
         const f = {
-          expression: node(_dv.getUint32(payload + 8, true)),
-          value: str(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true)),
+          expression: node(_u32[(payload + 8) >> 2]),
+          value: str(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2]),
         };
         result = makeNode("Directive", f, start, end);
         break;
       }
       case 46: {
         const f = {
-          expression: node(_dv.getUint32(payload + 0, true)),
+          expression: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("Decorator", f, start, end);
         break;
       }
       case 47: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
           classType: enumValue("ClassType", _dv.getUint8(payload + 0)),
-          decorators: nodeArray(_dv.getUint32(extra + (extraId + 0) * 8, true), _dv.getUint32(extra + (extraId + 0) * 8 + 4, true), false),
+          decorators: nodeArray(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
           id: optionalNode(_dv.getUint32(payload + 3, true)),
           superClass: optionalNode(_dv.getUint32(payload + 7, true)),
-          body: node(_dv.getUint32(extra + (extraId + 1) * 8, true)),
-          typeParameters: optionalNode(_dv.getUint32(extra + (extraId + 2) * 8, true)),
-          superTypeArguments: optionalNode(_dv.getUint32(extra + (extraId + 3) * 8, true)),
-          implements: nodeArray(_dv.getUint32(extra + (extraId + 4) * 8, true), _dv.getUint32(extra + (extraId + 4) * 8 + 4, true), false),
+          body: node(_u32[(extra + (extraId + 1) * 8) >> 2]),
+          typeParameters: optionalNode(_u32[(extra + (extraId + 2) * 8) >> 2]),
+          superTypeArguments: optionalNode(_u32[(extra + (extraId + 3) * 8) >> 2]),
+          implements: nodeArray(_u32[(extra + (extraId + 4) * 8) >> 2], _u32[(extra + (extraId + 4) * 8 + 4) >> 2], false),
           abstract: _dv.getUint8(payload + 1) !== 0,
           declare: _dv.getUint8(payload + 2) !== 0,
         };
@@ -560,17 +562,17 @@ export function decode(buffer, source) {
       }
       case 48: {
         const f = {
-          body: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
+          body: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
         };
         result = makeNode("ClassBody", f, start, end);
         break;
       }
       case 49: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
-          decorators: nodeArray(_dv.getUint32(extra + (extraId + 0) * 8, true), _dv.getUint32(extra + (extraId + 0) * 8 + 4, true), false),
+          decorators: nodeArray(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
           key: node(_dv.getUint32(payload + 7, true)),
-          value: node(_dv.getUint32(extra + (extraId + 1) * 8, true)),
+          value: node(_u32[(extra + (extraId + 1) * 8) >> 2]),
           kind: enumValue("MethodDefinitionKind", _dv.getUint8(payload + 0)),
           computed: _dv.getUint8(payload + 1) !== 0,
           static: _dv.getUint8(payload + 2) !== 0,
@@ -583,15 +585,15 @@ export function decode(buffer, source) {
         break;
       }
       case 50: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
-          decorators: nodeArray(_dv.getUint32(extra + (extraId + 0) * 8, true), _dv.getUint32(extra + (extraId + 0) * 8 + 4, true), false),
-          key: node(_dv.getUint32(extra + (extraId + 1) * 8, true)),
-          value: optionalNode(_dv.getUint32(extra + (extraId + 2) * 8, true)),
+          decorators: nodeArray(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
+          key: node(_u32[(extra + (extraId + 1) * 8) >> 2]),
+          value: optionalNode(_u32[(extra + (extraId + 2) * 8) >> 2]),
           computed: _dv.getUint8(payload + 0) !== 0,
           static: _dv.getUint8(payload + 1) !== 0,
           accessor: _dv.getUint8(payload + 2) !== 0,
-          typeAnnotation: optionalNode(_dv.getUint32(extra + (extraId + 3) * 8, true)),
+          typeAnnotation: optionalNode(_u32[(extra + (extraId + 3) * 8) >> 2]),
           declare: _dv.getUint8(payload + 3) !== 0,
           override: _dv.getUint8(payload + 4) !== 0,
           optional: _dv.getUint8(payload + 5) !== 0,
@@ -605,69 +607,69 @@ export function decode(buffer, source) {
       }
       case 51: {
         const f = {
-          body: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
+          body: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
         };
         result = makeNode("StaticBlock", f, start, end);
         break;
       }
       case 52: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
           functionType: enumValue("FunctionType", _dv.getUint8(payload + 0)),
           id: optionalNode(_dv.getUint32(payload + 3, true)),
           generator: _dv.getUint8(payload + 1) !== 0,
           async: _dv.getUint8(payload + 2) !== 0,
           params: node(_dv.getUint32(payload + 7, true)),
-          body: node(_dv.getUint32(extra + (extraId + 0) * 8, true)),
-          typeParameters: optionalNode(_dv.getUint32(extra + (extraId + 1) * 8, true)),
-          returnType: optionalNode(_dv.getUint32(extra + (extraId + 2) * 8, true)),
+          body: node(_u32[(extra + (extraId + 0) * 8) >> 2]),
+          typeParameters: optionalNode(_u32[(extra + (extraId + 1) * 8) >> 2]),
+          returnType: optionalNode(_u32[(extra + (extraId + 2) * 8) >> 2]),
         };
         result = makeNode("Function", f, start, end);
         break;
       }
       case 53: {
         const f = {
-          directives: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
-          body: nodeArray(_dv.getUint32(payload + 8, true), _dv.getUint32(payload + 8 + 4, true), false),
+          directives: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
+          body: nodeArray(_u32[(payload + 8) >> 2], _u32[(payload + 8 + 4) >> 2], false),
         };
         result = makeNode("FunctionBody", f, start, end);
         break;
       }
       case 54: {
         const f = {
-          body: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
+          body: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
         };
         result = makeNode("BlockStatement", f, start, end);
         break;
       }
       case 55: {
         const f = {
-          test: node(_dv.getUint32(payload + 0, true)),
-          body: node(_dv.getUint32(payload + 4, true)),
+          test: node(_u32[(payload + 0) >> 2]),
+          body: node(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("WhileStatement", f, start, end);
         break;
       }
       case 56: {
         const f = {
-          body: node(_dv.getUint32(payload + 0, true)),
-          test: node(_dv.getUint32(payload + 4, true)),
+          body: node(_u32[(payload + 0) >> 2]),
+          test: node(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("DoWhileStatement", f, start, end);
         break;
       }
       case 57: {
         const f = {
-          object: node(_dv.getUint32(payload + 0, true)),
-          body: node(_dv.getUint32(payload + 4, true)),
+          object: node(_u32[(payload + 0) >> 2]),
+          body: node(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("WithStatement", f, start, end);
         break;
       }
       case 58: {
         const f = {
-          items: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
-          rest: optionalNode(_dv.getUint32(payload + 8, true)),
+          items: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
+          rest: optionalNode(_u32[(payload + 8) >> 2]),
           kind: enumValue("FormalParameterKind", _dv.getUint8(payload + 12)),
         };
         result = makeNode("FormalParameters", f, start, end);
@@ -675,36 +677,36 @@ export function decode(buffer, source) {
       }
       case 59: {
         const f = {
-          pattern: node(_dv.getUint32(payload + 0, true)),
+          pattern: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("FormalParameter", f, start, end);
         break;
       }
       case 60: {
         const f = {
-          elements: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), true),
+          elements: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], true),
         };
         result = makeNode("ArrayExpression", f, start, end);
         break;
       }
       case 61: {
         const f = {
-          properties: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
+          properties: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
         };
         result = makeNode("ObjectExpression", f, start, end);
         break;
       }
       case 62: {
         const f = {
-          argument: node(_dv.getUint32(payload + 0, true)),
+          argument: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("SpreadElement", f, start, end);
         break;
       }
       case 63: {
         const f = {
-          key: node(_dv.getUint32(payload + 0, true)),
-          value: node(_dv.getUint32(payload + 4, true)),
+          key: node(_u32[(payload + 0) >> 2]),
+          value: node(_u32[(payload + 4) >> 2]),
           kind: enumValue("PropertyKind", _dv.getUint8(payload + 8)),
           method: _dv.getUint8(payload + 9) !== 0,
           shorthand: _dv.getUint8(payload + 10) !== 0,
@@ -715,35 +717,35 @@ export function decode(buffer, source) {
       }
       case 64: {
         const f = {
-          expression: node(_dv.getUint32(payload + 0, true)),
+          expression: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("ParenthesizedExpression", f, start, end);
         break;
       }
       case 65: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
           expression: _dv.getUint8(payload + 0) !== 0,
           async: _dv.getUint8(payload + 1) !== 0,
           params: node(_dv.getUint32(payload + 2, true)),
           body: node(_dv.getUint32(payload + 6, true)),
-          typeParameters: optionalNode(_dv.getUint32(extra + (extraId + 0) * 8, true)),
-          returnType: optionalNode(_dv.getUint32(extra + (extraId + 1) * 8, true)),
+          typeParameters: optionalNode(_u32[(extra + (extraId + 0) * 8) >> 2]),
+          returnType: optionalNode(_u32[(extra + (extraId + 1) * 8) >> 2]),
         };
         result = makeNode("ArrowFunctionExpression", f, start, end);
         break;
       }
       case 66: {
         const f = {
-          expressions: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
+          expressions: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
         };
         result = makeNode("SequenceExpression", f, start, end);
         break;
       }
       case 67: {
         const f = {
-          object: node(_dv.getUint32(payload + 0, true)),
-          property: node(_dv.getUint32(payload + 4, true)),
+          object: node(_u32[(payload + 0) >> 2]),
+          property: node(_u32[(payload + 4) >> 2]),
           computed: _dv.getUint8(payload + 8) !== 0,
           optional: _dv.getUint8(payload + 9) !== 0,
         };
@@ -751,10 +753,10 @@ export function decode(buffer, source) {
         break;
       }
       case 68: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
           callee: node(_dv.getUint32(payload + 1, true)),
-          arguments: nodeArray(_dv.getUint32(extra + (extraId + 0) * 8, true), _dv.getUint32(extra + (extraId + 0) * 8 + 4, true), false),
+          arguments: nodeArray(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
           optional: _dv.getUint8(payload + 0) !== 0,
           typeArguments: optionalNode(_dv.getUint32(payload + 5, true)),
         };
@@ -763,39 +765,39 @@ export function decode(buffer, source) {
       }
       case 69: {
         const f = {
-          expression: node(_dv.getUint32(payload + 0, true)),
+          expression: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("ChainExpression", f, start, end);
         break;
       }
       case 70: {
         const f = {
-          tag: node(_dv.getUint32(payload + 0, true)),
-          quasi: node(_dv.getUint32(payload + 4, true)),
-          typeArguments: optionalNode(_dv.getUint32(payload + 8, true)),
+          tag: node(_u32[(payload + 0) >> 2]),
+          quasi: node(_u32[(payload + 4) >> 2]),
+          typeArguments: optionalNode(_u32[(payload + 8) >> 2]),
         };
         result = makeNode("TaggedTemplateExpression", f, start, end);
         break;
       }
       case 71: {
         const f = {
-          callee: node(_dv.getUint32(payload + 8, true)),
-          arguments: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
-          typeArguments: optionalNode(_dv.getUint32(payload + 12, true)),
+          callee: node(_u32[(payload + 8) >> 2]),
+          arguments: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
+          typeArguments: optionalNode(_u32[(payload + 12) >> 2]),
         };
         result = makeNode("NewExpression", f, start, end);
         break;
       }
       case 72: {
         const f = {
-          argument: node(_dv.getUint32(payload + 0, true)),
+          argument: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("AwaitExpression", f, start, end);
         break;
       }
       case 73: {
         const f = {
-          argument: optionalNode(_dv.getUint32(payload + 0, true)),
+          argument: optionalNode(_u32[(payload + 0) >> 2]),
           delegate: _dv.getUint8(payload + 4) !== 0,
         };
         result = makeNode("YieldExpression", f, start, end);
@@ -803,28 +805,28 @@ export function decode(buffer, source) {
       }
       case 74: {
         const f = {
-          meta: node(_dv.getUint32(payload + 0, true)),
-          property: node(_dv.getUint32(payload + 4, true)),
+          meta: node(_u32[(payload + 0) >> 2]),
+          property: node(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("MetaProperty", f, start, end);
         break;
       }
       case 75: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
-          source: node(_dv.getUint32(payload + 0, true)),
-          options: optionalNode(_dv.getUint32(payload + 4, true)),
+          source: node(_u32[(payload + 0) >> 2]),
+          options: optionalNode(_u32[(payload + 4) >> 2]),
           phase: optionalEnum("ImportPhase", _dv.getUint8(extra + (extraId + 0) * 8)),
         };
         result = makeNode("ImportExpression", f, start, end);
         break;
       }
       case 76: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
-          specifiers: nodeArray(_dv.getUint32(extra + (extraId + 0) * 8, true), _dv.getUint32(extra + (extraId + 0) * 8 + 4, true), false),
+          specifiers: nodeArray(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
           source: node(_dv.getUint32(payload + 1, true)),
-          attributes: nodeArray(_dv.getUint32(extra + (extraId + 1) * 8, true), _dv.getUint32(extra + (extraId + 1) * 8 + 4, true), false),
+          attributes: nodeArray(_u32[(extra + (extraId + 1) * 8) >> 2], _u32[(extra + (extraId + 1) * 8 + 4) >> 2], false),
           phase: optionalEnum("ImportPhase", _dv.getUint8(extra + (extraId + 2) * 8)),
           importKind: enumValue("ImportOrExportKind", _dv.getUint8(payload + 0)),
         };
@@ -833,8 +835,8 @@ export function decode(buffer, source) {
       }
       case 77: {
         const f = {
-          imported: node(_dv.getUint32(payload + 0, true)),
-          local: node(_dv.getUint32(payload + 4, true)),
+          imported: node(_u32[(payload + 0) >> 2]),
+          local: node(_u32[(payload + 4) >> 2]),
           importKind: enumValue("ImportOrExportKind", _dv.getUint8(payload + 8)),
         };
         result = makeNode("ImportSpecifier", f, start, end);
@@ -842,33 +844,33 @@ export function decode(buffer, source) {
       }
       case 78: {
         const f = {
-          local: node(_dv.getUint32(payload + 0, true)),
+          local: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("ImportDefaultSpecifier", f, start, end);
         break;
       }
       case 79: {
         const f = {
-          local: node(_dv.getUint32(payload + 0, true)),
+          local: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("ImportNamespaceSpecifier", f, start, end);
         break;
       }
       case 80: {
         const f = {
-          key: node(_dv.getUint32(payload + 0, true)),
-          value: node(_dv.getUint32(payload + 4, true)),
+          key: node(_u32[(payload + 0) >> 2]),
+          value: node(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("ImportAttribute", f, start, end);
         break;
       }
       case 81: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
           declaration: optionalNode(_dv.getUint32(payload + 1, true)),
-          specifiers: nodeArray(_dv.getUint32(extra + (extraId + 0) * 8, true), _dv.getUint32(extra + (extraId + 0) * 8 + 4, true), false),
+          specifiers: nodeArray(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
           source: optionalNode(_dv.getUint32(payload + 5, true)),
-          attributes: nodeArray(_dv.getUint32(extra + (extraId + 1) * 8, true), _dv.getUint32(extra + (extraId + 1) * 8 + 4, true), false),
+          attributes: nodeArray(_u32[(extra + (extraId + 1) * 8) >> 2], _u32[(extra + (extraId + 1) * 8 + 4) >> 2], false),
           exportKind: enumValue("ImportOrExportKind", _dv.getUint8(payload + 0)),
         };
         result = makeNode("ExportNamedDeclaration", f, start, end);
@@ -876,17 +878,17 @@ export function decode(buffer, source) {
       }
       case 82: {
         const f = {
-          declaration: node(_dv.getUint32(payload + 0, true)),
+          declaration: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("ExportDefaultDeclaration", f, start, end);
         break;
       }
       case 83: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
           exported: optionalNode(_dv.getUint32(payload + 1, true)),
           source: node(_dv.getUint32(payload + 5, true)),
-          attributes: nodeArray(_dv.getUint32(extra + (extraId + 0) * 8, true), _dv.getUint32(extra + (extraId + 0) * 8 + 4, true), false),
+          attributes: nodeArray(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
           exportKind: enumValue("ImportOrExportKind", _dv.getUint8(payload + 0)),
         };
         result = makeNode("ExportAllDeclaration", f, start, end);
@@ -894,8 +896,8 @@ export function decode(buffer, source) {
       }
       case 84: {
         const f = {
-          local: node(_dv.getUint32(payload + 0, true)),
-          exported: node(_dv.getUint32(payload + 4, true)),
+          local: node(_u32[(payload + 0) >> 2]),
+          exported: node(_u32[(payload + 4) >> 2]),
           exportKind: enumValue("ImportOrExportKind", _dv.getUint8(payload + 8)),
         };
         result = makeNode("ExportSpecifier", f, start, end);
@@ -903,31 +905,31 @@ export function decode(buffer, source) {
       }
       case 85: {
         const f = {
-          value: str(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true)),
+          value: str(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2]),
         };
         result = makeNode("Hashbang", f, start, end);
         break;
       }
       case 86: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
           id: optionalNode(_dv.getUint32(payload + 3, true)),
           generator: _dv.getUint8(payload + 0) !== 0,
           async: _dv.getUint8(payload + 1) !== 0,
           declare: _dv.getUint8(payload + 2) !== 0,
           params: node(_dv.getUint32(payload + 7, true)),
-          typeParameters: optionalNode(_dv.getUint32(extra + (extraId + 0) * 8, true)),
-          returnType: optionalNode(_dv.getUint32(extra + (extraId + 1) * 8, true)),
+          typeParameters: optionalNode(_u32[(extra + (extraId + 0) * 8) >> 2]),
+          returnType: optionalNode(_u32[(extra + (extraId + 1) * 8) >> 2]),
         };
         result = makeNode("TsFunction", f, start, end);
         break;
       }
       case 87: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
-          decorators: nodeArray(_dv.getUint32(extra + (extraId + 0) * 8, true), _dv.getUint32(extra + (extraId + 0) * 8 + 4, true), false),
+          decorators: nodeArray(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
           key: node(_dv.getUint32(payload + 7, true)),
-          value: node(_dv.getUint32(extra + (extraId + 1) * 8, true)),
+          value: node(_u32[(extra + (extraId + 1) * 8) >> 2]),
           kind: enumValue("MethodDefinitionKind", _dv.getUint8(payload + 0)),
           computed: _dv.getUint8(payload + 1) !== 0,
           static: _dv.getUint8(payload + 2) !== 0,
@@ -941,7 +943,7 @@ export function decode(buffer, source) {
       }
       case 88: {
         const f = {
-          typeAnnotation: node(_dv.getUint32(payload + 0, true)),
+          typeAnnotation: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("TsTypeAnnotation", f, start, end);
         break;
@@ -1032,43 +1034,43 @@ export function decode(buffer, source) {
       }
       case 103: {
         const f = {
-          typeName: node(_dv.getUint32(payload + 0, true)),
-          typeArguments: optionalNode(_dv.getUint32(payload + 4, true)),
+          typeName: node(_u32[(payload + 0) >> 2]),
+          typeArguments: optionalNode(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("TsTypeReference", f, start, end);
         break;
       }
       case 104: {
         const f = {
-          left: node(_dv.getUint32(payload + 0, true)),
-          right: node(_dv.getUint32(payload + 4, true)),
+          left: node(_u32[(payload + 0) >> 2]),
+          right: node(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("TsQualifiedName", f, start, end);
         break;
       }
       case 105: {
         const f = {
-          exprName: node(_dv.getUint32(payload + 0, true)),
-          typeArguments: optionalNode(_dv.getUint32(payload + 4, true)),
+          exprName: node(_u32[(payload + 0) >> 2]),
+          typeArguments: optionalNode(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("TsTypeQuery", f, start, end);
         break;
       }
       case 106: {
         const f = {
-          source: node(_dv.getUint32(payload + 0, true)),
-          options: optionalNode(_dv.getUint32(payload + 4, true)),
-          qualifier: optionalNode(_dv.getUint32(payload + 8, true)),
-          typeArguments: optionalNode(_dv.getUint32(payload + 12, true)),
+          source: node(_u32[(payload + 0) >> 2]),
+          options: optionalNode(_u32[(payload + 4) >> 2]),
+          qualifier: optionalNode(_u32[(payload + 8) >> 2]),
+          typeArguments: optionalNode(_u32[(payload + 12) >> 2]),
         };
         result = makeNode("TsImportType", f, start, end);
         break;
       }
       case 107: {
         const f = {
-          name: node(_dv.getUint32(payload + 0, true)),
-          constraint: optionalNode(_dv.getUint32(payload + 4, true)),
-          default: optionalNode(_dv.getUint32(payload + 8, true)),
+          name: node(_u32[(payload + 0) >> 2]),
+          constraint: optionalNode(_u32[(payload + 4) >> 2]),
+          default: optionalNode(_u32[(payload + 8) >> 2]),
           in: _dv.getUint8(payload + 12) !== 0,
           out: _dv.getUint8(payload + 13) !== 0,
           const: _dv.getUint8(payload + 14) !== 0,
@@ -1078,59 +1080,59 @@ export function decode(buffer, source) {
       }
       case 108: {
         const f = {
-          params: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
+          params: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
         };
         result = makeNode("TsTypeParameterDeclaration", f, start, end);
         break;
       }
       case 109: {
         const f = {
-          params: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
+          params: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
         };
         result = makeNode("TsTypeParameterInstantiation", f, start, end);
         break;
       }
       case 110: {
         const f = {
-          literal: node(_dv.getUint32(payload + 0, true)),
+          literal: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("TsLiteralType", f, start, end);
         break;
       }
       case 111: {
         const f = {
-          quasis: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
-          types: nodeArray(_dv.getUint32(payload + 8, true), _dv.getUint32(payload + 8 + 4, true), false),
+          quasis: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
+          types: nodeArray(_u32[(payload + 8) >> 2], _u32[(payload + 8 + 4) >> 2], false),
         };
         result = makeNode("TsTemplateLiteralType", f, start, end);
         break;
       }
       case 112: {
         const f = {
-          elementType: node(_dv.getUint32(payload + 0, true)),
+          elementType: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("TsArrayType", f, start, end);
         break;
       }
       case 113: {
         const f = {
-          objectType: node(_dv.getUint32(payload + 0, true)),
-          indexType: node(_dv.getUint32(payload + 4, true)),
+          objectType: node(_u32[(payload + 0) >> 2]),
+          indexType: node(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("TsIndexedAccessType", f, start, end);
         break;
       }
       case 114: {
         const f = {
-          elementTypes: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
+          elementTypes: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
         };
         result = makeNode("TsTupleType", f, start, end);
         break;
       }
       case 115: {
         const f = {
-          label: node(_dv.getUint32(payload + 0, true)),
-          elementType: node(_dv.getUint32(payload + 4, true)),
+          label: node(_u32[(payload + 0) >> 2]),
+          elementType: node(_u32[(payload + 4) >> 2]),
           optional: _dv.getUint8(payload + 8) !== 0,
         };
         result = makeNode("TsNamedTupleMember", f, start, end);
@@ -1138,21 +1140,21 @@ export function decode(buffer, source) {
       }
       case 116: {
         const f = {
-          typeAnnotation: node(_dv.getUint32(payload + 0, true)),
+          typeAnnotation: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("TsOptionalType", f, start, end);
         break;
       }
       case 117: {
         const f = {
-          typeAnnotation: node(_dv.getUint32(payload + 0, true)),
+          typeAnnotation: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("TsRestType", f, start, end);
         break;
       }
       case 118: {
         const f = {
-          typeAnnotation: node(_dv.getUint32(payload + 0, true)),
+          typeAnnotation: node(_u32[(payload + 0) >> 2]),
           postfix: _dv.getUint8(payload + 4) !== 0,
         };
         result = makeNode("TsJsDocNullableType", f, start, end);
@@ -1160,7 +1162,7 @@ export function decode(buffer, source) {
       }
       case 119: {
         const f = {
-          typeAnnotation: node(_dv.getUint32(payload + 0, true)),
+          typeAnnotation: node(_u32[(payload + 0) >> 2]),
           postfix: _dv.getUint8(payload + 4) !== 0,
         };
         result = makeNode("TsJsDocNonNullableType", f, start, end);
@@ -1174,31 +1176,31 @@ export function decode(buffer, source) {
       }
       case 121: {
         const f = {
-          types: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
+          types: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
         };
         result = makeNode("TsUnionType", f, start, end);
         break;
       }
       case 122: {
         const f = {
-          types: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
+          types: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
         };
         result = makeNode("TsIntersectionType", f, start, end);
         break;
       }
       case 123: {
         const f = {
-          checkType: node(_dv.getUint32(payload + 0, true)),
-          extendsType: node(_dv.getUint32(payload + 4, true)),
-          trueType: node(_dv.getUint32(payload + 8, true)),
-          falseType: node(_dv.getUint32(payload + 12, true)),
+          checkType: node(_u32[(payload + 0) >> 2]),
+          extendsType: node(_u32[(payload + 4) >> 2]),
+          trueType: node(_u32[(payload + 8) >> 2]),
+          falseType: node(_u32[(payload + 12) >> 2]),
         };
         result = makeNode("TsConditionalType", f, start, end);
         break;
       }
       case 124: {
         const f = {
-          typeParameter: node(_dv.getUint32(payload + 0, true)),
+          typeParameter: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("TsInferType", f, start, end);
         break;
@@ -1206,32 +1208,32 @@ export function decode(buffer, source) {
       case 125: {
         const f = {
           operator: enumValue("TsTypeOperatorKind", _dv.getUint8(payload + 4)),
-          typeAnnotation: node(_dv.getUint32(payload + 0, true)),
+          typeAnnotation: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("TsTypeOperator", f, start, end);
         break;
       }
       case 126: {
         const f = {
-          typeAnnotation: node(_dv.getUint32(payload + 0, true)),
+          typeAnnotation: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("TsParenthesizedType", f, start, end);
         break;
       }
       case 127: {
         const f = {
-          typeParameters: optionalNode(_dv.getUint32(payload + 0, true)),
-          params: node(_dv.getUint32(payload + 4, true)),
-          returnType: node(_dv.getUint32(payload + 8, true)),
+          typeParameters: optionalNode(_u32[(payload + 0) >> 2]),
+          params: node(_u32[(payload + 4) >> 2]),
+          returnType: node(_u32[(payload + 8) >> 2]),
         };
         result = makeNode("TsFunctionType", f, start, end);
         break;
       }
       case 128: {
         const f = {
-          typeParameters: optionalNode(_dv.getUint32(payload + 0, true)),
-          params: node(_dv.getUint32(payload + 4, true)),
-          returnType: node(_dv.getUint32(payload + 8, true)),
+          typeParameters: optionalNode(_u32[(payload + 0) >> 2]),
+          params: node(_u32[(payload + 4) >> 2]),
+          returnType: node(_u32[(payload + 8) >> 2]),
           abstract: _dv.getUint8(payload + 12) !== 0,
         };
         result = makeNode("TsConstructorType", f, start, end);
@@ -1239,8 +1241,8 @@ export function decode(buffer, source) {
       }
       case 129: {
         const f = {
-          parameterName: node(_dv.getUint32(payload + 0, true)),
-          typeAnnotation: optionalNode(_dv.getUint32(payload + 4, true)),
+          parameterName: node(_u32[(payload + 0) >> 2]),
+          typeAnnotation: optionalNode(_u32[(payload + 4) >> 2]),
           asserts: _dv.getUint8(payload + 8) !== 0,
         };
         result = makeNode("TsTypePredicate", f, start, end);
@@ -1248,18 +1250,18 @@ export function decode(buffer, source) {
       }
       case 130: {
         const f = {
-          members: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
+          members: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
         };
         result = makeNode("TsTypeLiteral", f, start, end);
         break;
       }
       case 131: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
           key: node(_dv.getUint32(payload + 2, true)),
           constraint: node(_dv.getUint32(payload + 6, true)),
-          nameType: optionalNode(_dv.getUint32(extra + (extraId + 0) * 8, true)),
-          typeAnnotation: optionalNode(_dv.getUint32(extra + (extraId + 1) * 8, true)),
+          nameType: optionalNode(_u32[(extra + (extraId + 0) * 8) >> 2]),
+          typeAnnotation: optionalNode(_u32[(extra + (extraId + 1) * 8) >> 2]),
           optional: enumValue("TsMappedTypeModifier", _dv.getUint8(payload + 0)),
           readonly: enumValue("TsMappedTypeModifier", _dv.getUint8(payload + 1)),
         };
@@ -1268,8 +1270,8 @@ export function decode(buffer, source) {
       }
       case 132: {
         const f = {
-          key: node(_dv.getUint32(payload + 0, true)),
-          typeAnnotation: optionalNode(_dv.getUint32(payload + 4, true)),
+          key: node(_u32[(payload + 0) >> 2]),
+          typeAnnotation: optionalNode(_u32[(payload + 4) >> 2]),
           computed: _dv.getUint8(payload + 8) !== 0,
           optional: _dv.getUint8(payload + 9) !== 0,
           readonly: _dv.getUint8(payload + 10) !== 0,
@@ -1278,12 +1280,12 @@ export function decode(buffer, source) {
         break;
       }
       case 133: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
           key: node(_dv.getUint32(payload + 3, true)),
           typeParameters: optionalNode(_dv.getUint32(payload + 7, true)),
-          params: node(_dv.getUint32(extra + (extraId + 0) * 8, true)),
-          returnType: optionalNode(_dv.getUint32(extra + (extraId + 1) * 8, true)),
+          params: node(_u32[(extra + (extraId + 0) * 8) >> 2]),
+          returnType: optionalNode(_u32[(extra + (extraId + 1) * 8) >> 2]),
           kind: enumValue("TsMethodSignatureKind", _dv.getUint8(payload + 0)),
           computed: _dv.getUint8(payload + 1) !== 0,
           optional: _dv.getUint8(payload + 2) !== 0,
@@ -1293,26 +1295,26 @@ export function decode(buffer, source) {
       }
       case 134: {
         const f = {
-          typeParameters: optionalNode(_dv.getUint32(payload + 0, true)),
-          params: node(_dv.getUint32(payload + 4, true)),
-          returnType: optionalNode(_dv.getUint32(payload + 8, true)),
+          typeParameters: optionalNode(_u32[(payload + 0) >> 2]),
+          params: node(_u32[(payload + 4) >> 2]),
+          returnType: optionalNode(_u32[(payload + 8) >> 2]),
         };
         result = makeNode("TsCallSignatureDeclaration", f, start, end);
         break;
       }
       case 135: {
         const f = {
-          typeParameters: optionalNode(_dv.getUint32(payload + 0, true)),
-          params: node(_dv.getUint32(payload + 4, true)),
-          returnType: optionalNode(_dv.getUint32(payload + 8, true)),
+          typeParameters: optionalNode(_u32[(payload + 0) >> 2]),
+          params: node(_u32[(payload + 4) >> 2]),
+          returnType: optionalNode(_u32[(payload + 8) >> 2]),
         };
         result = makeNode("TsConstructSignatureDeclaration", f, start, end);
         break;
       }
       case 136: {
         const f = {
-          parameters: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
-          typeAnnotation: node(_dv.getUint32(payload + 8, true)),
+          parameters: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
+          typeAnnotation: node(_u32[(payload + 8) >> 2]),
           readonly: _dv.getUint8(payload + 12) !== 0,
           static: _dv.getUint8(payload + 13) !== 0,
         };
@@ -1321,21 +1323,21 @@ export function decode(buffer, source) {
       }
       case 137: {
         const f = {
-          id: node(_dv.getUint32(payload + 0, true)),
-          typeParameters: optionalNode(_dv.getUint32(payload + 4, true)),
-          typeAnnotation: node(_dv.getUint32(payload + 8, true)),
+          id: node(_u32[(payload + 0) >> 2]),
+          typeParameters: optionalNode(_u32[(payload + 4) >> 2]),
+          typeAnnotation: node(_u32[(payload + 8) >> 2]),
           declare: _dv.getUint8(payload + 12) !== 0,
         };
         result = makeNode("TsTypeAliasDeclaration", f, start, end);
         break;
       }
       case 138: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
           id: node(_dv.getUint32(payload + 1, true)),
           typeParameters: optionalNode(_dv.getUint32(payload + 5, true)),
-          extends: nodeArray(_dv.getUint32(extra + (extraId + 0) * 8, true), _dv.getUint32(extra + (extraId + 0) * 8 + 4, true), false),
-          body: node(_dv.getUint32(extra + (extraId + 1) * 8, true)),
+          extends: nodeArray(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
+          body: node(_u32[(extra + (extraId + 1) * 8) >> 2]),
           declare: _dv.getUint8(payload + 0) !== 0,
         };
         result = makeNode("TsInterfaceDeclaration", f, start, end);
@@ -1343,31 +1345,31 @@ export function decode(buffer, source) {
       }
       case 139: {
         const f = {
-          body: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
+          body: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
         };
         result = makeNode("TsInterfaceBody", f, start, end);
         break;
       }
       case 140: {
         const f = {
-          expression: node(_dv.getUint32(payload + 0, true)),
-          typeArguments: optionalNode(_dv.getUint32(payload + 4, true)),
+          expression: node(_u32[(payload + 0) >> 2]),
+          typeArguments: optionalNode(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("TsInterfaceHeritage", f, start, end);
         break;
       }
       case 141: {
         const f = {
-          expression: node(_dv.getUint32(payload + 0, true)),
-          typeArguments: optionalNode(_dv.getUint32(payload + 4, true)),
+          expression: node(_u32[(payload + 0) >> 2]),
+          typeArguments: optionalNode(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("TsClassImplements", f, start, end);
         break;
       }
       case 142: {
         const f = {
-          id: node(_dv.getUint32(payload + 0, true)),
-          body: node(_dv.getUint32(payload + 4, true)),
+          id: node(_u32[(payload + 0) >> 2]),
+          body: node(_u32[(payload + 4) >> 2]),
           const: _dv.getUint8(payload + 8) !== 0,
           declare: _dv.getUint8(payload + 9) !== 0,
         };
@@ -1376,15 +1378,15 @@ export function decode(buffer, source) {
       }
       case 143: {
         const f = {
-          members: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
+          members: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
         };
         result = makeNode("TsEnumBody", f, start, end);
         break;
       }
       case 144: {
         const f = {
-          id: node(_dv.getUint32(payload + 0, true)),
-          initializer: optionalNode(_dv.getUint32(payload + 4, true)),
+          id: node(_u32[(payload + 0) >> 2]),
+          initializer: optionalNode(_u32[(payload + 4) >> 2]),
           computed: _dv.getUint8(payload + 8) !== 0,
         };
         result = makeNode("TsEnumMember", f, start, end);
@@ -1392,8 +1394,8 @@ export function decode(buffer, source) {
       }
       case 145: {
         const f = {
-          id: node(_dv.getUint32(payload + 0, true)),
-          body: optionalNode(_dv.getUint32(payload + 4, true)),
+          id: node(_u32[(payload + 0) >> 2]),
+          body: optionalNode(_u32[(payload + 4) >> 2]),
           kind: enumValue("TsModuleDeclarationKind", _dv.getUint8(payload + 8)),
           declare: _dv.getUint8(payload + 9) !== 0,
         };
@@ -1402,16 +1404,16 @@ export function decode(buffer, source) {
       }
       case 146: {
         const f = {
-          directives: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
-          body: nodeArray(_dv.getUint32(payload + 8, true), _dv.getUint32(payload + 8 + 4, true), false),
+          directives: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
+          body: nodeArray(_u32[(payload + 8) >> 2], _u32[(payload + 8 + 4) >> 2], false),
         };
         result = makeNode("TsModuleBlock", f, start, end);
         break;
       }
       case 147: {
         const f = {
-          id: node(_dv.getUint32(payload + 0, true)),
-          body: node(_dv.getUint32(payload + 4, true)),
+          id: node(_u32[(payload + 0) >> 2]),
+          body: node(_u32[(payload + 4) >> 2]),
           declare: _dv.getUint8(payload + 8) !== 0,
         };
         result = makeNode("TsGlobalDeclaration", f, start, end);
@@ -1419,8 +1421,8 @@ export function decode(buffer, source) {
       }
       case 148: {
         const f = {
-          decorators: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
-          parameter: node(_dv.getUint32(payload + 8, true)),
+          decorators: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
+          parameter: node(_u32[(payload + 8) >> 2]),
           override: _dv.getUint8(payload + 12) !== 0,
           readonly: _dv.getUint8(payload + 13) !== 0,
           accessibility: enumValue("Accessibility", _dv.getUint8(payload + 14)),
@@ -1430,68 +1432,68 @@ export function decode(buffer, source) {
       }
       case 149: {
         const f = {
-          typeAnnotation: optionalNode(_dv.getUint32(payload + 0, true)),
+          typeAnnotation: optionalNode(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("TsThisParameter", f, start, end);
         break;
       }
       case 150: {
         const f = {
-          expression: node(_dv.getUint32(payload + 0, true)),
-          typeAnnotation: node(_dv.getUint32(payload + 4, true)),
+          expression: node(_u32[(payload + 0) >> 2]),
+          typeAnnotation: node(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("TsAsExpression", f, start, end);
         break;
       }
       case 151: {
         const f = {
-          expression: node(_dv.getUint32(payload + 0, true)),
-          typeAnnotation: node(_dv.getUint32(payload + 4, true)),
+          expression: node(_u32[(payload + 0) >> 2]),
+          typeAnnotation: node(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("TsSatisfiesExpression", f, start, end);
         break;
       }
       case 152: {
         const f = {
-          typeAnnotation: node(_dv.getUint32(payload + 0, true)),
-          expression: node(_dv.getUint32(payload + 4, true)),
+          typeAnnotation: node(_u32[(payload + 0) >> 2]),
+          expression: node(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("TsTypeAssertion", f, start, end);
         break;
       }
       case 153: {
         const f = {
-          expression: node(_dv.getUint32(payload + 0, true)),
+          expression: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("TsNonNullExpression", f, start, end);
         break;
       }
       case 154: {
         const f = {
-          expression: node(_dv.getUint32(payload + 0, true)),
-          typeArguments: node(_dv.getUint32(payload + 4, true)),
+          expression: node(_u32[(payload + 0) >> 2]),
+          typeArguments: node(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("TsInstantiationExpression", f, start, end);
         break;
       }
       case 155: {
         const f = {
-          expression: node(_dv.getUint32(payload + 0, true)),
+          expression: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("TsExportAssignment", f, start, end);
         break;
       }
       case 156: {
         const f = {
-          id: node(_dv.getUint32(payload + 0, true)),
+          id: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("TsNamespaceExportDeclaration", f, start, end);
         break;
       }
       case 157: {
         const f = {
-          id: node(_dv.getUint32(payload + 0, true)),
-          moduleReference: node(_dv.getUint32(payload + 4, true)),
+          id: node(_u32[(payload + 0) >> 2]),
+          moduleReference: node(_u32[(payload + 4) >> 2]),
           importKind: enumValue("ImportOrExportKind", _dv.getUint8(payload + 8)),
         };
         result = makeNode("TsImportEqualsDeclaration", f, start, end);
@@ -1499,25 +1501,25 @@ export function decode(buffer, source) {
       }
       case 158: {
         const f = {
-          expression: node(_dv.getUint32(payload + 0, true)),
+          expression: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("TsExternalModuleReference", f, start, end);
         break;
       }
       case 159: {
         const f = {
-          openingElement: node(_dv.getUint32(payload + 8, true)),
-          children: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
-          closingElement: optionalNode(_dv.getUint32(payload + 12, true)),
+          openingElement: node(_u32[(payload + 8) >> 2]),
+          children: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
+          closingElement: optionalNode(_u32[(payload + 12) >> 2]),
         };
         result = makeNode("JsxElement", f, start, end);
         break;
       }
       case 160: {
-        const extraId = _dv.getUint32(payload + 12, true);
+        const extraId = _u32[(payload + 12) >> 2];
         const f = {
           name: node(_dv.getUint32(payload + 1, true)),
-          attributes: nodeArray(_dv.getUint32(extra + (extraId + 0) * 8, true), _dv.getUint32(extra + (extraId + 0) * 8 + 4, true), false),
+          attributes: nodeArray(_u32[(extra + (extraId + 0) * 8) >> 2], _u32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
           selfClosing: _dv.getUint8(payload + 0) !== 0,
           typeArguments: optionalNode(_dv.getUint32(payload + 5, true)),
         };
@@ -1526,16 +1528,16 @@ export function decode(buffer, source) {
       }
       case 161: {
         const f = {
-          name: node(_dv.getUint32(payload + 0, true)),
+          name: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("JsxClosingElement", f, start, end);
         break;
       }
       case 162: {
         const f = {
-          openingFragment: node(_dv.getUint32(payload + 8, true)),
-          children: nodeArray(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true), false),
-          closingFragment: node(_dv.getUint32(payload + 12, true)),
+          openingFragment: node(_u32[(payload + 8) >> 2]),
+          children: nodeArray(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2], false),
+          closingFragment: node(_u32[(payload + 12) >> 2]),
         };
         result = makeNode("JsxFragment", f, start, end);
         break;
@@ -1554,45 +1556,45 @@ export function decode(buffer, source) {
       }
       case 165: {
         const f = {
-          name: str(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true)),
+          name: str(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2]),
         };
         result = makeNode("JsxIdentifier", f, start, end);
         break;
       }
       case 166: {
         const f = {
-          namespace: node(_dv.getUint32(payload + 0, true)),
-          name: node(_dv.getUint32(payload + 4, true)),
+          namespace: node(_u32[(payload + 0) >> 2]),
+          name: node(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("JsxNamespacedName", f, start, end);
         break;
       }
       case 167: {
         const f = {
-          object: node(_dv.getUint32(payload + 0, true)),
-          property: node(_dv.getUint32(payload + 4, true)),
+          object: node(_u32[(payload + 0) >> 2]),
+          property: node(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("JsxMemberExpression", f, start, end);
         break;
       }
       case 168: {
         const f = {
-          name: node(_dv.getUint32(payload + 0, true)),
-          value: optionalNode(_dv.getUint32(payload + 4, true)),
+          name: node(_u32[(payload + 0) >> 2]),
+          value: optionalNode(_u32[(payload + 4) >> 2]),
         };
         result = makeNode("JsxAttribute", f, start, end);
         break;
       }
       case 169: {
         const f = {
-          argument: node(_dv.getUint32(payload + 0, true)),
+          argument: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("JsxSpreadAttribute", f, start, end);
         break;
       }
       case 170: {
         const f = {
-          expression: node(_dv.getUint32(payload + 0, true)),
+          expression: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("JsxExpressionContainer", f, start, end);
         break;
@@ -1605,14 +1607,14 @@ export function decode(buffer, source) {
       }
       case 172: {
         const f = {
-          value: str(_dv.getUint32(payload + 0, true), _dv.getUint32(payload + 0 + 4, true)),
+          value: str(_u32[(payload + 0) >> 2], _u32[(payload + 0 + 4) >> 2]),
         };
         result = makeNode("JsxText", f, start, end);
         break;
       }
       case 173: {
         const f = {
-          expression: node(_dv.getUint32(payload + 0, true)),
+          expression: node(_u32[(payload + 0) >> 2]),
         };
         result = makeNode("JsxSpreadChild", f, start, end);
         break;

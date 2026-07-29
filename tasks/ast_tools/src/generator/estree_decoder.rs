@@ -123,11 +123,7 @@ fn write_node_case(output: &mut String, kind: usize, ast: &AstStruct, schema: &S
         .as_ref()
         .is_none_or(|layout| layout.mode == InlineStorageMode::Partial)
     {
-        writeln!(
-            output,
-            "        const extraId = _dv.getUint32(payload + 12, true);"
-        )
-        .unwrap();
+        writeln!(output, "        const extraId = _u32[(payload + 12) >> 2];").unwrap();
     }
     writeln!(output, "        const f = {{").unwrap();
 
@@ -141,19 +137,20 @@ fn write_node_case(output: &mut String, kind: usize, ast: &AstStruct, schema: &S
         }
 
         let field_ty = &schema.types[field.type_id];
-        let location = if let Some((_, byte_offset, _)) = layout.as_ref().and_then(|layout| {
-            layout
-                .fields
-                .iter()
-                .find(|(index, _, _)| *index == field_index)
-        }) {
-            format!("payload + {byte_offset}")
+        let (location, aligned_u32) = if let Some((_, byte_offset, _)) =
+            layout.as_ref().and_then(|layout| {
+                layout
+                    .fields
+                    .iter()
+                    .find(|(index, _, _)| *index == field_index)
+            }) {
+            (format!("payload + {byte_offset}"), byte_offset % 4 == 0)
         } else {
             let location = format!("extra + (extraId + {extra_offset}) * 8");
             extra_offset += 1;
-            location
+            (location, true)
         };
-        let expression = read_expression(field_ty, schema, &location);
+        let expression = read_expression(field_ty, schema, &location, aligned_u32);
         let field_name = estree_field_name(&ast.name, &field.name);
         writeln!(output, "          {field_name}: {expression},").unwrap();
     }
@@ -182,21 +179,21 @@ fn is_semantic_field(name: &str) -> bool {
     matches!(name, "symbol_id" | "scope_id")
 }
 
-fn read_expression(ty: &AstType, schema: &Schema, location: &str) -> String {
+fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_u32: bool) -> String {
     match ty {
         AstType::Struct(_) | AstType::Enum(_) => {
-            format!("node(_dv.getUint32({location}, true))")
+            format!("node({})", read_u32(location, aligned_u32))
         }
         AstType::Vec(vec) => {
             let inner = &schema.types[vec.inner_type_id];
             let holes = matches!(inner, AstType::Option(_));
-            format!(
-                "nodeArray(_dv.getUint32({location}, true), _dv.getUint32({location} + 4, true), {holes})"
-            )
+            let start = read_u32(location, aligned_u32);
+            let end = read_u32(&format!("{location} + 4"), aligned_u32);
+            format!("nodeArray({start}, {end}, {holes})")
         }
         AstType::Option(option) => match &schema.types[option.inner_type_id] {
             AstType::Struct(_) | AstType::Enum(_) => {
-                format!("optionalNode(_dv.getUint32({location}, true))")
+                format!("optionalNode({})", read_u32(location, aligned_u32))
             }
             AstType::Primitive(primitive) if primitive.name == "ImportPhase" => {
                 format!("optionalEnum(\"ImportPhase\", _dv.getUint8({location}))")
@@ -204,26 +201,32 @@ fn read_expression(ty: &AstType, schema: &Schema, location: &str) -> String {
             AstType::Primitive(primitive) if matches!(primitive.name, "ScopeId" | "SymbolId") => {
                 "undefined".into()
             }
-            AstType::Primitive(primitive) if primitive.name == "Span" => format!(
-                "{{ start: pos(_dv.getUint32({location}, true)), end: pos(_dv.getUint32({location} + 4, true)) }}"
-            ),
+            AstType::Primitive(primitive) if primitive.name == "Span" => {
+                let start = read_u32(location, aligned_u32);
+                let end = read_u32(&format!("{location} + 4"), aligned_u32);
+                format!("{{ start: pos({start}), end: pos({end}) }}")
+            }
             inner => panic!("unsupported optional decoder type: {}", inner.name()),
         },
         AstType::Primitive(primitive) => match primitive.name {
             "String" => {
-                format!("str(_dv.getUint32({location}, true), _dv.getUint32({location} + 4, true))")
+                let start = read_u32(location, aligned_u32);
+                let end = read_u32(&format!("{location} + 4"), aligned_u32);
+                format!("str({start}, {end})")
             }
             "bool" => format!("_dv.getUint8({location}) !== 0"),
             "u8" => format!("_dv.getUint8({location})"),
             "i8" => format!("_dv.getInt8({location})"),
             "u16" => format!("_dv.getUint16({location}, true)"),
             "i16" => format!("_dv.getInt16({location}, true)"),
-            "u32" => format!("_dv.getUint32({location}, true)"),
+            "u32" => read_u32(location, aligned_u32),
             "i32" => format!("_dv.getInt32({location}, true)"),
             "f64" => format!("_dv.getFloat64({location}, true)"),
-            "Span" => format!(
-                "{{ start: pos(_dv.getUint32({location}, true)), end: pos(_dv.getUint32({location} + 4, true)) }}"
-            ),
+            "Span" => {
+                let start = read_u32(location, aligned_u32);
+                let end = read_u32(&format!("{location} + 4"), aligned_u32);
+                format!("{{ start: pos({start}), end: pos({end}) }}")
+            }
             "ScopeId" | "SymbolId" => "undefined".into(),
             name if schema.repr_sizes.contains_key(name)
                 || matches!(
@@ -254,6 +257,14 @@ fn read_expression(ty: &AstType, schema: &Schema, location: &str) -> String {
             }
             name => panic!("unsupported primitive decoder type: {name}"),
         },
+    }
+}
+
+fn read_u32(location: &str, aligned: bool) -> String {
+    if aligned {
+        format!("_u32[({location}) >> 2]")
+    } else {
+        format!("_dv.getUint32({location}, true)")
     }
 }
 
@@ -367,22 +378,24 @@ export function decode(buffer, source) {
   const byteOffset = buffer.byteOffset ?? 0;
   const byteLength = buffer.byteLength;
   const bytes = new Uint8Array(arrayBuffer, byteOffset, byteLength);
+  const _u32 = new Uint32Array(arrayBuffer, byteOffset, byteLength >> 2);
   const _dv = new DataView(arrayBuffer, byteOffset, byteLength);
-  const nodeCount = _dv.getUint32(0, true);
-  const extraCount = _dv.getUint32(4, true);
-  const stringPoolLength = _dv.getUint32(8, true);
-  const sourceLength = _dv.getUint32(12, true);
-  const programIndex = _dv.getUint32(28, true);
-  const isTs = (_dv.getUint32(32, true) & 1) !== 0;
+  const nodeCount = _u32[0];
+  const extraCount = _u32[1];
+  const stringPoolLength = _u32[2];
+  const sourceLength = _u32[3];
+  const programIndex = _u32[7];
+  const isTs = (_u32[8] & 1) !== 0;
 
   const spans = HEADER_SIZE;
   const kinds = spans + nodeCount * 8;
   const payloads = (kinds + nodeCount + 3) & ~3;
   const extra = payloads + nodeCount * 16;
   const strings = extra + extraCount * 8;
-  const positions = buildPosMap(source, sourceLength);
+  const positions =
+    source.length === sourceLength ? null : buildPosMap(source, sourceLength);
 
-  const pos = byte => positions[byte];
+  const pos = positions === null ? byte => byte : byte => positions[byte];
   const str = (start, end) => {
     if (start === end) return "";
     if (start < sourceLength) return source.slice(pos(start), pos(end));
@@ -401,7 +414,7 @@ export function decode(buffer, source) {
   const nodeArray = (start, end, holes) => {
     const result = new Array(end - start);
     for (let i = start; i < end; i++) {
-      const index = _dv.getUint32(extra + i * 8, true);
+      const index = _u32[(extra >> 2) + i * 2];
       result[i - start] = holes && index === NULL ? null : node(index);
     }
     return result;
@@ -412,8 +425,8 @@ export function decode(buffer, source) {
     const cached = cache[index];
     if (cached !== undefined) return cached;
     const span = spans + index * 8;
-    const start = pos(_dv.getUint32(span, true));
-    const end = pos(_dv.getUint32(span + 4, true));
+    const start = pos(_u32[span >> 2]);
+    const end = pos(_u32[(span >> 2) + 1]);
     const payload = payloads + index * 16;
     let result;
     switch (bytes[kinds + index]) {
