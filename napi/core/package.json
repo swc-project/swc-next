@@ -28,7 +28,10 @@
       "x86_64-unknown-linux-gnu"
     ]
   },
-  "dependencies": {
-    "@napi-rs/cli": "catalog:"
+  "devDependencies": {
+    "@napi-rs/cli": "catalog:",
+    "@types/node": "catalog:",
+    "tinypool": "catalog:",
+    "typescript": "catalog:"
   }
 }
