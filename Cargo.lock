@@ -2115,6 +2115,7 @@ version = "0.11.0"
 dependencies = [
  "memchr",
  "pico-args",
+ "rustc-hash",
  "swc_next_allocator",
  "swc_next_ecma_ast",
 ]

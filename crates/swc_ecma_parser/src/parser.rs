@@ -5,6 +5,7 @@
 
 use std::{borrow::Cow, mem, string::String};
 
+use rustc_hash::FxHashSet;
 use swc_next_ecma_ast::String as AstString;
 use swc_next_ecma_ast::*;
 
@@ -620,6 +621,12 @@ pub struct Parser<'parser, 'a> {
     statement_context: StatementContext,
     pub ts_context: TsContext,
     pub state: ParserState,
+    /// Start offsets which failed speculative parenthesized-arrow parsing.
+    ///
+    /// This cache is intentionally not part of [`Checkpoint`]: a failed
+    /// speculation remains impossible after rewinding and must not be retried
+    /// by an enclosing speculative parse.
+    not_parenthesized_arrow: FxHashSet<u32>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -720,6 +727,7 @@ impl<'parser, 'a> Parser<'parser, 'a> {
                 ..TsContext::default()
             },
             state: ParserState::default(),
+            not_parenthesized_arrow: FxHashSet::default(),
         }
     }
 
@@ -8033,11 +8041,17 @@ impl<'parser, 'a> Parser<'parser, 'a> {
     }
 
     fn try_parse_arrow(&mut self, is_async: bool, start: u32) -> Option<Option<Expr>> {
+        let position = self.current_token.span.start;
+        if self.not_parenthesized_arrow.contains(&position) {
+            return Some(None);
+        }
+
         let checkpoint = self.checkpoint();
         let arrow = match self.parse_arrow(is_async, start) {
             Some(arrow) => arrow,
             None => {
                 self.rewind(checkpoint);
+                self.not_parenthesized_arrow.insert(position);
                 return Some(None);
             }
         };
@@ -8050,6 +8064,7 @@ impl<'parser, 'a> Parser<'parser, 'a> {
             && self.current_token.tag != TokenTag::Colon
         {
             self.rewind(checkpoint);
+            self.not_parenthesized_arrow.insert(position);
             return Some(None);
         }
         Some(Some(arrow))
