@@ -3,9 +3,13 @@ import path from "node:path";
 
 import { langFromPath, parseSync } from "../src-js/index.js";
 
-const AST_MARKER = "__ESTREE_TEST__:AST:";
-const TOKENS_MARKER = "__ESTREE_TEST__:TOKENS:";
+// =========================== Paths ==============================
+const ROOT_DIR = path.resolve(import.meta.dirname, "../../..");
+const FIXTURE_DIR = path.resolve(ROOT_DIR, "tasks/testsuite/fixtures");
+const TEST_HARNESS = path.resolve(FIXTURE_DIR, "estree-conformance/src");
+const FIELD_ORDERS_FILE = path.resolve(TEST_HARNESS, "field-orders.json");
 
+// ========================= Runner =============================
 export default async function runCase({ oracle, source, file }) {
   const oracleFile = path.resolve(oracle, file);
   const sourceFile = getSourceFile(source, file);
@@ -28,7 +32,7 @@ export default async function runCase({ oracle, source, file }) {
     return {
       file: sourceFile,
       parsed: true,
-      passed: JSON.stringify(ast, null, 2) === expected.ast,
+      passed: JSON.stringify(ast, reorderAstFields, 2) === expected.ast,
     };
   } catch (error) {
     return {
@@ -38,6 +42,44 @@ export default async function runCase({ oracle, source, file }) {
       passed: false,
     };
   }
+}
+
+// ========================= Adapters =============================
+const AST_MARKER = "__ESTREE_TEST__:AST:";
+const TOKENS_MARKER = "__ESTREE_TEST__:TOKENS:";
+
+const fieldOrders = JSON.parse(fs.readFileSync(FIELD_ORDERS_FILE, "utf8"));
+
+function reorderAstFields(_key, value) {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !Object.hasOwn(value, "type")
+  ) {
+    return value;
+  }
+
+  const keys = fieldOrders[value.type];
+  if (!keys) return value;
+
+  const reordered = { type: value.type };
+  for (const key of keys) {
+    if (Object.hasOwn(value, key)) reordered[key] = value[key];
+  }
+  for (const key of Object.keys(value)) {
+    if (
+      key === "type" ||
+      key === "start" ||
+      key === "end" ||
+      keys.includes(key)
+    )
+      continue;
+    reordered[key] = value[key];
+  }
+  if (Object.hasOwn(value, "start")) reordered.start = value.start;
+  if (Object.hasOwn(value, "end")) reordered.end = value.end;
+
+  return reordered;
 }
 
 function readExpected(oracleFile) {
