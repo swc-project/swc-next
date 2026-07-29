@@ -2,7 +2,7 @@ use crate::{
     derive::ast_clone_in::ast_clone_in,
     generator::{
         ast_builder::ast_builder, ast_extra_compact::ast_extra_compact, ast_node::ast_node,
-        ast_property::ast_property, ast_visitor::ast_visitor,
+        ast_property::ast_property, ast_visitor::ast_visitor, estree_decoder::estree_decoder,
     },
     parse::parse_files,
 };
@@ -42,4 +42,8 @@ fn main() {
 
     let ast_extra_data_compact = ast_extra_compact(&schema);
     ast_extra_data_compact.write_to_file().unwrap();
+
+    let (estree_decoder_pretty, estree_decoder_minified) = estree_decoder(&schema);
+    estree_decoder_pretty.write_to_file().unwrap();
+    estree_decoder_minified.write_to_file().unwrap();
 }
