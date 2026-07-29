@@ -686,7 +686,7 @@ impl Drop for Peek<'_, '_> {
 }
 
 fn estimate_ast_capacity(source_len: usize) -> (usize, usize) {
-    let estimated_nodes = if source_len < 4_000 {
+    let baseline_nodes = if source_len < 4_000 {
         256.max(source_len / 4)
     } else if source_len < 10_000 {
         source_len / 3
@@ -700,7 +700,11 @@ fn estimate_ast_capacity(source_len: usize) -> (usize, usize) {
     // metadata, and values that do not fit in the inline node payload all use
     // this table. Leave general headroom so large parses do not copy the full
     // table immediately after the initial reservation.
-    let estimated_extra = estimated_nodes * 2 / 3;
+    let estimated_extra = baseline_nodes * 2 / 3;
+    // A NodeData growth doubles the allocation and copies every initialized
+    // SoA field. A smaller fixed margin absorbs source-density variation
+    // without paying for the full doubled block or inspecting source syntax.
+    let estimated_nodes = baseline_nodes + baseline_nodes / 2;
     (estimated_nodes, estimated_extra)
 }
 
@@ -11714,14 +11718,14 @@ mod tests {
     #[test]
     fn bounds_small_capacity_estimates() {
         let (nodes, extra) = estimate_ast_capacity(0);
-        assert_eq!(nodes, 256);
+        assert_eq!(nodes, 384);
         assert!(extra <= nodes);
     }
 
     #[test]
     fn leaves_extra_data_growth_headroom() {
         let (nodes, extra) = estimate_ast_capacity(8_000_000);
-        assert_eq!(nodes, 1_000_000);
+        assert_eq!(nodes, 1_500_000);
         assert_eq!(extra, 666_666);
     }
 
