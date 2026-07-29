@@ -42,19 +42,6 @@ macro_rules! multi_index_vec {
                     .min(u32::MAX as usize)
             }
 
-            fn compute_layout(cap: usize) -> ::core::alloc::Layout {
-                let mut layout = ::core::alloc::Layout::new::<()>();
-                $(
-                    let field_layout = ::core::alloc::Layout::array::<$fty>(cap)
-                        .expect("capacity overflow");
-                    layout = layout
-                        .extend(field_layout)
-                        .expect("capacity overflow")
-                        .0;
-                )*
-                layout.pad_to_align()
-            }
-
             #[inline]
             $vis fn new_in(
                 allocator: &$alloc $crate::Allocator,
@@ -141,32 +128,44 @@ macro_rules! multi_index_vec {
                 }
                 .min(max_len);
 
-                let new_layout = Self::compute_layout(new_cap);
+                const FIELD_COUNT: usize = [$(stringify!($fname)),*].len();
+                let mut layout = ::core::alloc::Layout::new::<()>();
+                let mut offsets = [0usize; FIELD_COUNT];
+                let mut field_index = 0usize;
+
+                $(
+                    let field_layout = ::core::alloc::Layout::array::<$fty>(new_cap)
+                        .expect("capacity overflow");
+                    let (next_layout, offset) = layout
+                        .extend(field_layout)
+                        .expect("capacity overflow");
+                    layout = next_layout;
+                    offsets[field_index] = offset;
+                    field_index += 1;
+                )*
+
+                let new_layout = layout.pad_to_align();
                 let new_base = self.allocator.alloc_layout(new_layout).as_ptr();
                 let old_len = self.len as usize;
-                let mut layout = ::core::alloc::Layout::new::<()>();
+                debug_assert_eq!(field_index, FIELD_COUNT);
+                field_index = 0;
 
-                // SAFETY: `new_base` was allocated with `new_layout`. Each
-                // offset is produced by the same sequence of `Layout::extend`
-                // calls as `compute_layout`, and `old_len <= old cap`.
+                // SAFETY: `new_base` was allocated with `new_layout`, each
+                // stored offset came from the sequence that built that layout,
+                // and `old_len <= old cap`.
                 unsafe {
                     $(
-                        let field_layout = ::core::alloc::Layout::array::<$fty>(new_cap)
-                            .expect("capacity overflow");
-                        let (next_layout, offset) = layout
-                            .extend(field_layout)
-                            .expect("capacity overflow");
-                        let new_ptr = new_base.add(offset).cast::<$fty>();
+                        let new_ptr = new_base.add(offsets[field_index]).cast::<$fty>();
                         ::core::ptr::copy_nonoverlapping(
                             self.$fname.as_ptr(),
                             new_ptr,
                             old_len,
                         );
                         self.$fname = ::core::ptr::NonNull::new_unchecked(new_ptr);
-                        layout = next_layout;
+                        field_index += 1;
                     )*
                 }
-                let _ = layout;
+                let _ = field_index;
 
                 self.cap = u32::try_from(new_cap).expect("capacity exceeds u32");
             }
