@@ -125,7 +125,7 @@ fn write_node_case(output: &mut String, kind: usize, ast: &AstStruct, schema: &S
     {
         writeln!(output, "        const extraId = _u32[(payload + 12) >> 2];").unwrap();
     }
-    writeln!(output, "        const f = {{").unwrap();
+    let mut fields = Vec::new();
 
     let mut extra_offset = 0usize;
     for (field_index, field) in ast.fields.iter().enumerate() {
@@ -152,18 +152,24 @@ fn write_node_case(output: &mut String, kind: usize, ast: &AstStruct, schema: &S
         };
         let expression = read_expression(field_ty, schema, &location, aligned_u32);
         let field_name = estree_field_name(&ast.name, &field.name);
-        writeln!(output, "          {field_name}: {expression},").unwrap();
+        fields.push(DecodedField {
+            name: field_name,
+            expression,
+        });
     }
 
-    writeln!(output, "        }};").unwrap();
-    writeln!(
-        output,
-        "        result = makeNode(\"{}\", f, start, end);",
-        ast.name
-    )
-    .unwrap();
+    if is_special_node(&ast.name) {
+        write_special_node(output, &ast.name, &fields);
+    } else {
+        write_generic_node(output, &ast.name, &fields);
+    }
     writeln!(output, "        break;").unwrap();
     writeln!(output, "      }}").unwrap();
+}
+
+struct DecodedField {
+    name: String,
+    expression: String,
 }
 
 fn is_inline_field(layout: Option<&crate::util::InlineLayout>, field_index: usize) -> bool {
@@ -265,6 +271,506 @@ fn read_u32(location: &str, aligned: bool) -> String {
         format!("_u32[({location}) >> 2]")
     } else {
         format!("_dv.getUint32({location}, true)")
+    }
+}
+
+fn write_generic_node(output: &mut String, name: &str, fields: &[DecodedField]) {
+    let has_ts_shape = fields.iter().any(|field| is_ts_field(name, &field.name))
+        || !ts_extra_fields(name).is_empty();
+
+    if has_ts_shape {
+        writeln!(output, "        if (isTs) {{").unwrap();
+        write_object_literal(output, name, fields.iter(), ts_extra_fields(name), 10);
+        writeln!(output, "        }} else {{").unwrap();
+        write_object_literal(
+            output,
+            name,
+            fields
+                .iter()
+                .filter(|field| !is_ts_field(name, &field.name)),
+            &[],
+            10,
+        );
+        writeln!(output, "        }}").unwrap();
+    } else {
+        write_object_literal(output, name, fields.iter(), &[], 8);
+    }
+}
+
+fn write_object_literal<'a>(
+    output: &mut String,
+    name: &str,
+    fields: impl Iterator<Item = &'a DecodedField>,
+    extras: &[(&str, &str)],
+    indent: usize,
+) {
+    let padding = " ".repeat(indent);
+    writeln!(
+        output,
+        "{padding}result = {{ type: \"{}\", start, end,",
+        estree_type(name)
+    )
+    .unwrap();
+    for field in fields {
+        writeln!(output, "{padding}  {}: {},", field.name, field.expression).unwrap();
+    }
+    for (field, value) in extras {
+        writeln!(output, "{padding}  {field}: {value},").unwrap();
+    }
+    writeln!(output, "{padding}}};").unwrap();
+}
+
+fn is_special_node(name: &str) -> bool {
+    matches!(
+        name,
+        "Program"
+            | "FunctionBody"
+            | "TsModuleBlock"
+            | "FormalParameter"
+            | "FormalParameters"
+            | "Function"
+            | "TsFunction"
+            | "ArrowFunctionExpression"
+            | "Directive"
+            | "StringLiteral"
+            | "NumericLiteral"
+            | "BigIntLiteral"
+            | "BooleanLiteral"
+            | "NullLiteral"
+            | "RegExpLiteral"
+            | "TemplateElement"
+            | "Class"
+            | "MethodDefinition"
+            | "TsMethodDefinition"
+            | "PropertyDefinition"
+            | "UnaryExpression"
+            | "BindingProperty"
+            | "ArrayPattern"
+            | "ObjectPattern"
+            | "JsxText"
+            | "TsFunctionType"
+            | "TsConstructorType"
+            | "TsMethodSignature"
+            | "TsCallSignatureDeclaration"
+            | "TsConstructSignatureDeclaration"
+            | "TsMappedType"
+            | "TsModuleDeclaration"
+            | "TsGlobalDeclaration"
+            | "TsThisParameter"
+    )
+}
+
+fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField]) {
+    for field in fields {
+        writeln!(
+            output,
+            "        const f_{} = {};",
+            field.name, field.expression
+        )
+        .unwrap();
+    }
+
+    match name {
+        "Program" => output.push_str(
+            r#"        result = {
+          type: "Program", start, end,
+          sourceType: f_sourceType,
+          hashbang: f_hashbang,
+          body: [...f_directives, ...f_body],
+        };
+"#,
+        ),
+        "FunctionBody" | "TsModuleBlock" => {
+            writeln!(
+                output,
+                "        result = {{ type: \"{}\", start, end, body: [...f_directives, ...f_body] }};",
+                if name == "TsModuleBlock" {
+                    "TSModuleBlock"
+                } else {
+                    "BlockStatement"
+                }
+            )
+            .unwrap();
+        }
+        "FormalParameter" => output.push_str("        result = f_pattern;\n"),
+        "FormalParameters" => output.push_str(
+            "        result = { params: f_rest === null ? f_items : [...f_items, f_rest] };\n",
+        ),
+        "Function" => output.push_str(
+            r#"        result = {
+          type: f_functionType, start, end,
+          id: f_id,
+          generator: f_generator,
+          async: f_async,
+          params: f_params.params,
+          body: f_body,
+          expression: false,
+        };
+        if (isTs) {
+          result.typeParameters = f_typeParameters;
+          result.returnType = f_returnType;
+          result.declare = false;
+        }
+"#,
+        ),
+        "TsFunction" => output.push_str(
+            r#"        result = {
+          type: "TSDeclareFunction",
+          start, end,
+          id: f_id,
+          generator: f_generator,
+          async: f_async,
+          params: f_params.params,
+          body: null,
+          expression: false,
+          typeParameters: f_typeParameters,
+          returnType: f_returnType,
+          declare: f_declare,
+        };
+"#,
+        ),
+        "ArrowFunctionExpression" => output.push_str(
+            r#"        result = {
+          type: "ArrowFunctionExpression", start, end,
+          id: null, generator: false, async: f_async,
+          params: f_params.params,
+          body: f_body, expression: f_expression,
+        };
+        if (isTs) {
+          result.typeParameters = f_typeParameters;
+          result.returnType = f_returnType;
+        }
+"#,
+        ),
+        "Directive" => output.push_str(
+            r#"        result = {
+          type: "ExpressionStatement", start, end,
+          expression: f_expression, directive: f_value,
+        };
+"#,
+        ),
+        "StringLiteral" => output.push_str(
+            "        result = { type: \"Literal\", start, end, value: f_value, raw: f_raw };\n",
+        ),
+        "NumericLiteral" => output.push_str(
+            r#"        const raw = f_raw;
+        const normalized = raw.includes("_") ? raw.replaceAll("_", "") : raw;
+        const value =
+          f_kind === "octal" && normalized[1]?.toLowerCase() !== "o"
+            ? parseInt(normalized.slice(1), 8)
+            : +normalized;
+        result = { type: "Literal", start, end, value, raw };
+"#,
+        ),
+        "BigIntLiteral" => output.push_str(
+            r#"        const raw = source.slice(start, end);
+        const value = BigInt(f_raw.replaceAll("_", ""));
+        result = { type: "Literal", start, end, value, raw, bigint: value.toString() };
+"#,
+        ),
+        "BooleanLiteral" => output.push_str(
+            r#"        result = {
+          type: "Literal", start, end,
+          value: f_value, raw: f_value ? "true" : "false",
+        };
+"#,
+        ),
+        "NullLiteral" => output.push_str(
+            "        result = { type: \"Literal\", start, end, value: null, raw: \"null\" };\n",
+        ),
+        "RegExpLiteral" => output.push_str(
+            r#"        let value = null;
+        try {
+          value = new RegExp(f_pattern, f_flags);
+        } catch {}
+        result = {
+          type: "Literal", start, end, value,
+          raw: `/${f_pattern}/${f_flags}`,
+          regex: { pattern: f_pattern, flags: [...f_flags].sort().join("") },
+        };
+"#,
+        ),
+        "TemplateElement" => output.push_str(
+            r#"        result = {
+          type: "TemplateElement",
+          start: isTs ? start - 1 : start,
+          end: isTs ? (f_tail ? end + 1 : end + 2) : end,
+          value: { raw: f_raw, cooked: f_isCookedUndefined ? null : f_cooked },
+          tail: f_tail,
+        };
+"#,
+        ),
+        "Class" => output.push_str(
+            r#"        result = {
+          type: f_classType, start, end,
+          decorators: f_decorators,
+          id: f_id,
+          superClass: f_superClass,
+          body: f_body,
+        };
+        if (isTs) {
+          result.typeParameters = f_typeParameters;
+          result.superTypeArguments = f_superTypeArguments;
+          result.implements = f_implements;
+          result.abstract = f_abstract;
+          result.declare = f_declare;
+        }
+"#,
+        ),
+        "MethodDefinition" | "TsMethodDefinition" => {
+            if name == "TsMethodDefinition" {
+                output.push_str(
+                    "        f_value.type = \"TSEmptyBodyFunctionExpression\";\n",
+                );
+            }
+            writeln!(
+                output,
+                "        result = {{\n          type: {},",
+                if name == "TsMethodDefinition" {
+                    "f_abstract ? \"TSAbstractMethodDefinition\" : \"MethodDefinition\""
+                } else {
+                    "\"MethodDefinition\""
+                }
+            )
+            .unwrap();
+            output.push_str(
+                r#"          start, end,
+          decorators: f_decorators,
+          key: f_key,
+          value: f_value,
+          kind: f_kind,
+          computed: f_computed,
+          static: f_static,
+        };
+        if (isTs) {
+          result.override = f_override;
+          result.optional = f_optional;
+          result.accessibility = f_accessibility;
+          if (f_abstract) result.type = "TSAbstractMethodDefinition";
+        }
+"#,
+            );
+        }
+        "PropertyDefinition" => output.push_str(
+            r#"        const accessor = f_accessor;
+        result = {
+          type: accessor ? "AccessorProperty" : "PropertyDefinition",
+          start, end,
+          decorators: f_decorators,
+          key: f_key,
+          value: f_value,
+          computed: f_computed,
+          static: f_static,
+        };
+        if (isTs) {
+          result.typeAnnotation = f_typeAnnotation;
+          result.declare = f_declare;
+          result.override = f_override;
+          result.optional = f_optional;
+          result.definite = f_definite;
+          result.readonly = f_readonly;
+          result.accessibility = f_accessibility;
+          if (f_abstract) {
+            result.type = accessor
+              ? "TSAbstractAccessorProperty"
+              : "TSAbstractPropertyDefinition";
+          }
+        }
+"#,
+        ),
+        "UnaryExpression" => output.push_str(
+            r#"        result = {
+          type: "UnaryExpression", start, end,
+          operator: f_operator, prefix: true, argument: f_argument,
+        };
+"#,
+        ),
+        "BindingProperty" => output.push_str(
+            r#"        result = {
+          type: "Property", start, end, kind: "init",
+          key: f_key, value: f_value,
+          method: false, shorthand: f_shorthand, computed: f_computed,
+        };
+        if (isTs) result.optional = false;
+"#,
+        ),
+        "ArrayPattern" => output.push_str(
+            r#"        const elements = f_rest === null ? f_elements : [...f_elements, f_rest];
+        result = { type: "ArrayPattern", start, end, elements };
+        if (isTs) {
+          result.decorators = f_decorators;
+          result.optional = f_optional;
+          result.typeAnnotation = f_typeAnnotation;
+        }
+"#,
+        ),
+        "ObjectPattern" => output.push_str(
+            r#"        const properties = f_rest === null ? f_properties : [...f_properties, f_rest];
+        result = { type: "ObjectPattern", start, end, properties };
+        if (isTs) {
+          result.decorators = f_decorators;
+          result.optional = f_optional;
+          result.typeAnnotation = f_typeAnnotation;
+        }
+"#,
+        ),
+        "JsxText" => output.push_str(
+            "        result = { type: \"JSXText\", start, end, value: f_value, raw: f_value };\n",
+        ),
+        "TsFunctionType"
+        | "TsConstructorType"
+        | "TsMethodSignature"
+        | "TsCallSignatureDeclaration"
+        | "TsConstructSignatureDeclaration" => {
+            writeln!(
+                output,
+                "        result = {{\n          type: \"{}\", start, end,",
+                estree_type(name)
+            )
+            .unwrap();
+            if name == "TsConstructorType" {
+                output.push_str("          abstract: f_abstract,\n");
+            }
+            if name == "TsMethodSignature" {
+                output.push_str(
+                    r#"          key: f_key,
+          computed: f_computed,
+          optional: f_optional,
+          kind: f_kind,
+"#,
+                );
+            }
+            output.push_str(
+                r#"          typeParameters: f_typeParameters,
+          params: f_params.params,
+          returnType: f_returnType,
+        };
+"#,
+            );
+            if name == "TsMethodSignature" {
+                output.push_str(
+                    r#"        result.accessibility = null;
+        result.readonly = false;
+        result.static = false;
+"#,
+                );
+            }
+        }
+        "TsMappedType" => output.push_str(
+            r#"        result = {
+          type: "TSMappedType", start, end,
+          key: f_key, constraint: f_constraint,
+          nameType: f_nameType, typeAnnotation: f_typeAnnotation,
+          optional: f_optional === null ? false : f_optional,
+          readonly: f_readonly,
+        };
+"#,
+        ),
+        "TsModuleDeclaration" => output.push_str(
+            r#"        result = {
+          type: "TSModuleDeclaration", start, end,
+          id: f_id, kind: f_kind, declare: f_declare, global: false,
+        };
+        if (f_body !== null) result.body = f_body;
+"#,
+        ),
+        "TsGlobalDeclaration" => output.push_str(
+            r#"        result = {
+          type: "TSModuleDeclaration", start, end,
+          id: f_id, body: f_body, kind: "global",
+          declare: f_declare, global: true,
+        };
+"#,
+        ),
+        "TsThisParameter" => output.push_str(
+            r#"        result = {
+          type: "Identifier", start, end,
+          decorators: [], name: "this", optional: false,
+          typeAnnotation: f_typeAnnotation,
+        };
+"#,
+        ),
+        _ => unreachable!("missing special ESTree decoder for {name}"),
+    }
+}
+
+fn estree_type(name: &str) -> String {
+    match name {
+        "BindingRestElement" => "RestElement".into(),
+        "ObjectProperty" => "Property".into(),
+        "IdentifierReference" | "BindingIdentifier" | "IdentifierName" | "LabelIdentifier" => {
+            "Identifier".into()
+        }
+        "TsBigIntKeyword" => "TSBigIntKeyword".into(),
+        "TsJsDocNullableType" => "TSJSDocNullableType".into(),
+        "TsJsDocNonNullableType" => "TSJSDocNonNullableType".into(),
+        "TsJsDocUnknownType" => "TSJSDocUnknownType".into(),
+        _ if name.starts_with("Jsx") => format!("JSX{}", &name[3..]),
+        _ if name.starts_with("Ts") => format!("TS{}", &name[2..]),
+        _ => name.into(),
+    }
+}
+
+fn is_ts_field(node: &str, field: &str) -> bool {
+    matches!(
+        (node, field),
+        ("VariableDeclaration", "declare")
+            | ("VariableDeclarator", "definite")
+            | ("CallExpression", "typeArguments")
+            | ("NewExpression", "typeArguments")
+            | ("TaggedTemplateExpression", "typeArguments")
+            | ("JsxOpeningElement", "typeArguments")
+            | ("ImportDeclaration", "importKind")
+            | ("ImportSpecifier", "importKind")
+            | ("ExportNamedDeclaration", "exportKind")
+            | ("ExportAllDeclaration", "exportKind")
+            | ("ExportSpecifier", "exportKind")
+            | (
+                "BindingRestElement",
+                "decorators" | "optional" | "typeAnnotation"
+            )
+            | (
+                "BindingIdentifier",
+                "decorators" | "optional" | "typeAnnotation"
+            )
+            | (
+                "AssignmentPattern",
+                "decorators" | "optional" | "typeAnnotation"
+            )
+            | (
+                "ObjectPattern",
+                "decorators" | "optional" | "typeAnnotation"
+            )
+            | ("ArrayPattern", "decorators" | "optional" | "typeAnnotation")
+            | ("TsIndexSignature", "static")
+    )
+}
+
+const IDENTIFIER_TS_EXTRAS: &[(&str, &str)] = &[
+    ("decorators", "[]"),
+    ("optional", "false"),
+    ("typeAnnotation", "null"),
+];
+const OBJECT_PROPERTY_TS_EXTRAS: &[(&str, &str)] = &[("optional", "false")];
+const EXPRESSION_STATEMENT_TS_EXTRAS: &[(&str, &str)] = &[("directive", "null")];
+const BINDING_REST_TS_EXTRAS: &[(&str, &str)] = &[("value", "null")];
+const EXPORT_DEFAULT_TS_EXTRAS: &[(&str, &str)] = &[("exportKind", "\"value\"")];
+const TS_PROPERTY_SIGNATURE_EXTRAS: &[(&str, &str)] =
+    &[("accessibility", "null"), ("static", "false")];
+const TS_INDEX_SIGNATURE_EXTRAS: &[(&str, &str)] = &[("accessibility", "null")];
+const TS_PARAMETER_PROPERTY_EXTRAS: &[(&str, &str)] = &[("static", "false")];
+
+fn ts_extra_fields(name: &str) -> &'static [(&'static str, &'static str)] {
+    match name {
+        "IdentifierReference" | "IdentifierName" | "LabelIdentifier" => IDENTIFIER_TS_EXTRAS,
+        "ObjectProperty" => OBJECT_PROPERTY_TS_EXTRAS,
+        "ExpressionStatement" => EXPRESSION_STATEMENT_TS_EXTRAS,
+        "BindingRestElement" => BINDING_REST_TS_EXTRAS,
+        "ExportDefaultDeclaration" => EXPORT_DEFAULT_TS_EXTRAS,
+        "TsPropertySignature" => TS_PROPERTY_SIGNATURE_EXTRAS,
+        "TsIndexSignature" => TS_INDEX_SIGNATURE_EXTRAS,
+        "TsParameterProperty" => TS_PARAMETER_PROPERTY_EXTRAS,
+        _ => &[],
     }
 }
 
@@ -420,10 +926,7 @@ export function decode(buffer, source) {
     return result;
   };
 
-  const cache = new Array(nodeCount);
   function node(index) {
-    const cached = cache[index];
-    if (cached !== undefined) return cached;
     const span = spans + index * 8;
     const start = pos(_u32[span >> 2]);
     const end = pos(_u32[(span >> 2) + 1]);
@@ -435,363 +938,10 @@ export function decode(buffer, source) {
 const POSTAMBLE: &str = r#"      default:
         throw new RangeError(`Unknown AST node kind ${bytes[kinds + index]}`);
     }
-    cache[index] = result;
-    return result;
-  }
-
-  function makeNode(name, f, start, end) {
-    let result;
-    switch (name) {
-      case "Program":
-        result = {
-          type: "Program", start, end,
-          sourceType: f.sourceType,
-          hashbang: f.hashbang,
-          body: [...f.directives, ...f.body],
-        };
-        break;
-      case "FunctionBody":
-      case "TsModuleBlock":
-        result = { type: "BlockStatement", start, end, body: [...f.directives, ...f.body] };
-        if (name === "TsModuleBlock") result.type = "TSModuleBlock";
-        break;
-      case "FormalParameter":
-        return f.pattern;
-      case "FormalParameters":
-        return { params: f.rest === null ? f.items : [...f.items, f.rest] };
-      case "Function":
-        result = {
-          type: f.functionType, start, end,
-          id: f.id,
-          generator: f.generator,
-          async: f.async,
-          params: f.params.params,
-          body: f.body,
-          expression: false,
-        };
-        if (isTs) {
-          result.typeParameters = f.typeParameters;
-          result.returnType = f.returnType;
-          result.declare = false;
-        }
-        break;
-      case "TsFunction":
-        result = {
-          type: "TSDeclareFunction",
-          start, end,
-          id: f.id,
-          generator: f.generator,
-          async: f.async,
-          params: f.params.params,
-          body: null,
-          expression: false,
-          typeParameters: f.typeParameters,
-          returnType: f.returnType,
-          declare: f.declare,
-        };
-        break;
-      case "ArrowFunctionExpression":
-        result = {
-          type: "ArrowFunctionExpression", start, end,
-          id: null, generator: false, async: f.async,
-          params: f.params.params,
-          body: f.body, expression: f.expression,
-        };
-        if (isTs) {
-          result.typeParameters = f.typeParameters;
-          result.returnType = f.returnType;
-        }
-        break;
-      case "Directive":
-        result = {
-          type: "ExpressionStatement", start, end,
-          expression: f.expression, directive: f.value,
-        };
-        break;
-      case "StringLiteral":
-        result = { type: "Literal", start, end, value: f.value, raw: f.raw };
-        break;
-      case "NumericLiteral": {
-        const raw = f.raw;
-        const normalized = raw.includes("_") ? raw.replaceAll("_", "") : raw;
-        const value =
-          f.kind === "octal" && normalized[1]?.toLowerCase() !== "o"
-            ? parseInt(normalized.slice(1), 8)
-            : +normalized;
-        result = { type: "Literal", start, end, value, raw };
-        break;
-      }
-      case "BigIntLiteral": {
-        const raw = source.slice(start, end);
-        const value = BigInt(f.raw.replaceAll("_", ""));
-        result = { type: "Literal", start, end, value, raw, bigint: value.toString() };
-        break;
-      }
-      case "BooleanLiteral":
-        result = {
-          type: "Literal", start, end,
-          value: f.value, raw: f.value ? "true" : "false",
-        };
-        break;
-      case "NullLiteral":
-        result = { type: "Literal", start, end, value: null, raw: "null" };
-        break;
-      case "RegExpLiteral": {
-        let value = null;
-        try {
-          value = new RegExp(f.pattern, f.flags);
-        } catch {}
-        result = {
-          type: "Literal", start, end, value,
-          raw: `/${f.pattern}/${f.flags}`,
-          regex: { pattern: f.pattern, flags: [...f.flags].sort().join("") },
-        };
-        break;
-      }
-      case "TemplateElement":
-        result = {
-          type: "TemplateElement",
-          start: isTs ? start - 1 : start,
-          end: isTs ? (f.tail ? end + 1 : end + 2) : end,
-          value: { raw: f.raw, cooked: f.isCookedUndefined ? null : f.cooked },
-          tail: f.tail,
-        };
-        break;
-      case "Class":
-        result = {
-          type: f.classType, start, end,
-          decorators: f.decorators,
-          id: f.id,
-          superClass: f.superClass,
-          body: f.body,
-        };
-        if (isTs) {
-          result.typeParameters = f.typeParameters;
-          result.superTypeArguments = f.superTypeArguments;
-          result.implements = f.implements;
-          result.abstract = f.abstract;
-          result.declare = f.declare;
-        }
-        break;
-      case "MethodDefinition":
-      case "TsMethodDefinition": {
-        if (name === "TsMethodDefinition") {
-          f.value.type = "TSEmptyBodyFunctionExpression";
-        }
-        result = {
-          type: name === "TsMethodDefinition" && f.abstract
-            ? "TSAbstractMethodDefinition"
-            : "MethodDefinition",
-          start, end,
-          decorators: f.decorators,
-          key: f.key,
-          value: f.value,
-          kind: f.kind,
-          computed: f.computed,
-          static: f.static,
-        };
-        if (isTs) {
-          result.override = f.override;
-          result.optional = f.optional;
-          result.accessibility = f.accessibility;
-          if (f.abstract) result.type = "TSAbstractMethodDefinition";
-        }
-        break;
-      }
-      case "PropertyDefinition": {
-        const accessor = f.accessor;
-        result = {
-          type: accessor ? "AccessorProperty" : "PropertyDefinition",
-          start, end,
-          decorators: f.decorators,
-          key: f.key,
-          value: f.value,
-          computed: f.computed,
-          static: f.static,
-        };
-        if (isTs) {
-          result.typeAnnotation = f.typeAnnotation;
-          result.declare = f.declare;
-          result.override = f.override;
-          result.optional = f.optional;
-          result.definite = f.definite;
-          result.readonly = f.readonly;
-          result.accessibility = f.accessibility;
-          if (f.abstract) {
-            result.type = accessor
-              ? "TSAbstractAccessorProperty"
-              : "TSAbstractPropertyDefinition";
-          }
-        }
-        break;
-      }
-      case "UnaryExpression":
-        result = {
-          type: "UnaryExpression", start, end,
-          operator: f.operator, prefix: true, argument: f.argument,
-        };
-        break;
-      case "BindingProperty":
-        result = {
-          type: "Property", start, end, kind: "init",
-          key: f.key, value: f.value,
-          method: false, shorthand: f.shorthand, computed: f.computed,
-        };
-        if (isTs) result.optional = false;
-        break;
-      case "ArrayPattern": {
-        const elements = f.rest === null ? f.elements : [...f.elements, f.rest];
-        result = { type: "ArrayPattern", start, end, elements };
-        if (isTs) {
-          result.decorators = f.decorators;
-          result.optional = f.optional;
-          result.typeAnnotation = f.typeAnnotation;
-        }
-        break;
-      }
-      case "ObjectPattern": {
-        const properties = f.rest === null ? f.properties : [...f.properties, f.rest];
-        result = { type: "ObjectPattern", start, end, properties };
-        if (isTs) {
-          result.decorators = f.decorators;
-          result.optional = f.optional;
-          result.typeAnnotation = f.typeAnnotation;
-        }
-        break;
-      }
-      case "JsxText":
-        result = { type: "JSXText", start, end, value: f.value, raw: f.value };
-        break;
-      case "TsFunctionType":
-      case "TsConstructorType":
-      case "TsMethodSignature":
-      case "TsCallSignatureDeclaration":
-      case "TsConstructSignatureDeclaration":
-        result = {
-          type: estreeType(name), start, end,
-          ...(name === "TsConstructorType" ? { abstract: f.abstract } : {}),
-          ...(name === "TsMethodSignature"
-            ? { key: f.key, computed: f.computed, optional: f.optional, kind: f.kind }
-            : {}),
-          typeParameters: f.typeParameters,
-          params: f.params.params,
-          returnType: f.returnType,
-        };
-        if (name === "TsMethodSignature") {
-          result.accessibility = null;
-          result.readonly = false;
-          result.static = false;
-        }
-        break;
-      case "TsMappedType":
-        result = {
-          type: "TSMappedType", start, end,
-          key: f.key, constraint: f.constraint,
-          nameType: f.nameType, typeAnnotation: f.typeAnnotation,
-          optional: f.optional === null ? false : f.optional,
-          readonly: f.readonly,
-        };
-        break;
-      case "TsModuleDeclaration":
-        result = {
-          type: "TSModuleDeclaration", start, end,
-          id: f.id, kind: f.kind, declare: f.declare, global: false,
-        };
-        if (f.body !== null) result.body = f.body;
-        break;
-      case "TsGlobalDeclaration":
-        result = {
-          type: "TSModuleDeclaration", start, end,
-          id: f.id, body: f.body, kind: "global",
-          declare: f.declare, global: true,
-        };
-        break;
-      case "TsThisParameter":
-        result = {
-          type: "Identifier", start, end,
-          decorators: [], name: "this", optional: false,
-          typeAnnotation: f.typeAnnotation,
-        };
-        break;
-      default: {
-        result = { type: estreeType(name), start, end };
-        for (const [key, value] of Object.entries(f)) {
-          if (key !== "__extra" && (isTs || !isTsField(name, key))) result[key] = value;
-        }
-        addTsExtras(name, result, isTs);
-      }
-    }
     return result;
   }
 
   const root = node(programIndex);
   return root;
-}
-
-function estreeType(name) {
-  const overrides = {
-    BindingRestElement: "RestElement",
-    ObjectProperty: "Property",
-    IdentifierReference: "Identifier",
-    BindingIdentifier: "Identifier",
-    IdentifierName: "Identifier",
-    LabelIdentifier: "Identifier",
-    TsBigIntKeyword: "TSBigIntKeyword",
-    TsJsDocNullableType: "TSJSDocNullableType",
-    TsJsDocNonNullableType: "TSJSDocNonNullableType",
-    TsJsDocUnknownType: "TSJSDocUnknownType",
-  };
-  if (overrides[name]) return overrides[name];
-  if (name.startsWith("Jsx")) return `JSX${name.slice(3)}`;
-  if (name.startsWith("Ts")) return `TS${name.slice(2)}`;
-  return name;
-}
-
-const TS_FIELDS = Object.freeze({
-  VariableDeclaration: ["declare"],
-  VariableDeclarator: ["definite"],
-  CallExpression: ["typeArguments"],
-  NewExpression: ["typeArguments"],
-  TaggedTemplateExpression: ["typeArguments"],
-  JsxOpeningElement: ["typeArguments"],
-  ImportDeclaration: ["importKind"],
-  ImportSpecifier: ["importKind"],
-  ExportNamedDeclaration: ["exportKind"],
-  ExportAllDeclaration: ["exportKind"],
-  ExportSpecifier: ["exportKind"],
-  BindingRestElement: ["decorators", "optional", "typeAnnotation"],
-  BindingIdentifier: ["decorators", "optional", "typeAnnotation"],
-  AssignmentPattern: ["decorators", "optional", "typeAnnotation"],
-  ObjectPattern: ["decorators", "optional", "typeAnnotation"],
-  ArrayPattern: ["decorators", "optional", "typeAnnotation"],
-  TsIndexSignature: ["static"],
-});
-
-function isTsField(name, field) {
-  return TS_FIELDS[name]?.includes(field) ?? false;
-}
-
-function addTsExtras(name, result, isTs) {
-  if (!isTs) return;
-  if (["IdentifierReference", "IdentifierName", "LabelIdentifier"].includes(name)) {
-    result.decorators = [];
-    result.optional = false;
-    result.typeAnnotation = null;
-  } else if (name === "ObjectProperty") {
-    result.optional = false;
-  } else if (name === "ExpressionStatement") {
-    result.directive = null;
-  } else if (name === "BindingRestElement") {
-    result.value = null;
-  } else if (name === "ExportDefaultDeclaration") {
-    result.exportKind = "value";
-  } else if (name === "TsPropertySignature") {
-    result.accessibility = null;
-    result.static = false;
-  } else if (name === "TsIndexSignature") {
-    result.accessibility = null;
-  } else if (name === "TsParameterProperty") {
-    result.static = false;
-  }
 }
 "#;
