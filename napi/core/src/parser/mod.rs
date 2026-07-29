@@ -2,12 +2,12 @@ use napi::bindgen_prelude::Buffer;
 use napi_derive::napi;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
-    Ast,
+    Ast, Lang as AstLang, SourceType as AstSourceType,
     ffi::ast::{buffer_size, serialize_into},
 };
 use swc_next_ecma_parser::parse;
 
-use crate::parser::options::ParserOptions;
+use crate::parser::options::{Lang, ParserOptions, SourceType};
 
 pub mod options;
 
@@ -25,4 +25,14 @@ pub fn parse_sync(source: String, options: Option<ParserOptions>) -> Buffer {
     let mut buf = vec![0; buffer_size];
     serialize_into(program, &ast, &mut buf);
     Buffer::from(buf.as_ref())
+}
+
+#[napi]
+pub fn source_type_from_path(path: String) -> SourceType {
+    AstSourceType::from_path(&path).into()
+}
+
+#[napi]
+pub fn lang_from_path(path: String) -> Lang {
+    AstLang::from_path(&path).into()
 }

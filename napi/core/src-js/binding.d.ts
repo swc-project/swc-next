@@ -13,6 +13,8 @@ export declare const enum Lang {
   Dts = 'dts'
 }
 
+export declare function langFromPath(path: string): Lang
+
 export interface ParserOptions {
   /**
    * Determines how the source is parsed and evaluated.
@@ -47,3 +49,5 @@ export declare const enum SourceType {
   Script = 'script',
   CommonJs = 'commonjs'
 }
+
+export declare function sourceTypeFromPath(path: string): SourceType

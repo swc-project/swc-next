@@ -2,9 +2,9 @@ import fs from "node:fs";
 
 import {
   CommentMode,
-  Lang,
-  SourceType,
+  langFromPath,
   parseSync,
+  sourceTypeFromPath,
 } from "../src-js/index.js";
 
 const filePath = process.argv[2];
@@ -30,34 +30,4 @@ if (!filePath) {
       2,
     ),
   );
-}
-
-function langFromPath(filePath: string) {
-  if (
-    filePath.endsWith(".d.ts") ||
-    filePath.endsWith(".d.mts") ||
-    filePath.endsWith(".d.cts")
-  ) {
-    return Lang.Dts;
-  }
-  if (filePath.endsWith(".tsx")) {
-    return Lang.Tsx;
-  }
-  if (
-    filePath.endsWith(".ts") ||
-    filePath.endsWith(".mts") ||
-    filePath.endsWith(".cts")
-  ) {
-    return Lang.Ts;
-  }
-  if (filePath.endsWith(".jsx")) {
-    return Lang.Jsx;
-  }
-  return Lang.Js;
-}
-
-function sourceTypeFromPath(filePath: string) {
-  return filePath.endsWith(".cjs") || filePath.endsWith(".cts")
-    ? SourceType.CommonJs
-    : SourceType.Module;
 }

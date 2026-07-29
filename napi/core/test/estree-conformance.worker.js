@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { parseSync } from "../src-js/index.js";
+import { langFromPath, parseSync } from "../src-js/index.js";
 
 const AST_MARKER = "__ESTREE_TEST__:AST:";
 const TOKENS_MARKER = "__ESTREE_TEST__:TOKENS:";
@@ -20,7 +20,7 @@ export default async function runCase({ oracle, source, file }) {
     const sourceCode = fs.readFileSync(sourceFile, "utf8");
     const { program: ast } = parseSync(sourceCode, {
       comments: "none",
-      lang: getLang(sourceFile),
+      lang: langFromPath(sourceFile),
       preserveParens: true,
       sourceType: expectedAst.sourceType,
     });
@@ -80,20 +80,4 @@ function getSourceFile(source, file) {
     default:
       throw new Error(`Unsupported oracle file: ${file}`);
   }
-}
-
-function getLang(sourceFile) {
-  if (sourceFile.endsWith(".tsx")) {
-    return "tsx";
-  }
-  if (sourceFile.endsWith(".d.ts")) {
-    return "dts";
-  }
-  if (sourceFile.endsWith(".ts")) {
-    return "ts";
-  }
-  if (sourceFile.endsWith(".jsx")) {
-    return "jsx";
-  }
-  return "js";
 }
