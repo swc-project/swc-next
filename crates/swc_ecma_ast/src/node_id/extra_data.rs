@@ -18,7 +18,9 @@ macro_rules! impl_extra_data_copy {
         impl<'a> ExtraDataCompact<'a> for $ty {
             #[inline]
             fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-                ExtraData { $field: self }
+                let mut data = ExtraData { other: 0 };
+                data.$field = self;
+                data
             }
 
             #[inline]

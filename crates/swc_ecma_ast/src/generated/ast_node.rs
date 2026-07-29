@@ -2,6 +2,7 @@
 use crate::{Ast, GetSpan, SetSpan};
 use crate::{ast::*, node_id::*};
 /// The concrete type stored at a node ID.
+#[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeKind {
     Program,

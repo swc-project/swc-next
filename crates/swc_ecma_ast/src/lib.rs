@@ -90,6 +90,20 @@ pub union ExtraData {
     other: u64,
 }
 
+impl ExtraData {
+    /// Construct a fully initialized extra-data word containing a node ID.
+    ///
+    /// `ExtraData` is copied byte-for-byte across the JavaScript FFI. Writing
+    /// the four-byte union field directly would leave the high four bytes
+    /// uninitialized.
+    #[inline]
+    pub(crate) fn from_node_id(node_id: NodeId) -> Self {
+        let mut data = Self { other: 0 };
+        data.node_id = node_id;
+        data
+    }
+}
+
 impl<'a> Ast<'a> {
     /// Create a flattening AST backed by `source` and `allocator`.
     pub fn new(source: &'a [u8], allocator: &'a Allocator) -> Self {
@@ -317,6 +331,7 @@ impl<'a> Ast<'a> {
 
 pub const DUMMY_SP: Span = Span { start: 0, end: 0 };
 
+#[repr(C)]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Span {
     pub start: u32,

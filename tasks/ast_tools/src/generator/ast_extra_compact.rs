@@ -18,7 +18,7 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
                    impl<'a> ExtraDataCompact<'a> for #ident {
                         #[inline]
                         fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-                            ExtraData { node_id: self.node_id() }
+                            ExtraData::from_node_id(self.node_id())
                         }
 
                         #[inline]
@@ -35,7 +35,7 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
                    impl<'a> ExtraDataCompact<'a> for #ident {
                         #[inline]
                         fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-                            ExtraData { node_id: self.node_id() }
+                            ExtraData::from_node_id(self.node_id())
                         }
 
                         #[inline]
@@ -60,12 +60,10 @@ pub fn ast_extra_compact(schema: &Schema) -> RawOutput {
                    impl<'a> ExtraDataCompact<'a> for #ty_ident {
                         #[inline]
                         fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
-                            ExtraData {
-                                node_id: self.map_or(
-                                    NodeId::from_raw_unchecked(u32::MAX),
-                                    |node| node.node_id(),
-                                )
-                            }
+                            ExtraData::from_node_id(self.map_or(
+                                NodeId::from_raw_unchecked(u32::MAX),
+                                |node| node.node_id(),
+                            ))
                         }
 
                         #[inline]
