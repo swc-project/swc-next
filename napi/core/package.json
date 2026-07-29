@@ -33,6 +33,7 @@
     "@napi-rs/cli": "catalog:",
     "@swc/core": "catalog:",
     "@types/node": "catalog:",
+    "oxc-parser": "catalog:",
     "tinybench": "catalog:",
     "tinypool": "catalog:",
     "typescript": "catalog:",

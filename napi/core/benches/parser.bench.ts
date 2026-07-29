@@ -8,6 +8,11 @@ import {
   type ParseOptions as SwcParseOptions,
 } from "@swc/core";
 import {
+  parseSync as oxcParse,
+  rawTransferSupported as oxcRawTransferSupported,
+  type ParserOptions as OxcParserOptions,
+} from "oxc-parser";
+import {
   langFromPath as yukuLangFromPath,
   parse as yukuParse,
   sourceTypeFromPath as yukuSourceTypeFromPath,
@@ -57,6 +62,32 @@ async function runBenchmark(inputPath: string): Promise<void> {
         script: sourceType !== SourceType.Module,
       };
 
+  const oxcOptions: OxcParserOptions = {
+    lang:
+      lang === Lang.Dts
+        ? "dts"
+        : isTypeScript
+          ? hasJsx
+            ? "tsx"
+            : "ts"
+          : hasJsx
+            ? "jsx"
+            : "js",
+    preserveParens: true,
+    showSemanticErrors: false,
+    sourceType:
+      sourceType === SourceType.Module
+        ? ("module" as const)
+        : ("script" as const),
+  };
+  const oxcRawTransferOptions: OxcParserOptions & {
+    experimentalRawTransfer: true;
+  } = {
+    ...oxcOptions,
+    experimentalRawTransfer: true,
+  };
+  const hasOxcRawTransfer = oxcRawTransferSupported();
+
   const babelPlugins: ParserPlugin[] = [];
   if (isTypeScript) {
     babelPlugins.push(["typescript", { dts: lang === Lang.Dts }]);
@@ -96,6 +127,10 @@ async function runBenchmark(inputPath: string): Promise<void> {
   yukuParse(source, yukuOptions).program;
   babelParse(source, babelOptions);
   swcParse(source, swcOptions);
+  oxcParse(inputPath, source, oxcOptions).program;
+  if (hasOxcRawTransfer) {
+    oxcParse(inputPath, source, oxcRawTransferOptions).program;
+  }
 
   const bench = new Bench({
     iterations: 1,
@@ -106,7 +141,7 @@ async function runBenchmark(inputPath: string): Promise<void> {
   });
 
   bench
-    .add("@swc-next/core.parseSync", () => {
+    .add("@swc-next/core", () => {
       parseSync(source, currentOptions);
     })
     .add("yuku-parser", () => {
@@ -115,9 +150,17 @@ async function runBenchmark(inputPath: string): Promise<void> {
     .add("@babel/parser", () => {
       babelParse(source, babelOptions);
     })
-    .add("@swc/core.parseSync", () => {
+    .add("@swc/core", () => {
       swcParse(source, swcOptions);
+    })
+    .add("oxc-parser", () => {
+      oxcParse(inputPath, source, oxcOptions).program;
     });
+  if (hasOxcRawTransfer) {
+    bench.add("oxc-parser (raw transfer)", () => {
+      oxcParse(inputPath, source, oxcRawTransferOptions).program;
+    });
+  }
 
   await bench.run();
   console.table(bench.table());
