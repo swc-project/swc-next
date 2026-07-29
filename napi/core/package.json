@@ -29,9 +29,13 @@
     ]
   },
   "devDependencies": {
+    "@babel/parser": "catalog:",
     "@napi-rs/cli": "catalog:",
+    "@swc/core": "catalog:",
     "@types/node": "catalog:",
+    "tinybench": "catalog:",
     "tinypool": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "yuku-parser": "catalog:"
   }
 }

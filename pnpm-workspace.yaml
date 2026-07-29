@@ -1,10 +1,17 @@
 packages:
   - napi/*
 
+allowBuilds:
+  '@swc/core': true
+
 catalog:
+  '@babel/parser': ^8.0.4
   '@napi-rs/cli': ^3.7.4
+  '@swc/core': ^1.15.46
   '@types/node': ^26.1.1
+  tinybench: ^6.1.2
   tinypool: ^2.1.0
   typescript: ^7.0.2
+  yuku-parser: ^0.8.0
 
 catalogMode: prefer
