@@ -10,29 +10,62 @@ const TEST_HARNESS = path.resolve(FIXTURE_DIR, "estree-conformance/src");
 const FIELD_ORDERS_FILE = path.resolve(TEST_HARNESS, "field-orders.json");
 
 // ========================= Runner =============================
+const { makeUnitsFromTest } = await import(
+  path.resolve(TEST_HARNESS, "utils/typescript-make-units-from-test.cjs")
+);
+
 export default async function runCase({ oracle, source, file }) {
   const oracleFile = path.resolve(oracle, file);
-  const sourceFile = getSourceFile(source, file);
+  const sourceFile = (function (source, file) {
+    switch (path.extname(file)) {
+      case ".json":
+        return path.resolve(source, file.slice(0, -".json".length) + ".js");
+      case ".md":
+        return path.resolve(source, file.slice(0, -".md".length));
+      default:
+        throw new Error(`Unsupported oracle file: ${file}`);
+    }
+  })(source, file);
 
   try {
-    const expected = readExpected(oracleFile);
-    const expectedAst = JSON.parse(expected.ast);
-    // Parse the tokens now as well so malformed token fixtures are reported.
-    // Token conformance will be compared separately once token output is exposed.
-    JSON.parse(expected.tokens);
+    const expectedUnits = readExpected(oracleFile).map((expected) => ({
+      ...expected,
+      astValue: JSON.parse(expected.ast),
+    }));
 
-    const sourceCode = fs.readFileSync(sourceFile, "utf8");
-    const { program: ast } = parseSync(sourceCode, {
-      comments: "none",
-      lang: langFromPath(sourceFile),
-      preserveParens: true,
-      sourceType: expectedAst.sourceType,
+    let sourceCode = fs.readFileSync(sourceFile, "utf8");
+    if (sourceCode.charCodeAt(0) === 0xfeff) sourceCode = sourceCode.slice(1);
+
+    const sourceUnits =
+      path.extname(oracleFile) === ".md"
+        ? makeUnitsFromTest(sourceFile, sourceCode).tests
+        : [
+            {
+              content: sourceCode,
+              name: sourceFile,
+              sourceType: { jsx: false },
+            },
+          ];
+    const actualAsts = sourceUnits.map((sourceUnit, index) => {
+      const expected = expectedUnits[index];
+      const { program: ast } = parseSync(sourceUnit.content, {
+        comments: "none",
+        lang: getLang(sourceUnit),
+        preserveParens: true,
+        sourceType:
+          expected?.astValue.sourceType ??
+          (sourceUnit.sourceType.module ? "module" : "script"),
+      });
+      return JSON.stringify(ast, reorderAstFields, 2);
     });
+    const passed =
+      actualAsts.length === expectedUnits.length &&
+      actualAsts.every((ast, index) => ast === expectedUnits[index].ast);
 
     return {
       file: sourceFile,
       parsed: true,
-      passed: JSON.stringify(ast, reorderAstFields, 2) === expected.ast,
+      passed,
     };
   } catch (error) {
     return {
@@ -49,6 +82,14 @@ const AST_MARKER = "__ESTREE_TEST__:AST:";
 const TOKENS_MARKER = "__ESTREE_TEST__:TOKENS:";
 
 const fieldOrders = JSON.parse(fs.readFileSync(FIELD_ORDERS_FILE, "utf8"));
+
+function getLang(sourceUnit) {
+  const lang = langFromPath(sourceUnit.name);
+  if (!sourceUnit.sourceType.jsx) return lang;
+  if (lang === "ts" || lang === "dts") return "tsx";
+  if (lang === "js") return "jsx";
+  return lang;
+}
 
 function reorderAstFields(_key, value) {
   if (
@@ -86,40 +127,41 @@ function readExpected(oracleFile) {
   const contents = fs.readFileSync(oracleFile, "utf8");
   switch (path.extname(oracleFile)) {
     case ".json":
-      return { ast: contents, tokens: "[]" };
-    case ".md":
-      return {
-        ast: readJsonBlock(contents, AST_MARKER, oracleFile),
-        tokens: readJsonBlock(contents, TOKENS_MARKER, oracleFile),
-      };
+      return [{ ast: contents, tokens: "[]" }];
+    case ".md": {
+      const asts = readJsonBlocks(contents, AST_MARKER, oracleFile);
+      const tokens = readJsonBlocks(contents, TOKENS_MARKER, oracleFile);
+      if (asts.length !== tokens.length) {
+        throw new Error(`Mismatched AST and token blocks in ${oracleFile}`);
+      }
+      return asts.map((ast, index) => ({ ast, tokens: tokens[index] }));
+    }
     default:
       throw new Error(`Unsupported oracle file: ${oracleFile}`);
   }
 
-  function readJsonBlock(markdown, marker, file) {
-    const markerIndex = markdown.indexOf(marker);
-    if (markerIndex === -1) {
+  function readJsonBlocks(markdown, marker, file) {
+    const blocks = [];
+    let searchFrom = 0;
+
+    while (true) {
+      const markerIndex = markdown.indexOf(marker, searchFrom);
+      if (markerIndex === -1) break;
+
+      const block = markdown
+        .slice(markerIndex + marker.length)
+        .match(/^\s*```json\r?\n([\s\S]*?)\r?\n```/);
+      if (!block) {
+        throw new Error(`Invalid JSON block after ${marker} in ${file}`);
+      }
+      blocks.push(block[1]);
+      searchFrom = markerIndex + marker.length + block[0].length;
+    }
+
+    if (blocks.length === 0) {
       throw new Error(`Missing ${marker} in ${file}`);
     }
 
-    const block = markdown
-      .slice(markerIndex + marker.length)
-      .match(/^\s*```json\r?\n([\s\S]*?)\r?\n```/);
-    if (!block) {
-      throw new Error(`Invalid JSON block after ${marker} in ${file}`);
-    }
-
-    return block[1];
-  }
-}
-
-function getSourceFile(source, file) {
-  switch (path.extname(file)) {
-    case ".json":
-      return path.resolve(source, file.slice(0, -".json".length) + ".js");
-    case ".md":
-      return path.resolve(source, file.slice(0, -".md".length));
-    default:
-      throw new Error(`Unsupported oracle file: ${file}`);
+    return blocks;
   }
 }
