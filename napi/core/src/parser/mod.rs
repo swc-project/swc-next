@@ -24,7 +24,7 @@ pub fn parse_sync(source: String, options: Option<ParserOptions>) -> Buffer {
     let buffer_size = buffer_size(&ast);
     let mut buf = vec![0; buffer_size];
     serialize_into(program, &ast, &mut buf);
-    Buffer::from(buf.as_ref())
+    Buffer::from(buf)
 }
 
 #[napi]
