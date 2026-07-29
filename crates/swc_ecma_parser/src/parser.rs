@@ -685,6 +685,25 @@ impl Drop for Peek<'_, '_> {
     }
 }
 
+fn estimate_ast_capacity(source_len: usize) -> (usize, usize) {
+    let estimated_nodes = if source_len < 4_000 {
+        256.max(source_len / 4)
+    } else if source_len < 10_000 {
+        source_len / 3
+    } else if source_len < 100_000 {
+        source_len / 6
+    } else {
+        source_len / 8
+    };
+
+    // Out-of-line AST fields are common in every grammar: lists, optional
+    // metadata, and values that do not fit in the inline node payload all use
+    // this table. Leave general headroom so large parses do not copy the full
+    // table immediately after the initial reservation.
+    let estimated_extra = estimated_nodes * 2 / 3;
+    (estimated_nodes, estimated_extra)
+}
+
 impl<'parser, 'a> Parser<'parser, 'a> {
     pub fn init(ast: &'parser mut Ast<'a>, options: Options) -> Self {
         let source = ast.source();
@@ -1000,21 +1019,7 @@ impl<'parser, 'a> Parser<'parser, 'a> {
     }
 
     pub fn ensure_capacity(&mut self) {
-        let source_len = self.source.len();
-        let estimated_nodes = if source_len < 4_000 {
-            256.max(source_len / 4)
-        } else if source_len < 10_000 {
-            source_len / 3
-        } else if source_len < 100_000 {
-            source_len / 6
-        } else {
-            source_len / 8
-        };
-        let estimated_extra = if source_len < 5_000_000 {
-            estimated_nodes / 4
-        } else {
-            estimated_nodes / 3
-        };
+        let (estimated_nodes, estimated_extra) = estimate_ast_capacity(self.source.len());
         self.ast.reserve(estimated_nodes, estimated_extra);
         self.scratch_cover.items.reserve(256);
         self.scratch_statements.items.reserve(256);
@@ -11705,6 +11710,20 @@ mod tests {
     use swc_next_allocator::Allocator;
 
     use super::*;
+
+    #[test]
+    fn bounds_small_capacity_estimates() {
+        let (nodes, extra) = estimate_ast_capacity(0);
+        assert_eq!(nodes, 256);
+        assert!(extra <= nodes);
+    }
+
+    #[test]
+    fn leaves_extra_data_growth_headroom() {
+        let (nodes, extra) = estimate_ast_capacity(8_000_000);
+        assert_eq!(nodes, 1_000_000);
+        assert_eq!(extra, 666_666);
+    }
 
     #[test]
     fn validates_identifier_fast_and_diagnostic_paths() {
