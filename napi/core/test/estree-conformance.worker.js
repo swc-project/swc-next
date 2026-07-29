@@ -92,6 +92,8 @@ function getLang(sourceUnit) {
 }
 
 function reorderAstFields(_key, value) {
+  if (typeof value === "bigint") return null;
+
   if (
     typeof value !== "object" ||
     value === null ||
