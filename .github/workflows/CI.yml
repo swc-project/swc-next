@@ -80,11 +80,24 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       - uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1v1
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.17.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install Node.js dependencies
+        run: pnpm install --frozen-lockfile
       - name: Clone test fixtures
         run: ./scripts/clone_fixtures.sh
       - name: Run parser and codegen conformance
         run: cargo run --locked -p testsuite --bin conformance
       - name: Run Babel transform conformance
         run: cargo run --locked -p testsuite --bin babel_transform
+      - name: Build Node.js bindings
+        run: pnpm build:core --release
+      - name: Run ESTree conformance
+        run: pnpm --filter @swc-next/core conformance
       - name: Check conformance snapshots
         run: git diff --exit-code -- tasks/testsuite/snapshots

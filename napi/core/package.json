@@ -12,7 +12,8 @@
     }
   },
   "scripts": {
-    "build": "napi build --esm --platform --js binding.js --dts binding.d.ts --output-dir src-js"
+    "build": "napi build --esm --platform --js binding.js --dts binding.d.ts --output-dir src-js",
+    "conformance": "node ./test/estree-conformance.ts"
   },
   "keywords": [],
   "author": "",
