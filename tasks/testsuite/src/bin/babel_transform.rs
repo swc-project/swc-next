@@ -15,7 +15,7 @@ use swc_next_ecma_codegen::{Options as CodegenOptions, print};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::analyze;
 use swc_next_ecma_transformer::{Transformer, TransformerOptions};
-use testsuite::{cases::babel::BabelCase, suite::TestResult, util::crate_root};
+use testsuite::{cases::babel::BabelTransformCase, suite::TestResult, util::crate_root};
 
 const SNAPSHOT_FILE: &str = "babel_transform.snap";
 const DETAIL_SEPARATOR_WIDTH: usize = 80;
@@ -38,7 +38,7 @@ impl AppArgs {
 
 fn main() {
     let args = AppArgs::parse();
-    let cases = BabelCase::read();
+    let cases = BabelTransformCase::read();
 
     match args.case_filter {
         Some(filter) => print_selected_case(cases, &filter),
@@ -46,7 +46,7 @@ fn main() {
     }
 }
 
-fn update_snapshot(cases: Vec<BabelCase>) {
+fn update_snapshot(cases: Vec<BabelTransformCase>) {
     let (runnable, skipped): (Vec<_>, Vec<_>) = cases.into_iter().partition(is_runnable);
     let results = runnable
         .par_iter()
@@ -59,14 +59,14 @@ fn update_snapshot(cases: Vec<BabelCase>) {
     println!("Updated {}", snapshot_path.display());
 }
 
-fn is_runnable(case: &BabelCase) -> bool {
+fn is_runnable(case: &BabelTransformCase) -> bool {
     case.options.plugins.errors.is_empty()
         && case.options.plugins.unsupported.is_empty()
         && case.options.presets.errors.is_empty()
         && case.options.presets.unsupported.is_empty()
 }
 
-fn unsupported_reason(case: &BabelCase) -> String {
+fn unsupported_reason(case: &BabelTransformCase) -> String {
     let entries = case
         .options
         .plugins
@@ -87,7 +87,7 @@ struct CaseExecution {
     result: TestResult,
 }
 
-fn run_snapshot_case(case: &BabelCase) -> CaseExecution {
+fn run_snapshot_case(case: &BabelTransformCase) -> CaseExecution {
     let path = case
         .path
         .strip_prefix(crate_root())
@@ -117,7 +117,7 @@ fn run_snapshot_case(case: &BabelCase) -> CaseExecution {
 
 // Detailed case output
 
-fn print_selected_case(cases: Vec<BabelCase>, filter: &str) {
+fn print_selected_case(cases: Vec<BabelTransformCase>, filter: &str) {
     let mut matches = cases.into_iter().filter(|case| case.name.contains(filter));
     let Some(case) = matches.next() else {
         println!("No Babel transform case matched `{filter}`.");
@@ -132,7 +132,7 @@ fn print_selected_case(cases: Vec<BabelCase>, filter: &str) {
     print_case_detail(&case);
 }
 
-fn print_case_detail(case: &BabelCase) {
+fn print_case_detail(case: &BabelTransformCase) {
     println!("{}", "=".repeat(DETAIL_SEPARATOR_WIDTH));
     println!("Case: {}", case.name);
     println!("Package: {}", case.package_name);
@@ -275,7 +275,7 @@ struct SnapshotReport {
 }
 
 impl SnapshotReport {
-    fn new(results: &[CaseExecution], skipped: &[BabelCase]) -> Self {
+    fn new(results: &[CaseExecution], skipped: &[BabelTransformCase]) -> Self {
         let mut report = Self {
             total: Summary::default(),
             packages: BTreeMap::new(),
@@ -344,7 +344,7 @@ impl Artifacts {
     }
 }
 
-fn validate_case(case: &BabelCase) -> Result<(), String> {
+fn validate_case(case: &BabelTransformCase) -> Result<(), String> {
     let artifacts = generate_artifacts(case)?;
     let Some(offset) = artifacts.first_difference() else {
         return Ok(());
@@ -358,13 +358,13 @@ fn validate_case(case: &BabelCase) -> Result<(), String> {
     ))
 }
 
-fn generate_artifacts(case: &BabelCase) -> Result<Artifacts, String> {
+fn generate_artifacts(case: &BabelTransformCase) -> Result<Artifacts, String> {
     let actual = transform_input(case)?;
     let expected = normalize_expected_output(case)?;
     Ok(Artifacts { actual, expected })
 }
 
-fn transform_input(case: &BabelCase) -> Result<Vec<u8>, String> {
+fn transform_input(case: &BabelTransformCase) -> Result<Vec<u8>, String> {
     let source = case.input.as_bytes();
     let allocator = Allocator::new();
     let mut ast = Ast::new(source, &allocator);
@@ -385,7 +385,7 @@ fn transform_input(case: &BabelCase) -> Result<Vec<u8>, String> {
         .to_vec())
 }
 
-fn normalize_expected_output(case: &BabelCase) -> Result<Vec<u8>, String> {
+fn normalize_expected_output(case: &BabelTransformCase) -> Result<Vec<u8>, String> {
     let source = case.output.as_bytes();
     let allocator = Allocator::new();
     let mut ast = Ast::new(source, &allocator);

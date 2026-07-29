@@ -18,7 +18,7 @@ impl TryFrom<PluginPresetEntries> for BabelPresets {
     fn try_from(entries: PluginPresetEntries) -> Result<Self, Self::Error> {
         let mut presets = Self::default();
         for entry in entries.0 {
-            match entry.normalized_name() {
+            match entry.name() {
                 "react" => {
                     presets.jsx = true;
                     presets.unsupported.push(entry.name().to_owned());

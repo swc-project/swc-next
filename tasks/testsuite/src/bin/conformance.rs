@@ -3,7 +3,7 @@ use std::{collections::HashSet, fs, process::ExitCode};
 use pico_args::Arguments;
 use rayon::ThreadPoolBuilder;
 use testsuite::{
-    cases::{Case, babel::BabelCase, test262::Test262Case, typescript::TypeScriptCase},
+    cases::{Case, babel::BabelParserCase, test262::Test262Case, typescript::TypeScriptCase},
     runner::{Runner, codegen::CodegenRunner, parser::ParserRunner},
     suite::TestResult,
     util::crate_root,
@@ -38,7 +38,7 @@ pub fn main() -> ExitCode {
     let panicked = [
         update_snapshots::<Test262Case>(&args),
         update_snapshots::<TypeScriptCase>(&args),
-        update_snapshots::<BabelCase>(&args),
+        update_snapshots::<BabelParserCase>(&args),
     ]
     .into_iter()
     .any(|panicked| panicked);

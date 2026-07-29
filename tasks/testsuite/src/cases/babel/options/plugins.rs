@@ -37,7 +37,7 @@ impl TryFrom<PluginPresetEntries> for BabelPlugins {
     fn try_from(entries: PluginPresetEntries) -> Result<Self, Self::Error> {
         let mut plugins = Self::default();
         for entry in entries.0 {
-            match entry.normalized_name() {
+            match entry.name() {
                 "typescript" | "syntax-typescript" => {
                     plugins.syntax_typescript = Some(entry.value::<SyntaxTypeScriptOptions>()?);
                 }
