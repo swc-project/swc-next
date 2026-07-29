@@ -1,4 +1,4 @@
-AST Parsed     : 11509/11509 (100.00%)
+AST Parsed     : 11491/11509 (99.84%)
 Positive Passed: 0/11509 (0.00%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/2dArrays.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/APILibCheck.ts

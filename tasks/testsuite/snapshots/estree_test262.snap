@@ -1,4 +1,4 @@
-AST Parsed     : 47003/47030 (99.94%)
+AST Parsed     : 44832/47030 (95.33%)
 Positive Passed: 0/47030 (0.00%)
 Mismatch: tasks/testsuite/fixtures/test262/test/annexB/built-ins/Array/from/iterator-method-emulates-undefined.js
 Mismatch: tasks/testsuite/fixtures/test262/test/annexB/built-ins/Date/prototype/getYear/B.2.4.js
