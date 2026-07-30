@@ -726,19 +726,13 @@ fn estimate_ast_capacity(source_len: usize) -> (usize, usize) {
     (estimated_nodes, estimated_extra)
 }
 
-impl<'parser, 'a> Parser<'parser, 'a> {
-    pub fn init(ast: &'parser mut Ast<'a>, options: Options) -> Self {
-        Self::init_with_config(ast, options, NoTokenParserConfig)
-    }
-}
-
 impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
-    fn init_with_config(ast: &'parser mut Ast<'a>, options: Options, config: C) -> Self {
+    pub fn init(ast: &'parser mut Ast<'a>, options: Options, config: C) -> Self {
         let source = ast.source();
         assert!(source.len() <= u32::MAX as usize);
         ast.set_source_metadata(options.source_type, options.lang);
         let allow_html_like_comments = options.source_type != SourceType::Module;
-        let lexer = Lexer::init_with_config(
+        let lexer = Lexer::init(
             ast.allocator(),
             source,
             allow_html_like_comments,
@@ -769,31 +763,6 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             },
             state: ParserState::default(),
             not_parenthesized_arrow: FxHashSet::default(),
-        }
-    }
-
-    pub fn with_config<Config: ParserConfig>(self, config: Config) -> Parser<'parser, 'a, Config> {
-        Parser {
-            ast: self.ast,
-            source: self.source,
-            source_type: self.source_type,
-            lang: self.lang,
-            preserve_parens: self.preserve_parens,
-            comment_mode: self.comment_mode,
-            lexer: self.lexer.with_config(config),
-            diagnostics: self.diagnostics,
-            current_token: self.current_token,
-            prev_token_end: self.prev_token_end,
-            scratch_statements: self.scratch_statements,
-            scratch_cover: self.scratch_cover,
-            scratch_decorators: self.scratch_decorators,
-            scratch_a: self.scratch_a,
-            scratch_b: self.scratch_b,
-            context: self.context,
-            statement_context: self.statement_context,
-            ts_context: self.ts_context,
-            state: self.state,
-            not_parenthesized_arrow: self.not_parenthesized_arrow,
         }
     }
 
@@ -11814,7 +11783,7 @@ mod tests {
     fn validates_identifier_fast_and_diagnostic_paths() {
         let allocator = Allocator::new();
         let mut ast = Ast::new(b"name", &allocator);
-        let mut parser = Parser::init(&mut ast, Options::default());
+        let mut parser = Parser::init(&mut ast, Options::default(), NoTokenParserConfig);
         parser.validate_identifier(
             Token {
                 span: Span::new(0, 4),
@@ -11827,7 +11796,7 @@ mod tests {
 
         let allocator = Allocator::new();
         let mut ast = Ast::new(b"if", &allocator);
-        let mut parser = Parser::init(&mut ast, Options::default());
+        let mut parser = Parser::init(&mut ast, Options::default(), NoTokenParserConfig);
         parser.validate_identifier(
             Token {
                 span: Span::new(0, 2),

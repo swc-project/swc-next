@@ -112,25 +112,8 @@ pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
     pub mode: LexerMode,
 }
 
-impl<'a> Lexer<'a> {
-    pub fn init(
-        allocator: &'a Allocator,
-        source: &'a [u8],
-        allow_html_like_comments: bool,
-        collect_comments: bool,
-    ) -> Self {
-        Self::init_with_config(
-            allocator,
-            source,
-            allow_html_like_comments,
-            collect_comments,
-            NoTokenParserConfig,
-        )
-    }
-}
-
 impl<'a, C: ParserConfig> Lexer<'a, C> {
-    pub(crate) fn init_with_config(
+    pub fn init(
         allocator: &'a Allocator,
         source: &'a [u8],
         allow_html_like_comments: bool,
@@ -150,9 +133,9 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         };
 
         let tokens = if config.tokens() {
-            ArenaVec::with_capacity_in(source.len() + 1, &allocator)
+            ArenaVec::with_capacity_in(source.len() + 1, allocator)
         } else {
-            ArenaVec::new_in(&allocator)
+            ArenaVec::new_in(allocator)
         };
 
         let mut lexer = Self {
@@ -169,21 +152,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         };
         lexer.skip_hashbang();
         lexer
-    }
-
-    pub fn with_config<Config: ParserConfig>(self, config: Config) -> Lexer<'a, Config> {
-        Lexer {
-            config,
-            comments: self.comments,
-            tokens: self.tokens,
-            collect_comments: self.collect_comments,
-            source: self.source,
-            cursor: self.cursor,
-            allow_html_like_comments: self.allow_html_like_comments,
-            hashbang: self.hashbang,
-            state: self.state,
-            mode: self.mode,
-        }
     }
 
     fn skip_hashbang(&mut self) {
@@ -1702,7 +1670,7 @@ mod tests {
 
     fn next_template(source: &[u8]) -> Result<Token, LexicalError> {
         let allocator = Allocator::new();
-        let mut lexer = Lexer::init(&allocator, source, false, false);
+        let mut lexer = Lexer::init(&allocator, source, false, false, NoTokenParserConfig);
         let mut token = Token::eof(0);
         lexer.next_token(&mut token)?;
         Ok(token)
@@ -1710,7 +1678,13 @@ mod tests {
 
     fn next_after_trivia(source: &[u8], allow_html_like_comments: bool) -> Token {
         let allocator = Allocator::new();
-        let mut lexer = Lexer::init(&allocator, source, allow_html_like_comments, false);
+        let mut lexer = Lexer::init(
+            &allocator,
+            source,
+            allow_html_like_comments,
+            false,
+            NoTokenParserConfig,
+        );
         let mut token = Token::eof(0);
         lexer.next_token(&mut token).unwrap();
         token
@@ -1721,14 +1695,14 @@ mod tests {
         let allocator = Allocator::new();
         let small_source = [b' '; 512];
 
-        let small = Lexer::init(&allocator, &small_source, false, true);
+        let small = Lexer::init(&allocator, &small_source, false, true, NoTokenParserConfig);
         assert_eq!(small.comments.capacity(), 0);
 
         let large_source = vec![b' '; 2 * 1024 * 1024];
-        let collecting = Lexer::init(&allocator, &large_source, false, true);
+        let collecting = Lexer::init(&allocator, &large_source, false, true, NoTokenParserConfig);
         assert_eq!(collecting.comments.capacity(), large_source.len() / 256);
 
-        let ignoring = Lexer::init(&allocator, &large_source, false, false);
+        let ignoring = Lexer::init(&allocator, &large_source, false, false, NoTokenParserConfig);
         assert_eq!(ignoring.comments.capacity(), 0);
     }
 
@@ -1798,12 +1772,18 @@ mod tests {
     fn scans_template_continuations() {
         let allocator = Allocator::new();
 
-        let mut lexer = Lexer::init(&allocator, b"}middle ${value}", false, false);
+        let mut lexer = Lexer::init(
+            &allocator,
+            b"}middle ${value}",
+            false,
+            false,
+            NoTokenParserConfig,
+        );
         let token = lexer.re_scan_template_continuation(0).unwrap();
         assert_eq!(token.tag, TokenTag::TemplateMiddle);
         assert_eq!(token.span, Span::new(0, 10));
 
-        let mut lexer = Lexer::init(&allocator, b"}tail`", false, false);
+        let mut lexer = Lexer::init(&allocator, b"}tail`", false, false, NoTokenParserConfig);
         let token = lexer.re_scan_template_continuation(0).unwrap();
         assert_eq!(token.tag, TokenTag::TemplateTail);
         assert_eq!(token.span, Span::new(0, 6));

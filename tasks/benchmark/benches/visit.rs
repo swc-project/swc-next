@@ -8,12 +8,14 @@ use swc_next_ecma_ast::{
     PrivateIdentifier, Traverse, TraverseAction, TraverseCtx, TraverseWith, Visit, VisitMut,
     VisitMutWith, VisitWith,
 };
-use swc_next_ecma_parser::{Options, Parser};
+use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
 fn bench_visit(b: &mut Bencher, src: &'static str) {
     let allocator = Allocator::new();
     let mut ast = Ast::new(src.as_bytes(), &allocator);
-    let program = Parser::init(&mut ast, Options::default()).parse().program;
+    let program = Parser::init(&mut ast, Options::default(), NoTokenParserConfig)
+        .parse()
+        .program;
 
     struct Counter<'a> {
         ast: &'a Ast<'a>,
@@ -90,7 +92,9 @@ fn bench_visit_mut(b: &mut Bencher, src: &'static str) {
 
     let allocator = Allocator::new();
     let mut ast = Ast::new(src.as_bytes(), &allocator);
-    let program = Parser::init(&mut ast, Options::default()).parse().program;
+    let program = Parser::init(&mut ast, Options::default(), NoTokenParserConfig)
+        .parse()
+        .program;
 
     b.iter(|| {
         let mut counter = Counter {
@@ -156,7 +160,9 @@ fn bench_traverse(b: &mut Bencher, src: &'static str) {
 
     let allocator = Allocator::new();
     let mut ast = Ast::new(src.as_bytes(), &allocator);
-    let program = Parser::init(&mut ast, Options::default()).parse().program;
+    let program = Parser::init(&mut ast, Options::default(), NoTokenParserConfig)
+        .parse()
+        .program;
 
     b.iter(|| {
         let mut counter = Counter { count: 0 };

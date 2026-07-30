@@ -4,7 +4,7 @@ use colored::Colorize;
 use rayon::prelude::*;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Ast, SourceType};
-use swc_next_ecma_parser::{Options, Parser};
+use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::analyze;
 
 use crate::{cases::Case, runner::Runner, suite::TestResult};
@@ -65,7 +65,7 @@ fn run_source(
     };
 
     let (parse_result, parser_diagnostic) = {
-        let result = Parser::init(&mut ast, options).parse();
+        let result = Parser::init(&mut ast, options, NoTokenParserConfig).parse();
         let diagnostic = result.diagnostics.first().map(|diagnostic| {
             format!(
                 "parser: {} at {}..{}",

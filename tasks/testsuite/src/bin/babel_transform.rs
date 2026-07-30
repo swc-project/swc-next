@@ -12,7 +12,7 @@ use rayon::prelude::*;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Ast, Lang, Program, Severity, SourceType};
 use swc_next_ecma_codegen::{Options as CodegenOptions, print};
-use swc_next_ecma_parser::{Options as ParserOptions, Parser};
+use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::analyze;
 use swc_next_ecma_transformer::{Transformer, TransformerOptions};
 use testsuite::{cases::babel::BabelCase, suite::TestResult, util::crate_root};
@@ -407,7 +407,7 @@ fn parse_program(
         ..ParserOptions::default()
     };
     let (program, error) = {
-        let result = Parser::init(ast, options).parse();
+        let result = Parser::init(ast, options, NoTokenParserConfig).parse();
         let error = result
             .diagnostics
             .iter()

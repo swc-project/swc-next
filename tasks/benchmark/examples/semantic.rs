@@ -2,7 +2,7 @@ use std::{env, fs::read_to_string};
 
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Ast, IdentifierReference, Visit, VisitWith};
-use swc_next_ecma_parser::{Options, Parser};
+use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::{Semantic, analyze};
 
 fn main() {
@@ -12,7 +12,9 @@ fn main() {
         .unwrap_or(include_str!("../files/typescript.js").to_owned());
     let allocator = Allocator::new();
     let mut ast = Ast::new(source.as_bytes(), &allocator);
-    let root = Parser::init(&mut ast, Options::default()).parse().program;
+    let root = Parser::init(&mut ast, Options::default(), NoTokenParserConfig)
+        .parse()
+        .program;
     let semantic = analyze(root, &mut ast);
 
     println!("Top level: {:?}", semantic.top_level_scope_id());
