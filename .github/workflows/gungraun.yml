@@ -1,0 +1,81 @@
+name: Gungraun Benchmarks
+
+on:
+  pull_request:
+    types: ["opened", "reopened", "synchronize"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gungraun-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  parser:
+    name: Compare parser benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup rust toolchain and cache
+        uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1
+        with:
+          toolchain: 1.97.1
+          cache-save-if: false
+
+      - name: Setup gungraun-runner and Valgrind
+        uses: gungraun/setup-gungraun@0467a72f0c206af5f965e6e70426f9230a1c067a # v1
+
+      - name: Save base benchmark
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GUNGRAUN_COLOR: never
+        run: |
+          git checkout --detach "$BASE_SHA"
+
+          # Bootstrap the benchmark harness while this workflow is not on the
+          # base branch yet. Later PRs benchmark the base branch as-is.
+          if ! git cat-file -e \
+            "${BASE_SHA}:tasks/benchmark/benches/gungraun_parser.rs" 2>/dev/null
+          then
+            git checkout "$HEAD_SHA" -- \
+              Cargo.toml \
+              Cargo.lock \
+              tasks/benchmark/Cargo.toml \
+              tasks/benchmark/benches/gungraun_parser.rs
+          fi
+
+          cargo bench --quiet -p benchmark --bench gungraun_parser -- \
+            --save-baseline=base
+
+      - name: Compare head benchmark
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GUNGRAUN_COLOR: never
+        run: |
+          git checkout --detach "$HEAD_SHA"
+
+          report="$RUNNER_TEMP/gungraun-parser-diff.txt"
+          set +e
+          cargo bench --quiet -p benchmark --bench gungraun_parser -- \
+            --baseline=base 2>&1 | tee "$report"
+          status="${PIPESTATUS[0]}"
+          set -e
+
+          {
+            echo "## Gungraun parser benchmark diff"
+            echo
+            echo 'Values are shown as `head | base`.'
+            echo
+            echo '```text'
+            cat "$report"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit "$status"

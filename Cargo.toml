@@ -59,6 +59,7 @@ swc_next_ecma_transformer = { version = "0.11.0", path = "crates/swc_ecma_transf
 # Dev
 colored       = "3.1.1"
 criterion     = { package = "codspeed-criterion-compat", version = "5.0.0" }
+gungraun      = "0.19.4"
 jwalk         = "0.8.1"
 mimalloc      = "0.1.52"
 oxc           = { version = "0.137.0", features = ["ast_visit", "semantic"] }

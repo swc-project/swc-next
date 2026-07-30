@@ -20,9 +20,14 @@ swc_next_ecma_parser   = { workspace = true, features = ["unstable"] }
 swc_next_ecma_semantic = { workspace = true }
 
 criterion  = { workspace = true }
+gungraun   = { workspace = true }
 mimalloc   = { workspace = true }
 rustc-hash = { workspace = true }
 swc_core   = { workspace = true, features = ["ecma_parser_unstable"] }
+
+[[bench]]
+harness = false
+name    = "gungraun_parser"
 
 [[bench]]
 harness = false
