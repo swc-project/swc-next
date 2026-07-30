@@ -8,7 +8,7 @@ use std::{fs, path::Path};
 use pico_args::Arguments;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Ast, Lang, SourceType};
-use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
+use swc_next_ecma_parser::{Options, Parser, TokenParserConfig};
 
 fn main() -> Result<(), String> {
     let mut args = Arguments::from_env();
@@ -32,11 +32,9 @@ fn main() -> Result<(), String> {
         lang,
         ..Options::default()
     };
-    let diagnostics = Parser::init(&mut ast, options, NoTokenParserConfig)
-        .parse()
-        .diagnostics;
+    let ret = Parser::init(&mut ast, options, TokenParserConfig).parse();
 
-    for diagnostic in &diagnostics {
+    for diagnostic in &ret.diagnostics {
         eprintln!(
             "{}:{}..{}: {}: {}",
             path.display(),
@@ -63,6 +61,8 @@ fn main() -> Result<(), String> {
         ast.node_count(),
         ast.extra_data_count(),
     );
+
+    println!("Tokens: {:?}", ret.tokens);
 
     Ok(())
 }
