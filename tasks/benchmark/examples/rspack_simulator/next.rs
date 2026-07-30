@@ -10,11 +10,10 @@ pub fn run(src: &'static str) {
     // drop((program, ast, tokens));
 
     let mut ast = swc_next_ecma_ast::Ast::new(src.as_bytes(), &allocator);
-    let program = swc_next_ecma_parser::parse(
-        &mut ast,
-        src.as_bytes(),
-        swc_next_ecma_parser::Options::default(),
-    );
+    let program =
+        swc_next_ecma_parser::Parser::init(&mut ast, swc_next_ecma_parser::Options::default())
+            .parse()
+            .program;
     drop((ast, program));
 }
 

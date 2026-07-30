@@ -72,16 +72,15 @@ fn expect_printed_common(
         preserve_parens: false,
         comments: CommentMode::Attached,
     };
-    let mut parser = Parser::init(&mut ast, parse_options);
-    let program = parser.parse();
-    let has_errors = parser
+    let result = Parser::init(&mut ast, parse_options).parse();
+    let has_errors = result
         .diagnostics
         .iter()
         .any(|diagnostic| diagnostic.severity == swc_next_ecma_ast::Severity::Error);
-    drop(parser);
     if has_errors {
         return;
     }
+    let program = result.program;
 
     let print_options = PrintOptions {
         minify,

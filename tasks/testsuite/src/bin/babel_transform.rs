@@ -407,14 +407,13 @@ fn parse_program(
         ..ParserOptions::default()
     };
     let (program, error) = {
-        let mut parser = Parser::init(ast, options);
-        let program = parser.parse();
-        let error = parser
+        let result = Parser::init(ast, options).parse();
+        let error = result
             .diagnostics
             .iter()
             .find(|diagnostic| diagnostic.severity == Severity::Error)
             .map(|diagnostic| format_diagnostic(stage, diagnostic));
-        (program, error)
+        (result.program, error)
     };
 
     if let Some(error) = error {

@@ -5,6 +5,7 @@ use swc_next_ecma_ast::{
     Comment, CommentKind, CommentPosition, Span, is_ident_continue_ascii, is_ident_start_ascii,
 };
 
+use super::config::{NoTokenParserConfig, ParserConfig};
 use super::token::{Token, TokenFlag, TokenTag, flag_mask};
 use super::unicode_id::{can_continue_id, can_start_id};
 use super::util::{
@@ -97,8 +98,10 @@ enum ConsumeUnicodeContext {
 }
 
 #[derive(Clone, Debug)]
-pub struct Lexer<'a> {
+pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
+    pub config: C,
     pub comments: ArenaVec<'a, Comment>,
+    pub tokens: ArenaVec<'a, Token>,
     pub collect_comments: bool,
     pub source: &'a [u8],
     pub cursor: u32,
@@ -116,6 +119,24 @@ impl<'a> Lexer<'a> {
         allow_html_like_comments: bool,
         collect_comments: bool,
     ) -> Self {
+        Self::init_with_config(
+            allocator,
+            source,
+            allow_html_like_comments,
+            collect_comments,
+            NoTokenParserConfig,
+        )
+    }
+}
+
+impl<'a, C: ParserConfig> Lexer<'a, C> {
+    pub(crate) fn init_with_config(
+        allocator: &'a Allocator,
+        source: &'a [u8],
+        allow_html_like_comments: bool,
+        collect_comments: bool,
+        config: C,
+    ) -> Self {
         debug_assert!(u32::try_from(source.len()).is_ok());
         // Large generated files commonly contain enough comments for repeated
         // growth to show up in parser profiles. Keep the estimate proportional
@@ -127,8 +148,17 @@ impl<'a> Lexer<'a> {
         } else {
             0
         };
+
+        let tokens = if config.tokens() {
+            ArenaVec::with_capacity_in(source.len() + 1, &allocator)
+        } else {
+            ArenaVec::new_in(&allocator)
+        };
+
         let mut lexer = Self {
+            config,
             comments: ArenaVec::with_capacity_in(comment_capacity, allocator),
+            tokens,
             collect_comments,
             source,
             cursor: 0,
@@ -139,6 +169,21 @@ impl<'a> Lexer<'a> {
         };
         lexer.skip_hashbang();
         lexer
+    }
+
+    pub fn with_config<Config: ParserConfig>(self, config: Config) -> Lexer<'a, Config> {
+        Lexer {
+            config,
+            comments: self.comments,
+            tokens: self.tokens,
+            collect_comments: self.collect_comments,
+            source: self.source,
+            cursor: self.cursor,
+            allow_html_like_comments: self.allow_html_like_comments,
+            hashbang: self.hashbang,
+            state: self.state,
+            mode: self.mode,
+        }
     }
 
     fn skip_hashbang(&mut self) {
@@ -168,6 +213,9 @@ impl<'a> Lexer<'a> {
     pub fn next_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
         self.read_next_token(target)?;
         self.handle_token(*target);
+        if self.config.tokens() {
+            self.tokens.push(*target);
+        }
         Ok(())
     }
 

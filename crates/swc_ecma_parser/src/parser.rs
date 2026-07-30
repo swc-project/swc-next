@@ -6,10 +6,12 @@
 use std::{borrow::Cow, mem, string::String};
 
 use rustc_hash::FxHashSet;
+use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::String as AstString;
 use swc_next_ecma_ast::*;
 
 use crate::{
+    config::{NoTokenParserConfig, ParserConfig},
     lexer::{
         Lexer, LexerMode, LexerState, LexicalError, lexical_error_help, lexical_error_message,
     },
@@ -594,14 +596,14 @@ impl From<MethodDefinitionKind> for PropertyOrMethodKind {
 }
 
 /// Parser state and typed AST writer.
-pub struct Parser<'parser, 'a> {
+pub struct Parser<'parser, 'a, C: ParserConfig = NoTokenParserConfig> {
     pub ast: &'parser mut Ast<'a>,
     pub source: &'a [u8],
     pub source_type: SourceType,
     pub lang: Lang,
     pub preserve_parens: bool,
     pub comment_mode: CommentMode,
-    pub lexer: Lexer<'a>,
+    pub lexer: Lexer<'a, C>,
     pub diagnostics: Vec<Diagnostic<'static>>,
     pub current_token: Token,
     /// End offset of the most recently consumed token.
@@ -629,6 +631,12 @@ pub struct Parser<'parser, 'a> {
     not_parenthesized_arrow: FxHashSet<u32>,
 }
 
+pub struct ParseReturn<'a> {
+    pub program: Program,
+    pub tokens: ArenaVec<'a, Token>,
+    pub diagnostics: Vec<Diagnostic<'static>>,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Checkpoint {
     // Lexer state.
@@ -636,6 +644,7 @@ pub struct Checkpoint {
     pub lexer_state: LexerState,
     pub lexer_mode: LexerMode,
     pub lexer_comments_len: usize,
+    pub lexer_tokens_len: usize,
     // Parser token stream.
     pub current_token: Token,
     pub prev_token_end: u32,
@@ -650,15 +659,16 @@ pub struct Checkpoint {
     pub state: ParserState,
 }
 
-pub struct Peek<'peek, 'a> {
-    lexer: &'peek mut Lexer<'a>,
+pub struct Peek<'peek, 'a, C: ParserConfig = NoTokenParserConfig> {
+    lexer: &'peek mut Lexer<'a, C>,
     state: LexerState,
     cursor: u32,
     comments_len: usize,
+    tokens_len: usize,
     active: bool,
 }
 
-impl Peek<'_, '_> {
+impl<C: ParserConfig> Peek<'_, '_, C> {
     pub fn end(mut self) {
         self.restore();
     }
@@ -669,11 +679,12 @@ impl Peek<'_, '_> {
         self.lexer.state = self.state;
         self.lexer.cursor = self.cursor;
         self.lexer.comments.truncate(self.comments_len);
+        self.lexer.tokens.truncate(self.tokens_len);
         self.active = false;
     }
 }
 
-impl Iterator for Peek<'_, '_> {
+impl<C: ParserConfig> Iterator for Peek<'_, '_, C> {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -684,7 +695,7 @@ impl Iterator for Peek<'_, '_> {
     }
 }
 
-impl Drop for Peek<'_, '_> {
+impl<C: ParserConfig> Drop for Peek<'_, '_, C> {
     fn drop(&mut self) {
         if self.active {
             self.restore();
@@ -717,15 +728,22 @@ fn estimate_ast_capacity(source_len: usize) -> (usize, usize) {
 
 impl<'parser, 'a> Parser<'parser, 'a> {
     pub fn init(ast: &'parser mut Ast<'a>, options: Options) -> Self {
+        Self::init_with_config(ast, options, NoTokenParserConfig)
+    }
+}
+
+impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
+    fn init_with_config(ast: &'parser mut Ast<'a>, options: Options, config: C) -> Self {
         let source = ast.source();
         assert!(source.len() <= u32::MAX as usize);
         ast.set_source_metadata(options.source_type, options.lang);
         let allow_html_like_comments = options.source_type != SourceType::Module;
-        let lexer = Lexer::init(
+        let lexer = Lexer::init_with_config(
             ast.allocator(),
             source,
             allow_html_like_comments,
             options.comments == CommentMode::Attached,
+            config,
         );
         Self {
             ast,
@@ -754,7 +772,32 @@ impl<'parser, 'a> Parser<'parser, 'a> {
         }
     }
 
-    pub fn parse(&mut self) -> Program {
+    pub fn with_config<Config: ParserConfig>(self, config: Config) -> Parser<'parser, 'a, Config> {
+        Parser {
+            ast: self.ast,
+            source: self.source,
+            source_type: self.source_type,
+            lang: self.lang,
+            preserve_parens: self.preserve_parens,
+            comment_mode: self.comment_mode,
+            lexer: self.lexer.with_config(config),
+            diagnostics: self.diagnostics,
+            current_token: self.current_token,
+            prev_token_end: self.prev_token_end,
+            scratch_statements: self.scratch_statements,
+            scratch_cover: self.scratch_cover,
+            scratch_decorators: self.scratch_decorators,
+            scratch_a: self.scratch_a,
+            scratch_b: self.scratch_b,
+            context: self.context,
+            statement_context: self.statement_context,
+            ts_context: self.ts_context,
+            state: self.state,
+            not_parenthesized_arrow: self.not_parenthesized_arrow,
+        }
+    }
+
+    pub fn parse(mut self) -> ParseReturn<'a> {
         self.context = self.source_type.into();
         if self.advance().is_none() {
             self.current_token = Token::eof(0);
@@ -785,7 +828,18 @@ impl<'parser, 'a> Parser<'parser, 'a> {
         if !self.preserve_parens {
             strip_parenthesized_nodes(self.ast);
         }
-        program
+
+        let mut tokens = self.lexer.tokens;
+        if self.lexer.config.tokens() {
+            let last_token = tokens.pop();
+            debug_assert!(last_token.is_some_and(|token| token.tag == TokenTag::Eof));
+        }
+
+        ParseReturn {
+            program,
+            tokens,
+            diagnostics: self.diagnostics,
+        }
     }
 
     /// Returns the resolved name for an identifier-like token.
@@ -981,6 +1035,7 @@ impl<'parser, 'a> Parser<'parser, 'a> {
             lexer_state: self.lexer.state,
             lexer_mode: self.lexer.mode,
             lexer_comments_len: self.lexer.comments.len(),
+            lexer_tokens_len: self.lexer.tokens.len(),
             current_token: self.current_token,
             prev_token_end: self.prev_token_end,
             nodes_len: self.ast.node_count(),
@@ -999,6 +1054,7 @@ impl<'parser, 'a> Parser<'parser, 'a> {
         self.lexer.state = checkpoint.lexer_state;
         self.lexer.mode = checkpoint.lexer_mode;
         self.lexer.comments.truncate(checkpoint.lexer_comments_len);
+        self.lexer.tokens.truncate(checkpoint.lexer_tokens_len);
         self.current_token = checkpoint.current_token;
         self.prev_token_end = checkpoint.prev_token_end;
         self.ast
@@ -1010,11 +1066,12 @@ impl<'parser, 'a> Parser<'parser, 'a> {
         self.state = checkpoint.state;
     }
 
-    pub fn begin_peek(&mut self) -> Peek<'_, 'a> {
+    pub fn begin_peek(&mut self) -> Peek<'_, 'a, C> {
         Peek {
             state: self.lexer.state,
             cursor: self.lexer.cursor,
             comments_len: self.lexer.comments.len(),
+            tokens_len: self.lexer.tokens.len(),
             active: true,
             lexer: &mut self.lexer,
         }
@@ -11174,6 +11231,12 @@ impl<'parser, 'a> Parser<'parser, 'a> {
     /// Use this after lexer rescan operations for JSX text, template
     /// continuations, and similar context-sensitive tokens.
     pub fn advance_with_rescanned_token(&mut self, token: Token) -> Option<()> {
+        if self.lexer.config.tokens()
+            && let Some(last_token) = self.lexer.tokens.last_mut()
+        {
+            *last_token = token;
+        }
+
         self.lexer.handle_token(token);
         self.current_token = token;
         self.advance()
@@ -11182,6 +11245,9 @@ impl<'parser, 'a> Parser<'parser, 'a> {
     /// Retokenizes the current token in the current lexer mode.
     pub fn re_scan_current(&mut self) -> Option<()> {
         self.lexer.rewind_to(self.current_token.span.start);
+        if self.lexer.config.tokens() {
+            self.lexer.tokens.pop();
+        }
         self.next_token()
     }
 

@@ -4,13 +4,13 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use criterion::{Bencher, Criterion, criterion_group, criterion_main};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::Ast;
-use swc_next_ecma_parser::{Options, parse};
+use swc_next_ecma_parser::{Options, Parser};
 
 fn bench_new(b: &mut Bencher, src: &'static str) {
     b.iter(|| {
         let allocator = Allocator::new();
         let mut ast = Ast::new(src.as_bytes(), &allocator);
-        parse(&mut ast, src.as_bytes(), Options::default());
+        Parser::init(&mut ast, Options::default()).parse();
     });
 }
 

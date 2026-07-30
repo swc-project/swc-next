@@ -88,9 +88,8 @@ fn parse_and_codegen(
     };
 
     let (program, error) = {
-        let mut parser = Parser::init(&mut ast, options);
-        let program = parser.parse();
-        let error = parser
+        let result = Parser::init(&mut ast, options).parse();
+        let error = result
             .diagnostics
             .iter()
             .find(|diagnostic| diagnostic.severity == Severity::Error)
@@ -100,7 +99,7 @@ fn parse_and_codegen(
                     diagnostic.message, diagnostic.span.start, diagnostic.span.end
                 )
             });
-        (program, error)
+        (result.program, error)
     };
 
     if let Some(error) = error {

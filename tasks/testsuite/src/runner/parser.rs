@@ -65,15 +65,14 @@ fn run_source(
     };
 
     let (parse_result, parser_diagnostic) = {
-        let mut parser = Parser::init(&mut ast, options);
-        let result = parser.parse();
-        let diagnostic = parser.diagnostics.first().map(|diagnostic| {
+        let result = Parser::init(&mut ast, options).parse();
+        let diagnostic = result.diagnostics.first().map(|diagnostic| {
             format!(
                 "parser: {} at {}..{}",
                 diagnostic.message, diagnostic.span.start, diagnostic.span.end
             )
         });
-        (result, diagnostic)
+        (result.program, diagnostic)
     };
 
     if parser_diagnostic.is_some() {

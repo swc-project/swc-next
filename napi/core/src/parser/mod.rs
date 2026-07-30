@@ -5,7 +5,7 @@ use swc_next_ecma_ast::{
     Ast, Lang as AstLang, SourceType as AstSourceType,
     ffi::ast::{buffer_size, serialize_into},
 };
-use swc_next_ecma_parser::parse;
+use swc_next_ecma_parser::Parser;
 
 use crate::parser::options::{Lang, ParserOptions, SourceType};
 
@@ -15,11 +15,9 @@ pub mod options;
 pub fn parse_sync(source: String, options: Option<ParserOptions>) -> Buffer {
     let allocator = Allocator::default();
     let mut ast = Ast::new(source.as_bytes(), &allocator);
-    let program = parse(
-        &mut ast,
-        source.as_bytes(),
-        options.unwrap_or_default().into(),
-    );
+    let program = Parser::init(&mut ast, options.unwrap_or_default().into())
+        .parse()
+        .program;
 
     let buffer_size = buffer_size(&ast);
     let mut buf = vec![0; buffer_size];

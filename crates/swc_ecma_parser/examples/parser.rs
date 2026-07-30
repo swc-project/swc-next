@@ -32,11 +32,7 @@ fn main() -> Result<(), String> {
         lang,
         ..Options::default()
     };
-    let diagnostics = {
-        let mut parser = Parser::init(&mut ast, options);
-        let _ = parser.parse();
-        std::mem::take(&mut parser.diagnostics)
-    };
+    let diagnostics = Parser::init(&mut ast, options).parse().diagnostics;
 
     for diagnostic in &diagnostics {
         eprintln!(

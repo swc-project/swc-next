@@ -2,7 +2,7 @@ use std::{env, fs::read_to_string};
 
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::Ast;
-use swc_next_ecma_parser::{Options, parse};
+use swc_next_ecma_parser::{Options, Parser};
 
 fn main() {
     let source = env::args()
@@ -11,5 +11,5 @@ fn main() {
         .unwrap_or(include_str!("../files/typescript.js").to_owned());
     let allocator = Allocator::new();
     let mut ast = Ast::new(source.as_bytes(), &allocator);
-    let _root = parse(&mut ast, source.as_bytes(), Options::default());
+    let _return = Parser::init(&mut ast, Options::default()).parse();
 }
