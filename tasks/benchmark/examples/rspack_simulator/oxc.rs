@@ -8,7 +8,7 @@ use oxc::{
         VariableDeclaration, YieldExpression,
     },
     ast_visit::{Visit, walk},
-    parser::{Kind, ParseOptions, Parser, Token},
+    parser::{Kind, ParseOptions, Parser, Token, config::TokensParserConfig},
     semantic::{Semantic, SemanticBuilder},
     span::{GetSpan, SourceType, Span},
 };
@@ -20,10 +20,9 @@ pub fn run(src: &'static str) {
     let source_type = SourceType::unambiguous();
     let (program, tokens) = run_parse(src, source_type, &allocator);
     // let semantic = run_semantic(&program);
-    // let semi = run_collect_semicolons(&program, &tokens);
-    // let idents = run_scan_dependencies(&program);
-    // drop((tokens, semantic, semi, idents));
-    std::hint::black_box((program, tokens));
+    let semi = run_collect_semicolons(&program, &tokens);
+    let idents = run_scan_dependencies(&program);
+    drop((tokens, semi, idents));
 }
 
 #[inline(never)]
@@ -37,7 +36,7 @@ fn run_parse<'a>(
             preserve_parens: false,
             ..Default::default()
         })
-        // .with_config(TokensParserConfig)
+        .with_config(TokensParserConfig)
         .parse();
     assert!(parser_return.diagnostics.is_empty());
     (parser_return.program, parser_return.tokens)
