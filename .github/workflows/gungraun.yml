@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 concurrency:
   group: gungraun-${{ github.event.pull_request.number }}
@@ -79,3 +80,49 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
           exit "$status"
+
+      - name: Publish benchmark diff to pull request
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          report="$RUNNER_TEMP/gungraun-parser-diff.txt"
+          if [[ ! -f "$report" ]]
+          then
+            exit 0
+          fi
+
+          comment="$RUNNER_TEMP/gungraun-parser-comment.md"
+          {
+            echo '<!-- gungraun-parser-benchmark-diff -->'
+            echo '## Gungraun parser benchmark diff'
+            echo
+            echo 'Values are shown as `head | base`.'
+            echo
+            echo '<details open>'
+            echo '<summary>Benchmark results</summary>'
+            echo
+            echo '```text'
+            cat "$report"
+            echo '```'
+            echo '</details>'
+          } > "$comment"
+
+          comment_id="$(
+            gh api \
+              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" \
+              --jq \
+              'map(select(.body | contains("<!-- gungraun-parser-benchmark-diff -->")))[0].id // empty'
+          )"
+
+          if [[ -n "$comment_id" ]]
+          then
+            gh api --method PATCH \
+              "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" \
+              -F body=@"$comment"
+          else
+            gh api --method POST \
+              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+              -F body=@"$comment"
+          fi
