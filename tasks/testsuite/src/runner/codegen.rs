@@ -1,112 +1,64 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use colored::Colorize;
-use rayon::prelude::*;
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{Ast, Lang, Severity, SourceType};
 use swc_next_ecma_codegen::{Options as CodegenOptions, print};
-use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
 
-use crate::{cases::Case, runner::Runner, suite::TestResult};
+use crate::{
+    cases::Case,
+    runner::{Runner, parse, parse_case},
+    suite::TestResult,
+};
 
 pub struct CodegenRunner;
 
 impl Runner for CodegenRunner {
     const NAME: &'static str = "codegen";
 
-    fn run<C: Case>(cases: &[C], debug: bool) -> Vec<TestResult> {
-        cases
-            .par_iter()
-            .filter(|case| !case.expects_error())
-            .map(|case| {
-                if debug {
-                    println!("[{}] {:?}", "Debug".green(), case.relative_path());
-                }
+    fn should_run<C: Case>(case: &C) -> bool {
+        !case.expects_error()
+    }
 
-                let path = case.relative_path().to_path_buf();
-                let result = catch_unwind(AssertUnwindSafe(|| run_case(case)));
-                match result {
-                    Ok(Ok(())) => TestResult::Passed {
-                        path,
-                        negative: false,
-                    },
-                    Ok(Err(error)) => TestResult::Failed {
-                        path,
-                        error,
-                        negative: false,
-                    },
-                    Err(_) => TestResult::Panic {
-                        path,
-                        negative: false,
-                    },
-                }
-            })
-            .collect()
+    fn run<C: Case>(case: &C, debug: bool) -> TestResult {
+        if debug {
+            println!("[{}] {:?}", "Debug".green(), case.relative_path());
+        }
+
+        let path = case.relative_path().to_path_buf();
+        let result = catch_unwind(AssertUnwindSafe(|| run_case(case)));
+        match result {
+            Ok(Ok(())) => TestResult::Passed {
+                path,
+                negative: false,
+            },
+            Ok(Err(error)) => TestResult::Failed {
+                path,
+                error,
+                negative: false,
+            },
+            Err(_) => TestResult::Panic {
+                path,
+                negative: false,
+            },
+        }
     }
 }
 
 fn run_case<C: Case>(case: &C) -> Result<(), String> {
-    let first = parse_and_codegen(
-        case.code().as_bytes(),
-        case.source_type(),
-        case.lang(),
-        "first parse",
-    )
-    .map_err(|error| format!("{}: {error}", case.name()))?;
-    let second = parse_and_codegen(&first, case.source_type(), case.lang(), "second parse")
-        .map_err(|error| format!("{}: {error}", case.name()))?;
+    let allocator = Allocator::new();
 
-    if first == second {
+    let (program, ast) = parse_case(&allocator, case)?;
+    let codegen1 = print(&allocator, &ast, program, CodegenOptions::default()).code;
+
+    let (program, ast) = parse(&allocator, codegen1, case.source_type(), case.lang())?;
+    let codegen2 = print(&allocator, &ast, program, CodegenOptions::default()).code;
+
+    if codegen1 == codegen2 {
         return Ok(());
     }
 
-    let mismatch = first
-        .iter()
-        .zip(&second)
-        .position(|(first, second)| first != second)
-        .unwrap_or_else(|| first.len().min(second.len()));
     Err(format!(
-        "{}: codegen output changed after reparse at byte {mismatch} (first: {} bytes, second: {} bytes)",
+        "{}: codegen output changed after reparse ",
         case.name(),
-        first.len(),
-        second.len(),
     ))
-}
-
-fn parse_and_codegen(
-    source: &[u8],
-    source_type: SourceType,
-    lang: Lang,
-    stage: &str,
-) -> Result<Vec<u8>, String> {
-    let allocator = Allocator::new();
-    let mut ast = Ast::new(source, &allocator);
-    let options = ParserOptions {
-        source_type,
-        lang,
-        ..ParserOptions::default()
-    };
-
-    let (program, error) = {
-        let result = Parser::init(&mut ast, options, NoTokenParserConfig).parse();
-        let error = result
-            .diagnostics
-            .iter()
-            .find(|diagnostic| diagnostic.severity == Severity::Error)
-            .map(|diagnostic| {
-                format!(
-                    "{stage}: {} at {}..{}",
-                    diagnostic.message, diagnostic.span.start, diagnostic.span.end
-                )
-            });
-        (result.program, error)
-    };
-
-    if let Some(error) = error {
-        return Err(error);
-    }
-
-    Ok(print(&allocator, &ast, program, CodegenOptions::default())
-        .code
-        .to_vec())
 }

@@ -1,7 +1,10 @@
 use std::{collections::HashSet, fs, process::ExitCode};
 
 use pico_args::Arguments;
-use rayon::ThreadPoolBuilder;
+use rayon::{
+    ThreadPoolBuilder,
+    iter::{IntoParallelRefIterator, ParallelIterator},
+};
 use testsuite::{
     cases::{Case, babel::BabelParserCase, test262::Test262Case, typescript::TypeScriptCase},
     runner::{Runner, codegen::CodegenRunner, parser::ParserRunner},
@@ -68,7 +71,11 @@ fn update_snapshots<C: Case>(args: &AppArgs) -> bool {
 }
 
 fn update_snapshot<R: Runner, C: Case>(cases: &[C], debug: bool) -> bool {
-    let results = R::run(cases, debug);
+    let results = cases
+        .par_iter()
+        .filter(|case| R::should_run(*case))
+        .map(|c| R::run(c, debug))
+        .collect::<Vec<_>>();
     let panicked = results
         .iter()
         .any(|result| matches!(result, TestResult::Panic { .. }));
