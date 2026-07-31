@@ -6,7 +6,7 @@ use std::hint::black_box;
 use gungraun::prelude::*;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::Ast;
-use swc_next_ecma_parser::{Options, parse};
+use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
 const ANGULAR: &str = include_str!("../files/angular-1.2.5.js");
 const BACKBONE: &str = include_str!("../files/backbone-1.1.0.js");
@@ -34,7 +34,7 @@ fn bench_parser(source: &str) {
     let source = black_box(source);
     let allocator = Allocator::new();
     let mut ast = Ast::new(source.as_bytes(), &allocator);
-    black_box(parse(&mut ast, source.as_bytes(), Options::default()));
+    black_box(Parser::init(&mut ast, Options::default(), NoTokenParserConfig).parse());
 }
 
 library_benchmark_group!(
