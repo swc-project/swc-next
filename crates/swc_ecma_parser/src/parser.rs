@@ -9678,6 +9678,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 return self.parse_call_expression(object, optional, Some(type_arguments));
             }
             self.rewind(checkpoint);
+            self.lexer.rewrite_last_collected_token(self.current_token);
         }
 
         match tag {
@@ -10601,6 +10602,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             }
             Some(_) | None => {
                 self.rewind(checkpoint);
+                self.lexer.rewrite_last_collected_token(self.current_token);
                 return Some(None);
             }
         };

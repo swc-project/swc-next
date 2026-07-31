@@ -256,6 +256,19 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         self.state.saw_newline = false;
     }
 
+    /// Restores a compound token removed by a failed speculative rescan.
+    #[inline]
+    pub(crate) fn rewrite_last_collected_token(&mut self, token: Token) {
+        if self.config.tokens() {
+            if let Some(last) = self.tokens.last_mut() {
+                debug_assert_eq!(last.span.start, token.span.start);
+                *last = token;
+            } else {
+                debug_assert!(!self.config.tokens());
+            }
+        }
+    }
+
     #[cold]
     fn attach_pending_leading_comments(&mut self, attached_to: u32, len: usize) {
         for comment in &mut self.comments[self.state.processed_comments..len] {
