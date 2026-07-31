@@ -11,12 +11,13 @@ use swc_next_ecma_ast::String as AstString;
 use swc_next_ecma_ast::*;
 
 use crate::{
+    TokenFlag,
     config::{NoTokenParserConfig, ParserConfig},
     lexer::{
         HandleTokenMode, Lexer, LexerMode, LexerState, LexicalError, lexical_error_help,
         lexical_error_message,
     },
-    token::{Token, TokenTag},
+    token::{Token, TokenTag, flag_mask},
     util::{decode_identifier_escapes, decode_string_escapes},
 };
 
@@ -11219,7 +11220,10 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     /// Use this when retokenizing the current source range, such as for
     /// regular expressions and template continuations.
     #[inline]
-    pub fn advance_with_rescanned_token(&mut self, token: Token) -> Option<()> {
+    pub fn advance_with_rescanned_token(&mut self, mut token: Token) -> Option<()> {
+        if self.lexer.config.tokens() {
+            token.flags |= self.current_token.flags & flag_mask(TokenFlag::LineTerminatorBefore);
+        }
         self.lexer.handle_token(token, HandleTokenMode::Replace);
         self.current_token = token;
         self.advance()
