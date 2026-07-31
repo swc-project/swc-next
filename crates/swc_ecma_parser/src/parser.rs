@@ -11233,11 +11233,18 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
     /// Retokenizes the current token in the current lexer mode.
     pub fn re_scan_current(&mut self) -> Option<()> {
+        let line_terminator_before =
+            self.current_token.flags & flag_mask(TokenFlag::LineTerminatorBefore);
         self.lexer.rewind_to(self.current_token.span.start);
         if self.lexer.config.tokens() {
             self.lexer.tokens.pop();
         }
-        self.next_token()
+        self.next_token()?;
+        if self.lexer.config.tokens() {
+            self.current_token.flags |= line_terminator_before;
+            self.lexer.rewrite_last_collected_token(self.current_token);
+        }
+        Some(())
     }
 
     pub fn expect(
@@ -11783,6 +11790,8 @@ fn strip_parenthesized_nodes(ast: &mut Ast<'_>) {
 mod tests {
     use swc_next_allocator::Allocator;
 
+    use crate::TokenParserConfig;
+
     use super::*;
 
     #[test]
@@ -11830,5 +11839,26 @@ mod tests {
             parser.diagnostics[0].message,
             "'if' is reserved and cannot be used as an identifier"
         );
+    }
+
+    #[test]
+    fn preserves_line_terminator_when_rescanning_jsx_identifier() {
+        let allocator = Allocator::new();
+        let source = b"<Comp<T>\nfoo />";
+        let mut ast = Ast::new(source, &allocator);
+        let options = Options {
+            lang: Lang::Tsx,
+            ..Options::default()
+        };
+        let result = Parser::init(&mut ast, options, TokenParserConfig).parse();
+
+        assert!(result.diagnostics.is_empty());
+        let foo = result
+            .tokens
+            .iter()
+            .find(|token| token.span == Span::new(9, 12))
+            .expect("expected JSX identifier token");
+        assert_eq!(foo.tag, TokenTag::JsxIdentifier);
+        assert!(foo.has_line_terminator_before());
     }
 }
