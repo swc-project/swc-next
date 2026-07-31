@@ -53,6 +53,12 @@ pub enum LexerMode {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum HandleTokenMode {
+    Append,
+    Replace,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct LexerState {
     pub token_flags: u8,
     processed_comments: usize,
@@ -180,10 +186,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
     pub fn next_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
         self.read_next_token(target)?;
-        self.handle_token(*target);
-        if self.config.tokens() {
-            self.tokens.push(*target);
-        }
+        self.handle_token(*target, HandleTokenMode::Append);
         Ok(())
     }
 
@@ -233,7 +236,18 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     }
 
     #[inline]
-    pub(crate) fn handle_token(&mut self, token: Token) {
+    pub(crate) fn handle_token(&mut self, token: Token, mode: HandleTokenMode) {
+        if self.config.tokens() {
+            match mode {
+                HandleTokenMode::Append => self.tokens.push(token),
+                HandleTokenMode::Replace => {
+                    if let Some(last_token) = self.tokens.last_mut() {
+                        *last_token = token;
+                    }
+                }
+            }
+        }
+
         let len = self.comments.len();
         if self.state.processed_comments < len {
             self.attach_pending_leading_comments(token.span.start, len);
@@ -989,21 +1003,32 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         self.create_token(TokenTag::LessThan, token_start, token_start + 1)
     }
 
-    pub fn re_scan_jsx_text(&mut self, initial_cursor: u32) -> Token {
-        debug_assert!((initial_cursor as usize) <= self.source.len());
-        self.rewind_to(initial_cursor);
-
+    pub fn scan_jsx_text(&mut self) -> Token {
         let start = self.cursor;
-
-        while (self.cursor as usize) < self.source.len() {
-            match self.source[self.cursor as usize] {
-                b'<' | b'{' => break,
-                _ => self.cursor += 1,
+        let token = match self.source.get(self.cursor as usize).copied() {
+            Some(b'<') => {
+                self.cursor += 1;
+                self.create_token(TokenTag::LessThan, start, self.cursor)
             }
-        }
-
+            Some(b'{') => {
+                self.cursor += 1;
+                self.create_token(TokenTag::LeftBrace, start, self.cursor)
+            }
+            Some(_) => {
+                self.cursor += 1;
+                while (self.cursor as usize) < self.source.len() {
+                    match self.source[self.cursor as usize] {
+                        b'<' | b'{' => break,
+                        _ => self.cursor += 1,
+                    }
+                }
+                self.create_token(TokenTag::JsxText, start, self.cursor)
+            }
+            _ => self.create_token(TokenTag::Eof, start, start),
+        };
         debug_assert!(self.cursor >= start);
-        self.create_token(TokenTag::JsxText, start, self.cursor)
+        self.handle_token(token, HandleTokenMode::Append);
+        token
     }
 
     pub fn re_scan_as_regex(
