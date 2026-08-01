@@ -12,8 +12,8 @@ tracy    = ["dep:tracy-client"]
 tracy-client = { workspace = true, optional = true }
 
 [dev-dependencies]
-oxc                            = { workspace = true }
-oxc_allocator                  = { workspace = true }
+oxc                    = { workspace = true }
+oxc_allocator          = { workspace = true }
 swc_next_allocator     = { workspace = true }
 swc_next_ecma_ast      = { workspace = true }
 swc_next_ecma_parser   = { workspace = true, features = ["unstable"] }
@@ -27,7 +27,7 @@ swc_core   = { workspace = true, features = ["ecma_parser_unstable"] }
 
 [[bench]]
 harness = false
-name    = "gungraun_parser"
+name    = "gungraun"
 
 [[bench]]
 harness = false

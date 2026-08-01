@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  parser:
-    name: Compare parser benchmarks
+  benchmarks:
+    name: Compare Gungraun benchmarks
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -45,16 +45,16 @@ jobs:
           # Bootstrap the benchmark harness while this workflow is not on the
           # base branch yet. Later PRs benchmark the base branch as-is.
           if ! git cat-file -e \
-            "${BASE_SHA}:tasks/benchmark/benches/gungraun_parser.rs" 2>/dev/null
+            "${BASE_SHA}:tasks/benchmark/benches/gungraun.rs" 2>/dev/null
           then
             git checkout "$COMPARE_SHA" -- \
               Cargo.toml \
               Cargo.lock \
               tasks/benchmark/Cargo.toml \
-              tasks/benchmark/benches/gungraun_parser.rs
+              tasks/benchmark/benches/gungraun.rs
           fi
 
-          cargo bench --quiet -p benchmark --bench gungraun_parser -- \
+          cargo bench --quiet -p benchmark --bench gungraun -- \
             --save-baseline=base
 
       - name: Compare merge benchmark
@@ -64,15 +64,15 @@ jobs:
         run: |
           git checkout --detach "$COMPARE_SHA"
 
-          report="$RUNNER_TEMP/gungraun-parser-diff.txt"
+          report="$RUNNER_TEMP/gungraun-diff.txt"
           set +e
-          cargo bench --quiet -p benchmark --bench gungraun_parser -- \
+          cargo bench --quiet -p benchmark --bench gungraun -- \
             --baseline=base 2>&1 | tee "$report"
           status="${PIPESTATUS[0]}"
           set -e
 
           {
-            echo "## Gungraun parser benchmark diff"
+            echo "## Gungraun benchmark diff"
             echo
             echo 'Values are shown as `merge | base`.'
             echo
@@ -92,16 +92,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          report="$RUNNER_TEMP/gungraun-parser-diff.txt"
+          report="$RUNNER_TEMP/gungraun-diff.txt"
           if [[ ! -f "$report" ]]
           then
             exit 0
           fi
 
-          comment="$RUNNER_TEMP/gungraun-parser-comment.md"
+          comment="$RUNNER_TEMP/gungraun-comment.md"
           {
-            echo '<!-- gungraun-parser-benchmark-diff -->'
-            echo '## Gungraun parser benchmark diff'
+            echo '<!-- gungraun-benchmark-diff -->'
+            echo '## Gungraun benchmark diff'
             echo
             echo 'Values are shown as `merge | base`.'
             echo
@@ -118,7 +118,7 @@ jobs:
             gh api \
               "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" \
               --jq \
-              'map(select(.body | contains("<!-- gungraun-parser-benchmark-diff -->")))[0].id // empty'
+              'map(select((.body | contains("<!-- gungraun-benchmark-diff -->")) or (.body | contains("<!-- gungraun-parser-benchmark-diff -->"))))[0].id // empty'
           )"
 
           if [[ -n "$comment_id" ]]
