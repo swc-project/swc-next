@@ -74,6 +74,22 @@ skipped. The full run writes
 `tasks/testsuite/snapshots/babel_transform.snap`, including totals and
 per-package diagnostics.
 
+## Debug one case
+
+Run one uniquely matched case without updating snapshots:
+
+```sh
+cargo run -p testsuite --bin debug -- \
+  --runner parser \
+  --case test262 \
+  --filter "optional-chaining - strict"
+```
+
+Supported runners are `parser`, `codegen`, and `babel_transform`. The case
+argument selects `test262`, `typescript`, or `babel`; the filter is a contains
+match against the combined fixture path and case name. If it matches multiple
+cases, the command lists candidates that can be used to narrow it.
+
 ## Recommended workflow
 
 1. Make a parser, semantic, codegen, or transformer change.

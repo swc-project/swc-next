@@ -5,6 +5,7 @@ publish = false
 version = "0.1.0"
 
 [dependencies]
+clap       = { workspace = true }
 jwalk      = { workspace = true }
 rayon      = { workspace = true }
 regex      = { workspace = true }
@@ -24,3 +25,6 @@ name = "conformance"
 
 [[bin]]
 name = "babel_transform"
+
+[[bin]]
+name = "debug"

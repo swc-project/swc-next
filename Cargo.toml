@@ -57,6 +57,7 @@ swc_next_ecma_semantic    = { version = "0.11.0", path = "crates/swc_ecma_semant
 swc_next_ecma_transformer = { version = "0.11.0", path = "crates/swc_ecma_transformer" }
 
 # Dev
+clap          = { version = "4.5.51", features = ["derive"] }
 colored       = "3.1.1"
 criterion     = { package = "codspeed-criterion-compat", version = "5.0.0" }
 gungraun      = "0.19.4"
