@@ -11,10 +11,10 @@ use crate::{
 
 pub struct ParserRunner;
 
-impl Runner for ParserRunner {
+impl<C: Case> Runner<C> for ParserRunner {
     const NAME: &'static str = "parser";
 
-    fn run<C: Case>(case: &C) -> TestResult {
+    fn run(case: &C) -> TestResult {
         let path = case.relative_path().to_path_buf();
         let result = catch_unwind(AssertUnwindSafe(|| {
             let allocator = Allocator::new();

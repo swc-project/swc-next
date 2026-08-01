@@ -8,7 +8,7 @@ use jwalk::WalkDir;
 use rayon::prelude::*;
 use swc_next_ecma_ast::{Lang, SourceType};
 
-use crate::cases::fixtures;
+use crate::cases::{Case, fixtures};
 
 pub mod options;
 
@@ -132,6 +132,38 @@ impl BabelTransformCase {
 
     pub fn lang(&self) -> Lang {
         lang(&self.path, &self.options)
+    }
+}
+
+impl Case for BabelTransformCase {
+    const NAME: &'static str = "babel";
+
+    fn read() -> Vec<Self> {
+        BabelTransformCase::read()
+    }
+
+    fn path(&self) -> &Path {
+        &self.path
+    }
+
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn code(&self) -> &str {
+        &self.input
+    }
+
+    fn source_type(&self) -> SourceType {
+        BabelTransformCase::source_type(self)
+    }
+
+    fn lang(&self) -> Lang {
+        BabelTransformCase::lang(self)
+    }
+
+    fn expects_error(&self) -> bool {
+        false
     }
 }
 

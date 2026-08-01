@@ -11,14 +11,14 @@ use crate::{
 
 pub struct CodegenRunner;
 
-impl Runner for CodegenRunner {
+impl<C: Case> Runner<C> for CodegenRunner {
     const NAME: &'static str = "codegen";
 
-    fn should_run<C: Case>(case: &C) -> bool {
+    fn should_run(case: &C) -> bool {
         !case.expects_error()
     }
 
-    fn run<C: Case>(case: &C) -> TestResult {
+    fn run(case: &C) -> TestResult {
         let path = case.relative_path().to_path_buf();
         let result = catch_unwind(AssertUnwindSafe(|| run_case(case)));
         match result {

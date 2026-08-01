@@ -37,7 +37,7 @@ fn update_snapshots<C: Case>() -> bool {
     .any(|panicked| panicked)
 }
 
-fn update_snapshot<R: Runner, C: Case>(cases: &[C]) -> bool {
+fn update_snapshot<R: Runner<C>, C: Case>(cases: &[C]) -> bool {
     let results = cases
         .par_iter()
         .filter(|case| R::should_run(*case))

@@ -4,17 +4,18 @@ use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
 use crate::{cases::Case, suite::TestResult};
 
+pub mod babel_transform;
 pub mod codegen;
 pub mod parser;
 
-pub trait Runner {
+pub trait Runner<C: Case> {
     const NAME: &'static str;
 
-    fn should_run<C: Case>(_case: &C) -> bool {
+    fn should_run(_case: &C) -> bool {
         true
     }
 
-    fn run<C: Case>(case: &C) -> TestResult;
+    fn run(case: &C) -> TestResult;
 }
 
 fn parse_case<'a, C: Case>(
