@@ -17,9 +17,8 @@ mod ecmascript;
 pub mod module_record;
 pub mod scope;
 
-pub use binder::{
-    Reference, ReferenceFlags, ReferenceId, ReferenceSpace, Semantic, Symbol, SymbolFlags,
-};
+pub use binder::{Reference, ReferenceFlags, ReferenceSpace, Semantic, Symbol, SymbolFlags};
+pub use swc_next_ecma_ast::ReferenceId;
 
 /// Semantic analysis output and its scope-dependent early errors.
 pub struct SemanticReturn<'a> {

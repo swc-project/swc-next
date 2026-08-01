@@ -30,7 +30,7 @@ pub use diagnostic::*;
 pub use generated::ast_node::{NodeKind, NodeKindData};
 pub use generated::ast_visitor::*;
 pub use node_id::{AstNode, ExtraDataCompact, ExtraDataId, NodeId, SubRange, TypedSubRange};
-pub use semantic::{ScopeId, SymbolId};
+pub use semantic::{ReferenceId, ScopeId, SymbolId};
 pub use strings::{AstString as String, StringPool};
 pub use syntax::*;
 pub use visit::{TraverseAction, TraverseCtx};

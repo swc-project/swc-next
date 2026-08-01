@@ -6,6 +6,11 @@ oxc_index::define_nonmax_u32_index_type! {
     pub struct SymbolId;
 }
 
+oxc_index::define_nonmax_u32_index_type! {
+    /// Identifier for a semantic reference.
+    pub struct ReferenceId;
+}
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ScopeId(pub(crate) NonZeroU32);
 

@@ -7,17 +7,12 @@ use swc_next_allocator::{
 use swc_next_ecma_ast::{
     Ast, AstNode, BindingIdentifier, Class, ClassType, ExportNamedDeclaration, Function,
     FunctionType, IdentifierName, IdentifierReference, ImportOrExportKind, JsxIdentifier,
-    JsxMemberExpression, NodeId, NodeKind, ScopeId, String as AstString, SymbolId,
+    JsxMemberExpression, NodeId, NodeKind, ReferenceId, ScopeId, String as AstString, SymbolId,
     TsConditionalType, TsEnumDeclaration, TsEnumMember, TsModuleBlock, TsModuleDeclaration,
     TsTypePredicate, VariableKind,
 };
 
 use crate::scope::{self, ScopeKind, ScopeTracker, ScopeTree};
-
-oxc_index::define_nonmax_u32_index_type! {
-    /// Identifier for a [`Reference`].
-    pub struct ReferenceId;
-}
 
 type ScopeMap<'a> = ArenaHashMap<'a, &'a [u8], SymbolId>;
 
