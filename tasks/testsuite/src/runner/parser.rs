@@ -23,8 +23,8 @@ impl<C: Case> Runner<C> for ParserRunner {
                 Err(_) if case.expects_error() => return Ok(()),
                 Err(error) => return Err(format!("{}: {error}", case.name())),
             };
-            let semantic = analyze(program, &mut ast);
-            match (case.expects_error(), semantic.diagnostics().first()) {
+            let semantic_ret = analyze(program, &mut ast);
+            match (case.expects_error(), semantic_ret.diagnostics.first()) {
                 (true, Some(_)) | (false, None) => Ok(()),
                 (true, None) => Err(format!(
                     "{}: expected a parse or early error, but pipeline succeeded",

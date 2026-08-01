@@ -64,9 +64,9 @@ fn transform_input(case: &BabelTransformCase) -> Result<Vec<u8>, String> {
     let allocator = Allocator::new();
     let mut ast = Ast::new(source, &allocator);
     let program = parse_program(&mut ast, case)?;
-    let semantic = analyze(program, &mut ast);
-    if let Some(diagnostic) = semantic
-        .diagnostics()
+    let semantic_ret = analyze(program, &mut ast);
+    if let Some(diagnostic) = semantic_ret
+        .diagnostics
         .iter()
         .find(|diagnostic| diagnostic.severity == Severity::Error)
     {
@@ -77,7 +77,7 @@ fn transform_input(case: &BabelTransformCase) -> Result<Vec<u8>, String> {
     }
 
     let options: TransformerOptions = case.options.clone().into();
-    Transformer::transform(program, &mut ast, &semantic, options);
+    Transformer::transform(program, &mut ast, &semantic_ret.semantic, options);
     Ok(print(&allocator, &ast, program, CodegenOptions::default())
         .code
         .to_vec())

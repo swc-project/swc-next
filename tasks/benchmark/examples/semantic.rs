@@ -15,13 +15,7 @@ fn main() {
     let root = Parser::init(&mut ast, Options::default(), NoTokenParserConfig)
         .parse()
         .program;
-    let semantic = analyze(root, &mut ast);
-
-    println!("Top level: {:?}", semantic.top_level_scope_id());
-    println!(
-        "Unresolved references: {}",
-        semantic.symbol_table().unresolved_references().count()
-    );
+    let semantic = analyze(root, &mut ast).semantic;
     root.visit_with(&mut ScopeDisplayVisitor {
         ast: &ast,
         semantic: &semantic,
@@ -30,7 +24,7 @@ fn main() {
 
 struct ScopeDisplayVisitor<'a> {
     ast: &'a Ast<'a>,
-    semantic: &'a Semantic,
+    semantic: &'a Semantic<'a>,
 }
 
 impl<'a> Visit<'a> for ScopeDisplayVisitor<'a> {
@@ -43,7 +37,7 @@ impl<'a> Visit<'a> for ScopeDisplayVisitor<'a> {
             "{} ({:?}) -> {:?}",
             String::from_utf8_lossy(self.ast.string(node.name(self.ast))),
             node.name(self.ast),
-            self.semantic.node_scope(node.node_id()),
+            self.semantic.scope_of(node.node_id()),
         );
     }
 }

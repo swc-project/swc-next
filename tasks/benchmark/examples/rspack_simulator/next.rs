@@ -40,8 +40,8 @@ fn run_parse<'a>(
 
 #[inline(never)]
 #[allow(dead_code)]
-fn run_semantic(root: Program, ast: &mut Ast<'_>) -> Semantic {
-    analyze(root, ast)
+fn run_semantic<'a>(root: Program, ast: &'a mut Ast<'a>) -> Semantic<'a> {
+    analyze(root, ast).semantic
 }
 
 #[inline(never)]
