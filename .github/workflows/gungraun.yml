@@ -55,6 +55,7 @@ jobs:
           fi
 
           cargo bench --quiet -p benchmark --bench gungraun -- \
+            --home="$RUNNER_TEMP/gungraun" \
             --save-baseline=base
 
       - name: Compare merge benchmark
@@ -65,23 +66,45 @@ jobs:
           git checkout --detach "$COMPARE_SHA"
 
           report="$RUNNER_TEMP/gungraun-diff.txt"
+          summary="$RUNNER_TEMP/gungraun-summary.md"
           set +e
           cargo bench --quiet -p benchmark --bench gungraun -- \
-            --baseline=base 2>&1 | tee "$report"
-          status="${PIPESTATUS[0]}"
+            --home="$RUNNER_TEMP/gungraun" \
+            --baseline=base \
+            --save-summary=json 2>&1 | tee "$report"
+          benchmark_status="${PIPESTATUS[0]}"
+
+          node .github/scripts/render-gungraun-summary.mjs \
+            "$RUNNER_TEMP/gungraun" > "$summary"
+          summary_status="$?"
           set -e
+
+          if [[ ! -s "$summary" ]]
+          then
+            {
+              echo "### Instruction-count changes"
+              echo
+              echo "⚠️ **The comparison summary could not be generated.** See the workflow log."
+            } > "$summary"
+          fi
 
           {
             echo "## Gungraun benchmark diff"
             echo
             echo 'Values are shown as `merge | base`.'
             echo
+            cat "$summary"
+            echo
             echo '```text'
             cat "$report"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-          exit "$status"
+          if [[ "$benchmark_status" -ne 0 ]]
+          then
+            exit "$benchmark_status"
+          fi
+          exit "$summary_status"
 
       - name: Publish benchmark diff to pull request
         if: >-
@@ -98,6 +121,7 @@ jobs:
             exit 0
           fi
 
+          summary="$RUNNER_TEMP/gungraun-summary.md"
           comment="$RUNNER_TEMP/gungraun-comment.md"
           {
             echo '<!-- gungraun-benchmark-diff -->'
@@ -105,7 +129,12 @@ jobs:
             echo
             echo 'Values are shown as `merge | base`.'
             echo
-            echo '<details open>'
+            if [[ -s "$summary" ]]
+            then
+              cat "$summary"
+              echo
+            fi
+            echo '<details>'
             echo '<summary>Benchmark results</summary>'
             echo
             echo '```text'
