@@ -14,7 +14,7 @@ pub trait Runner {
         true
     }
 
-    fn run<C: Case>(case: &C, debug: bool) -> TestResult;
+    fn run<C: Case>(case: &C) -> TestResult;
 }
 
 fn parse_case<'a, C: Case>(
@@ -33,7 +33,7 @@ fn parse<'a>(
     source_type: SourceType,
     lang: Lang,
 ) -> Result<(Program, Ast<'a>), String> {
-    let mut ast = Ast::new(source, &allocator);
+    let mut ast = Ast::new(source, allocator);
     let result = Parser::init(
         &mut ast,
         Options {

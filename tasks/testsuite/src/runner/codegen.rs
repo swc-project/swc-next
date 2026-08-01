@@ -1,6 +1,5 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-use colored::Colorize;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_codegen::{Options as CodegenOptions, print};
 
@@ -19,11 +18,7 @@ impl Runner for CodegenRunner {
         !case.expects_error()
     }
 
-    fn run<C: Case>(case: &C, debug: bool) -> TestResult {
-        if debug {
-            println!("[{}] {:?}", "Debug".green(), case.relative_path());
-        }
-
+    fn run<C: Case>(case: &C) -> TestResult {
         let path = case.relative_path().to_path_buf();
         let result = catch_unwind(AssertUnwindSafe(|| run_case(case)));
         match result {

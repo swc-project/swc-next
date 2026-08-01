@@ -1,10 +1,6 @@
-use std::{collections::HashSet, fs, process::ExitCode};
+use std::{fs, process::ExitCode};
 
-use pico_args::Arguments;
-use rayon::{
-    ThreadPoolBuilder,
-    iter::{IntoParallelRefIterator, ParallelIterator},
-};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use testsuite::{
     cases::{
         Case, babel_parser::BabelParserCase, test262::Test262Case, typescript::TypeScriptCase,
@@ -14,36 +10,11 @@ use testsuite::{
     util::crate_root,
 };
 
-pub struct AppArgs {
-    pub debug: bool,
-    pub cases: Vec<String>,
-    pub runners: HashSet<String>,
-}
-
 pub fn main() -> ExitCode {
-    // Initialize args
-    let mut args = Arguments::from_env();
-    let args = AppArgs {
-        debug: args.contains("--debug"),
-        cases: args.values_from_str("--cases").unwrap(),
-        runners: args
-            .values_from_str("--runners")
-            .unwrap()
-            .into_iter()
-            .collect(),
-    };
-
-    if args.debug {
-        ThreadPoolBuilder::new()
-            .num_threads(1)
-            .build_global()
-            .unwrap();
-    }
-
     let panicked = [
-        update_snapshots::<Test262Case>(&args),
-        update_snapshots::<TypeScriptCase>(&args),
-        update_snapshots::<BabelParserCase>(&args),
+        update_snapshots::<Test262Case>(),
+        update_snapshots::<TypeScriptCase>(),
+        update_snapshots::<BabelParserCase>(),
     ]
     .into_iter()
     .any(|panicked| panicked);
@@ -56,27 +27,21 @@ pub fn main() -> ExitCode {
     }
 }
 
-fn update_snapshots<C: Case>(args: &AppArgs) -> bool {
-    let run_parser = args.runners.is_empty() || args.runners.contains(ParserRunner::NAME);
-    let run_codegen = args.runners.is_empty() || args.runners.contains(CodegenRunner::NAME);
-    if !run_parser && !run_codegen {
-        return false;
-    }
-
-    let cases = filter(args, C::read());
+fn update_snapshots<C: Case>() -> bool {
+    let cases = C::read();
     [
-        run_parser && update_snapshot::<ParserRunner, C>(&cases, args.debug),
-        run_codegen && update_snapshot::<CodegenRunner, C>(&cases, args.debug),
+        update_snapshot::<ParserRunner, C>(&cases),
+        update_snapshot::<CodegenRunner, C>(&cases),
     ]
     .into_iter()
     .any(|panicked| panicked)
 }
 
-fn update_snapshot<R: Runner, C: Case>(cases: &[C], debug: bool) -> bool {
+fn update_snapshot<R: Runner, C: Case>(cases: &[C]) -> bool {
     let results = cases
         .par_iter()
         .filter(|case| R::should_run(*case))
-        .map(|c| R::run(c, debug))
+        .map(R::run)
         .collect::<Vec<_>>();
     let panicked = results
         .iter()
@@ -155,18 +120,4 @@ fn to_snapshot(runner: &str, cases: &str, results: &[TestResult]) -> String {
         snapshot.push('\n');
     }
     snapshot
-}
-
-fn filter<T: Case>(args: &AppArgs, list: Vec<T>) -> Vec<T> {
-    if args.cases.is_empty() {
-        return list;
-    }
-
-    list.into_iter()
-        .filter(|case| {
-            args.cases
-                .iter()
-                .any(|f| case.path().to_string_lossy().as_ref().contains(f))
-        })
-        .collect()
 }

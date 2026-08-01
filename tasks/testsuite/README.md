@@ -52,24 +52,6 @@ result from `output.json`/`output.extended.json` and `options.json`; fixtures
 with Babel-specific syntax or parser options unsupported by this harness are
 excluded. The process is parallel by default.
 
-Use filters to narrow a local investigation:
-
-```sh
-cargo run -p testsuite --bin conformance -- \
-  --runners parser \
-  --cases optional-chaining \
-  --debug
-```
-
-- `--runners <name>` selects `parser` or `codegen`.
-- `--cases <substring>` keeps cases whose fixture path contains the substring.
-- `--debug` uses one worker and prints each case path before running it.
-- Repeat `--runners` or `--cases` to select more than one value.
-
-The filtered command still overwrites the selected snapshot with the filtered
-result. Treat it as a debugging aid; rerun the complete matrix before keeping
-snapshot changes.
-
 ## Babel transform conformance
 
 Run all supported Babel transform fixtures:
@@ -92,24 +74,11 @@ skipped. The full run writes
 `tasks/testsuite/snapshots/babel_transform.snap`, including totals and
 per-package diagnostics.
 
-To inspect one case without rewriting the snapshot, pass a unique substring of
-its path:
-
-```sh
-cargo run -p testsuite --bin babel_transform -- \
-  --case babel-plugin-transform-shorthand-properties/test/fixtures/shorthand-properties/shorthand-single
-```
-
-This prints the selected case's status and the normalized actual and expected
-outputs. If the substring matches zero or multiple cases, the command asks for
-a more specific value.
-
 ## Recommended workflow
 
 1. Make a parser, semantic, codegen, or transformer change.
-2. Run a focused case while iterating.
-3. Run the complete relevant command without filters.
-4. Review the snapshot diff. New failures and panics include their fixture
+2. Run the complete relevant snapshot command.
+3. Review the snapshot diff. New failures and panics include their fixture
    paths; pass-count changes should be explained by the implementation or by an
    intentional fixture update.
-5. Run `cargo check -p testsuite` before committing.
+4. Run `cargo check -p testsuite` before committing.

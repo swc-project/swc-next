@@ -1,6 +1,5 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-use colored::Colorize;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_semantic::analyze;
 
@@ -15,11 +14,7 @@ pub struct ParserRunner;
 impl Runner for ParserRunner {
     const NAME: &'static str = "parser";
 
-    fn run<C: Case>(case: &C, debug: bool) -> TestResult {
-        if debug {
-            println!("[{}] {:?}", "Debug".green(), case.relative_path());
-        }
-
+    fn run<C: Case>(case: &C) -> TestResult {
         let path = case.relative_path().to_path_buf();
         let result = catch_unwind(AssertUnwindSafe(|| {
             let allocator = Allocator::new();
