@@ -12,11 +12,11 @@ use swc_next_ecma_semantic::{Semantic, analyze};
 
 pub fn run(src: &'static str) {
     let allocator = Allocator::new();
-    let (program, ast, tokens) = run_parse(src, &allocator);
-    // let semantic = run_semantic(program, &mut ast);
+    let (program, mut ast, tokens) = run_parse(src, &allocator);
+    let semantic = run_semantic(program, &mut ast);
     let semicolons = run_collect_semicolons(&ast, program, &tokens);
     let idents = run_scan_dependencies(program, &ast);
-    drop((ast, tokens, semicolons, idents));
+    drop((ast, semantic, tokens, semicolons, idents));
 }
 
 #[inline(never)]
@@ -40,7 +40,7 @@ fn run_parse<'a>(
 
 #[inline(never)]
 #[allow(dead_code)]
-fn run_semantic<'a>(root: Program, ast: &'a mut Ast<'a>) -> Semantic<'a> {
+fn run_semantic<'a>(root: Program, ast: &mut Ast<'a>) -> Semantic<'a> {
     analyze(root, ast).semantic
 }
 

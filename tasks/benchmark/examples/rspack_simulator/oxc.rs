@@ -19,10 +19,10 @@ pub fn run(src: &'static str) {
     let allocator = Allocator::default();
     let source_type = SourceType::unambiguous();
     let (program, tokens) = run_parse(src, source_type, &allocator);
-    // let semantic = run_semantic(&program);
+    let semantic = run_semantic(&program);
     let semi = run_collect_semicolons(&program, &tokens);
     let idents = run_scan_dependencies(&program);
-    drop((tokens, semi, idents));
+    drop((tokens, semantic, semi, idents));
 }
 
 #[inline(never)]
@@ -44,10 +44,7 @@ fn run_parse<'a>(
 
 #[inline(never)]
 fn run_semantic<'a>(program: &'a Program<'a>) -> Semantic<'a> {
-    SemanticBuilder::new()
-        .with_check_syntax_error(true)
-        .build(program)
-        .semantic
+    SemanticBuilder::new().build(program).semantic
 }
 
 #[inline(never)]
