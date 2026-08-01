@@ -17,8 +17,9 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    Semantic, Symbol, SymbolFlags,
-    builder::{self, SemanticContext, SemanticTraverseCtx},
+    ReferenceSpace, Semantic, Symbol, SymbolFlags,
+    binder::RefContext,
+    context::{self, SemanticContext, SemanticTraverseCtx, is_write_target, reference_space},
     ecmascript,
     scope::{ScopeKind, scope_id},
 };
@@ -639,7 +640,24 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         kind: NodeKind,
         context: &mut SemanticTraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        builder::enter_node(node, kind, context);
+        let parent = context.parent();
+        context.state.enter(context.ast, node, kind, parent);
+        if kind != NodeKind::BindingIdentifier {
+            let is_write = kind == NodeKind::IdentifierReference
+                && is_write_target(context.ast, context.path());
+            let space = if kind == NodeKind::IdentifierReference {
+                reference_space(
+                    context.ast,
+                    context.path(),
+                    context.state.in_type_position(),
+                )
+            } else {
+                ReferenceSpace::Value
+            };
+            context
+                .state
+                .post_enter(context.ast, node, kind, RefContext { is_write, space });
+        }
         TraverseAction::Proceed
     }
 
@@ -649,7 +667,7 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         kind: NodeKind,
         context: &mut SemanticTraverseCtx<'_, 'a>,
     ) {
-        builder::exit_node(node, kind, context);
+        context.state.exit(node, kind);
     }
 
     fn enter_binding_identifier(
@@ -1690,7 +1708,7 @@ impl<'a> Checker<'a> {
         identifier: BindingIdentifier,
         context: &mut SemanticTraverseCtx<'_, 'a>,
     ) {
-        let space = builder::reference_space(
+        let space = context::reference_space(
             context.ast,
             context.path(),
             context.state.in_type_position(),

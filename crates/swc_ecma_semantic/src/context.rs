@@ -1,12 +1,9 @@
 use swc_next_allocator::vec::Vec as ArenaVec;
-use swc_next_ecma_ast::{
-    Ast, AstNode, NodeId, NodeKind, Program, ScopeId, TraverseCtx, TraverseWith,
-};
+use swc_next_ecma_ast::{Ast, AstNode, NodeId, NodeKind, ScopeId, TraverseCtx};
 
 use crate::{
     Semantic,
     binder::{RefContext, ReferenceSpace, SymbolTracker},
-    checker::Checker,
     scope::{ScopeKind, ScopeTracker, scope_id},
 };
 
@@ -27,7 +24,7 @@ pub(crate) struct SemanticContext<'a> {
 }
 
 impl<'a> SemanticContext<'a> {
-    fn init(tree: &Ast<'a>) -> Self {
+    pub fn init(tree: &Ast<'a>) -> Self {
         let allocator = tree.allocator();
         let mut node_scopes = ArenaVec::with_capacity_in(tree.node_count(), allocator);
         let mut node_parents = ArenaVec::with_capacity_in(tree.node_count(), allocator);
@@ -56,7 +53,7 @@ impl<'a> SemanticContext<'a> {
             .any(|id| self.scope.get(id).kind == ScopeKind::TsModule)
     }
 
-    fn enter(&mut self, tree: &Ast, node: NodeId, kind: NodeKind, parent: Option<NodeId>) {
+    pub fn enter(&mut self, tree: &Ast, node: NodeId, kind: NodeKind, parent: Option<NodeId>) {
         self.scope.enter(tree, node, parent, kind);
         self.node_scopes[node.index()] = self.scope.current;
         self.node_parents[node.index()] = parent;
@@ -67,7 +64,7 @@ impl<'a> SemanticContext<'a> {
             .set_binding_context(tree, node, kind, parent, &self.scope);
     }
 
-    fn post_enter(
+    pub fn post_enter(
         &mut self,
         tree: &Ast,
         node: NodeId,
@@ -90,7 +87,7 @@ impl<'a> SemanticContext<'a> {
         );
     }
 
-    fn exit(&mut self, node: NodeId, kind: NodeKind) {
+    pub fn exit(&mut self, node: NodeId, kind: NodeKind) {
         self.symbols.exit(kind);
         self.scope.exit(node, kind);
         if is_type_context(kind) {
@@ -99,49 +96,13 @@ impl<'a> SemanticContext<'a> {
         }
     }
 
-    fn finalize(self, tree: &Ast) -> Semantic<'a> {
+    pub fn finalize(self, tree: &Ast) -> Semantic<'a> {
         let node_scopes = self.node_scopes.into_bump_slice();
         let node_parents = self.node_parents.into_bump_slice();
         let scopes = self.scope.to_scope_tree();
         self.symbols
             .finalize(tree, scopes, node_scopes, node_parents)
     }
-}
-
-pub struct SemanticBuilder;
-
-impl SemanticBuilder {
-    pub fn build<'a>(root: Program, tree: &mut Ast<'a>, checker: &mut Checker<'a>) -> Semantic<'a> {
-        let state = SemanticContext::init(tree);
-        let mut context = TraverseCtx::new(tree, state);
-        let _ = root.traverse_with(checker, &mut context);
-        context.state.finalize(context.ast)
-    }
-}
-
-pub(crate) fn enter_node(node: NodeId, kind: NodeKind, context: &mut SemanticTraverseCtx<'_, '_>) {
-    let parent = context.parent();
-    context.state.enter(context.ast, node, kind, parent);
-    if kind != NodeKind::BindingIdentifier {
-        let is_write =
-            kind == NodeKind::IdentifierReference && is_write_target(context.ast, context.path());
-        let space = if kind == NodeKind::IdentifierReference {
-            reference_space(
-                context.ast,
-                context.path(),
-                context.state.in_type_position(),
-            )
-        } else {
-            ReferenceSpace::Value
-        };
-        context
-            .state
-            .post_enter(context.ast, node, kind, RefContext { is_write, space });
-    }
-}
-
-pub(crate) fn exit_node(node: NodeId, kind: NodeKind, context: &mut SemanticTraverseCtx<'_, '_>) {
-    context.state.exit(node, kind);
 }
 
 /// The declaration space an identifier position resolves in.

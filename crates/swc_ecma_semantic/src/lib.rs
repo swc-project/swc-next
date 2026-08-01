@@ -6,13 +6,13 @@
 #![deny(clippy::all)]
 #![deny(unused)]
 
-use swc_next_ecma_ast::{Ast, Diagnostic, Program};
+use swc_next_ecma_ast::{Ast, Diagnostic, Program, TraverseCtx, TraverseWith};
 
-use crate::{builder::SemanticBuilder, checker::Checker};
+use crate::{checker::Checker, context::SemanticContext};
 
 mod binder;
-mod builder;
 mod checker;
+mod context;
 mod ecmascript;
 pub mod scope;
 
@@ -33,7 +33,11 @@ pub struct SemanticReturn<'a> {
 /// tree is alive.
 pub fn analyze<'a>(root: Program, ast: &mut Ast<'a>) -> SemanticReturn<'a> {
     let mut visitor = Checker::new(ast.allocator());
-    let sem = SemanticBuilder::build(root, ast, &mut visitor);
+    let state = SemanticContext::init(ast);
+    let mut context = TraverseCtx::new(ast, state);
+    let _ = root.traverse_with(&mut visitor, &mut context);
+    let sem = context.state.finalize(context.ast);
+
     visitor.check_unresolved_exports(ast, &sem);
     SemanticReturn {
         semantic: sem,
