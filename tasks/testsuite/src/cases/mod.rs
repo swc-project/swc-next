@@ -5,6 +5,7 @@ use swc_next_ecma_ast::{Lang, SourceType};
 use crate::util::crate_root;
 
 pub mod babel;
+pub mod babel_parser;
 pub mod test262;
 pub mod typescript;
 

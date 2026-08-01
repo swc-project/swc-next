@@ -8,13 +8,13 @@ use jwalk::WalkDir;
 use rayon::prelude::*;
 use swc_next_ecma_ast::{Lang, SourceType};
 
-use crate::cases::{Case, fixtures};
+use crate::cases::fixtures;
 
 pub mod options;
 
 use options::BabelOptions;
 
-const INPUT_FILE_NAMES: &[&str] = &[
+pub(super) const INPUT_FILE_NAMES: &[&str] = &[
     "input.js",
     "input.jsx",
     "input.mjs",
@@ -38,7 +38,7 @@ const OUTPUT_FILE_NAMES: &[&str] = &[
 ];
 
 #[derive(Debug)]
-pub struct BabelCase {
+pub struct BabelTransformCase {
     pub package_name: String,
     pub path: PathBuf,
     pub name: String,
@@ -47,18 +47,18 @@ pub struct BabelCase {
     pub options: BabelOptions,
 }
 
-struct BabelCasePaths {
+struct BabelTransformCasePaths {
     package_name: String,
     input: PathBuf,
     output: PathBuf,
 }
 
-impl BabelCase {
+impl BabelTransformCase {
     pub fn read() -> Vec<Self> {
-        Self::try_read().unwrap_or_else(|error| panic!("failed to read Babel fixtures: {error}"))
+        Self::try_read().unwrap()
     }
 
-    pub fn try_read() -> io::Result<Vec<Self>> {
+    fn try_read() -> io::Result<Vec<Self>> {
         let packages_dir = fixtures().join("babel/packages");
         let mut case_paths = Vec::new();
 
@@ -83,9 +83,7 @@ impl BabelCase {
                 }
 
                 let input_path = entry.path();
-                let Some(case_dir) = input_path.parent() else {
-                    continue;
-                };
+                let case_dir = input_path.parent().unwrap();
                 let Some(output_path) = OUTPUT_FILE_NAMES
                     .iter()
                     .map(|name| case_dir.join(name))
@@ -94,7 +92,7 @@ impl BabelCase {
                     continue;
                 };
 
-                case_paths.push(BabelCasePaths {
+                case_paths.push(BabelTransformCasePaths {
                     package_name: package_name.clone(),
                     input: input_path,
                     output: output_path,
@@ -106,7 +104,7 @@ impl BabelCase {
             .into_par_iter()
             .map(|paths| {
                 let case_dir = paths.input.parent().unwrap();
-                let options = BabelOptions::from_test_path(case_dir)?;
+                let options = BabelOptions::from_test_path(case_dir);
                 let name = case_dir
                     .strip_prefix(&packages_dir)
                     .unwrap_or(case_dir)
@@ -128,115 +126,44 @@ impl BabelCase {
         Ok(cases)
     }
 
-    pub fn is_proposal(&self) -> bool {
-        self.package_name.starts_with("babel-plugin-proposal-")
-    }
-
-    pub fn is_flow(&self) -> bool {
-        self.name.to_ascii_lowercase().contains("flow")
-            || self
-                .options
-                .plugins
-                .unsupported
-                .iter()
-                .chain(&self.options.presets.unsupported)
-                .any(|name| name.to_ascii_lowercase().contains("flow"))
-    }
-
-    pub fn has_non_standard_syntax(&self) -> bool {
-        const NON_STANDARD_SYNTAX_PATHS: &[&str] = &[
-            "/async-do-expressions/",
-            "/do-expression",
-            "/DoExpression",
-            "module-expression",
-            "/ModuleExpression",
-            "/discard-binding",
-            "/throw-expression",
-            "/ArgumentPlaceholder",
-            "/BindExpression",
-            "/TopicReference-",
-            "/misc/placeholders",
-            "/misc/V8IntrinsicIdentifier",
-        ];
-
-        NON_STANDARD_SYNTAX_PATHS
-            .iter()
-            .any(|path| self.name.contains(path))
-    }
-
     pub fn source_type(&self) -> SourceType {
-        match self
-            .path
-            .extension()
-            .and_then(|extension| extension.to_str())
-        {
-            Some("mjs" | "mts") => return SourceType::Module,
-            Some("cjs" | "cts") => return SourceType::CommonJs,
-            _ => {}
-        }
-
-        match self.options.source_type.as_deref() {
-            Some("script") => SourceType::Script,
-            Some("commonjs") => SourceType::CommonJs,
-            Some("module" | "unambiguous") | None => SourceType::Module,
-            Some(_) => SourceType::Module,
-        }
+        source_type(&self.path, &self.options)
     }
 
     pub fn lang(&self) -> Lang {
-        let path_lang = Lang::from_path(&self.path.to_string_lossy());
-        if path_lang == Lang::Dts || self.options.is_typescript_definition() {
-            return Lang::Dts;
-        }
-
-        let typescript = matches!(path_lang, Lang::Ts | Lang::Tsx)
-            || self.options.is_typescript()
-            || self.options.plugins.typescript;
-        let jsx = matches!(path_lang, Lang::Jsx | Lang::Tsx) || self.options.is_jsx();
-        match (typescript, jsx) {
-            (true, true) => Lang::Tsx,
-            (true, false) => Lang::Ts,
-            (false, true) => Lang::Jsx,
-            (false, false) => Lang::Js,
-        }
+        lang(&self.path, &self.options)
     }
 }
 
-impl Case for BabelCase {
-    const NAME: &'static str = "babel";
-
-    fn read() -> Vec<Self> {
-        BabelCase::read()
-            .into_iter()
-            .filter(|case| {
-                !case.is_proposal() && !case.is_flow() && !case.has_non_standard_syntax()
-            })
-            .collect()
+pub(super) fn source_type(path: &Path, options: &BabelOptions) -> SourceType {
+    match path.extension().and_then(|extension| extension.to_str()) {
+        Some("mjs" | "mts") => return SourceType::Module,
+        Some("cjs" | "cts") => return SourceType::CommonJs,
+        _ => {}
     }
 
-    fn path(&self) -> &Path {
-        &self.path
+    match options.source_type.as_deref() {
+        Some("script") => SourceType::Script,
+        Some("commonjs") => SourceType::CommonJs,
+        Some("module" | "unambiguous") | None => SourceType::Module,
+        Some(_) => SourceType::Module,
+    }
+}
+
+pub(super) fn lang(path: &Path, options: &BabelOptions) -> Lang {
+    let path_lang = Lang::from_path(&path.to_string_lossy());
+    if path_lang == Lang::Dts || options.is_typescript_definition() {
+        return Lang::Dts;
     }
 
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn code(&self) -> &str {
-        &self.input
-    }
-
-    fn source_type(&self) -> SourceType {
-        BabelCase::source_type(self)
-    }
-
-    fn lang(&self) -> Lang {
-        BabelCase::lang(self)
-    }
-
-    fn expects_error(&self) -> bool {
-        // Babel's `throws` describes transform-time failures, while the generic
-        // conformance runners only use this flag for parse and early errors.
-        false
+    let typescript = matches!(path_lang, Lang::Ts | Lang::Tsx)
+        || options.is_typescript()
+        || options.plugins.typescript;
+    let jsx = matches!(path_lang, Lang::Jsx | Lang::Tsx) || options.is_jsx();
+    match (typescript, jsx) {
+        (true, true) => Lang::Tsx,
+        (true, false) => Lang::Ts,
+        (false, true) => Lang::Jsx,
+        (false, false) => Lang::Js,
     }
 }

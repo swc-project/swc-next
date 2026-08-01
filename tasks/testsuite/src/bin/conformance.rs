@@ -6,7 +6,9 @@ use rayon::{
     iter::{IntoParallelRefIterator, ParallelIterator},
 };
 use testsuite::{
-    cases::{Case, babel::BabelParserCase, test262::Test262Case, typescript::TypeScriptCase},
+    cases::{
+        Case, babel_parser::BabelParserCase, test262::Test262Case, typescript::TypeScriptCase,
+    },
     runner::{Runner, codegen::CodegenRunner, parser::ParserRunner},
     suite::TestResult,
     util::crate_root,
