@@ -9,11 +9,12 @@ use swc_next_ecma_ast::{
     BindingIdentifier, BreakStatement, CallExpression, ClassBody, ContinueStatement, Diagnostic,
     Directive, ExportAllDeclaration, ExportDefaultDeclaration, ExportNamedDeclaration,
     ExportSpecifier, ForInStatement, ForOfStatement, Function, FunctionType, IdentifierReference,
-    ImportDeclaration, ImportOrExportKind, Label, LabelIdentifier, LabeledStatement,
-    MemberExpression, MetaProperty, NodeId, NodeKind, NodeKindData, NumericLiteral,
-    ObjectExpression, ScopeId, Severity, Span, StringLiteral, SwitchStatement, SymbolId, Traverse,
-    TraverseAction, UnaryExpression, UnaryOperator, UpdateExpression, VariableDeclaration,
-    VariableKind, WithStatement, YieldExpression,
+    ImportDeclaration, ImportOrExportKind, JsxClosingElement, JsxOpeningElement, Label,
+    LabelIdentifier, LabeledStatement, MemberExpression, MetaProperty, NodeId, NodeKind,
+    NodeKindData, NumericLiteral, ObjectExpression, ScopeId, Severity, Span, StringLiteral,
+    SwitchStatement, SymbolId, Traverse, TraverseAction, TsEnumMember, TsTypePredicate,
+    UnaryExpression, UnaryOperator, UpdateExpression, VariableDeclaration, VariableKind,
+    WithStatement, YieldExpression,
 };
 
 use crate::{
@@ -591,25 +592,8 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         node: NodeId,
         context: &mut SemanticTraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        let data = context.ast.kind_data(node);
         let parent = context.parent();
         context.state.enter(context.ast, node, parent);
-        if !matches!(data, NodeKindData::BindingIdentifier(_)) {
-            let is_reference = matches!(data, NodeKindData::IdentifierReference(_));
-            let is_write = is_reference && is_write_target(context.ast, context.path());
-            let space = if is_reference {
-                reference_space(
-                    context.ast,
-                    context.path(),
-                    context.state.in_type_position(),
-                )
-            } else {
-                ReferenceSpace::Value
-            };
-            context
-                .state
-                .post_enter(context.ast, node, RefContext { is_write, space });
-        }
         TraverseAction::Proceed
     }
 
@@ -677,6 +661,7 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         identifier: IdentifierReference,
         context: &mut SemanticTraverseCtx<'_, 'a>,
     ) -> TraverseAction {
+        self.post_enter(identifier.node_id(), context);
         // Type-position identifiers are TS type references, not JS
         // identifier references. JS early-error rules do not apply.
         if context.state.in_type_position() {
@@ -693,6 +678,42 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                 ReportOptions::default(),
             );
         }
+        TraverseAction::Proceed
+    }
+
+    fn enter_ts_type_predicate(
+        &mut self,
+        predicate: TsTypePredicate,
+        context: &mut SemanticTraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        self.post_enter(predicate.node_id(), context);
+        TraverseAction::Proceed
+    }
+
+    fn enter_ts_enum_member(
+        &mut self,
+        member: TsEnumMember,
+        context: &mut SemanticTraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        self.post_enter(member.node_id(), context);
+        TraverseAction::Proceed
+    }
+
+    fn enter_jsx_opening_element(
+        &mut self,
+        element: JsxOpeningElement,
+        context: &mut SemanticTraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        self.post_enter(element.node_id(), context);
+        TraverseAction::Proceed
+    }
+
+    fn enter_jsx_closing_element(
+        &mut self,
+        element: JsxClosingElement,
+        context: &mut SemanticTraverseCtx<'_, 'a>,
+    ) -> TraverseAction {
+        self.post_enter(element.node_id(), context);
         TraverseAction::Proceed
     }
 
@@ -1632,6 +1653,26 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
 }
 
 impl<'a> Checker<'a> {
+    fn post_enter(&self, node: NodeId, context: &mut SemanticTraverseCtx<'_, 'a>) {
+        let is_reference = matches!(
+            context.ast.kind_data(node),
+            NodeKindData::IdentifierReference(_)
+        );
+        let is_write = is_reference && is_write_target(context.ast, context.path());
+        let space = if is_reference {
+            reference_space(
+                context.ast,
+                context.path(),
+                context.state.in_type_position(),
+            )
+        } else {
+            ReferenceSpace::Value
+        };
+        context
+            .state
+            .post_enter(context.ast, node, RefContext { is_write, space });
+    }
+
     fn post_binding(
         &self,
         identifier: BindingIdentifier,

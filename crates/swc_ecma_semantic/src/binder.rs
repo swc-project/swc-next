@@ -950,8 +950,8 @@ impl<'a> SymbolTracker<'a> {
 
     /// Materializes the pending binding context into a symbol (for a
     /// `binding_identifier`) or records a reference (for an
-    /// `identifier_reference`). Called for every node after its enter hook,
-    /// before its children.
+    /// `identifier_reference`). Called by the concrete enter hooks it handles,
+    /// before their children.
     pub fn declare_bindings(
         &mut self,
         tree: &Ast,
