@@ -28,6 +28,7 @@ pub struct Checker<'a> {
     allocator: &'a Allocator,
     exported_names: ArenaHashMap<'a, &'a [u8], NodeId>,
     export_specifiers: ArenaVec<'a, ExportSpecifierInfo<'a>>,
+    diagnostics: Vec<Diagnostic<'a>>,
 }
 
 #[derive(Clone, Copy)]
@@ -44,6 +45,7 @@ impl<'a> Checker<'a> {
             allocator,
             exported_names: ArenaHashMap::new_in(allocator),
             export_specifiers: ArenaVec::new_in(allocator),
+            diagnostics: Vec::new(),
         }
     }
 
@@ -58,7 +60,8 @@ impl<'a> Checker<'a> {
         if !tree.is_module() {
             return;
         }
-        for specifier in &self.export_specifiers {
+        for index in 0..self.export_specifiers.len() {
+            let specifier = self.export_specifiers[index];
             if semantic
                 .binding(scope_id(1), specifier.local_name)
                 .is_none()
@@ -67,18 +70,17 @@ impl<'a> Checker<'a> {
                     "Export '{}' is not defined",
                     String::from_utf8_lossy(specifier.local_name)
                 ));
-                self.report(
-                    tree,
-                    tree.span(specifier.node),
-                    message,
-                    ReportOptions::default(),
-                );
+                self.report(tree.span(specifier.node), message, ReportOptions::default());
             }
         }
     }
 
+    pub fn into_diagnostics(self) -> Vec<Diagnostic<'a>> {
+        self.diagnostics
+    }
+
     fn report_redeclaration(
-        &self,
+        &mut self,
         tree: &mut Ast<'a>,
         identifier: BindingIdentifier,
         node: NodeId,
@@ -110,7 +112,6 @@ impl<'a> Checker<'a> {
             String::from_utf8_lossy(name)
         ));
         self.report(
-            tree,
             current_span,
             message,
             ReportOptions {
@@ -124,10 +125,10 @@ impl<'a> Checker<'a> {
         );
     }
 
-    fn report(&self, tree: &mut Ast<'a>, span: Span, message: &'a str, options: ReportOptions<'a>) {
+    fn report(&mut self, span: Span, message: &'a str, options: ReportOptions<'a>) {
         assert!(span.start <= span.end);
         assert!(!message.is_empty());
-        tree.add_diagnostic(Diagnostic {
+        self.diagnostics.push(Diagnostic {
             severity: options.severity,
             message: Cow::Borrowed(message),
             span,
@@ -683,16 +684,10 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                     "'{}' is not allowed as a binding identifier in strict mode",
                     String::from_utf8_lossy(name)
                 ));
-                self.report(
-                    context.ast,
-                    context.ast.span(node),
-                    message,
-                    ReportOptions::default(),
-                );
+                self.report(context.ast.span(node), message, ReportOptions::default());
             }
         } else if flags.block_scoped_var && name == b"let" {
             self.report(
-                context.ast,
                 context.ast.span(node),
                 "'let' is not allowed as a variable name in a lexical declaration",
                 ReportOptions::default(),
@@ -736,7 +731,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         // https://tc39.es/ecma262/#sec-class-definitions-static-semantics-early-errors
         if name == b"arguments" && !is_arguments_available(context) {
             self.report(
-                context.ast,
                 context.ast.span(node),
                 "'arguments' is not allowed in class field initializers or static blocks",
                 ReportOptions::default(),
@@ -769,7 +763,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         let span = context.ast.span(literal.node_id());
         if has_octal_escape(&context.ast.source()[span.start as usize..span.end as usize]) {
             self.report(
-                context.ast,
                 span,
                 "Octal escape sequences are not allowed in strict mode",
                 ReportOptions {
@@ -808,7 +801,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
             )
         };
         self.report(
-            context.ast,
             span,
             message,
             ReportOptions {
@@ -859,7 +851,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         }
         if let Some(parameter) = parameter {
             self.report(
-                context.ast,
                 directive_span,
                 "Illegal 'use strict' directive in function with non-simple parameter list",
                 ReportOptions {
@@ -922,7 +913,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                 "In non-strict mode code, functions can only be declared at top level, inside a block, or as the body of an if statement"
             };
             self.report(
-                context.ast,
                 context.ast.span(function.node_id()),
                 message,
                 ReportOptions::default(),
@@ -938,7 +928,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
     ) -> TraverseAction {
         if is_in_formal_parameters(context) {
             self.report(
-                context.ast,
                 context.ast.span(expression.node_id()),
                 "Yield expression is not allowed in formal parameters",
                 ReportOptions::default(),
@@ -975,7 +964,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         };
         if let Some(message) = message {
             self.report(
-                context.ast,
                 context.ast.span(expression.node_id()),
                 message,
                 ReportOptions::default(),
@@ -997,7 +985,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
             )
         {
             self.report(
-                context.ast,
                 context.ast.span(expression.node_id()),
                 "Cannot assign to 'eval' or 'arguments' in strict mode",
                 ReportOptions::default(),
@@ -1045,12 +1032,7 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                     "Private field '#{}' must be declared in an enclosing class",
                     String::from_utf8_lossy(name)
                 ));
-                self.report(
-                    context.ast,
-                    context.ast.span(left),
-                    message,
-                    ReportOptions::default(),
-                );
+                self.report(context.ast.span(left), message, ReportOptions::default());
             }
         }
         TraverseAction::Proceed
@@ -1074,7 +1056,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         match context.ast.node_kind(target) {
             // https://tc39.es/ecma262/#sec-delete-operator-static-semantics-early-errors
             NodeKind::IdentifierReference if context.state.scope.is_strict() => self.report(
-                context.ast,
                 context.ast.span(expression.node_id()),
                 "Deleting a variable in strict mode is not allowed",
                 ReportOptions::default(),
@@ -1088,7 +1069,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                         == NodeKind::PrivateIdentifier
                 {
                     self.report(
-                        context.ast,
                         context.ast.span(expression.node_id()),
                         "Private fields cannot be deleted",
                         ReportOptions::default(),
@@ -1130,7 +1110,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
             }
             if let Some(first) = first_proto {
                 self.report(
-                    context.ast,
                     context.ast.span(property),
                     "Duplicate '__proto__' property in object literal",
                     ReportOptions {
@@ -1157,7 +1136,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
             match super_call_validity(context) {
                 SuperCallValidity::Valid => {}
                 SuperCallValidity::NotInConstructor => self.report(
-                    context.ast,
                     context.ast.span(call.node_id()),
                     message,
                     ReportOptions {
@@ -1168,7 +1146,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                     },
                 ),
                 SuperCallValidity::NoExtends => self.report(
-                    context.ast,
                     context.ast.span(call.node_id()),
                     message,
                     ReportOptions {
@@ -1197,7 +1174,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         let object = expression.object(context.ast).node_id();
         if context.ast.node_kind(object) == NodeKind::Super && !is_super_property_valid(context) {
             self.report(
-                context.ast,
                 context.ast.span(expression.node_id()),
                 "'super' property access is only valid inside a method or class body",
                 ReportOptions {
@@ -1218,7 +1194,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
             let name = context.ast.string(identifier.name(context.ast));
             if context.ast.node_kind(object) == NodeKind::Super {
                 self.report(
-                    context.ast,
                     context.ast.span(expression.node_id()),
                     "'super' keyword unexpected here",
                     ReportOptions::default(),
@@ -1229,7 +1204,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                     String::from_utf8_lossy(name)
                 ));
                 self.report(
-                    context.ast,
                     context.ast.span(property),
                     message,
                     ReportOptions::default(),
@@ -1252,7 +1226,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         );
         if name == b"import" && !context.ast.is_module() {
             self.report(
-                context.ast,
                 context.ast.span(property.node_id()),
                 "'import.meta' is only valid in module code",
                 ReportOptions::default(),
@@ -1260,7 +1233,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         }
         if name == b"new" && !is_new_target_available(context) {
             self.report(
-                context.ast,
                 context.ast.span(property.node_id()),
                 "'new.target' is only valid inside functions, class field initializers, or static blocks",
                 ReportOptions::default(),
@@ -1379,7 +1351,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
     ) -> TraverseAction {
         if context.state.scope.is_strict() {
             self.report(
-                context.ast,
                 context.ast.span(statement.node_id()),
                 "'with' statements are not allowed in strict mode",
                 ReportOptions::default(),
@@ -1397,7 +1368,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         if statement.r#await(context.ast) && !context.ast.is_ts() && is_inside_static_block(context)
         {
             self.report(
-                context.ast,
                 context.ast.span(statement.node_id()),
                 "Cannot use 'for await' in class static initialization block",
                 ReportOptions::default(),
@@ -1440,7 +1410,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                 kind.as_str()
             ));
             self.report(
-                context.ast,
                 context.ast.span(declaration.node_id()),
                 message,
                 ReportOptions::default(),
@@ -1470,7 +1439,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                     LabelSearch::Found => unreachable!(),
                 };
                 self.report(
-                    context.ast,
                     context.ast.span(statement.node_id()),
                     message,
                     ReportOptions::default(),
@@ -1478,7 +1446,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
             }
         } else if !is_inside_breakable(context) {
             self.report(
-                context.ast,
                 context.ast.span(statement.node_id()),
                 "Illegal break statement",
                 ReportOptions {
@@ -1528,7 +1495,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                     ContinueLabelSearch::Found => unreachable!(),
                 };
                 self.report(
-                    context.ast,
                     context.ast.span(statement.node_id()),
                     message,
                     ReportOptions {
@@ -1539,7 +1505,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
             }
         } else if !is_inside_iteration(context) {
             self.report(
-                context.ast,
                 context.ast.span(statement.node_id()),
                 "Illegal continue statement",
                 ReportOptions {
@@ -1591,7 +1556,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                 String::from_utf8_lossy(name)
             ));
             self.report(
-                context.ast,
                 context.ast.span(statement.label(context.ast).node_id()),
                 message,
                 ReportOptions::default(),
@@ -1614,7 +1578,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
             }
             if let Some(first) = first_default {
                 self.report(
-                    context.ast,
                     context.ast.span(case.node_id()),
                     "A switch statement can only have one default clause",
                     ReportOptions {
@@ -1660,7 +1623,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                 {
                     if let Some(first) = first_constructor {
                         self.report(
-                            context.ast,
                             context.ast.span(method.key(context.ast).node_id()),
                             "A class can only have one constructor",
                             ReportOptions {
@@ -1714,7 +1676,6 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                     String::from_utf8_lossy(name)
                 ));
                 self.report(
-                    context.ast,
                     context.ast.span(child),
                     message,
                     ReportOptions {
@@ -1748,7 +1709,7 @@ impl<'a> Checker<'a> {
     }
 
     fn check_redeclaration(
-        &self,
+        &mut self,
         identifier: BindingIdentifier,
         node: NodeId,
         name: &[u8],
@@ -1904,7 +1865,7 @@ impl<'a> Checker<'a> {
 
     /// <https://tc39.es/ecma262/#sec-keywords-and-reserved-words>
     fn check_strict_reserved(
-        &self,
+        &mut self,
         name: &[u8],
         node: NodeId,
         context: &mut SemanticTraverseCtx<'_, 'a>,
@@ -1918,19 +1879,14 @@ impl<'a> Checker<'a> {
                 "'{}' is reserved in strict mode and cannot be used as {}",
                 word, as_what
             ));
-            self.report(
-                context.ast,
-                context.ast.span(node),
-                message,
-                ReportOptions::default(),
-            );
+            self.report(context.ast.span(node), message, ReportOptions::default());
         }
     }
 
     /// 14.7.5.1 ForBinding must contain exactly one BoundName and, outside
     /// Annex B.3.5, may not have an Initializer.
     fn check_for_in_of_initializer(
-        &self,
+        &mut self,
         context: &mut SemanticTraverseCtx<'_, 'a>,
         left: NodeId,
         is_for_in: bool,
@@ -1942,7 +1898,6 @@ impl<'a> Checker<'a> {
         let declarators = declaration.declarators(context.ast);
         if declarators.len() > 1 {
             self.report(
-                context.ast,
                 context.ast.span(left),
                 "Only a single variable declaration is allowed in a for-in/of statement",
                 ReportOptions::default(),
@@ -1964,7 +1919,6 @@ impl<'a> Checker<'a> {
                 continue;
             }
             self.report(
-                context.ast,
                 context.ast.span(declarator.node_id()),
                 "for-in/of loop variable declaration may not have an initializer",
                 ReportOptions::default(),
@@ -1975,7 +1929,7 @@ impl<'a> Checker<'a> {
 
     /// Walks a destructuring assignment target to find `eval`/`arguments` references.
     fn check_assign_target_eval_arguments(
-        &self,
+        &mut self,
         node: NodeId,
         context: &mut SemanticTraverseCtx<'_, 'a>,
     ) {
@@ -1984,7 +1938,6 @@ impl<'a> Checker<'a> {
                 let identifier = unsafe { IdentifierReference::from_node_id_unchecked(node) };
                 if is_eval_or_arguments(context.ast.string(identifier.name(context.ast))) {
                     self.report(
-                        context.ast,
                         context.ast.span(node),
                         "Cannot assign to 'eval' or 'arguments' in strict mode",
                         ReportOptions::default(),
@@ -2042,7 +1995,7 @@ impl<'a> Checker<'a> {
     }
 
     fn check_import_export_position(
-        &self,
+        &mut self,
         node: NodeId,
         out_of_module_label: &'static str,
         top_level_label: &'static str,
@@ -2063,17 +2016,12 @@ impl<'a> Checker<'a> {
             ))),
         };
         if let Some(message) = message {
-            self.report(
-                context.ast,
-                context.ast.span(node),
-                message,
-                ReportOptions::default(),
-            );
+            self.report(context.ast.span(node), message, ReportOptions::default());
         }
     }
 
     fn check_duplicate_with_attributes(
-        &self,
+        &mut self,
         attributes: swc_next_ecma_ast::TypedSubRange<swc_next_ecma_ast::ImportAttribute>,
         context: &mut SemanticTraverseCtx<'_, 'a>,
     ) {
@@ -2106,7 +2054,6 @@ impl<'a> Checker<'a> {
                         String::from_utf8_lossy(name)
                     ));
                     self.report(
-                        context.ast,
                         key.span,
                         message,
                         ReportOptions {
@@ -2138,7 +2085,6 @@ impl<'a> Checker<'a> {
                 String::from_utf8_lossy(name)
             ));
             self.report(
-                context.ast,
                 context.ast.span(node),
                 message,
                 ReportOptions {

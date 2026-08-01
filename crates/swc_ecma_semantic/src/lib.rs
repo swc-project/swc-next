@@ -6,7 +6,7 @@
 #![deny(clippy::all)]
 #![deny(unused)]
 
-use swc_next_ecma_ast::{Ast, Program};
+use swc_next_ecma_ast::{Ast, Diagnostic, Program};
 
 use crate::{builder::SemanticBuilder, checker::Checker};
 
@@ -21,15 +21,24 @@ pub use binder::{
     Reference, ReferenceFlags, ReferenceId, ReferenceSpace, Semantic, Symbol, SymbolFlags,
 };
 
+/// Semantic analysis output and its scope-dependent early errors.
+pub struct SemanticReturn<'a> {
+    pub semantic: Semantic<'a>,
+    pub diagnostics: Vec<Diagnostic<'a>>,
+}
+
 /// Runs semantic analysis on a tree. Builds the complete `Semantic`
 /// model and reports the scope-dependent early errors.
 ///
-/// Diagnostics are appended directly to the tree alongside parse
-/// errors. All allocations use the tree's arena, so the returned
-/// model is valid as long as the tree is alive.
-pub fn analyze<'a>(root: Program, ast: &mut Ast<'a>) -> Semantic<'a> {
+/// Diagnostics are returned separately from parser diagnostics. Their
+/// messages use the tree's arena, so the result is valid as long as the
+/// tree is alive.
+pub fn analyze<'a>(root: Program, ast: &mut Ast<'a>) -> SemanticReturn<'a> {
     let mut visitor = Checker::new(ast);
     let sem = SemanticBuilder::build(root, &mut visitor);
     visitor.check_unresolved_exports(&sem);
-    sem
+    SemanticReturn {
+        semantic: sem,
+        diagnostics: visitor.into_diagnostics(),
+    }
 }

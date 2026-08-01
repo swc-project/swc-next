@@ -25,7 +25,7 @@ impl CaptureFrame {
 /// This is the flat-AST equivalent of `swc_ecma_utils::function::FnEnvHoister`.
 /// It owns capture state, while callers retain ownership of AST traversal.
 pub struct FnEnvHoister<'semantic> {
-    semantic: &'semantic Semantic<'semantic>,
+    _semantic: &'semantic Semantic<'semantic>,
     frames: Vec<CaptureFrame>,
     used_names: HashSet<Vec<u8>>,
     in_arrow: bool,
