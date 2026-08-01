@@ -449,7 +449,7 @@ impl<'a> ScopeTracker<'a> {
     }
 
     /// Finalizes into an immutable [`ScopeTree`].
-    pub fn to_scope_tree(self) -> ScopeTree<'a> {
+    pub fn into_scope_tree(self) -> ScopeTree<'a> {
         ScopeTree { list: self.scopes }
     }
 }

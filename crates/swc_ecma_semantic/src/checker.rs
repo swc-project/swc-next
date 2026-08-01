@@ -297,18 +297,16 @@ fn super_call_validity(context: &SemanticTraverseCtx<'_, '_>) -> SuperCallValidi
             NodeKindData::Function(_) => {
                 if let Some(parent) = ancestors.next()
                     && let NodeKindData::MethodDefinition(method) = context.ast.kind_data(parent)
-                {
-                    if method.kind(context.ast)
+                    && method.kind(context.ast)
                         == swc_next_ecma_ast::MethodDefinitionKind::Constructor
-                    {
-                        for class in ancestors {
-                            if let NodeKindData::Class(class) = context.ast.kind_data(class) {
-                                return if class.super_class(context.ast).is_some() {
-                                    SuperCallValidity::Valid
-                                } else {
-                                    SuperCallValidity::NoExtends
-                                };
-                            }
+                {
+                    for class in ancestors {
+                        if let NodeKindData::Class(class) = context.ast.kind_data(class) {
+                            return if class.super_class(context.ast).is_some() {
+                                SuperCallValidity::Valid
+                            } else {
+                                SuperCallValidity::NoExtends
+                            };
                         }
                     }
                 }
@@ -336,13 +334,12 @@ fn is_super_property_valid(context: &SemanticTraverseCtx<'_, '_>) -> bool {
                 if let Some(parent) = ancestors.next() {
                     match context.ast.kind_data(parent) {
                         NodeKindData::MethodDefinition(_) => return true,
-                        NodeKindData::ObjectProperty(property) => {
+                        NodeKindData::ObjectProperty(property)
                             if property.method(context.ast)
                                 || property.kind(context.ast)
-                                    != swc_next_ecma_ast::PropertyKind::Init
-                            {
-                                return true;
-                            }
+                                    != swc_next_ecma_ast::PropertyKind::Init =>
+                        {
+                            return true;
                         }
                         _ => {}
                     }
@@ -1017,19 +1014,18 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                 "Deleting a variable in strict mode is not allowed",
                 ReportOptions::default(),
             ),
-            NodeKindData::MemberExpression(member) => {
+            NodeKindData::MemberExpression(member)
                 if !member.computed(context.ast)
                     && context
                         .ast
                         .node_kind(member.property(context.ast).node_id())
-                        == NodeKind::PrivateIdentifier
-                {
-                    self.report(
-                        context.ast.span(expression.node_id()),
-                        "Private fields cannot be deleted",
-                        ReportOptions::default(),
-                    );
-                }
+                        == NodeKind::PrivateIdentifier =>
+            {
+                self.report(
+                    context.ast.span(expression.node_id()),
+                    "Private fields cannot be deleted",
+                    ReportOptions::default(),
+                );
             }
             _ => {}
         }
@@ -1280,16 +1276,14 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         }
         if let Some(parent) = context.parent()
             && let NodeKindData::ExportNamedDeclaration(declaration) = context.ast.kind_data(parent)
+            && declaration.source(context.ast).is_none()
+            && declaration.export_kind(context.ast) != ImportOrExportKind::Type
         {
-            if declaration.source(context.ast).is_none()
-                && declaration.export_kind(context.ast) != ImportOrExportKind::Type
-            {
-                let local = module_export_name(context.ast, specifier.local(context.ast).node_id());
-                self.export_specifiers.push(ExportSpecifierInfo {
-                    local_name: self.intern_bytes(local),
-                    node: specifier.node_id(),
-                });
-            }
+            let local = module_export_name(context.ast, specifier.local(context.ast).node_id());
+            self.export_specifiers.push(ExportSpecifierInfo {
+                local_name: self.intern_bytes(local),
+                node: specifier.node_id(),
+            });
         }
         TraverseAction::Proceed
     }
@@ -1566,24 +1560,21 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
             // Body-less TypeScript overload, abstract, and ambient methods are
             // represented separately and do not count as constructors with an
             // implementation.
-            if let NodeKindData::MethodDefinition(method) = context.ast.kind_data(child) {
-                if method.kind(context.ast) == swc_next_ecma_ast::MethodDefinitionKind::Constructor
-                {
-                    if let Some(first) = first_constructor {
-                        self.report(
-                            context.ast.span(method.key(context.ast).node_id()),
-                            "A class can only have one constructor",
-                            ReportOptions {
-                                labels: self.labels(&[self.label(
-                                    context.ast.span(first),
-                                    "first constructor defined here",
-                                )]),
-                                ..ReportOptions::default()
-                            },
-                        );
-                    } else {
-                        first_constructor = Some(method.key(context.ast).node_id());
-                    }
+            if let NodeKindData::MethodDefinition(method) = context.ast.kind_data(child)
+                && method.kind(context.ast) == swc_next_ecma_ast::MethodDefinitionKind::Constructor
+            {
+                if let Some(first) = first_constructor {
+                    self.report(
+                        context.ast.span(method.key(context.ast).node_id()),
+                        "A class can only have one constructor",
+                        ReportOptions {
+                            labels: self.labels(&[self
+                                .label(context.ast.span(first), "first constructor defined here")]),
+                            ..ReportOptions::default()
+                        },
+                    );
+                } else {
+                    first_constructor = Some(method.key(context.ast).node_id());
                 }
             }
 
