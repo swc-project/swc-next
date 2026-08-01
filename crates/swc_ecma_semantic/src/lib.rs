@@ -14,7 +14,6 @@ mod binder;
 mod builder;
 mod checker;
 mod ecmascript;
-pub mod module_record;
 pub mod scope;
 
 pub use binder::{Reference, ReferenceFlags, ReferenceSpace, Semantic, Symbol, SymbolFlags};
