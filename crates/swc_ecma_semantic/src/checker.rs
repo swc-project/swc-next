@@ -48,7 +48,7 @@ impl<'a> Checker<'a> {
 
     /// Post-traversal check that all local export specifiers refer to
     /// declared bindings.
-    pub fn check_unresolved_exports(&mut self, tree: &'a Ast<'_>, semantic: &Semantic<'_>) {
+    pub fn check_unresolved_exports(&mut self, tree: &Ast<'a>, semantic: &Semantic<'_>) {
         if !tree.is_module() {
             return;
         }

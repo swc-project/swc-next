@@ -111,11 +111,7 @@ impl<'a> SemanticContext<'a> {
 pub struct SemanticBuilder;
 
 impl SemanticBuilder {
-    pub fn build<'ast, 'a>(
-        root: Program,
-        tree: &'ast mut Ast<'a>,
-        checker: &mut Checker<'a>,
-    ) -> Semantic<'a> {
+    pub fn build<'a>(root: Program, tree: &mut Ast<'a>, checker: &mut Checker<'a>) -> Semantic<'a> {
         let state = SemanticContext::init(tree);
         let mut context = TraverseCtx::new(tree, state);
         let _ = root.traverse_with(checker, &mut context);

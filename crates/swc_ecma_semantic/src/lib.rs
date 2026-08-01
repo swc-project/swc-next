@@ -31,7 +31,7 @@ pub struct SemanticReturn<'a> {
 /// Diagnostics are returned separately from parser diagnostics. Their
 /// messages use the tree's arena, so the result is valid as long as the
 /// tree is alive.
-pub fn analyze<'a>(root: Program, ast: &'a mut Ast<'a>) -> SemanticReturn<'a> {
+pub fn analyze<'a>(root: Program, ast: &mut Ast<'a>) -> SemanticReturn<'a> {
     let mut visitor = Checker::new(ast.allocator());
     let sem = SemanticBuilder::build(root, ast, &mut visitor);
     visitor.check_unresolved_exports(ast, &sem);
