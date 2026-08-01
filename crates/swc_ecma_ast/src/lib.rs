@@ -49,6 +49,9 @@ pub struct Ast<'a> {
 
     attached_comments: ArenaVec<'a, Comment>,
 
+    /// Scope-dependent diagnostics appended after parsing.
+    diagnostics: Vec<Diagnostic<'a>>,
+
     /// Flattening AST nodes.
     pub(crate) nodes: NodeData<'a>,
 
@@ -113,6 +116,7 @@ impl<'a> Ast<'a> {
             lang: Lang::Js,
             line_starts: vec![0],
             attached_comments: ArenaVec::new_in(allocator),
+            diagnostics: Vec::new(),
             nodes: NodeData::new_in(allocator),
             extra_data: ArenaVec::with_capacity_in(0, allocator),
             strings: StringPool::new(source),
@@ -232,6 +236,16 @@ impl<'a> Ast<'a> {
     /// Returns attached comments in source order.
     pub fn comments(&self) -> &[Comment] {
         &self.attached_comments
+    }
+
+    /// Appends a scope-dependent diagnostic.
+    pub fn add_diagnostic(&mut self, diagnostic: Diagnostic<'a>) {
+        self.diagnostics.push(diagnostic);
+    }
+
+    /// Returns diagnostics produced after parsing.
+    pub fn diagnostics(&self) -> &[Diagnostic<'a>] {
+        &self.diagnostics
     }
 
     #[inline]

@@ -1,0 +1,1998 @@
+use oxc_index::Idx;
+use swc_next_allocator::{
+    Allocator,
+    hash_map::{HashMap as ArenaHashMap, Values},
+    vec::Vec as ArenaVec,
+};
+use swc_next_ecma_ast::{
+    Ast, AstNode, BindingIdentifier, Class, ClassType, ExportNamedDeclaration, Function,
+    FunctionType, IdentifierName, IdentifierReference, ImportOrExportKind, JsxIdentifier,
+    JsxMemberExpression, NodeId, NodeKind, ScopeId, String as AstString, SymbolId,
+    TsConditionalType, TsEnumDeclaration, TsEnumMember, TsModuleBlock, TsModuleDeclaration,
+    TsTypePredicate, VariableKind,
+};
+
+use crate::scope::{self, ScopeKind, ScopeTracker, ScopeTree};
+
+oxc_index::define_nonmax_u32_index_type! {
+    /// Identifier for a [`Reference`].
+    pub struct ReferenceId;
+}
+
+type ScopeMap<'a> = ArenaHashMap<'a, &'a [u8], SymbolId>;
+
+/// A `(start, len)` window into a backing slice.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Range {
+    pub start: u32,
+    pub len: u32,
+}
+
+/// A declared binding.
+///
+/// ## Example
+/// ```ts
+/// interface Shape { kind: string }
+/// class Shape { kind = "circle" }
+/// //    ^^^^^ one symbol with two declarations, occupying
+/// //          both value space and type space
+/// ```
+///
+/// Declarations that legally share a name merge into one symbol,
+/// such as `var` redeclarations, TS function overloads, and `class`
+/// + `interface` merging. [`Semantic::decls`] lists every declaration
+/// site. `flags` describes the declaration kinds, the modifiers,
+/// and the spaces the symbol occupies.
+#[derive(Debug, Clone, Copy)]
+pub struct Symbol {
+    pub name: AstString,
+    pub flags: SymbolFlags,
+    /// The scope the symbol is declared in. For a hoisting `var`,
+    /// this is the hoist target it lands in, not the block it is
+    /// written in.
+    pub scope: ScopeId,
+    // window into `Semantic.decl_nodes`, expanded by `Semantic.decls`
+    pub decls: Range,
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct SymbolFlags {
+    pub function_scoped_var: bool,
+    pub block_scoped_var: bool,
+    pub function: bool,
+    pub class: bool,
+    pub regular_enum: bool,
+    pub const_enum: bool,
+    pub value_module: bool,
+    pub interface: bool,
+    pub type_alias: bool,
+    pub type_parameter: bool,
+    pub namespace_module: bool,
+    pub import: bool,
+    pub type_import: bool,
+    pub const_var: bool,
+    pub ambient: bool,
+    pub parameter: bool,
+    pub catch_var: bool,
+    pub exported: bool,
+    pub is_default: bool,
+    pub enum_member: bool,
+    pub _reserved: u16,
+}
+
+impl SymbolFlags {
+    /// `var` / `let` / `const`, parameters and catch bindings included.
+    pub const VARIABLE: Self = Self {
+        function_scoped_var: true,
+        block_scoped_var: true,
+        ..Self::NONE
+    };
+
+    /// Any import binding, value (`import x`) or type-only (`import type x`).
+    pub const ANY_IMPORT: Self = Self {
+        import: true,
+        type_import: true,
+        ..Self::NONE
+    };
+
+    /// Declarations that live in JS value space (visible at runtime).
+    pub const VALUE_SPACE: Self = Self {
+        function_scoped_var: true,
+        block_scoped_var: true,
+        function: true,
+        class: true,
+        regular_enum: true,
+        const_enum: true,
+        value_module: true,
+        enum_member: true,
+        ..Self::NONE
+    };
+
+    /// Declarations that live in TS type space.
+    pub const TYPE_SPACE: Self = Self {
+        class: true,
+        regular_enum: true,
+        const_enum: true,
+        interface: true,
+        type_alias: true,
+        type_parameter: true,
+        enum_member: true,
+        ..Self::NONE
+    };
+
+    /// Declarations a dotted type name can start from.
+    pub const NAMESPACE_SPACE: Self = Self {
+        value_module: true,
+        namespace_module: true,
+        regular_enum: true,
+        const_enum: true,
+        ..Self::NONE
+    };
+
+    pub const NONE: Self = Self {
+        function_scoped_var: false,
+        block_scoped_var: false,
+        function: false,
+        class: false,
+        regular_enum: false,
+        const_enum: false,
+        value_module: false,
+        interface: false,
+        type_alias: false,
+        type_parameter: false,
+        namespace_module: false,
+        import: false,
+        type_import: false,
+        const_var: false,
+        ambient: false,
+        parameter: false,
+        catch_var: false,
+        exported: false,
+        is_default: false,
+        enum_member: false,
+        _reserved: 0,
+    };
+
+    const BLOCK_SCOPED_LIKE: Self = Self {
+        block_scoped_var: true,
+        class: true,
+        function: true,
+        ..Self::NONE
+    };
+
+    /// True when `a` and `b` have at least one flag in common.
+    pub fn intersects(self, other: Self) -> bool {
+        (self.function_scoped_var && other.function_scoped_var)
+            || (self.block_scoped_var && other.block_scoped_var)
+            || (self.function && other.function)
+            || (self.class && other.class)
+            || (self.regular_enum && other.regular_enum)
+            || (self.const_enum && other.const_enum)
+            || (self.value_module && other.value_module)
+            || (self.interface && other.interface)
+            || (self.type_alias && other.type_alias)
+            || (self.type_parameter && other.type_parameter)
+            || (self.namespace_module && other.namespace_module)
+            || (self.import && other.import)
+            || (self.type_import && other.type_import)
+            || (self.const_var && other.const_var)
+            || (self.ambient && other.ambient)
+            || (self.parameter && other.parameter)
+            || (self.catch_var && other.catch_var)
+            || (self.exported && other.exported)
+            || (self.is_default && other.is_default)
+            || (self.enum_member && other.enum_member)
+    }
+
+    /// The union of two flag sets. Used when merging two compatible
+    /// declarations into a single symbol.
+    pub fn merge(self, other: Self) -> Self {
+        Self {
+            function_scoped_var: self.function_scoped_var || other.function_scoped_var,
+            block_scoped_var: self.block_scoped_var || other.block_scoped_var,
+            function: self.function || other.function,
+            class: self.class || other.class,
+            regular_enum: self.regular_enum || other.regular_enum,
+            const_enum: self.const_enum || other.const_enum,
+            value_module: self.value_module || other.value_module,
+            interface: self.interface || other.interface,
+            type_alias: self.type_alias || other.type_alias,
+            type_parameter: self.type_parameter || other.type_parameter,
+            namespace_module: self.namespace_module || other.namespace_module,
+            import: self.import || other.import,
+            type_import: self.type_import || other.type_import,
+            const_var: self.const_var || other.const_var,
+            ambient: self.ambient || other.ambient,
+            parameter: self.parameter || other.parameter,
+            catch_var: self.catch_var || other.catch_var,
+            exported: self.exported || other.exported,
+            is_default: self.is_default || other.is_default,
+            enum_member: self.enum_member || other.enum_member,
+            _reserved: 0,
+        }
+    }
+
+    /// True for a `var` that hoists past intermediate blocks.
+    /// Parameters and catch variables are function-scoped but do
+    /// not hoist, so they return false here.
+    pub fn is_hoisting_var(self) -> bool {
+        self.function_scoped_var && !self.parameter && !self.catch_var
+    }
+
+    /// True for a JavaScript value-space binding visible at runtime,
+    /// meaning `var`/`let`/`const`, function, class, enum, or an
+    /// instantiated namespace.
+    pub fn in_value_space(self) -> bool {
+        self.intersects(Self::VALUE_SPACE)
+    }
+
+    /// True for a TypeScript type-space binding, meaning interface,
+    /// type alias, type parameter, plus class and enum, which exist in
+    /// both spaces.
+    pub fn in_type_space(self) -> bool {
+        self.intersects(Self::TYPE_SPACE)
+    }
+
+    /// True for a binding a dotted type name can start from:
+    /// namespaces and enums.
+    pub fn in_namespace_space(self) -> bool {
+        self.intersects(Self::NAMESPACE_SPACE)
+    }
+
+    /// True when a symbol with these flags is visible in `space`, the
+    /// acceptance rule of name resolution.
+    ///
+    /// ## Example
+    /// ```ts
+    /// type T = string;
+    /// function f() {
+    ///   const T = 1;
+    ///   let x: T;
+    ///   //     ^ the const is not visible in type space, so
+    ///   //       resolution walks on to the outer alias
+    /// }
+    /// ```
+    ///
+    /// Import bindings alias symbols of unknowable space and are
+    /// visible in every space.
+    pub fn visible_in(self, space: ReferenceSpace) -> bool {
+        if self.intersects(Self::ANY_IMPORT) {
+            return true;
+        }
+        match space {
+            ReferenceSpace::Value | ReferenceSpace::Typeof => self.in_value_space(),
+            ReferenceSpace::Type => self.in_type_space(),
+            ReferenceSpace::Namespace => self.in_namespace_space(),
+            ReferenceSpace::Any => true,
+        }
+    }
+
+    /// True for declarations a hoisting `var` is forbidden to pass
+    /// through: block-scoped bindings (`let`, `const`), classes, and
+    /// functions.
+    pub fn is_block_scoped_like(self) -> bool {
+        self.intersects(Self::BLOCK_SCOPED_LIKE)
+    }
+
+    /// Human-readable category for diagnostics.
+    pub fn to_string(self) -> &'static str {
+        if self.function {
+            "function"
+        } else if self.class {
+            "class"
+        } else if self.regular_enum || self.const_enum {
+            "enum"
+        } else if self.value_module || self.namespace_module {
+            "namespace"
+        } else if self.interface {
+            "interface"
+        } else if self.type_alias {
+            "type alias"
+        } else if self.type_import {
+            "type import"
+        } else if self.import {
+            "import"
+        } else if self.parameter {
+            "parameter"
+        } else if self.catch_var {
+            "catch parameter"
+        } else if self.type_parameter {
+            "type parameter"
+        } else if self.enum_member {
+            "enum member"
+        } else {
+            "variable"
+        }
+    }
+}
+
+/// Per-declaration redeclaration excludes. A new declaration using one
+/// of these sets conflicts with any matching existing flag. Otherwise
+/// both declarations merge into one symbol.
+pub struct Excludes;
+
+impl Excludes {
+    pub const BLOCK_SCOPED_VAR: SymbolFlags = SymbolFlags::VALUE_SPACE;
+    pub const FUNCTION_SCOPED_VAR: SymbolFlags = SymbolFlags {
+        function_scoped_var: false,
+        function: false,
+        ..SymbolFlags::VALUE_SPACE
+    };
+    /// Function in a hoist scope (function/global/static block). TS
+    /// allows function overloads and sloppy JS permits merging with
+    /// `var`. Lexical scopes use the block-scoped excludes instead.
+    pub const FUNCTION: SymbolFlags = SymbolFlags {
+        function_scoped_var: false,
+        function: false,
+        value_module: false,
+        class: false,
+        ..SymbolFlags::VALUE_SPACE
+    };
+    pub const CLASS: SymbolFlags = SymbolFlags {
+        function_scoped_var: true,
+        block_scoped_var: true,
+        function: true,
+        class: true,
+        regular_enum: true,
+        const_enum: true,
+        value_module: false,
+        interface: false,
+        type_alias: true,
+        type_parameter: true,
+        enum_member: true,
+        ..SymbolFlags::NONE
+    };
+    pub const INTERFACE: SymbolFlags = SymbolFlags {
+        class: false,
+        regular_enum: true,
+        const_enum: true,
+        interface: false,
+        type_alias: true,
+        type_parameter: true,
+        enum_member: true,
+        ..SymbolFlags::NONE
+    };
+    pub const TYPE_ALIAS: SymbolFlags = SymbolFlags::TYPE_SPACE;
+    pub const REGULAR_ENUM: SymbolFlags = SymbolFlags {
+        function_scoped_var: true,
+        block_scoped_var: true,
+        function: true,
+        class: true,
+        regular_enum: false,
+        const_enum: true,
+        value_module: false,
+        interface: true,
+        type_alias: true,
+        type_parameter: true,
+        enum_member: true,
+        ..SymbolFlags::NONE
+    };
+    pub const CONST_ENUM: SymbolFlags = SymbolFlags {
+        function_scoped_var: true,
+        block_scoped_var: true,
+        function: true,
+        class: true,
+        regular_enum: true,
+        const_enum: false,
+        value_module: true,
+        interface: true,
+        type_alias: true,
+        type_parameter: true,
+        enum_member: true,
+        ..SymbolFlags::NONE
+    };
+    pub const VALUE_MODULE: SymbolFlags = SymbolFlags {
+        function_scoped_var: true,
+        block_scoped_var: true,
+        function: false,
+        class: false,
+        regular_enum: false,
+        const_enum: true,
+        value_module: false,
+        enum_member: true,
+        ..SymbolFlags::NONE
+    };
+    pub const NAMESPACE_MODULE: SymbolFlags = SymbolFlags::NONE;
+    pub const IMPORT_BINDING: SymbolFlags = SymbolFlags::ANY_IMPORT;
+    pub const PARAMETER: SymbolFlags = SymbolFlags {
+        function_scoped_var: false,
+        ..SymbolFlags::VALUE_SPACE
+    };
+    pub const CATCH_VAR: SymbolFlags = SymbolFlags::VALUE_SPACE;
+    // Type parameters merge (multiple `infer T` in one conditional
+    // unify). Duplicate explicit `<T, T>` is caught structurally.
+    pub const TYPE_PARAMETER: SymbolFlags = SymbolFlags {
+        type_parameter: false,
+        ..SymbolFlags::TYPE_SPACE
+    };
+    pub const ENUM_MEMBER: SymbolFlags = SymbolFlags {
+        function_scoped_var: true,
+        block_scoped_var: true,
+        function: true,
+        class: true,
+        regular_enum: true,
+        const_enum: true,
+        value_module: true,
+        interface: true,
+        type_alias: true,
+        type_parameter: true,
+        enum_member: true,
+        ..SymbolFlags::NONE
+    };
+}
+
+/// A use of a name. One is recorded for every `identifier_reference`
+/// in the source, for JSX component tag names (`<Foo>`), and for TS
+/// type-predicate parameters (`x is T`). Declaration sites live on
+/// the symbol itself.
+///
+/// ## Example
+/// ```ts
+/// let a = b; a = 2;
+/// //      ^ a read of `b`
+/// //         ^ a write of `a`, flags.write
+/// ```
+#[derive(Debug, Clone, Copy)]
+pub struct Reference {
+    pub name: AstString,
+    /// The scope the reference appears in.
+    pub scope: ScopeId,
+    /// The referencing node.
+    pub node: NodeId,
+    /// The declaring symbol this reference resolves to. `None` for
+    /// names with no binding visible in the reference's space.
+    pub symbol: Option<SymbolId>,
+    pub flags: ReferenceFlags,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ReferenceFlags {
+    /// True when this reference (re)assigns its binding: the target of
+    /// an assignment, the operand of `++`/`--`, the iteration variable
+    /// of for-in/for-of, or a destructuring assignment leaf.
+    /// Initializers in declarations are not references, so an initialized
+    /// but never reassigned binding has no write.
+    pub write: bool,
+    /// The declaration space this position resolves in.
+    pub space: ReferenceSpace,
+    pub _reserved: u8,
+}
+
+impl Default for ReferenceFlags {
+    fn default() -> Self {
+        Self {
+            write: false,
+            space: ReferenceSpace::Value,
+            _reserved: 0,
+        }
+    }
+}
+
+/// The declaration space a syntactic position resolves in,
+/// matching TypeScript name resolution. A binding outside a reference's
+/// space does not shadow.
+///
+/// ## Example
+/// ```ts
+/// let a: T = v;
+/// //     ^ type
+/// //         ^ value
+/// let b: N.T;
+/// //     ^ namespace
+/// let c: typeof v;
+/// //            ^ typeof
+/// export { T };
+/// //       ^ any
+/// ```
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
+pub enum ReferenceSpace {
+    /// a runtime use
+    #[default]
+    Value,
+    /// a type use, annotations, heritage clauses, type arguments
+    Type,
+    /// the qualifier of a dotted type name, `ns` in `ns.T`
+    Namespace,
+    /// a value use inside a type, the entity of a `typeof` query or a
+    /// type-predicate parameter
+    Typeof,
+    /// an alias position that accepts every space: `export { x }`,
+    /// `export default x`, `export = x`, and `import a = x`
+    Any,
+}
+
+impl ReferenceSpace {
+    /// True for positions inside a type-only subtree.
+    pub fn in_type_position(self) -> bool {
+        matches!(self, Self::Type | Self::Namespace | Self::Typeof)
+    }
+}
+
+/// The complete semantic model of a tree, with every scope, symbol,
+/// and reference fully resolved and cross-indexed. Backed by the
+/// tree's arena and valid for the lifetime of the tree.
+///
+/// The query methods connect declaration nodes, reference nodes,
+/// containing scopes, parents, uses, and name lookup without rebuilding
+/// indexes outside the arena-backed model.
+#[derive(Debug)]
+pub struct Semantic<'a> {
+    /// Every scope, indexed by [`ScopeId`].
+    pub scopes: ScopeTree<'a>,
+    /// Every symbol, in declaration order, indexed by [`SymbolId`].
+    pub symbols: &'a [Symbol],
+    /// Every reference, in source order, indexed by [`ReferenceId`].
+    pub references: &'a [Reference],
+    decl_nodes: &'a [NodeId],
+    use_ids: &'a [ReferenceId],
+    use_ranges: &'a [Range],
+    scope_maps: &'a [ScopeMap<'a>],
+    hoisting_variables: &'a [ScopeMap<'a>],
+    node_scopes: &'a [ScopeId],
+    node_parents: &'a [Option<NodeId>],
+    node_symbols: &'a [Option<SymbolId>],
+    node_references: &'a [Option<ReferenceId>],
+}
+
+impl<'a> Semantic<'a> {
+    /// The symbol with the given id.
+    pub fn symbol(&self, id: SymbolId) -> Symbol {
+        assert!(id.index() < self.symbols.len());
+        self.symbols[id.index()]
+    }
+
+    /// The reference with the given id.
+    pub fn reference(&self, id: ReferenceId) -> Reference {
+        assert!(id.index() < self.references.len());
+        self.references[id.index()]
+    }
+
+    /// The scope with the given id.
+    pub fn scope(&self, id: ScopeId) -> scope::Scope {
+        self.scopes.get(id)
+    }
+
+    /// The symbol declared at `node`, or the symbol the reference at
+    /// `node` resolves to. `None` when the node neither declares nor
+    /// references a binding.
+    ///
+    /// ## Example
+    /// ```ts
+    /// let a = 1; a;
+    /// //  ^ the declared symbol
+    /// //         ^ the same symbol, through the reference
+    /// ```
+    pub fn symbol_of(&self, node: NodeId) -> Option<SymbolId> {
+        assert!(node.index() < self.node_symbols.len());
+        self.node_symbols[node.index()]
+            .or_else(|| self.node_references[node.index()].and_then(|id| self.reference(id).symbol))
+    }
+
+    /// The reference recorded at `node`, or `None` when the node is
+    /// not a reference site.
+    pub fn reference_of(&self, node: NodeId) -> Option<ReferenceId> {
+        assert!(node.index() < self.node_references.len());
+        self.node_references[node.index()]
+    }
+
+    /// The innermost lexical scope containing `node`. A scope-creating
+    /// node (function, block, class, ...) maps to the scope it creates;
+    /// that scope's parent is the enclosing scope.
+    pub fn scope_of(&self, node: NodeId) -> ScopeId {
+        assert!(node.index() < self.node_scopes.len());
+        self.node_scopes[node.index()]
+    }
+
+    /// The structural parent of `node`, or `None` at the root.
+    pub fn parent_of(&self, node: NodeId) -> Option<NodeId> {
+        assert!(node.index() < self.node_parents.len());
+        self.node_parents[node.index()]
+    }
+
+    /// Walks from `node` up to the root, yielding `node` first.
+    pub fn ancestors(&self, node: Option<NodeId>) -> SemanticAncestorIterator<'a> {
+        assert!(node.is_none_or(|node| node.index() < self.node_parents.len()));
+        SemanticAncestorIterator {
+            node_parents: self.node_parents,
+            current: node,
+        }
+    }
+
+    /// The `binding_identifier` node of every declaration of `id`, in
+    /// source order. Usually a single element. Symbols whose declarations
+    /// merge (`var` redeclarations, TS overloads, `class` + `interface`)
+    /// have one entry per declaration. [`Semantic::parent_of`] reaches
+    /// the enclosing declarator or declaration from there.
+    ///
+    /// ## Example
+    /// ```ts
+    /// var a = 1; var a = 2;
+    /// //  ^ decls[0]
+    /// //             ^ decls[1], same symbol
+    /// ```
+    ///
+    /// A conflicting redeclaration is recorded here too, aliased onto
+    /// the existing symbol so tooling on broken code still maps the node.
+    pub fn decls(&self, id: SymbolId) -> &'a [NodeId] {
+        let range = self.symbol(id).decls;
+        let start = range.start as usize;
+        let end = start + range.len as usize;
+        assert!(end <= self.decl_nodes.len());
+        &self.decl_nodes[start..end]
+    }
+
+    /// Every use site of `id`, in source order. Declaration sites are
+    /// not uses; those are returned by [`Semantic::decls`].
+    pub fn uses(&self, id: SymbolId) -> &'a [ReferenceId] {
+        assert!(id.index() < self.use_ranges.len());
+        let range = self.use_ranges[id.index()];
+        let start = range.start as usize;
+        &self.use_ids[start..start + range.len as usize]
+    }
+
+    /// The binding of `name` at `scope` alone, including a hoisting
+    /// `var` passing through on its way to its hoist target. This does
+    /// not walk the scope chain; see [`Semantic::lookup`].
+    ///
+    /// ## Example
+    /// ```ts
+    /// function f() { { var a; } }
+    /// //             ^ binding here finds `a`, whose symbol
+    /// //               lives in the function scope
+    /// ```
+    pub fn binding(&self, scope_id: ScopeId, name: &[u8]) -> Option<SymbolId> {
+        assert!(scope_id.index() < self.scope_maps.len());
+        self.scope_maps[scope_id.index()]
+            .get(name)
+            .copied()
+            .or_else(|| self.hoisting_variables[scope_id.index()].get(name).copied())
+    }
+
+    /// Every symbol declared directly in `scope`. A hoisting `var`
+    /// appears in its hoist target, not in blocks it passes through.
+    pub fn bindings(&self, scope_id: ScopeId) -> BindingIterator<'_> {
+        assert!(scope_id.index() < self.scope_maps.len());
+        BindingIterator {
+            inner: self.scope_maps[scope_id.index()].values(),
+        }
+    }
+
+    /// The nearest binding of `name` visible in `space` from `scope`,
+    /// walking the scope chain the way reference resolution does. A
+    /// binding outside the space does not shadow. [`ReferenceSpace::Any`]
+    /// matches by name alone.
+    ///
+    /// ## Example
+    /// ```ts
+    /// type T = string;
+    /// function f() {
+    ///   const T = 1;
+    ///   // type space finds the outer alias, value space the local const
+    /// }
+    /// ```
+    pub fn lookup(
+        &self,
+        scope_id: ScopeId,
+        name: &[u8],
+        space: ReferenceSpace,
+    ) -> Option<SymbolId> {
+        for ancestor in self.scopes.ancestors(Some(scope_id)) {
+            let Some(&id) = self.scope_maps[ancestor.index()].get(name) else {
+                continue;
+            };
+            if self.symbol(id).flags.visible_in(space) {
+                return Some(id);
+            }
+        }
+        None
+    }
+
+    /// Iterates every `(id, scope)` pair in creation order.
+    pub fn iter_scopes(&self) -> ScopeIterator<'a> {
+        ScopeIterator {
+            list: self.scopes.list,
+            index: 0,
+        }
+    }
+
+    /// Iterates every `(id, symbol)` pair in declaration order.
+    pub fn iter_symbols(&self) -> SymbolIterator<'a> {
+        SymbolIterator {
+            symbols: self.symbols,
+            index: 0,
+        }
+    }
+
+    /// Iterates every `(id, reference)` pair in source order.
+    pub fn iter_references(&self) -> ReferenceIterator<'a> {
+        ReferenceIterator {
+            references: self.references,
+            index: 0,
+        }
+    }
+}
+
+/// A `(id, scope)` pair yielded by [`Semantic::iter_scopes`].
+pub struct ScopeEntry {
+    pub id: ScopeId,
+    pub scope: scope::Scope,
+}
+
+/// A `(id, symbol)` pair yielded by [`Semantic::iter_symbols`].
+pub struct SymbolEntry {
+    pub id: SymbolId,
+    pub symbol: Symbol,
+}
+
+/// A `(id, reference)` pair yielded by [`Semantic::iter_references`].
+pub struct ReferenceEntry {
+    pub id: ReferenceId,
+    pub reference: Reference,
+}
+
+pub struct ScopeIterator<'a> {
+    list: &'a [scope::Scope],
+    index: u32,
+}
+
+impl Iterator for ScopeIterator<'_> {
+    type Item = ScopeEntry;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let index = self.index as usize;
+        let scope = *self.list.get(index)?;
+        self.index += 1;
+        Some(ScopeEntry {
+            id: scope::scope_id(index),
+            scope,
+        })
+    }
+}
+
+pub struct SemanticAncestorIterator<'a> {
+    node_parents: &'a [Option<NodeId>],
+    current: Option<NodeId>,
+}
+
+impl Iterator for SemanticAncestorIterator<'_> {
+    type Item = NodeId;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let node = self.current?;
+        assert!(node.index() < self.node_parents.len());
+        self.current = self.node_parents[node.index()];
+        Some(node)
+    }
+}
+
+pub struct BindingIterator<'a> {
+    inner: Values<'a, &'a [u8], SymbolId>,
+}
+
+impl Iterator for BindingIterator<'_> {
+    type Item = SymbolId;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next().copied()
+    }
+}
+
+pub struct SymbolIterator<'a> {
+    symbols: &'a [Symbol],
+    index: u32,
+}
+
+impl Iterator for SymbolIterator<'_> {
+    type Item = SymbolEntry;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let index = self.index as usize;
+        let symbol = *self.symbols.get(index)?;
+        self.index += 1;
+        Some(SymbolEntry {
+            id: symbol_id(index),
+            symbol,
+        })
+    }
+}
+
+pub struct ReferenceIterator<'a> {
+    references: &'a [Reference],
+    index: u32,
+}
+
+impl Iterator for ReferenceIterator<'_> {
+    type Item = ReferenceEntry;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let index = self.index as usize;
+        let reference = *self.references.get(index)?;
+        self.index += 1;
+        Some(ReferenceEntry {
+            id: reference_id(index),
+            reference,
+        })
+    }
+}
+
+/// Collects symbols and references during the AST walk and finalizes
+/// them into a [`Semantic`].
+pub(crate) struct SymbolTracker<'a> {
+    tree: *const Ast<'a>,
+    allocator: &'a Allocator,
+    symbols: ArenaVec<'a, Symbol>,
+    references: ArenaVec<'a, Reference>,
+    decl_pairs: ArenaVec<'a, DeclPair>,
+    // first declarator of each symbol, parallel to `symbols`
+    first_decls: ArenaVec<'a, NodeId>,
+    scope_maps: ArenaVec<'a, ScopeMap<'a>>,
+    hoisting_variables: ArenaVec<'a, ScopeMap<'a>>,
+
+    /// What the next `binding_identifier` will declare: its flags,
+    /// redeclaration excludes, and destination scope. Valid inside an
+    /// enter hook on a `binding_identifier`.
+    pub(crate) pending: PendingBinding,
+    /// Whether the next `binding_identifier` is the directly-exported
+    /// name of an `export` declaration.
+    pub(crate) export_state: ExportState,
+    // true inside an ambient (`declare`) context
+    ambient: bool,
+
+    // snapshots taken before declaration nodes rewrite the context,
+    // restored on exit
+    saved_stack: ArenaVec<'a, SavedContext>,
+}
+
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
+pub(crate) enum ExportState {
+    #[default]
+    None,
+    Named,
+    Default,
+}
+
+/// The declaration context for the next `binding_identifier`.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct PendingBinding {
+    pub flags: SymbolFlags,
+    pub excludes: SymbolFlags,
+    pub scope: ScopeId,
+}
+
+impl Default for PendingBinding {
+    fn default() -> Self {
+        Self {
+            flags: SymbolFlags::NONE,
+            excludes: SymbolFlags::NONE,
+            scope: scope::scope_id(0),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct DeclPair {
+    symbol_id: SymbolId,
+    node: NodeId,
+}
+
+#[derive(Clone, Copy)]
+struct SavedContext {
+    pending: PendingBinding,
+    export_state: ExportState,
+    ambient: bool,
+}
+
+/// Per-node facts computed by the walker for
+/// [`SymbolTracker::declare_bindings`].
+#[derive(Clone, Copy)]
+pub(crate) struct RefContext {
+    /// the node is an identifier in assignment-target position
+    pub is_write: bool,
+    /// the declaration space the identifier resolves in
+    pub space: ReferenceSpace,
+}
+
+impl Default for RefContext {
+    fn default() -> Self {
+        Self {
+            is_write: false,
+            space: ReferenceSpace::Value,
+        }
+    }
+}
+
+impl<'a> SymbolTracker<'a> {
+    pub fn init(tree: &Ast<'a>) -> Self {
+        assert!(tree.node_count() > 0);
+        let allocator = tree.allocator();
+        let nodes = tree.node_count();
+        Self {
+            tree,
+            allocator,
+            symbols: ArenaVec::with_capacity_in(16usize.max(nodes / 12), allocator),
+            references: ArenaVec::with_capacity_in(16usize.max(nodes / 4), allocator),
+            decl_pairs: ArenaVec::with_capacity_in(16usize.max(nodes / 12), allocator),
+            first_decls: ArenaVec::with_capacity_in(16usize.max(nodes / 12), allocator),
+            scope_maps: ArenaVec::with_capacity_in(8usize.max(nodes / 16), allocator),
+            hoisting_variables: ArenaVec::with_capacity_in(8usize.max(nodes / 16), allocator),
+            pending: PendingBinding::default(),
+            export_state: ExportState::None,
+            // A declaration file is ambient in its entirety.
+            ambient: tree.lang() == swc_next_ecma_ast::Lang::Dts,
+            saved_stack: ArenaVec::with_capacity_in(32, allocator),
+        }
+    }
+
+    #[inline]
+    fn tree(&self) -> &Ast<'a> {
+        unsafe { &*self.tree }
+    }
+
+    /// Records the binding context for the next `binding_identifier`.
+    /// Called for every node on enter so parent declaration nodes can
+    /// configure the pending binding before the child identifier fires.
+    pub fn set_binding_context(
+        &mut self,
+        node: NodeId,
+        kind: NodeKind,
+        parent: Option<NodeId>,
+        scope: &ScopeTracker<'a>,
+    ) {
+        let tree = unsafe { &*self.tree };
+        match kind {
+            NodeKind::ExportNamedDeclaration => {
+                let declaration = unsafe { typed::<ExportNamedDeclaration>(node) };
+                // The declaration form always exports its binding, even when
+                // `export_kind` is type. The pure re-export form has no inner
+                // binding and remains dependent on its export kind.
+                if declaration.declaration(tree).is_some()
+                    || declaration.export_kind(tree) != ImportOrExportKind::Type
+                {
+                    self.export_state = ExportState::Named;
+                }
+            }
+            NodeKind::ExportDefaultDeclaration => self.export_state = ExportState::Default,
+            NodeKind::VariableDeclaration => {
+                self.push_saved_context();
+                let declaration = unsafe { typed::<swc_next_ecma_ast::VariableDeclaration>(node) };
+                self.pending = match declaration.kind(tree) {
+                    VariableKind::Var => {
+                        let target = scope.hoist_target();
+                        let mut excludes = Excludes::FUNCTION_SCOPED_VAR;
+                        // Module-level function declarations are lexical;
+                        // everywhere else (and in TS) `var` merges with them.
+                        if !tree.is_ts() && scope.get(target).kind == ScopeKind::Module {
+                            excludes.function = true;
+                        }
+                        PendingBinding {
+                            flags: SymbolFlags {
+                                function_scoped_var: true,
+                                ambient: declaration.declare(tree) || self.ambient,
+                                ..SymbolFlags::NONE
+                            },
+                            excludes,
+                            scope: target,
+                        }
+                    }
+                    VariableKind::Const | VariableKind::Using | VariableKind::AwaitUsing => {
+                        PendingBinding {
+                            flags: SymbolFlags {
+                                block_scoped_var: true,
+                                const_var: true,
+                                ambient: declaration.declare(tree) || self.ambient,
+                                ..SymbolFlags::NONE
+                            },
+                            excludes: Excludes::BLOCK_SCOPED_VAR,
+                            scope: scope.current,
+                        }
+                    }
+                    VariableKind::Let => PendingBinding {
+                        flags: SymbolFlags {
+                            block_scoped_var: true,
+                            ambient: declaration.declare(tree) || self.ambient,
+                            ..SymbolFlags::NONE
+                        },
+                        excludes: Excludes::BLOCK_SCOPED_VAR,
+                        scope: scope.current,
+                    },
+                };
+            }
+            NodeKind::Function => {
+                self.push_saved_context();
+                let function = unsafe { typed::<Function>(node) };
+                let is_declaration =
+                    function.function_type(tree) == FunctionType::FunctionDeclaration;
+                let target = if is_declaration {
+                    scope
+                        .current_scope()
+                        .parent
+                        .expect("a function declaration scope has a parent")
+                } else {
+                    expression_name_scope(scope)
+                };
+                let target_kind = scope.get(target).kind;
+                let allow_overload = tree.is_ts()
+                    || matches!(
+                        target_kind,
+                        ScopeKind::Function
+                            | ScopeKind::FunctionBody
+                            | ScopeKind::Global
+                            | ScopeKind::StaticBlock
+                    );
+                // TS overloads, sloppy JS Annex B.3.2, and global merge with
+                // var. Lexical scopes (block/module) do not.
+                self.pending = PendingBinding {
+                    flags: SymbolFlags {
+                        function: true,
+                        ambient: self.ambient,
+                        ..SymbolFlags::NONE
+                    },
+                    excludes: if allow_overload {
+                        Excludes::FUNCTION
+                    } else {
+                        Excludes::BLOCK_SCOPED_VAR
+                    },
+                    scope: target,
+                };
+                // Expression names are local.
+                if !is_declaration {
+                    self.export_state = ExportState::None;
+                }
+            }
+            NodeKind::TsFunction => {
+                self.push_saved_context();
+                let target = scope
+                    .current_scope()
+                    .parent
+                    .expect("a TypeScript function scope has a parent");
+                self.pending = PendingBinding {
+                    flags: SymbolFlags {
+                        function: true,
+                        ambient: true,
+                        ..SymbolFlags::NONE
+                    },
+                    excludes: Excludes::FUNCTION,
+                    scope: target,
+                };
+            }
+            NodeKind::Class => {
+                self.push_saved_context();
+                let class = unsafe { typed::<Class>(node) };
+                let is_declaration = class.class_type(tree) == ClassType::ClassDeclaration;
+                self.pending = PendingBinding {
+                    flags: SymbolFlags {
+                        class: true,
+                        ambient: class.declare(tree) || self.ambient,
+                        ..SymbolFlags::NONE
+                    },
+                    excludes: Excludes::CLASS,
+                    scope: if is_declaration {
+                        scope
+                            .current_scope()
+                            .parent
+                            .expect("a class declaration scope has a parent")
+                    } else {
+                        expression_name_scope(scope)
+                    },
+                };
+                // Expression names are local.
+                if !is_declaration {
+                    self.export_state = ExportState::None;
+                }
+            }
+            NodeKind::FormalParameters => {
+                self.push_saved_context();
+                self.pending = PendingBinding {
+                    flags: SymbolFlags {
+                        function_scoped_var: true,
+                        parameter: true,
+                        ambient: self.pending.flags.ambient,
+                        ..SymbolFlags::NONE
+                    },
+                    excludes: Excludes::PARAMETER,
+                    scope: scope.current,
+                };
+                self.export_state = ExportState::None;
+            }
+            // Members are not the exported binding.
+            NodeKind::ClassBody | NodeKind::TsModuleBlock | NodeKind::TsEnumBody => {
+                self.export_state = ExportState::None;
+            }
+            NodeKind::ImportDeclaration => {
+                self.push_saved_context();
+                let declaration = unsafe { typed::<swc_next_ecma_ast::ImportDeclaration>(node) };
+                self.pending = import_pending(declaration.import_kind(tree), scope.current);
+            }
+            NodeKind::TsImportEqualsDeclaration => {
+                self.push_saved_context();
+                let declaration =
+                    unsafe { typed::<swc_next_ecma_ast::TsImportEqualsDeclaration>(node) };
+                self.pending = import_pending(declaration.import_kind(tree), scope.current);
+            }
+            NodeKind::ImportSpecifier => {
+                self.push_saved_context();
+                let specifier = unsafe { typed::<swc_next_ecma_ast::ImportSpecifier>(node) };
+                if specifier.import_kind(tree) == ImportOrExportKind::Type {
+                    self.pending.flags = SymbolFlags {
+                        type_import: true,
+                        ..SymbolFlags::NONE
+                    };
+                    self.pending.excludes = Excludes::IMPORT_BINDING;
+                }
+            }
+            NodeKind::CatchClause => {
+                self.push_saved_context();
+                self.pending = PendingBinding {
+                    flags: SymbolFlags {
+                        function_scoped_var: true,
+                        catch_var: true,
+                        ..SymbolFlags::NONE
+                    },
+                    excludes: Excludes::CATCH_VAR,
+                    scope: scope.current,
+                };
+            }
+            NodeKind::TsInterfaceDeclaration => {
+                // The id binds in the surrounding scope. Type-parameter and
+                // body bindings live in a scope pushed by the tracker.
+                self.push_saved_context();
+                let declaration =
+                    unsafe { typed::<swc_next_ecma_ast::TsInterfaceDeclaration>(node) };
+                self.pending = PendingBinding {
+                    flags: SymbolFlags {
+                        interface: true,
+                        ambient: declaration.declare(tree) || self.ambient,
+                        ..SymbolFlags::NONE
+                    },
+                    excludes: Excludes::INTERFACE,
+                    scope: scope
+                        .current_scope()
+                        .parent
+                        .expect("an interface scope has a parent"),
+                };
+            }
+            NodeKind::TsTypeAliasDeclaration => {
+                self.push_saved_context();
+                let declaration =
+                    unsafe { typed::<swc_next_ecma_ast::TsTypeAliasDeclaration>(node) };
+                self.pending = PendingBinding {
+                    flags: SymbolFlags {
+                        type_alias: true,
+                        ambient: declaration.declare(tree) || self.ambient,
+                        ..SymbolFlags::NONE
+                    },
+                    excludes: Excludes::TYPE_ALIAS,
+                    scope: scope
+                        .current_scope()
+                        .parent
+                        .expect("a type alias scope has a parent"),
+                };
+            }
+            NodeKind::TsEnumDeclaration => {
+                self.push_saved_context();
+                let declaration = unsafe { typed::<TsEnumDeclaration>(node) };
+                self.pending = PendingBinding {
+                    flags: if declaration.is_const(tree) {
+                        SymbolFlags {
+                            const_enum: true,
+                            ambient: declaration.declare(tree) || self.ambient,
+                            ..SymbolFlags::NONE
+                        }
+                    } else {
+                        SymbolFlags {
+                            regular_enum: true,
+                            ambient: declaration.declare(tree) || self.ambient,
+                            ..SymbolFlags::NONE
+                        }
+                    },
+                    excludes: if declaration.is_const(tree) {
+                        Excludes::CONST_ENUM
+                    } else {
+                        Excludes::REGULAR_ENUM
+                    },
+                    scope: scope.current,
+                };
+            }
+            NodeKind::TsModuleDeclaration => {
+                self.push_saved_context();
+                let declaration = unsafe { typed::<TsModuleDeclaration>(node) };
+                let instantiated = namespace_is_instantiated(tree, declaration.body(tree));
+                self.pending = PendingBinding {
+                    flags: SymbolFlags {
+                        value_module: instantiated,
+                        namespace_module: true,
+                        ambient: declaration.declare(tree) || self.ambient,
+                        ..SymbolFlags::NONE
+                    },
+                    excludes: if instantiated {
+                        Excludes::VALUE_MODULE
+                    } else {
+                        Excludes::NAMESPACE_MODULE
+                    },
+                    scope: scope.current,
+                };
+                // `declare` makes the whole body ambient.
+                if declaration.declare(tree) {
+                    self.ambient = true;
+                }
+            }
+            NodeKind::TsGlobalDeclaration => {
+                self.push_saved_context();
+                self.ambient = true;
+            }
+            NodeKind::TsNamespaceExportDeclaration => {
+                self.push_saved_context();
+                self.pending = PendingBinding {
+                    flags: SymbolFlags {
+                        namespace_module: true,
+                        ..SymbolFlags::NONE
+                    },
+                    excludes: Excludes::NAMESPACE_MODULE,
+                    scope: scope.current,
+                };
+            }
+            // `TsTypeParameter` wraps `<T>` and `infer U`. Mapped type keys
+            // `[K in T]` are bare binding identifiers under `TsMappedType`,
+            // so the same context applies.
+            NodeKind::TsTypeParameter | NodeKind::TsMappedType => {
+                self.push_saved_context();
+                // `infer` declares in the enclosing conditional scope so the
+                // true branch sees it, even from inside a signature type.
+                let target = if parent
+                    .is_some_and(|parent| tree.node_kind(parent) == NodeKind::TsInferType)
+                {
+                    nearest_conditional_scope(tree, scope)
+                } else {
+                    scope.current
+                };
+                self.pending = PendingBinding {
+                    flags: SymbolFlags {
+                        type_parameter: true,
+                        ..SymbolFlags::NONE
+                    },
+                    excludes: Excludes::TYPE_PARAMETER,
+                    scope: target,
+                };
+                self.export_state = ExportState::None;
+            }
+            // Signature-type parameter names are labels, not declarations.
+            // Clear an enclosing type-parameter context so nesting never
+            // declares them, as in `<T extends { [s: string]: number }> `.
+            NodeKind::TsFunctionType
+            | NodeKind::TsConstructorType
+            | NodeKind::TsMethodSignature
+            | NodeKind::TsCallSignatureDeclaration
+            | NodeKind::TsConstructSignatureDeclaration
+            | NodeKind::TsIndexSignature => {
+                self.push_saved_context();
+                self.pending = PendingBinding {
+                    flags: SymbolFlags::NONE,
+                    excludes: SymbolFlags::NONE,
+                    scope: scope.current,
+                };
+            }
+            _ => {}
+        }
+    }
+
+    fn push_saved_context(&mut self) {
+        self.saved_stack.push(SavedContext {
+            pending: self.pending,
+            export_state: self.export_state,
+            ambient: self.ambient,
+        });
+    }
+
+    /// Materializes the pending binding context into a symbol (for a
+    /// `binding_identifier`) or records a reference (for an
+    /// `identifier_reference`). Called for every node after its enter hook,
+    /// before its children.
+    pub fn declare_bindings(
+        &mut self,
+        node: NodeId,
+        kind: NodeKind,
+        scope: &ScopeTracker<'a>,
+        reference_context: RefContext,
+    ) {
+        if self.scope_maps.len() < scope.scopes.len() {
+            self.sync_scope_maps(scope.scopes.len());
+        }
+
+        let tree = unsafe { &*self.tree };
+        match kind {
+            NodeKind::BindingIdentifier => {
+                // Type-position identifiers are parameter labels. Only type
+                // parameters are real declarations there.
+                if reference_context.space.in_type_position() && !self.pending.flags.type_parameter
+                {
+                    return;
+                }
+                let identifier = unsafe { typed::<BindingIdentifier>(node) };
+                let symbol_id = self.declare(identifier.name(tree), node);
+
+                // Register a hoisting var in every block it passes through so
+                // block-scoped redeclarations see it.
+                if self.pending.flags.is_hoisting_var() {
+                    for scope_id in scope.ancestors(Some(scope.current)) {
+                        if scope_id == self.pending.scope {
+                            break;
+                        }
+                        let name = self.name_key(identifier.name(tree));
+                        self.hoisting_variables[scope_id.index()]
+                            .entry(name)
+                            .or_insert(symbol_id);
+                    }
+                }
+            }
+            NodeKind::IdentifierReference => {
+                let identifier = unsafe { typed::<IdentifierReference>(node) };
+                self.add_reference(
+                    identifier.name(tree),
+                    scope.current,
+                    node,
+                    ReferenceFlags {
+                        write: reference_context.is_write,
+                        space: reference_context.space,
+                        _reserved: 0,
+                    },
+                );
+            }
+            NodeKind::TsTypePredicate => {
+                // `param is T` parses `param` as an IdentifierName but it
+                // references the enclosing function's parameter. Synthesize
+                // a reference so renamers update both together. In type-only
+                // signatures the parameter is only a label, so no reference
+                // is recorded.
+                let predicate = unsafe { typed::<TsTypePredicate>(node) };
+                let parameter_name = predicate.parameter_name(tree);
+                let parameter_node = parameter_name.node_id();
+                if tree.node_kind(parameter_node) != NodeKind::IdentifierName {
+                    return;
+                }
+                let name = unsafe { typed::<IdentifierName>(parameter_node) }.name(tree);
+                let Some(parameter) = self.own_binding(scope.current, tree.string(name)) else {
+                    return;
+                };
+                if !self.symbol(parameter).flags.parameter {
+                    return;
+                }
+                self.add_reference(
+                    name,
+                    scope.current,
+                    parameter_node,
+                    ReferenceFlags {
+                        space: ReferenceSpace::Typeof,
+                        ..ReferenceFlags::default()
+                    },
+                );
+            }
+            NodeKind::TsEnumMember => {
+                // Members are lexically visible inside the enum body:
+                //
+                //   enum E { a, b = a }
+                //   //              ^ resolves to the member
+                //
+                // Member names are IdentifierName or StringLiteral nodes,
+                // not BindingIdentifiers, so they declare here. Computed and
+                // template names never declare.
+                let member = unsafe { typed::<TsEnumMember>(node) };
+                if member.computed(tree) {
+                    return;
+                }
+                let member_id = member.id(tree).node_id();
+                let name = match tree.node_kind(member_id) {
+                    NodeKind::IdentifierName => {
+                        unsafe { typed::<IdentifierName>(member_id) }.name(tree)
+                    }
+                    NodeKind::StringLiteral => {
+                        unsafe { typed::<swc_next_ecma_ast::StringLiteral>(member_id) }.value(tree)
+                    }
+                    _ => return,
+                };
+                let saved = self.pending;
+                self.pending = PendingBinding {
+                    flags: SymbolFlags {
+                        enum_member: true,
+                        ambient: self.ambient,
+                        ..SymbolFlags::NONE
+                    },
+                    excludes: Excludes::ENUM_MEMBER,
+                    scope: scope.current,
+                };
+                self.declare(name, member_id);
+                self.pending = saved;
+            }
+            NodeKind::JsxOpeningElement => {
+                // The leftmost capitalized JSX identifier is a JS binding
+                // reference. Lowercase tags are intrinsic element names; the
+                // rest of a member chain is property syntax.
+                let element = unsafe { typed::<swc_next_ecma_ast::JsxOpeningElement>(node) };
+                self.add_jsx_reference(element.name(tree).node_id(), scope.current);
+            }
+            NodeKind::JsxClosingElement => {
+                let element = unsafe { typed::<swc_next_ecma_ast::JsxClosingElement>(node) };
+                self.add_jsx_reference(element.name(tree).node_id(), scope.current);
+            }
+            _ => {}
+        }
+    }
+
+    fn add_jsx_reference(&mut self, name: NodeId, scope: ScopeId) {
+        let Some(root) = jsx_tag_root(self.tree(), name) else {
+            return;
+        };
+        let identifier = unsafe { typed::<JsxIdentifier>(root) };
+        let text = self.tree().string(identifier.name(self.tree()));
+        if text.first().is_some_and(u8::is_ascii_uppercase) {
+            self.add_reference(
+                identifier.name(self.tree()),
+                scope,
+                root,
+                ReferenceFlags::default(),
+            );
+        }
+    }
+
+    /// Restores the context to what it was before the matching enter.
+    pub fn exit(&mut self, kind: NodeKind) {
+        match kind {
+            NodeKind::FormalParameters => {
+                if let Some(saved) = self.saved_stack.pop() {
+                    self.pending = saved.pending;
+                    self.ambient = saved.ambient;
+                }
+            }
+            NodeKind::VariableDeclaration
+            | NodeKind::Function
+            | NodeKind::TsFunction
+            | NodeKind::Class
+            | NodeKind::ImportDeclaration
+            | NodeKind::TsImportEqualsDeclaration
+            | NodeKind::ImportSpecifier
+            | NodeKind::CatchClause
+            | NodeKind::TsInterfaceDeclaration
+            | NodeKind::TsTypeAliasDeclaration
+            | NodeKind::TsEnumDeclaration
+            | NodeKind::TsModuleDeclaration
+            | NodeKind::TsGlobalDeclaration
+            | NodeKind::TsNamespaceExportDeclaration
+            | NodeKind::TsTypeParameter
+            | NodeKind::TsMappedType
+            | NodeKind::TsFunctionType
+            | NodeKind::TsConstructorType
+            | NodeKind::TsMethodSignature
+            | NodeKind::TsCallSignatureDeclaration
+            | NodeKind::TsConstructSignatureDeclaration
+            | NodeKind::TsIndexSignature => {
+                if let Some(saved) = self.saved_stack.pop() {
+                    self.pending = saved.pending;
+                    self.export_state = saved.export_state;
+                    self.ambient = saved.ambient;
+                }
+            }
+            NodeKind::ExportNamedDeclaration | NodeKind::ExportDefaultDeclaration => {
+                self.export_state = ExportState::None;
+            }
+            _ => {}
+        }
+    }
+
+    /// Declares the pending binding for `name` at `node`. A compatible
+    /// existing binding is merged. On conflict, its flags remain unchanged
+    /// because the caller reports the diagnostic. Every node is still stored
+    /// as a declaration for error recovery.
+    pub fn declare(&mut self, name: AstString, node: NodeId) -> SymbolId {
+        let target = self.pending.scope;
+        assert!(target.index() < self.scope_maps.len());
+        assert!(node.index() < self.tree().node_count());
+
+        let name_text = self.tree().string(name);
+        let id = if let Some(existing) = self.binding(target, name_text) {
+            let symbol = &mut self.symbols[existing.index()];
+            if !symbol.flags.intersects(self.pending.excludes) {
+                let mut merged = symbol.flags.merge(self.pending.flags);
+                merged.exported = merged.exported || self.export_state != ExportState::None;
+                merged.is_default = merged.is_default || self.export_state == ExportState::Default;
+                // An overload implementation emits at runtime, so the merged
+                // symbol is non-ambient.
+                merged.ambient = symbol.flags.ambient && self.pending.flags.ambient;
+                symbol.flags = merged;
+            }
+            existing
+        } else {
+            assert!(self.symbols.len() < u32::MAX as usize);
+            let new_id = symbol_id(self.symbols.len());
+            let mut flags = self.pending.flags;
+            flags.exported = self.export_state != ExportState::None;
+            flags.is_default = self.export_state == ExportState::Default;
+            self.symbols.push(Symbol {
+                name,
+                flags,
+                scope: target,
+                decls: Range::default(),
+            });
+            self.first_decls.push(node);
+            let key = self.name_key(name);
+            self.scope_maps[target.index()].insert(key, new_id);
+            new_id
+        };
+
+        self.decl_pairs.push(DeclPair {
+            symbol_id: id,
+            node,
+        });
+        id
+    }
+
+    /// Records an identifier reference at `node` in `scope`.
+    pub fn add_reference(
+        &mut self,
+        name: AstString,
+        scope: ScopeId,
+        node: NodeId,
+        flags: ReferenceFlags,
+    ) -> ReferenceId {
+        assert!(node.index() < self.tree().node_count());
+        assert!(self.references.len() < u32::MAX as usize);
+        let id = reference_id(self.references.len());
+        self.references.push(Reference {
+            name,
+            scope,
+            node,
+            symbol: None,
+            flags,
+        });
+        id
+    }
+
+    /// The symbol with the given id.
+    pub fn symbol(&self, id: SymbolId) -> Symbol {
+        assert!(id.index() < self.symbols.len());
+        self.symbols[id.index()]
+    }
+
+    /// The `binding_identifier` node of the earliest declaration of `id`.
+    /// Later declarations merged into the symbol do not change it.
+    pub fn first_decl_of(&self, id: SymbolId) -> NodeId {
+        assert!(id.index() < self.first_decls.len());
+        self.first_decls[id.index()]
+    }
+
+    /// The binding of `name` declared directly in `scope`, excluding
+    /// hoisting `var`s passing through.
+    pub fn own_binding(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
+        self.scope_maps
+            .get(scope.index())
+            .and_then(|map| map.get(name).copied())
+    }
+
+    /// The binding of `name` at `scope`, including a hoisting `var` passing
+    /// through on its way to its hoist target.
+    pub fn binding(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
+        self.own_binding(scope, name).or_else(|| {
+            self.hoisting_variables
+                .get(scope.index())
+                .and_then(|map| map.get(name).copied())
+        })
+    }
+
+    fn sync_scope_maps(&mut self, count: usize) {
+        self.scope_maps.reserve(count - self.scope_maps.len());
+        while self.scope_maps.len() < count {
+            self.scope_maps.push(ScopeMap::new_in(self.allocator));
+        }
+        self.hoisting_variables
+            .reserve(count - self.hoisting_variables.len());
+        while self.hoisting_variables.len() < count {
+            self.hoisting_variables
+                .push(ScopeMap::new_in(self.allocator));
+        }
+    }
+
+    fn name_key(&self, name: AstString) -> &'a [u8] {
+        let text = self.tree().string(name);
+        let text = std::str::from_utf8(text).expect("AST strings are valid UTF-8");
+        self.allocator.alloc_str(text).as_bytes()
+    }
+
+    /// Finalizes the tracker into a complete [`Semantic`]. Builds the
+    /// declaration, use, and node indexes and resolves every reference
+    /// to its declaring symbol. The result aliases tracker storage and
+    /// remains valid for the source tree's arena lifetime.
+    pub fn finalize(
+        mut self,
+        scopes: ScopeTree<'a>,
+        node_scopes: &'a [ScopeId],
+        node_parents: &'a [Option<NodeId>],
+    ) -> Semantic<'a> {
+        // The walk must have ended balanced.
+        assert!(self.saved_stack.is_empty());
+        assert_eq!(self.export_state, ExportState::None);
+        self.sync_scope_maps(scopes.list.len());
+
+        // Declaration index: count, prefix-sum, fill. `decls.len`
+        // doubles as the write cursor during the fill.
+        let symbol_count = self.symbols.len();
+        let mut decl_nodes = ArenaVec::with_capacity_in(self.decl_pairs.len(), self.allocator);
+        for _ in 0..self.decl_pairs.len() {
+            decl_nodes.push(NodeId::from_usize_unchecked(0));
+        }
+        for symbol in &mut self.symbols {
+            symbol.decls = Range::default();
+        }
+        for pair in &self.decl_pairs {
+            self.symbols[pair.symbol_id.index()].decls.len += 1;
+        }
+        let mut declaration_offset = 0u32;
+        for symbol in &mut self.symbols {
+            let count = symbol.decls.len;
+            symbol.decls.start = declaration_offset;
+            symbol.decls.len = 0;
+            declaration_offset += count;
+        }
+        assert_eq!(declaration_offset as usize, self.decl_pairs.len());
+        for pair in &self.decl_pairs {
+            let symbol = &mut self.symbols[pair.symbol_id.index()];
+            let index = (symbol.decls.start + symbol.decls.len) as usize;
+            decl_nodes[index] = pair.node;
+            symbol.decls.len += 1;
+        }
+
+        let node_count = self.tree().node_count();
+        let mut node_symbols = ArenaVec::with_capacity_in(node_count, self.allocator);
+        let mut node_references = ArenaVec::with_capacity_in(node_count, self.allocator);
+        for _ in 0..node_count {
+            node_symbols.push(None);
+            node_references.push(None);
+        }
+        for pair in &self.decl_pairs {
+            node_symbols[pair.node.index()] = Some(pair.symbol_id);
+        }
+        for (index, reference) in self.references.iter().enumerate() {
+            node_references[reference.node.index()] = Some(reference_id(index));
+        }
+
+        for reference_index in 0..self.references.len() {
+            let reference = self.references[reference_index];
+            let name = self.tree().string(reference.name);
+            // The implicit arguments object (10.2.11
+            // argumentsObjectNeeded) shadows outer bindings; an own
+            // parameter or var still wins.
+            let arguments_barrier = matches!(
+                reference.flags.space,
+                ReferenceSpace::Value | ReferenceSpace::Typeof
+            ) && name == b"arguments";
+            let mut resolved = None;
+            for ancestor in scopes.ancestors(Some(reference.scope)) {
+                if let Some(&id) = self.scope_maps[ancestor.index()].get(name) {
+                    let symbol = self.symbols[id.index()];
+                    // A binding outside the reference's space does not
+                    // shadow; keep walking.
+                    if symbol.flags.visible_in(reference.flags.space)
+                        && type_parameter_visible(
+                            self.tree(),
+                            symbol,
+                            reference.node,
+                            scopes,
+                            node_parents,
+                        )
+                    {
+                        resolved = Some(id);
+                        break;
+                    }
+                }
+                if arguments_barrier && is_arguments_barrier(self.tree(), scopes.get(ancestor)) {
+                    break;
+                }
+            }
+            self.references[reference_index].symbol = resolved;
+        }
+
+        // Use index: count, prefix-sum, fill. `len` doubles as the write
+        // cursor during the fill.
+        let mut use_ranges = ArenaVec::with_capacity_in(symbol_count, self.allocator);
+        for _ in 0..symbol_count {
+            use_ranges.push(Range::default());
+        }
+        for reference in &self.references {
+            if let Some(symbol) = reference.symbol {
+                use_ranges[symbol.index()].len += 1;
+            }
+        }
+        let mut use_offset = 0u32;
+        for range in &mut use_ranges {
+            range.start = use_offset;
+            use_offset += range.len;
+            range.len = 0;
+        }
+        let mut use_ids = ArenaVec::with_capacity_in(use_offset as usize, self.allocator);
+        for _ in 0..use_offset {
+            use_ids.push(reference_id(0));
+        }
+        for (index, reference) in self.references.iter().enumerate() {
+            let Some(symbol) = reference.symbol else {
+                continue;
+            };
+            let range = &mut use_ranges[symbol.index()];
+            use_ids[(range.start + range.len) as usize] = reference_id(index);
+            range.len += 1;
+        }
+
+        Semantic {
+            scopes,
+            symbols: self.symbols.into_bump_slice(),
+            references: self.references.into_bump_slice(),
+            decl_nodes: decl_nodes.into_bump_slice(),
+            use_ids: use_ids.into_bump_slice(),
+            use_ranges: use_ranges.into_bump_slice(),
+            scope_maps: self.scope_maps.into_bump_slice(),
+            hoisting_variables: self.hoisting_variables.into_bump_slice(),
+            node_scopes,
+            node_parents,
+            node_symbols: node_symbols.into_bump_slice(),
+            node_references: node_references.into_bump_slice(),
+        }
+    }
+}
+
+fn import_pending(kind: ImportOrExportKind, scope: ScopeId) -> PendingBinding {
+    PendingBinding {
+        flags: if kind == ImportOrExportKind::Type {
+            SymbolFlags {
+                type_import: true,
+                ..SymbolFlags::NONE
+            }
+        } else {
+            SymbolFlags {
+                import: true,
+                ..SymbolFlags::NONE
+            }
+        },
+        excludes: Excludes::IMPORT_BINDING,
+        scope,
+    }
+}
+
+// TypeScript restricts type parameters beyond lexical scoping: infer
+// variables exist only in their conditional's true branch, and class
+// type parameters are hidden in static members (TS2302) and computed
+// member keys (TS2467).
+fn type_parameter_visible(
+    tree: &Ast<'_>,
+    symbol: Symbol,
+    reference_node: NodeId,
+    scopes: ScopeTree<'_>,
+    node_parents: &[Option<NodeId>],
+) -> bool {
+    if !symbol.flags.type_parameter {
+        return true;
+    }
+    let scope_node = scopes.get(symbol.scope).node;
+    match tree.node_kind(scope_node) {
+        NodeKind::TsConditionalType => {
+            let conditional = unsafe { typed::<TsConditionalType>(scope_node) };
+            in_subtree(
+                node_parents,
+                reference_node,
+                scope_node,
+                conditional.true_type(tree).node_id(),
+            )
+        }
+        NodeKind::Class => {
+            !class_type_parameter_hidden(tree, node_parents, reference_node, scope_node)
+        }
+        _ => true,
+    }
+}
+
+// Whether walking up from `node` reaches `root` through `subtree`.
+fn in_subtree(
+    node_parents: &[Option<NodeId>],
+    node: NodeId,
+    root: NodeId,
+    subtree: NodeId,
+) -> bool {
+    let mut child = node;
+    let mut parent = node_parents[child.index()];
+    while let Some(current_parent) = parent {
+        if current_parent == root {
+            return child == subtree;
+        }
+        child = current_parent;
+        parent = node_parents[current_parent.index()];
+    }
+    false
+}
+
+fn class_type_parameter_hidden(
+    tree: &Ast<'_>,
+    node_parents: &[Option<NodeId>],
+    reference_node: NodeId,
+    class_node: NodeId,
+) -> bool {
+    let mut child = reference_node;
+    let mut parent = node_parents[child.index()];
+    while let Some(current_parent) = parent {
+        match tree.node_kind(current_parent) {
+            NodeKind::MethodDefinition => {
+                let method =
+                    unsafe { typed::<swc_next_ecma_ast::MethodDefinition>(current_parent) };
+                if method.computed(tree)
+                    && method.key(tree).node_id() == child
+                    && member_owner(node_parents, current_parent) == Some(class_node)
+                {
+                    return true;
+                }
+            }
+            NodeKind::TsMethodDefinition => {
+                let method =
+                    unsafe { typed::<swc_next_ecma_ast::TsMethodDefinition>(current_parent) };
+                if method.computed(tree)
+                    && method.key(tree).node_id() == child
+                    && member_owner(node_parents, current_parent) == Some(class_node)
+                {
+                    return true;
+                }
+            }
+            NodeKind::PropertyDefinition => {
+                let property =
+                    unsafe { typed::<swc_next_ecma_ast::PropertyDefinition>(current_parent) };
+                if property.computed(tree)
+                    && property.key(tree).node_id() == child
+                    && member_owner(node_parents, current_parent) == Some(class_node)
+                {
+                    return true;
+                }
+            }
+            NodeKind::ClassBody => {
+                if node_parents[current_parent.index()] != Some(class_node) {
+                    child = current_parent;
+                    parent = node_parents[current_parent.index()];
+                    continue;
+                }
+                return match tree.node_kind(child) {
+                    NodeKind::MethodDefinition => {
+                        unsafe { typed::<swc_next_ecma_ast::MethodDefinition>(child) }
+                            .r#static(tree)
+                    }
+                    NodeKind::TsMethodDefinition => {
+                        unsafe { typed::<swc_next_ecma_ast::TsMethodDefinition>(child) }
+                            .r#static(tree)
+                    }
+                    NodeKind::PropertyDefinition => {
+                        unsafe { typed::<swc_next_ecma_ast::PropertyDefinition>(child) }
+                            .r#static(tree)
+                    }
+                    NodeKind::TsIndexSignature => {
+                        unsafe { typed::<swc_next_ecma_ast::TsIndexSignature>(child) }
+                            .r#static(tree)
+                    }
+                    NodeKind::StaticBlock => true,
+                    _ => false,
+                };
+            }
+            _ => {}
+        }
+        child = current_parent;
+        parent = node_parents[current_parent.index()];
+    }
+    false
+}
+
+fn member_owner(node_parents: &[Option<NodeId>], member: NodeId) -> Option<NodeId> {
+    node_parents[member.index()].and_then(|body| node_parents[body.index()])
+}
+
+fn nearest_conditional_scope(tree: &Ast<'_>, scope: &ScopeTracker<'_>) -> ScopeId {
+    for id in scope.ancestors(Some(scope.current)) {
+        if tree.node_kind(scope.get(id).node) == NodeKind::TsConditionalType {
+            return id;
+        }
+    }
+    scope.current
+}
+
+// Non-arrow functions hold the implicit arguments object. Static blocks
+// have no arguments at all; referencing it there is an early error.
+fn is_arguments_barrier(tree: &Ast<'_>, scope: scope::Scope) -> bool {
+    match scope.kind {
+        ScopeKind::Function => tree.node_kind(scope.node) == NodeKind::Function,
+        ScopeKind::StaticBlock => true,
+        _ => false,
+    }
+}
+
+// Walks a JSX tag name to its leftmost JsxIdentifier. Returns None for
+// namespaced names (`<svg:path>`) and non-tag shapes.
+fn jsx_tag_root(tree: &Ast<'_>, name: NodeId) -> Option<NodeId> {
+    let mut current = name;
+    loop {
+        match tree.node_kind(current) {
+            NodeKind::JsxIdentifier => return Some(current),
+            NodeKind::JsxMemberExpression => {
+                current = unsafe { typed::<JsxMemberExpression>(current) }
+                    .object(tree)
+                    .node_id();
+            }
+            NodeKind::JsxNamespacedName => return None,
+            _ => return None,
+        }
+    }
+}
+
+// The expression-name scope sits between the outer and function/class
+// scopes, so it is the parent of the current scope.
+fn expression_name_scope(scope: &ScopeTracker<'_>) -> ScopeId {
+    let current = scope.current_scope();
+    if matches!(current.kind, ScopeKind::Function | ScopeKind::Class) {
+        current
+            .parent
+            .expect("function and class scopes have a parent")
+    } else {
+        scope.current
+    }
+}
+
+// A namespace occupies value space when its body has a value-producing
+// statement. Body-less ambient modules are instantiated by specification.
+fn namespace_is_instantiated(
+    tree: &Ast<'_>,
+    body: Option<swc_next_ecma_ast::TsModuleBody>,
+) -> bool {
+    let Some(body) = body else {
+        return true;
+    };
+    let body = body.node_id();
+    if tree.node_kind(body) != NodeKind::TsModuleBlock {
+        return true;
+    }
+    let block = unsafe { typed::<TsModuleBlock>(body) };
+    for statement in block.body(tree).iter() {
+        let statement = tree.get_node_in_sub_range(statement).node_id();
+        if is_instantiating_statement(tree, statement) {
+            return true;
+        }
+    }
+    false
+}
+
+fn is_instantiating_statement(tree: &Ast<'_>, node: NodeId) -> bool {
+    match tree.node_kind(node) {
+        NodeKind::TsInterfaceDeclaration
+        | NodeKind::TsTypeAliasDeclaration
+        | NodeKind::TsImportEqualsDeclaration => false,
+        NodeKind::TsEnumDeclaration => !unsafe { typed::<TsEnumDeclaration>(node) }.is_const(tree),
+        NodeKind::TsModuleDeclaration => {
+            let module = unsafe { typed::<TsModuleDeclaration>(node) };
+            namespace_is_instantiated(tree, module.body(tree))
+        }
+        NodeKind::ExportNamedDeclaration => {
+            let export = unsafe { typed::<ExportNamedDeclaration>(node) };
+            if export.export_kind(tree) == ImportOrExportKind::Type {
+                return false;
+            }
+            if let Some(declaration) = export.declaration(tree) {
+                return is_instantiating_statement(tree, declaration.node_id());
+            }
+            export.source(tree).is_some()
+        }
+        _ => true,
+    }
+}
+
+#[inline]
+fn symbol_id(index: usize) -> SymbolId {
+    assert!(index < SymbolId::MAX);
+    unsafe { SymbolId::from_usize_unchecked(index) }
+}
+
+#[inline]
+fn reference_id(index: usize) -> ReferenceId {
+    assert!(index < ReferenceId::MAX);
+    unsafe { ReferenceId::from_usize_unchecked(index) }
+}
+
+#[inline]
+unsafe fn typed<N: AstNode>(node: NodeId) -> N {
+    unsafe { N::from_node_id_unchecked(node) }
+}

@@ -13,16 +13,13 @@ use crate::{builder::SemanticBuilder, checker::Checker};
 mod binder;
 mod builder;
 mod checker;
-mod module_record;
-mod scope;
+mod ecmascript;
+pub mod module_record;
+pub mod scope;
 
-/// Complete semantic information for one parsed source file.
-///
-/// The model contains every scope, symbol, and reference, fully resolved and
-/// cross-indexed. It is a snapshot of the AST at analysis time; run
-/// [`analyze`] again after mutating bindings or scopes.
-#[derive(Debug)]
-pub struct Semantic<'a> {}
+pub use binder::{
+    Reference, ReferenceFlags, ReferenceId, ReferenceSpace, Semantic, Symbol, SymbolFlags,
+};
 
 /// Runs semantic analysis on a tree. Builds the complete `Semantic`
 /// model and reports the scope-dependent early errors.
@@ -30,7 +27,7 @@ pub struct Semantic<'a> {}
 /// Diagnostics are appended directly to the tree alongside parse
 /// errors. All allocations use the tree's arena, so the returned
 /// model is valid as long as the tree is alive.
-pub fn analyze<'a>(root: Program, ast: &'a mut Ast<'a>) -> Semantic<'a> {
+pub fn analyze<'a>(root: Program, ast: &mut Ast<'a>) -> Semantic<'a> {
     let mut visitor = Checker::new(ast);
     let sem = SemanticBuilder::build(root, &mut visitor);
     visitor.check_unresolved_exports(&sem);
