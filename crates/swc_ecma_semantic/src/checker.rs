@@ -613,12 +613,7 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         TraverseAction::Proceed
     }
 
-    fn exit_node(
-        &mut self,
-        node: NodeId,
-        _kind: NodeKind,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) {
+    fn exit_node(&mut self, node: NodeId, context: &mut SemanticTraverseCtx<'_, 'a>) {
         context.state.exit(context.ast, node);
     }
 
