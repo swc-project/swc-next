@@ -56,24 +56,31 @@ impl<'a> SemanticContext<'a> {
             .any(|id| self.scope.get(id).kind == ScopeKind::TsModule)
     }
 
-    fn enter(&mut self, node: NodeId, kind: NodeKind, parent: Option<NodeId>) {
-        self.scope.enter(node, parent, kind);
+    fn enter(&mut self, tree: &Ast, node: NodeId, kind: NodeKind, parent: Option<NodeId>) {
+        self.scope.enter(tree, node, parent, kind);
         self.node_scopes[node.index()] = self.scope.current;
         self.node_parents[node.index()] = parent;
         if is_type_context(kind) {
             self.type_position_depth += 1;
         }
         self.symbols
-            .set_binding_context(node, kind, parent, &self.scope);
+            .set_binding_context(tree, node, kind, parent, &self.scope);
     }
 
-    fn post_enter(&mut self, node: NodeId, kind: NodeKind, reference_context: RefContext) {
+    fn post_enter(
+        &mut self,
+        tree: &Ast,
+        node: NodeId,
+        kind: NodeKind,
+        reference_context: RefContext,
+    ) {
         self.symbols
-            .declare_bindings(node, kind, &self.scope, reference_context);
+            .declare_bindings(tree, node, kind, &self.scope, reference_context);
     }
 
-    pub fn post_enter_binding(&mut self, node: NodeId, space: ReferenceSpace) {
+    pub fn post_enter_binding(&mut self, tree: &Ast, node: NodeId, space: ReferenceSpace) {
         self.post_enter(
+            tree,
             node,
             NodeKind::BindingIdentifier,
             RefContext {
@@ -92,29 +99,33 @@ impl<'a> SemanticContext<'a> {
         }
     }
 
-    fn finalize(self) -> Semantic<'a> {
+    fn finalize(self, tree: &Ast) -> Semantic<'a> {
         let node_scopes = self.node_scopes.into_bump_slice();
         let node_parents = self.node_parents.into_bump_slice();
         let scopes = self.scope.to_scope_tree();
-        self.symbols.finalize(scopes, node_scopes, node_parents)
+        self.symbols
+            .finalize(tree, scopes, node_scopes, node_parents)
     }
 }
 
 pub struct SemanticBuilder;
 
 impl SemanticBuilder {
-    pub fn build<'a>(root: Program, checker: &mut Checker<'a>) -> Semantic<'a> {
-        let tree = unsafe { &mut *checker.tree_ptr() };
+    pub fn build<'ast, 'a>(
+        root: Program,
+        tree: &'ast mut Ast<'a>,
+        checker: &mut Checker<'a>,
+    ) -> Semantic<'a> {
         let state = SemanticContext::init(tree);
         let mut context = TraverseCtx::new(tree, state);
         let _ = root.traverse_with(checker, &mut context);
-        context.state.finalize()
+        context.state.finalize(context.ast)
     }
 }
 
 pub(crate) fn enter_node(node: NodeId, kind: NodeKind, context: &mut SemanticTraverseCtx<'_, '_>) {
     let parent = context.parent();
-    context.state.enter(node, kind, parent);
+    context.state.enter(context.ast, node, kind, parent);
     if kind != NodeKind::BindingIdentifier {
         let is_write =
             kind == NodeKind::IdentifierReference && is_write_target(context.ast, context.path());
@@ -129,7 +140,7 @@ pub(crate) fn enter_node(node: NodeId, kind: NodeKind, context: &mut SemanticTra
         };
         context
             .state
-            .post_enter(node, kind, RefContext { is_write, space });
+            .post_enter(context.ast, node, kind, RefContext { is_write, space });
     }
 }
 

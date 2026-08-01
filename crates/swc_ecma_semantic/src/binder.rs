@@ -818,7 +818,6 @@ impl Iterator for ReferenceIterator<'_> {
 /// Collects symbols and references during the AST walk and finalizes
 /// them into a [`Semantic`].
 pub(crate) struct SymbolTracker<'a> {
-    tree: *const Ast<'a>,
     allocator: &'a Allocator,
     symbols: ArenaVec<'a, Symbol>,
     references: ArenaVec<'a, Reference>,
@@ -907,7 +906,6 @@ impl<'a> SymbolTracker<'a> {
         let allocator = tree.allocator();
         let nodes = tree.node_count();
         Self {
-            tree,
             allocator,
             symbols: ArenaVec::with_capacity_in(16usize.max(nodes / 12), allocator),
             references: ArenaVec::with_capacity_in(16usize.max(nodes / 4), allocator),
@@ -923,22 +921,17 @@ impl<'a> SymbolTracker<'a> {
         }
     }
 
-    #[inline]
-    fn tree(&self) -> &Ast<'a> {
-        unsafe { &*self.tree }
-    }
-
     /// Records the binding context for the next `binding_identifier`.
     /// Called for every node on enter so parent declaration nodes can
     /// configure the pending binding before the child identifier fires.
     pub fn set_binding_context(
         &mut self,
+        tree: &Ast,
         node: NodeId,
         kind: NodeKind,
         parent: Option<NodeId>,
         scope: &ScopeTracker<'a>,
     ) {
-        let tree = unsafe { &*self.tree };
         match kind {
             NodeKind::ExportNamedDeclaration => {
                 let declaration = unsafe { typed::<ExportNamedDeclaration>(node) };
@@ -1289,6 +1282,7 @@ impl<'a> SymbolTracker<'a> {
     /// before its children.
     pub fn declare_bindings(
         &mut self,
+        tree: &Ast,
         node: NodeId,
         kind: NodeKind,
         scope: &ScopeTracker<'a>,
@@ -1297,8 +1291,6 @@ impl<'a> SymbolTracker<'a> {
         if self.scope_maps.len() < scope.scopes.len() {
             self.sync_scope_maps(scope.scopes.len());
         }
-
-        let tree = unsafe { &*self.tree };
         match kind {
             NodeKind::BindingIdentifier => {
                 // Type-position identifiers are parameter labels. Only type
@@ -1308,7 +1300,7 @@ impl<'a> SymbolTracker<'a> {
                     return;
                 }
                 let identifier = unsafe { typed::<BindingIdentifier>(node) };
-                let symbol_id = self.declare(identifier.name(tree), node);
+                let symbol_id = self.declare(tree, identifier.name(tree), node);
 
                 // Register a hoisting var in every block it passes through so
                 // block-scoped redeclarations see it.
@@ -1317,7 +1309,7 @@ impl<'a> SymbolTracker<'a> {
                         if scope_id == self.pending.scope {
                             break;
                         }
-                        let name = self.name_key(identifier.name(tree));
+                        let name = self.name_key(tree, identifier.name(tree));
                         self.hoisting_variables[scope_id.index()]
                             .entry(name)
                             .or_insert(symbol_id);
@@ -1327,6 +1319,7 @@ impl<'a> SymbolTracker<'a> {
             NodeKind::IdentifierReference => {
                 let identifier = unsafe { typed::<IdentifierReference>(node) };
                 self.add_reference(
+                    tree,
                     identifier.name(tree),
                     scope.current,
                     node,
@@ -1357,6 +1350,7 @@ impl<'a> SymbolTracker<'a> {
                     return;
                 }
                 self.add_reference(
+                    tree,
                     name,
                     scope.current,
                     parameter_node,
@@ -1399,7 +1393,7 @@ impl<'a> SymbolTracker<'a> {
                     excludes: Excludes::ENUM_MEMBER,
                     scope: scope.current,
                 };
-                self.declare(name, member_id);
+                self.declare(tree, name, member_id);
                 self.pending = saved;
             }
             NodeKind::JsxOpeningElement => {
@@ -1407,25 +1401,26 @@ impl<'a> SymbolTracker<'a> {
                 // reference. Lowercase tags are intrinsic element names; the
                 // rest of a member chain is property syntax.
                 let element = unsafe { typed::<swc_next_ecma_ast::JsxOpeningElement>(node) };
-                self.add_jsx_reference(element.name(tree).node_id(), scope.current);
+                self.add_jsx_reference(tree, element.name(tree).node_id(), scope.current);
             }
             NodeKind::JsxClosingElement => {
                 let element = unsafe { typed::<swc_next_ecma_ast::JsxClosingElement>(node) };
-                self.add_jsx_reference(element.name(tree).node_id(), scope.current);
+                self.add_jsx_reference(tree, element.name(tree).node_id(), scope.current);
             }
             _ => {}
         }
     }
 
-    fn add_jsx_reference(&mut self, name: NodeId, scope: ScopeId) {
-        let Some(root) = jsx_tag_root(self.tree(), name) else {
+    fn add_jsx_reference(&mut self, tree: &Ast, name: NodeId, scope: ScopeId) {
+        let Some(root) = jsx_tag_root(tree, name) else {
             return;
         };
         let identifier = unsafe { typed::<JsxIdentifier>(root) };
-        let text = self.tree().string(identifier.name(self.tree()));
+        let text = tree.string(identifier.name(tree));
         if text.first().is_some_and(u8::is_ascii_uppercase) {
             self.add_reference(
-                identifier.name(self.tree()),
+                tree,
+                identifier.name(tree),
                 scope,
                 root,
                 ReferenceFlags::default(),
@@ -1481,12 +1476,12 @@ impl<'a> SymbolTracker<'a> {
     /// existing binding is merged. On conflict, its flags remain unchanged
     /// because the caller reports the diagnostic. Every node is still stored
     /// as a declaration for error recovery.
-    pub fn declare(&mut self, name: AstString, node: NodeId) -> SymbolId {
+    pub fn declare(&mut self, tree: &Ast, name: AstString, node: NodeId) -> SymbolId {
         let target = self.pending.scope;
         assert!(target.index() < self.scope_maps.len());
-        assert!(node.index() < self.tree().node_count());
+        assert!(node.index() < tree.node_count());
 
-        let name_text = self.tree().string(name);
+        let name_text = tree.string(name);
         let id = if let Some(existing) = self.binding(target, name_text) {
             let symbol = &mut self.symbols[existing.index()];
             if !symbol.flags.intersects(self.pending.excludes) {
@@ -1512,7 +1507,7 @@ impl<'a> SymbolTracker<'a> {
                 decls: Range::default(),
             });
             self.first_decls.push(node);
-            let key = self.name_key(name);
+            let key = self.name_key(tree, name);
             self.scope_maps[target.index()].insert(key, new_id);
             new_id
         };
@@ -1527,12 +1522,13 @@ impl<'a> SymbolTracker<'a> {
     /// Records an identifier reference at `node` in `scope`.
     pub fn add_reference(
         &mut self,
+        tree: &Ast,
         name: AstString,
         scope: ScopeId,
         node: NodeId,
         flags: ReferenceFlags,
     ) -> ReferenceId {
-        assert!(node.index() < self.tree().node_count());
+        assert!(node.index() < tree.node_count());
         assert!(self.references.len() < u32::MAX as usize);
         let id = reference_id(self.references.len());
         self.references.push(Reference {
@@ -1589,8 +1585,8 @@ impl<'a> SymbolTracker<'a> {
         }
     }
 
-    fn name_key(&self, name: AstString) -> &'a [u8] {
-        let text = self.tree().string(name);
+    fn name_key(&self, tree: &Ast, name: AstString) -> &'a [u8] {
+        let text = tree.string(name);
         let text = std::str::from_utf8(text).expect("AST strings are valid UTF-8");
         self.allocator.alloc_str(text).as_bytes()
     }
@@ -1601,6 +1597,7 @@ impl<'a> SymbolTracker<'a> {
     /// remains valid for the source tree's arena lifetime.
     pub fn finalize(
         mut self,
+        tree: &Ast,
         scopes: ScopeTree<'a>,
         node_scopes: &'a [ScopeId],
         node_parents: &'a [Option<NodeId>],
@@ -1638,7 +1635,7 @@ impl<'a> SymbolTracker<'a> {
             symbol.decls.len += 1;
         }
 
-        let node_count = self.tree().node_count();
+        let node_count = tree.node_count();
         let mut node_symbols = ArenaVec::with_capacity_in(node_count, self.allocator);
         let mut node_references = ArenaVec::with_capacity_in(node_count, self.allocator);
         for _ in 0..node_count {
@@ -1654,7 +1651,7 @@ impl<'a> SymbolTracker<'a> {
 
         for reference_index in 0..self.references.len() {
             let reference = self.references[reference_index];
-            let name = self.tree().string(reference.name);
+            let name = tree.string(reference.name);
             // The implicit arguments object (10.2.11
             // argumentsObjectNeeded) shadows outer bindings; an own
             // parameter or var still wins.
@@ -1670,7 +1667,7 @@ impl<'a> SymbolTracker<'a> {
                     // shadow; keep walking.
                     if symbol.flags.visible_in(reference.flags.space)
                         && type_parameter_visible(
-                            self.tree(),
+                            tree,
                             symbol,
                             reference.node,
                             scopes,
@@ -1681,7 +1678,7 @@ impl<'a> SymbolTracker<'a> {
                         break;
                     }
                 }
-                if arguments_barrier && is_arguments_barrier(self.tree(), scopes.get(ancestor)) {
+                if arguments_barrier && is_arguments_barrier(tree, scopes.get(ancestor)) {
                     break;
                 }
             }

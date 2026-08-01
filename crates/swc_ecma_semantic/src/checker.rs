@@ -24,7 +24,6 @@ use crate::{
 };
 
 pub struct Checker<'a> {
-    tree: *mut Ast<'a>,
     allocator: &'a Allocator,
     exported_names: ArenaHashMap<'a, &'a [u8], NodeId>,
     export_specifiers: ArenaVec<'a, ExportSpecifierInfo<'a>>,
@@ -38,10 +37,8 @@ struct ExportSpecifierInfo<'a> {
 }
 
 impl<'a> Checker<'a> {
-    pub fn new(tree: &mut Ast<'a>) -> Self {
-        let allocator = tree.allocator();
+    pub fn new(allocator: &'a Allocator) -> Self {
         Self {
-            tree,
             allocator,
             exported_names: ArenaHashMap::new_in(allocator),
             export_specifiers: ArenaVec::new_in(allocator),
@@ -49,14 +46,9 @@ impl<'a> Checker<'a> {
         }
     }
 
-    pub(crate) fn tree_ptr(&self) -> *mut Ast<'a> {
-        self.tree
-    }
-
     /// Post-traversal check that all local export specifiers refer to
     /// declared bindings.
-    pub fn check_unresolved_exports(&mut self, semantic: &Semantic<'_>) {
-        let tree = unsafe { &mut *self.tree };
+    pub fn check_unresolved_exports(&mut self, tree: &'a Ast<'_>, semantic: &Semantic<'_>) {
         if !tree.is_module() {
             return;
         }
@@ -1705,7 +1697,7 @@ impl<'a> Checker<'a> {
         );
         context
             .state
-            .post_enter_binding(identifier.node_id(), space);
+            .post_enter_binding(context.ast, identifier.node_id(), space);
     }
 
     fn check_redeclaration(

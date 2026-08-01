@@ -136,8 +136,8 @@ impl Iterator for AncestorIterator<'_> {
 }
 
 pub(crate) struct ScopeTracker<'a> {
-    tree: *const Ast<'a>,
     allocator: &'a Allocator,
+    is_module: bool,
     pub(crate) scopes: ArenaVec<'a, Scope>,
     // active scope. follow the parent chain to walk the path.
     pub(crate) current: ScopeId,
@@ -153,8 +153,8 @@ impl<'a> ScopeTracker<'a> {
         let allocator = tree.allocator();
         let estimated_scopes = 16usize.max(tree.node_count() / 16);
         let mut tracker = Self {
-            tree,
             allocator,
+            is_module: tree.is_module(),
             scopes: ArenaVec::with_capacity_in(estimated_scopes, allocator),
             current: scope_id(0),
             decorator_saved: ArenaVec::new_in(allocator),
@@ -164,11 +164,6 @@ impl<'a> ScopeTracker<'a> {
         // Exactly one root scope, plus the module wrapper when applicable.
         assert_eq!(tracker.scopes.len(), if tree.is_module() { 2 } else { 1 });
         tracker
-    }
-
-    #[inline]
-    fn tree(&self) -> &Ast<'a> {
-        unsafe { &*self.tree }
     }
 
     fn push_root(&mut self) {
@@ -183,7 +178,7 @@ impl<'a> ScopeTracker<'a> {
         });
         self.current = scope_id(0);
 
-        if self.tree().is_module() {
+        if self.is_module {
             self.scopes.push(Scope {
                 node: root_node,
                 parent: Some(scope_id(0)),
@@ -224,8 +219,7 @@ impl<'a> ScopeTracker<'a> {
             .expect("non-root scopes have a parent");
     }
 
-    pub fn enter(&mut self, index: NodeId, parent: Option<NodeId>, kind: NodeKind) {
-        let tree = self.tree();
+    pub fn enter(&mut self, tree: &Ast, index: NodeId, parent: Option<NodeId>, kind: NodeKind) {
         match kind {
             NodeKind::Directive => {
                 let directive = unsafe { typed::<Directive>(index) };
@@ -235,7 +229,7 @@ impl<'a> ScopeTracker<'a> {
             }
             NodeKind::Function => {
                 let function = unsafe { typed::<Function>(index) };
-                let flags = if self.has_retroactive_use_strict(function.body(tree)) {
+                let flags = if self.has_retroactive_use_strict(tree, function.body(tree)) {
                     ScopeFlags { strict: true }
                 } else {
                     self.inherit_strict_flag()
@@ -253,7 +247,7 @@ impl<'a> ScopeTracker<'a> {
                 let arrow = unsafe { typed::<ArrowFunctionExpression>(index) };
                 let body = arrow.body(tree).node_id();
                 let flags = if tree.node_kind(body) == NodeKind::FunctionBody
-                    && self.has_retroactive_use_strict(unsafe { typed::<FunctionBody>(body) })
+                    && self.has_retroactive_use_strict(tree, unsafe { typed::<FunctionBody>(body) })
                 {
                     ScopeFlags { strict: true }
                 } else {
@@ -382,8 +376,7 @@ impl<'a> ScopeTracker<'a> {
     // "use strict" applies retroactively to the whole function including
     // its parameter list, so peek into the body and set the flag at
     // scope-creation time, before any parameter is visited
-    fn has_retroactive_use_strict(&self, body: FunctionBody) -> bool {
-        let tree = self.tree();
+    fn has_retroactive_use_strict(&self, tree: &Ast, body: FunctionBody) -> bool {
         for directive in body.directives(tree).iter() {
             let directive = tree.get_node_in_sub_range(directive);
             if tree.string(directive.value(tree)) == b"use strict" {
