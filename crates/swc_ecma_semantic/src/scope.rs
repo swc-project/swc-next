@@ -93,24 +93,24 @@ pub struct ScopeFlags {
 }
 
 /// All scopes of a tree, indexed by [`ScopeId`].
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct ScopeTree<'a> {
-    pub(crate) list: &'a [Scope],
+    pub(crate) list: ArenaVec<'a, Scope>,
 }
 
 impl<'a> ScopeTree<'a> {
     /// The scope with the given id.
     #[inline]
-    pub fn get(self, id: ScopeId) -> Scope {
+    pub fn get(&self, id: ScopeId) -> Scope {
         assert!(id.index() < self.list.len());
         self.list[id.index()]
     }
 
     /// Walks from `start` up to the root, yielding `start` first.
-    pub fn ancestors(self, start: Option<ScopeId>) -> AncestorIterator<'a> {
+    pub fn ancestors(&self, start: Option<ScopeId>) -> AncestorIterator<'_> {
         assert!(start.is_none_or(|id| id.index() < self.list.len()));
         AncestorIterator {
-            list: self.list,
+            list: &self.list,
             current: start,
         }
     }
@@ -450,9 +450,7 @@ impl<'a> ScopeTracker<'a> {
 
     /// Finalizes into an immutable [`ScopeTree`].
     pub fn to_scope_tree(self) -> ScopeTree<'a> {
-        ScopeTree {
-            list: self.scopes.into_bump_slice(),
-        }
+        ScopeTree { list: self.scopes }
     }
 }
 

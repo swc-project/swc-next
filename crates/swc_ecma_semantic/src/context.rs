@@ -91,11 +91,9 @@ impl<'a> SemanticContext<'a> {
     }
 
     pub fn finalize(self, tree: &Ast) -> Semantic<'a> {
-        let node_scopes = self.node_scopes.into_bump_slice();
-        let node_parents = self.node_parents.into_bump_slice();
         let scopes = self.scope.to_scope_tree();
         self.symbols
-            .finalize(tree, scopes, node_scopes, node_parents)
+            .finalize(tree, scopes, self.node_scopes, self.node_parents)
     }
 }
 

@@ -513,18 +513,18 @@ pub struct Semantic<'a> {
     /// Every scope, indexed by [`ScopeId`].
     pub scopes: ScopeTree<'a>,
     /// Every symbol, in declaration order, indexed by [`SymbolId`].
-    pub symbols: &'a [Symbol],
+    pub symbols: ArenaVec<'a, Symbol>,
     /// Every reference, in source order, indexed by [`ReferenceId`].
-    pub references: &'a [Reference],
-    decl_nodes: &'a [NodeId],
-    use_ids: &'a [ReferenceId],
-    use_ranges: &'a [Range],
-    scope_maps: &'a [ScopeMap<'a>],
-    hoisting_variables: &'a [ScopeMap<'a>],
-    node_scopes: &'a [ScopeId],
-    node_parents: &'a [Option<NodeId>],
-    node_symbols: &'a [Option<SymbolId>],
-    node_references: &'a [Option<ReferenceId>],
+    pub references: ArenaVec<'a, Reference>,
+    decl_nodes: ArenaVec<'a, NodeId>,
+    use_ids: ArenaVec<'a, ReferenceId>,
+    use_ranges: ArenaVec<'a, Range>,
+    scope_maps: ArenaVec<'a, ScopeMap<'a>>,
+    hoisting_variables: ArenaVec<'a, ScopeMap<'a>>,
+    node_scopes: ArenaVec<'a, ScopeId>,
+    node_parents: ArenaVec<'a, Option<NodeId>>,
+    node_symbols: ArenaVec<'a, Option<SymbolId>>,
+    node_references: ArenaVec<'a, Option<ReferenceId>>,
 }
 
 impl<'a> Semantic<'a> {
@@ -583,10 +583,10 @@ impl<'a> Semantic<'a> {
     }
 
     /// Walks from `node` up to the root, yielding `node` first.
-    pub fn ancestors(&self, node: Option<NodeId>) -> SemanticAncestorIterator<'a> {
+    pub fn ancestors(&self, node: Option<NodeId>) -> SemanticAncestorIterator<'_> {
         assert!(node.is_none_or(|node| node.index() < self.node_parents.len()));
         SemanticAncestorIterator {
-            node_parents: self.node_parents,
+            node_parents: &self.node_parents,
             current: node,
         }
     }
@@ -606,7 +606,7 @@ impl<'a> Semantic<'a> {
     ///
     /// A conflicting redeclaration is recorded here too, aliased onto
     /// the existing symbol so tooling on broken code still maps the node.
-    pub fn decls(&self, id: SymbolId) -> &'a [NodeId] {
+    pub fn decls(&self, id: SymbolId) -> &[NodeId] {
         let range = self.symbol(id).decls;
         let start = range.start as usize;
         let end = start + range.len as usize;
@@ -616,7 +616,7 @@ impl<'a> Semantic<'a> {
 
     /// Every use site of `id`, in source order. Declaration sites are
     /// not uses; those are returned by [`Semantic::decls`].
-    pub fn uses(&self, id: SymbolId) -> &'a [ReferenceId] {
+    pub fn uses(&self, id: SymbolId) -> &[ReferenceId] {
         assert!(id.index() < self.use_ranges.len());
         let range = self.use_ranges[id.index()];
         let start = range.start as usize;
@@ -681,25 +681,25 @@ impl<'a> Semantic<'a> {
     }
 
     /// Iterates every `(id, scope)` pair in creation order.
-    pub fn iter_scopes(&self) -> ScopeIterator<'a> {
+    pub fn iter_scopes(&self) -> ScopeIterator<'_> {
         ScopeIterator {
-            list: self.scopes.list,
+            list: &self.scopes.list,
             index: 0,
         }
     }
 
     /// Iterates every `(id, symbol)` pair in declaration order.
-    pub fn iter_symbols(&self) -> SymbolIterator<'a> {
+    pub fn iter_symbols(&self) -> SymbolIterator<'_> {
         SymbolIterator {
-            symbols: self.symbols,
+            symbols: &self.symbols,
             index: 0,
         }
     }
 
     /// Iterates every `(id, reference)` pair in source order.
-    pub fn iter_references(&self) -> ReferenceIterator<'a> {
+    pub fn iter_references(&self) -> ReferenceIterator<'_> {
         ReferenceIterator {
-            references: self.references,
+            references: &self.references,
             index: 0,
         }
     }
@@ -1569,8 +1569,8 @@ impl<'a> SymbolTracker<'a> {
         mut self,
         tree: &Ast,
         scopes: ScopeTree<'a>,
-        node_scopes: &'a [ScopeId],
-        node_parents: &'a [Option<NodeId>],
+        node_scopes: ArenaVec<'a, ScopeId>,
+        node_parents: ArenaVec<'a, Option<NodeId>>,
     ) -> Semantic<'a> {
         // The walk must have ended balanced.
         assert!(self.saved_stack.is_empty());
@@ -1640,8 +1640,8 @@ impl<'a> SymbolTracker<'a> {
                             tree,
                             symbol,
                             reference.node,
-                            scopes,
-                            node_parents,
+                            &scopes,
+                            &node_parents,
                         )
                     {
                         resolved = Some(id);
@@ -1687,17 +1687,17 @@ impl<'a> SymbolTracker<'a> {
 
         Semantic {
             scopes,
-            symbols: self.symbols.into_bump_slice(),
-            references: self.references.into_bump_slice(),
-            decl_nodes: decl_nodes.into_bump_slice(),
-            use_ids: use_ids.into_bump_slice(),
-            use_ranges: use_ranges.into_bump_slice(),
-            scope_maps: self.scope_maps.into_bump_slice(),
-            hoisting_variables: self.hoisting_variables.into_bump_slice(),
+            symbols: self.symbols,
+            references: self.references,
+            decl_nodes,
+            use_ids,
+            use_ranges,
+            scope_maps: self.scope_maps,
+            hoisting_variables: self.hoisting_variables,
             node_scopes,
             node_parents,
-            node_symbols: node_symbols.into_bump_slice(),
-            node_references: node_references.into_bump_slice(),
+            node_symbols,
+            node_references,
         }
     }
 }
@@ -1728,7 +1728,7 @@ fn type_parameter_visible(
     tree: &Ast<'_>,
     symbol: Symbol,
     reference_node: NodeId,
-    scopes: ScopeTree<'_>,
+    scopes: &ScopeTree<'_>,
     node_parents: &[Option<NodeId>],
 ) -> bool {
     if !symbol.flags.type_parameter {
