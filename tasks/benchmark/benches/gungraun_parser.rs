@@ -3,6 +3,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use std::hint::black_box;
 
+use gungraun::Callgrind;
 use gungraun::prelude::*;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::Ast;
@@ -42,4 +43,8 @@ library_benchmark_group!(
     benchmarks = bench_parser
 );
 
-main!(library_benchmark_groups = parser);
+main!(
+    config = LibraryBenchmarkConfig::default()
+        .tool(Callgrind::with_args(["--branch-sim=no", "--cache-sim=no",])),
+    library_benchmark_groups = parser
+);
