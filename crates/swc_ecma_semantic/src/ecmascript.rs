@@ -1,7 +1,4 @@
-use swc_next_ecma_ast::{
-    ArrayPattern, Ast, AstNode, BindingRestElement, FormalParameter, FormalParameters, NodeId,
-    NodeKind, ObjectPattern, Span, TsParameterProperty,
-};
+use swc_next_ecma_ast::{Ast, FormalParameters, NodeId, NodeKindData, Span};
 
 #[derive(Clone, Copy)]
 pub(crate) struct PropName<'a> {
@@ -16,24 +13,15 @@ impl PropName<'_> {
     }
 }
 
-#[inline]
-unsafe fn typed<N: AstNode>(node: NodeId) -> N {
-    unsafe { N::from_node_id_unchecked(node) }
-}
-
 /// <https://tc39.es/ecma262/#sec-static-semantics-propname>
 pub(crate) fn prop_name<'a>(tree: &'a Ast<'_>, key: NodeId) -> Option<PropName<'a>> {
-    match tree.node_kind(key) {
-        NodeKind::IdentifierName => {
-            let id = unsafe { typed::<swc_next_ecma_ast::IdentifierName>(key) };
-            Some(PropName {
-                name: tree.string(id.name(tree)),
-                span: tree.span(key),
-                is_string_literal: false,
-            })
-        }
-        NodeKind::StringLiteral => {
-            let string = unsafe { typed::<swc_next_ecma_ast::StringLiteral>(key) };
+    match tree.kind_data(key) {
+        NodeKindData::IdentifierName(id) => Some(PropName {
+            name: tree.string(id.name(tree)),
+            span: tree.span(key),
+            is_string_literal: false,
+        }),
+        NodeKindData::StringLiteral(string) => {
             let name = tree.string(string.value(tree));
             (!name.is_empty()).then_some(PropName {
                 name,
@@ -56,13 +44,9 @@ pub(crate) fn find_parameter_expression(
 ) -> Option<NodeId> {
     for parameter in params.items(tree).iter() {
         let parameter = tree.get_node_in_sub_range(parameter).node_id();
-        let pattern = match tree.node_kind(parameter) {
-            NodeKind::FormalParameter => unsafe { typed::<FormalParameter>(parameter) }
-                .pattern(tree)
-                .node_id(),
-            NodeKind::TsParameterProperty => unsafe { typed::<TsParameterProperty>(parameter) }
-                .parameter(tree)
-                .node_id(),
+        let pattern = match tree.kind_data(parameter) {
+            NodeKindData::FormalParameter(parameter) => parameter.pattern(tree).node_id(),
+            NodeKindData::TsParameterProperty(parameter) => parameter.parameter(tree).node_id(),
             _ => parameter,
         };
         if let Some(found) = find_pattern_expression(tree, Some(pattern)) {
@@ -80,14 +64,12 @@ pub(crate) fn find_parameter_expression(
 /// [`find_parameter_expression`]. Safe to call with `None`.
 pub(crate) fn find_pattern_expression(tree: &Ast<'_>, pattern: Option<NodeId>) -> Option<NodeId> {
     let pattern = pattern?;
-    match tree.node_kind(pattern) {
-        NodeKind::AssignmentPattern => Some(pattern),
-        NodeKind::BindingRestElement => {
-            let rest = unsafe { typed::<BindingRestElement>(pattern) };
+    match tree.kind_data(pattern) {
+        NodeKindData::AssignmentPattern(_) => Some(pattern),
+        NodeKindData::BindingRestElement(rest) => {
             find_pattern_expression(tree, Some(rest.argument(tree).node_id()))
         }
-        NodeKind::ArrayPattern => {
-            let array = unsafe { typed::<ArrayPattern>(pattern) };
+        NodeKindData::ArrayPattern(array) => {
             for element in array.elements(tree).iter() {
                 let element = tree.get_node_in_sub_range(element);
                 if let Some(found) = element
@@ -100,8 +82,7 @@ pub(crate) fn find_pattern_expression(tree: &Ast<'_>, pattern: Option<NodeId>) -
                 .rest(tree)
                 .and_then(|rest| find_pattern_expression(tree, Some(rest.node_id())))
         }
-        NodeKind::ObjectPattern => {
-            let object = unsafe { typed::<ObjectPattern>(pattern) };
+        NodeKindData::ObjectPattern(object) => {
             for property in object.properties(tree).iter() {
                 let property = tree.get_node_in_sub_range(property);
                 if property.computed(tree) {
@@ -130,18 +111,14 @@ pub(crate) fn find_non_simple_parameter(
 
     for parameter in params.items(tree).iter() {
         let parameter = tree.get_node_in_sub_range(parameter).node_id();
-        let pattern = match tree.node_kind(parameter) {
-            NodeKind::FormalParameter => unsafe { typed::<FormalParameter>(parameter) }
-                .pattern(tree)
-                .node_id(),
-            NodeKind::TsParameterProperty => unsafe { typed::<TsParameterProperty>(parameter) }
-                .parameter(tree)
-                .node_id(),
+        let pattern = match tree.kind_data(parameter) {
+            NodeKindData::FormalParameter(parameter) => parameter.pattern(tree).node_id(),
+            NodeKindData::TsParameterProperty(parameter) => parameter.parameter(tree).node_id(),
             _ => return Some(parameter),
         };
         if !matches!(
-            tree.node_kind(pattern),
-            NodeKind::BindingIdentifier | NodeKind::TsThisParameter
+            tree.kind_data(pattern),
+            NodeKindData::BindingIdentifier(_) | NodeKindData::TsThisParameter(_)
         ) {
             return Some(pattern);
         }

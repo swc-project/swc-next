@@ -5,15 +5,15 @@ use std::{borrow::Cow, fmt::Write};
 
 use swc_next_allocator::{Allocator, hash_map::HashMap as ArenaHashMap, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
-    AssignmentExpression, Ast, AstNode, AwaitExpression, BinaryExpression, BinaryOperator,
+    AssignmentExpression, Ast, AwaitExpression, BinaryExpression, BinaryOperator,
     BindingIdentifier, BreakStatement, CallExpression, ClassBody, ContinueStatement, Diagnostic,
     Directive, ExportAllDeclaration, ExportDefaultDeclaration, ExportNamedDeclaration,
     ExportSpecifier, ForInStatement, ForOfStatement, Function, FunctionType, IdentifierReference,
     ImportDeclaration, ImportOrExportKind, Label, LabelIdentifier, LabeledStatement,
-    MemberExpression, MetaProperty, NodeId, NodeKind, NumericLiteral, ObjectExpression, ScopeId,
-    Severity, Span, StringLiteral, SwitchStatement, SymbolId, Traverse, TraverseAction,
-    UnaryExpression, UnaryOperator, UpdateExpression, VariableDeclaration, VariableKind,
-    WithStatement, YieldExpression,
+    MemberExpression, MetaProperty, NodeId, NodeKind, NodeKindData, NumericLiteral,
+    ObjectExpression, ScopeId, Severity, Span, StringLiteral, SwitchStatement, SymbolId, Traverse,
+    TraverseAction, UnaryExpression, UnaryOperator, UpdateExpression, VariableDeclaration,
+    VariableKind, WithStatement, YieldExpression,
 };
 
 use crate::{
@@ -179,40 +179,22 @@ enum PrivateElementKind {
 
 /// Returns the StringValue of a class element's PrivateIdentifier key, if any.
 fn private_element_name<'a>(tree: &'a Ast<'_>, node: NodeId) -> Option<&'a [u8]> {
-    let key = match tree.node_kind(node) {
-        NodeKind::PropertyDefinition => {
-            unsafe { swc_next_ecma_ast::PropertyDefinition::from_node_id_unchecked(node) }
-                .key(tree)
-                .node_id()
-        }
-        NodeKind::MethodDefinition => {
-            unsafe { swc_next_ecma_ast::MethodDefinition::from_node_id_unchecked(node) }
-                .key(tree)
-                .node_id()
-        }
-        NodeKind::TsMethodDefinition => {
-            unsafe { swc_next_ecma_ast::TsMethodDefinition::from_node_id_unchecked(node) }
-                .key(tree)
-                .node_id()
-        }
+    let key = match tree.kind_data(node) {
+        NodeKindData::PropertyDefinition(property) => property.key(tree).node_id(),
+        NodeKindData::MethodDefinition(method) => method.key(tree).node_id(),
+        NodeKindData::TsMethodDefinition(method) => method.key(tree).node_id(),
         _ => return None,
     };
-    if tree.node_kind(key) != NodeKind::PrivateIdentifier {
+    let NodeKindData::PrivateIdentifier(identifier) = tree.kind_data(key) else {
         return None;
-    }
-    let identifier = unsafe { swc_next_ecma_ast::PrivateIdentifier::from_node_id_unchecked(key) };
+    };
     Some(tree.string(identifier.name(tree)))
 }
 
 fn private_element_kind(tree: &Ast<'_>, node: NodeId) -> PrivateElementKind {
-    let kind = match tree.node_kind(node) {
-        NodeKind::MethodDefinition => Some(
-            unsafe { swc_next_ecma_ast::MethodDefinition::from_node_id_unchecked(node) }.kind(tree),
-        ),
-        NodeKind::TsMethodDefinition => Some(
-            unsafe { swc_next_ecma_ast::TsMethodDefinition::from_node_id_unchecked(node) }
-                .kind(tree),
-        ),
+    let kind = match tree.kind_data(node) {
+        NodeKindData::MethodDefinition(method) => Some(method.kind(tree)),
+        NodeKindData::TsMethodDefinition(method) => Some(method.kind(tree)),
         _ => None,
     };
     match kind {
@@ -224,19 +206,10 @@ fn private_element_kind(tree: &Ast<'_>, node: NodeId) -> PrivateElementKind {
 }
 
 fn private_element_is_static(tree: &Ast<'_>, node: NodeId) -> bool {
-    match tree.node_kind(node) {
-        NodeKind::PropertyDefinition => {
-            unsafe { swc_next_ecma_ast::PropertyDefinition::from_node_id_unchecked(node) }
-                .r#static(tree)
-        }
-        NodeKind::MethodDefinition => {
-            unsafe { swc_next_ecma_ast::MethodDefinition::from_node_id_unchecked(node) }
-                .r#static(tree)
-        }
-        NodeKind::TsMethodDefinition => {
-            unsafe { swc_next_ecma_ast::TsMethodDefinition::from_node_id_unchecked(node) }
-                .r#static(tree)
-        }
+    match tree.kind_data(node) {
+        NodeKindData::PropertyDefinition(property) => property.r#static(tree),
+        NodeKindData::MethodDefinition(method) => method.r#static(tree),
+        NodeKindData::TsMethodDefinition(method) => method.r#static(tree),
         _ => false,
     }
 }
@@ -245,10 +218,9 @@ fn private_element_is_static(tree: &Ast<'_>, node: NodeId) -> bool {
 /// collecting PrivateBoundIdentifiers at each level.
 fn is_private_name_declared(context: &SemanticTraverseCtx<'_, '_>, name: &[u8]) -> bool {
     for ancestor in context.ancestors() {
-        if context.ast.node_kind(ancestor) != NodeKind::ClassBody {
+        let NodeKindData::ClassBody(body) = context.ast.kind_data(ancestor) else {
             continue;
-        }
-        let body = unsafe { ClassBody::from_node_id_unchecked(ancestor) };
+        };
         for child in body.body(context.ast).iter() {
             let child = context.ast.get_node_in_sub_range(child).node_id();
             if private_element_name(context.ast, child) == Some(name) {
@@ -281,10 +253,9 @@ fn is_eval_or_arguments(name: &[u8]) -> bool {
 }
 
 fn is_eval_or_arguments_reference(tree: &Ast<'_>, node: NodeId) -> bool {
-    if tree.node_kind(node) != NodeKind::IdentifierReference {
+    let NodeKindData::IdentifierReference(identifier) = tree.kind_data(node) else {
         return false;
-    }
-    let identifier = unsafe { IdentifierReference::from_node_id_unchecked(node) };
+    };
     is_eval_or_arguments(tree.string(identifier.name(tree)))
 }
 
@@ -295,13 +266,10 @@ fn unwrap_parentheses(tree: &Ast<'_>, node: NodeId) -> NodeId {
     // level, so this chain is bounded by source nesting depth.
     loop {
         assert!(depth < 1_000_000);
-        if tree.node_kind(current) != NodeKind::ParenthesizedExpression {
+        let NodeKindData::ParenthesizedExpression(parenthesized) = tree.kind_data(current) else {
             return current;
-        }
-        current =
-            unsafe { swc_next_ecma_ast::ParenthesizedExpression::from_node_id_unchecked(current) }
-                .expression(tree)
-                .node_id();
+        };
+        current = parenthesized.expression(tree).node_id();
         depth += 1;
     }
 }
@@ -324,23 +292,17 @@ enum SuperCallValidity {
 fn super_call_validity(context: &SemanticTraverseCtx<'_, '_>) -> SuperCallValidity {
     let mut ancestors = context.ancestors();
     while let Some(ancestor) = ancestors.next() {
-        match context.ast.node_kind(ancestor) {
-            NodeKind::ArrowFunctionExpression => {}
-            NodeKind::Function => {
+        match context.ast.kind_data(ancestor) {
+            NodeKindData::ArrowFunctionExpression(_) => {}
+            NodeKindData::Function(_) => {
                 if let Some(parent) = ancestors.next()
-                    && context.ast.node_kind(parent) == NodeKind::MethodDefinition
+                    && let NodeKindData::MethodDefinition(method) = context.ast.kind_data(parent)
                 {
-                    let method = unsafe {
-                        swc_next_ecma_ast::MethodDefinition::from_node_id_unchecked(parent)
-                    };
                     if method.kind(context.ast)
                         == swc_next_ecma_ast::MethodDefinitionKind::Constructor
                     {
                         for class in ancestors {
-                            if context.ast.node_kind(class) == NodeKind::Class {
-                                let class = unsafe {
-                                    swc_next_ecma_ast::Class::from_node_id_unchecked(class)
-                                };
+                            if let NodeKindData::Class(class) = context.ast.kind_data(class) {
                                 return if class.super_class(context.ast).is_some() {
                                     SuperCallValidity::Valid
                                 } else {
@@ -352,7 +314,9 @@ fn super_call_validity(context: &SemanticTraverseCtx<'_, '_>) -> SuperCallValidi
                 }
                 return SuperCallValidity::NotInConstructor;
             }
-            NodeKind::PropertyDefinition | NodeKind::StaticBlock | NodeKind::Program => {
+            NodeKindData::PropertyDefinition(_)
+            | NodeKindData::StaticBlock(_)
+            | NodeKindData::Program(_) => {
                 return SuperCallValidity::NotInConstructor;
             }
             _ => {}
@@ -366,28 +330,27 @@ fn super_call_validity(context: &SemanticTraverseCtx<'_, '_>) -> SuperCallValidi
 fn is_super_property_valid(context: &SemanticTraverseCtx<'_, '_>) -> bool {
     let mut ancestors = context.ancestors();
     while let Some(ancestor) = ancestors.next() {
-        match context.ast.node_kind(ancestor) {
-            NodeKind::ArrowFunctionExpression => {}
-            NodeKind::Function => {
+        match context.ast.kind_data(ancestor) {
+            NodeKindData::ArrowFunctionExpression(_) => {}
+            NodeKindData::Function(_) => {
                 if let Some(parent) = ancestors.next() {
-                    if context.ast.node_kind(parent) == NodeKind::MethodDefinition {
-                        return true;
-                    }
-                    if context.ast.node_kind(parent) == NodeKind::ObjectProperty {
-                        let property = unsafe {
-                            swc_next_ecma_ast::ObjectProperty::from_node_id_unchecked(parent)
-                        };
-                        if property.method(context.ast)
-                            || property.kind(context.ast) != swc_next_ecma_ast::PropertyKind::Init
-                        {
-                            return true;
+                    match context.ast.kind_data(parent) {
+                        NodeKindData::MethodDefinition(_) => return true,
+                        NodeKindData::ObjectProperty(property) => {
+                            if property.method(context.ast)
+                                || property.kind(context.ast)
+                                    != swc_next_ecma_ast::PropertyKind::Init
+                            {
+                                return true;
+                            }
                         }
+                        _ => {}
                     }
                 }
                 return false;
             }
-            NodeKind::PropertyDefinition | NodeKind::StaticBlock => return true,
-            NodeKind::Program => return false,
+            NodeKindData::PropertyDefinition(_) | NodeKindData::StaticBlock(_) => return true,
+            NodeKindData::Program(_) => return false,
             _ => {}
         }
     }
@@ -473,8 +436,7 @@ fn find_label(context: &SemanticTraverseCtx<'_, '_>, name: &[u8]) -> LabelSearch
     let mut crossed_boundary = false;
     for ancestor in context.ancestors() {
         let kind = context.ast.node_kind(ancestor);
-        if kind == NodeKind::LabeledStatement {
-            let statement = unsafe { LabeledStatement::from_node_id_unchecked(ancestor) };
+        if let NodeKindData::LabeledStatement(statement) = context.ast.kind_data(ancestor) {
             let label = context
                 .ast
                 .string(statement.label(context.ast).name(context.ast));
@@ -509,8 +471,7 @@ fn find_label_for_continue(
     let mut crossed_boundary = false;
     for ancestor in context.ancestors() {
         let kind = context.ast.node_kind(ancestor);
-        if kind == NodeKind::LabeledStatement {
-            let statement = unsafe { LabeledStatement::from_node_id_unchecked(ancestor) };
+        if let NodeKindData::LabeledStatement(statement) = context.ast.kind_data(ancestor) {
             let label = context
                 .ast
                 .string(statement.label(context.ast).name(context.ast));
@@ -567,13 +528,13 @@ fn find_formal_parameters(
     context: &SemanticTraverseCtx<'_, '_>,
 ) -> Option<swc_next_ecma_ast::FormalParameters> {
     for ancestor in context.ancestors() {
-        match context.ast.node_kind(ancestor) {
-            NodeKind::FormalParameters => {
-                return Some(unsafe {
-                    swc_next_ecma_ast::FormalParameters::from_node_id_unchecked(ancestor)
-                });
+        match context.ast.kind_data(ancestor) {
+            NodeKindData::FormalParameters(parameters) => {
+                return Some(parameters);
             }
-            NodeKind::Program | NodeKind::Function | NodeKind::ArrowFunctionExpression => {
+            NodeKindData::Program(_)
+            | NodeKindData::Function(_)
+            | NodeKindData::ArrowFunctionExpression(_) => {
                 return None;
             }
             _ => {}
@@ -585,16 +546,10 @@ fn find_formal_parameters(
 /// Extracts the name from a ModuleExportName: an IdentifierName,
 /// IdentifierReference, or StringLiteral.
 fn module_export_name<'b>(tree: &'b Ast<'_>, node: NodeId) -> &'b [u8] {
-    match tree.node_kind(node) {
-        NodeKind::IdentifierName => tree.string(
-            unsafe { swc_next_ecma_ast::IdentifierName::from_node_id_unchecked(node) }.name(tree),
-        ),
-        NodeKind::IdentifierReference => {
-            tree.string(unsafe { IdentifierReference::from_node_id_unchecked(node) }.name(tree))
-        }
-        NodeKind::StringLiteral => {
-            tree.string(unsafe { StringLiteral::from_node_id_unchecked(node) }.value(tree))
-        }
+    match tree.kind_data(node) {
+        NodeKindData::IdentifierName(identifier) => tree.string(identifier.name(tree)),
+        NodeKindData::IdentifierReference(identifier) => tree.string(identifier.name(tree)),
+        NodeKindData::StringLiteral(literal) => tree.string(literal.value(tree)),
         _ => b"",
     }
 }
@@ -637,15 +592,15 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
     fn enter_node(
         &mut self,
         node: NodeId,
-        kind: NodeKind,
         context: &mut SemanticTraverseCtx<'_, 'a>,
     ) -> TraverseAction {
+        let data = context.ast.kind_data(node);
         let parent = context.parent();
-        context.state.enter(context.ast, node, kind, parent);
-        if kind != NodeKind::BindingIdentifier {
-            let is_write = kind == NodeKind::IdentifierReference
-                && is_write_target(context.ast, context.path());
-            let space = if kind == NodeKind::IdentifierReference {
+        context.state.enter(context.ast, node, parent);
+        if !matches!(data, NodeKindData::BindingIdentifier(_)) {
+            let is_reference = matches!(data, NodeKindData::IdentifierReference(_));
+            let is_write = is_reference && is_write_target(context.ast, context.path());
+            let space = if is_reference {
                 reference_space(
                     context.ast,
                     context.path(),
@@ -656,7 +611,7 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
             };
             context
                 .state
-                .post_enter(context.ast, node, kind, RefContext { is_write, space });
+                .post_enter(context.ast, node, RefContext { is_write, space });
         }
         TraverseAction::Proceed
     }
@@ -664,10 +619,10 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
     fn exit_node(
         &mut self,
         node: NodeId,
-        kind: NodeKind,
+        _kind: NodeKind,
         context: &mut SemanticTraverseCtx<'_, 'a>,
     ) {
-        context.state.exit(node, kind);
+        context.state.exit(context.ast, node);
     }
 
     fn enter_binding_identifier(
@@ -836,26 +791,22 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         let directive_span = context.ast.span(directive.node_id());
         let mut parameter = None;
         for node in context.ancestors() {
-            match context.ast.node_kind(node) {
-                NodeKind::Function => {
-                    let function = unsafe { Function::from_node_id_unchecked(node) };
+            match context.ast.kind_data(node) {
+                NodeKindData::Function(function) => {
                     parameter = ecmascript::find_non_simple_parameter(
                         context.ast,
                         function.params(context.ast),
                     );
                     break;
                 }
-                NodeKind::ArrowFunctionExpression => {
-                    let arrow = unsafe {
-                        swc_next_ecma_ast::ArrowFunctionExpression::from_node_id_unchecked(node)
-                    };
+                NodeKindData::ArrowFunctionExpression(arrow) => {
                     parameter = ecmascript::find_non_simple_parameter(
                         context.ast,
                         arrow.params(context.ast),
                     );
                     break;
                 }
-                NodeKind::Program => break,
+                NodeKindData::Program(_) => break,
                 _ => {}
             }
         }
@@ -1032,10 +983,8 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
     ) -> TraverseAction {
         let left = expression.left(context.ast).node_id();
         if expression.operator(context.ast) == BinaryOperator::In
-            && context.ast.node_kind(left) == NodeKind::PrivateIdentifier
+            && let NodeKindData::PrivateIdentifier(identifier) = context.ast.kind_data(left)
         {
-            let identifier =
-                unsafe { swc_next_ecma_ast::PrivateIdentifier::from_node_id_unchecked(left) };
             let name = context.ast.string(identifier.name(context.ast));
             if !is_private_name_declared(context, name) {
                 let message = self.fmt(format_args!(
@@ -1058,20 +1007,17 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         }
         let mut target =
             unwrap_parentheses(context.ast, expression.argument(context.ast).node_id());
-        if context.ast.node_kind(target) == NodeKind::ChainExpression {
-            let chain =
-                unsafe { swc_next_ecma_ast::ChainExpression::from_node_id_unchecked(target) };
+        if let NodeKindData::ChainExpression(chain) = context.ast.kind_data(target) {
             target = unwrap_parentheses(context.ast, chain.expression(context.ast).node_id());
         }
-        match context.ast.node_kind(target) {
+        match context.ast.kind_data(target) {
             // https://tc39.es/ecma262/#sec-delete-operator-static-semantics-early-errors
-            NodeKind::IdentifierReference if context.state.scope.is_strict() => self.report(
+            NodeKindData::IdentifierReference(_) if context.state.scope.is_strict() => self.report(
                 context.ast.span(expression.node_id()),
                 "Deleting a variable in strict mode is not allowed",
                 ReportOptions::default(),
             ),
-            NodeKind::MemberExpression => {
-                let member = unsafe { MemberExpression::from_node_id_unchecked(target) };
+            NodeKindData::MemberExpression(member) => {
                 if !member.computed(context.ast)
                     && context
                         .ast
@@ -1099,11 +1045,9 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         let mut first_proto = None;
         for property in object.properties(context.ast).iter() {
             let property = context.ast.get_node_in_sub_range(property).node_id();
-            if context.ast.node_kind(property) != NodeKind::ObjectProperty {
+            let NodeKindData::ObjectProperty(item) = context.ast.kind_data(property) else {
                 continue;
-            }
-            let item =
-                unsafe { swc_next_ecma_ast::ObjectProperty::from_node_id_unchecked(property) };
+            };
             if item.computed(context.ast)
                 || item.method(context.ast)
                 || item.shorthand(context.ast)
@@ -1197,10 +1141,8 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
 
         let property = expression.property(context.ast).node_id();
         if !expression.computed(context.ast)
-            && context.ast.node_kind(property) == NodeKind::PrivateIdentifier
+            && let NodeKindData::PrivateIdentifier(identifier) = context.ast.kind_data(property)
         {
-            let identifier =
-                unsafe { swc_next_ecma_ast::PrivateIdentifier::from_node_id_unchecked(property) };
             let name = context.ast.string(identifier.name(context.ast));
             if context.ast.node_kind(object) == NodeKind::Super {
                 self.report(
@@ -1337,9 +1279,8 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
             return TraverseAction::Proceed;
         }
         if let Some(parent) = context.parent()
-            && context.ast.node_kind(parent) == NodeKind::ExportNamedDeclaration
+            && let NodeKindData::ExportNamedDeclaration(declaration) = context.ast.kind_data(parent)
         {
-            let declaration = unsafe { ExportNamedDeclaration::from_node_id_unchecked(parent) };
             if declaration.source(context.ast).is_none()
                 && declaration.export_kind(context.ast) != ImportOrExportKind::Type
             {
@@ -1545,8 +1486,7 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
             let mut duplicate = false;
             for ancestor in ancestors {
                 let kind = context.ast.node_kind(ancestor);
-                if kind == NodeKind::LabeledStatement {
-                    let outer = unsafe { LabeledStatement::from_node_id_unchecked(ancestor) };
+                if let NodeKindData::LabeledStatement(outer) = context.ast.kind_data(ancestor) {
                     let outer_name = context
                         .ast
                         .string(outer.label(context.ast).name(context.ast));
@@ -1626,9 +1566,7 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
             // Body-less TypeScript overload, abstract, and ambient methods are
             // represented separately and do not count as constructors with an
             // implementation.
-            if context.ast.node_kind(child) == NodeKind::MethodDefinition {
-                let method =
-                    unsafe { swc_next_ecma_ast::MethodDefinition::from_node_id_unchecked(child) };
+            if let NodeKindData::MethodDefinition(method) = context.ast.kind_data(child) {
                 if method.kind(context.ast) == swc_next_ecma_ast::MethodDefinitionKind::Constructor
                 {
                     if let Some(first) = first_constructor {
@@ -1786,16 +1724,12 @@ impl<'a> Checker<'a> {
             let outer_holds_parameters = outer.is_some_and(|outer| match target_scope.kind {
                 ScopeKind::FunctionBody => true,
                 ScopeKind::Block => {
-                    context.ast.node_kind(context.state.scope.get(outer).node)
-                        == NodeKind::CatchClause
-                        && unsafe {
-                            swc_next_ecma_ast::CatchClause::from_node_id_unchecked(
-                                context.state.scope.get(outer).node,
-                            )
+                    match context.ast.kind_data(context.state.scope.get(outer).node) {
+                        NodeKindData::CatchClause(catch) => {
+                            catch.body(context.ast).node_id() == target_scope.node
                         }
-                        .body(context.ast)
-                        .node_id()
-                            == target_scope.node
+                        _ => false,
+                    }
                 }
                 _ => false,
             });
@@ -1851,11 +1785,14 @@ impl<'a> Checker<'a> {
                     // syntax error, except for the Annex B.3.4 simple-binding
                     // web-compat carve-out.
                     let catch_node = context.state.scope.get(scope_id).node;
-                    let catch = unsafe {
-                        swc_next_ecma_ast::CatchClause::from_node_id_unchecked(catch_node)
+                    let NodeKindData::CatchClause(catch) = context.ast.kind_data(catch_node) else {
+                        unreachable!()
                     };
                     let simple_parameter = catch.param(context.ast).is_some_and(|parameter| {
-                        context.ast.node_kind(parameter.node_id()) == NodeKind::BindingIdentifier
+                        matches!(
+                            context.ast.kind_data(parameter.node_id()),
+                            NodeKindData::BindingIdentifier(_)
+                        )
                     });
                     if !simple_parameter {
                         self.report_redeclaration(
@@ -1901,10 +1838,9 @@ impl<'a> Checker<'a> {
         left: NodeId,
         is_for_in: bool,
     ) {
-        if context.ast.node_kind(left) != NodeKind::VariableDeclaration {
+        let NodeKindData::VariableDeclaration(declaration) = context.ast.kind_data(left) else {
             return;
-        }
-        let declaration = unsafe { VariableDeclaration::from_node_id_unchecked(left) };
+        };
         let declarators = declaration.declarators(context.ast);
         if declarators.len() > 1 {
             self.report(
@@ -1943,9 +1879,8 @@ impl<'a> Checker<'a> {
         node: NodeId,
         context: &mut SemanticTraverseCtx<'_, 'a>,
     ) {
-        match context.ast.node_kind(node) {
-            NodeKind::IdentifierReference => {
-                let identifier = unsafe { IdentifierReference::from_node_id_unchecked(node) };
+        match context.ast.kind_data(node) {
+            NodeKindData::IdentifierReference(identifier) => {
                 if is_eval_or_arguments(context.ast.string(identifier.name(context.ast))) {
                     self.report(
                         context.ast.span(node),
@@ -1954,9 +1889,7 @@ impl<'a> Checker<'a> {
                     );
                 }
             }
-            NodeKind::ArrayPattern => {
-                let array =
-                    unsafe { swc_next_ecma_ast::ArrayPattern::from_node_id_unchecked(node) };
+            NodeKindData::ArrayPattern(array) => {
                 let elements = array.elements(context.ast);
                 for index in 0..elements.len() {
                     if let Some(Some(element)) = elements.get_node(context.ast, index) {
@@ -1967,9 +1900,7 @@ impl<'a> Checker<'a> {
                     self.check_assign_target_eval_arguments(rest.node_id(), context);
                 }
             }
-            NodeKind::ObjectPattern => {
-                let object =
-                    unsafe { swc_next_ecma_ast::ObjectPattern::from_node_id_unchecked(node) };
+            NodeKindData::ObjectPattern(object) => {
                 let properties = object.properties(context.ast);
                 for index in 0..properties.len() {
                     let property = properties
@@ -1984,17 +1915,13 @@ impl<'a> Checker<'a> {
                     self.check_assign_target_eval_arguments(rest.node_id(), context);
                 }
             }
-            NodeKind::AssignmentPattern => {
-                let pattern =
-                    unsafe { swc_next_ecma_ast::AssignmentPattern::from_node_id_unchecked(node) };
+            NodeKindData::AssignmentPattern(pattern) => {
                 self.check_assign_target_eval_arguments(
                     pattern.left(context.ast).node_id(),
                     context,
                 );
             }
-            NodeKind::BindingRestElement => {
-                let rest =
-                    unsafe { swc_next_ecma_ast::BindingRestElement::from_node_id_unchecked(node) };
+            NodeKindData::BindingRestElement(rest) => {
                 self.check_assign_target_eval_arguments(
                     rest.argument(context.ast).node_id(),
                     context,

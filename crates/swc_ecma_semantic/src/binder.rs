@@ -5,11 +5,9 @@ use swc_next_allocator::{
     vec::Vec as ArenaVec,
 };
 use swc_next_ecma_ast::{
-    Ast, AstNode, BindingIdentifier, Class, ClassType, ExportNamedDeclaration, Function,
-    FunctionType, IdentifierName, IdentifierReference, ImportOrExportKind, JsxIdentifier,
-    JsxMemberExpression, NodeId, NodeKind, ReferenceId, ScopeId, String as AstString, SymbolId,
-    TsConditionalType, TsEnumDeclaration, TsEnumMember, TsModuleBlock, TsModuleDeclaration,
-    TsTypePredicate, VariableKind,
+    Ast, ClassType, FunctionType, ImportOrExportKind, JsxElementName, JsxElementNameData,
+    JsxIdentifier, JsxMemberExpressionObjectData, NodeId, NodeKind, NodeKindData, ReferenceId,
+    ScopeId, String as AstString, SymbolId, VariableKind,
 };
 
 use crate::scope::{self, ScopeKind, ScopeTracker, ScopeTree};
@@ -923,13 +921,11 @@ impl<'a> SymbolTracker<'a> {
         &mut self,
         tree: &Ast,
         node: NodeId,
-        kind: NodeKind,
         parent: Option<NodeId>,
         scope: &ScopeTracker<'a>,
     ) {
-        match kind {
-            NodeKind::ExportNamedDeclaration => {
-                let declaration = unsafe { typed::<ExportNamedDeclaration>(node) };
+        match tree.kind_data(node) {
+            NodeKindData::ExportNamedDeclaration(declaration) => {
                 // The declaration form always exports its binding, even when
                 // `export_kind` is type. The pure re-export form has no inner
                 // binding and remains dependent on its export kind.
@@ -939,10 +935,9 @@ impl<'a> SymbolTracker<'a> {
                     self.export_state = ExportState::Named;
                 }
             }
-            NodeKind::ExportDefaultDeclaration => self.export_state = ExportState::Default,
-            NodeKind::VariableDeclaration => {
+            NodeKindData::ExportDefaultDeclaration(_) => self.export_state = ExportState::Default,
+            NodeKindData::VariableDeclaration(declaration) => {
                 self.push_saved_context();
-                let declaration = unsafe { typed::<swc_next_ecma_ast::VariableDeclaration>(node) };
                 self.pending = match declaration.kind(tree) {
                     VariableKind::Var => {
                         let target = scope.hoist_target();
@@ -985,9 +980,8 @@ impl<'a> SymbolTracker<'a> {
                     },
                 };
             }
-            NodeKind::Function => {
+            NodeKindData::Function(function) => {
                 self.push_saved_context();
-                let function = unsafe { typed::<Function>(node) };
                 let is_declaration =
                     function.function_type(tree) == FunctionType::FunctionDeclaration;
                 let target = if is_declaration {
@@ -1027,7 +1021,7 @@ impl<'a> SymbolTracker<'a> {
                     self.export_state = ExportState::None;
                 }
             }
-            NodeKind::TsFunction => {
+            NodeKindData::TsFunction(_) => {
                 self.push_saved_context();
                 let target = scope
                     .current_scope()
@@ -1043,9 +1037,8 @@ impl<'a> SymbolTracker<'a> {
                     scope: target,
                 };
             }
-            NodeKind::Class => {
+            NodeKindData::Class(class) => {
                 self.push_saved_context();
-                let class = unsafe { typed::<Class>(node) };
                 let is_declaration = class.class_type(tree) == ClassType::ClassDeclaration;
                 self.pending = PendingBinding {
                     flags: SymbolFlags {
@@ -1068,7 +1061,7 @@ impl<'a> SymbolTracker<'a> {
                     self.export_state = ExportState::None;
                 }
             }
-            NodeKind::FormalParameters => {
+            NodeKindData::FormalParameters(_) => {
                 self.push_saved_context();
                 self.pending = PendingBinding {
                     flags: SymbolFlags {
@@ -1083,23 +1076,21 @@ impl<'a> SymbolTracker<'a> {
                 self.export_state = ExportState::None;
             }
             // Members are not the exported binding.
-            NodeKind::ClassBody | NodeKind::TsModuleBlock | NodeKind::TsEnumBody => {
+            NodeKindData::ClassBody(_)
+            | NodeKindData::TsModuleBlock(_)
+            | NodeKindData::TsEnumBody(_) => {
                 self.export_state = ExportState::None;
             }
-            NodeKind::ImportDeclaration => {
+            NodeKindData::ImportDeclaration(declaration) => {
                 self.push_saved_context();
-                let declaration = unsafe { typed::<swc_next_ecma_ast::ImportDeclaration>(node) };
                 self.pending = import_pending(declaration.import_kind(tree), scope.current);
             }
-            NodeKind::TsImportEqualsDeclaration => {
+            NodeKindData::TsImportEqualsDeclaration(declaration) => {
                 self.push_saved_context();
-                let declaration =
-                    unsafe { typed::<swc_next_ecma_ast::TsImportEqualsDeclaration>(node) };
                 self.pending = import_pending(declaration.import_kind(tree), scope.current);
             }
-            NodeKind::ImportSpecifier => {
+            NodeKindData::ImportSpecifier(specifier) => {
                 self.push_saved_context();
-                let specifier = unsafe { typed::<swc_next_ecma_ast::ImportSpecifier>(node) };
                 if specifier.import_kind(tree) == ImportOrExportKind::Type {
                     self.pending.flags = SymbolFlags {
                         type_import: true,
@@ -1108,7 +1099,7 @@ impl<'a> SymbolTracker<'a> {
                     self.pending.excludes = Excludes::IMPORT_BINDING;
                 }
             }
-            NodeKind::CatchClause => {
+            NodeKindData::CatchClause(_) => {
                 self.push_saved_context();
                 self.pending = PendingBinding {
                     flags: SymbolFlags {
@@ -1120,12 +1111,10 @@ impl<'a> SymbolTracker<'a> {
                     scope: scope.current,
                 };
             }
-            NodeKind::TsInterfaceDeclaration => {
+            NodeKindData::TsInterfaceDeclaration(declaration) => {
                 // The id binds in the surrounding scope. Type-parameter and
                 // body bindings live in a scope pushed by the tracker.
                 self.push_saved_context();
-                let declaration =
-                    unsafe { typed::<swc_next_ecma_ast::TsInterfaceDeclaration>(node) };
                 self.pending = PendingBinding {
                     flags: SymbolFlags {
                         interface: true,
@@ -1139,10 +1128,8 @@ impl<'a> SymbolTracker<'a> {
                         .expect("an interface scope has a parent"),
                 };
             }
-            NodeKind::TsTypeAliasDeclaration => {
+            NodeKindData::TsTypeAliasDeclaration(declaration) => {
                 self.push_saved_context();
-                let declaration =
-                    unsafe { typed::<swc_next_ecma_ast::TsTypeAliasDeclaration>(node) };
                 self.pending = PendingBinding {
                     flags: SymbolFlags {
                         type_alias: true,
@@ -1156,9 +1143,8 @@ impl<'a> SymbolTracker<'a> {
                         .expect("a type alias scope has a parent"),
                 };
             }
-            NodeKind::TsEnumDeclaration => {
+            NodeKindData::TsEnumDeclaration(declaration) => {
                 self.push_saved_context();
-                let declaration = unsafe { typed::<TsEnumDeclaration>(node) };
                 self.pending = PendingBinding {
                     flags: if declaration.is_const(tree) {
                         SymbolFlags {
@@ -1181,9 +1167,8 @@ impl<'a> SymbolTracker<'a> {
                     scope: scope.current,
                 };
             }
-            NodeKind::TsModuleDeclaration => {
+            NodeKindData::TsModuleDeclaration(declaration) => {
                 self.push_saved_context();
-                let declaration = unsafe { typed::<TsModuleDeclaration>(node) };
                 let instantiated = namespace_is_instantiated(tree, declaration.body(tree));
                 self.pending = PendingBinding {
                     flags: SymbolFlags {
@@ -1204,11 +1189,11 @@ impl<'a> SymbolTracker<'a> {
                     self.ambient = true;
                 }
             }
-            NodeKind::TsGlobalDeclaration => {
+            NodeKindData::TsGlobalDeclaration(_) => {
                 self.push_saved_context();
                 self.ambient = true;
             }
-            NodeKind::TsNamespaceExportDeclaration => {
+            NodeKindData::TsNamespaceExportDeclaration(_) => {
                 self.push_saved_context();
                 self.pending = PendingBinding {
                     flags: SymbolFlags {
@@ -1222,7 +1207,7 @@ impl<'a> SymbolTracker<'a> {
             // `TsTypeParameter` wraps `<T>` and `infer U`. Mapped type keys
             // `[K in T]` are bare binding identifiers under `TsMappedType`,
             // so the same context applies.
-            NodeKind::TsTypeParameter | NodeKind::TsMappedType => {
+            NodeKindData::TsTypeParameter(_) | NodeKindData::TsMappedType(_) => {
                 self.push_saved_context();
                 // `infer` declares in the enclosing conditional scope so the
                 // true branch sees it, even from inside a signature type.
@@ -1246,12 +1231,12 @@ impl<'a> SymbolTracker<'a> {
             // Signature-type parameter names are labels, not declarations.
             // Clear an enclosing type-parameter context so nesting never
             // declares them, as in `<T extends { [s: string]: number }> `.
-            NodeKind::TsFunctionType
-            | NodeKind::TsConstructorType
-            | NodeKind::TsMethodSignature
-            | NodeKind::TsCallSignatureDeclaration
-            | NodeKind::TsConstructSignatureDeclaration
-            | NodeKind::TsIndexSignature => {
+            NodeKindData::TsFunctionType(_)
+            | NodeKindData::TsConstructorType(_)
+            | NodeKindData::TsMethodSignature(_)
+            | NodeKindData::TsCallSignatureDeclaration(_)
+            | NodeKindData::TsConstructSignatureDeclaration(_)
+            | NodeKindData::TsIndexSignature(_) => {
                 self.push_saved_context();
                 self.pending = PendingBinding {
                     flags: SymbolFlags::NONE,
@@ -1279,22 +1264,20 @@ impl<'a> SymbolTracker<'a> {
         &mut self,
         tree: &Ast,
         node: NodeId,
-        kind: NodeKind,
         scope: &ScopeTracker<'a>,
         reference_context: RefContext,
     ) {
         if self.scope_maps.len() < scope.scopes.len() {
             self.sync_scope_maps(scope.scopes.len());
         }
-        match kind {
-            NodeKind::BindingIdentifier => {
+        match tree.kind_data(node) {
+            NodeKindData::BindingIdentifier(identifier) => {
                 // Type-position identifiers are parameter labels. Only type
                 // parameters are real declarations there.
                 if reference_context.space.in_type_position() && !self.pending.flags.type_parameter
                 {
                     return;
                 }
-                let identifier = unsafe { typed::<BindingIdentifier>(node) };
                 let symbol_id = self.declare(tree, identifier.name(tree), node);
 
                 // Register a hoisting var in every block it passes through so
@@ -1311,8 +1294,7 @@ impl<'a> SymbolTracker<'a> {
                     }
                 }
             }
-            NodeKind::IdentifierReference => {
-                let identifier = unsafe { typed::<IdentifierReference>(node) };
+            NodeKindData::IdentifierReference(identifier) => {
                 self.add_reference(
                     tree,
                     identifier.name(tree),
@@ -1325,19 +1307,19 @@ impl<'a> SymbolTracker<'a> {
                     },
                 );
             }
-            NodeKind::TsTypePredicate => {
+            NodeKindData::TsTypePredicate(predicate) => {
                 // `param is T` parses `param` as an IdentifierName but it
                 // references the enclosing function's parameter. Synthesize
                 // a reference so renamers update both together. In type-only
                 // signatures the parameter is only a label, so no reference
                 // is recorded.
-                let predicate = unsafe { typed::<TsTypePredicate>(node) };
                 let parameter_name = predicate.parameter_name(tree);
                 let parameter_node = parameter_name.node_id();
-                if tree.node_kind(parameter_node) != NodeKind::IdentifierName {
+                let NodeKindData::IdentifierName(parameter_name) = tree.kind_data(parameter_node)
+                else {
                     return;
-                }
-                let name = unsafe { typed::<IdentifierName>(parameter_node) }.name(tree);
+                };
+                let name = parameter_name.name(tree);
                 let Some(parameter) = self.own_binding(scope.current, tree.string(name)) else {
                     return;
                 };
@@ -1355,7 +1337,7 @@ impl<'a> SymbolTracker<'a> {
                     },
                 );
             }
-            NodeKind::TsEnumMember => {
+            NodeKindData::TsEnumMember(member) => {
                 // Members are lexically visible inside the enum body:
                 //
                 //   enum E { a, b = a }
@@ -1364,18 +1346,13 @@ impl<'a> SymbolTracker<'a> {
                 // Member names are IdentifierName or StringLiteral nodes,
                 // not BindingIdentifiers, so they declare here. Computed and
                 // template names never declare.
-                let member = unsafe { typed::<TsEnumMember>(node) };
                 if member.computed(tree) {
                     return;
                 }
                 let member_id = member.id(tree).node_id();
-                let name = match tree.node_kind(member_id) {
-                    NodeKind::IdentifierName => {
-                        unsafe { typed::<IdentifierName>(member_id) }.name(tree)
-                    }
-                    NodeKind::StringLiteral => {
-                        unsafe { typed::<swc_next_ecma_ast::StringLiteral>(member_id) }.value(tree)
-                    }
+                let name = match tree.kind_data(member_id) {
+                    NodeKindData::IdentifierName(identifier) => identifier.name(tree),
+                    NodeKindData::StringLiteral(literal) => literal.value(tree),
                     _ => return,
                 };
                 let saved = self.pending;
@@ -1391,76 +1368,74 @@ impl<'a> SymbolTracker<'a> {
                 self.declare(tree, name, member_id);
                 self.pending = saved;
             }
-            NodeKind::JsxOpeningElement => {
+            NodeKindData::JsxOpeningElement(element) => {
                 // The leftmost capitalized JSX identifier is a JS binding
                 // reference. Lowercase tags are intrinsic element names; the
                 // rest of a member chain is property syntax.
-                let element = unsafe { typed::<swc_next_ecma_ast::JsxOpeningElement>(node) };
-                self.add_jsx_reference(tree, element.name(tree).node_id(), scope.current);
+                self.add_jsx_reference(tree, element.name(tree), scope.current);
             }
-            NodeKind::JsxClosingElement => {
-                let element = unsafe { typed::<swc_next_ecma_ast::JsxClosingElement>(node) };
-                self.add_jsx_reference(tree, element.name(tree).node_id(), scope.current);
+            NodeKindData::JsxClosingElement(element) => {
+                self.add_jsx_reference(tree, element.name(tree), scope.current);
             }
             _ => {}
         }
     }
 
-    fn add_jsx_reference(&mut self, tree: &Ast, name: NodeId, scope: ScopeId) {
-        let Some(root) = jsx_tag_root(tree, name) else {
+    fn add_jsx_reference(&mut self, tree: &Ast, name: JsxElementName, scope: ScopeId) {
+        let Some(identifier) = jsx_tag_root(tree, tree.jsx_element_name_data(name)) else {
             return;
         };
-        let identifier = unsafe { typed::<JsxIdentifier>(root) };
         let text = tree.string(identifier.name(tree));
         if text.first().is_some_and(u8::is_ascii_uppercase) {
             self.add_reference(
                 tree,
                 identifier.name(tree),
                 scope,
-                root,
+                identifier.node_id(),
                 ReferenceFlags::default(),
             );
         }
     }
 
     /// Restores the context to what it was before the matching enter.
-    pub fn exit(&mut self, kind: NodeKind) {
-        match kind {
-            NodeKind::FormalParameters => {
+    pub fn exit(&mut self, data: NodeKindData) {
+        match data {
+            NodeKindData::FormalParameters(_) => {
                 if let Some(saved) = self.saved_stack.pop() {
                     self.pending = saved.pending;
                     self.ambient = saved.ambient;
                 }
             }
-            NodeKind::VariableDeclaration
-            | NodeKind::Function
-            | NodeKind::TsFunction
-            | NodeKind::Class
-            | NodeKind::ImportDeclaration
-            | NodeKind::TsImportEqualsDeclaration
-            | NodeKind::ImportSpecifier
-            | NodeKind::CatchClause
-            | NodeKind::TsInterfaceDeclaration
-            | NodeKind::TsTypeAliasDeclaration
-            | NodeKind::TsEnumDeclaration
-            | NodeKind::TsModuleDeclaration
-            | NodeKind::TsGlobalDeclaration
-            | NodeKind::TsNamespaceExportDeclaration
-            | NodeKind::TsTypeParameter
-            | NodeKind::TsMappedType
-            | NodeKind::TsFunctionType
-            | NodeKind::TsConstructorType
-            | NodeKind::TsMethodSignature
-            | NodeKind::TsCallSignatureDeclaration
-            | NodeKind::TsConstructSignatureDeclaration
-            | NodeKind::TsIndexSignature => {
+            NodeKindData::VariableDeclaration(_)
+            | NodeKindData::Function(_)
+            | NodeKindData::TsFunction(_)
+            | NodeKindData::Class(_)
+            | NodeKindData::ImportDeclaration(_)
+            | NodeKindData::TsImportEqualsDeclaration(_)
+            | NodeKindData::ImportSpecifier(_)
+            | NodeKindData::CatchClause(_)
+            | NodeKindData::TsInterfaceDeclaration(_)
+            | NodeKindData::TsTypeAliasDeclaration(_)
+            | NodeKindData::TsEnumDeclaration(_)
+            | NodeKindData::TsModuleDeclaration(_)
+            | NodeKindData::TsGlobalDeclaration(_)
+            | NodeKindData::TsNamespaceExportDeclaration(_)
+            | NodeKindData::TsTypeParameter(_)
+            | NodeKindData::TsMappedType(_)
+            | NodeKindData::TsFunctionType(_)
+            | NodeKindData::TsConstructorType(_)
+            | NodeKindData::TsMethodSignature(_)
+            | NodeKindData::TsCallSignatureDeclaration(_)
+            | NodeKindData::TsConstructSignatureDeclaration(_)
+            | NodeKindData::TsIndexSignature(_) => {
                 if let Some(saved) = self.saved_stack.pop() {
                     self.pending = saved.pending;
                     self.export_state = saved.export_state;
                     self.ambient = saved.ambient;
                 }
             }
-            NodeKind::ExportNamedDeclaration | NodeKind::ExportDefaultDeclaration => {
+            NodeKindData::ExportNamedDeclaration(_)
+            | NodeKindData::ExportDefaultDeclaration(_) => {
                 self.export_state = ExportState::None;
             }
             _ => {}
@@ -1760,17 +1735,14 @@ fn type_parameter_visible(
         return true;
     }
     let scope_node = scopes.get(symbol.scope).node;
-    match tree.node_kind(scope_node) {
-        NodeKind::TsConditionalType => {
-            let conditional = unsafe { typed::<TsConditionalType>(scope_node) };
-            in_subtree(
-                node_parents,
-                reference_node,
-                scope_node,
-                conditional.true_type(tree).node_id(),
-            )
-        }
-        NodeKind::Class => {
+    match tree.kind_data(scope_node) {
+        NodeKindData::TsConditionalType(conditional) => in_subtree(
+            node_parents,
+            reference_node,
+            scope_node,
+            conditional.true_type(tree).node_id(),
+        ),
+        NodeKindData::Class(_) => {
             !class_type_parameter_hidden(tree, node_parents, reference_node, scope_node)
         }
         _ => true,
@@ -1805,10 +1777,8 @@ fn class_type_parameter_hidden(
     let mut child = reference_node;
     let mut parent = node_parents[child.index()];
     while let Some(current_parent) = parent {
-        match tree.node_kind(current_parent) {
-            NodeKind::MethodDefinition => {
-                let method =
-                    unsafe { typed::<swc_next_ecma_ast::MethodDefinition>(current_parent) };
+        match tree.kind_data(current_parent) {
+            NodeKindData::MethodDefinition(method) => {
                 if method.computed(tree)
                     && method.key(tree).node_id() == child
                     && member_owner(node_parents, current_parent) == Some(class_node)
@@ -1816,9 +1786,7 @@ fn class_type_parameter_hidden(
                     return true;
                 }
             }
-            NodeKind::TsMethodDefinition => {
-                let method =
-                    unsafe { typed::<swc_next_ecma_ast::TsMethodDefinition>(current_parent) };
+            NodeKindData::TsMethodDefinition(method) => {
                 if method.computed(tree)
                     && method.key(tree).node_id() == child
                     && member_owner(node_parents, current_parent) == Some(class_node)
@@ -1826,9 +1794,7 @@ fn class_type_parameter_hidden(
                     return true;
                 }
             }
-            NodeKind::PropertyDefinition => {
-                let property =
-                    unsafe { typed::<swc_next_ecma_ast::PropertyDefinition>(current_parent) };
+            NodeKindData::PropertyDefinition(property) => {
                 if property.computed(tree)
                     && property.key(tree).node_id() == child
                     && member_owner(node_parents, current_parent) == Some(class_node)
@@ -1836,30 +1802,18 @@ fn class_type_parameter_hidden(
                     return true;
                 }
             }
-            NodeKind::ClassBody => {
+            NodeKindData::ClassBody(_) => {
                 if node_parents[current_parent.index()] != Some(class_node) {
                     child = current_parent;
                     parent = node_parents[current_parent.index()];
                     continue;
                 }
-                return match tree.node_kind(child) {
-                    NodeKind::MethodDefinition => {
-                        unsafe { typed::<swc_next_ecma_ast::MethodDefinition>(child) }
-                            .r#static(tree)
-                    }
-                    NodeKind::TsMethodDefinition => {
-                        unsafe { typed::<swc_next_ecma_ast::TsMethodDefinition>(child) }
-                            .r#static(tree)
-                    }
-                    NodeKind::PropertyDefinition => {
-                        unsafe { typed::<swc_next_ecma_ast::PropertyDefinition>(child) }
-                            .r#static(tree)
-                    }
-                    NodeKind::TsIndexSignature => {
-                        unsafe { typed::<swc_next_ecma_ast::TsIndexSignature>(child) }
-                            .r#static(tree)
-                    }
-                    NodeKind::StaticBlock => true,
+                return match tree.kind_data(child) {
+                    NodeKindData::MethodDefinition(method) => method.r#static(tree),
+                    NodeKindData::TsMethodDefinition(method) => method.r#static(tree),
+                    NodeKindData::PropertyDefinition(property) => property.r#static(tree),
+                    NodeKindData::TsIndexSignature(signature) => signature.r#static(tree),
+                    NodeKindData::StaticBlock(_) => true,
                     _ => false,
                 };
             }
@@ -1877,7 +1831,10 @@ fn member_owner(node_parents: &[Option<NodeId>], member: NodeId) -> Option<NodeI
 
 fn nearest_conditional_scope(tree: &Ast<'_>, scope: &ScopeTracker<'_>) -> ScopeId {
     for id in scope.ancestors(Some(scope.current)) {
-        if tree.node_kind(scope.get(id).node) == NodeKind::TsConditionalType {
+        if matches!(
+            tree.kind_data(scope.get(id).node),
+            NodeKindData::TsConditionalType(_)
+        ) {
             return id;
         }
     }
@@ -1888,7 +1845,7 @@ fn nearest_conditional_scope(tree: &Ast<'_>, scope: &ScopeTracker<'_>) -> ScopeI
 // have no arguments at all; referencing it there is an early error.
 fn is_arguments_barrier(tree: &Ast<'_>, scope: scope::Scope) -> bool {
     match scope.kind {
-        ScopeKind::Function => tree.node_kind(scope.node) == NodeKind::Function,
+        ScopeKind::Function => matches!(tree.kind_data(scope.node), NodeKindData::Function(_)),
         ScopeKind::StaticBlock => true,
         _ => false,
     }
@@ -1896,18 +1853,22 @@ fn is_arguments_barrier(tree: &Ast<'_>, scope: scope::Scope) -> bool {
 
 // Walks a JSX tag name to its leftmost JsxIdentifier. Returns None for
 // namespaced names (`<svg:path>`) and non-tag shapes.
-fn jsx_tag_root(tree: &Ast<'_>, name: NodeId) -> Option<NodeId> {
+fn jsx_tag_root(tree: &Ast<'_>, name: JsxElementNameData) -> Option<JsxIdentifier> {
     let mut current = name;
     loop {
-        match tree.node_kind(current) {
-            NodeKind::JsxIdentifier => return Some(current),
-            NodeKind::JsxMemberExpression => {
-                current = unsafe { typed::<JsxMemberExpression>(current) }
-                    .object(tree)
-                    .node_id();
+        match current {
+            JsxElementNameData::JsxIdentifier(identifier) => return Some(identifier),
+            JsxElementNameData::JsxMemberExpression(member) => {
+                match tree.jsx_member_expression_object_data(member.object(tree)) {
+                    JsxMemberExpressionObjectData::JsxIdentifier(jsx_identifier) => {
+                        current = JsxElementNameData::JsxIdentifier(jsx_identifier)
+                    }
+                    JsxMemberExpressionObjectData::JsxMemberExpression(jsx_member_expression) => {
+                        current = JsxElementNameData::JsxMemberExpression(jsx_member_expression)
+                    }
+                }
             }
-            NodeKind::JsxNamespacedName => return None,
-            _ => return None,
+            JsxElementNameData::JsxNamespacedName(_) => return None,
         }
     }
 }
@@ -1935,10 +1896,9 @@ fn namespace_is_instantiated(
         return true;
     };
     let body = body.node_id();
-    if tree.node_kind(body) != NodeKind::TsModuleBlock {
+    let NodeKindData::TsModuleBlock(block) = tree.kind_data(body) else {
         return true;
-    }
-    let block = unsafe { typed::<TsModuleBlock>(body) };
+    };
     for statement in block.body(tree).iter() {
         let statement = tree.get_node_in_sub_range(statement).node_id();
         if is_instantiating_statement(tree, statement) {
@@ -1949,17 +1909,15 @@ fn namespace_is_instantiated(
 }
 
 fn is_instantiating_statement(tree: &Ast<'_>, node: NodeId) -> bool {
-    match tree.node_kind(node) {
-        NodeKind::TsInterfaceDeclaration
-        | NodeKind::TsTypeAliasDeclaration
-        | NodeKind::TsImportEqualsDeclaration => false,
-        NodeKind::TsEnumDeclaration => !unsafe { typed::<TsEnumDeclaration>(node) }.is_const(tree),
-        NodeKind::TsModuleDeclaration => {
-            let module = unsafe { typed::<TsModuleDeclaration>(node) };
+    match tree.kind_data(node) {
+        NodeKindData::TsInterfaceDeclaration(_)
+        | NodeKindData::TsTypeAliasDeclaration(_)
+        | NodeKindData::TsImportEqualsDeclaration(_) => false,
+        NodeKindData::TsEnumDeclaration(declaration) => !declaration.is_const(tree),
+        NodeKindData::TsModuleDeclaration(module) => {
             namespace_is_instantiated(tree, module.body(tree))
         }
-        NodeKind::ExportNamedDeclaration => {
-            let export = unsafe { typed::<ExportNamedDeclaration>(node) };
+        NodeKindData::ExportNamedDeclaration(export) => {
             if export.export_kind(tree) == ImportOrExportKind::Type {
                 return false;
             }
@@ -1975,16 +1933,11 @@ fn is_instantiating_statement(tree: &Ast<'_>, node: NodeId) -> bool {
 #[inline]
 fn symbol_id(index: usize) -> SymbolId {
     assert!(index < SymbolId::MAX);
-    unsafe { SymbolId::from_usize_unchecked(index) }
+    SymbolId::from_usize(index)
 }
 
 #[inline]
 fn reference_id(index: usize) -> ReferenceId {
     assert!(index < ReferenceId::MAX);
-    unsafe { ReferenceId::from_usize_unchecked(index) }
-}
-
-#[inline]
-unsafe fn typed<N: AstNode>(node: NodeId) -> N {
-    unsafe { N::from_node_id_unchecked(node) }
+    ReferenceId::from_usize(index)
 }

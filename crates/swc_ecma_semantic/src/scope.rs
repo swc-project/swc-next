@@ -1,8 +1,7 @@
 use oxc_index::Idx;
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, AstNode, CatchClause, Class, ClassType, Directive, Function,
-    FunctionBody, FunctionType, NodeId, NodeKind, ScopeId,
+    Ast, Class, ClassType, Function, FunctionBody, FunctionType, NodeId, NodeKindData, ScopeId,
 };
 
 use crate::ecmascript;
@@ -219,16 +218,14 @@ impl<'a> ScopeTracker<'a> {
             .expect("non-root scopes have a parent");
     }
 
-    pub fn enter(&mut self, tree: &Ast, index: NodeId, parent: Option<NodeId>, kind: NodeKind) {
-        match kind {
-            NodeKind::Directive => {
-                let directive = unsafe { typed::<Directive>(index) };
+    pub fn enter(&mut self, tree: &Ast, index: NodeId, parent: Option<NodeId>) {
+        match tree.kind_data(index) {
+            NodeKindData::Directive(directive) => {
                 if tree.string(directive.value(tree)) == b"use strict" {
                     self.current_mut().flags.strict = true;
                 }
             }
-            NodeKind::Function => {
-                let function = unsafe { typed::<Function>(index) };
+            NodeKindData::Function(function) => {
                 let flags = if self.has_retroactive_use_strict(tree, function.body(tree)) {
                     ScopeFlags { strict: true }
                 } else {
@@ -240,37 +237,35 @@ impl<'a> ScopeTracker<'a> {
                 }
                 self.push_scope(ScopeKind::Function, index, flags);
             }
-            NodeKind::TsFunction => {
+            NodeKindData::TsFunction(_) => {
                 self.push_scope(ScopeKind::Function, index, self.inherit_strict_flag());
             }
-            NodeKind::ArrowFunctionExpression => {
-                let arrow = unsafe { typed::<ArrowFunctionExpression>(index) };
+            NodeKindData::ArrowFunctionExpression(arrow) => {
                 let body = arrow.body(tree).node_id();
-                let flags = if tree.node_kind(body) == NodeKind::FunctionBody
-                    && self.has_retroactive_use_strict(tree, unsafe { typed::<FunctionBody>(body) })
-                {
-                    ScopeFlags { strict: true }
-                } else {
-                    self.inherit_strict_flag()
+                let flags = match tree.kind_data(body) {
+                    NodeKindData::FunctionBody(body)
+                        if self.has_retroactive_use_strict(tree, body) =>
+                    {
+                        ScopeFlags { strict: true }
+                    }
+                    _ => self.inherit_strict_flag(),
                 };
                 self.push_scope(ScopeKind::Function, index, flags);
             }
-            NodeKind::FunctionBody => {
+            NodeKindData::FunctionBody(_) => {
                 // Pushed only when the parent function's parameter list
                 // contains expressions; see ScopeKind::FunctionBody.
                 let Some(parent) = parent else { return };
-                let params = match tree.node_kind(parent) {
-                    NodeKind::Function => unsafe { typed::<Function>(parent) }.params(tree),
-                    NodeKind::ArrowFunctionExpression => {
-                        unsafe { typed::<ArrowFunctionExpression>(parent) }.params(tree)
-                    }
+                let params = match tree.kind_data(parent) {
+                    NodeKindData::Function(function) => function.params(tree),
+                    NodeKindData::ArrowFunctionExpression(arrow) => arrow.params(tree),
                     _ => return,
                 };
                 if ecmascript::find_parameter_expression(tree, params).is_some() {
                     self.push_scope(ScopeKind::FunctionBody, index, self.inherit_strict_flag());
                 }
             }
-            NodeKind::BlockStatement => {
+            NodeKindData::BlockStatement(_) => {
                 // 14.15.2 gives catch parameters and the block separate
                 // environments. Folding them is unobservable and makes the
                 // 14.15.1 conflict a single-scope lookup, except when a
@@ -278,23 +273,23 @@ impl<'a> ScopeTracker<'a> {
                 //
                 //   catch (e)       { let e }   // shared, conflict found
                 //   catch ([e = 1]) { let e }   // split; default cannot see let
+                let catch = match tree.kind_data(self.current_scope().node) {
+                    NodeKindData::CatchClause(catch) => Some(catch),
+                    _ => None,
+                };
                 let shares_catch_scope = self.current_scope().kind == ScopeKind::Block
-                    && tree.node_kind(self.current_scope().node) == NodeKind::CatchClause
-                    && unsafe { typed::<CatchClause>(self.current_scope().node) }
-                        .body(tree)
-                        .node_id()
-                        == index
-                    && unsafe { typed::<CatchClause>(self.current_scope().node) }
-                        .param(tree)
-                        .is_none_or(|param| {
-                            ecmascript::find_pattern_expression(tree, Some(param.node_id()))
-                                .is_none()
-                        });
+                    && catch.is_some_and(|catch| {
+                        catch.body(tree).node_id() == index
+                            && catch.param(tree).is_none_or(|param| {
+                                ecmascript::find_pattern_expression(tree, Some(param.node_id()))
+                                    .is_none()
+                            })
+                    });
                 if !shares_catch_scope {
                     self.push_scope(ScopeKind::Block, index, self.inherit_strict_flag());
                 }
             }
-            NodeKind::SwitchCase => {
+            NodeKindData::SwitchCase(_) => {
                 // One case-block scope per switch, shared by every case and
                 // created at the first case. Per 14.12.4, the discriminant
                 // evaluates before this environment exists:
@@ -309,31 +304,30 @@ impl<'a> ScopeTracker<'a> {
                     );
                 }
             }
-            NodeKind::TsEnumBody => {
+            NodeKindData::TsEnumBody(_) => {
                 // TSC resolves unqualified member references inside the body.
                 self.push_scope(ScopeKind::Block, index, self.inherit_strict_flag());
             }
-            NodeKind::ForStatement
-            | NodeKind::ForInStatement
-            | NodeKind::ForOfStatement
-            | NodeKind::CatchClause
-            | NodeKind::TsInterfaceDeclaration
-            | NodeKind::TsTypeAliasDeclaration
-            | NodeKind::TsFunctionType
-            | NodeKind::TsConstructorType
-            | NodeKind::TsMethodSignature
-            | NodeKind::TsCallSignatureDeclaration
-            | NodeKind::TsConstructSignatureDeclaration
-            | NodeKind::TsIndexSignature
-            | NodeKind::TsMappedType
-            | NodeKind::TsConditionalType => {
+            NodeKindData::ForStatement(_)
+            | NodeKindData::ForInStatement(_)
+            | NodeKindData::ForOfStatement(_)
+            | NodeKindData::CatchClause(_)
+            | NodeKindData::TsInterfaceDeclaration(_)
+            | NodeKindData::TsTypeAliasDeclaration(_)
+            | NodeKindData::TsFunctionType(_)
+            | NodeKindData::TsConstructorType(_)
+            | NodeKindData::TsMethodSignature(_)
+            | NodeKindData::TsCallSignatureDeclaration(_)
+            | NodeKindData::TsConstructSignatureDeclaration(_)
+            | NodeKindData::TsIndexSignature(_)
+            | NodeKindData::TsMappedType(_)
+            | NodeKindData::TsConditionalType(_) => {
                 self.push_scope(ScopeKind::Block, index, self.inherit_strict_flag());
             }
-            NodeKind::TsModuleBlock => {
+            NodeKindData::TsModuleBlock(_) => {
                 self.push_scope(ScopeKind::TsModule, index, self.inherit_strict_flag());
             }
-            NodeKind::Class => {
-                let class = unsafe { typed::<Class>(index) };
+            NodeKindData::Class(class) => {
                 // Classes are always strict mode (section 15.7.14).
                 let flags = ScopeFlags { strict: true };
                 if is_named_class_expression(tree, class) {
@@ -341,10 +335,10 @@ impl<'a> ScopeTracker<'a> {
                 }
                 self.push_scope(ScopeKind::Class, index, flags);
             }
-            NodeKind::StaticBlock => {
+            NodeKindData::StaticBlock(_) => {
                 self.push_scope(ScopeKind::StaticBlock, index, self.inherit_strict_flag());
             }
-            NodeKind::Decorator => {
+            NodeKindData::Decorator(_) => {
                 // Decorators evaluate in the scope enclosing the class:
                 // neither its type parameters nor an expression's own name is
                 // visible, so retarget `current` for the decorator subtree.
@@ -396,10 +390,10 @@ impl<'a> ScopeTracker<'a> {
     // A node pops exactly the scopes recording it as creator. Two for a
     // named function or class expression, zero for a shared or never-created
     // scope. Cannot drift from `enter`.
-    pub fn exit(&mut self, index: NodeId, kind: NodeKind) {
-        match kind {
-            NodeKind::Program => {}
-            NodeKind::Decorator => {
+    pub fn exit(&mut self, index: NodeId, data: NodeKindData) {
+        match data {
+            NodeKindData::Program(_) => {}
+            NodeKindData::Decorator(_) => {
                 // Every decorator enter saved exactly one scope.
                 self.current = self
                     .decorator_saved
@@ -460,11 +454,6 @@ impl<'a> ScopeTracker<'a> {
             list: self.scopes.into_bump_slice(),
         }
     }
-}
-
-#[inline]
-unsafe fn typed<N: AstNode>(node: NodeId) -> N {
-    unsafe { N::from_node_id_unchecked(node) }
 }
 
 fn is_named_function_expression(tree: &Ast<'_>, function: Function) -> bool {

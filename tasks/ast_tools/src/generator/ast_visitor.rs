@@ -78,13 +78,13 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 });
                 let kind_ident = format_ident!("{}", ast.name);
                 traverse_enter_arms.extend(quote! {
-                    NodeKind::#kind_ident => {
-                        traverser.#enter_fn_name(#ty_ident(node_id), ctx)
+                    NodeKindData::#kind_ident(node) => {
+                        traverser.#enter_fn_name(node, ctx)
                     }
                 });
                 traverse_exit_arms.extend(quote! {
-                    NodeKind::#kind_ident => {
-                        traverser.#exit_fn_name(#ty_ident(node_id), ctx)
+                    NodeKindData::#kind_ident(node) => {
+                        traverser.#exit_fn_name(node, ctx)
                     }
                 });
 
@@ -200,8 +200,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 }
 
                 traverse_children_arms.extend(quote! {
-                    NodeKind::#kind_ident => 'traverse_children: {
-                        let node = #ty_ident(node_id);
+                    NodeKindData::#kind_ident(node) => 'traverse_children: {
                         #traverse_children
                         TraverseAction::Proceed
                     },
@@ -543,7 +542,6 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                 fn enter_node(
                     &mut self,
                     node_id: NodeId,
-                    kind: NodeKind,
                     ctx: &mut TraverseCtx<'_, 'a, State>,
                 ) -> TraverseAction {
                     TraverseAction::Proceed
@@ -578,10 +576,10 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
             ) -> TraverseAction {
                 ctx.push_node(node_id);
 
-                let entered_kind = ctx.node_kind(node_id);
-                let mut action = traverser.enter_node(node_id, entered_kind, ctx);
+                let entered_data = ctx.ast.kind_data(node_id);
+                let mut action = traverser.enter_node(node_id, ctx);
                 if action == TraverseAction::Proceed {
-                    action = match entered_kind {
+                    action = match entered_data {
                         #traverse_enter_arms
                     };
                 }
@@ -600,7 +598,8 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
 
                 // Enter hooks may replace this node's data while preserving its NodeId.
                 let current_kind = ctx.node_kind(node_id);
-                let action = match current_kind {
+                let current_data = ctx.ast.kind_data(node_id);
+                let action = match current_data {
                     #traverse_children_arms
                 };
                 if action == TraverseAction::Stop {
@@ -608,7 +607,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
                     return TraverseAction::Stop;
                 }
 
-                match current_kind {
+                match current_data {
                     #traverse_exit_arms
                 }
                 traverser.exit_node(node_id, current_kind, ctx);
