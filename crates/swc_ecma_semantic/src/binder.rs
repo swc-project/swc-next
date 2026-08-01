@@ -738,7 +738,7 @@ impl Iterator for ScopeIterator<'_> {
         let scope = *self.list.get(index)?;
         self.index += 1;
         Some(ScopeEntry {
-            id: scope::scope_id(index),
+            id: ScopeId::from_usize(index),
             scope,
         })
     }
@@ -858,7 +858,7 @@ impl Default for PendingBinding {
         Self {
             flags: SymbolFlags::NONE,
             excludes: SymbolFlags::NONE,
-            scope: scope::scope_id(0),
+            scope: ScopeId::ROOT,
         }
     }
 }

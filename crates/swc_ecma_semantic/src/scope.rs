@@ -156,7 +156,7 @@ impl<'a> ScopeTracker<'a> {
             allocator,
             is_module: tree.is_module(),
             scopes: ArenaVec::with_capacity_in(estimated_scopes, allocator),
-            current: scope_id(0),
+            current: ScopeId::ROOT,
             decorator_saved: ArenaVec::new_in(allocator),
         };
         tracker.push_root();
@@ -172,21 +172,21 @@ impl<'a> ScopeTracker<'a> {
         self.scopes.push(Scope {
             node: root_node,
             parent: None,
-            hoist_target: scope_id(0),
+            hoist_target: ScopeId::ROOT,
             kind: ScopeKind::Global,
             flags: ScopeFlags::default(),
         });
-        self.current = scope_id(0);
+        self.current = ScopeId::ROOT;
 
         if self.is_module {
             self.scopes.push(Scope {
                 node: root_node,
-                parent: Some(scope_id(0)),
-                hoist_target: scope_id(1),
+                parent: Some(ScopeId::ROOT),
+                hoist_target: ScopeId::MODULE,
                 kind: ScopeKind::Module,
                 flags: ScopeFlags { strict: true },
             });
-            self.current = scope_id(1);
+            self.current = ScopeId::MODULE;
         }
     }
 
@@ -194,7 +194,7 @@ impl<'a> ScopeTracker<'a> {
         let _allocator = self.allocator;
         // The current length is the about-to-be-assigned id and must fit u32.
         assert!(self.scopes.len() < u32::MAX as usize);
-        let id = scope_id(self.scopes.len());
+        let id = ScopeId::from_usize(self.scopes.len());
         let parent = self.current_scope();
         self.scopes.push(Scope {
             node,
@@ -460,12 +460,6 @@ impl<'a> ScopeTracker<'a> {
             list: self.scopes.into_bump_slice(),
         }
     }
-}
-
-#[inline]
-pub(crate) fn scope_id(index: usize) -> ScopeId {
-    assert!(index < ScopeId::MAX);
-    unsafe { ScopeId::from_usize_unchecked(index) }
 }
 
 #[inline]

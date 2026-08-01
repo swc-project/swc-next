@@ -4,7 +4,7 @@ use swc_next_ecma_ast::{Ast, AstNode, NodeId, NodeKind, ScopeId, TraverseCtx};
 use crate::{
     Semantic,
     binder::{RefContext, ReferenceSpace, SymbolTracker},
-    scope::{ScopeKind, ScopeTracker, scope_id},
+    scope::{ScopeKind, ScopeTracker},
 };
 
 pub(crate) type SemanticTraverseCtx<'traverse, 'ast> =
@@ -29,7 +29,7 @@ impl<'a> SemanticContext<'a> {
         let mut node_scopes = ArenaVec::with_capacity_in(tree.node_count(), allocator);
         let mut node_parents = ArenaVec::with_capacity_in(tree.node_count(), allocator);
         for _ in 0..tree.node_count() {
-            node_scopes.push(scope_id(0));
+            node_scopes.push(ScopeId::ROOT);
             node_parents.push(None);
         }
         Self {

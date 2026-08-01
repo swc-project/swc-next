@@ -10,10 +10,10 @@ use swc_next_ecma_ast::{
     Directive, ExportAllDeclaration, ExportDefaultDeclaration, ExportNamedDeclaration,
     ExportSpecifier, ForInStatement, ForOfStatement, Function, FunctionType, IdentifierReference,
     ImportDeclaration, ImportOrExportKind, Label, LabelIdentifier, LabeledStatement,
-    MemberExpression, MetaProperty, NodeId, NodeKind, NumericLiteral, ObjectExpression, Severity,
-    Span, StringLiteral, SwitchStatement, SymbolId, Traverse, TraverseAction, UnaryExpression,
-    UnaryOperator, UpdateExpression, VariableDeclaration, VariableKind, WithStatement,
-    YieldExpression,
+    MemberExpression, MetaProperty, NodeId, NodeKind, NumericLiteral, ObjectExpression, ScopeId,
+    Severity, Span, StringLiteral, SwitchStatement, SymbolId, Traverse, TraverseAction,
+    UnaryExpression, UnaryOperator, UpdateExpression, VariableDeclaration, VariableKind,
+    WithStatement, YieldExpression,
 };
 
 use crate::{
@@ -21,7 +21,7 @@ use crate::{
     binder::RefContext,
     context::{self, SemanticContext, SemanticTraverseCtx, is_write_target, reference_space},
     ecmascript,
-    scope::{ScopeKind, scope_id},
+    scope::ScopeKind,
 };
 
 pub struct Checker<'a> {
@@ -56,7 +56,7 @@ impl<'a> Checker<'a> {
         for index in 0..self.export_specifiers.len() {
             let specifier = self.export_specifiers[index];
             if semantic
-                .binding(scope_id(1), specifier.local_name)
+                .binding(ScopeId::MODULE, specifier.local_name)
                 .is_none()
             {
                 let message = self.fmt(format_args!(
