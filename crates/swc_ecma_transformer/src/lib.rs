@@ -22,7 +22,7 @@ pub struct TransformerOptions {
 }
 
 pub struct TransformerImpl<'a> {
-    semantic: &'a Semantic,
+    semantic: &'a Semantic<'a>,
     x0_es2015: es2015::ES2015,
 }
 
