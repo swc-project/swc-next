@@ -63,13 +63,13 @@ function instructionComparison(summary) {
   if (hasOwn(values, "Both")) {
     const pair = values.Both;
     if (!Array.isArray(pair) || pair.length !== 2) {
-      throw new Error(`Invalid merge/base instruction values for ${benchmark}`);
+      throw new Error(`Invalid head/base instruction values for ${benchmark}`);
     }
 
-    const mergeInstructions = instructionCount(pair[0], "merge", benchmark);
+    const headInstructions = instructionCount(pair[0], "head", benchmark);
     const baseInstructions = instructionCount(pair[1], "base", benchmark);
     return {
-      mergeInstructions,
+      headInstructions,
       baseInstructions,
       comparison: "both",
       change: parseDiff(String(instruction.diffs?.diff_pct)),
@@ -77,13 +77,13 @@ function instructionComparison(summary) {
   }
 
   if (hasOwn(values, "Left")) {
-    const mergeInstructions = instructionCount(
+    const headInstructions = instructionCount(
       values.Left,
-      "merge",
+      "head",
       benchmark,
     );
     return {
-      mergeInstructions,
+      headInstructions,
       baseInstructions: null,
       comparison: "new",
       change: null,
@@ -93,7 +93,7 @@ function instructionComparison(summary) {
   if (hasOwn(values, "Right")) {
     const baseInstructions = instructionCount(values.Right, "base", benchmark);
     return {
-      mergeInstructions: null,
+      headInstructions: null,
       baseInstructions,
       comparison: "removed",
       change: null,
@@ -222,16 +222,16 @@ function renderGroupTable(group, rows) {
   const lines = [
     `##### ${groupTitle(group)}`,
     "",
-    "| Benchmark | Merge instructions | Base instructions | Change |",
+    "| Benchmark | Head instructions | Base instructions | Change |",
     "| --- | ---: | ---: | ---: |",
   ];
   for (const row of rows) {
     const label = escapeTableCell(benchmarkLabel(row, includeBenchmark));
-    const mergeInstructions = formatInstructionCount(row.mergeInstructions);
+    const headInstructions = formatInstructionCount(row.headInstructions);
     const baseInstructions = formatInstructionCount(row.baseInstructions);
     const change = formatChange(row);
     lines.push(
-      `| \`${label}\` | ${mergeInstructions} | ${baseInstructions} | ${change} |`,
+      `| \`${label}\` | ${headInstructions} | ${baseInstructions} | ${change} |`,
     );
   }
   lines.push("");
@@ -311,7 +311,7 @@ export function renderSummary(summaries) {
   return [
     "### Instruction-count changes",
     "",
-    "Exact Callgrind instruction counts for the merge and base revisions. New and Removed identify benchmarks that exist on only one side; the missing count is shown as a dash. Percentages use the same precision as the Gungraun text report. Markers: 🟢 fewer instructions, 🔴 more instructions, ⚪ unchanged.",
+    "Exact Callgrind instruction counts for the head and base revisions. New and Removed identify benchmarks that exist on only one side; the missing count is shown as a dash. Percentages use the same precision as the Gungraun text report. Markers: 🟢 fewer instructions, 🔴 more instructions, ⚪ unchanged.",
     "",
     tables,
   ].join("\n");

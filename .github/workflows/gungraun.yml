@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Setup rust toolchain and cache
         uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1
@@ -37,7 +37,7 @@ jobs:
       - name: Save base benchmark
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          COMPARE_SHA: ${{ github.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GUNGRAUN_COLOR: never
         run: |
           git checkout --detach "$BASE_SHA"
@@ -47,7 +47,7 @@ jobs:
           if ! git cat-file -e \
             "${BASE_SHA}:tasks/benchmark/benches/gungraun.rs" 2>/dev/null
           then
-            git checkout "$COMPARE_SHA" -- \
+            git checkout "$HEAD_SHA" -- \
               Cargo.toml \
               Cargo.lock \
               tasks/benchmark/Cargo.toml \
@@ -58,12 +58,12 @@ jobs:
             --home="$RUNNER_TEMP/gungraun" \
             --save-baseline=base
 
-      - name: Compare merge benchmark
+      - name: Compare head benchmark
         env:
-          COMPARE_SHA: ${{ github.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GUNGRAUN_COLOR: never
         run: |
-          git checkout --detach "$COMPARE_SHA"
+          git checkout --detach "$HEAD_SHA"
 
           report="$RUNNER_TEMP/gungraun-diff.txt"
           summary="$RUNNER_TEMP/gungraun-summary.md"
@@ -91,7 +91,7 @@ jobs:
           {
             echo "## Gungraun benchmark diff"
             echo
-            echo 'Values are shown as `merge | base`.'
+            echo 'Values are shown as `head | base`.'
             echo
             cat "$summary"
             echo
@@ -105,6 +105,16 @@ jobs:
             exit "$benchmark_status"
           fi
           exit "$summary_status"
+
+      - name: Upload Gungraun results and profiles
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: gungraun-${{ github.event.pull_request.head.sha }}
+          path: |
+            ${{ runner.temp }}/gungraun
+            ${{ runner.temp }}/gungraun-diff.txt
+            ${{ runner.temp }}/gungraun-summary.md
 
       - name: Publish benchmark diff to pull request
         if: >-
@@ -127,7 +137,7 @@ jobs:
             echo '<!-- gungraun-benchmark-diff -->'
             echo '## Gungraun benchmark diff'
             echo
-            echo 'Values are shown as `merge | base`.'
+            echo 'Values are shown as `head | base`.'
             echo
             if [[ -s "$summary" ]]
             then
