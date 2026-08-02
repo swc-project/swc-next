@@ -333,20 +333,27 @@ impl Iterator for ReferenceIterator<'_> {
     }
 }
 
-/// Semantic analysis output and its scope-dependent early errors.
+/// Semantic analysis output and any requested scope-dependent early errors.
 pub struct SemanticReturn<'a> {
     pub semantic: Semantic<'a>,
     pub diagnostics: Vec<Diagnostic<'a>>,
 }
 
-/// Runs semantic analysis on a tree. Builds the complete `Semantic`
-/// model and reports the scope-dependent early errors.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct AnalyzeOptions {
+    /// Whether to check and report scope-dependent syntax errors.
+    ///
+    /// Disabled by default.
+    pub check_syntax: bool,
+}
+
+/// Runs semantic analysis on a tree and builds the complete [`Semantic`] model.
 ///
-/// Diagnostics are returned separately from parser diagnostics. Their
-/// messages use the tree's arena, so the result is valid as long as the
-/// tree is alive.
-pub fn analyze<'a>(root: Program, ast: &Ast<'a>) -> SemanticReturn<'a> {
-    let mut visitor = Checker::new(root, ast);
+/// When [`AnalyzeOptions::check_syntax`] is enabled, scope-dependent early
+/// errors are returned separately from parser diagnostics. Their messages use
+/// the tree's arena, so the result is valid as long as the tree is alive.
+pub fn analyze<'a>(root: Program, ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a> {
+    let mut visitor = Checker::new(root, ast, options.check_syntax);
     root.visit_with(&mut visitor);
     let (semantic, diagnostics) = visitor.finish();
     SemanticReturn {

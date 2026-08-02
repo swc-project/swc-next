@@ -12,7 +12,7 @@ use swc_next_ecma_ast::{
     VisitMut, VisitMutWith, VisitWith,
 };
 use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
-use swc_next_ecma_semantic::analyze;
+use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
 
 const ANGULAR: &str = include_str!("../files/angular-1.2.5.js");
 const BACKBONE: &str = include_str!("../files/backbone-1.1.0.js");
@@ -61,7 +61,11 @@ fn setup_program(source: &'static str) -> ParsedProgram {
 #[bench::typescript(setup_program(TYPESCRIPT))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX))]
 fn bench_semantic(parsed: ParsedProgram) {
-    black_box(analyze(parsed.program, &parsed.ast));
+    black_box(analyze(
+        parsed.program,
+        &parsed.ast,
+        AnalyzeOptions::default(),
+    ));
 }
 
 struct VisitCounter<'visit, 'ast> {

@@ -4,7 +4,7 @@ use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Ast, Program, Severity};
 use swc_next_ecma_codegen::{Options as CodegenOptions, print};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
-use swc_next_ecma_semantic::analyze;
+use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
 use swc_next_ecma_transformer::{Transformer, TransformerOptions};
 
 use crate::{
@@ -64,7 +64,7 @@ fn transform_input(case: &BabelTransformCase) -> Result<Vec<u8>, String> {
     let allocator = Allocator::new();
     let mut ast = Ast::new(source, &allocator);
     let program = parse_program(&mut ast, case)?;
-    let semantic_ret = analyze(program, &ast);
+    let semantic_ret = analyze(program, &ast, AnalyzeOptions { check_syntax: true });
     if let Some(diagnostic) = semantic_ret
         .diagnostics
         .iter()

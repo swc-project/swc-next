@@ -1,7 +1,7 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use swc_next_allocator::Allocator;
-use swc_next_ecma_semantic::analyze;
+use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
 
 use crate::{
     cases::Case,
@@ -23,7 +23,7 @@ impl<C: Case> Runner<C> for ParserRunner {
                 Err(_) if case.expects_error() => return Ok(()),
                 Err(error) => return Err(format!("{}: {error}", case.name())),
             };
-            let semantic_ret = analyze(program, &ast);
+            let semantic_ret = analyze(program, &ast, AnalyzeOptions { check_syntax: true });
             match (case.expects_error(), semantic_ret.diagnostics.first()) {
                 (true, Some(_)) | (false, None) => Ok(()),
                 (true, None) => Err(format!(

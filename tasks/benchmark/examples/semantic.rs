@@ -3,7 +3,7 @@ use std::{env, fs::read_to_string};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Ast, IdentifierReference, Visit, VisitWith};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
-use swc_next_ecma_semantic::{Semantic, analyze};
+use swc_next_ecma_semantic::{AnalyzeOptions, Semantic, analyze};
 
 fn main() {
     let source = env::args()
@@ -15,7 +15,7 @@ fn main() {
     let root = Parser::init(&mut ast, Options::default(), NoTokenParserConfig)
         .parse()
         .program;
-    let semantic = analyze(root, &ast).semantic;
+    let semantic = analyze(root, &ast, AnalyzeOptions::default()).semantic;
     root.visit_with(&mut ScopeDisplayVisitor {
         ast: &ast,
         semantic: &semantic,

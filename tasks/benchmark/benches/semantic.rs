@@ -7,7 +7,7 @@ use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::Ast;
 use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
-use swc_next_ecma_semantic::analyze;
+use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
 
 fn bench_semantic(c: &mut Criterion) {
     let bench_cases = &[
@@ -27,7 +27,7 @@ fn bench_semantic(c: &mut Criterion) {
                     (program, ast)
                 },
                 |(program, ast)| {
-                    black_box(analyze(program, &ast));
+                    black_box(analyze(program, &ast, AnalyzeOptions::default()));
                 },
                 BatchSize::SmallInput,
             );
