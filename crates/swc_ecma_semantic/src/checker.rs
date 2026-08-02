@@ -1051,11 +1051,16 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
             {
                 continue;
             }
-            let Some(name) = ecmascript::prop_name(context.ast, item.key(context.ast).node_id())
-            else {
-                continue;
+            let name = match context.ast.kind_data(item.key(context.ast).node_id()) {
+                NodeKindData::IdentifierName(identifier) => {
+                    context.ast.string(identifier.name(context.ast))
+                }
+                NodeKindData::StringLiteral(string) => {
+                    context.ast.string(string.value(context.ast))
+                }
+                _ => continue,
             };
-            if !name.equals(b"__proto__") {
+            if name != b"__proto__" {
                 continue;
             }
             if let Some(first) = first_proto {
@@ -1957,36 +1962,48 @@ impl<'a> Checker<'a> {
             let attribute = attributes
                 .get_node(context.ast, index)
                 .expect("import attribute exists");
-            let Some(key) =
-                ecmascript::prop_name(context.ast, attribute.key(context.ast).node_id())
-            else {
-                continue;
+            let key = attribute.key(context.ast).node_id();
+            let key_name = match context.ast.kind_data(key) {
+                NodeKindData::IdentifierName(identifier) => {
+                    context.ast.string(identifier.name(context.ast))
+                }
+                NodeKindData::StringLiteral(string) => {
+                    context.ast.string(string.value(context.ast))
+                }
+                _ => continue,
             };
             for previous_index in 0..index {
                 let previous = attributes
                     .get_node(context.ast, previous_index)
                     .expect("import attribute exists");
-                let Some(previous_key) =
-                    ecmascript::prop_name(context.ast, previous.key(context.ast).node_id())
-                else {
-                    continue;
-                };
-                if key.equals(previous_key.name) || previous_key.equals(key.name) {
-                    let name = if !previous_key.is_string_literal {
-                        previous_key.name
+                let previous_key = previous.key(context.ast).node_id();
+                let (previous_key_name, previous_key_is_string_literal) =
+                    match context.ast.kind_data(previous_key) {
+                        NodeKindData::IdentifierName(identifier) => {
+                            (context.ast.string(identifier.name(context.ast)), false)
+                        }
+                        NodeKindData::StringLiteral(string) => {
+                            (context.ast.string(string.value(context.ast)), true)
+                        }
+                        _ => continue,
+                    };
+                if key_name == previous_key_name {
+                    let name = if !previous_key_is_string_literal {
+                        previous_key_name
                     } else {
-                        key.name
+                        key_name
                     };
                     let message = self.fmt(format_args!(
                         "Duplicate import attribute key '{}'",
                         String::from_utf8_lossy(name)
                     ));
                     self.report(
-                        key.span,
+                        context.ast.span(key),
                         message,
                         ReportOptions {
-                            labels: self
-                                .labels(&[self.label(previous_key.span, "first used here")]),
+                            labels: self.labels(&[
+                                self.label(context.ast.span(previous_key), "first used here")
+                            ]),
                             ..ReportOptions::default()
                         },
                     );

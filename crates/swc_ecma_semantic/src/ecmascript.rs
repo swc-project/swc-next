@@ -1,37 +1,4 @@
-use swc_next_ecma_ast::{Ast, FormalParameters, NodeId, NodeKindData, Span};
-
-#[derive(Clone, Copy)]
-pub(crate) struct PropName<'a> {
-    pub name: &'a [u8],
-    pub span: Span,
-    pub is_string_literal: bool,
-}
-
-impl PropName<'_> {
-    pub fn equals(self, expected: &[u8]) -> bool {
-        self.name == expected
-    }
-}
-
-/// <https://tc39.es/ecma262/#sec-static-semantics-propname>
-pub(crate) fn prop_name<'a>(tree: &'a Ast<'_>, key: NodeId) -> Option<PropName<'a>> {
-    match tree.kind_data(key) {
-        NodeKindData::IdentifierName(id) => Some(PropName {
-            name: tree.string(id.name(tree)),
-            span: tree.span(key),
-            is_string_literal: false,
-        }),
-        NodeKindData::StringLiteral(string) => {
-            let name = tree.string(string.value(tree));
-            (!name.is_empty()).then_some(PropName {
-                name,
-                span: tree.span(key),
-                is_string_literal: true,
-            })
-        }
-        _ => None,
-    }
-}
+use swc_next_ecma_ast::{Ast, FormalParameters, NodeId, NodeKindData};
 
 /// <https://tc39.es/ecma262/#sec-static-semantics-containsexpression>
 ///
