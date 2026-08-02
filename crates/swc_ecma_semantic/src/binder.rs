@@ -3,7 +3,7 @@ use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
     Ast, ClassType, FunctionType, ImportOrExportKind, JsxElementName, JsxElementNameData,
     JsxIdentifier, JsxMemberExpressionObjectData, NodeId, NodeKind, NodeKindData, ReferenceId,
-    ScopeId, String as AstString, SymbolId, VariableKind,
+    ScopeId, SourceType, String as AstString, SymbolId, VariableKind,
 };
 
 use crate::{
@@ -1536,7 +1536,11 @@ fn nearest_conditional_scope(tree: &Ast<'_>, scope: &ScopeTracker<'_>) -> ScopeI
 // have no arguments at all; referencing it there is an early error.
 fn is_arguments_barrier(tree: &Ast<'_>, scope: scope::Scope) -> bool {
     match scope.kind {
-        ScopeKind::Function => matches!(tree.kind_data(scope.node), NodeKindData::Function(_)),
+        ScopeKind::Function => match tree.kind_data(scope.node) {
+            NodeKindData::Function(_) => true,
+            NodeKindData::Program(_) => tree.source_type() == SourceType::CommonJs,
+            _ => false,
+        },
         ScopeKind::StaticBlock => true,
         _ => false,
     }

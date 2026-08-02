@@ -2,7 +2,7 @@ use oxc_index::Idx;
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
     Ast, Class, ClassType, Function, FunctionBody, FunctionType, NodeId, NodeKindData, Program,
-    ScopeId,
+    ScopeId, SourceType,
 };
 
 use crate::ecmascript;
@@ -37,6 +37,7 @@ pub enum ScopeKind {
     /// Modules are always strict.
     Module,
     /// Section 10.2.11 FunctionDeclarationInstantiation.
+    /// Also used for the synthetic CommonJS top-level function wrapper.
     Function,
     /// Section 14.2.2 Block runtime semantics, 14.2.3 BlockDeclarationInstantiation.
     Block,
@@ -137,7 +138,6 @@ impl Iterator for AncestorIterator<'_> {
 
 pub(crate) struct ScopeTracker<'a> {
     allocator: &'a Allocator,
-    is_module: bool,
     pub(crate) scopes: ArenaVec<'a, Scope>,
     // active scope. follow the parent chain to walk the path.
     pub(crate) current: ScopeId,
@@ -154,19 +154,15 @@ impl<'a> ScopeTracker<'a> {
         let estimated_scopes = 16usize.max(tree.node_count() / 16);
         let mut tracker = Self {
             allocator,
-            is_module: tree.is_module(),
             scopes: ArenaVec::with_capacity_in(estimated_scopes, allocator),
             current: ScopeId::ROOT,
             decorator_saved: ArenaVec::new_in(allocator),
         };
-        tracker.push_root(root.node_id());
-
-        // Exactly one root scope, plus the module wrapper when applicable.
-        assert_eq!(tracker.scopes.len(), if tree.is_module() { 2 } else { 1 });
+        tracker.push_root(root.node_id(), tree.source_type());
         tracker
     }
 
-    fn push_root(&mut self, root_node: NodeId) {
+    fn push_root(&mut self, root_node: NodeId, source_type: SourceType) {
         assert!(self.scopes.is_empty());
         self.scopes.push(Scope {
             node: root_node,
@@ -177,15 +173,14 @@ impl<'a> ScopeTracker<'a> {
         });
         self.current = ScopeId::ROOT;
 
-        if self.is_module {
-            self.scopes.push(Scope {
-                node: root_node,
-                parent: Some(ScopeId::ROOT),
-                hoist_target: ScopeId::MODULE,
-                kind: ScopeKind::Module,
-                flags: ScopeFlags { strict: true },
-            });
-            self.current = ScopeId::MODULE;
+        match source_type {
+            SourceType::Module => {
+                self.push_scope(ScopeKind::Module, root_node, ScopeFlags { strict: true });
+            }
+            SourceType::CommonJs => {
+                self.push_scope(ScopeKind::Function, root_node, ScopeFlags::default());
+            }
+            SourceType::Script => {}
         }
     }
 
@@ -210,7 +205,7 @@ impl<'a> ScopeTracker<'a> {
     }
 
     fn pop_scope(&mut self) {
-        // Root and module are never popped directly by the ordinary walk.
+        // Root and its source-type wrapper are never popped directly by the ordinary walk.
         assert_ne!(self.current.index(), 0);
         self.current = self
             .current_scope()
