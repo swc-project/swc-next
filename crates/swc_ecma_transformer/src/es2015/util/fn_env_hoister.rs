@@ -5,7 +5,7 @@ use swc_next_ecma_ast::{
     IdentifierReference, Program, StaticBlock, Stmt, String as AstString, TypedSubRange,
     VariableKind, VisitMut, VisitMutWith,
 };
-use swc_next_ecma_semantic::Semantic;
+use swc_next_ecma_semantic::{ReferenceSpace, Semantic};
 
 #[derive(Default)]
 pub struct CaptureFrame {
@@ -25,15 +25,27 @@ impl CaptureFrame {
 /// This is the flat-AST equivalent of `swc_ecma_utils::function::FnEnvHoister`.
 /// It owns capture state, while callers retain ownership of AST traversal.
 pub struct FnEnvHoister<'semantic> {
-    _semantic: &'semantic Semantic<'semantic>,
+    semantic: &'semantic Semantic<'semantic>,
     frames: Vec<CaptureFrame>,
     used_names: HashSet<Vec<u8>>,
     in_arrow: bool,
 }
 
 impl<'semantic> FnEnvHoister<'semantic> {
-    pub fn new(_ast: &Ast<'_>, _semantic: &'semantic Semantic) -> Self {
-        todo!()
+    pub fn new(ast: &Ast<'_>, semantic: &'semantic Semantic<'semantic>) -> Self {
+        let mut used_names = HashSet::new();
+        for entry in semantic.iter_symbols() {
+            used_names.insert(ast.string(entry.symbol.name).to_vec());
+        }
+        for entry in semantic.iter_references() {
+            used_names.insert(ast.string(entry.reference.name).to_vec());
+        }
+        Self {
+            semantic,
+            frames: vec![CaptureFrame::default()],
+            used_names,
+            in_arrow: false,
+        }
     }
 
     pub fn set_in_arrow(&mut self, in_arrow: bool) -> bool {
@@ -96,16 +108,15 @@ impl<'semantic> FnEnvHoister<'semantic> {
         name
     }
 
-    fn is_unresolved_arguments(&self, _node: IdentifierReference, _ast: &Ast<'_>) -> bool {
-        todo!()
-        // if ast.string(node.name(ast)) != b"arguments" {
-        //     return false;
-        // }
-        // let Some(reference_id) = self.semantic.node_reference(node.node_id()) else {
-        //     return false;
-        // };
-        // let reference = self.semantic.reference(reference_id);
-        // reference.kind == ReferenceKind::Value && reference.symbol_id.is_none()
+    fn is_unresolved_arguments(&self, node: IdentifierReference, ast: &Ast<'_>) -> bool {
+        if ast.string(node.name(ast)) != b"arguments" {
+            return false;
+        }
+        let Some(reference_id) = self.semantic.reference_of(node.node_id()) else {
+            return false;
+        };
+        let reference = self.semantic.reference(reference_id);
+        reference.flags.space == ReferenceSpace::Value && reference.symbol.is_none()
     }
 
     fn is_new_target(&self, node: swc_next_ecma_ast::MetaProperty, ast: &Ast<'_>) -> bool {
