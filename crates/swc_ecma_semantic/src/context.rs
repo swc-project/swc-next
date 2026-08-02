@@ -28,7 +28,7 @@ impl<'traverse, 'ast> SemanticVisitCtx<'traverse, 'ast> {
     pub fn enter_node(&mut self, node: NodeId) {
         let parent = self.path.last().copied();
         self.path.push(node);
-        self.state.enter_node(self.ast, node, parent);
+        self.state.enter_node(node, parent);
     }
 
     pub fn leave_node(&mut self, node: NodeId) {
@@ -101,11 +101,9 @@ impl<'a> SemanticContext<'a> {
             .any(|id| self.scope.get(id).kind == ScopeKind::TsModule)
     }
 
-    pub fn enter_node(&mut self, tree: &Ast, node: NodeId, parent: Option<NodeId>) {
+    pub fn enter_node(&mut self, node: NodeId, parent: Option<NodeId>) {
         self.node_scopes[node.index()] = self.scope.current;
         self.node_parents[node.index()] = parent;
-        self.symbols
-            .set_binding_context(tree, node, parent, &self.scope);
     }
 
     #[inline]
@@ -250,7 +248,6 @@ impl<'a> SemanticContext<'a> {
 
     pub fn exit(&mut self, tree: &Ast, node: NodeId) {
         let kind = tree.node_kind(node);
-        self.symbols.exit(kind);
         self.scope.exit(node, kind);
     }
 

@@ -1,9 +1,11 @@
 use oxc_index::Idx;
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
-    Ast, ClassType, FunctionType, ImportOrExportKind, JsxElementName, JsxElementNameData,
-    JsxIdentifier, JsxMemberExpressionObjectData, NodeId, NodeKind, NodeKindData, ReferenceId,
-    ScopeId, SourceType, String as AstString, SymbolId, VariableKind,
+    Ast, Class, ClassType, ExportNamedDeclaration, Function, FunctionType, ImportDeclaration,
+    ImportOrExportKind, ImportSpecifier, JsxElementName, JsxElementNameData, JsxIdentifier,
+    JsxMemberExpressionObjectData, NodeId, NodeKind, NodeKindData, ReferenceId, ScopeId,
+    SourceType, String as AstString, SymbolId, TsEnumDeclaration, TsInterfaceDeclaration,
+    TsModuleDeclaration, TsTypeAliasDeclaration, VariableDeclaration, VariableKind,
 };
 
 use crate::{
@@ -606,338 +608,455 @@ impl<'a> SymbolTracker<'a> {
         }
     }
 
-    /// Records the binding context for the next `binding_identifier`.
-    /// Called for every node on enter so parent declaration nodes can
-    /// configure the pending binding before the child identifier fires.
-    pub fn set_binding_context(
+    pub fn enter_export_named_declaration(
         &mut self,
         tree: &Ast,
-        node: NodeId,
+        declaration: ExportNamedDeclaration,
+    ) {
+        // The declaration form always exports its binding, even when
+        // `export_kind` is type. The pure re-export form has no inner
+        // binding and remains dependent on its export kind.
+        if declaration.declaration(tree).is_some()
+            || declaration.export_kind(tree) != ImportOrExportKind::Type
+        {
+            self.export_state = ExportState::Named;
+        }
+    }
+
+    pub fn enter_export_default_declaration(&mut self) {
+        self.export_state = ExportState::Default;
+    }
+
+    pub fn enter_variable_declaration(
+        &mut self,
+        tree: &Ast,
+        declaration: VariableDeclaration,
+        scope: &ScopeTracker<'a>,
+    ) {
+        self.push_saved_context();
+        self.pending = match declaration.kind(tree) {
+            VariableKind::Var => {
+                let target = scope.hoist_target();
+                let mut excludes = Excludes::FUNCTION_SCOPED_VAR;
+                // Module-level function declarations are lexical;
+                // everywhere else (and in TS) `var` merges with them.
+                if !tree.is_ts() && scope.get(target).kind == ScopeKind::Module {
+                    excludes.function = true;
+                }
+                PendingBinding {
+                    flags: SymbolFlags {
+                        function_scoped_var: true,
+                        ambient: declaration.declare(tree) || self.ambient,
+                        ..SymbolFlags::NONE
+                    },
+                    excludes,
+                    scope: target,
+                }
+            }
+            VariableKind::Const | VariableKind::Using | VariableKind::AwaitUsing => {
+                PendingBinding {
+                    flags: SymbolFlags {
+                        block_scoped_var: true,
+                        const_var: true,
+                        ambient: declaration.declare(tree) || self.ambient,
+                        ..SymbolFlags::NONE
+                    },
+                    excludes: Excludes::BLOCK_SCOPED_VAR,
+                    scope: scope.current,
+                }
+            }
+            VariableKind::Let => PendingBinding {
+                flags: SymbolFlags {
+                    block_scoped_var: true,
+                    ambient: declaration.declare(tree) || self.ambient,
+                    ..SymbolFlags::NONE
+                },
+                excludes: Excludes::BLOCK_SCOPED_VAR,
+                scope: scope.current,
+            },
+        };
+    }
+
+    pub fn enter_function(&mut self, tree: &Ast, function: Function, scope: &ScopeTracker<'a>) {
+        self.push_saved_context();
+        let is_declaration = function.function_type(tree) == FunctionType::FunctionDeclaration;
+        let target = if is_declaration {
+            scope
+                .current_scope()
+                .parent
+                .expect("a function declaration scope has a parent")
+        } else {
+            expression_name_scope(scope)
+        };
+        let target_kind = scope.get(target).kind;
+        let allow_overload = tree.is_ts()
+            || matches!(
+                target_kind,
+                ScopeKind::Function
+                    | ScopeKind::FunctionBody
+                    | ScopeKind::Global
+                    | ScopeKind::StaticBlock
+            );
+        // TS overloads, sloppy JS Annex B.3.2, and global merge with
+        // var. Lexical scopes (block/module) do not.
+        self.pending = PendingBinding {
+            flags: SymbolFlags {
+                function: true,
+                ambient: self.ambient,
+                ..SymbolFlags::NONE
+            },
+            excludes: if allow_overload {
+                Excludes::FUNCTION
+            } else {
+                Excludes::BLOCK_SCOPED_VAR
+            },
+            scope: target,
+        };
+        // Expression names are local.
+        if !is_declaration {
+            self.export_state = ExportState::None;
+        }
+    }
+
+    pub fn enter_ts_function(&mut self, scope: &ScopeTracker<'a>) {
+        self.push_saved_context();
+        let target = scope
+            .current_scope()
+            .parent
+            .expect("a TypeScript function scope has a parent");
+        self.pending = PendingBinding {
+            flags: SymbolFlags {
+                function: true,
+                ambient: true,
+                ..SymbolFlags::NONE
+            },
+            excludes: Excludes::FUNCTION,
+            scope: target,
+        };
+    }
+
+    pub fn enter_class(&mut self, tree: &Ast, class: Class, scope: &ScopeTracker<'a>) {
+        self.push_saved_context();
+        let is_declaration = class.class_type(tree) == ClassType::ClassDeclaration;
+        self.pending = PendingBinding {
+            flags: SymbolFlags {
+                class: true,
+                ambient: class.declare(tree) || self.ambient,
+                ..SymbolFlags::NONE
+            },
+            excludes: Excludes::CLASS,
+            scope: if is_declaration {
+                scope
+                    .current_scope()
+                    .parent
+                    .expect("a class declaration scope has a parent")
+            } else {
+                expression_name_scope(scope)
+            },
+        };
+        // Expression names are local.
+        if !is_declaration {
+            self.export_state = ExportState::None;
+        }
+    }
+
+    pub fn enter_formal_parameters(&mut self, scope: &ScopeTracker<'a>) {
+        self.push_saved_context();
+        self.pending = PendingBinding {
+            flags: SymbolFlags {
+                function_scoped_var: true,
+                parameter: true,
+                ambient: self.pending.flags.ambient,
+                ..SymbolFlags::NONE
+            },
+            excludes: Excludes::PARAMETER,
+            scope: scope.current,
+        };
+        self.export_state = ExportState::None;
+    }
+
+    // Members are not the exported binding.
+    pub fn enter_class_body(&mut self) {
+        self.export_state = ExportState::None;
+    }
+
+    pub fn enter_ts_module_block(&mut self) {
+        self.export_state = ExportState::None;
+    }
+
+    pub fn enter_ts_enum_body(&mut self) {
+        self.export_state = ExportState::None;
+    }
+
+    pub fn enter_import_declaration(
+        &mut self,
+        tree: &Ast,
+        declaration: ImportDeclaration,
+        scope: &ScopeTracker<'a>,
+    ) {
+        self.push_saved_context();
+        self.pending = import_pending(declaration.import_kind(tree), scope.current);
+    }
+
+    pub fn enter_ts_import_equals_declaration(
+        &mut self,
+        import_kind: ImportOrExportKind,
+        scope: &ScopeTracker<'a>,
+    ) {
+        self.push_saved_context();
+        self.pending = import_pending(import_kind, scope.current);
+    }
+
+    pub fn enter_import_specifier(&mut self, tree: &Ast, specifier: ImportSpecifier) {
+        self.push_saved_context();
+        if specifier.import_kind(tree) == ImportOrExportKind::Type {
+            self.pending.flags = SymbolFlags {
+                type_import: true,
+                ..SymbolFlags::NONE
+            };
+            self.pending.excludes = Excludes::IMPORT_BINDING;
+        }
+    }
+
+    pub fn enter_catch_clause(&mut self, scope: &ScopeTracker<'a>) {
+        self.push_saved_context();
+        self.pending = PendingBinding {
+            flags: SymbolFlags {
+                function_scoped_var: true,
+                catch_var: true,
+                ..SymbolFlags::NONE
+            },
+            excludes: Excludes::CATCH_VAR,
+            scope: scope.current,
+        };
+    }
+
+    pub fn enter_ts_interface_declaration(
+        &mut self,
+        tree: &Ast,
+        declaration: TsInterfaceDeclaration,
+        scope: &ScopeTracker<'a>,
+    ) {
+        // The id binds in the surrounding scope. Type-parameter and
+        // body bindings live in a scope pushed by the tracker.
+        self.push_saved_context();
+        self.pending = PendingBinding {
+            flags: SymbolFlags {
+                interface: true,
+                ambient: declaration.declare(tree) || self.ambient,
+                ..SymbolFlags::NONE
+            },
+            excludes: Excludes::INTERFACE,
+            scope: scope
+                .current_scope()
+                .parent
+                .expect("an interface scope has a parent"),
+        };
+    }
+
+    pub fn enter_ts_type_alias_declaration(
+        &mut self,
+        tree: &Ast,
+        declaration: TsTypeAliasDeclaration,
+        scope: &ScopeTracker<'a>,
+    ) {
+        self.push_saved_context();
+        self.pending = PendingBinding {
+            flags: SymbolFlags {
+                type_alias: true,
+                ambient: declaration.declare(tree) || self.ambient,
+                ..SymbolFlags::NONE
+            },
+            excludes: Excludes::TYPE_ALIAS,
+            scope: scope
+                .current_scope()
+                .parent
+                .expect("a type alias scope has a parent"),
+        };
+    }
+
+    pub fn enter_ts_enum_declaration(
+        &mut self,
+        tree: &Ast,
+        declaration: TsEnumDeclaration,
+        scope: &ScopeTracker<'a>,
+    ) {
+        self.push_saved_context();
+        self.pending = PendingBinding {
+            flags: if declaration.is_const(tree) {
+                SymbolFlags {
+                    const_enum: true,
+                    ambient: declaration.declare(tree) || self.ambient,
+                    ..SymbolFlags::NONE
+                }
+            } else {
+                SymbolFlags {
+                    regular_enum: true,
+                    ambient: declaration.declare(tree) || self.ambient,
+                    ..SymbolFlags::NONE
+                }
+            },
+            excludes: if declaration.is_const(tree) {
+                Excludes::CONST_ENUM
+            } else {
+                Excludes::REGULAR_ENUM
+            },
+            scope: scope.current,
+        };
+    }
+
+    pub fn enter_ts_module_declaration(
+        &mut self,
+        tree: &Ast,
+        declaration: TsModuleDeclaration,
+        scope: &ScopeTracker<'a>,
+    ) {
+        self.push_saved_context();
+        let instantiated = namespace_is_instantiated(tree, declaration.body(tree));
+        self.pending = PendingBinding {
+            flags: SymbolFlags {
+                value_module: instantiated,
+                namespace_module: true,
+                ambient: declaration.declare(tree) || self.ambient,
+                ..SymbolFlags::NONE
+            },
+            excludes: if instantiated {
+                Excludes::VALUE_MODULE
+            } else {
+                Excludes::NAMESPACE_MODULE
+            },
+            scope: scope.current,
+        };
+        // `declare` makes the whole body ambient.
+        if declaration.declare(tree) {
+            self.ambient = true;
+        }
+    }
+
+    pub fn enter_ts_global_declaration(&mut self) {
+        self.push_saved_context();
+        self.ambient = true;
+    }
+
+    pub fn enter_ts_namespace_export_declaration(&mut self, scope: &ScopeTracker<'a>) {
+        self.push_saved_context();
+        self.pending = PendingBinding {
+            flags: SymbolFlags {
+                namespace_module: true,
+                ..SymbolFlags::NONE
+            },
+            excludes: Excludes::NAMESPACE_MODULE,
+            scope: scope.current,
+        };
+    }
+
+    pub fn enter_ts_type_parameter(
+        &mut self,
+        tree: &Ast,
         parent: Option<NodeId>,
         scope: &ScopeTracker<'a>,
     ) {
-        match tree.kind_data(node) {
-            NodeKindData::ExportNamedDeclaration(declaration) => {
-                // The declaration form always exports its binding, even when
-                // `export_kind` is type. The pure re-export form has no inner
-                // binding and remains dependent on its export kind.
-                if declaration.declaration(tree).is_some()
-                    || declaration.export_kind(tree) != ImportOrExportKind::Type
-                {
-                    self.export_state = ExportState::Named;
-                }
-            }
-            NodeKindData::ExportDefaultDeclaration(_) => self.export_state = ExportState::Default,
-            NodeKindData::VariableDeclaration(declaration) => {
-                self.push_saved_context();
-                self.pending = match declaration.kind(tree) {
-                    VariableKind::Var => {
-                        let target = scope.hoist_target();
-                        let mut excludes = Excludes::FUNCTION_SCOPED_VAR;
-                        // Module-level function declarations are lexical;
-                        // everywhere else (and in TS) `var` merges with them.
-                        if !tree.is_ts() && scope.get(target).kind == ScopeKind::Module {
-                            excludes.function = true;
-                        }
-                        PendingBinding {
-                            flags: SymbolFlags {
-                                function_scoped_var: true,
-                                ambient: declaration.declare(tree) || self.ambient,
-                                ..SymbolFlags::NONE
-                            },
-                            excludes,
-                            scope: target,
-                        }
-                    }
-                    VariableKind::Const | VariableKind::Using | VariableKind::AwaitUsing => {
-                        PendingBinding {
-                            flags: SymbolFlags {
-                                block_scoped_var: true,
-                                const_var: true,
-                                ambient: declaration.declare(tree) || self.ambient,
-                                ..SymbolFlags::NONE
-                            },
-                            excludes: Excludes::BLOCK_SCOPED_VAR,
-                            scope: scope.current,
-                        }
-                    }
-                    VariableKind::Let => PendingBinding {
-                        flags: SymbolFlags {
-                            block_scoped_var: true,
-                            ambient: declaration.declare(tree) || self.ambient,
-                            ..SymbolFlags::NONE
-                        },
-                        excludes: Excludes::BLOCK_SCOPED_VAR,
-                        scope: scope.current,
-                    },
-                };
-            }
-            NodeKindData::Function(function) => {
-                self.push_saved_context();
-                let is_declaration =
-                    function.function_type(tree) == FunctionType::FunctionDeclaration;
-                let target = if is_declaration {
-                    scope
-                        .current_scope()
-                        .parent
-                        .expect("a function declaration scope has a parent")
-                } else {
-                    expression_name_scope(scope)
-                };
-                let target_kind = scope.get(target).kind;
-                let allow_overload = tree.is_ts()
-                    || matches!(
-                        target_kind,
-                        ScopeKind::Function
-                            | ScopeKind::FunctionBody
-                            | ScopeKind::Global
-                            | ScopeKind::StaticBlock
-                    );
-                // TS overloads, sloppy JS Annex B.3.2, and global merge with
-                // var. Lexical scopes (block/module) do not.
-                self.pending = PendingBinding {
-                    flags: SymbolFlags {
-                        function: true,
-                        ambient: self.ambient,
-                        ..SymbolFlags::NONE
-                    },
-                    excludes: if allow_overload {
-                        Excludes::FUNCTION
-                    } else {
-                        Excludes::BLOCK_SCOPED_VAR
-                    },
-                    scope: target,
-                };
-                // Expression names are local.
-                if !is_declaration {
-                    self.export_state = ExportState::None;
-                }
-            }
-            NodeKindData::TsFunction(_) => {
-                self.push_saved_context();
-                let target = scope
-                    .current_scope()
-                    .parent
-                    .expect("a TypeScript function scope has a parent");
-                self.pending = PendingBinding {
-                    flags: SymbolFlags {
-                        function: true,
-                        ambient: true,
-                        ..SymbolFlags::NONE
-                    },
-                    excludes: Excludes::FUNCTION,
-                    scope: target,
-                };
-            }
-            NodeKindData::Class(class) => {
-                self.push_saved_context();
-                let is_declaration = class.class_type(tree) == ClassType::ClassDeclaration;
-                self.pending = PendingBinding {
-                    flags: SymbolFlags {
-                        class: true,
-                        ambient: class.declare(tree) || self.ambient,
-                        ..SymbolFlags::NONE
-                    },
-                    excludes: Excludes::CLASS,
-                    scope: if is_declaration {
-                        scope
-                            .current_scope()
-                            .parent
-                            .expect("a class declaration scope has a parent")
-                    } else {
-                        expression_name_scope(scope)
-                    },
-                };
-                // Expression names are local.
-                if !is_declaration {
-                    self.export_state = ExportState::None;
-                }
-            }
-            NodeKindData::FormalParameters(_) => {
-                self.push_saved_context();
-                self.pending = PendingBinding {
-                    flags: SymbolFlags {
-                        function_scoped_var: true,
-                        parameter: true,
-                        ambient: self.pending.flags.ambient,
-                        ..SymbolFlags::NONE
-                    },
-                    excludes: Excludes::PARAMETER,
-                    scope: scope.current,
-                };
-                self.export_state = ExportState::None;
-            }
-            // Members are not the exported binding.
-            NodeKindData::ClassBody(_)
-            | NodeKindData::TsModuleBlock(_)
-            | NodeKindData::TsEnumBody(_) => {
-                self.export_state = ExportState::None;
-            }
-            NodeKindData::ImportDeclaration(declaration) => {
-                self.push_saved_context();
-                self.pending = import_pending(declaration.import_kind(tree), scope.current);
-            }
-            NodeKindData::TsImportEqualsDeclaration(declaration) => {
-                self.push_saved_context();
-                self.pending = import_pending(declaration.import_kind(tree), scope.current);
-            }
-            NodeKindData::ImportSpecifier(specifier) => {
-                self.push_saved_context();
-                if specifier.import_kind(tree) == ImportOrExportKind::Type {
-                    self.pending.flags = SymbolFlags {
-                        type_import: true,
-                        ..SymbolFlags::NONE
-                    };
-                    self.pending.excludes = Excludes::IMPORT_BINDING;
-                }
-            }
-            NodeKindData::CatchClause(_) => {
-                self.push_saved_context();
-                self.pending = PendingBinding {
-                    flags: SymbolFlags {
-                        function_scoped_var: true,
-                        catch_var: true,
-                        ..SymbolFlags::NONE
-                    },
-                    excludes: Excludes::CATCH_VAR,
-                    scope: scope.current,
-                };
-            }
-            NodeKindData::TsInterfaceDeclaration(declaration) => {
-                // The id binds in the surrounding scope. Type-parameter and
-                // body bindings live in a scope pushed by the tracker.
-                self.push_saved_context();
-                self.pending = PendingBinding {
-                    flags: SymbolFlags {
-                        interface: true,
-                        ambient: declaration.declare(tree) || self.ambient,
-                        ..SymbolFlags::NONE
-                    },
-                    excludes: Excludes::INTERFACE,
-                    scope: scope
-                        .current_scope()
-                        .parent
-                        .expect("an interface scope has a parent"),
-                };
-            }
-            NodeKindData::TsTypeAliasDeclaration(declaration) => {
-                self.push_saved_context();
-                self.pending = PendingBinding {
-                    flags: SymbolFlags {
-                        type_alias: true,
-                        ambient: declaration.declare(tree) || self.ambient,
-                        ..SymbolFlags::NONE
-                    },
-                    excludes: Excludes::TYPE_ALIAS,
-                    scope: scope
-                        .current_scope()
-                        .parent
-                        .expect("a type alias scope has a parent"),
-                };
-            }
-            NodeKindData::TsEnumDeclaration(declaration) => {
-                self.push_saved_context();
-                self.pending = PendingBinding {
-                    flags: if declaration.is_const(tree) {
-                        SymbolFlags {
-                            const_enum: true,
-                            ambient: declaration.declare(tree) || self.ambient,
-                            ..SymbolFlags::NONE
-                        }
-                    } else {
-                        SymbolFlags {
-                            regular_enum: true,
-                            ambient: declaration.declare(tree) || self.ambient,
-                            ..SymbolFlags::NONE
-                        }
-                    },
-                    excludes: if declaration.is_const(tree) {
-                        Excludes::CONST_ENUM
-                    } else {
-                        Excludes::REGULAR_ENUM
-                    },
-                    scope: scope.current,
-                };
-            }
-            NodeKindData::TsModuleDeclaration(declaration) => {
-                self.push_saved_context();
-                let instantiated = namespace_is_instantiated(tree, declaration.body(tree));
-                self.pending = PendingBinding {
-                    flags: SymbolFlags {
-                        value_module: instantiated,
-                        namespace_module: true,
-                        ambient: declaration.declare(tree) || self.ambient,
-                        ..SymbolFlags::NONE
-                    },
-                    excludes: if instantiated {
-                        Excludes::VALUE_MODULE
-                    } else {
-                        Excludes::NAMESPACE_MODULE
-                    },
-                    scope: scope.current,
-                };
-                // `declare` makes the whole body ambient.
-                if declaration.declare(tree) {
-                    self.ambient = true;
-                }
-            }
-            NodeKindData::TsGlobalDeclaration(_) => {
-                self.push_saved_context();
-                self.ambient = true;
-            }
-            NodeKindData::TsNamespaceExportDeclaration(_) => {
-                self.push_saved_context();
-                self.pending = PendingBinding {
-                    flags: SymbolFlags {
-                        namespace_module: true,
-                        ..SymbolFlags::NONE
-                    },
-                    excludes: Excludes::NAMESPACE_MODULE,
-                    scope: scope.current,
-                };
-            }
-            // `TsTypeParameter` wraps `<T>` and `infer U`. Mapped type keys
-            // `[K in T]` are bare binding identifiers under `TsMappedType`,
-            // so the same context applies.
-            NodeKindData::TsTypeParameter(_) | NodeKindData::TsMappedType(_) => {
-                self.push_saved_context();
-                // `infer` declares in the enclosing conditional scope so the
-                // true branch sees it, even from inside a signature type.
-                let target = if parent
-                    .is_some_and(|parent| tree.node_kind(parent) == NodeKind::TsInferType)
-                {
-                    nearest_conditional_scope(tree, scope)
-                } else {
-                    scope.current
-                };
-                self.pending = PendingBinding {
-                    flags: SymbolFlags {
-                        type_parameter: true,
-                        ..SymbolFlags::NONE
-                    },
-                    excludes: Excludes::TYPE_PARAMETER,
-                    scope: target,
-                };
-                self.export_state = ExportState::None;
-            }
-            // Signature-type parameter names are labels, not declarations.
-            // Clear an enclosing type-parameter context so nesting never
-            // declares them, as in `<T extends { [s: string]: number }> `.
-            NodeKindData::TsFunctionType(_)
-            | NodeKindData::TsConstructorType(_)
-            | NodeKindData::TsMethodSignature(_)
-            | NodeKindData::TsCallSignatureDeclaration(_)
-            | NodeKindData::TsConstructSignatureDeclaration(_)
-            | NodeKindData::TsIndexSignature(_) => {
-                self.push_saved_context();
-                self.pending = PendingBinding {
-                    flags: SymbolFlags::NONE,
-                    excludes: SymbolFlags::NONE,
-                    scope: scope.current,
-                };
-            }
-            _ => {}
+        // `TsTypeParameter` wraps `<T>` and `infer U`.
+        self.push_saved_context();
+        // `infer` declares in the enclosing conditional scope so the
+        // true branch sees it, even from inside a signature type.
+        let target = if parent.is_some_and(|parent| tree.node_kind(parent) == NodeKind::TsInferType)
+        {
+            nearest_conditional_scope(tree, scope)
+        } else {
+            scope.current
+        };
+        self.pending = PendingBinding {
+            flags: SymbolFlags {
+                type_parameter: true,
+                ..SymbolFlags::NONE
+            },
+            excludes: Excludes::TYPE_PARAMETER,
+            scope: target,
+        };
+        self.export_state = ExportState::None;
+    }
+
+    pub fn enter_ts_mapped_type(
+        &mut self,
+        tree: &Ast,
+        parent: Option<NodeId>,
+        scope: &ScopeTracker<'a>,
+    ) {
+        // Mapped type keys `[K in T]` are bare binding identifiers, so the
+        // same pending context as a type parameter applies.
+        self.push_saved_context();
+        let target = if parent.is_some_and(|parent| tree.node_kind(parent) == NodeKind::TsInferType)
+        {
+            nearest_conditional_scope(tree, scope)
+        } else {
+            scope.current
+        };
+        self.pending = PendingBinding {
+            flags: SymbolFlags {
+                type_parameter: true,
+                ..SymbolFlags::NONE
+            },
+            excludes: Excludes::TYPE_PARAMETER,
+            scope: target,
+        };
+        self.export_state = ExportState::None;
+    }
+
+    pub fn enter_ts_function_type(&mut self, scope: &ScopeTracker<'a>) {
+        self.enter_signature_type(scope);
+    }
+
+    pub fn enter_ts_constructor_type(&mut self, scope: &ScopeTracker<'a>) {
+        self.enter_signature_type(scope);
+    }
+
+    pub fn enter_ts_method_signature(&mut self, scope: &ScopeTracker<'a>) {
+        self.enter_signature_type(scope);
+    }
+
+    pub fn enter_ts_call_signature_declaration(&mut self, scope: &ScopeTracker<'a>) {
+        self.enter_signature_type(scope);
+    }
+
+    pub fn enter_ts_construct_signature_declaration(&mut self, scope: &ScopeTracker<'a>) {
+        self.enter_signature_type(scope);
+    }
+
+    pub fn enter_ts_index_signature(&mut self, scope: &ScopeTracker<'a>) {
+        self.enter_signature_type(scope);
+    }
+
+    fn enter_signature_type(&mut self, scope: &ScopeTracker<'a>) {
+        // Signature-type parameter names are labels, not declarations.
+        // Clear an enclosing type-parameter context so nesting never
+        // declares them, as in `<T extends { [s: string]: number }> `.
+        self.push_saved_context();
+        self.pending = PendingBinding {
+            flags: SymbolFlags::NONE,
+            excludes: SymbolFlags::NONE,
+            scope: scope.current,
+        };
+    }
+
+    /// Restores the context to what it was before the matching enter.
+    pub fn exit_formal_parameters(&mut self) {
+        if let Some(saved) = self.saved_stack.pop() {
+            self.pending = saved.pending;
+            self.ambient = saved.ambient;
         }
+    }
+
+    pub fn exit_saved_context(&mut self) {
+        if let Some(saved) = self.saved_stack.pop() {
+            self.pending = saved.pending;
+            self.export_state = saved.export_state;
+            self.ambient = saved.ambient;
+        }
+    }
+
+    pub fn exit_export_declaration(&mut self) {
+        self.export_state = ExportState::None;
     }
 
     fn push_saved_context(&mut self) {
@@ -1088,50 +1207,6 @@ impl<'a> SymbolTracker<'a> {
                 identifier.node_id(),
                 ReferenceFlags::default(),
             );
-        }
-    }
-
-    /// Restores the context to what it was before the matching enter.
-    pub fn exit(&mut self, kind: NodeKind) {
-        match kind {
-            NodeKind::FormalParameters => {
-                if let Some(saved) = self.saved_stack.pop() {
-                    self.pending = saved.pending;
-                    self.ambient = saved.ambient;
-                }
-            }
-            NodeKind::VariableDeclaration
-            | NodeKind::Function
-            | NodeKind::TsFunction
-            | NodeKind::Class
-            | NodeKind::ImportDeclaration
-            | NodeKind::TsImportEqualsDeclaration
-            | NodeKind::ImportSpecifier
-            | NodeKind::CatchClause
-            | NodeKind::TsInterfaceDeclaration
-            | NodeKind::TsTypeAliasDeclaration
-            | NodeKind::TsEnumDeclaration
-            | NodeKind::TsModuleDeclaration
-            | NodeKind::TsGlobalDeclaration
-            | NodeKind::TsNamespaceExportDeclaration
-            | NodeKind::TsTypeParameter
-            | NodeKind::TsMappedType
-            | NodeKind::TsFunctionType
-            | NodeKind::TsConstructorType
-            | NodeKind::TsMethodSignature
-            | NodeKind::TsCallSignatureDeclaration
-            | NodeKind::TsConstructSignatureDeclaration
-            | NodeKind::TsIndexSignature => {
-                if let Some(saved) = self.saved_stack.pop() {
-                    self.pending = saved.pending;
-                    self.export_state = saved.export_state;
-                    self.ambient = saved.ambient;
-                }
-            }
-            NodeKind::ExportNamedDeclaration | NodeKind::ExportDefaultDeclaration => {
-                self.export_state = ExportState::None;
-            }
-            _ => {}
         }
     }
 
