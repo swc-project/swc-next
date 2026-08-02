@@ -1,7 +1,7 @@
 parser * test262
 ========================
-Positive Passed: 91022/91092 (99.92%)
-Negative Passed: 7924/8648 (91.63%)
+Positive Passed: 91040/91092 (99.94%)
+Negative Passed: 7936/8648 (91.77%)
 Panicked: 0/99740 (0.00%)
 Failed: fixtures/test262/test/annexB/language/function-code/function-redeclaration-block.js - sloppy: semantic: Identifier 'a' has already been declared at 832..833
 Failed: fixtures/test262/test/annexB/language/function-code/function-redeclaration-switch.js - sloppy: semantic: Identifier 'a' has already been declared at 1368..1369
@@ -767,33 +767,3 @@ Failed: fixtures/test262/test/language/literals/regexp/u-unicode-esc-non-hex.js 
 Failed: fixtures/test262/test/language/literals/regexp/u-unicode-esc-non-hex.js - strict: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/language/literals/regexp/unicode-escape-nls-err.js - sloppy: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/language/literals/regexp/unicode-escape-nls-err.js - strict: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/test262/test/language/module-code/early-dup-top-function-async-generator.js - module: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/test262/test/language/module-code/early-dup-top-function-async.js - module: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/test262/test/language/module-code/early-dup-top-function-generator.js - module: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/test262/test/language/module-code/early-dup-top-function.js - module: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/test262/test/language/module-code/early-strict-mode.js - module: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/test262/test/language/module-code/export-default-asyncfunction-declaration-binding-exists.js - module: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/test262/test/language/module-code/export-default-asyncgenerator-declaration-binding-exists.js - module: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/test262/test/language/module-code/export-default-function-declaration-binding-exists.js - module: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/test262/test/language/module-code/export-default-generator-declaration-binding-exists.js - module: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/test262/test/language/module-code/instn-named-id-name.js - module: semantic: Export '_import' is not defined at 548..565
-Failed: fixtures/test262/test/language/module-code/instn-star-id-name.js - module: semantic: Export '_import' is not defined at 684..701
-Failed: fixtures/test262/test/language/module-code/namespace/internals/define-own-property.js - module: semantic: Export 'local2' is not defined at 517..534
-Failed: fixtures/test262/test/language/module-code/namespace/internals/delete-exported-init.js - module: semantic: Export 'local2' is not defined at 575..592
-Failed: fixtures/test262/test/language/module-code/namespace/internals/delete-exported-uninit.js - module: semantic: Export 'local2' is not defined at 1703..1720
-Failed: fixtures/test262/test/language/module-code/namespace/internals/get-own-property-str-found-init.js - module: semantic: Export 'local2' is not defined at 835..852
-Failed: fixtures/test262/test/language/module-code/namespace/internals/get-own-property-str-found-uninit.js - module: semantic: Export 'local2' is not defined at 1783..1800
-Failed: fixtures/test262/test/language/module-code/namespace/internals/get-own-property-str-not-found.js - module: semantic: Export 'test262' is not defined at 646..668
-Failed: fixtures/test262/test/language/module-code/namespace/internals/get-str-found-init.js - module: semantic: Export 'local2' is not defined at 597..614
-Failed: fixtures/test262/test/language/module-code/namespace/internals/get-str-found-uninit.js - module: semantic: Export 'local2' is not defined at 863..880
-Failed: fixtures/test262/test/language/module-code/namespace/internals/get-str-initialize.js - module: semantic: Export 'localUninit2' is not defined at 583..612
-Failed: fixtures/test262/test/language/module-code/namespace/internals/get-str-not-found.js - module: semantic: Export 'test262' is not defined at 548..570
-Failed: fixtures/test262/test/language/module-code/namespace/internals/get-str-update.js - module: semantic: Export 'local2' is not defined at 543..560
-Failed: fixtures/test262/test/language/module-code/namespace/internals/has-property-str-found-init.js - module: semantic: Export 'local2' is not defined at 603..620
-Failed: fixtures/test262/test/language/module-code/namespace/internals/has-property-str-found-uninit.js - module: semantic: Export 'local2' is not defined at 1048..1065
-Failed: fixtures/test262/test/language/module-code/namespace/internals/has-property-str-not-found.js - module: semantic: Export 'test262' is not defined at 596..618
-Failed: fixtures/test262/test/language/module-code/namespace/internals/own-property-keys-binding-types.js - module: semantic: Export 'local2' is not defined at 871..890
-Failed: fixtures/test262/test/language/module-code/namespace/internals/set.js - module: semantic: Export 'local2' is not defined at 459..476
-Failed: fixtures/test262/test/language/module-code/parse-err-hoist-lex-fun.js - module: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/test262/test/language/module-code/parse-err-hoist-lex-gen.js - module: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/test262/test/language/module-code/parse-err-yield.js - module: expected a parse or early error, but pipeline succeeded
