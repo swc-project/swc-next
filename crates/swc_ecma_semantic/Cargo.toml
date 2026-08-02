@@ -10,7 +10,6 @@ version               = "0.11.0"
 
 [dependencies]
 oxc_index  = { workspace = true }
-rustc-hash = { workspace = true }
 
 swc_next_ecma_ast = { workspace = true }
 swc_next_allocator = { workspace = true }
