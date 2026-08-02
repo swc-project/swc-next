@@ -1,19 +1,19 @@
 use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId, NodeKindData,
-    Program, ScopeId,
+    ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId, Program,
+    ScopeId,
 };
 
 use crate::{
     Semantic,
-    binder::{ReferenceSpace, SymbolTracker},
+    binder::{ReferenceFlags, ReferenceSpace, SymbolTracker},
     scope::{ScopeKind, ScopeTracker},
 };
 
 pub(crate) struct SemanticVisitCtx<'traverse, 'ast> {
     pub state: SemanticContext<'ast>,
     pub ast: &'traverse Ast<'ast>,
-    path: Vec<NodeId>,
+    current_node: Option<NodeId>,
 }
 
 impl<'traverse, 'ast> SemanticVisitCtx<'traverse, 'ast> {
@@ -21,35 +21,34 @@ impl<'traverse, 'ast> SemanticVisitCtx<'traverse, 'ast> {
         Self {
             state,
             ast,
-            path: Vec::new(),
+            current_node: None,
         }
     }
 
-    pub fn enter_node(&mut self, node: NodeId) {
-        let parent = self.path.last().copied();
-        self.path.push(node);
-        self.state.enter_node(node, parent);
+    pub fn enter_node(&mut self, node: NodeId) -> ReferenceFlags {
+        let parent = self.current_node;
+        self.current_node = Some(node);
+        self.state.enter_node(node, parent)
     }
 
     pub fn leave_node(&mut self, node: NodeId) {
-        let actual = self.path.pop();
-        debug_assert_eq!(actual, Some(node));
-    }
-
-    pub fn path(&self) -> &[NodeId] {
-        &self.path
+        debug_assert_eq!(self.current_node, Some(node));
+        self.current_node = self.state.node_parents[node.index()];
     }
 
     pub fn parent(&self) -> Option<NodeId> {
-        self.path.iter().rev().nth(1).copied()
+        self.current_node
+            .and_then(|node| self.state.node_parents[node.index()])
     }
 
     pub fn current_node(&self) -> Option<NodeId> {
-        self.path.last().copied()
+        self.current_node
     }
 
-    pub fn ancestors(&self) -> impl DoubleEndedIterator<Item = NodeId> + '_ {
-        self.path.iter().rev().copied()
+    pub fn ancestors(&self) -> impl Iterator<Item = NodeId> + '_ {
+        std::iter::successors(self.current_node, |node| {
+            self.state.node_parents[node.index()]
+        })
     }
 
     pub fn finalize(self) -> Semantic<'ast> {
@@ -57,14 +56,15 @@ impl<'traverse, 'ast> SemanticVisitCtx<'traverse, 'ast> {
     }
 }
 
-/// Walk context combining the path stack, scope tracker, and symbol
-/// tracker. Visitor hooks use it to inspect surrounding source structure
-/// or to query and contribute symbols.
+/// Walk context combining the current node, scope tracker, symbol tracker,
+/// and reference state. Visitor hooks use it to inspect surrounding source
+/// structure or to query and contribute symbols.
 pub(crate) struct SemanticContext<'a> {
     pub scope: ScopeTracker<'a>,
     pub symbols: SymbolTracker<'a>,
     // depth of TS type-only context. inspect via `in_type_position()`.
     type_position_depth: u32,
+    reference_flags: ReferenceFlags,
     // per-node tables carried into the final `Semantic`
     node_scopes: ArenaVec<'a, ScopeId>,
     node_parents: ArenaVec<'a, Option<NodeId>>,
@@ -83,6 +83,7 @@ impl<'a> SemanticContext<'a> {
             scope: ScopeTracker::init(root, tree),
             symbols: SymbolTracker::init(tree),
             type_position_depth: 0,
+            reference_flags: ReferenceFlags::default(),
             node_scopes,
             node_parents,
         }
@@ -100,9 +101,31 @@ impl<'a> SemanticContext<'a> {
             .any(|id| self.scope.get(id).kind == ScopeKind::TsModule)
     }
 
-    pub fn enter_node(&mut self, node: NodeId, parent: Option<NodeId>) {
+    #[inline]
+    pub fn enter_node(&mut self, node: NodeId, parent: Option<NodeId>) -> ReferenceFlags {
         self.node_scopes[node.index()] = self.scope.current;
         self.node_parents[node.index()] = parent;
+        let flags = self.reference_flags;
+        self.reference_flags = self.default_reference_flags();
+        flags
+    }
+
+    #[inline]
+    pub fn default_reference_flags(&self) -> ReferenceFlags {
+        ReferenceFlags {
+            write: false,
+            space: if self.in_type_position() {
+                ReferenceSpace::Type
+            } else {
+                ReferenceSpace::Value
+            },
+            _reserved: 0,
+        }
+    }
+
+    #[inline]
+    pub fn replace_reference_flags(&mut self, flags: ReferenceFlags) -> ReferenceFlags {
+        std::mem::replace(&mut self.reference_flags, flags)
     }
 
     #[inline]
@@ -114,6 +137,7 @@ impl<'a> SemanticContext<'a> {
     pub fn exit_type_position(&mut self) {
         assert!(self.type_position_depth > 0);
         self.type_position_depth -= 1;
+        self.reference_flags = self.default_reference_flags();
     }
 
     pub fn enter_directive(&mut self, tree: &Ast, directive: Directive) {
@@ -237,123 +261,4 @@ impl<'a> SemanticContext<'a> {
         self.symbols
             .finalize(tree, scopes, self.node_scopes, self.node_parents)
     }
-}
-
-/// The declaration space an identifier position resolves in.
-pub(crate) fn reference_space(
-    tree: &Ast<'_>,
-    path: &[NodeId],
-    in_type_position: bool,
-) -> ReferenceSpace {
-    assert!(!path.is_empty());
-    let mut qualified_left = false;
-    let mut child = *path.last().expect("the current node is in the path");
-    for &parent in path[..path.len() - 1].iter().rev() {
-        match tree.kind_data(parent) {
-            NodeKindData::TsQualifiedName(_) => {
-                qualified_left = true;
-                child = parent;
-            }
-            NodeKindData::TsPropertySignature(signature) => {
-                if signature.computed(tree) && signature.key(tree).node_id() == child {
-                    return ReferenceSpace::Typeof;
-                }
-                return type_reference_space(in_type_position, qualified_left);
-            }
-            NodeKindData::TsMethodSignature(signature) => {
-                if signature.computed(tree) && signature.key(tree).node_id() == child {
-                    return ReferenceSpace::Typeof;
-                }
-                return type_reference_space(in_type_position, qualified_left);
-            }
-            NodeKindData::TsTypeQuery(_) => return ReferenceSpace::Typeof,
-            NodeKindData::ExportSpecifier(specifier) => {
-                return if specifier.local(tree).node_id() == child {
-                    ReferenceSpace::Any
-                } else {
-                    ReferenceSpace::Value
-                };
-            }
-            NodeKindData::ExportDefaultDeclaration(_)
-            | NodeKindData::TsExportAssignment(_)
-            | NodeKindData::TsImportEqualsDeclaration(_) => return ReferenceSpace::Any,
-            _ => return type_reference_space(in_type_position, qualified_left),
-        }
-    }
-    ReferenceSpace::Value
-}
-
-fn type_reference_space(in_type_position: bool, qualified_left: bool) -> ReferenceSpace {
-    if !in_type_position {
-        ReferenceSpace::Value
-    } else if qualified_left {
-        ReferenceSpace::Namespace
-    } else {
-        ReferenceSpace::Type
-    }
-}
-
-/// <https://tc39.es/ecma262/#sec-static-semantics-assignmenttargettype>
-pub(crate) fn is_write_target(tree: &Ast<'_>, path: &[NodeId]) -> bool {
-    assert!(!path.is_empty());
-    let mut child = *path.last().expect("the current node is in the path");
-    for &parent in path[..path.len() - 1].iter().rev() {
-        assert_ne!(parent, child);
-        match tree.kind_data(parent) {
-            NodeKindData::AssignmentExpression(assignment) => {
-                return assignment.left(tree).node_id() == child;
-            }
-            NodeKindData::UpdateExpression(update) => {
-                return update.argument(tree).node_id() == child;
-            }
-            NodeKindData::ForInStatement(statement) => {
-                return statement.left(tree).node_id() == child;
-            }
-            NodeKindData::ForOfStatement(statement) => {
-                return statement.left(tree).node_id() == child;
-            }
-            NodeKindData::ArrayPattern(_)
-            | NodeKindData::ObjectPattern(_)
-            | NodeKindData::ParenthesizedExpression(_)
-            | NodeKindData::TsNonNullExpression(_) => child = parent,
-            NodeKindData::BindingProperty(property) => {
-                if property.value(tree).node_id() != child {
-                    return false;
-                }
-                child = parent;
-            }
-            NodeKindData::AssignmentPattern(pattern) => {
-                if pattern.left(tree).node_id() != child {
-                    return false;
-                }
-                child = parent;
-            }
-            NodeKindData::BindingRestElement(rest) => {
-                if rest.argument(tree).node_id() != child {
-                    return false;
-                }
-                child = parent;
-            }
-            NodeKindData::TsAsExpression(expression) => {
-                if expression.expression(tree).node_id() != child {
-                    return false;
-                }
-                child = parent;
-            }
-            NodeKindData::TsSatisfiesExpression(expression) => {
-                if expression.expression(tree).node_id() != child {
-                    return false;
-                }
-                child = parent;
-            }
-            NodeKindData::TsTypeAssertion(expression) => {
-                if expression.expression(tree).node_id() != child {
-                    return false;
-                }
-                child = parent;
-            }
-            _ => return false,
-        }
-    }
-    false
 }

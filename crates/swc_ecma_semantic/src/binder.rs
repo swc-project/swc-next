@@ -1086,8 +1086,7 @@ impl<'a> SymbolTracker<'a> {
         tree: &Ast,
         identifier: IdentifierReference,
         scope: &ScopeTracker<'a>,
-        is_write: bool,
-        space: ReferenceSpace,
+        flags: ReferenceFlags,
     ) {
         self.sync_scope_maps_from(scope);
         self.add_reference(
@@ -1095,11 +1094,7 @@ impl<'a> SymbolTracker<'a> {
             identifier.name(tree),
             scope.current,
             identifier.node_id(),
-            ReferenceFlags {
-                write: is_write,
-                space,
-                _reserved: 0,
-            },
+            flags,
         );
     }
 
