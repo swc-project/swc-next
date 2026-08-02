@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gungraun Optimize"
+  short_description: "Optimize Rust code with Gungraun CI"
+  default_prompt: "Use $gungraun-optimize to iteratively optimize this Rust code with Gungraun benchmarks in GitHub Actions."
