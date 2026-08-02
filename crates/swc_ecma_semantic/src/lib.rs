@@ -11,11 +11,9 @@ use swc_next_allocator::{
     hash_map::{HashMap as ArenaHashMap, Values},
     vec::Vec as ArenaVec,
 };
-use swc_next_ecma_ast::{
-    Ast, Diagnostic, NodeId, Program, ScopeId, SymbolId, TraverseCtx, TraverseWith,
-};
+use swc_next_ecma_ast::{Ast, Diagnostic, NodeId, Program, ScopeId, SymbolId, VisitWith};
 
-use crate::{binder::Range, checker::Checker, context::SemanticContext, scope::ScopeTree};
+use crate::{binder::Range, checker::Checker, scope::ScopeTree};
 
 mod binder;
 mod checker;
@@ -348,15 +346,11 @@ pub struct SemanticReturn<'a> {
 /// messages use the tree's arena, so the result is valid as long as the
 /// tree is alive.
 pub fn analyze<'a>(root: Program, ast: &mut Ast<'a>) -> SemanticReturn<'a> {
-    let mut visitor = Checker::new(ast.allocator());
-    let state = SemanticContext::init(root, ast);
-    let mut context = TraverseCtx::new(ast, state);
-    let _ = root.traverse_with(&mut visitor, &mut context);
-    let sem = context.state.finalize(context.ast);
-
-    visitor.check_unresolved_exports(ast, &sem);
+    let mut visitor = Checker::new(root, ast);
+    root.visit_with(&mut visitor);
+    let (semantic, diagnostics) = visitor.finish();
     SemanticReturn {
-        semantic: sem,
-        diagnostics: visitor.into_diagnostics(),
+        semantic,
+        diagnostics,
     }
 }

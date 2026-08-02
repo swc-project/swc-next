@@ -5,31 +5,56 @@ use std::{borrow::Cow, fmt::Write};
 
 use swc_next_allocator::{Allocator, hash_map::HashMap as ArenaHashMap, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
-    AssignmentExpression, Ast, AwaitExpression, BinaryExpression, BinaryOperator,
-    BindingIdentifier, BreakStatement, CallExpression, ClassBody, ContinueStatement, Diagnostic,
-    Directive, ExportAllDeclaration, ExportDefaultDeclaration, ExportNamedDeclaration,
-    ExportSpecifier, ForInStatement, ForOfStatement, Function, FunctionType, IdentifierReference,
+    ArrowFunctionExpression, AssignmentExpression, Ast, AwaitExpression, BinaryExpression,
+    BinaryOperator, BindingIdentifier, BlockStatement, BreakStatement, CallExpression, CatchClause,
+    Class, ClassBody, ContinueStatement, Decorator, Diagnostic, Directive, ExportAllDeclaration,
+    ExportDefaultDeclaration, ExportNamedDeclaration, ExportSpecifier, ForInStatement,
+    ForOfStatement, ForStatement, Function, FunctionBody, FunctionType, IdentifierReference,
     ImportDeclaration, ImportOrExportKind, JsxClosingElement, JsxOpeningElement, Label,
     LabelIdentifier, LabeledStatement, MemberExpression, MetaProperty, NodeId, NodeKind,
-    NodeKindData, NumericLiteral, ObjectExpression, ScopeId, Severity, Span, StringLiteral,
-    SwitchStatement, SymbolId, Traverse, TraverseAction, TsEnumMember, TsTypePredicate,
-    UnaryExpression, UnaryOperator, UpdateExpression, VariableDeclaration, VariableKind,
-    WithStatement, YieldExpression,
+    NodeKindData, NumericLiteral, ObjectExpression, Program, ScopeId, Severity, Span, StaticBlock,
+    StringLiteral, SwitchCase, SwitchStatement, SymbolId, TsCallSignatureDeclaration,
+    TsConditionalType, TsConstructSignatureDeclaration, TsConstructorType, TsEnumBody,
+    TsEnumMember, TsFunction, TsFunctionType, TsIndexSignature, TsInterfaceDeclaration,
+    TsMappedType, TsMethodSignature, TsModuleBlock, TsTypeAliasDeclaration, TsTypePredicate,
+    UnaryExpression, UnaryOperator, UpdateExpression, VariableDeclaration, VariableKind, Visit,
+    VisitWith, WithStatement, YieldExpression,
 };
 
 use crate::{
     ReferenceSpace, Semantic, Symbol, SymbolFlags,
     binder::RefContext,
-    context::{self, SemanticContext, SemanticTraverseCtx, is_write_target, reference_space},
+    context::{self, SemanticContext, SemanticVisitCtx, is_write_target, reference_space},
     ecmascript,
     scope::ScopeKind,
 };
 
-pub struct Checker<'a> {
+pub struct Checker<'traverse, 'a> {
+    checks: CheckerState<'a>,
+    context: SemanticVisitCtx<'traverse, 'a>,
+}
+
+struct CheckerState<'a> {
     allocator: &'a Allocator,
     exported_names: ArenaHashMap<'a, &'a [u8], NodeId>,
     export_specifiers: ArenaVec<'a, ExportSpecifierInfo<'a>>,
     diagnostics: Vec<Diagnostic<'a>>,
+}
+
+impl<'traverse, 'a> Checker<'traverse, 'a> {
+    pub fn new(root: Program, ast: &'traverse Ast<'a>) -> Self {
+        Self {
+            checks: CheckerState::new(ast.allocator()),
+            context: SemanticVisitCtx::new(ast, SemanticContext::init(root, ast)),
+        }
+    }
+
+    pub fn finish(mut self) -> (Semantic<'a>, Vec<Diagnostic<'a>>) {
+        let ast = self.context.ast;
+        let semantic = self.context.finalize();
+        self.checks.check_unresolved_exports(ast, &semantic);
+        (semantic, self.checks.into_diagnostics())
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -38,7 +63,7 @@ struct ExportSpecifierInfo<'a> {
     node: NodeId,
 }
 
-impl<'a> Checker<'a> {
+impl<'a> CheckerState<'a> {
     pub fn new(allocator: &'a Allocator) -> Self {
         Self {
             allocator,
@@ -75,7 +100,7 @@ impl<'a> Checker<'a> {
 
     fn report_redeclaration(
         &mut self,
-        tree: &mut Ast<'a>,
+        tree: &Ast<'a>,
         identifier: BindingIdentifier,
         node: NodeId,
         existing_id: SymbolId,
@@ -217,7 +242,7 @@ fn private_element_is_static(tree: &Ast<'_>, node: NodeId) -> bool {
 
 /// 15.7.7 AllPrivateIdentifiersValid. Walks ancestor ClassBody nodes,
 /// collecting PrivateBoundIdentifiers at each level.
-fn is_private_name_declared(context: &SemanticTraverseCtx<'_, '_>, name: &[u8]) -> bool {
+fn is_private_name_declared(context: &SemanticVisitCtx<'_, '_>, name: &[u8]) -> bool {
     for ancestor in context.ancestors() {
         let NodeKindData::ClassBody(body) = context.ast.kind_data(ancestor) else {
             continue;
@@ -290,7 +315,7 @@ enum SuperCallValidity {
 
 /// `super()` is permitted only inside a constructor of a derived class.
 /// Arrow functions are transparent (Section 8.5.1); regular functions are opaque.
-fn super_call_validity(context: &SemanticTraverseCtx<'_, '_>) -> SuperCallValidity {
+fn super_call_validity(context: &SemanticVisitCtx<'_, '_>) -> SuperCallValidity {
     let mut ancestors = context.ancestors();
     while let Some(ancestor) = ancestors.next() {
         match context.ast.node_kind(ancestor) {
@@ -324,7 +349,7 @@ fn super_call_validity(context: &SemanticTraverseCtx<'_, '_>) -> SuperCallValidi
 
 /// `super.property` is valid in class methods, object methods, field
 /// initializers, static blocks, and arrows inheriting from those contexts.
-fn is_super_property_valid(context: &SemanticTraverseCtx<'_, '_>) -> bool {
+fn is_super_property_valid(context: &SemanticVisitCtx<'_, '_>) -> bool {
     let mut ancestors = context.ancestors();
     while let Some(ancestor) = ancestors.next() {
         match context.ast.node_kind(ancestor) {
@@ -353,7 +378,7 @@ fn is_super_property_valid(context: &SemanticTraverseCtx<'_, '_>) -> bool {
     false
 }
 
-fn is_at_program_level(context: &SemanticTraverseCtx<'_, '_>) -> bool {
+fn is_at_program_level(context: &SemanticVisitCtx<'_, '_>) -> bool {
     context.parent().is_none_or(|parent| {
         matches!(
             context.ast.node_kind(parent),
@@ -380,7 +405,7 @@ fn is_iteration(kind: NodeKind) -> bool {
     )
 }
 
-fn is_inside_breakable(context: &SemanticTraverseCtx<'_, '_>) -> bool {
+fn is_inside_breakable(context: &SemanticVisitCtx<'_, '_>) -> bool {
     for ancestor in context.ancestors() {
         let kind = context.ast.node_kind(ancestor);
         if is_iteration(kind) || kind == NodeKind::SwitchStatement {
@@ -393,7 +418,7 @@ fn is_inside_breakable(context: &SemanticTraverseCtx<'_, '_>) -> bool {
     false
 }
 
-fn is_inside_iteration(context: &SemanticTraverseCtx<'_, '_>) -> bool {
+fn is_inside_iteration(context: &SemanticVisitCtx<'_, '_>) -> bool {
     for ancestor in context.ancestors() {
         let kind = context.ast.node_kind(ancestor);
         if is_iteration(kind) {
@@ -406,7 +431,7 @@ fn is_inside_iteration(context: &SemanticTraverseCtx<'_, '_>) -> bool {
     false
 }
 
-fn is_new_target_available(context: &SemanticTraverseCtx<'_, '_>) -> bool {
+fn is_new_target_available(context: &SemanticVisitCtx<'_, '_>) -> bool {
     for ancestor in context.ancestors() {
         match context.ast.node_kind(ancestor) {
             NodeKind::Function | NodeKind::StaticBlock | NodeKind::PropertyDefinition => {
@@ -427,7 +452,7 @@ enum LabelSearch {
     CrossedBoundary,
 }
 
-fn find_label(context: &SemanticTraverseCtx<'_, '_>, name: &[u8]) -> LabelSearch {
+fn find_label(context: &SemanticVisitCtx<'_, '_>, name: &[u8]) -> LabelSearch {
     assert!(!name.is_empty());
     let mut crossed_boundary = false;
     for ancestor in context.ancestors() {
@@ -461,10 +486,7 @@ enum ContinueLabelSearch {
     NotIteration,
 }
 
-fn find_label_for_continue(
-    context: &SemanticTraverseCtx<'_, '_>,
-    name: &[u8],
-) -> ContinueLabelSearch {
+fn find_label_for_continue(context: &SemanticVisitCtx<'_, '_>, name: &[u8]) -> ContinueLabelSearch {
     assert!(!name.is_empty());
     let mut crossed_boundary = false;
     for ancestor in context.ancestors() {
@@ -495,7 +517,7 @@ fn find_label_for_continue(
 }
 
 // True when the nearest enclosing boundary is a static block.
-fn is_inside_static_block(context: &SemanticTraverseCtx<'_, '_>) -> bool {
+fn is_inside_static_block(context: &SemanticVisitCtx<'_, '_>) -> bool {
     for ancestor in context.ancestors() {
         match context.ast.node_kind(ancestor) {
             NodeKind::StaticBlock => return true,
@@ -508,7 +530,7 @@ fn is_inside_static_block(context: &SemanticTraverseCtx<'_, '_>) -> bool {
 
 /// `arguments` is available inside regular functions but not in class field
 /// initializers or static blocks (arrow functions are transparent).
-fn is_arguments_available(context: &SemanticTraverseCtx<'_, '_>) -> bool {
+fn is_arguments_available(context: &SemanticVisitCtx<'_, '_>) -> bool {
     for ancestor in context.ancestors() {
         match context.ast.node_kind(ancestor) {
             NodeKind::Function => return true,
@@ -520,12 +542,12 @@ fn is_arguments_available(context: &SemanticTraverseCtx<'_, '_>) -> bool {
     true
 }
 
-fn is_in_formal_parameters(context: &SemanticTraverseCtx<'_, '_>) -> bool {
+fn is_in_formal_parameters(context: &SemanticVisitCtx<'_, '_>) -> bool {
     find_formal_parameters(context).is_some()
 }
 
 fn find_formal_parameters(
-    context: &SemanticTraverseCtx<'_, '_>,
+    context: &SemanticVisitCtx<'_, '_>,
 ) -> Option<swc_next_ecma_ast::FormalParameters> {
     for ancestor in context.ancestors() {
         match context.ast.kind_data(ancestor) {
@@ -588,161 +610,34 @@ impl Default for ReportOptions<'_> {
     }
 }
 
-impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
-    fn enter_node(
-        &mut self,
-        node: NodeId,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        let parent = context.parent();
-        context.state.enter(context.ast, node, parent);
-        TraverseAction::Proceed
+impl<'a> Visit<'a> for Checker<'_, 'a> {
+    fn ast(&self) -> &Ast<'a> {
+        self.context.ast
     }
 
-    fn exit_node(&mut self, node: NodeId, context: &mut SemanticTraverseCtx<'_, 'a>) {
-        context.state.exit(context.ast, node);
+    fn enter_node(&mut self, node: NodeId) {
+        self.context.enter_node(node);
     }
 
-    fn enter_binding_identifier(
-        &mut self,
-        identifier: BindingIdentifier,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        let node = identifier.node_id();
-        let name = self.intern_bytes(context.ast.string(identifier.name(context.ast)));
-        let flags = context.state.symbols.pending.flags;
-
-        // Type-position binding identifiers are parameter labels, not
-        // real bindings. Only type parameters are real here.
-        if context.state.in_type_position() && !flags.type_parameter {
-            self.post_binding(identifier, context);
-            return TraverseAction::Proceed;
-        }
-
-        // https://tc39.es/ecma262/#sec-identifiers-static-semantics-early-errors
-        if context.state.scope.is_strict() && !flags.ambient {
-            self.check_strict_reserved(name, node, context, "a binding identifier");
-            if is_eval_or_arguments(name) {
-                let message = self.fmt(format_args!(
-                    "'{}' is not allowed as a binding identifier in strict mode",
-                    String::from_utf8_lossy(name)
-                ));
-                self.report(context.ast.span(node), message, ReportOptions::default());
-            }
-        } else if flags.block_scoped_var && name == b"let" {
-            self.report(
-                context.ast.span(node),
-                "'let' is not allowed as a variable name in a lexical declaration",
-                ReportOptions::default(),
-            );
-        }
-
-        let existing = context
-            .state
-            .symbols
-            .binding(context.state.symbols.pending.scope, name);
-        self.check_redeclaration(identifier, node, name, flags, context, existing);
-
-        // TS loosens duplicate-export for declaration merges (interface
-        // + class, namespace + value, function overloads, var redeclares).
-        // Skip in TS when the name is already in scope.
-        if context.state.symbols.export_state == crate::binder::ExportState::Named {
-            let skip = existing.is_some() && context.ast.is_ts();
-            if !skip {
-                self.record_exported_name(name, node, context);
-            }
-        }
-
-        self.post_binding(identifier, context);
-        TraverseAction::Proceed
-    }
-
-    /// <https://tc39.es/ecma262/#sec-identifiers-static-semantics-early-errors>
-    fn enter_identifier_reference(
-        &mut self,
-        identifier: IdentifierReference,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        self.post_enter(NodeKindData::IdentifierReference(identifier), true, context);
-        // Type-position identifiers are TS type references, not JS
-        // identifier references. JS early-error rules do not apply.
-        if context.state.in_type_position() {
-            return TraverseAction::Proceed;
-        }
-        let node = identifier.node_id();
-        let name = self.intern_bytes(context.ast.string(identifier.name(context.ast)));
-        self.check_strict_reserved(name, node, context, "an identifier");
-        // https://tc39.es/ecma262/#sec-class-definitions-static-semantics-early-errors
-        if name == b"arguments" && !is_arguments_available(context) {
-            self.report(
-                context.ast.span(node),
-                "'arguments' is not allowed in class field initializers or static blocks",
-                ReportOptions::default(),
-            );
-        }
-        TraverseAction::Proceed
-    }
-
-    fn enter_ts_type_predicate(
-        &mut self,
-        predicate: TsTypePredicate,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        self.post_enter(NodeKindData::TsTypePredicate(predicate), false, context);
-        TraverseAction::Proceed
-    }
-
-    fn enter_ts_enum_member(
-        &mut self,
-        member: TsEnumMember,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        self.post_enter(NodeKindData::TsEnumMember(member), false, context);
-        TraverseAction::Proceed
-    }
-
-    fn enter_jsx_opening_element(
-        &mut self,
-        element: JsxOpeningElement,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        self.post_enter(NodeKindData::JsxOpeningElement(element), false, context);
-        TraverseAction::Proceed
-    }
-
-    fn enter_jsx_closing_element(
-        &mut self,
-        element: JsxClosingElement,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        self.post_enter(NodeKindData::JsxClosingElement(element), false, context);
-        TraverseAction::Proceed
-    }
-
-    /// <https://tc39.es/ecma262/#sec-identifiers-static-semantics-early-errors>
-    fn enter_label_identifier(
-        &mut self,
-        identifier: LabelIdentifier,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        let name = self.intern_bytes(context.ast.string(identifier.name(context.ast)));
-        self.check_strict_reserved(name, identifier.node_id(), context, "a label");
-        TraverseAction::Proceed
+    fn leave_node(&mut self, node: NodeId) {
+        self.context.leave_node(node);
     }
 
     /// <https://tc39.es/ecma262/#sec-string-literals-static-semantics-early-errors>
-    fn enter_string_literal(
-        &mut self,
-        literal: StringLiteral,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
+    fn visit_string_literal(&mut self, node: StringLiteral) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let literal = node;
         // Type-position strings are type-level, with no strict escape rules.
         if context.state.in_type_position() || !context.state.scope.is_strict() {
-            return TraverseAction::Proceed;
+            node.visit_children_with(self);
+            self.context.leave_node(node.node_id());
+            return;
         }
         let span = context.ast.span(literal.node_id());
         if has_octal_escape(&context.ast.source()[span.start as usize..span.end as usize]) {
-            self.report(
+            checks.report(
                 span,
                 "Octal escape sequences are not allowed in strict mode",
                 ReportOptions {
@@ -751,22 +646,26 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                 },
             );
         }
-        TraverseAction::Proceed
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
     }
-
     /// <https://tc39.es/ecma262/#sec-additional-syntax-numeric-literals>
-    fn enter_numeric_literal(
-        &mut self,
-        literal: NumericLiteral,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
+    fn visit_numeric_literal(&mut self, node: NumericLiteral) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let literal = node;
         if context.state.in_type_position() || !context.state.scope.is_strict() {
-            return TraverseAction::Proceed;
+            node.visit_children_with(self);
+            self.context.leave_node(node.node_id());
+            return;
         }
         let span = context.ast.span(literal.node_id());
         let raw = &context.ast.source()[span.start as usize..span.end as usize];
         if !is_legacy_numeric_literal(raw) {
-            return TraverseAction::Proceed;
+            node.visit_children_with(self);
+            self.context.leave_node(node.node_id());
+            return;
         }
         let is_octal = raw.iter().all(|byte| !matches!(byte, b'8' | b'9'));
         let (message, help) = if is_octal {
@@ -780,7 +679,7 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                 "Remove the leading zero, or use 0o for octal, 0x for hex, or 0b for binary notation",
             )
         };
-        self.report(
+        checks.report(
             span,
             message,
             ReportOptions {
@@ -788,202 +687,103 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                 ..ReportOptions::default()
             },
         );
-        TraverseAction::Proceed
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
     }
-
-    /// <https://tc39.es/ecma262/#sec-function-definitions-static-semantics-early-errors>
-    ///
-    /// "It is a Syntax Error if FunctionBodyContainsUseStrict is true and
-    /// IsSimpleParameterList of FormalParameters is false."
-    fn enter_directive(
-        &mut self,
-        directive: Directive,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        if context.ast.string(directive.value(context.ast)) != b"use strict" {
-            return TraverseAction::Proceed;
+    fn visit_identifier_reference(&mut self, node: IdentifierReference) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let identifier = node;
+        checks.post_enter(NodeKindData::IdentifierReference(identifier), true, context);
+        // Type-position identifiers are TS type references, not JS
+        // identifier references. JS early-error rules do not apply.
+        if context.state.in_type_position() {
+            node.visit_children_with(self);
+            self.context.leave_node(node.node_id());
+            return;
         }
-        let directive_span = context.ast.span(directive.node_id());
-        let mut parameter = None;
-        for node in context.ancestors() {
-            match context.ast.kind_data(node) {
-                NodeKindData::Function(function) => {
-                    parameter = ecmascript::find_non_simple_parameter(
-                        context.ast,
-                        function.params(context.ast),
-                    );
-                    break;
-                }
-                NodeKindData::ArrowFunctionExpression(arrow) => {
-                    parameter = ecmascript::find_non_simple_parameter(
-                        context.ast,
-                        arrow.params(context.ast),
-                    );
-                    break;
-                }
-                NodeKindData::Program(_) => break,
-                _ => {}
+        let node_id = identifier.node_id();
+        let name = checks.intern_bytes(context.ast.string(identifier.name(context.ast)));
+        checks.check_strict_reserved(name, node_id, context, "an identifier");
+        // https://tc39.es/ecma262/#sec-class-definitions-static-semantics-early-errors
+        if name == b"arguments" && !is_arguments_available(context) {
+            checks.report(
+                context.ast.span(node_id),
+                "'arguments' is not allowed in class field initializers or static blocks",
+                ReportOptions::default(),
+            );
+        }
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_binding_identifier(&mut self, node: BindingIdentifier) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let identifier = node;
+        let node_id = identifier.node_id();
+        let name = checks.intern_bytes(context.ast.string(identifier.name(context.ast)));
+        let flags = context.state.symbols.pending.flags;
+
+        // Type-position binding identifiers are parameter labels, not
+        // real bindings. Only type parameters are real here.
+        if context.state.in_type_position() && !flags.type_parameter {
+            checks.post_binding(identifier, context);
+            node.visit_children_with(self);
+            self.context.leave_node(node.node_id());
+            return;
+        }
+
+        // https://tc39.es/ecma262/#sec-identifiers-static-semantics-early-errors
+        if context.state.scope.is_strict() && !flags.ambient {
+            checks.check_strict_reserved(name, node_id, context, "a binding identifier");
+            if is_eval_or_arguments(name) {
+                let message = checks.fmt(format_args!(
+                    "'{}' is not allowed as a binding identifier in strict mode",
+                    String::from_utf8_lossy(name)
+                ));
+                checks.report(context.ast.span(node_id), message, ReportOptions::default());
+            }
+        } else if flags.block_scoped_var && name == b"let" {
+            checks.report(
+                context.ast.span(node_id),
+                "'let' is not allowed as a variable name in a lexical declaration",
+                ReportOptions::default(),
+            );
+        }
+
+        let existing = context
+            .state
+            .symbols
+            .binding(context.state.symbols.pending.scope, name);
+        checks.check_redeclaration(identifier, node_id, name, flags, context, existing);
+
+        // TS loosens duplicate-export for declaration merges (interface
+        // + class, namespace + value, function overloads, var redeclares).
+        // Skip in TS when the name is already in scope.
+        if context.state.symbols.export_state == crate::binder::ExportState::Named {
+            let skip = existing.is_some() && context.ast.is_ts();
+            if !skip {
+                checks.record_exported_name(name, node_id, context);
             }
         }
-        if let Some(parameter) = parameter {
-            self.report(
-                directive_span,
-                "Illegal 'use strict' directive in function with non-simple parameter list",
-                ReportOptions {
-                    labels: self
-                        .labels(&[self.label(context.ast.span(parameter), "non-simple parameter")]),
-                    ..ReportOptions::default()
-                },
-            );
-        }
-        TraverseAction::Proceed
-    }
 
-    // https://tc39.es/ecma262/#sec-labelled-statements-static-semantics-early-errors (14.13.1)
-    //   LabelledItem : FunctionDeclaration - syntax error unless non-strict + web host (B.3.1).
-    // https://tc39.es/ecma262/#sec-if-statement-static-semantics-early-errors (14.6.1)
-    //   IsLabelledFunction prevents labelled functions in if/iteration/with bodies.
-    // https://tc39.es/ecma262/#sec-functiondeclarations-in-ifstatement-statement-clauses (B.3.3)
-    //   Bare FunctionDeclaration in if/else is allowed in non-strict code only.
-    fn enter_function(
-        &mut self,
-        function: Function,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        if function.function_type(context.ast) != FunctionType::FunctionDeclaration {
-            return TraverseAction::Proceed;
-        }
-        let strict = context.state.scope.is_strict();
-        let mut through_labels = false;
-        let parent = {
-            let mut ancestors = context.ancestors();
-            let _ = ancestors.next();
-            loop {
-                let Some(parent) = ancestors.next() else {
-                    return TraverseAction::Proceed;
-                };
-                if context.ast.node_kind(parent) != NodeKind::LabeledStatement {
-                    break context.ast.node_kind(parent);
-                }
-                through_labels = true;
-            }
-        };
-        let valid = match parent {
-            NodeKind::Program
-            | NodeKind::FunctionBody
-            | NodeKind::ClassBody
-            | NodeKind::StaticBlock
-            | NodeKind::BlockStatement
-            | NodeKind::SwitchCase
-            | NodeKind::ExportNamedDeclaration
-            | NodeKind::ExportDefaultDeclaration
-            // TS namespace bodies host function declarations.
-            | NodeKind::TsModuleBlock => !strict || !through_labels,
-            NodeKind::IfStatement => !strict && !through_labels,
-            _ => false,
-        };
-        if !valid {
-            let message = if strict {
-                "In strict mode code, functions can only be declared at top level or inside a block"
-            } else {
-                "In non-strict mode code, functions can only be declared at top level, inside a block, or as the body of an if statement"
-            };
-            self.report(
-                context.ast.span(function.node_id()),
-                message,
-                ReportOptions::default(),
-            );
-        }
-        TraverseAction::Proceed
+        checks.post_binding(identifier, context);
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
     }
-
-    fn enter_yield_expression(
-        &mut self,
-        expression: YieldExpression,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        if is_in_formal_parameters(context) {
-            self.report(
-                context.ast.span(expression.node_id()),
-                "Yield expression is not allowed in formal parameters",
-                ReportOptions::default(),
-            );
-        }
-        TraverseAction::Proceed
+    /// <https://tc39.es/ecma262/#sec-identifiers-static-semantics-early-errors>
+    fn visit_label_identifier(&mut self, node: LabelIdentifier) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let identifier = node;
+        let name = checks.intern_bytes(context.ast.string(identifier.name(context.ast)));
+        checks.check_strict_reserved(name, identifier.node_id(), context, "a label");
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
     }
-
-    fn enter_await_expression(
-        &mut self,
-        expression: AwaitExpression,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        let message = {
-            let mut message = None;
-            for ancestor in context.ancestors() {
-                match context.ast.node_kind(ancestor) {
-                    NodeKind::FormalParameters => {
-                        message = Some("Await expression is not allowed in formal parameters");
-                        break;
-                    }
-                    // ClassStaticBlockBody uses [~Await].
-                    NodeKind::StaticBlock => {
-                        message = Some("Cannot use await in class static initialization block");
-                        break;
-                    }
-                    NodeKind::Function | NodeKind::ArrowFunctionExpression | NodeKind::Program => {
-                        break;
-                    }
-                    _ => {}
-                }
-            }
-            message
-        };
-        if let Some(message) = message {
-            self.report(
-                context.ast.span(expression.node_id()),
-                message,
-                ReportOptions::default(),
-            );
-        }
-        TraverseAction::Proceed
-    }
-
-    /// <https://tc39.es/ecma262/#sec-update-expressions-static-semantics-early-errors>
-    fn enter_update_expression(
-        &mut self,
-        expression: UpdateExpression,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        if context.state.scope.is_strict()
-            && is_eval_or_arguments_reference(
-                context.ast,
-                expression.argument(context.ast).node_id(),
-            )
-        {
-            self.report(
-                context.ast.span(expression.node_id()),
-                "Cannot assign to 'eval' or 'arguments' in strict mode",
-                ReportOptions::default(),
-            );
-        }
-        TraverseAction::Proceed
-    }
-
-    /// <https://tc39.es/ecma262/#sec-assignment-operators-static-semantics-early-errors>
-    fn enter_assignment_expression(
-        &mut self,
-        expression: AssignmentExpression,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        if context.state.scope.is_strict() {
-            self.check_assign_target_eval_arguments(
-                expression.left(context.ast).node_id(),
-                context,
-            );
-        }
-        TraverseAction::Proceed
-    }
-
     /// 15.7.7 Static Semantics: AllPrivateIdentifiersValid.
     /// <https://tc39.es/ecma262/#sec-static-semantics-allprivateidentifiersvalid>
     ///
@@ -991,34 +791,37 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
     /// class C { #a; f() { #b in {} } }
     /// //                     ^^ undeclared
     /// ```
-    fn enter_binary_expression(
-        &mut self,
-        expression: BinaryExpression,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
+    fn visit_binary_expression(&mut self, node: BinaryExpression) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let expression = node;
         let left = expression.left(context.ast).node_id();
         if expression.operator(context.ast) == BinaryOperator::In
             && let NodeKindData::PrivateIdentifier(identifier) = context.ast.kind_data(left)
         {
             let name = context.ast.string(identifier.name(context.ast));
             if !is_private_name_declared(context, name) {
-                let message = self.fmt(format_args!(
+                let message = checks.fmt(format_args!(
                     "Private field '#{}' must be declared in an enclosing class",
                     String::from_utf8_lossy(name)
                 ));
-                self.report(context.ast.span(left), message, ReportOptions::default());
+                checks.report(context.ast.span(left), message, ReportOptions::default());
             }
         }
-        TraverseAction::Proceed
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
     }
-
-    fn enter_unary_expression(
-        &mut self,
-        expression: UnaryExpression,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
+    /// <https://tc39.es/ecma262/#sec-left-hand-side-expressions-static-semantics-early-errors>
+    fn visit_unary_expression(&mut self, node: UnaryExpression) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let expression = node;
         if expression.operator(context.ast) != UnaryOperator::Delete {
-            return TraverseAction::Proceed;
+            node.visit_children_with(self);
+            self.context.leave_node(node.node_id());
+            return;
         }
         let mut target =
             unwrap_parentheses(context.ast, expression.argument(context.ast).node_id());
@@ -1027,11 +830,12 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         }
         match context.ast.kind_data(target) {
             // https://tc39.es/ecma262/#sec-delete-operator-static-semantics-early-errors
-            NodeKindData::IdentifierReference(_) if context.state.scope.is_strict() => self.report(
-                context.ast.span(expression.node_id()),
-                "Deleting a variable in strict mode is not allowed",
-                ReportOptions::default(),
-            ),
+            NodeKindData::IdentifierReference(_) if context.state.scope.is_strict() => checks
+                .report(
+                    context.ast.span(expression.node_id()),
+                    "Deleting a variable in strict mode is not allowed",
+                    ReportOptions::default(),
+                ),
             NodeKindData::MemberExpression(member)
                 if !member.computed(context.ast)
                     && context
@@ -1039,7 +843,7 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                         .node_kind(member.property(context.ast).node_id())
                         == NodeKind::PrivateIdentifier =>
             {
-                self.report(
+                checks.report(
                     context.ast.span(expression.node_id()),
                     "Private fields cannot be deleted",
                     ReportOptions::default(),
@@ -1047,373 +851,164 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
             }
             _ => {}
         }
-        TraverseAction::Proceed
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
     }
-
-    /// <https://tc39.es/ecma262/#sec-__proto__-property-names-in-object-initializers>
-    fn enter_object_expression(
-        &mut self,
-        object: ObjectExpression,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        let mut first_proto = None;
-        for property in object.properties(context.ast).iter() {
-            let property = context.ast.get_node_in_sub_range(property).node_id();
-            let NodeKindData::ObjectProperty(item) = context.ast.kind_data(property) else {
-                continue;
-            };
-            if item.computed(context.ast)
-                || item.method(context.ast)
-                || item.shorthand(context.ast)
-                || item.kind(context.ast) != swc_next_ecma_ast::PropertyKind::Init
-            {
+    /// <https://tc39.es/ecma262/#sec-update-expressions-static-semantics-early-errors>
+    fn visit_update_expression(&mut self, node: UpdateExpression) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let expression = node;
+        if context.state.scope.is_strict()
+            && is_eval_or_arguments_reference(
+                context.ast,
+                expression.argument(context.ast).node_id(),
+            )
+        {
+            checks.report(
+                context.ast.span(expression.node_id()),
+                "Cannot assign to 'eval' or 'arguments' in strict mode",
+                ReportOptions::default(),
+            );
+        }
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    /// <https://tc39.es/ecma262/#sec-assignment-operators-static-semantics-early-errors>
+    fn visit_assignment_expression(&mut self, node: AssignmentExpression) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let expression = node;
+        if context.state.scope.is_strict() {
+            checks.check_assign_target_eval_arguments(
+                expression.left(context.ast).node_id(),
+                context,
+            );
+        }
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_variable_declaration(&mut self, node: VariableDeclaration) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let declaration = node;
+        let kind = declaration.kind(context.ast);
+        if matches!(kind, VariableKind::Using | VariableKind::AwaitUsing)
+            && context.ast.source_type() == swc_next_ecma_ast::SourceType::Script
+            && is_at_program_level(context)
+        {
+            let message = checks.fmt(format_args!(
+                "'{}' is not allowed at the top level of a script",
+                kind.as_str()
+            ));
+            checks.report(
+                context.ast.span(declaration.node_id()),
+                message,
+                ReportOptions::default(),
+            );
+        }
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    /// Per section 14.12, the CaseBlock grammar permits at most one DefaultClause.
+    fn visit_switch_statement(&mut self, node: SwitchStatement) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let statement = node;
+        let mut first_default = None;
+        for case in statement.cases(context.ast).iter() {
+            let case = context.ast.get_node_in_sub_range(case);
+            if case.test(context.ast).is_some() {
                 continue;
             }
-            let name = match context.ast.kind_data(item.key(context.ast).node_id()) {
-                NodeKindData::IdentifierName(identifier) => {
-                    context.ast.string(identifier.name(context.ast))
-                }
-                NodeKindData::StringLiteral(string) => {
-                    context.ast.string(string.value(context.ast))
-                }
-                _ => continue,
-            };
-            if name != b"__proto__" {
-                continue;
-            }
-            if let Some(first) = first_proto {
-                self.report(
-                    context.ast.span(property),
-                    "Duplicate '__proto__' property in object literal",
+            if let Some(first) = first_default {
+                checks.report(
+                    context.ast.span(case.node_id()),
+                    "A switch statement can only have one default clause",
                     ReportOptions {
-                        labels: self
-                            .labels(&[self.label(context.ast.span(first), "first defined here")]),
+                        labels: checks.labels(&[
+                            checks.label(context.ast.span(first), "first default defined here")
+                        ]),
                         ..ReportOptions::default()
                     },
                 );
             } else {
-                first_proto = Some(property);
+                first_default = Some(case.node_id());
             }
         }
-        TraverseAction::Proceed
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
     }
-
-    /// <https://tc39.es/ecma262/#sec-class-definitions-static-semantics-early-errors>
-    fn enter_call_expression(
-        &mut self,
-        call: CallExpression,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        if context.ast.node_kind(call.callee(context.ast).node_id()) == NodeKind::Super {
-            let message = "'super()' is only valid in a constructor of a derived class";
-            match super_call_validity(context) {
-                SuperCallValidity::Valid => {}
-                SuperCallValidity::NotInConstructor => self.report(
-                    context.ast.span(call.node_id()),
-                    message,
-                    ReportOptions {
-                        help: Some(
-                            "Use an arrow function instead of a regular function to inherit the 'super' binding",
-                        ),
-                        ..ReportOptions::default()
-                    },
-                ),
-                SuperCallValidity::NoExtends => self.report(
-                    context.ast.span(call.node_id()),
-                    message,
-                    ReportOptions {
-                        help: Some(
-                            "Add an 'extends' clause to the class or remove the 'super()' call",
-                        ),
-                        ..ReportOptions::default()
-                    },
-                ),
-            }
-        }
-        TraverseAction::Proceed
-    }
-
-    // 13.3.7 SuperProperty only allows `super . IdentifierName`
-    // and `super [ Expression ]`, not `super . PrivateIdentifier`.
-    // https://tc39.es/ecma262/#sec-super-keyword
-    //
-    // 15.7.7 AllPrivateIdentifiersValid covers undeclared private names:
-    // https://tc39.es/ecma262/#sec-static-semantics-allprivateidentifiersvalid
-    fn enter_member_expression(
-        &mut self,
-        expression: MemberExpression,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        let object = expression.object(context.ast).node_id();
-        if context.ast.node_kind(object) == NodeKind::Super && !is_super_property_valid(context) {
-            self.report(
-                context.ast.span(expression.node_id()),
-                "'super' property access is only valid inside a method or class body",
-                ReportOptions {
-                    help: Some(
-                        "Use an arrow function instead of a regular function to inherit the 'super' binding",
-                    ),
-                    ..ReportOptions::default()
-                },
-            );
-        }
-
-        let property = expression.property(context.ast).node_id();
-        if !expression.computed(context.ast)
-            && let NodeKindData::PrivateIdentifier(identifier) = context.ast.kind_data(property)
-        {
-            let name = context.ast.string(identifier.name(context.ast));
-            if context.ast.node_kind(object) == NodeKind::Super {
-                self.report(
-                    context.ast.span(expression.node_id()),
-                    "'super' keyword unexpected here",
-                    ReportOptions::default(),
-                );
-            } else if !is_private_name_declared(context, name) {
-                let message = self.fmt(format_args!(
-                    "Private field '#{}' must be declared in an enclosing class",
-                    String::from_utf8_lossy(name)
-                ));
-                self.report(
-                    context.ast.span(property),
-                    message,
-                    ReportOptions::default(),
-                );
-            }
-        }
-        TraverseAction::Proceed
-    }
-
-    /// <https://tc39.es/ecma262/#sec-left-hand-side-expressions-static-semantics-early-errors>
-    fn enter_meta_property(
-        &mut self,
-        property: MetaProperty,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        let name = self.intern_bytes(
-            context
-                .ast
-                .string(property.meta(context.ast).name(context.ast)),
-        );
-        if name == b"import" && !context.ast.is_module() {
-            self.report(
-                context.ast.span(property.node_id()),
-                "'import.meta' is only valid in module code",
-                ReportOptions::default(),
-            );
-        }
-        if name == b"new" && !is_new_target_available(context) {
-            self.report(
-                context.ast.span(property.node_id()),
-                "'new.target' is only valid inside functions, class field initializers, or static blocks",
-                ReportOptions::default(),
-            );
-        }
-        TraverseAction::Proceed
-    }
-
-    // https://tc39.es/ecma262/#sec-static-semantics-early-errors
-    fn enter_import_declaration(
-        &mut self,
-        declaration: ImportDeclaration,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        self.check_import_export_position(
-            declaration.node_id(),
-            "import statement",
-            "'import' declaration",
-            context,
-        );
-        self.check_duplicate_with_attributes(declaration.attributes(context.ast), context);
-        TraverseAction::Proceed
-    }
-
-    fn enter_export_named_declaration(
-        &mut self,
-        declaration: ExportNamedDeclaration,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        self.check_import_export_position(
-            declaration.node_id(),
-            "'export' declaration",
-            "'export' declaration",
-            context,
-        );
-        self.check_duplicate_with_attributes(declaration.attributes(context.ast), context);
-        TraverseAction::Proceed
-    }
-
-    fn enter_export_default_declaration(
-        &mut self,
-        declaration: ExportDefaultDeclaration,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        self.check_import_export_position(
-            declaration.node_id(),
-            "'export default' declaration",
-            "'export default' declaration",
-            context,
-        );
-        self.record_exported_name(b"default", declaration.node_id(), context);
-        TraverseAction::Proceed
-    }
-
-    fn enter_export_all_declaration(
-        &mut self,
-        declaration: ExportAllDeclaration,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        self.check_import_export_position(
-            declaration.node_id(),
-            "'export *' declaration",
-            "'export *' declaration",
-            context,
-        );
-        if let Some(exported) = declaration.exported(context.ast) {
-            let name = self.intern_bytes(module_export_name(context.ast, exported.node_id()));
-            self.record_exported_name(name, declaration.node_id(), context);
-        }
-        self.check_duplicate_with_attributes(declaration.attributes(context.ast), context);
-        TraverseAction::Proceed
-    }
-
-    /// <https://tc39.es/ecma262/#sec-exports-static-semantics-early-errors>
-    fn enter_export_specifier(
-        &mut self,
-        specifier: ExportSpecifier,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        let exported_name = self.intern_bytes(module_export_name(
-            context.ast,
-            specifier.exported(context.ast).node_id(),
-        ));
-        self.record_exported_name(exported_name, specifier.node_id(), context);
-
-        // Collect for the unresolved check (local exports only). Skip
-        // type-only exports and exports inside TS namespaces (the
-        // checker tracks the value scope, not type or namespace).
-        if specifier.export_kind(context.ast) == ImportOrExportKind::Type
-            || context.state.in_ts_namespace()
-        {
-            return TraverseAction::Proceed;
-        }
-        if let Some(parent) = context.parent()
-            && let NodeKindData::ExportNamedDeclaration(declaration) = context.ast.kind_data(parent)
-            && declaration.source(context.ast).is_none()
-            && declaration.export_kind(context.ast) != ImportOrExportKind::Type
-        {
-            let local = module_export_name(context.ast, specifier.local(context.ast).node_id());
-            self.export_specifiers.push(ExportSpecifierInfo {
-                local_name: self.intern_bytes(local),
-                node: specifier.node_id(),
-            });
-        }
-        TraverseAction::Proceed
-    }
-
-    /// <https://tc39.es/ecma262/#sec-with-statement-static-semantics-early-errors>
-    fn enter_with_statement(
-        &mut self,
-        statement: WithStatement,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        if context.state.scope.is_strict() {
-            self.report(
-                context.ast.span(statement.node_id()),
-                "'with' statements are not allowed in strict mode",
-                ReportOptions::default(),
-            );
-        }
-        TraverseAction::Proceed
-    }
-
     /// <https://tc39.es/ecma262/#sec-for-in-and-for-of-statements-static-semantics-early-errors>
-    fn enter_for_of_statement(
-        &mut self,
-        statement: ForOfStatement,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
+    fn visit_for_in_statement(&mut self, node: ForInStatement) {
+        self.context.state.enter_for_in_statement(node.node_id());
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let statement = node;
+        let left = statement.left(context.ast).node_id();
+        checks.check_for_in_of_initializer(context, left, true);
+        if context.state.scope.is_strict() {
+            checks.check_assign_target_eval_arguments(left, context);
+        }
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    /// <https://tc39.es/ecma262/#sec-for-in-and-for-of-statements-static-semantics-early-errors>
+    fn visit_for_of_statement(&mut self, node: ForOfStatement) {
+        self.context.state.enter_for_of_statement(node.node_id());
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let statement = node;
         if statement.r#await(context.ast) && !context.ast.is_ts() && is_inside_static_block(context)
         {
-            self.report(
+            checks.report(
                 context.ast.span(statement.node_id()),
                 "Cannot use 'for await' in class static initialization block",
                 ReportOptions::default(),
             );
         }
         let left = statement.left(context.ast).node_id();
-        self.check_for_in_of_initializer(context, left, false);
+        checks.check_for_in_of_initializer(context, left, false);
         if context.state.scope.is_strict() {
-            self.check_assign_target_eval_arguments(left, context);
+            checks.check_assign_target_eval_arguments(left, context);
         }
-        TraverseAction::Proceed
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
     }
-
-    /// <https://tc39.es/ecma262/#sec-for-in-and-for-of-statements-static-semantics-early-errors>
-    fn enter_for_in_statement(
-        &mut self,
-        statement: ForInStatement,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        let left = statement.left(context.ast).node_id();
-        self.check_for_in_of_initializer(context, left, true);
-        if context.state.scope.is_strict() {
-            self.check_assign_target_eval_arguments(left, context);
-        }
-        TraverseAction::Proceed
-    }
-
-    fn enter_variable_declaration(
-        &mut self,
-        declaration: VariableDeclaration,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        let kind = declaration.kind(context.ast);
-        if matches!(kind, VariableKind::Using | VariableKind::AwaitUsing)
-            && context.ast.source_type() == swc_next_ecma_ast::SourceType::Script
-            && is_at_program_level(context)
-        {
-            let message = self.fmt(format_args!(
-                "'{}' is not allowed at the top level of a script",
-                kind.as_str()
-            ));
-            self.report(
-                context.ast.span(declaration.node_id()),
-                message,
-                ReportOptions::default(),
-            );
-        }
-        TraverseAction::Proceed
-    }
-
-    fn enter_break_statement(
-        &mut self,
-        statement: BreakStatement,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
+    fn visit_break_statement(&mut self, node: BreakStatement) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let statement = node;
         if let Some(label) = statement.label(context.ast) {
             let name = context.ast.string(label.name(context.ast));
             let result = find_label(context, name);
             if result != LabelSearch::Found {
                 let message = match result {
-                    LabelSearch::NotFound => self.fmt(format_args!(
+                    LabelSearch::NotFound => checks.fmt(format_args!(
                         "Use of undefined label '{}'",
                         String::from_utf8_lossy(name)
                     )),
-                    LabelSearch::CrossedBoundary => self.fmt(format_args!(
+                    LabelSearch::CrossedBoundary => checks.fmt(format_args!(
                         "Cannot break to label '{}' across function boundaries",
                         String::from_utf8_lossy(name)
                     )),
                     LabelSearch::Found => unreachable!(),
                 };
-                self.report(
+                checks.report(
                     context.ast.span(statement.node_id()),
                     message,
                     ReportOptions::default(),
                 );
             }
         } else if !is_inside_breakable(context) {
-            self.report(
+            checks.report(
                 context.ast.span(statement.node_id()),
                 "Illegal break statement",
                 ReportOptions {
@@ -1424,35 +1019,36 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                 },
             );
         }
-        TraverseAction::Proceed
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
     }
-
-    fn enter_continue_statement(
-        &mut self,
-        statement: ContinueStatement,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
+    /// <https://tc39.es/ecma262/#sec-labelled-statements-static-semantics-early-errors>
+    fn visit_continue_statement(&mut self, node: ContinueStatement) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let statement = node;
         if let Some(label) = statement.label(context.ast) {
             let name = context.ast.string(label.name(context.ast));
             let result = find_label_for_continue(context, name);
             if result != ContinueLabelSearch::Found {
                 let (message, help) = match result {
                     ContinueLabelSearch::NotFound => (
-                        self.fmt(format_args!(
+                        checks.fmt(format_args!(
                             "Use of undefined label '{}'",
                             String::from_utf8_lossy(name)
                         )),
                         None,
                     ),
                     ContinueLabelSearch::CrossedBoundary => (
-                        self.fmt(format_args!(
+                        checks.fmt(format_args!(
                             "Cannot continue to label '{}' across function boundaries",
                             String::from_utf8_lossy(name)
                         )),
                         None,
                     ),
                     ContinueLabelSearch::NotIteration => (
-                        self.fmt(format_args!(
+                        checks.fmt(format_args!(
                             "Label '{}' does not denote an iteration statement",
                             String::from_utf8_lossy(name)
                         )),
@@ -1462,7 +1058,7 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                     ),
                     ContinueLabelSearch::Found => unreachable!(),
                 };
-                self.report(
+                checks.report(
                     context.ast.span(statement.node_id()),
                     message,
                     ReportOptions {
@@ -1472,7 +1068,7 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                 );
             }
         } else if !is_inside_iteration(context) {
-            self.report(
+            checks.report(
                 context.ast.span(statement.node_id()),
                 "Illegal continue statement",
                 ReportOptions {
@@ -1483,16 +1079,15 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                 },
             );
         }
-        TraverseAction::Proceed
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
     }
-
-    /// <https://tc39.es/ecma262/#sec-labelled-statements-static-semantics-early-errors>
-    fn enter_labeled_statement(
-        &mut self,
-        statement: LabeledStatement,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        let name = self.intern_bytes(
+    fn visit_labeled_statement(&mut self, node: LabeledStatement) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let statement = node;
+        let name = checks.intern_bytes(
             context
                 .ast
                 .string(statement.label(context.ast).name(context.ast)),
@@ -1520,60 +1115,82 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
             duplicate
         };
         if duplicate {
-            let message = self.fmt(format_args!(
+            let message = checks.fmt(format_args!(
                 "Duplicate label '{}'",
                 String::from_utf8_lossy(name)
             ));
-            self.report(
+            checks.report(
                 context.ast.span(statement.label(context.ast).node_id()),
                 message,
                 ReportOptions::default(),
             );
         }
-        TraverseAction::Proceed
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
     }
-
-    /// Per section 14.12, the CaseBlock grammar permits at most one DefaultClause.
-    fn enter_switch_statement(
-        &mut self,
-        statement: SwitchStatement,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
-        let mut first_default = None;
-        for case in statement.cases(context.ast).iter() {
-            let case = context.ast.get_node_in_sub_range(case);
-            if case.test(context.ast).is_some() {
-                continue;
-            }
-            if let Some(first) = first_default {
-                self.report(
-                    context.ast.span(case.node_id()),
-                    "A switch statement can only have one default clause",
-                    ReportOptions {
-                        labels: self.labels(&[
-                            self.label(context.ast.span(first), "first default defined here")
-                        ]),
-                        ..ReportOptions::default()
-                    },
-                );
-            } else {
-                first_default = Some(case.node_id());
+    /// <https://tc39.es/ecma262/#sec-function-definitions-static-semantics-early-errors>
+    ///
+    /// "It is a Syntax Error if FunctionBodyContainsUseStrict is true and
+    /// IsSimpleParameterList of FormalParameters is false."
+    fn visit_directive(&mut self, node: Directive) {
+        self.context.state.enter_directive(self.context.ast, node);
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let directive = node;
+        if context.ast.string(directive.value(context.ast)) != b"use strict" {
+            node.visit_children_with(self);
+            self.context.leave_node(node.node_id());
+            return;
+        }
+        let directive_span = context.ast.span(directive.node_id());
+        let mut parameter = None;
+        for node in context.ancestors() {
+            match context.ast.kind_data(node) {
+                NodeKindData::Function(function) => {
+                    parameter = ecmascript::find_non_simple_parameter(
+                        context.ast,
+                        function.params(context.ast),
+                    );
+                    break;
+                }
+                NodeKindData::ArrowFunctionExpression(arrow) => {
+                    parameter = ecmascript::find_non_simple_parameter(
+                        context.ast,
+                        arrow.params(context.ast),
+                    );
+                    break;
+                }
+                NodeKindData::Program(_) => break,
+                _ => {}
             }
         }
-        TraverseAction::Proceed
+        if let Some(parameter) = parameter {
+            checks.report(
+                directive_span,
+                "Illegal 'use strict' directive in function with non-simple parameter list",
+                ReportOptions {
+                    labels: checks.labels(&[
+                        checks.label(context.ast.span(parameter), "non-simple parameter")
+                    ]),
+                    ..ReportOptions::default()
+                },
+            );
+        }
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
     }
-
     /// 15.7.1 Static Semantics: Early Errors.
     /// <https://tc39.es/ecma262/#sec-class-definitions-static-semantics-early-errors>
     ///
     /// `PrototypePropertyNameList` may contain only one `constructor`.
     /// `PrivateBoundIdentifiers` may contain no duplicate entries, except
     /// one getter/setter pair with matching staticness.
-    fn enter_class_body(
-        &mut self,
-        body: ClassBody,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) -> TraverseAction {
+    fn visit_class_body(&mut self, node: ClassBody) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let body = node;
         let children = body.body(context.ast);
         let mut first_constructor = None;
 
@@ -1589,11 +1206,11 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                 && method.kind(context.ast) == swc_next_ecma_ast::MethodDefinitionKind::Constructor
             {
                 if let Some(first) = first_constructor {
-                    self.report(
+                    checks.report(
                         context.ast.span(method.key(context.ast).node_id()),
                         "A class can only have one constructor",
                         ReportOptions {
-                            labels: self.labels(&[self
+                            labels: checks.labels(&[checks
                                 .label(context.ast.span(first), "first constructor defined here")]),
                             ..ReportOptions::default()
                         },
@@ -1635,16 +1252,16 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                 {
                     continue;
                 }
-                let message = self.fmt(format_args!(
+                let message = checks.fmt(format_args!(
                     "Duplicate private name '#{}'",
                     String::from_utf8_lossy(name)
                 ));
-                self.report(
+                checks.report(
                     context.ast.span(child),
                     message,
                     ReportOptions {
-                        labels: self.labels(&[
-                            self.label(context.ast.span(previous), "first declared here")
+                        labels: checks.labels(&[
+                            checks.label(context.ast.span(previous), "first declared here")
                         ]),
                         ..ReportOptions::default()
                     },
@@ -1652,16 +1269,594 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
                 break;
             }
         }
-        TraverseAction::Proceed
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    // https://tc39.es/ecma262/#sec-labelled-statements-static-semantics-early-errors (14.13.1)
+    //   LabelledItem : FunctionDeclaration - syntax error unless non-strict + web host (B.3.1).
+    // https://tc39.es/ecma262/#sec-if-statement-static-semantics-early-errors (14.6.1)
+    //   IsLabelledFunction prevents labelled functions in if/iteration/with bodies.
+    // https://tc39.es/ecma262/#sec-functiondeclarations-in-ifstatement-statement-clauses (B.3.3)
+    //   Bare FunctionDeclaration in if/else is allowed in non-strict code only.
+    fn visit_function(&mut self, node: Function) {
+        self.context.state.enter_function(self.context.ast, node);
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let function = node;
+        if function.function_type(context.ast) != FunctionType::FunctionDeclaration {
+            node.visit_children_with(self);
+            self.context.leave_node(node.node_id());
+            return;
+        }
+        let strict = context.state.scope.is_strict();
+        let mut through_labels = false;
+        let mut ancestors = context.ancestors();
+        let _ = ancestors.next();
+        let parent = loop {
+            let Some(parent) = ancestors.next() else {
+                drop(ancestors);
+                node.visit_children_with(self);
+                self.context.leave_node(node.node_id());
+                return;
+            };
+            if context.ast.node_kind(parent) != NodeKind::LabeledStatement {
+                break context.ast.node_kind(parent);
+            }
+            through_labels = true;
+        };
+        drop(ancestors);
+        let valid = match parent {
+            NodeKind::Program
+            | NodeKind::FunctionBody
+            | NodeKind::ClassBody
+            | NodeKind::StaticBlock
+            | NodeKind::BlockStatement
+            | NodeKind::SwitchCase
+            | NodeKind::ExportNamedDeclaration
+            | NodeKind::ExportDefaultDeclaration
+            // TS namespace bodies host function declarations.
+            | NodeKind::TsModuleBlock => !strict || !through_labels,
+            NodeKind::IfStatement => !strict && !through_labels,
+            _ => false,
+        };
+        if !valid {
+            let message = if strict {
+                "In strict mode code, functions can only be declared at top level or inside a block"
+            } else {
+                "In non-strict mode code, functions can only be declared at top level, inside a block, or as the body of an if statement"
+            };
+            checks.report(
+                context.ast.span(function.node_id()),
+                message,
+                ReportOptions::default(),
+            );
+        }
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    /// <https://tc39.es/ecma262/#sec-with-statement-static-semantics-early-errors>
+    fn visit_with_statement(&mut self, node: WithStatement) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let statement = node;
+        if context.state.scope.is_strict() {
+            checks.report(
+                context.ast.span(statement.node_id()),
+                "'with' statements are not allowed in strict mode",
+                ReportOptions::default(),
+            );
+        }
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    /// <https://tc39.es/ecma262/#sec-__proto__-property-names-in-object-initializers>
+    fn visit_object_expression(&mut self, node: ObjectExpression) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let object = node;
+        let mut first_proto = None;
+        for property in object.properties(context.ast).iter() {
+            let property = context.ast.get_node_in_sub_range(property).node_id();
+            let NodeKindData::ObjectProperty(item) = context.ast.kind_data(property) else {
+                continue;
+            };
+            if item.computed(context.ast)
+                || item.method(context.ast)
+                || item.shorthand(context.ast)
+                || item.kind(context.ast) != swc_next_ecma_ast::PropertyKind::Init
+            {
+                continue;
+            }
+            let name = match context.ast.kind_data(item.key(context.ast).node_id()) {
+                NodeKindData::IdentifierName(identifier) => {
+                    context.ast.string(identifier.name(context.ast))
+                }
+                NodeKindData::StringLiteral(string) => {
+                    context.ast.string(string.value(context.ast))
+                }
+                _ => continue,
+            };
+            if name != b"__proto__" {
+                continue;
+            }
+            if let Some(first) = first_proto {
+                checks.report(
+                    context.ast.span(property),
+                    "Duplicate '__proto__' property in object literal",
+                    ReportOptions {
+                        labels: checks
+                            .labels(&[checks.label(context.ast.span(first), "first defined here")]),
+                        ..ReportOptions::default()
+                    },
+                );
+            } else {
+                first_proto = Some(property);
+            }
+        }
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    // 13.3.7 SuperProperty only allows `super . IdentifierName`
+    // and `super [ Expression ]`, not `super . PrivateIdentifier`.
+    // https://tc39.es/ecma262/#sec-super-keyword
+    //
+    // 15.7.7 AllPrivateIdentifiersValid covers undeclared private names:
+    // https://tc39.es/ecma262/#sec-static-semantics-allprivateidentifiersvalid
+    fn visit_member_expression(&mut self, node: MemberExpression) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let expression = node;
+        let object = expression.object(context.ast).node_id();
+        if context.ast.node_kind(object) == NodeKind::Super && !is_super_property_valid(context) {
+            checks.report(
+                context.ast.span(expression.node_id()),
+                "'super' property access is only valid inside a method or class body",
+                ReportOptions {
+                    help: Some(
+                        "Use an arrow function instead of a regular function to inherit the 'super' binding",
+                    ),
+                    ..ReportOptions::default()
+                },
+            );
+        }
+
+        let property = expression.property(context.ast).node_id();
+        if !expression.computed(context.ast)
+            && let NodeKindData::PrivateIdentifier(identifier) = context.ast.kind_data(property)
+        {
+            let name = context.ast.string(identifier.name(context.ast));
+            if context.ast.node_kind(object) == NodeKind::Super {
+                checks.report(
+                    context.ast.span(expression.node_id()),
+                    "'super' keyword unexpected here",
+                    ReportOptions::default(),
+                );
+            } else if !is_private_name_declared(context, name) {
+                let message = checks.fmt(format_args!(
+                    "Private field '#{}' must be declared in an enclosing class",
+                    String::from_utf8_lossy(name)
+                ));
+                checks.report(
+                    context.ast.span(property),
+                    message,
+                    ReportOptions::default(),
+                );
+            }
+        }
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    /// <https://tc39.es/ecma262/#sec-class-definitions-static-semantics-early-errors>
+    fn visit_call_expression(&mut self, node: CallExpression) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let call = node;
+        if context.ast.node_kind(call.callee(context.ast).node_id()) == NodeKind::Super {
+            let message = "'super()' is only valid in a constructor of a derived class";
+            match super_call_validity(context) {
+                SuperCallValidity::Valid => {}
+                SuperCallValidity::NotInConstructor => checks.report(
+                    context.ast.span(call.node_id()),
+                    message,
+                    ReportOptions {
+                        help: Some(
+                            "Use an arrow function instead of a regular function to inherit the 'super' binding",
+                        ),
+                        ..ReportOptions::default()
+                    },
+                ),
+                SuperCallValidity::NoExtends => checks.report(
+                    context.ast.span(call.node_id()),
+                    message,
+                    ReportOptions {
+                        help: Some(
+                            "Add an 'extends' clause to the class or remove the 'super()' call",
+                        ),
+                        ..ReportOptions::default()
+                    },
+                ),
+            }
+        }
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_await_expression(&mut self, node: AwaitExpression) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let expression = node;
+        let message = {
+            let mut message = None;
+            for ancestor in context.ancestors() {
+                match context.ast.node_kind(ancestor) {
+                    NodeKind::FormalParameters => {
+                        message = Some("Await expression is not allowed in formal parameters");
+                        break;
+                    }
+                    // ClassStaticBlockBody uses [~Await].
+                    NodeKind::StaticBlock => {
+                        message = Some("Cannot use await in class static initialization block");
+                        break;
+                    }
+                    NodeKind::Function | NodeKind::ArrowFunctionExpression | NodeKind::Program => {
+                        break;
+                    }
+                    _ => {}
+                }
+            }
+            message
+        };
+        if let Some(message) = message {
+            checks.report(
+                context.ast.span(expression.node_id()),
+                message,
+                ReportOptions::default(),
+            );
+        }
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_yield_expression(&mut self, node: YieldExpression) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let expression = node;
+        if is_in_formal_parameters(context) {
+            checks.report(
+                context.ast.span(expression.node_id()),
+                "Yield expression is not allowed in formal parameters",
+                ReportOptions::default(),
+            );
+        }
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_meta_property(&mut self, node: MetaProperty) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let property = node;
+        let name = checks.intern_bytes(
+            context
+                .ast
+                .string(property.meta(context.ast).name(context.ast)),
+        );
+        if name == b"import" && !context.ast.is_module() {
+            checks.report(
+                context.ast.span(property.node_id()),
+                "'import.meta' is only valid in module code",
+                ReportOptions::default(),
+            );
+        }
+        if name == b"new" && !is_new_target_available(context) {
+            checks.report(
+                context.ast.span(property.node_id()),
+                "'new.target' is only valid inside functions, class field initializers, or static blocks",
+                ReportOptions::default(),
+            );
+        }
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    // https://tc39.es/ecma262/#sec-static-semantics-early-errors
+    fn visit_import_declaration(&mut self, node: ImportDeclaration) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let declaration = node;
+        checks.check_import_export_position(
+            declaration.node_id(),
+            "import statement",
+            "'import' declaration",
+            context,
+        );
+        checks.check_duplicate_with_attributes(declaration.attributes(context.ast), context);
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_export_named_declaration(&mut self, node: ExportNamedDeclaration) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let declaration = node;
+        checks.check_import_export_position(
+            declaration.node_id(),
+            "'export' declaration",
+            "'export' declaration",
+            context,
+        );
+        checks.check_duplicate_with_attributes(declaration.attributes(context.ast), context);
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_export_default_declaration(&mut self, node: ExportDefaultDeclaration) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let declaration = node;
+        checks.check_import_export_position(
+            declaration.node_id(),
+            "'export default' declaration",
+            "'export default' declaration",
+            context,
+        );
+        checks.record_exported_name(b"default", declaration.node_id(), context);
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_export_all_declaration(&mut self, node: ExportAllDeclaration) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let declaration = node;
+        checks.check_import_export_position(
+            declaration.node_id(),
+            "'export *' declaration",
+            "'export *' declaration",
+            context,
+        );
+        if let Some(exported) = declaration.exported(context.ast) {
+            let name = checks.intern_bytes(module_export_name(context.ast, exported.node_id()));
+            checks.record_exported_name(name, declaration.node_id(), context);
+        }
+        checks.check_duplicate_with_attributes(declaration.attributes(context.ast), context);
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    /// <https://tc39.es/ecma262/#sec-exports-static-semantics-early-errors>
+    fn visit_export_specifier(&mut self, node: ExportSpecifier) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let specifier = node;
+        let exported_name = checks.intern_bytes(module_export_name(
+            context.ast,
+            specifier.exported(context.ast).node_id(),
+        ));
+        checks.record_exported_name(exported_name, specifier.node_id(), context);
+
+        // Collect for the unresolved check (local exports only). Skip
+        // type-only exports and exports inside TS namespaces (the
+        // checker tracks the value scope, not type or namespace).
+        if specifier.export_kind(context.ast) == ImportOrExportKind::Type
+            || context.state.in_ts_namespace()
+        {
+            node.visit_children_with(self);
+            self.context.leave_node(node.node_id());
+            return;
+        }
+        if let Some(parent) = context.parent()
+            && let NodeKindData::ExportNamedDeclaration(declaration) = context.ast.kind_data(parent)
+            && declaration.source(context.ast).is_none()
+            && declaration.export_kind(context.ast) != ImportOrExportKind::Type
+        {
+            let local = module_export_name(context.ast, specifier.local(context.ast).node_id());
+            checks.export_specifiers.push(ExportSpecifierInfo {
+                local_name: checks.intern_bytes(local),
+                node: specifier.node_id(),
+            });
+        }
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_ts_type_predicate(&mut self, node: TsTypePredicate) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let predicate = node;
+        checks.post_enter(NodeKindData::TsTypePredicate(predicate), false, context);
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_switch_case(&mut self, node: SwitchCase) {
+        self.context
+            .state
+            .enter_switch_case(self.context.current_node());
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_for_statement(&mut self, node: ForStatement) {
+        self.context.state.enter_for_statement(node.node_id());
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_catch_clause(&mut self, node: CatchClause) {
+        self.context.state.enter_catch_clause(node.node_id());
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_decorator(&mut self, node: Decorator) {
+        self.context.state.enter_decorator();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_class(&mut self, node: Class) {
+        self.context.state.enter_class(self.context.ast, node);
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_static_block(&mut self, node: StaticBlock) {
+        self.context.state.enter_static_block(node.node_id());
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_function_body(&mut self, node: FunctionBody) {
+        let parent = self.context.current_node();
+        self.context
+            .state
+            .enter_function_body(self.context.ast, node, parent);
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_block_statement(&mut self, node: BlockStatement) {
+        self.context
+            .state
+            .enter_block_statement(self.context.ast, node.node_id());
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_arrow_function_expression(&mut self, node: ArrowFunctionExpression) {
+        self.context
+            .state
+            .enter_arrow_function_expression(self.context.ast, node);
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_ts_function(&mut self, node: TsFunction) {
+        self.context.state.enter_ts_function(node.node_id());
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_ts_conditional_type(&mut self, node: TsConditionalType) {
+        self.context.state.enter_ts_conditional_type(node.node_id());
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_ts_function_type(&mut self, node: TsFunctionType) {
+        self.context.state.enter_ts_function_type(node.node_id());
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_ts_constructor_type(&mut self, node: TsConstructorType) {
+        self.context.state.enter_ts_constructor_type(node.node_id());
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_ts_mapped_type(&mut self, node: TsMappedType) {
+        self.context.state.enter_ts_mapped_type(node.node_id());
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_ts_method_signature(&mut self, node: TsMethodSignature) {
+        self.context.state.enter_ts_method_signature(node.node_id());
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_ts_call_signature_declaration(&mut self, node: TsCallSignatureDeclaration) {
+        self.context
+            .state
+            .enter_ts_call_signature_declaration(node.node_id());
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_ts_construct_signature_declaration(&mut self, node: TsConstructSignatureDeclaration) {
+        self.context
+            .state
+            .enter_ts_construct_signature_declaration(node.node_id());
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_ts_index_signature(&mut self, node: TsIndexSignature) {
+        self.context.state.enter_ts_index_signature(node.node_id());
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_ts_type_alias_declaration(&mut self, node: TsTypeAliasDeclaration) {
+        self.context
+            .state
+            .enter_ts_type_alias_declaration(node.node_id());
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_ts_interface_declaration(&mut self, node: TsInterfaceDeclaration) {
+        self.context
+            .state
+            .enter_ts_interface_declaration(node.node_id());
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_ts_enum_body(&mut self, node: TsEnumBody) {
+        self.context.state.enter_ts_enum_body(node.node_id());
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_ts_enum_member(&mut self, node: TsEnumMember) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let member = node;
+        checks.post_enter(NodeKindData::TsEnumMember(member), false, context);
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_ts_module_block(&mut self, node: TsModuleBlock) {
+        self.context.state.enter_ts_module_block(node.node_id());
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_jsx_opening_element(&mut self, node: JsxOpeningElement) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let element = node;
+        checks.post_enter(NodeKindData::JsxOpeningElement(element), false, context);
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+    }
+    fn visit_jsx_closing_element(&mut self, node: JsxClosingElement) {
+        self.context.enter_node(node.node_id());
+        let checks = &mut self.checks;
+        let context = &mut self.context;
+        let element = node;
+        checks.post_enter(NodeKindData::JsxClosingElement(element), false, context);
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
     }
 }
 
-impl<'a> Checker<'a> {
+impl<'a> CheckerState<'a> {
     fn post_enter(
         &self,
         data: NodeKindData,
         is_reference: bool,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
+        context: &mut SemanticVisitCtx<'_, 'a>,
     ) {
         let is_write = is_reference && is_write_target(context.ast, context.path());
         let space = if is_reference {
@@ -1678,11 +1873,7 @@ impl<'a> Checker<'a> {
             .post_enter(context.ast, data, RefContext { is_write, space });
     }
 
-    fn post_binding(
-        &self,
-        identifier: BindingIdentifier,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
-    ) {
+    fn post_binding(&self, identifier: BindingIdentifier, context: &mut SemanticVisitCtx<'_, 'a>) {
         let space = context::reference_space(
             context.ast,
             context.path(),
@@ -1699,7 +1890,7 @@ impl<'a> Checker<'a> {
         node: NodeId,
         name: &[u8],
         flags: SymbolFlags,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
+        context: &mut SemanticVisitCtx<'_, 'a>,
         existing_id: Option<SymbolId>,
     ) {
         assert!(!name.is_empty());
@@ -1849,7 +2040,7 @@ impl<'a> Checker<'a> {
         &mut self,
         name: &[u8],
         node: NodeId,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
+        context: &mut SemanticVisitCtx<'_, 'a>,
         as_what: &'static str,
     ) {
         if !context.state.scope.is_strict() {
@@ -1868,7 +2059,7 @@ impl<'a> Checker<'a> {
     /// Annex B.3.5, may not have an Initializer.
     fn check_for_in_of_initializer(
         &mut self,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
+        context: &mut SemanticVisitCtx<'_, 'a>,
         left: NodeId,
         is_for_in: bool,
     ) {
@@ -1911,7 +2102,7 @@ impl<'a> Checker<'a> {
     fn check_assign_target_eval_arguments(
         &mut self,
         node: NodeId,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
+        context: &mut SemanticVisitCtx<'_, 'a>,
     ) {
         match context.ast.kind_data(node) {
             NodeKindData::IdentifierReference(identifier) => {
@@ -1970,7 +2161,7 @@ impl<'a> Checker<'a> {
         node: NodeId,
         out_of_module_label: &'static str,
         top_level_label: &'static str,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
+        context: &mut SemanticVisitCtx<'_, 'a>,
     ) {
         let Some(parent) = context.parent() else {
             return;
@@ -1994,7 +2185,7 @@ impl<'a> Checker<'a> {
     fn check_duplicate_with_attributes(
         &mut self,
         attributes: swc_next_ecma_ast::TypedSubRange<swc_next_ecma_ast::ImportAttribute>,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
+        context: &mut SemanticVisitCtx<'_, 'a>,
     ) {
         for index in 0..attributes.len() {
             let attribute = attributes
@@ -2056,7 +2247,7 @@ impl<'a> Checker<'a> {
         &mut self,
         name: &[u8],
         node: NodeId,
-        context: &mut SemanticTraverseCtx<'_, 'a>,
+        context: &mut SemanticVisitCtx<'_, 'a>,
     ) {
         // Exports inside a TS namespace are namespace-scoped, not module-scoped.
         if !context.ast.is_module() || context.state.in_ts_namespace() {
