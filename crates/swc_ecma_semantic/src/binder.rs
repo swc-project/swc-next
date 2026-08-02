@@ -1,5 +1,5 @@
 use oxc_index::Idx;
-use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
+use swc_next_allocator::{Allocator, CloneIn, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
     Ast, Class, ClassType, ExportNamedDeclaration, Function, FunctionType, ImportDeclaration,
     ImportOrExportKind, ImportSpecifier, JsxElementName, JsxElementNameData, JsxIdentifier,
@@ -1099,7 +1099,7 @@ impl<'a> SymbolTracker<'a> {
                         if scope_id == self.pending.scope {
                             break;
                         }
-                        let name = self.name_key(tree, identifier.name(tree));
+                        let name = tree.string(identifier.name(tree)).clone_in(self.allocator);
                         self.hoisting_variables[scope_id.index()]
                             .entry(name)
                             .or_insert(symbol_id);
@@ -1245,7 +1245,7 @@ impl<'a> SymbolTracker<'a> {
                 decls: Range::default(),
             });
             self.first_decls.push(node);
-            let key = self.name_key(tree, name);
+            let key = tree.string(name).clone_in(self.allocator);
             self.scope_maps[target.index()].insert(key, new_id);
             new_id
         };
@@ -1321,12 +1321,6 @@ impl<'a> SymbolTracker<'a> {
             self.hoisting_variables
                 .push(ScopeMap::new_in(self.allocator));
         }
-    }
-
-    fn name_key(&self, tree: &Ast, name: AstString) -> &'a [u8] {
-        let text = tree.string(name);
-        let text = std::str::from_utf8(text).expect("AST strings are valid UTF-8");
-        self.allocator.alloc_str(text).as_bytes()
     }
 
     /// Finalizes the tracker into a complete [`Semantic`]. Builds the

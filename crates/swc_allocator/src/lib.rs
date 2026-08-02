@@ -31,6 +31,14 @@ macro_rules! impl_clone_in_trivial {
 impl_clone_in_trivial!(bool);
 impl_clone_in_trivial!(f64);
 
+impl<'a> CloneIn<'a> for &[u8] {
+    type Cloned = &'a [u8];
+
+    fn clone_in(&self, allocator: &'a Allocator) -> Self::Cloned {
+        allocator.arena.alloc_slice_copy(self)
+    }
+}
+
 impl<'a, 'src, C: 'a, T> CloneIn<'a> for boxed::Box<'src, T>
 where
     T: CloneIn<'a, Cloned = C>,

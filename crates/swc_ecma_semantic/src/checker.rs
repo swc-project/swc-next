@@ -3,7 +3,9 @@
 
 use std::{borrow::Cow, fmt::Write};
 
-use swc_next_allocator::{Allocator, hash_map::HashMap as ArenaHashMap, vec::Vec as ArenaVec};
+use swc_next_allocator::{
+    Allocator, CloneIn, hash_map::HashMap as ArenaHashMap, vec::Vec as ArenaVec,
+};
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, AssignmentExpression, Ast, AwaitExpression, BinaryExpression,
     BinaryOperator, BindingIdentifier, BlockStatement, BreakStatement, CallExpression, CatchClause,
@@ -184,11 +186,6 @@ impl<'a> CheckerState<'a> {
             .expect("formatting into an arena vector is infallible");
         std::str::from_utf8(writer.bytes.into_bump_slice())
             .expect("Rust formatting produces valid UTF-8")
-    }
-
-    fn intern_bytes(&self, value: &[u8]) -> &'a [u8] {
-        let value = std::str::from_utf8(value).expect("AST strings are valid UTF-8");
-        self.allocator.alloc_str(value).as_bytes()
     }
 }
 
@@ -712,7 +709,10 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
             return;
         }
         let node_id = identifier.node_id();
-        let name = checks.intern_bytes(context.ast.string(identifier.name(context.ast)));
+        let name = context
+            .ast
+            .string(identifier.name(context.ast))
+            .clone_in(checks.allocator);
         checks.check_strict_reserved(name, node_id, context, "an identifier");
         // https://tc39.es/ecma262/#sec-class-definitions-static-semantics-early-errors
         if name == b"arguments" && !is_arguments_available(context) {
@@ -731,7 +731,10 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         let context = &mut self.context;
         let identifier = node;
         let node_id = identifier.node_id();
-        let name = checks.intern_bytes(context.ast.string(identifier.name(context.ast)));
+        let name = context
+            .ast
+            .string(identifier.name(context.ast))
+            .clone_in(checks.allocator);
         let flags = context.state.symbols.pending.flags;
 
         // Type-position binding identifiers are parameter labels, not
@@ -787,7 +790,10 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         let checks = &mut self.checks;
         let context = &mut self.context;
         let identifier = node;
-        let name = checks.intern_bytes(context.ast.string(identifier.name(context.ast)));
+        let name = context
+            .ast
+            .string(identifier.name(context.ast))
+            .clone_in(checks.allocator);
         checks.check_strict_reserved(name, identifier.node_id(), context, "a label");
         node.visit_children_with(self);
         self.context.leave_node(node.node_id());
@@ -1100,11 +1106,10 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         let checks = &mut self.checks;
         let context = &mut self.context;
         let statement = node;
-        let name = checks.intern_bytes(
-            context
-                .ast
-                .string(statement.label(context.ast).name(context.ast)),
-        );
+        let name = context
+            .ast
+            .string(statement.label(context.ast).name(context.ast))
+            .clone_in(checks.allocator);
         let duplicate = {
             let mut ancestors = context.ancestors();
             let _ = ancestors.next();
@@ -1562,11 +1567,10 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         let checks = &mut self.checks;
         let context = &mut self.context;
         let property = node;
-        let name = checks.intern_bytes(
-            context
-                .ast
-                .string(property.meta(context.ast).name(context.ast)),
-        );
+        let name = context
+            .ast
+            .string(property.meta(context.ast).name(context.ast))
+            .clone_in(checks.allocator);
         if name == b"import" && !context.ast.is_module() {
             checks.report(
                 context.ast.span(property.node_id()),
@@ -1657,7 +1661,8 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
             context,
         );
         if let Some(exported) = declaration.exported(context.ast) {
-            let name = checks.intern_bytes(module_export_name(context.ast, exported.node_id()));
+            let name =
+                module_export_name(context.ast, exported.node_id()).clone_in(checks.allocator);
             checks.record_exported_name(name, declaration.node_id(), context);
         }
         checks.check_duplicate_with_attributes(declaration.attributes(context.ast), context);
@@ -1670,10 +1675,9 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         let checks = &mut self.checks;
         let context = &mut self.context;
         let specifier = node;
-        let exported_name = checks.intern_bytes(module_export_name(
-            context.ast,
-            specifier.exported(context.ast).node_id(),
-        ));
+        let exported_name =
+            module_export_name(context.ast, specifier.exported(context.ast).node_id())
+                .clone_in(checks.allocator);
         checks.record_exported_name(exported_name, specifier.node_id(), context);
 
         // Collect for the unresolved check (local exports only). Skip
@@ -1693,7 +1697,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         {
             let local = module_export_name(context.ast, specifier.local(context.ast).node_id());
             checks.export_specifiers.push(ExportSpecifierInfo {
-                local_name: checks.intern_bytes(local),
+                local_name: local.clone_in(checks.allocator),
                 node: specifier.node_id(),
             });
         }
@@ -2679,7 +2683,7 @@ impl<'a> CheckerState<'a> {
                 },
             );
         } else {
-            let key = self.intern_bytes(name);
+            let key = name.clone_in(self.allocator);
             self.exported_names.insert(key, node);
         }
     }
