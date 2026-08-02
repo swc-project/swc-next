@@ -1,4 +1,4 @@
-use swc_next_ecma_ast::{Ast, FormalParameters, NodeId, NodeKindData};
+use swc_next_ecma_ast::{Ast, FormalParameters, NodeId, NodeKind, NodeKindData};
 
 /// <https://tc39.es/ecma262/#sec-static-semantics-containsexpression>
 ///
@@ -84,8 +84,8 @@ pub(crate) fn find_non_simple_parameter(
             _ => return Some(parameter),
         };
         if !matches!(
-            tree.kind_data(pattern),
-            NodeKindData::BindingIdentifier(_) | NodeKindData::TsThisParameter(_)
+            tree.node_kind(pattern),
+            NodeKind::BindingIdentifier | NodeKind::TsThisParameter
         ) {
             return Some(pattern);
         }

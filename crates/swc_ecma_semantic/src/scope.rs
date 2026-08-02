@@ -1,8 +1,8 @@
 use oxc_index::Idx;
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
-    Ast, Class, ClassType, Function, FunctionBody, FunctionType, NodeId, NodeKindData, Program,
-    ScopeId, SourceType,
+    Ast, Class, ClassType, Function, FunctionBody, FunctionType, NodeId, NodeKind, NodeKindData,
+    Program, ScopeId, SourceType,
 };
 
 use crate::ecmascript;
@@ -385,10 +385,10 @@ impl<'a> ScopeTracker<'a> {
     // A node pops exactly the scopes recording it as creator. Two for a
     // named function or class expression, zero for a shared or never-created
     // scope. Cannot drift from `enter`.
-    pub fn exit(&mut self, index: NodeId, data: NodeKindData) {
-        match data {
-            NodeKindData::Program(_) => {}
-            NodeKindData::Decorator(_) => {
+    pub fn exit(&mut self, index: NodeId, kind: NodeKind) {
+        match kind {
+            NodeKind::Program => {}
+            NodeKind::Decorator => {
                 // Every decorator enter saved exactly one scope.
                 self.current = self
                     .decorator_saved

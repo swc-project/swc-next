@@ -1,5 +1,7 @@
 use swc_next_allocator::vec::Vec as ArenaVec;
-use swc_next_ecma_ast::{Ast, NodeId, NodeKindData, Program, ScopeId, TraverseCtx};
+use swc_next_ecma_ast::{
+    Ast, BindingIdentifier, NodeId, NodeKind, NodeKindData, Program, ScopeId, TraverseCtx,
+};
 
 use crate::{
     Semantic,
@@ -57,22 +59,27 @@ impl<'a> SemanticContext<'a> {
         self.scope.enter(tree, node, parent);
         self.node_scopes[node.index()] = self.scope.current;
         self.node_parents[node.index()] = parent;
-        if is_type_context(tree.kind_data(node)) {
+        if is_type_context(tree.node_kind(node)) {
             self.type_position_depth += 1;
         }
         self.symbols
             .set_binding_context(tree, node, parent, &self.scope);
     }
 
-    pub fn post_enter(&mut self, tree: &Ast, node: NodeId, reference_context: RefContext) {
+    pub fn post_enter(&mut self, tree: &Ast, data: NodeKindData, reference_context: RefContext) {
         self.symbols
-            .declare_bindings(tree, node, &self.scope, reference_context);
+            .declare_bindings(tree, data, &self.scope, reference_context);
     }
 
-    pub fn post_enter_binding(&mut self, tree: &Ast, node: NodeId, space: ReferenceSpace) {
+    pub fn post_enter_binding(
+        &mut self,
+        tree: &Ast,
+        identifier: BindingIdentifier,
+        space: ReferenceSpace,
+    ) {
         self.post_enter(
             tree,
-            node,
+            NodeKindData::BindingIdentifier(identifier),
             RefContext {
                 is_write: false,
                 space,
@@ -81,10 +88,10 @@ impl<'a> SemanticContext<'a> {
     }
 
     pub fn exit(&mut self, tree: &Ast, node: NodeId) {
-        let data = tree.kind_data(node);
-        self.symbols.exit(data);
-        self.scope.exit(node, data);
-        if is_type_context(data) {
+        let kind = tree.node_kind(node);
+        self.symbols.exit(kind);
+        self.scope.exit(node, kind);
+        if is_type_context(kind) {
             assert!(self.type_position_depth > 0);
             self.type_position_depth -= 1;
         }
@@ -216,46 +223,46 @@ pub(crate) fn is_write_target(tree: &Ast<'_>, path: &[NodeId]) -> bool {
     false
 }
 
-fn is_type_context(data: NodeKindData) -> bool {
+fn is_type_context(kind: NodeKind) -> bool {
     matches!(
-        data,
-        NodeKindData::TsTypeAnnotation(_)
-            | NodeKindData::TsTypeReference(_)
-            | NodeKindData::TsQualifiedName(_)
-            | NodeKindData::TsTypeQuery(_)
-            | NodeKindData::TsImportType(_)
-            | NodeKindData::TsTypeParameter(_)
-            | NodeKindData::TsTypeParameterDeclaration(_)
-            | NodeKindData::TsTypeParameterInstantiation(_)
-            | NodeKindData::TsLiteralType(_)
-            | NodeKindData::TsTemplateLiteralType(_)
-            | NodeKindData::TsArrayType(_)
-            | NodeKindData::TsIndexedAccessType(_)
-            | NodeKindData::TsTupleType(_)
-            | NodeKindData::TsNamedTupleMember(_)
-            | NodeKindData::TsOptionalType(_)
-            | NodeKindData::TsRestType(_)
-            | NodeKindData::TsJsDocNullableType(_)
-            | NodeKindData::TsJsDocNonNullableType(_)
-            | NodeKindData::TsJsDocUnknownType(_)
-            | NodeKindData::TsUnionType(_)
-            | NodeKindData::TsIntersectionType(_)
-            | NodeKindData::TsConditionalType(_)
-            | NodeKindData::TsInferType(_)
-            | NodeKindData::TsTypeOperator(_)
-            | NodeKindData::TsParenthesizedType(_)
-            | NodeKindData::TsFunctionType(_)
-            | NodeKindData::TsConstructorType(_)
-            | NodeKindData::TsTypePredicate(_)
-            | NodeKindData::TsTypeLiteral(_)
-            | NodeKindData::TsPropertySignature(_)
-            | NodeKindData::TsMethodSignature(_)
-            | NodeKindData::TsCallSignatureDeclaration(_)
-            | NodeKindData::TsConstructSignatureDeclaration(_)
-            | NodeKindData::TsIndexSignature(_)
-            | NodeKindData::TsMappedType(_)
-            | NodeKindData::TsClassImplements(_)
-            | NodeKindData::TsInterfaceHeritage(_)
-            | NodeKindData::TsInterfaceBody(_)
+        kind,
+        NodeKind::TsTypeAnnotation
+            | NodeKind::TsTypeReference
+            | NodeKind::TsQualifiedName
+            | NodeKind::TsTypeQuery
+            | NodeKind::TsImportType
+            | NodeKind::TsTypeParameter
+            | NodeKind::TsTypeParameterDeclaration
+            | NodeKind::TsTypeParameterInstantiation
+            | NodeKind::TsLiteralType
+            | NodeKind::TsTemplateLiteralType
+            | NodeKind::TsArrayType
+            | NodeKind::TsIndexedAccessType
+            | NodeKind::TsTupleType
+            | NodeKind::TsNamedTupleMember
+            | NodeKind::TsOptionalType
+            | NodeKind::TsRestType
+            | NodeKind::TsJsDocNullableType
+            | NodeKind::TsJsDocNonNullableType
+            | NodeKind::TsJsDocUnknownType
+            | NodeKind::TsUnionType
+            | NodeKind::TsIntersectionType
+            | NodeKind::TsConditionalType
+            | NodeKind::TsInferType
+            | NodeKind::TsTypeOperator
+            | NodeKind::TsParenthesizedType
+            | NodeKind::TsFunctionType
+            | NodeKind::TsConstructorType
+            | NodeKind::TsTypePredicate
+            | NodeKind::TsTypeLiteral
+            | NodeKind::TsPropertySignature
+            | NodeKind::TsMethodSignature
+            | NodeKind::TsCallSignatureDeclaration
+            | NodeKind::TsConstructSignatureDeclaration
+            | NodeKind::TsIndexSignature
+            | NodeKind::TsMappedType
+            | NodeKind::TsClassImplements
+            | NodeKind::TsInterfaceHeritage
+            | NodeKind::TsInterfaceBody
     )
 }

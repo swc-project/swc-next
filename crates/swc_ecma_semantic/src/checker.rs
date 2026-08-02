@@ -293,9 +293,9 @@ enum SuperCallValidity {
 fn super_call_validity(context: &SemanticTraverseCtx<'_, '_>) -> SuperCallValidity {
     let mut ancestors = context.ancestors();
     while let Some(ancestor) = ancestors.next() {
-        match context.ast.kind_data(ancestor) {
-            NodeKindData::ArrowFunctionExpression(_) => {}
-            NodeKindData::Function(_) => {
+        match context.ast.node_kind(ancestor) {
+            NodeKind::ArrowFunctionExpression => {}
+            NodeKind::Function => {
                 if let Some(parent) = ancestors.next()
                     && let NodeKindData::MethodDefinition(method) = context.ast.kind_data(parent)
                     && method.kind(context.ast)
@@ -313,9 +313,7 @@ fn super_call_validity(context: &SemanticTraverseCtx<'_, '_>) -> SuperCallValidi
                 }
                 return SuperCallValidity::NotInConstructor;
             }
-            NodeKindData::PropertyDefinition(_)
-            | NodeKindData::StaticBlock(_)
-            | NodeKindData::Program(_) => {
+            NodeKind::PropertyDefinition | NodeKind::StaticBlock | NodeKind::Program => {
                 return SuperCallValidity::NotInConstructor;
             }
             _ => {}
@@ -329,9 +327,9 @@ fn super_call_validity(context: &SemanticTraverseCtx<'_, '_>) -> SuperCallValidi
 fn is_super_property_valid(context: &SemanticTraverseCtx<'_, '_>) -> bool {
     let mut ancestors = context.ancestors();
     while let Some(ancestor) = ancestors.next() {
-        match context.ast.kind_data(ancestor) {
-            NodeKindData::ArrowFunctionExpression(_) => {}
-            NodeKindData::Function(_) => {
+        match context.ast.node_kind(ancestor) {
+            NodeKind::ArrowFunctionExpression => {}
+            NodeKind::Function => {
                 if let Some(parent) = ancestors.next() {
                     match context.ast.kind_data(parent) {
                         NodeKindData::MethodDefinition(_) => return true,
@@ -347,8 +345,8 @@ fn is_super_property_valid(context: &SemanticTraverseCtx<'_, '_>) -> bool {
                 }
                 return false;
             }
-            NodeKindData::PropertyDefinition(_) | NodeKindData::StaticBlock(_) => return true,
-            NodeKindData::Program(_) => return false,
+            NodeKind::PropertyDefinition | NodeKind::StaticBlock => return true,
+            NodeKind::Program => return false,
             _ => {}
         }
     }
@@ -433,21 +431,23 @@ fn find_label(context: &SemanticTraverseCtx<'_, '_>, name: &[u8]) -> LabelSearch
     assert!(!name.is_empty());
     let mut crossed_boundary = false;
     for ancestor in context.ancestors() {
-        let kind = context.ast.node_kind(ancestor);
-        if let NodeKindData::LabeledStatement(statement) = context.ast.kind_data(ancestor) {
-            let label = context
-                .ast
-                .string(statement.label(context.ast).name(context.ast));
-            if label == name {
-                return if crossed_boundary {
-                    LabelSearch::CrossedBoundary
-                } else {
-                    LabelSearch::Found
-                };
+        match context.ast.kind_data(ancestor) {
+            NodeKindData::LabeledStatement(statement) => {
+                let label = context
+                    .ast
+                    .string(statement.label(context.ast).name(context.ast));
+                if label == name {
+                    return if crossed_boundary {
+                        LabelSearch::CrossedBoundary
+                    } else {
+                        LabelSearch::Found
+                    };
+                }
             }
-        }
-        if is_function_boundary(kind) {
-            crossed_boundary = true;
+            NodeKindData::Function(_)
+            | NodeKindData::ArrowFunctionExpression(_)
+            | NodeKindData::StaticBlock(_) => crossed_boundary = true,
+            _ => {}
         }
     }
     LabelSearch::NotFound
@@ -468,25 +468,27 @@ fn find_label_for_continue(
     assert!(!name.is_empty());
     let mut crossed_boundary = false;
     for ancestor in context.ancestors() {
-        let kind = context.ast.node_kind(ancestor);
-        if let NodeKindData::LabeledStatement(statement) = context.ast.kind_data(ancestor) {
-            let label = context
-                .ast
-                .string(statement.label(context.ast).name(context.ast));
-            if label == name {
-                if crossed_boundary {
-                    return ContinueLabelSearch::CrossedBoundary;
+        match context.ast.kind_data(ancestor) {
+            NodeKindData::LabeledStatement(statement) => {
+                let label = context
+                    .ast
+                    .string(statement.label(context.ast).name(context.ast));
+                if label == name {
+                    if crossed_boundary {
+                        return ContinueLabelSearch::CrossedBoundary;
+                    }
+                    let body = context.ast.node_kind(statement.body(context.ast).node_id());
+                    return if is_iteration(body) || body == NodeKind::LabeledStatement {
+                        ContinueLabelSearch::Found
+                    } else {
+                        ContinueLabelSearch::NotIteration
+                    };
                 }
-                let body = context.ast.node_kind(statement.body(context.ast).node_id());
-                return if is_iteration(body) || body == NodeKind::LabeledStatement {
-                    ContinueLabelSearch::Found
-                } else {
-                    ContinueLabelSearch::NotIteration
-                };
             }
-        }
-        if is_function_boundary(kind) {
-            crossed_boundary = true;
+            NodeKindData::Function(_)
+            | NodeKindData::ArrowFunctionExpression(_)
+            | NodeKindData::StaticBlock(_) => crossed_boundary = true,
+            _ => {}
         }
     }
     ContinueLabelSearch::NotFound
@@ -661,7 +663,7 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         identifier: IdentifierReference,
         context: &mut SemanticTraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.post_enter(identifier.node_id(), context);
+        self.post_enter(NodeKindData::IdentifierReference(identifier), true, context);
         // Type-position identifiers are TS type references, not JS
         // identifier references. JS early-error rules do not apply.
         if context.state.in_type_position() {
@@ -686,7 +688,7 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         predicate: TsTypePredicate,
         context: &mut SemanticTraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.post_enter(predicate.node_id(), context);
+        self.post_enter(NodeKindData::TsTypePredicate(predicate), false, context);
         TraverseAction::Proceed
     }
 
@@ -695,7 +697,7 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         member: TsEnumMember,
         context: &mut SemanticTraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.post_enter(member.node_id(), context);
+        self.post_enter(NodeKindData::TsEnumMember(member), false, context);
         TraverseAction::Proceed
     }
 
@@ -704,7 +706,7 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         element: JsxOpeningElement,
         context: &mut SemanticTraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.post_enter(element.node_id(), context);
+        self.post_enter(NodeKindData::JsxOpeningElement(element), false, context);
         TraverseAction::Proceed
     }
 
@@ -713,7 +715,7 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
         element: JsxClosingElement,
         context: &mut SemanticTraverseCtx<'_, 'a>,
     ) -> TraverseAction {
-        self.post_enter(element.node_id(), context);
+        self.post_enter(NodeKindData::JsxClosingElement(element), false, context);
         TraverseAction::Proceed
     }
 
@@ -1500,17 +1502,19 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
             let _ = ancestors.next();
             let mut duplicate = false;
             for ancestor in ancestors {
-                let kind = context.ast.node_kind(ancestor);
-                if let NodeKindData::LabeledStatement(outer) = context.ast.kind_data(ancestor) {
-                    let outer_name = context
-                        .ast
-                        .string(outer.label(context.ast).name(context.ast));
-                    if outer_name == name {
-                        duplicate = true;
+                match context.ast.kind_data(ancestor) {
+                    NodeKindData::LabeledStatement(outer) => {
+                        let outer_name = context
+                            .ast
+                            .string(outer.label(context.ast).name(context.ast));
+                        if outer_name == name {
+                            duplicate = true;
+                        }
                     }
-                }
-                if is_function_boundary(kind) {
-                    break;
+                    NodeKindData::Function(_)
+                    | NodeKindData::ArrowFunctionExpression(_)
+                    | NodeKindData::StaticBlock(_) => break,
+                    _ => {}
                 }
             }
             duplicate
@@ -1653,11 +1657,12 @@ impl<'a> Traverse<'a, SemanticContext<'a>> for Checker<'a> {
 }
 
 impl<'a> Checker<'a> {
-    fn post_enter(&self, node: NodeId, context: &mut SemanticTraverseCtx<'_, 'a>) {
-        let is_reference = matches!(
-            context.ast.kind_data(node),
-            NodeKindData::IdentifierReference(_)
-        );
+    fn post_enter(
+        &self,
+        data: NodeKindData,
+        is_reference: bool,
+        context: &mut SemanticTraverseCtx<'_, 'a>,
+    ) {
         let is_write = is_reference && is_write_target(context.ast, context.path());
         let space = if is_reference {
             reference_space(
@@ -1670,7 +1675,7 @@ impl<'a> Checker<'a> {
         };
         context
             .state
-            .post_enter(context.ast, node, RefContext { is_write, space });
+            .post_enter(context.ast, data, RefContext { is_write, space });
     }
 
     fn post_binding(
@@ -1685,7 +1690,7 @@ impl<'a> Checker<'a> {
         );
         context
             .state
-            .post_enter_binding(context.ast, identifier.node_id(), space);
+            .post_enter_binding(context.ast, identifier, space);
     }
 
     fn check_redeclaration(
@@ -1821,10 +1826,7 @@ impl<'a> Checker<'a> {
                         unreachable!()
                     };
                     let simple_parameter = catch.param(context.ast).is_some_and(|parameter| {
-                        matches!(
-                            context.ast.kind_data(parameter.node_id()),
-                            NodeKindData::BindingIdentifier(_)
-                        )
+                        context.ast.node_kind(parameter.node_id()) == NodeKind::BindingIdentifier
                     });
                     if !simple_parameter {
                         self.report_redeclaration(

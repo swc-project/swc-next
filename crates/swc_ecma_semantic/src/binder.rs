@@ -955,15 +955,16 @@ impl<'a> SymbolTracker<'a> {
     pub fn declare_bindings(
         &mut self,
         tree: &Ast,
-        node: NodeId,
+        data: NodeKindData,
         scope: &ScopeTracker<'a>,
         reference_context: RefContext,
     ) {
         if self.scope_maps.len() < scope.scopes.len() {
             self.sync_scope_maps(scope.scopes.len());
         }
-        match tree.kind_data(node) {
+        match data {
             NodeKindData::BindingIdentifier(identifier) => {
+                let node = identifier.node_id();
                 // Type-position identifiers are parameter labels. Only type
                 // parameters are real declarations there.
                 if reference_context.space.in_type_position() && !self.pending.flags.type_parameter
@@ -987,6 +988,7 @@ impl<'a> SymbolTracker<'a> {
                 }
             }
             NodeKindData::IdentifierReference(identifier) => {
+                let node = identifier.node_id();
                 self.add_reference(
                     tree,
                     identifier.name(tree),
@@ -1090,43 +1092,43 @@ impl<'a> SymbolTracker<'a> {
     }
 
     /// Restores the context to what it was before the matching enter.
-    pub fn exit(&mut self, data: NodeKindData) {
-        match data {
-            NodeKindData::FormalParameters(_) => {
+    pub fn exit(&mut self, kind: NodeKind) {
+        match kind {
+            NodeKind::FormalParameters => {
                 if let Some(saved) = self.saved_stack.pop() {
                     self.pending = saved.pending;
                     self.ambient = saved.ambient;
                 }
             }
-            NodeKindData::VariableDeclaration(_)
-            | NodeKindData::Function(_)
-            | NodeKindData::TsFunction(_)
-            | NodeKindData::Class(_)
-            | NodeKindData::ImportDeclaration(_)
-            | NodeKindData::TsImportEqualsDeclaration(_)
-            | NodeKindData::ImportSpecifier(_)
-            | NodeKindData::CatchClause(_)
-            | NodeKindData::TsInterfaceDeclaration(_)
-            | NodeKindData::TsTypeAliasDeclaration(_)
-            | NodeKindData::TsEnumDeclaration(_)
-            | NodeKindData::TsModuleDeclaration(_)
-            | NodeKindData::TsGlobalDeclaration(_)
-            | NodeKindData::TsNamespaceExportDeclaration(_)
-            | NodeKindData::TsTypeParameter(_)
-            | NodeKindData::TsMappedType(_)
-            | NodeKindData::TsFunctionType(_)
-            | NodeKindData::TsConstructorType(_)
-            | NodeKindData::TsMethodSignature(_)
-            | NodeKindData::TsCallSignatureDeclaration(_)
-            | NodeKindData::TsConstructSignatureDeclaration(_)
-            | NodeKindData::TsIndexSignature(_) => {
+            NodeKind::VariableDeclaration
+            | NodeKind::Function
+            | NodeKind::TsFunction
+            | NodeKind::Class
+            | NodeKind::ImportDeclaration
+            | NodeKind::TsImportEqualsDeclaration
+            | NodeKind::ImportSpecifier
+            | NodeKind::CatchClause
+            | NodeKind::TsInterfaceDeclaration
+            | NodeKind::TsTypeAliasDeclaration
+            | NodeKind::TsEnumDeclaration
+            | NodeKind::TsModuleDeclaration
+            | NodeKind::TsGlobalDeclaration
+            | NodeKind::TsNamespaceExportDeclaration
+            | NodeKind::TsTypeParameter
+            | NodeKind::TsMappedType
+            | NodeKind::TsFunctionType
+            | NodeKind::TsConstructorType
+            | NodeKind::TsMethodSignature
+            | NodeKind::TsCallSignatureDeclaration
+            | NodeKind::TsConstructSignatureDeclaration
+            | NodeKind::TsIndexSignature => {
                 if let Some(saved) = self.saved_stack.pop() {
                     self.pending = saved.pending;
                     self.export_state = saved.export_state;
                     self.ambient = saved.ambient;
                 }
             }
-            NodeKindData::ExportNamedDeclaration(_) | NodeKindData::ExportDefaultDeclaration(_) => {
+            NodeKind::ExportNamedDeclaration | NodeKind::ExportDefaultDeclaration => {
                 self.export_state = ExportState::None;
             }
             _ => {}
@@ -1523,8 +1525,8 @@ fn member_owner(node_parents: &[Option<NodeId>], member: NodeId) -> Option<NodeI
 fn nearest_conditional_scope(tree: &Ast<'_>, scope: &ScopeTracker<'_>) -> ScopeId {
     for id in scope.ancestors(Some(scope.current)) {
         if matches!(
-            tree.kind_data(scope.get(id).node),
-            NodeKindData::TsConditionalType(_)
+            tree.node_kind(scope.get(id).node),
+            NodeKind::TsConditionalType
         ) {
             return id;
         }
@@ -1536,9 +1538,9 @@ fn nearest_conditional_scope(tree: &Ast<'_>, scope: &ScopeTracker<'_>) -> ScopeI
 // have no arguments at all; referencing it there is an early error.
 fn is_arguments_barrier(tree: &Ast<'_>, scope: scope::Scope) -> bool {
     match scope.kind {
-        ScopeKind::Function => match tree.kind_data(scope.node) {
-            NodeKindData::Function(_) => true,
-            NodeKindData::Program(_) => tree.source_type() == SourceType::CommonJs,
+        ScopeKind::Function => match tree.node_kind(scope.node) {
+            NodeKind::Function => true,
+            NodeKind::Program => tree.source_type() == SourceType::CommonJs,
             _ => false,
         },
         ScopeKind::StaticBlock => true,
