@@ -1979,26 +1979,11 @@ impl IdentifierReference {
         unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
     }
     #[inline]
-    pub fn symbol_id<'a>(self, ast: &crate::Ast<'a>) -> Option<SymbolId> {
-        let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 64usize) as u32) & 4294967295u32;
-        (raw != 0).then(|| unsafe {
-            <SymbolId as oxc_index::Idx>::from_usize_unchecked(raw.wrapping_sub(1) as usize)
-        })
-    }
-    #[inline]
     pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: String) {
         let field_val: u64 = unsafe { name.to_extra_data(ast).other };
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
             | (((field_val as u128) & 18446744073709551615u128) << 0usize);
-    }
-    #[inline]
-    pub fn set_symbol_id<'a>(self, ast: &mut crate::Ast<'a>, symbol_id: Option<SymbolId>) {
-        let field_val: u32 = symbol_id.map_or(0, |id| id.index() as u32 + 1);
-        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366841710300967557013911933812735u128)
-            | (((field_val as u128) & 4294967295u128) << 64usize);
     }
 }
 impl PrivateIdentifier {
@@ -2026,14 +2011,6 @@ impl BindingIdentifier {
     pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
         let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 255u32;
         raw != 0
-    }
-    #[inline]
-    pub fn symbol_id<'a>(self, ast: &crate::Ast<'a>) -> Option<SymbolId> {
-        let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 40usize) as u32) & 4294967295u32;
-        (raw != 0).then(|| unsafe {
-            <SymbolId as oxc_index::Idx>::from_usize_unchecked(raw.wrapping_sub(1) as usize)
-        })
     }
     #[inline]
     pub fn name<'a>(self, ast: &crate::Ast<'a>) -> String {
@@ -2084,13 +2061,6 @@ impl BindingIdentifier {
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463463374607431768211200u128)
             | (((field_val as u128) & 255u128) << 0usize);
-    }
-    #[inline]
-    pub fn set_symbol_id<'a>(self, ast: &mut crate::Ast<'a>, symbol_id: Option<SymbolId>) {
-        let field_val: u32 = symbol_id.map_or(0, |id| id.index() as u32 + 1);
-        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938458741008125661634625535u128)
-            | (((field_val as u128) & 4294967295u128) << 40usize);
     }
     #[inline]
     pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: String) {

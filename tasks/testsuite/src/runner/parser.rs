@@ -18,12 +18,12 @@ impl<C: Case> Runner<C> for ParserRunner {
         let path = case.relative_path().to_path_buf();
         let result = catch_unwind(AssertUnwindSafe(|| {
             let allocator = Allocator::new();
-            let (program, mut ast) = match parse_case(&allocator, case) {
+            let (program, ast) = match parse_case(&allocator, case) {
                 Ok(result) => result,
                 Err(_) if case.expects_error() => return Ok(()),
                 Err(error) => return Err(format!("{}: {error}", case.name())),
             };
-            let semantic_ret = analyze(program, &mut ast);
+            let semantic_ret = analyze(program, &ast);
             match (case.expects_error(), semantic_ret.diagnostics.first()) {
                 (true, Some(_)) | (false, None) => Ok(()),
                 (true, None) => Err(format!(

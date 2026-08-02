@@ -44,12 +44,6 @@ fn generate_clone_in_for_struct(ast: &AstStruct, _schema: &Schema) -> TokenStrea
     fields_clone_in.extend(quote! { let span = self.span(ast).clone_in(ast); });
     fields_params.push(quote!(span));
     for field in ast.fields.iter() {
-        if matches!(
-            (ast.name.as_str(), field.name.as_str()),
-            ("Ident", "symbol_id") | ("BlockStmt", "scope_id")
-        ) {
-            continue;
-        }
         let field_ident = safe_ident(&field.name.to_case(Case::Snake));
         fields_clone_in.extend(quote! {
             let #field_ident = self.#field_ident(ast).clone_in(ast);

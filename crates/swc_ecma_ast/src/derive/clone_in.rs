@@ -1,9 +1,9 @@
 use crate::{
     Accessibility, AssignmentOperator, Ast, BinaryOperator, ClassType, FormalParameterKind,
     FunctionType, ImportOrExportKind, ImportPhase, LogicalOperator, MethodDefinitionKind,
-    NumericLiteralKind, PropertyKind, ScopeId, SourceType, Span, String as AstString, SymbolId,
-    TsMappedTypeModifier, TsMethodSignatureKind, TsModuleDeclarationKind, TsTypeOperatorKind,
-    TypedSubRange, UnaryOperator, UpdateOperator, VariableKind, node_id::ExtraDataCompact,
+    NumericLiteralKind, PropertyKind, SourceType, Span, String as AstString, TsMappedTypeModifier,
+    TsMethodSignatureKind, TsModuleDeclarationKind, TsTypeOperatorKind, TypedSubRange,
+    UnaryOperator, UpdateOperator, VariableKind, node_id::ExtraDataCompact,
 };
 
 pub trait CloneIn<'a>: Sized {
@@ -47,9 +47,6 @@ impl_clone_in_trivial!(TsTypeOperatorKind);
 impl_clone_in_trivial!(TsMethodSignatureKind);
 impl_clone_in_trivial!(TsModuleDeclarationKind);
 impl_clone_in_trivial!(TsMappedTypeModifier);
-impl_clone_in_trivial!(ScopeId);
-impl_clone_in_trivial!(SymbolId);
-
 impl<'a, C, T: CloneIn<'a, Cloned = C>> CloneIn<'a> for Vec<T> {
     type Cloned = Vec<C>;
 

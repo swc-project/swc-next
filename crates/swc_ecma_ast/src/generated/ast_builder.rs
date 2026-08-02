@@ -588,13 +588,8 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn expr_identifier_reference(
-        &mut self,
-        span: Span,
-        name: String,
-        symbol_id: Option<SymbolId>,
-    ) -> Expr {
-        Expr::IdentifierReference(self.identifier_reference(span, name, symbol_id).into())
+    pub fn expr_identifier_reference(&mut self, span: Span, name: String) -> Expr {
+        Expr::IdentifierReference(self.identifier_reference(span, name).into())
     }
     #[inline]
     pub fn expr_this_expression(&mut self, span: Span) -> Expr {
@@ -1002,10 +997,9 @@ impl<'a> Ast<'a> {
         decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
-        symbol_id: Option<SymbolId>,
     ) -> BindingPattern {
         BindingPattern::BindingIdentifier(
-            self.binding_identifier(span, name, decorators, type_annotation, optional, symbol_id)
+            self.binding_identifier(span, name, decorators, type_annotation, optional)
                 .into(),
         )
     }
@@ -1014,10 +1008,9 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         name: String,
-        symbol_id: Option<SymbolId>,
     ) -> BindingPattern {
         BindingPattern::SimpleAssignmentTarget(SimpleAssignmentTarget::IdentifierReference(
-            self.identifier_reference(span, name, symbol_id).into(),
+            self.identifier_reference(span, name).into(),
         ))
     }
     #[inline]
@@ -1151,10 +1144,9 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         name: String,
-        symbol_id: Option<SymbolId>,
     ) -> AssignmentTarget {
         AssignmentTarget::SimpleAssignmentTarget(SimpleAssignmentTarget::IdentifierReference(
-            self.identifier_reference(span, name, symbol_id).into(),
+            self.identifier_reference(span, name).into(),
         ))
     }
     #[inline]
@@ -1259,11 +1251,8 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         name: String,
-        symbol_id: Option<SymbolId>,
     ) -> SimpleAssignmentTarget {
-        SimpleAssignmentTarget::IdentifierReference(
-            self.identifier_reference(span, name, symbol_id).into(),
-        )
+        SimpleAssignmentTarget::IdentifierReference(self.identifier_reference(span, name).into())
     }
     #[inline]
     pub fn simple_assignment_target_member_expression(
@@ -1360,10 +1349,9 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         name: String,
-        symbol_id: Option<SymbolId>,
     ) -> PropertyKey {
         PropertyKey::Expr(Expr::IdentifierReference(
-            self.identifier_reference(span, name, symbol_id).into(),
+            self.identifier_reference(span, name).into(),
         ))
     }
     #[inline]
@@ -1850,14 +1838,9 @@ impl<'a> Ast<'a> {
         ModuleExportName::StringLiteral(self.string_literal(span, value, raw).into())
     }
     #[inline]
-    pub fn argument_expr_identifier_reference(
-        &mut self,
-        span: Span,
-        name: String,
-        symbol_id: Option<SymbolId>,
-    ) -> Argument {
+    pub fn argument_expr_identifier_reference(&mut self, span: Span, name: String) -> Argument {
         Argument::Expr(Expr::IdentifierReference(
-            self.identifier_reference(span, name, symbol_id).into(),
+            self.identifier_reference(span, name).into(),
         ))
     }
     #[inline]
@@ -2360,10 +2343,9 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         name: String,
-        symbol_id: Option<SymbolId>,
     ) -> ForStatementInit {
         ForStatementInit::Expr(Expr::IdentifierReference(
-            self.identifier_reference(span, name, symbol_id).into(),
+            self.identifier_reference(span, name).into(),
         ))
     }
     #[inline]
@@ -2858,11 +2840,10 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         name: String,
-        symbol_id: Option<SymbolId>,
     ) -> ForStatementLeft {
         ForStatementLeft::AssignmentTarget(AssignmentTarget::SimpleAssignmentTarget(
             SimpleAssignmentTarget::IdentifierReference(
-                self.identifier_reference(span, name, symbol_id).into(),
+                self.identifier_reference(span, name).into(),
             ),
         ))
     }
@@ -2987,10 +2968,9 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         name: String,
-        symbol_id: Option<SymbolId>,
     ) -> ArrowFunctionBody {
         ArrowFunctionBody::Expr(Expr::IdentifierReference(
-            self.identifier_reference(span, name, symbol_id).into(),
+            self.identifier_reference(span, name).into(),
         ))
     }
     #[inline]
@@ -3505,10 +3485,9 @@ impl<'a> Ast<'a> {
         decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
-        symbol_id: Option<SymbolId>,
     ) -> FormalParameterPattern {
         FormalParameterPattern::BindingPattern(BindingPattern::BindingIdentifier(
-            self.binding_identifier(span, name, decorators, type_annotation, optional, symbol_id)
+            self.binding_identifier(span, name, decorators, type_annotation, optional)
                 .into(),
         ))
     }
@@ -3517,11 +3496,10 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         name: String,
-        symbol_id: Option<SymbolId>,
     ) -> FormalParameterPattern {
         FormalParameterPattern::BindingPattern(BindingPattern::SimpleAssignmentTarget(
             SimpleAssignmentTarget::IdentifierReference(
-                self.identifier_reference(span, name, symbol_id).into(),
+                self.identifier_reference(span, name).into(),
             ),
         ))
     }
@@ -3835,10 +3813,9 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         name: String,
-        symbol_id: Option<SymbolId>,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::Expr(Expr::IdentifierReference(
-            self.identifier_reference(span, name, symbol_id).into(),
+            self.identifier_reference(span, name).into(),
         ))
     }
     #[inline]
@@ -4536,20 +4513,11 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
-    pub fn identifier_reference(
-        &mut self,
-        span: Span,
-        name: String,
-        symbol_id: Option<SymbolId>,
-    ) -> IdentifierReference {
+    pub fn identifier_reference(&mut self, span: Span, name: String) -> IdentifierReference {
         IdentifierReference(self.add_node(
             span,
             NodeKind::IdentifierReference,
-            NodePayload(
-                0u128
-                    | ((unsafe { name.to_extra_data(self).other } as u128) << 0usize)
-                    | ((symbol_id.map_or(0, |id| id.index() as u32 + 1) as u128) << 64usize),
-            ),
+            NodePayload(0u128 | ((unsafe { name.to_extra_data(self).other } as u128) << 0usize)),
         ))
     }
     #[inline]
@@ -4568,7 +4536,6 @@ impl<'a> Ast<'a> {
         decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
-        symbol_id: Option<SymbolId>,
     ) -> BindingIdentifier {
         let _extra_data = [name.to_extra_data(self), decorators.to_extra_data(self)];
         let _extra_data_range = self.add_extra_data_sub_range(&_extra_data);
@@ -4581,7 +4548,6 @@ impl<'a> Ast<'a> {
                         as u128)
                         << 8usize)
                     | ((optional as u32 as u128) << 0usize)
-                    | ((symbol_id.map_or(0, |id| id.index() as u32 + 1) as u128) << 40usize)
                     | ((_extra_data_range.start.index() as u128) << 96usize),
             ),
         ))
@@ -6144,13 +6110,8 @@ impl<'a> Ast<'a> {
         )
     }
     #[inline]
-    pub fn ts_type_name_identifier_reference(
-        &mut self,
-        span: Span,
-        name: String,
-        symbol_id: Option<SymbolId>,
-    ) -> TsTypeName {
-        TsTypeName::IdentifierReference(self.identifier_reference(span, name, symbol_id).into())
+    pub fn ts_type_name_identifier_reference(&mut self, span: Span, name: String) -> TsTypeName {
+        TsTypeName::IdentifierReference(self.identifier_reference(span, name).into())
     }
     #[inline]
     pub fn ts_type_name_ts_qualified_name(
@@ -6166,11 +6127,8 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         name: String,
-        symbol_id: Option<SymbolId>,
     ) -> TsQualifiedNameLeft {
-        TsQualifiedNameLeft::IdentifierReference(
-            self.identifier_reference(span, name, symbol_id).into(),
-        )
+        TsQualifiedNameLeft::IdentifierReference(self.identifier_reference(span, name).into())
     }
     #[inline]
     pub fn ts_qualified_name_left_identifier_name(
@@ -6188,10 +6146,9 @@ impl<'a> Ast<'a> {
         decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
-        symbol_id: Option<SymbolId>,
     ) -> TsQualifiedNameLeft {
         TsQualifiedNameLeft::BindingIdentifier(
-            self.binding_identifier(span, name, decorators, type_annotation, optional, symbol_id)
+            self.binding_identifier(span, name, decorators, type_annotation, optional)
                 .into(),
         )
     }
@@ -6230,10 +6187,9 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         name: String,
-        symbol_id: Option<SymbolId>,
     ) -> TsTypeQueryExprName {
         TsTypeQueryExprName::TsTypeName(TsTypeName::IdentifierReference(
-            self.identifier_reference(span, name, symbol_id).into(),
+            self.identifier_reference(span, name).into(),
         ))
     }
     #[inline]
@@ -6809,10 +6765,9 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         name: String,
-        symbol_id: Option<SymbolId>,
     ) -> TsEnumMemberName {
         TsEnumMemberName::Expr(Expr::IdentifierReference(
-            self.identifier_reference(span, name, symbol_id).into(),
+            self.identifier_reference(span, name).into(),
         ))
     }
     #[inline]
@@ -7297,10 +7252,9 @@ impl<'a> Ast<'a> {
         decorators: TypedSubRange<Decorator>,
         type_annotation: Option<TsTypeAnnotation>,
         optional: bool,
-        symbol_id: Option<SymbolId>,
     ) -> TsModuleName {
         TsModuleName::BindingIdentifier(
-            self.binding_identifier(span, name, decorators, type_annotation, optional, symbol_id)
+            self.binding_identifier(span, name, decorators, type_annotation, optional)
                 .into(),
         )
     }
@@ -7350,10 +7304,9 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         name: String,
-        symbol_id: Option<SymbolId>,
     ) -> TsModuleReference {
         TsModuleReference::TsTypeName(TsTypeName::IdentifierReference(
-            self.identifier_reference(span, name, symbol_id).into(),
+            self.identifier_reference(span, name).into(),
         ))
     }
     #[inline]
@@ -8582,10 +8535,9 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         name: String,
-        symbol_id: Option<SymbolId>,
     ) -> JsxExpression {
         JsxExpression::Expr(Expr::IdentifierReference(
-            self.identifier_reference(span, name, symbol_id).into(),
+            self.identifier_reference(span, name).into(),
         ))
     }
     #[inline]

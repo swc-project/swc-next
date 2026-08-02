@@ -457,8 +457,7 @@ impl<'a> CloneIn<'a> for IdentifierReference {
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let span = self.span(ast).clone_in(ast);
         let name = self.name(ast).clone_in(ast);
-        let symbol_id = self.symbol_id(ast).clone_in(ast);
-        ast.identifier_reference(span, name, symbol_id)
+        ast.identifier_reference(span, name)
     }
 }
 impl<'a> CloneIn<'a> for PrivateIdentifier {
@@ -479,8 +478,7 @@ impl<'a> CloneIn<'a> for BindingIdentifier {
         let decorators = self.decorators(ast).clone_in(ast);
         let type_annotation = self.type_annotation(ast).clone_in(ast);
         let optional = self.optional(ast).clone_in(ast);
-        let symbol_id = self.symbol_id(ast).clone_in(ast);
-        ast.binding_identifier(span, name, decorators, type_annotation, optional, symbol_id)
+        ast.binding_identifier(span, name, decorators, type_annotation, optional)
     }
 }
 impl<'a> CloneIn<'a> for IdentifierName {

@@ -15,7 +15,7 @@ fn main() {
     let root = Parser::init(&mut ast, Options::default(), NoTokenParserConfig)
         .parse()
         .program;
-    let semantic = analyze(root, &mut ast).semantic;
+    let semantic = analyze(root, &ast).semantic;
     root.visit_with(&mut ScopeDisplayVisitor {
         ast: &ast,
         semantic: &semantic,

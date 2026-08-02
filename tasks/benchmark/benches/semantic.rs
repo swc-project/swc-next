@@ -26,8 +26,8 @@ fn bench_semantic(c: &mut Criterion) {
                         .program;
                     (program, ast)
                 },
-                |(program, mut ast)| {
-                    black_box(analyze(program, &mut ast));
+                |(program, ast)| {
+                    black_box(analyze(program, &ast));
                 },
                 BatchSize::SmallInput,
             );

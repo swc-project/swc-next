@@ -134,7 +134,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
             return;
         }
         let name = self.capture_this(ast);
-        let replacement = ast.identifier_reference(node.span(ast), name, None);
+        let replacement = ast.identifier_reference(node.span(ast), name);
         ast.replace_data(node, replacement);
     }
 
@@ -142,7 +142,6 @@ impl<'semantic> FnEnvHoister<'semantic> {
         if self.in_arrow && self.is_unresolved_arguments(node, ast) {
             let name = self.capture_arguments(ast);
             node.set_name(ast, name);
-            node.set_symbol_id(ast, None);
         }
     }
 
@@ -153,7 +152,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
     ) {
         if self.in_arrow && self.is_new_target(node, ast) {
             let name = self.capture_new_target(ast);
-            let replacement = ast.identifier_reference(node.span(ast), name, None);
+            let replacement = ast.identifier_reference(node.span(ast), name);
             ast.replace_data(node, replacement);
         }
     }
@@ -176,7 +175,6 @@ impl<'semantic> FnEnvHoister<'semantic> {
                 TypedSubRange::empty(),
                 None,
                 false,
-                None,
             );
             let init = (!derived_constructor).then(|| ast.expr_this_expression(DUMMY_SP));
             declarators.push(ast.variable_declarator(DUMMY_SP, id, init, false));
@@ -188,10 +186,9 @@ impl<'semantic> FnEnvHoister<'semantic> {
                 TypedSubRange::empty(),
                 None,
                 false,
-                None,
             );
             let arguments_name = ast.add_string(b"arguments");
-            let init = ast.expr_identifier_reference(DUMMY_SP, arguments_name, None);
+            let init = ast.expr_identifier_reference(DUMMY_SP, arguments_name);
             declarators.push(ast.variable_declarator(DUMMY_SP, id, Some(init), false));
         }
         if let Some(name) = frame.new_target {
@@ -201,7 +198,6 @@ impl<'semantic> FnEnvHoister<'semantic> {
                 TypedSubRange::empty(),
                 None,
                 false,
-                None,
             );
             let new_name = ast.add_string(b"new");
             let target_name = ast.add_string(b"target");
@@ -314,7 +310,6 @@ fn rewrite_derived_super_calls(body: FunctionBody, this_name: AstString, ast: &m
                 .assignment_target_simple_assignment_target_identifier_reference(
                     DUMMY_SP,
                     self.this_name,
-                    None,
                 );
             let this = self.ast.expr_this_expression(DUMMY_SP);
             let assignment = self.ast.expr_assignment_expression(

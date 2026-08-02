@@ -129,13 +129,6 @@ fn write_node_case(output: &mut String, kind: usize, ast: &AstStruct, schema: &S
 
     let mut extra_offset = 0usize;
     for (field_index, field) in ast.fields.iter().enumerate() {
-        if is_semantic_field(&field.name) {
-            if !is_inline_field(layout.as_ref(), field_index) {
-                extra_offset += 1;
-            }
-            continue;
-        }
-
         let field_ty = &schema.types[field.type_id];
         let (location, aligned_u32) = if let Some((_, byte_offset, _)) =
             layout.as_ref().and_then(|layout| {
@@ -170,19 +163,6 @@ fn write_node_case(output: &mut String, kind: usize, ast: &AstStruct, schema: &S
 struct DecodedField {
     name: String,
     expression: String,
-}
-
-fn is_inline_field(layout: Option<&crate::util::InlineLayout>, field_index: usize) -> bool {
-    layout.is_some_and(|layout| {
-        layout
-            .fields
-            .iter()
-            .any(|(index, _, _)| *index == field_index)
-    })
-}
-
-fn is_semantic_field(name: &str) -> bool {
-    matches!(name, "symbol_id" | "scope_id")
 }
 
 fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_u32: bool) -> String {

@@ -83,8 +83,6 @@ pub union ExtraData {
     node_id: NodeId,
 
     sub_range: SubRange,
-    optional_scope_id: Option<ScopeId>,
-    optional_symbol_id: Option<SymbolId>,
 
     /// Any scalar enum or other value representable within eight bytes.
     other: u64,

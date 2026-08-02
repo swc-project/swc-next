@@ -3382,7 +3382,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let decorators = TypedSubRange::empty();
         let local = self
             .ast
-            .binding_identifier(local_span, name, decorators, None, false, None);
+            .binding_identifier(local_span, name, decorators, None, false);
         Some(self.ast.import_specifier(
             Span::new(start, local_span.end),
             imported,
@@ -3690,9 +3690,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             }
             let async_end = async_start + 5;
             let name = self.ast.source_slice(async_start, async_end);
-            let expression =
-                self.ast
-                    .expr_identifier_reference(Span::new(async_start, async_end), name, None);
+            let expression = self
+                .ast
+                .expr_identifier_reference(Span::new(async_start, async_end), name);
             return Some(DefaultExportPart {
                 declaration: ExportDefaultDeclarationKind::Expr(expression),
                 needs_semi: true,
@@ -6245,9 +6245,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             return None;
         }
         let name = self.identifier_name(token);
-        let mut type_name = self
-            .ast
-            .ts_type_name_identifier_reference(token.span, name, None);
+        let mut type_name = self.ast.ts_type_name_identifier_reference(token.span, name);
         self.advance_without_escape_check()?;
         while self.current_token.tag == TokenTag::Dot {
             type_name = self.parse_qualified_segment(type_name)?;
@@ -7319,7 +7317,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         self.validate_identifier(token, "an identifier");
         self.advance_without_escape_check()?;
         let name = self.identifier_name(token);
-        Some(self.ast.expr_identifier_reference(token.span, name, None))
+        Some(self.ast.expr_identifier_reference(token.span, name))
     }
 
     fn parse_private_identifier(&mut self) -> Option<PrivateIdentifier> {
@@ -8234,7 +8232,6 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     decorators,
                     None,
                     false,
-                    None,
                 );
                 let binding = self.ast.replace_data(identifier, binding);
                 Some(BindingPattern::BindingIdentifier(binding))
@@ -8716,7 +8713,6 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                             decorators,
                             None,
                             false,
-                            None,
                         );
                         let binding = self.ast.replace_data(identifier, binding);
                         Some(BindingPattern::BindingIdentifier(binding))
@@ -9184,11 +9180,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     ..ParseExpressionOpts::default()
                 },
             )?;
-            let identifier = self.ast.expr_identifier_reference(
-                identifier.span(self.ast),
-                identifier.name(self.ast),
-                None,
-            );
+            let identifier = self
+                .ast
+                .expr_identifier_reference(identifier.span(self.ast), identifier.name(self.ast));
             let target = self.expression_to_assignment_target(identifier)?;
             let assignment = self.ast.expr_assignment_expression(
                 Span::new(
@@ -9242,11 +9236,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             );
             return None;
         };
-        let value = self.ast.expr_identifier_reference(
-            identifier.span(self.ast),
-            identifier.name(self.ast),
-            None,
-        );
+        let value = self
+            .ast
+            .expr_identifier_reference(identifier.span(self.ast), identifier.name(self.ast));
         Some(ObjectPropertyKind::ObjectProperty(
             self.ast.object_property(
                 Span::new(start, value.span(self.ast).end),
@@ -11067,7 +11059,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let decorators = TypedSubRange::empty();
         Some(
             self.ast
-                .binding_identifier(token.span, name, decorators, None, false, None),
+                .binding_identifier(token.span, name, decorators, None, false),
         )
     }
 

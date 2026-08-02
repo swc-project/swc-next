@@ -1,10 +1,9 @@
 use crate::{
     Accessibility, AssignmentOperator, Ast, BinaryOperator, ClassType, FormalParameterKind,
     FunctionType, ImportOrExportKind, ImportPhase, LogicalOperator, MethodDefinitionKind, NodeId,
-    NodeKind, NumericLiteralKind, PropertyKind, ScopeId, SourceType, Span, String as AstString,
-    SymbolId, TsMappedTypeModifier, TsMethodSignatureKind, TsModuleDeclarationKind,
-    TsTypeOperatorKind, UnaryOperator, UpdateOperator, VariableKind, Visit, VisitMut, VisitMutWith,
-    VisitWith,
+    NodeKind, NumericLiteralKind, PropertyKind, SourceType, Span, String as AstString,
+    TsMappedTypeModifier, TsMethodSignatureKind, TsModuleDeclarationKind, TsTypeOperatorKind,
+    UnaryOperator, UpdateOperator, VariableKind, Visit, VisitMut, VisitMutWith, VisitWith,
 };
 
 /// Controls how traversal continues after an enter hook.
@@ -118,8 +117,6 @@ dummy_visit_mut_impl!(bool);
 dummy_visit_mut_impl!(f64);
 dummy_visit_mut_impl!(Span);
 dummy_visit_mut_impl!(AstString);
-dummy_visit_mut_impl!(ScopeId);
-dummy_visit_mut_impl!(SymbolId);
 dummy_visit_mut_impl!(ImportPhase);
 dummy_visit_mut_impl!(SourceType);
 dummy_visit_mut_impl!(MethodDefinitionKind);

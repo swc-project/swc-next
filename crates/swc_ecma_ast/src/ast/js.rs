@@ -717,7 +717,6 @@ pub struct TemplateElement {
 #[ast]
 pub struct IdentifierReference {
     name: String,
-    symbol_id: Cell<Option<SymbolId>>,
 }
 
 /// A `#privateName` identifier used inside a class.
@@ -755,7 +754,6 @@ pub struct BindingIdentifier {
     type_annotation: Option<TsTypeAnnotation>,
     /// true when marked optional (`x?: T`).
     optional: bool,
-    symbol_id: Cell<Option<SymbolId>>,
 }
 
 /// An identifier used as a property key or meta property name.

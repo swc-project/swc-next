@@ -60,8 +60,8 @@ fn setup_program(source: &'static str) -> ParsedProgram {
 #[library_benchmark]
 #[bench::typescript(setup_program(TYPESCRIPT))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX))]
-fn bench_semantic(mut parsed: ParsedProgram) {
-    black_box(analyze(parsed.program, &mut parsed.ast));
+fn bench_semantic(parsed: ParsedProgram) {
+    black_box(analyze(parsed.program, &parsed.ast));
 }
 
 struct VisitCounter<'visit, 'ast> {

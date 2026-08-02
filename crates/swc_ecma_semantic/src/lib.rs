@@ -345,7 +345,7 @@ pub struct SemanticReturn<'a> {
 /// Diagnostics are returned separately from parser diagnostics. Their
 /// messages use the tree's arena, so the result is valid as long as the
 /// tree is alive.
-pub fn analyze<'a>(root: Program, ast: &mut Ast<'a>) -> SemanticReturn<'a> {
+pub fn analyze<'a>(root: Program, ast: &Ast<'a>) -> SemanticReturn<'a> {
     let mut visitor = Checker::new(root, ast);
     root.visit_with(&mut visitor);
     let (semantic, diagnostics) = visitor.finish();

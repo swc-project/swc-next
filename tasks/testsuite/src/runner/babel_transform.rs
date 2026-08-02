@@ -64,7 +64,7 @@ fn transform_input(case: &BabelTransformCase) -> Result<Vec<u8>, String> {
     let allocator = Allocator::new();
     let mut ast = Ast::new(source, &allocator);
     let program = parse_program(&mut ast, case)?;
-    let semantic_ret = analyze(program, &mut ast);
+    let semantic_ret = analyze(program, &ast);
     if let Some(diagnostic) = semantic_ret
         .diagnostics
         .iter()

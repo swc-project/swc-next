@@ -91,22 +91,12 @@ fn generate_build_function_inline(
         };
     }
 
-    let mut inline_defaults = TokenStream::new();
     let mut pack_u128 = TokenStream::new();
 
     for &(field_idx, byte_offset, byte_size) in &layout.fields {
         let field = &ast.fields[field_idx];
-        let mut field_name = format_ident!("{}", field.name);
+        let field_name = format_ident!("{}", field.name);
         let field_ty = &schema.types[field.type_id];
-
-        if should_default_in_builder(ast, &field.name) {
-            let default_name = format_ident!("_inline_default_{field_idx}");
-            let default_ty = field_ty.repr_ident(schema);
-            inline_defaults.extend(quote! {
-                let #default_name = <#default_ty>::default();
-            });
-            field_name = default_name;
-        }
 
         let bit_offset = byte_offset * 8;
         if byte_size == std::mem::size_of::<u64>() {
@@ -123,7 +113,6 @@ fn generate_build_function_inline(
         InlineStorageMode::Full => quote! {
             #[inline]
             pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
-                #inline_defaults
                 #ret_ty(self.add_node(
                     span,
                     NodeKind::#ret_ty,
@@ -144,13 +133,7 @@ fn generate_build_function_inline(
                 }
 
                 let field_name = format_ident!("{}", field.name);
-                let field_value = if should_default_in_builder(ast, &field.name) {
-                    let field_ty = schema.types[field.type_id].repr_ident(schema);
-                    quote!(<#field_ty>::default())
-                } else {
-                    quote!(#field_name)
-                };
-                extra_data_values.push(quote!(#field_value.to_extra_data(self)));
+                extra_data_values.push(quote!(#field_name.to_extra_data(self)));
             }
 
             let (add_extra_data, start_id) = generate_add_extra_data(&extra_data_values);
@@ -159,7 +142,6 @@ fn generate_build_function_inline(
             quote! {
                 #[inline]
                 pub fn #fn_name(&mut self, span: Span, #fn_params) -> #ret_ty {
-                    #inline_defaults
                     #add_extra_data
                     #ret_ty(self.add_node(
                         span,
@@ -179,7 +161,7 @@ fn generate_build_function_inline(
 /// Generate build function using extra_data storage (for large nodes)
 fn generate_build_function_extra_data(
     ast: &AstStruct,
-    schema: &Schema,
+    _schema: &Schema,
     fn_name: syn::Ident,
     ret_ty: syn::Ident,
     fn_params: TokenStream,
@@ -187,13 +169,7 @@ fn generate_build_function_extra_data(
     let mut extra_data_values = Vec::new();
     for field in &ast.fields {
         let field_name = format_ident!("{}", field.name);
-        let field_value = if should_default_in_builder(ast, &field.name) {
-            let field_ty = schema.types[field.type_id].repr_ident(schema);
-            quote!(<#field_ty>::default())
-        } else {
-            quote!(#field_name)
-        };
-        extra_data_values.push(quote!(#field_value.to_extra_data(self)));
+        extra_data_values.push(quote!(#field_name.to_extra_data(self)));
     }
 
     let (add_extra_data, start_id) = generate_add_extra_data(&extra_data_values);
@@ -326,9 +302,6 @@ fn generate_build_function_for_enum(
 fn generate_fn_params_decl(ast: &AstStruct, schema: &Schema) -> TokenStream {
     let mut fields = Vec::default();
     for field in ast.fields.iter() {
-        if should_default_in_builder(ast, &field.name) {
-            continue;
-        }
         let field_name = format_ident!("{}", field.name);
         let field_ty = schema.types[field.type_id].repr_ident(schema);
         fields.push(quote!(#field_name: #field_ty));
@@ -337,19 +310,9 @@ fn generate_fn_params_decl(ast: &AstStruct, schema: &Schema) -> TokenStream {
     quote!( #(#fields),* )
 }
 
-fn should_default_in_builder(ast: &AstStruct, field_name: &str) -> bool {
-    matches!(
-        (ast.name.as_str(), field_name),
-        ("Ident", "symbol_id") | ("BlockStmt", "scope_id")
-    )
-}
-
 fn generate_fn_args(ast: &AstStruct) -> TokenStream {
     let mut fields = Vec::default();
     for field in ast.fields.iter() {
-        if should_default_in_builder(ast, &field.name) {
-            continue;
-        }
         let field_name = format_ident!("{}", field.name);
         fields.push(quote!(#field_name));
     }

@@ -29,7 +29,7 @@ impl StickyRegex {
         let flags = ast.argument_expr_string_literal(span, flags, ast.empty_string());
         let arguments = ast.add_typed_sub_range([pattern, flags]);
         let reg_exp_name = ast.add_string(b"RegExp");
-        let callee = ast.expr_identifier_reference(span, reg_exp_name, None);
+        let callee = ast.expr_identifier_reference(span, reg_exp_name);
         let replacement = ast.new_expression(span, callee, arguments, None);
         ast.replace_data(literal, replacement);
     }
