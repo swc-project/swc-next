@@ -960,6 +960,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
             }
         }
         node.visit_children_with(self);
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
     }
     /// <https://tc39.es/ecma262/#sec-for-in-and-for-of-statements-static-semantics-early-errors>
@@ -975,6 +976,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
             checks.check_assign_target_eval_arguments(left, context);
         }
         node.visit_children_with(self);
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
     }
     /// <https://tc39.es/ecma262/#sec-for-in-and-for-of-statements-static-semantics-early-errors>
@@ -998,6 +1000,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
             checks.check_assign_target_eval_arguments(left, context);
         }
         node.visit_children_with(self);
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
     }
     fn visit_break_statement(&mut self, node: BreakStatement) {
@@ -1310,6 +1313,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         if function.function_type(context.ast) != FunctionType::FunctionDeclaration {
             node.visit_children_with(self);
             self.context.state.symbols.exit_saved_context();
+            self.context.state.exit_scope(node.node_id());
             self.context.leave_node(node.node_id());
             return;
         }
@@ -1322,6 +1326,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
                 drop(ancestors);
                 node.visit_children_with(self);
                 self.context.state.symbols.exit_saved_context();
+                self.context.state.exit_scope(node.node_id());
                 self.context.leave_node(node.node_id());
                 return;
             };
@@ -1359,6 +1364,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         }
         node.visit_children_with(self);
         self.context.state.symbols.exit_saved_context();
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
     }
     /// <https://tc39.es/ecma262/#sec-with-statement-static-semantics-early-errors>
@@ -2031,6 +2037,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.enter_for_statement(node.node_id());
         self.context.enter_node(node.node_id());
         node.visit_children_with(self);
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
     }
     fn visit_catch_clause(&mut self, node: CatchClause) {
@@ -2040,12 +2047,14 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         state.symbols.enter_catch_clause(&state.scope);
         node.visit_children_with(self);
         self.context.state.symbols.exit_saved_context();
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
     }
     fn visit_decorator(&mut self, node: Decorator) {
         self.context.state.enter_decorator();
         self.context.enter_node(node.node_id());
         node.visit_children_with(self);
+        self.context.state.exit_decorator();
         self.context.leave_node(node.node_id());
     }
     fn visit_class(&mut self, node: Class) {
@@ -2057,12 +2066,14 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
             .enter_class(self.context.ast, node, &state.scope);
         node.visit_children_with(self);
         self.context.state.symbols.exit_saved_context();
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
     }
     fn visit_static_block(&mut self, node: StaticBlock) {
         self.context.state.enter_static_block(node.node_id());
         self.context.enter_node(node.node_id());
         node.visit_children_with(self);
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
     }
     fn visit_function_body(&mut self, node: FunctionBody) {
@@ -2072,6 +2083,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
             .enter_function_body(self.context.ast, node, parent);
         self.context.enter_node(node.node_id());
         node.visit_children_with(self);
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
     }
     fn visit_block_statement(&mut self, node: BlockStatement) {
@@ -2080,6 +2092,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
             .enter_block_statement(self.context.ast, node.node_id());
         self.context.enter_node(node.node_id());
         node.visit_children_with(self);
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
     }
     fn visit_arrow_function_expression(&mut self, node: ArrowFunctionExpression) {
@@ -2088,6 +2101,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
             .enter_arrow_function_expression(self.context.ast, node);
         self.context.enter_node(node.node_id());
         node.visit_children_with(self);
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
     }
     fn visit_ts_function(&mut self, node: TsFunction) {
@@ -2097,6 +2111,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         state.symbols.enter_ts_function(&state.scope);
         node.visit_children_with(self);
         self.context.state.symbols.exit_saved_context();
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
     }
     fn visit_ts_conditional_type(&mut self, node: TsConditionalType) {
@@ -2104,6 +2119,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.state.enter_type_position();
         self.context.enter_node(node.node_id());
         node.visit_children_with(self);
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
@@ -2115,6 +2131,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         state.symbols.enter_ts_function_type(&state.scope);
         node.visit_children_with(self);
         self.context.state.symbols.exit_saved_context();
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
@@ -2126,6 +2143,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         state.symbols.enter_ts_constructor_type(&state.scope);
         node.visit_children_with(self);
         self.context.state.symbols.exit_saved_context();
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
@@ -2140,6 +2158,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
             .enter_ts_mapped_type(self.context.ast, parent, &state.scope);
         node.visit_children_with(self);
         self.context.state.symbols.exit_saved_context();
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
@@ -2151,6 +2170,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         state.symbols.enter_ts_method_signature(&state.scope);
         node.visit_children_with(self);
         self.context.state.symbols.exit_saved_context();
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
@@ -2166,6 +2186,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
             .enter_ts_call_signature_declaration(&state.scope);
         node.visit_children_with(self);
         self.context.state.symbols.exit_saved_context();
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
@@ -2181,6 +2202,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
             .enter_ts_construct_signature_declaration(&state.scope);
         node.visit_children_with(self);
         self.context.state.symbols.exit_saved_context();
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
@@ -2192,6 +2214,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         state.symbols.enter_ts_index_signature(&state.scope);
         node.visit_children_with(self);
         self.context.state.symbols.exit_saved_context();
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
         self.context.state.exit_type_position();
     }
@@ -2206,6 +2229,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
             .enter_ts_type_alias_declaration(self.context.ast, node, &state.scope);
         node.visit_children_with(self);
         self.context.state.symbols.exit_saved_context();
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
     }
     fn visit_ts_interface_declaration(&mut self, node: TsInterfaceDeclaration) {
@@ -2219,6 +2243,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
             .enter_ts_interface_declaration(self.context.ast, node, &state.scope);
         node.visit_children_with(self);
         self.context.state.symbols.exit_saved_context();
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
     }
     fn visit_ts_enum_body(&mut self, node: TsEnumBody) {
@@ -2226,6 +2251,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.enter_node(node.node_id());
         self.context.state.symbols.enter_ts_enum_body();
         node.visit_children_with(self);
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
     }
     fn visit_ts_enum_member(&mut self, node: TsEnumMember) {
@@ -2242,6 +2268,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         self.context.enter_node(node.node_id());
         self.context.state.symbols.enter_ts_module_block();
         node.visit_children_with(self);
+        self.context.state.exit_scope(node.node_id());
         self.context.leave_node(node.node_id());
     }
     fn visit_jsx_opening_element(&mut self, node: JsxOpeningElement) {

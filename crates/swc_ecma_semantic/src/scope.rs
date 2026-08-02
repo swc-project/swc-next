@@ -2,7 +2,7 @@ use oxc_index::Idx;
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, Ast, Class, ClassType, Directive, Function, FunctionBody,
-    FunctionType, NodeId, NodeKind, NodeKindData, Program, ScopeId, SourceType,
+    FunctionType, NodeId, NodeKindData, Program, ScopeId, SourceType,
 };
 
 use crate::ecmascript;
@@ -377,22 +377,18 @@ impl<'a> ScopeTracker<'a> {
     // A node pops exactly the scopes recording it as creator. Two for a
     // named function or class expression, zero for a shared or never-created
     // scope. Cannot drift from `enter`.
-    pub fn exit(&mut self, index: NodeId, kind: NodeKind) {
-        match kind {
-            NodeKind::Program => {}
-            NodeKind::Decorator => {
-                // Every decorator enter saved exactly one scope.
-                self.current = self
-                    .decorator_saved
-                    .pop()
-                    .expect("every decorator enter saved exactly one scope");
-            }
-            _ => {
-                while self.current.index() != 0 && self.current_scope().node == index {
-                    self.pop_scope();
-                }
-            }
+    pub fn exit_scope(&mut self, node: NodeId) {
+        while self.current.index() != 0 && self.current_scope().node == node {
+            self.pop_scope();
         }
+    }
+
+    pub fn exit_decorator(&mut self) {
+        // Every decorator enter saved exactly one scope.
+        self.current = self
+            .decorator_saved
+            .pop()
+            .expect("every decorator enter saved exactly one scope");
     }
 
     /// The current scope.

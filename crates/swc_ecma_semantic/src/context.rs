@@ -32,7 +32,6 @@ impl<'traverse, 'ast> SemanticVisitCtx<'traverse, 'ast> {
     }
 
     pub fn leave_node(&mut self, node: NodeId) {
-        self.state.exit(self.ast, node);
         let actual = self.path.pop();
         debug_assert_eq!(actual, Some(node));
     }
@@ -246,9 +245,12 @@ impl<'a> SemanticContext<'a> {
         );
     }
 
-    pub fn exit(&mut self, tree: &Ast, node: NodeId) {
-        let kind = tree.node_kind(node);
-        self.scope.exit(node, kind);
+    pub fn exit_scope(&mut self, node: NodeId) {
+        self.scope.exit_scope(node);
+    }
+
+    pub fn exit_decorator(&mut self) {
+        self.scope.exit_decorator();
     }
 
     pub fn finalize(self, tree: &Ast) -> Semantic<'a> {
