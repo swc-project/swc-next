@@ -1,12 +1,12 @@
 use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, BindingIdentifier, Class, Directive, Function, FunctionBody,
-    NodeId, NodeKindData, Program, ScopeId,
+    ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId, NodeKindData,
+    Program, ScopeId,
 };
 
 use crate::{
     Semantic,
-    binder::{RefContext, ReferenceSpace, SymbolTracker},
+    binder::{ReferenceSpace, SymbolTracker},
     scope::{ScopeKind, ScopeTracker},
 };
 
@@ -222,27 +222,6 @@ impl<'a> SemanticContext<'a> {
 
     pub fn enter_decorator(&mut self) {
         self.scope.enter_decorator();
-    }
-
-    pub fn post_enter(&mut self, tree: &Ast, data: NodeKindData, reference_context: RefContext) {
-        self.symbols
-            .declare_bindings(tree, data, &self.scope, reference_context);
-    }
-
-    pub fn post_enter_binding(
-        &mut self,
-        tree: &Ast,
-        identifier: BindingIdentifier,
-        space: ReferenceSpace,
-    ) {
-        self.post_enter(
-            tree,
-            NodeKindData::BindingIdentifier(identifier),
-            RefContext {
-                is_write: false,
-                space,
-            },
-        );
     }
 
     pub fn exit_scope(&mut self, node: NodeId) {

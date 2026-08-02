@@ -1,11 +1,13 @@
 use oxc_index::Idx;
 use swc_next_allocator::{Allocator, CloneIn, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
-    Ast, Class, ClassType, ExportNamedDeclaration, Function, FunctionType, ImportDeclaration,
-    ImportOrExportKind, ImportSpecifier, JsxElementName, JsxElementNameData, JsxIdentifier,
-    JsxMemberExpressionObjectData, NodeId, NodeKind, NodeKindData, ReferenceId, ScopeId,
-    SourceType, String as AstString, SymbolId, TsEnumDeclaration, TsInterfaceDeclaration,
-    TsModuleDeclaration, TsTypeAliasDeclaration, VariableDeclaration, VariableKind,
+    Ast, BindingIdentifier, Class, ClassType, ExportNamedDeclaration, Function, FunctionType,
+    IdentifierReference, ImportDeclaration, ImportOrExportKind, ImportSpecifier, JsxClosingElement,
+    JsxElementName, JsxElementNameData, JsxIdentifier, JsxMemberExpressionObjectData,
+    JsxOpeningElement, NodeId, NodeKind, NodeKindData, ReferenceId, ScopeId, SourceType,
+    String as AstString, SymbolId, TsEnumDeclaration, TsEnumMember, TsInterfaceDeclaration,
+    TsModuleDeclaration, TsTypeAliasDeclaration, TsTypePredicate, VariableDeclaration,
+    VariableKind,
 };
 
 use crate::{
@@ -568,25 +570,6 @@ struct SavedContext {
     ambient: bool,
 }
 
-/// Per-node facts computed by the walker for
-/// [`SymbolTracker::declare_bindings`].
-#[derive(Clone, Copy)]
-pub(crate) struct RefContext {
-    /// the node is an identifier in assignment-target position
-    pub is_write: bool,
-    /// the declaration space the identifier resolves in
-    pub space: ReferenceSpace,
-}
-
-impl Default for RefContext {
-    fn default() -> Self {
-        Self {
-            is_write: false,
-            space: ReferenceSpace::Value,
-        }
-    }
-}
-
 impl<'a> SymbolTracker<'a> {
     pub fn init(tree: &Ast<'a>) -> Self {
         assert!(tree.node_count() > 0);
@@ -1067,131 +1050,154 @@ impl<'a> SymbolTracker<'a> {
         });
     }
 
-    /// Materializes the pending binding context into a symbol (for a
-    /// `binding_identifier`) or records a reference (for an
-    /// `identifier_reference`). Called by the concrete enter hooks it handles,
-    /// before their children.
-    pub fn declare_bindings(
+    pub fn declare_binding_identifier(
         &mut self,
         tree: &Ast,
-        data: NodeKindData,
+        identifier: BindingIdentifier,
         scope: &ScopeTracker<'a>,
-        reference_context: RefContext,
+        space: ReferenceSpace,
     ) {
-        if self.scope_maps.len() < scope.scopes.len() {
-            self.sync_scope_maps(scope.scopes.len());
+        self.sync_scope_maps_from(scope);
+        let node = identifier.node_id();
+        // Type-position identifiers are parameter labels. Only type
+        // parameters are real declarations there.
+        if space.in_type_position() && !self.pending.flags.type_parameter {
+            return;
         }
-        match data {
-            NodeKindData::BindingIdentifier(identifier) => {
-                let node = identifier.node_id();
-                // Type-position identifiers are parameter labels. Only type
-                // parameters are real declarations there.
-                if reference_context.space.in_type_position() && !self.pending.flags.type_parameter
-                {
-                    return;
-                }
-                let symbol_id = self.declare(tree, identifier.name(tree), node);
+        let symbol_id = self.declare(tree, identifier.name(tree), node);
 
-                // Register a hoisting var in every block it passes through so
-                // block-scoped redeclarations see it.
-                if self.pending.flags.is_hoisting_var() {
-                    for scope_id in scope.ancestors(Some(scope.current)) {
-                        if scope_id == self.pending.scope {
-                            break;
-                        }
-                        let name = tree.string(identifier.name(tree)).clone_in(self.allocator);
-                        self.hoisting_variables[scope_id.index()]
-                            .entry(name)
-                            .or_insert(symbol_id);
-                    }
+        // Register a hoisting var in every block it passes through so
+        // block-scoped redeclarations see it.
+        if self.pending.flags.is_hoisting_var() {
+            for scope_id in scope.ancestors(Some(scope.current)) {
+                if scope_id == self.pending.scope {
+                    break;
                 }
+                let name = tree.string(identifier.name(tree)).clone_in(self.allocator);
+                self.hoisting_variables[scope_id.index()]
+                    .entry(name)
+                    .or_insert(symbol_id);
             }
-            NodeKindData::IdentifierReference(identifier) => {
-                let node = identifier.node_id();
-                self.add_reference(
-                    tree,
-                    identifier.name(tree),
-                    scope.current,
-                    node,
-                    ReferenceFlags {
-                        write: reference_context.is_write,
-                        space: reference_context.space,
-                        _reserved: 0,
-                    },
-                );
-            }
-            NodeKindData::TsTypePredicate(predicate) => {
-                // `param is T` parses `param` as an IdentifierName but it
-                // references the enclosing function's parameter. Synthesize
-                // a reference so renamers update both together. In type-only
-                // signatures the parameter is only a label, so no reference
-                // is recorded.
-                let parameter_name = predicate.parameter_name(tree);
-                let parameter_node = parameter_name.node_id();
-                let NodeKindData::IdentifierName(parameter_name) = tree.kind_data(parameter_node)
-                else {
-                    return;
-                };
-                let name = parameter_name.name(tree);
-                let Some(parameter) = self.own_binding(scope.current, tree.string(name)) else {
-                    return;
-                };
-                if !self.symbol(parameter).flags.parameter {
-                    return;
-                }
-                self.add_reference(
-                    tree,
-                    name,
-                    scope.current,
-                    parameter_node,
-                    ReferenceFlags {
-                        space: ReferenceSpace::Typeof,
-                        ..ReferenceFlags::default()
-                    },
-                );
-            }
-            NodeKindData::TsEnumMember(member) => {
-                // Members are lexically visible inside the enum body:
-                //
-                //   enum E { a, b = a }
-                //   //              ^ resolves to the member
-                //
-                // Member names are IdentifierName or StringLiteral nodes,
-                // not BindingIdentifiers, so they declare here. Computed and
-                // template names never declare.
-                if member.computed(tree) {
-                    return;
-                }
-                let member_id = member.id(tree).node_id();
-                let name = match tree.kind_data(member_id) {
-                    NodeKindData::IdentifierName(identifier) => identifier.name(tree),
-                    NodeKindData::StringLiteral(literal) => literal.value(tree),
-                    _ => return,
-                };
-                let saved = self.pending;
-                self.pending = PendingBinding {
-                    flags: SymbolFlags {
-                        enum_member: true,
-                        ambient: self.ambient,
-                        ..SymbolFlags::NONE
-                    },
-                    excludes: Excludes::ENUM_MEMBER,
-                    scope: scope.current,
-                };
-                self.declare(tree, name, member_id);
-                self.pending = saved;
-            }
-            NodeKindData::JsxOpeningElement(element) => {
-                // The leftmost capitalized JSX identifier is a JS binding
-                // reference. Lowercase tags are intrinsic element names; the
-                // rest of a member chain is property syntax.
-                self.add_jsx_reference(tree, element.name(tree), scope.current);
-            }
-            NodeKindData::JsxClosingElement(element) => {
-                self.add_jsx_reference(tree, element.name(tree), scope.current);
-            }
-            _ => {}
         }
+    }
+
+    pub fn add_identifier_reference(
+        &mut self,
+        tree: &Ast,
+        identifier: IdentifierReference,
+        scope: &ScopeTracker<'a>,
+        is_write: bool,
+        space: ReferenceSpace,
+    ) {
+        self.sync_scope_maps_from(scope);
+        self.add_reference(
+            tree,
+            identifier.name(tree),
+            scope.current,
+            identifier.node_id(),
+            ReferenceFlags {
+                write: is_write,
+                space,
+                _reserved: 0,
+            },
+        );
+    }
+
+    pub fn add_ts_type_predicate_reference(
+        &mut self,
+        tree: &Ast,
+        predicate: TsTypePredicate,
+        scope: &ScopeTracker<'a>,
+    ) {
+        self.sync_scope_maps_from(scope);
+        // `param is T` parses `param` as an IdentifierName but it
+        // references the enclosing function's parameter. Synthesize
+        // a reference so renamers update both together. In type-only
+        // signatures the parameter is only a label, so no reference
+        // is recorded.
+        let parameter_name = predicate.parameter_name(tree);
+        let parameter_node = parameter_name.node_id();
+        let NodeKindData::IdentifierName(parameter_name) = tree.kind_data(parameter_node) else {
+            return;
+        };
+        let name = parameter_name.name(tree);
+        let Some(parameter) = self.own_binding(scope.current, tree.string(name)) else {
+            return;
+        };
+        if !self.symbol(parameter).flags.parameter {
+            return;
+        }
+        self.add_reference(
+            tree,
+            name,
+            scope.current,
+            parameter_node,
+            ReferenceFlags {
+                space: ReferenceSpace::Typeof,
+                ..ReferenceFlags::default()
+            },
+        );
+    }
+
+    pub fn declare_ts_enum_member(
+        &mut self,
+        tree: &Ast,
+        member: TsEnumMember,
+        scope: &ScopeTracker<'a>,
+    ) {
+        self.sync_scope_maps_from(scope);
+        // Members are lexically visible inside the enum body:
+        //
+        //   enum E { a, b = a }
+        //   //              ^ resolves to the member
+        //
+        // Member names are IdentifierName or StringLiteral nodes,
+        // not BindingIdentifiers, so they declare here. Computed and
+        // template names never declare.
+        if member.computed(tree) {
+            return;
+        }
+        let member_id = member.id(tree).node_id();
+        let name = match tree.kind_data(member_id) {
+            NodeKindData::IdentifierName(identifier) => identifier.name(tree),
+            NodeKindData::StringLiteral(literal) => literal.value(tree),
+            _ => return,
+        };
+        let saved = self.pending;
+        self.pending = PendingBinding {
+            flags: SymbolFlags {
+                enum_member: true,
+                ambient: self.ambient,
+                ..SymbolFlags::NONE
+            },
+            excludes: Excludes::ENUM_MEMBER,
+            scope: scope.current,
+        };
+        self.declare(tree, name, member_id);
+        self.pending = saved;
+    }
+
+    pub fn add_jsx_opening_element_reference(
+        &mut self,
+        tree: &Ast,
+        element: JsxOpeningElement,
+        scope: &ScopeTracker<'a>,
+    ) {
+        self.sync_scope_maps_from(scope);
+        // The leftmost capitalized JSX identifier is a JS binding
+        // reference. Lowercase tags are intrinsic element names; the
+        // rest of a member chain is property syntax.
+        self.add_jsx_reference(tree, element.name(tree), scope.current);
+    }
+
+    pub fn add_jsx_closing_element_reference(
+        &mut self,
+        tree: &Ast,
+        element: JsxClosingElement,
+        scope: &ScopeTracker<'a>,
+    ) {
+        self.sync_scope_maps_from(scope);
+        self.add_jsx_reference(tree, element.name(tree), scope.current);
     }
 
     fn add_jsx_reference(&mut self, tree: &Ast, name: JsxElementName, scope: ScopeId) {
@@ -1308,6 +1314,12 @@ impl<'a> SymbolTracker<'a> {
                 .get(scope.index())
                 .and_then(|map| map.get(name).copied())
         })
+    }
+
+    fn sync_scope_maps_from(&mut self, scope: &ScopeTracker<'a>) {
+        if self.scope_maps.len() < scope.scopes.len() {
+            self.sync_scope_maps(scope.scopes.len());
+        }
     }
 
     fn sync_scope_maps(&mut self, count: usize) {

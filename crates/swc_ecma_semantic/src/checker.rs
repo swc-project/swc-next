@@ -32,9 +32,8 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    ReferenceSpace, Semantic, Symbol, SymbolFlags,
-    binder::RefContext,
-    context::{self, SemanticContext, SemanticVisitCtx, is_write_target, reference_space},
+    Semantic, Symbol, SymbolFlags,
+    context::{SemanticContext, SemanticVisitCtx, is_write_target, reference_space},
     ecmascript,
     scope::ScopeKind,
 };
@@ -700,7 +699,20 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         let checks = &mut self.checks;
         let context = &mut self.context;
         let identifier = node;
-        checks.post_enter(NodeKindData::IdentifierReference(identifier), true, context);
+        let is_write = is_write_target(context.ast, context.path());
+        let space = reference_space(
+            context.ast,
+            context.path(),
+            context.state.in_type_position(),
+        );
+        let state = &mut context.state;
+        state.symbols.add_identifier_reference(
+            context.ast,
+            identifier,
+            &state.scope,
+            is_write,
+            space,
+        );
         // Type-position identifiers are TS type references, not JS
         // identifier references. JS early-error rules do not apply.
         if context.state.in_type_position() {
@@ -2017,10 +2029,12 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     fn visit_ts_type_predicate(&mut self, node: TsTypePredicate) {
         self.context.state.enter_type_position();
         self.context.enter_node(node.node_id());
-        let checks = &mut self.checks;
         let context = &mut self.context;
         let predicate = node;
-        checks.post_enter(NodeKindData::TsTypePredicate(predicate), false, context);
+        let state = &mut context.state;
+        state
+            .symbols
+            .add_ts_type_predicate_reference(context.ast, predicate, &state.scope);
         node.visit_children_with(self);
         self.context.leave_node(node.node_id());
         self.context.state.exit_type_position();
@@ -2256,10 +2270,12 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     }
     fn visit_ts_enum_member(&mut self, node: TsEnumMember) {
         self.context.enter_node(node.node_id());
-        let checks = &mut self.checks;
         let context = &mut self.context;
         let member = node;
-        checks.post_enter(NodeKindData::TsEnumMember(member), false, context);
+        let state = &mut context.state;
+        state
+            .symbols
+            .declare_ts_enum_member(context.ast, member, &state.scope);
         node.visit_children_with(self);
         self.context.leave_node(node.node_id());
     }
@@ -2273,55 +2289,39 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     }
     fn visit_jsx_opening_element(&mut self, node: JsxOpeningElement) {
         self.context.enter_node(node.node_id());
-        let checks = &mut self.checks;
         let context = &mut self.context;
         let element = node;
-        checks.post_enter(NodeKindData::JsxOpeningElement(element), false, context);
+        let state = &mut context.state;
+        state
+            .symbols
+            .add_jsx_opening_element_reference(context.ast, element, &state.scope);
         node.visit_children_with(self);
         self.context.leave_node(node.node_id());
     }
     fn visit_jsx_closing_element(&mut self, node: JsxClosingElement) {
         self.context.enter_node(node.node_id());
-        let checks = &mut self.checks;
         let context = &mut self.context;
         let element = node;
-        checks.post_enter(NodeKindData::JsxClosingElement(element), false, context);
+        let state = &mut context.state;
+        state
+            .symbols
+            .add_jsx_closing_element_reference(context.ast, element, &state.scope);
         node.visit_children_with(self);
         self.context.leave_node(node.node_id());
     }
 }
 
 impl<'a> CheckerState<'a> {
-    fn post_enter(
-        &self,
-        data: NodeKindData,
-        is_reference: bool,
-        context: &mut SemanticVisitCtx<'_, 'a>,
-    ) {
-        let is_write = is_reference && is_write_target(context.ast, context.path());
-        let space = if is_reference {
-            reference_space(
-                context.ast,
-                context.path(),
-                context.state.in_type_position(),
-            )
-        } else {
-            ReferenceSpace::Value
-        };
-        context
-            .state
-            .post_enter(context.ast, data, RefContext { is_write, space });
-    }
-
     fn post_binding(&self, identifier: BindingIdentifier, context: &mut SemanticVisitCtx<'_, 'a>) {
-        let space = context::reference_space(
+        let space = reference_space(
             context.ast,
             context.path(),
             context.state.in_type_position(),
         );
-        context
-            .state
-            .post_enter_binding(context.ast, identifier, space);
+        let state = &mut context.state;
+        state
+            .symbols
+            .declare_binding_identifier(context.ast, identifier, &state.scope, space);
     }
 
     fn check_redeclaration(
