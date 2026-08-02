@@ -13,12 +13,18 @@ use swc_next_ecma_ast::{
     ImportDeclaration, ImportOrExportKind, JsxClosingElement, JsxOpeningElement, Label,
     LabelIdentifier, LabeledStatement, MemberExpression, MetaProperty, NodeId, NodeKind,
     NodeKindData, NumericLiteral, ObjectExpression, Program, ScopeId, Severity, Span, StaticBlock,
-    StringLiteral, SwitchCase, SwitchStatement, SymbolId, TsCallSignatureDeclaration,
-    TsConditionalType, TsConstructSignatureDeclaration, TsConstructorType, TsEnumBody,
-    TsEnumMember, TsFunction, TsFunctionType, TsIndexSignature, TsInterfaceDeclaration,
-    TsMappedType, TsMethodSignature, TsModuleBlock, TsTypeAliasDeclaration, TsTypePredicate,
-    UnaryExpression, UnaryOperator, UpdateExpression, VariableDeclaration, VariableKind, Visit,
-    VisitWith, WithStatement, YieldExpression,
+    StringLiteral, SwitchCase, SwitchStatement, SymbolId, TsArrayType, TsCallSignatureDeclaration,
+    TsClassImplements, TsConditionalType, TsConstructSignatureDeclaration, TsConstructorType,
+    TsEnumBody, TsEnumMember, TsFunction, TsFunctionType, TsImportType, TsIndexSignature,
+    TsIndexedAccessType, TsInferType, TsInterfaceBody, TsInterfaceDeclaration, TsInterfaceHeritage,
+    TsIntersectionType, TsJsDocNonNullableType, TsJsDocNullableType, TsJsDocUnknownType,
+    TsLiteralType, TsMappedType, TsMethodSignature, TsModuleBlock, TsNamedTupleMember,
+    TsOptionalType, TsParenthesizedType, TsPropertySignature, TsQualifiedName, TsRestType,
+    TsTemplateLiteralType, TsTupleType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeLiteral,
+    TsTypeOperator, TsTypeParameter, TsTypeParameterDeclaration, TsTypeParameterInstantiation,
+    TsTypePredicate, TsTypeQuery, TsTypeReference, TsUnionType, UnaryExpression, UnaryOperator,
+    UpdateExpression, VariableDeclaration, VariableKind, Visit, VisitWith, WithStatement,
+    YieldExpression,
 };
 
 use crate::{
@@ -1664,7 +1670,240 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         node.visit_children_with(self);
         self.context.leave_node(node.node_id());
     }
+    #[inline]
+    fn visit_ts_type_annotation(&mut self, node: TsTypeAnnotation) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_type_reference(&mut self, node: TsTypeReference) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_qualified_name(&mut self, node: TsQualifiedName) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_type_query(&mut self, node: TsTypeQuery) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_import_type(&mut self, node: TsImportType) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_type_parameter(&mut self, node: TsTypeParameter) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_type_parameter_declaration(&mut self, node: TsTypeParameterDeclaration) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_type_parameter_instantiation(&mut self, node: TsTypeParameterInstantiation) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_literal_type(&mut self, node: TsLiteralType) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_template_literal_type(&mut self, node: TsTemplateLiteralType) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_array_type(&mut self, node: TsArrayType) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_indexed_access_type(&mut self, node: TsIndexedAccessType) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_tuple_type(&mut self, node: TsTupleType) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_named_tuple_member(&mut self, node: TsNamedTupleMember) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_optional_type(&mut self, node: TsOptionalType) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_rest_type(&mut self, node: TsRestType) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_js_doc_nullable_type(&mut self, node: TsJsDocNullableType) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_js_doc_non_nullable_type(&mut self, node: TsJsDocNonNullableType) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_js_doc_unknown_type(&mut self, node: TsJsDocUnknownType) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_union_type(&mut self, node: TsUnionType) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_intersection_type(&mut self, node: TsIntersectionType) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_infer_type(&mut self, node: TsInferType) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_type_operator(&mut self, node: TsTypeOperator) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_parenthesized_type(&mut self, node: TsParenthesizedType) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_type_literal(&mut self, node: TsTypeLiteral) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_property_signature(&mut self, node: TsPropertySignature) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_class_implements(&mut self, node: TsClassImplements) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_interface_heritage(&mut self, node: TsInterfaceHeritage) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
+    #[inline]
+    fn visit_ts_interface_body(&mut self, node: TsInterfaceBody) {
+        self.context.state.enter_type_position();
+        self.context.enter_node(node.node_id());
+        node.visit_children_with(self);
+        self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
+    }
     fn visit_ts_type_predicate(&mut self, node: TsTypePredicate) {
+        self.context.state.enter_type_position();
         self.context.enter_node(node.node_id());
         let checks = &mut self.checks;
         let context = &mut self.context;
@@ -1672,6 +1911,7 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
         checks.post_enter(NodeKindData::TsTypePredicate(predicate), false, context);
         node.visit_children_with(self);
         self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
     }
     fn visit_switch_case(&mut self, node: SwitchCase) {
         self.context
@@ -1744,55 +1984,71 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     }
     fn visit_ts_conditional_type(&mut self, node: TsConditionalType) {
         self.context.state.enter_ts_conditional_type(node.node_id());
+        self.context.state.enter_type_position();
         self.context.enter_node(node.node_id());
         node.visit_children_with(self);
         self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
     }
     fn visit_ts_function_type(&mut self, node: TsFunctionType) {
         self.context.state.enter_ts_function_type(node.node_id());
+        self.context.state.enter_type_position();
         self.context.enter_node(node.node_id());
         node.visit_children_with(self);
         self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
     }
     fn visit_ts_constructor_type(&mut self, node: TsConstructorType) {
         self.context.state.enter_ts_constructor_type(node.node_id());
+        self.context.state.enter_type_position();
         self.context.enter_node(node.node_id());
         node.visit_children_with(self);
         self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
     }
     fn visit_ts_mapped_type(&mut self, node: TsMappedType) {
         self.context.state.enter_ts_mapped_type(node.node_id());
+        self.context.state.enter_type_position();
         self.context.enter_node(node.node_id());
         node.visit_children_with(self);
         self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
     }
     fn visit_ts_method_signature(&mut self, node: TsMethodSignature) {
         self.context.state.enter_ts_method_signature(node.node_id());
+        self.context.state.enter_type_position();
         self.context.enter_node(node.node_id());
         node.visit_children_with(self);
         self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
     }
     fn visit_ts_call_signature_declaration(&mut self, node: TsCallSignatureDeclaration) {
         self.context
             .state
             .enter_ts_call_signature_declaration(node.node_id());
+        self.context.state.enter_type_position();
         self.context.enter_node(node.node_id());
         node.visit_children_with(self);
         self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
     }
     fn visit_ts_construct_signature_declaration(&mut self, node: TsConstructSignatureDeclaration) {
         self.context
             .state
             .enter_ts_construct_signature_declaration(node.node_id());
+        self.context.state.enter_type_position();
         self.context.enter_node(node.node_id());
         node.visit_children_with(self);
         self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
     }
     fn visit_ts_index_signature(&mut self, node: TsIndexSignature) {
         self.context.state.enter_ts_index_signature(node.node_id());
+        self.context.state.enter_type_position();
         self.context.enter_node(node.node_id());
         node.visit_children_with(self);
         self.context.leave_node(node.node_id());
+        self.context.state.exit_type_position();
     }
     fn visit_ts_type_alias_declaration(&mut self, node: TsTypeAliasDeclaration) {
         self.context

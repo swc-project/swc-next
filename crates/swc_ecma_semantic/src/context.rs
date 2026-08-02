@@ -1,7 +1,7 @@
 use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, Ast, BindingIdentifier, Class, Directive, Function, FunctionBody,
-    NodeId, NodeKind, NodeKindData, Program, ScopeId,
+    NodeId, NodeKindData, Program, ScopeId,
 };
 
 use crate::{
@@ -104,11 +104,19 @@ impl<'a> SemanticContext<'a> {
     pub fn enter_node(&mut self, tree: &Ast, node: NodeId, parent: Option<NodeId>) {
         self.node_scopes[node.index()] = self.scope.current;
         self.node_parents[node.index()] = parent;
-        if is_type_context(tree.node_kind(node)) {
-            self.type_position_depth += 1;
-        }
         self.symbols
             .set_binding_context(tree, node, parent, &self.scope);
+    }
+
+    #[inline]
+    pub fn enter_type_position(&mut self) {
+        self.type_position_depth += 1;
+    }
+
+    #[inline]
+    pub fn exit_type_position(&mut self) {
+        assert!(self.type_position_depth > 0);
+        self.type_position_depth -= 1;
     }
 
     pub fn enter_directive(&mut self, tree: &Ast, directive: Directive) {
@@ -244,10 +252,6 @@ impl<'a> SemanticContext<'a> {
         let kind = tree.node_kind(node);
         self.symbols.exit(kind);
         self.scope.exit(node, kind);
-        if is_type_context(kind) {
-            assert!(self.type_position_depth > 0);
-            self.type_position_depth -= 1;
-        }
     }
 
     pub fn finalize(self, tree: &Ast) -> Semantic<'a> {
@@ -374,48 +378,4 @@ pub(crate) fn is_write_target(tree: &Ast<'_>, path: &[NodeId]) -> bool {
         }
     }
     false
-}
-
-fn is_type_context(kind: NodeKind) -> bool {
-    matches!(
-        kind,
-        NodeKind::TsTypeAnnotation
-            | NodeKind::TsTypeReference
-            | NodeKind::TsQualifiedName
-            | NodeKind::TsTypeQuery
-            | NodeKind::TsImportType
-            | NodeKind::TsTypeParameter
-            | NodeKind::TsTypeParameterDeclaration
-            | NodeKind::TsTypeParameterInstantiation
-            | NodeKind::TsLiteralType
-            | NodeKind::TsTemplateLiteralType
-            | NodeKind::TsArrayType
-            | NodeKind::TsIndexedAccessType
-            | NodeKind::TsTupleType
-            | NodeKind::TsNamedTupleMember
-            | NodeKind::TsOptionalType
-            | NodeKind::TsRestType
-            | NodeKind::TsJsDocNullableType
-            | NodeKind::TsJsDocNonNullableType
-            | NodeKind::TsJsDocUnknownType
-            | NodeKind::TsUnionType
-            | NodeKind::TsIntersectionType
-            | NodeKind::TsConditionalType
-            | NodeKind::TsInferType
-            | NodeKind::TsTypeOperator
-            | NodeKind::TsParenthesizedType
-            | NodeKind::TsFunctionType
-            | NodeKind::TsConstructorType
-            | NodeKind::TsTypePredicate
-            | NodeKind::TsTypeLiteral
-            | NodeKind::TsPropertySignature
-            | NodeKind::TsMethodSignature
-            | NodeKind::TsCallSignatureDeclaration
-            | NodeKind::TsConstructSignatureDeclaration
-            | NodeKind::TsIndexSignature
-            | NodeKind::TsMappedType
-            | NodeKind::TsClassImplements
-            | NodeKind::TsInterfaceHeritage
-            | NodeKind::TsInterfaceBody
-    )
 }
