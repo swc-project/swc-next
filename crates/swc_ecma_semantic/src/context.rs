@@ -1,5 +1,5 @@
 use swc_next_allocator::vec::Vec as ArenaVec;
-use swc_next_ecma_ast::{Ast, NodeId, NodeKindData, ScopeId, TraverseCtx};
+use swc_next_ecma_ast::{Ast, NodeId, NodeKindData, Program, ScopeId, TraverseCtx};
 
 use crate::{
     Semantic,
@@ -24,7 +24,7 @@ pub(crate) struct SemanticContext<'a> {
 }
 
 impl<'a> SemanticContext<'a> {
-    pub fn init(tree: &Ast<'a>) -> Self {
+    pub fn init(root: Program, tree: &Ast<'a>) -> Self {
         let allocator = tree.allocator();
         let mut node_scopes = ArenaVec::with_capacity_in(tree.node_count(), allocator);
         let mut node_parents = ArenaVec::with_capacity_in(tree.node_count(), allocator);
@@ -33,7 +33,7 @@ impl<'a> SemanticContext<'a> {
             node_parents.push(None);
         }
         Self {
-            scope: ScopeTracker::init(tree),
+            scope: ScopeTracker::init(root, tree),
             symbols: SymbolTracker::init(tree),
             type_position_depth: 0,
             node_scopes,

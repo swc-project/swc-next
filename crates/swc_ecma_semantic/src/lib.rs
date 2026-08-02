@@ -349,7 +349,7 @@ pub struct SemanticReturn<'a> {
 /// tree is alive.
 pub fn analyze<'a>(root: Program, ast: &mut Ast<'a>) -> SemanticReturn<'a> {
     let mut visitor = Checker::new(ast.allocator());
-    let state = SemanticContext::init(ast);
+    let state = SemanticContext::init(root, ast);
     let mut context = TraverseCtx::new(ast, state);
     let _ = root.traverse_with(&mut visitor, &mut context);
     let sem = context.state.finalize(context.ast);

@@ -1,7 +1,8 @@
 use oxc_index::Idx;
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
-    Ast, Class, ClassType, Function, FunctionBody, FunctionType, NodeId, NodeKindData, ScopeId,
+    Ast, Class, ClassType, Function, FunctionBody, FunctionType, NodeId, NodeKindData, Program,
+    ScopeId,
 };
 
 use crate::ecmascript;
@@ -146,7 +147,7 @@ pub(crate) struct ScopeTracker<'a> {
 }
 
 impl<'a> ScopeTracker<'a> {
-    pub fn init(tree: &Ast<'a>) -> Self {
+    pub fn init(root: Program, tree: &Ast<'a>) -> Self {
         assert!(tree.node_count() > 0);
 
         let allocator = tree.allocator();
@@ -158,16 +159,15 @@ impl<'a> ScopeTracker<'a> {
             current: ScopeId::ROOT,
             decorator_saved: ArenaVec::new_in(allocator),
         };
-        tracker.push_root();
+        tracker.push_root(root.node_id());
 
         // Exactly one root scope, plus the module wrapper when applicable.
         assert_eq!(tracker.scopes.len(), if tree.is_module() { 2 } else { 1 });
         tracker
     }
 
-    fn push_root(&mut self) {
+    fn push_root(&mut self, root_node: NodeId) {
         assert!(self.scopes.is_empty());
-        let root_node = NodeId::from_usize_unchecked(0);
         self.scopes.push(Scope {
             node: root_node,
             parent: None,
