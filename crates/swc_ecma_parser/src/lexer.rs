@@ -1141,6 +1141,17 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     fn skip_ws_and_comments(&mut self) -> Result<(), LexicalError> {
         debug_assert!((self.cursor as usize) <= self.source.len());
         let at_start_of_source = self.cursor == 0;
+        let src = self.source;
+        let pos = self.cursor as usize;
+
+        if pos == src.len()
+            || !matches!(
+                src[pos],
+                b' ' | b'\t' | 0x0B | 0x0C | b'\n' | b'\r' | b'/' | b'<' | b'-' | 0x80..=0xFF
+            )
+        {
+            return Ok(());
+        }
 
         loop {
             let src = self.source;
