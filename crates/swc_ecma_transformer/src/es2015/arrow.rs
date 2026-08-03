@@ -61,8 +61,8 @@ impl<'visit, 'ast> ArrowVisitor<'visit, 'ast> {
         );
 
         let old_in_arrow = self.hoister.set_in_arrow(true);
-        let params = params.visit_mut_with(self);
-        let body = body.visit_mut_with(self);
+        let params = params.visit_mut_with(self).unwrap_or(params);
+        let body = body.visit_mut_with(self).unwrap_or(body);
         self.hoister.set_in_arrow(old_in_arrow);
 
         params.set_kind(self.ast, FormalParameterKind::FormalParameters);
@@ -99,69 +99,76 @@ impl<'ast> VisitMut<'ast> for ArrowVisitor<'_, 'ast> {
         self.ast
     }
 
-    fn visit_mut_expr(&mut self, node: Expr) -> Expr {
+    fn visit_mut_expr(&mut self, node: Expr) -> Option<Expr> {
         if let Some(arrow) = node.as_arrow_function_expression(self.ast) {
-            Expr::Function(self.convert_arrow(arrow))
+            Some(Expr::Function(self.convert_arrow(arrow)))
         } else if let Some(this) = node.as_this_expression(self.ast) {
-            self.hoister.transform_this_expression(this, self.ast)
+            Some(self.hoister.transform_this_expression(this, self.ast))
         } else if let Some(meta) = node.as_meta_property(self.ast) {
-            self.hoister.transform_meta_property(meta, self.ast)
+            Some(self.hoister.transform_meta_property(meta, self.ast))
         } else {
             node.visit_mut_children_with(self)
         }
     }
 
-    fn visit_mut_identifier_reference(&mut self, node: IdentifierReference) -> IdentifierReference {
+    fn visit_mut_identifier_reference(
+        &mut self,
+        node: IdentifierReference,
+    ) -> Option<IdentifierReference> {
         self.hoister.visit_identifier_reference(node, self.ast);
-        node
+        None
     }
 
-    fn visit_mut_function(&mut self, node: Function) -> Function {
+    fn visit_mut_function(&mut self, node: Function) -> Option<Function> {
         let derived_constructor = self
             .next_method_is_derived_constructor
             .take()
             .unwrap_or(false);
         let old_in_arrow = self.hoister.set_in_arrow(false);
         self.hoister.push_frame();
-        let node = node.visit_mut_children_with(self);
+        node.visit_mut_children_with(self);
         let frame = self.hoister.take_frame();
         self.hoister
             .inject_into_function(node, frame, derived_constructor, self.ast);
         self.hoister.set_in_arrow(old_in_arrow);
-        node
+        None
     }
 
-    fn visit_mut_class(&mut self, node: Class) -> Class {
+    fn visit_mut_class(&mut self, node: Class) -> Option<Class> {
         let old = self.in_subclass;
         self.in_subclass = node.super_class(self.ast).is_some();
-        let node = node.visit_mut_children_with(self);
+        node.visit_mut_children_with(self);
         self.in_subclass = old;
-        node
+        None
     }
 
-    fn visit_mut_method_definition(&mut self, node: MethodDefinition) -> MethodDefinition {
+    fn visit_mut_method_definition(&mut self, node: MethodDefinition) -> Option<MethodDefinition> {
         let decorators = node.decorators(self.ast);
         let key = node.key(self.ast);
-        let decorators = decorators.visit_mut_with(self);
-        let key = key.visit_mut_with(self);
-        node.set_decorators(self.ast, decorators);
-        node.set_key(self.ast, key);
+        if let Some(decorators) = decorators.visit_mut_with(self) {
+            node.set_decorators(self.ast, decorators);
+        }
+        if let Some(key) = key.visit_mut_with(self) {
+            node.set_key(self.ast, key);
+        }
 
         self.next_method_is_derived_constructor =
             Some(self.in_subclass && node.kind(self.ast) == MethodDefinitionKind::Constructor);
-        let value = node.value(self.ast).visit_mut_with(self);
-        node.set_value(self.ast, value);
+        let value = node.value(self.ast);
+        if let Some(value) = value.visit_mut_with(self) {
+            node.set_value(self.ast, value);
+        }
         debug_assert!(self.next_method_is_derived_constructor.is_none());
-        node
+        None
     }
 
-    fn visit_mut_static_block(&mut self, node: StaticBlock) -> StaticBlock {
+    fn visit_mut_static_block(&mut self, node: StaticBlock) -> Option<StaticBlock> {
         let old_in_arrow = self.hoister.set_in_arrow(false);
         self.hoister.push_frame();
-        let node = node.visit_mut_children_with(self);
+        node.visit_mut_children_with(self);
         let frame = self.hoister.take_frame();
         self.hoister.inject_into_static_block(node, frame, self.ast);
         self.hoister.set_in_arrow(old_in_arrow);
-        node
+        None
     }
 }

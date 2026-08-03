@@ -109,29 +109,38 @@ impl<'ast> VisitMut<'ast> for VisitMutCounter<'_, 'ast> {
         self.ast
     }
 
-    fn visit_mut_identifier_reference(&mut self, node: IdentifierReference) -> IdentifierReference {
+    fn visit_mut_identifier_reference(
+        &mut self,
+        _node: IdentifierReference,
+    ) -> Option<IdentifierReference> {
         self.count += 1;
-        node
+        None
     }
 
-    fn visit_mut_private_identifier(&mut self, node: PrivateIdentifier) -> PrivateIdentifier {
+    fn visit_mut_private_identifier(
+        &mut self,
+        _node: PrivateIdentifier,
+    ) -> Option<PrivateIdentifier> {
         self.count += 1;
-        node
+        None
     }
 
-    fn visit_mut_binding_identifier(&mut self, node: BindingIdentifier) -> BindingIdentifier {
+    fn visit_mut_binding_identifier(
+        &mut self,
+        _node: BindingIdentifier,
+    ) -> Option<BindingIdentifier> {
         self.count += 1;
-        node
+        None
     }
 
-    fn visit_mut_identifier_name(&mut self, node: IdentifierName) -> IdentifierName {
+    fn visit_mut_identifier_name(&mut self, _node: IdentifierName) -> Option<IdentifierName> {
         self.count += 1;
-        node
+        None
     }
 
-    fn visit_mut_label_identifier(&mut self, node: LabelIdentifier) -> LabelIdentifier {
+    fn visit_mut_label_identifier(&mut self, _node: LabelIdentifier) -> Option<LabelIdentifier> {
         self.count += 1;
-        node
+        None
     }
 }
 

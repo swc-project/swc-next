@@ -286,22 +286,23 @@ fn rewrite_derived_super_calls(body: FunctionBody, this_name: AstString, ast: &m
             self.ast
         }
 
-        fn visit_mut_function(&mut self, node: Function) -> Function {
-            node
+        fn visit_mut_function(&mut self, _node: Function) -> Option<Function> {
+            None
         }
 
-        fn visit_mut_class(&mut self, node: Class) -> Class {
-            node
+        fn visit_mut_class(&mut self, _node: Class) -> Option<Class> {
+            None
         }
 
-        fn visit_mut_expr(&mut self, node: Expr) -> Expr {
-            let node = node.visit_mut_children_with(self);
+        fn visit_mut_expr(&mut self, node: Expr) -> Option<Expr> {
+            let replacement = node.visit_mut_children_with(self);
+            let node = replacement.unwrap_or(node);
             let Some(call) = node.as_call_expression(self.ast) else {
-                return node;
+                return replacement;
             };
             let callee = call.callee(self.ast);
             if !callee.is_super(self.ast) {
-                return node;
+                return replacement;
             }
 
             let call_copy = self.ast.expr_call_expression(
@@ -328,7 +329,7 @@ fn rewrite_derived_super_calls(body: FunctionBody, this_name: AstString, ast: &m
             let sequence = self
                 .ast
                 .sequence_expression(call.span(self.ast), expressions);
-            Expr::SequenceExpression(sequence)
+            Some(Expr::SequenceExpression(sequence))
         }
     }
 

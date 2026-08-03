@@ -111,13 +111,13 @@ macro_rules! dummy_visit_mut_impl {
 
         impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for $ty {
             #[inline]
-            fn visit_mut_with(self, _visitor: &mut V) -> Self {
-                self
+            fn visit_mut_with(self, _visitor: &mut V) -> Option<Self> {
+                None
             }
 
             #[inline]
-            fn visit_mut_children_with(self, _visitor: &mut V) -> Self {
-                self
+            fn visit_mut_children_with(self, _visitor: &mut V) -> Option<Self> {
+                None
             }
         }
     };
