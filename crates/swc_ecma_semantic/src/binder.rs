@@ -1391,6 +1391,13 @@ impl<'a> SymbolTracker<'a> {
             node_references[reference.node.index()] = Some(reference_id(index));
         }
 
+        // Use index: count, prefix-sum, fill. `len` doubles as the write
+        // cursor during the fill.
+        let mut use_ranges = ArenaVec::with_capacity_in(symbol_count, self.allocator);
+        for _ in 0..symbol_count {
+            use_ranges.push(Range::default());
+        }
+
         for reference_index in 0..self.references.len() {
             let reference = self.references[reference_index];
             let name = tree.string(reference.name);
@@ -1431,16 +1438,7 @@ impl<'a> SymbolTracker<'a> {
                 }
             }
             self.references[reference_index].symbol = resolved;
-        }
-
-        // Use index: count, prefix-sum, fill. `len` doubles as the write
-        // cursor during the fill.
-        let mut use_ranges = ArenaVec::with_capacity_in(symbol_count, self.allocator);
-        for _ in 0..symbol_count {
-            use_ranges.push(Range::default());
-        }
-        for reference in &self.references {
-            if let Some(symbol) = reference.symbol {
+            if let Some(symbol) = resolved {
                 use_ranges[symbol.index()].len += 1;
             }
         }
