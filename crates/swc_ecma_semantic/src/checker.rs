@@ -661,7 +661,7 @@ impl Checker<'_, '_> {
                 }
                 let span = context.ast.span(literal.node_id());
                 if has_octal_escape(
-                    context.ast.source()[span.start as usize..span.end as usize].as_bytes(),
+                    &context.ast.source().as_bytes()[span.start as usize..span.end as usize],
                 ) {
                     checks.report(
                         span,
@@ -678,7 +678,7 @@ impl Checker<'_, '_> {
                     return;
                 }
                 let span = context.ast.span(literal.node_id());
-                let raw = context.ast.source()[span.start as usize..span.end as usize].as_bytes();
+                let raw = &context.ast.source().as_bytes()[span.start as usize..span.end as usize];
                 if !is_legacy_numeric_literal(raw) {
                     return;
                 }
