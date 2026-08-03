@@ -285,11 +285,17 @@ impl<'a> Ast<'a> {
         self.strings.source
     }
 
+    /// Returns a slice of the source string corresponding to the given start and end offsets.
+    /// Actually this function should be unsafe because it does not check if the offsets are valid.
+    /// So external crates should be better not use this function directly.
     #[inline]
     pub fn source_slice(&self, start: u32, end: u32) -> AstUtf8 {
         self.strings.source_slice(start, end)
     }
 
+    /// Returns a slice of the source string corresponding to the given start and end offsets.
+    /// Actually this function should be unsafe because it does not check if the offsets are valid.
+    /// So external crates should be better not use this function directly.
     #[inline]
     pub fn source_slice_wtf8(&self, start: u32, end: u32) -> AstWtf8 {
         self.strings.source_slice_wtf8(start, end)

@@ -99,17 +99,21 @@ impl<'a> StringPool<'a> {
         }
     }
 
+    /// Returns a slice of the source string corresponding to the given start and end offsets.
+    /// Actually this function should be unsafe because it does not check if the offsets are valid.
+    /// So external crates should be better not use this function directly.
     #[inline]
     pub fn source_slice(&self, start: u32, end: u32) -> AstUtf8 {
-        debug_assert!(start <= end);
-        debug_assert!(end <= self.source.len() as u32);
+        debug_assert!(self.source.get(start as usize..end as usize).is_some());
         AstUtf8 { start, end }
     }
 
+    /// Returns a slice of the source string corresponding to the given start and end offsets.
+    /// Actually this function should be unsafe because it does not check if the offsets are valid.
+    /// So external crates should be better not use this function directly.
     #[inline]
     pub fn source_slice_wtf8(&self, start: u32, end: u32) -> AstWtf8 {
-        debug_assert!(start <= end);
-        debug_assert!(end <= self.source.len() as u32);
+        debug_assert!(self.source.get(start as usize..end as usize).is_some());
         AstWtf8 { start, end }
     }
 
