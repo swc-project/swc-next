@@ -1,7 +1,9 @@
+use swc_next_allocator::wtf8::{CodePoint as Wtf8CodePoint, Wtf8Buf};
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CodePoint {
     pub len: u8,
-    pub value: u32,
+    pub value: Wtf8CodePoint,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -27,7 +29,7 @@ pub fn code_point_at(source: &[u8], i: usize) -> Result<CodePoint, Utf8Error> {
         return Err(Utf8Error::InvalidUtf8);
     }
     let s = std::str::from_utf8(&source[i..i + len]).map_err(|_| Utf8Error::InvalidUtf8)?;
-    let value = s.chars().next().ok_or(Utf8Error::InvalidUtf8)? as u32;
+    let value = Wtf8CodePoint::from_char(s.chars().next().ok_or(Utf8Error::InvalidUtf8)?);
     Ok(CodePoint {
         len: len as u8,
         value,
@@ -59,20 +61,20 @@ pub fn is_octal_digit(digit: u8) -> bool {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ParsedCodePoint {
-    pub value: u32,
+    pub value: Wtf8CodePoint,
     pub end: usize,
 }
 
 pub fn parse_octal(input: &[u8], start: usize) -> ParsedCodePoint {
     debug_assert!(start < input.len());
-    let mut value = 0u32;
+    let mut value = 0u8;
     let mut i = start;
     let max = if input[start] <= b'3' { 3 } else { 2 };
     let mut count = 0usize;
 
     while i < input.len() && count < max {
         if is_octal_digit(input[i]) {
-            value = (value << 3) | u32::from(input[i] - b'0');
+            value = (value << 3) | (input[i] - b'0');
             count += 1;
             i += 1;
         } else {
@@ -80,7 +82,10 @@ pub fn parse_octal(input: &[u8], start: usize) -> ParsedCodePoint {
         }
     }
 
-    ParsedCodePoint { value, end: i }
+    ParsedCodePoint {
+        value: Wtf8CodePoint::from_char(char::from(value)),
+        end: i,
+    }
 }
 
 pub fn parse_hex2(input: &[u8], start: usize) -> Option<ParsedCodePoint> {
@@ -90,7 +95,7 @@ pub fn parse_hex2(input: &[u8], start: usize) -> Option<ParsedCodePoint> {
     let hi = hex_val(input[start])?;
     let lo = hex_val(input[start + 1])?;
     Some(ParsedCodePoint {
-        value: (u32::from(hi) << 4) | u32::from(lo),
+        value: Wtf8CodePoint::from_u32((u32::from(hi) << 4) | u32::from(lo))?,
         end: start + 2,
     })
 }
@@ -105,7 +110,7 @@ pub fn parse_hex4(input: &[u8], start: usize) -> Option<ParsedCodePoint> {
         value = (value << 4) | u32::from(digit);
     }
     Some(ParsedCodePoint {
-        value,
+        value: Wtf8CodePoint::from_u32(value)?,
         end: start + 4,
     })
 }
@@ -130,7 +135,10 @@ pub fn parse_hex_variable(
     if count == 0 {
         return None;
     }
-    Some(ParsedCodePoint { value, end: i })
+    Some(ParsedCodePoint {
+        value: Wtf8CodePoint::from_u32(value)?,
+        end: i,
+    })
 }
 
 pub fn parse_unicode_escape(input: &[u8], start: usize) -> Option<ParsedCodePoint> {
@@ -152,7 +160,8 @@ pub fn parse_unicode_escape(input: &[u8], start: usize) -> Option<ParsedCodePoin
     parse_hex4(input, start)
 }
 
-pub fn decode_identifier_escapes<'a>(raw: &'a [u8], buf: &'a mut [u8; 256]) -> &'a [u8] {
+pub fn decode_identifier_escapes<'a>(raw: &'a str, buf: &'a mut [u8; 256]) -> &'a [u8] {
+    let raw = raw.as_bytes();
     let mut out = 0usize;
     let mut i = 0usize;
     while i < raw.len() {
@@ -160,19 +169,15 @@ pub fn decode_identifier_escapes<'a>(raw: &'a [u8], buf: &'a mut [u8; 256]) -> &
             let Some(parsed) = parse_unicode_escape(raw, i + 2) else {
                 return raw;
             };
-            if parsed.value < 0x80 {
-                if out >= buf.len() {
-                    return raw;
-                }
-                buf[out] = parsed.value as u8;
-                out += 1;
-            } else {
-                let n = encode_code_point(parsed.value, &mut buf[out..]).unwrap_or(0);
-                if n == 0 {
-                    return raw;
-                }
-                out += n;
+            let Some(value) = parsed.value.to_char() else {
+                return raw;
+            };
+            let len = value.len_utf8();
+            if out + len > buf.len() {
+                return raw;
             }
+            value.encode_utf8(&mut buf[out..out + len]);
+            out += len;
             i = parsed.end;
         } else {
             if out >= buf.len() {
@@ -186,7 +191,8 @@ pub fn decode_identifier_escapes<'a>(raw: &'a [u8], buf: &'a mut [u8; 256]) -> &
     &buf[..out]
 }
 
-pub fn decode_string_escapes(raw: &[u8], out: &mut Vec<u8>) {
+pub fn decode_string_escapes(raw_str: &str, out: &mut Wtf8Buf) {
+    let raw = raw_str.as_bytes();
     let mut i = 0usize;
     while i < raw.len() {
         let run_start = i;
@@ -196,14 +202,14 @@ pub fn decode_string_escapes(raw: &[u8], out: &mut Vec<u8>) {
         }
 
         if i > run_start {
-            out.extend_from_slice(&raw[run_start..i]);
+            out.push_str(&raw_str[run_start..i]);
         }
         if i >= raw.len() {
             break;
         }
 
         if raw[i] == b'\r' {
-            out.push(b'\n');
+            out.push_str("\n");
             i += 1;
             if i < raw.len() && raw[i] == b'\n' {
                 i += 1;
@@ -218,71 +224,59 @@ pub fn decode_string_escapes(raw: &[u8], out: &mut Vec<u8>) {
 
         match raw[i] {
             b'n' => {
-                out.push(b'\n');
+                out.push_str("\n");
                 i += 1;
             }
             b'r' => {
-                out.push(b'\r');
+                out.push_str("\r");
                 i += 1;
             }
             b't' => {
-                out.push(b'\t');
+                out.push_str("\t");
                 i += 1;
             }
             b'b' => {
-                out.push(0x08);
+                out.push_str("\u{0008}");
                 i += 1;
             }
             b'f' => {
-                out.push(0x0C);
+                out.push_str("\u{000c}");
                 i += 1;
             }
             b'v' => {
-                out.push(0x0B);
+                out.push_str("\u{000b}");
                 i += 1;
             }
             b'0' => {
                 if i + 1 < raw.len() && raw[i + 1].is_ascii_digit() {
                     let parsed = parse_octal(raw, i);
-                    append_code_point(out, parsed.value);
+                    out.push(parsed.value);
                     i = parsed.end;
                 } else {
-                    out.push(0);
+                    out.push_str("\0");
                     i += 1;
                 }
             }
             b'1'..=b'7' => {
                 let parsed = parse_octal(raw, i);
-                append_code_point(out, parsed.value);
+                out.push(parsed.value);
                 i = parsed.end;
             }
             b'x' => {
                 if let Some(parsed) = parse_hex2(raw, i + 1) {
-                    append_code_point(out, parsed.value);
+                    out.push(parsed.value);
                     i = parsed.end;
                 } else {
-                    out.push(b'x');
+                    out.push_str("x");
                     i += 1;
                 }
             }
             b'u' => {
                 if let Some(parsed) = parse_unicode_escape(raw, i + 1) {
-                    let mut cp = parsed.value;
-                    let mut end = parsed.end;
-                    if (0xD800..=0xDBFF).contains(&cp)
-                        && end + 1 < raw.len()
-                        && raw[end] == b'\\'
-                        && raw[end + 1] == b'u'
-                        && let Some(next) = parse_unicode_escape(raw, end + 2)
-                        && (0xDC00..=0xDFFF).contains(&next.value)
-                    {
-                        cp = 0x10000 + (cp - 0xD800) * 0x400 + (next.value - 0xDC00);
-                        end = next.end;
-                    }
-                    append_code_point(out, cp);
-                    i = end;
+                    out.push(parsed.value);
+                    i = parsed.end;
                 } else {
-                    out.push(b'u');
+                    out.push_str("u");
                     i += 1;
                 }
             }
@@ -298,41 +292,15 @@ pub fn decode_string_escapes(raw: &[u8], out: &mut Vec<u8>) {
                 if us_len > 0 {
                     i += usize::from(us_len);
                 } else {
-                    out.push(raw[i]);
-                    i += 1;
+                    let Some(value) = raw_str[i..].chars().next() else {
+                        break;
+                    };
+                    out.push(Wtf8CodePoint::from_char(value));
+                    i += value.len_utf8();
                 }
             }
         }
     }
-}
-
-fn append_code_point(out: &mut Vec<u8>, cp: u32) {
-    debug_assert!(cp <= 0x10FFFF);
-    if cp <= 0x7F {
-        out.push(cp as u8);
-    } else if cp <= 0x7FF {
-        out.push(0xC0 | (cp >> 6) as u8);
-        out.push(0x80 | (cp & 0x3F) as u8);
-    } else if cp <= 0xFFFF {
-        out.push(0xE0 | (cp >> 12) as u8);
-        out.push(0x80 | ((cp >> 6) & 0x3F) as u8);
-        out.push(0x80 | (cp & 0x3F) as u8);
-    } else {
-        out.push(0xF0 | (cp >> 18) as u8);
-        out.push(0x80 | ((cp >> 12) & 0x3F) as u8);
-        out.push(0x80 | ((cp >> 6) & 0x3F) as u8);
-        out.push(0x80 | (cp & 0x3F) as u8);
-    }
-}
-
-fn encode_code_point(cp: u32, buf: &mut [u8]) -> Option<usize> {
-    let mut out = Vec::with_capacity(4);
-    append_code_point(&mut out, cp);
-    if out.len() > buf.len() {
-        return None;
-    }
-    buf[..out.len()].copy_from_slice(&out);
-    Some(out.len())
 }
 
 fn hex_val(byte: u8) -> Option<u8> {

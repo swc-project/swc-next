@@ -3,10 +3,10 @@
 //! This module is a Rust port of the parser design from
 //! [yuku-toolchain/yuku](https://github.com/yuku-toolchain/yuku).
 
-use std::{borrow::Cow, mem, string::String};
+use std::{borrow::Cow, mem};
 
 use rustc_hash::FxHashSet;
-use swc_next_allocator::{vec::Vec as ArenaVec, wtf8::Wtf8};
+use swc_next_allocator::{vec::Vec as ArenaVec, wtf8::Wtf8Buf};
 use swc_next_ecma_ast::*;
 use swc_next_ecma_ast::{AstUtf8, AstWtf8};
 
@@ -600,7 +600,7 @@ impl From<MethodDefinitionKind> for PropertyOrMethodKind {
 /// Parser state and typed AST writer.
 pub struct Parser<'parser, 'a, C: ParserConfig = NoTokenParserConfig> {
     pub ast: &'parser mut Ast<'a>,
-    pub source: &'a [u8],
+    pub source: &'a str,
     pub source_type: SourceType,
     pub lang: Lang,
     pub preserve_parens: bool,
@@ -870,21 +870,17 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     fn decode_escaped_string(&mut self, start: u32, end: u32) -> AstWtf8 {
-        let mut decoded = Vec::new();
+        let mut decoded = Wtf8Buf::new();
         decode_string_escapes(&self.source[start as usize..end as usize], &mut decoded);
-        // Safety:
-        // Source code is guaranteed to be valid UTF-8.
-        // So it's impossible to have invalid WTF-8 in the source code with `\u`.
-        let value = unsafe { Wtf8::from_bytes_unchecked(&decoded) };
-        self.ast.add_wtf8(value)
+        self.ast.add_wtf8(&decoded)
     }
 
-    pub fn describe_token(&self, token: Token) -> Cow<'a, [u8]> {
+    pub fn describe_token(&self, token: Token) -> Cow<'a, str> {
         if token.tag == TokenTag::Eof {
-            return Cow::Borrowed(b"end of file");
+            return Cow::Borrowed("end of file");
         }
         if let Some(text) = token.tag.to_str() {
-            Cow::Borrowed(text.as_bytes())
+            Cow::Borrowed(text)
         } else {
             Cow::Borrowed(token.text(self.source))
         }
@@ -894,7 +890,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         self.lexer.mode = mode;
     }
 
-    pub fn span_text(&self, span: Span) -> &'a [u8] {
+    pub fn span_text(&self, span: Span) -> &'a str {
         &self.source[span.start as usize..span.end as usize]
     }
 
@@ -1841,7 +1837,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     self.current_token.span,
                     Cow::Owned(format!(
                         "Unexpected token '{}' in binding pattern",
-                        String::from_utf8_lossy(found.as_ref())
+                        found.as_ref()
                     )),
                     ReportOptions {
                         help: Some(Cow::Borrowed(
@@ -4649,7 +4645,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             self.current_token.span,
             Cow::Owned(format!(
                 "Unexpected token '{}' as enum member name",
-                String::from_utf8_lossy(found.as_ref())
+                found.as_ref()
             )),
             ReportOptions {
                 help: Some(Cow::Borrowed(
@@ -6840,7 +6836,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             self.ast.expr_data(expression),
             ExprData::IdentifierReference(identifier)
                 if self.ast.get_utf8(identifier.name(self.ast)) == "async"
-                    && self.span_text(identifier.span(self.ast)) == b"async"
+                    && self.span_text(identifier.span(self.ast)) == "async"
         )
     }
 
@@ -7163,7 +7159,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     token.span,
                     Cow::Owned(format!(
                         "Unexpected token '{}' in expression",
-                        String::from_utf8_lossy(found.as_ref())
+                        found.as_ref()
                     )),
                     ReportOptions {
                         help: Some(Cow::Borrowed(
@@ -7307,10 +7303,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 let found = self.describe_token(token);
                 self.report(
                     token.span,
-                    Cow::Owned(format!(
-                        "Unexpected token '{}'",
-                        String::from_utf8_lossy(found.as_ref())
-                    )),
+                    Cow::Owned(format!("Unexpected token '{}'", found.as_ref())),
                     ReportOptions {
                         help: Some(Cow::Borrowed("Expected an expression")),
                         ..ReportOptions::default()
@@ -9407,7 +9400,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 token.span,
                 Cow::Owned(format!(
                     "Unexpected token '{}' as class element key",
-                    String::from_utf8_lossy(found.as_ref())
+                    found.as_ref()
                 )),
                 ReportOptions {
                     help: Some(Cow::Borrowed(
@@ -9468,7 +9461,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                         token.span,
                         Cow::Owned(format!(
                             "Unexpected token '{}' as property key",
-                            String::from_utf8_lossy(found.as_ref())
+                            found.as_ref()
                         )),
                         ReportOptions {
                             help: Some(Cow::Borrowed(
@@ -9482,7 +9475,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                         token.span,
                         Cow::Owned(format!(
                             "Unexpected token '{}' as signature key",
-                            String::from_utf8_lossy(found.as_ref())
+                            found.as_ref()
                         )),
                         ReportOptions {
                             help: Some(Cow::Borrowed(
@@ -9877,7 +9870,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let phase = match property.tag {
             TokenTag::Source => Some(ImportPhase::Source),
             TokenTag::Defer => Some(ImportPhase::Defer),
-            TokenTag::Identifier if property.text(self.source) == b"meta" => {
+            TokenTag::Identifier if property.text(self.source) == "meta" => {
                 let property = self.parse_identifier_name()?;
                 return Some(self.ast.expr_meta_property(
                     Span::new(
@@ -9939,7 +9932,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         debug_assert_eq!(self.current_token.tag, TokenTag::Dot);
         self.advance()?;
         let property_token = self.current_token;
-        if property_token.text(self.source) != b"target" {
+        if property_token.text(self.source) != "target" {
             return {
                 let span = self.current_token.span;
                 self.report(
@@ -10110,8 +10103,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 closing_span,
                 Cow::Owned(format!(
                     "Expected closing tag for '<{}>' but found '</{}>'",
-                    String::from_utf8_lossy(self.span_text(opening_span)),
-                    String::from_utf8_lossy(self.span_text(closing_span))
+                    self.span_text(opening_span),
+                    self.span_text(closing_span)
                 )),
                 ReportOptions {
                     help: Some(Cow::Borrowed(
@@ -11124,7 +11117,6 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
         if token.tag.is_unconditionally_reserved() {
             let found = self.describe_token(token);
-            let found = String::from_utf8_lossy(found.as_ref());
             self.report(
                 token.span,
                 Cow::Owned(format!(
@@ -11346,7 +11338,6 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
     pub fn report_expected(&mut self, span: Span, message: &str, options: ReportOptions) {
         let found = self.describe_token(self.current_token);
-        let found = String::from_utf8_lossy(found.as_ref());
         self.report(
             span,
             Cow::Owned(format!("{message}, but found '{found}'")),
@@ -11548,7 +11539,9 @@ fn can_follow_readonly_modifier(tag: TokenTag) -> bool {
         || matches!(tag, TokenTag::LeftBrace | TokenTag::Star | TokenTag::Spread)
 }
 
-pub fn build_line_starts(ast: &mut Ast<'_>, source: &[u8]) {
+pub fn build_line_starts(ast: &mut Ast<'_>, source: &str) {
+    let source = source.as_bytes();
+
     debug_assert!(source.len() <= u32::MAX as usize);
     let mut starts = Vec::with_capacity(std::cmp::max(8, source.len() / 24));
     starts.push(0);

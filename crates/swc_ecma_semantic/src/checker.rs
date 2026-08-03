@@ -660,7 +660,9 @@ impl Checker<'_, '_> {
                     return;
                 }
                 let span = context.ast.span(literal.node_id());
-                if has_octal_escape(&context.ast.source()[span.start as usize..span.end as usize]) {
+                if has_octal_escape(
+                    context.ast.source()[span.start as usize..span.end as usize].as_bytes(),
+                ) {
                     checks.report(
                         span,
                         "Octal escape sequences are not allowed in strict mode",
@@ -676,7 +678,7 @@ impl Checker<'_, '_> {
                     return;
                 }
                 let span = context.ast.span(literal.node_id());
-                let raw = &context.ast.source()[span.start as usize..span.end as usize];
+                let raw = context.ast.source()[span.start as usize..span.end as usize].as_bytes();
                 if !is_legacy_numeric_literal(raw) {
                     return;
                 }

@@ -514,7 +514,7 @@ impl Token {
         self.len() == 0
     }
 
-    pub fn text(self, source: &[u8]) -> &[u8] {
+    pub fn text(self, source: &str) -> &str {
         &source[self.span.start as usize..self.span.end as usize]
     }
 

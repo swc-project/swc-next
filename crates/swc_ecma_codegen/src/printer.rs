@@ -90,7 +90,7 @@ pub fn print<'a>(
     let wants_map = options.source_map_path.is_some();
     let comments = tree.comments();
     let line_offset_tables = if wants_map {
-        generate_line_offset_tables(allocator, tree.source())
+        generate_line_offset_tables(allocator, tree.source().as_bytes())
     } else {
         ArenaVec::new_in(allocator)
     };
@@ -130,7 +130,7 @@ pub fn print<'a>(
         let path = options.source_map_path.as_deref().unwrap();
         let path = path.as_os_str().as_encoded_bytes();
         let chunk = builder.generate_chunk(js.as_slice());
-        Some(chunk.finalize(allocator, tree.source(), path))
+        Some(chunk.finalize(allocator, tree.source().as_bytes(), path))
     } else {
         None
     };
@@ -318,7 +318,7 @@ impl<'a> Printer<'a> {
             }
             let value = self
                 .ast
-                .get_utf8(comment.value(self.ast.source()))
+                .get_utf8(comment.value(self.ast.source().as_bytes()))
                 .as_bytes();
             let mut trim_start = 0;
             while value[trim_start..]
@@ -442,8 +442,7 @@ impl<'a> Printer<'a> {
             if comment.span.end > close_offset || is_legal_comment(self.ast, comment) {
                 break;
             }
-            if !self.ast.source()[comment.span.end as usize..close_offset as usize].contains(&b',')
-            {
+            if !self.ast.source()[comment.span.end as usize..close_offset as usize].contains(',') {
                 break;
             }
             self.next_comment += 1;
@@ -4205,8 +4204,11 @@ impl Printer<'_> {
 }
 
 fn is_legal_comment(ast: &Ast, comment: Comment) -> bool {
-    let value = ast.get_utf8(comment.value(ast.source())).as_bytes();
+    let value = ast
+        .get_utf8(comment.value(ast.source().as_bytes()))
+        .as_bytes();
     ast.source()
+        .as_bytes()
         .get(comment.span.start as usize..comment.span.start as usize + 3)
         .is_some_and(|prefix| prefix == b"/*!" || prefix == b"//!")
         || value.windows(8).any(|window| window == b"@license")

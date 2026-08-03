@@ -281,8 +281,8 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
-    pub fn source(&self) -> &'a [u8] {
-        self.strings.source.as_bytes()
+    pub fn source(&self) -> &'a str {
+        self.strings.source
     }
 
     #[inline]

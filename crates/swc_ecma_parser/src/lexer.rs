@@ -105,23 +105,26 @@ enum ConsumeUnicodeContext {
 
 #[derive(Clone, Debug)]
 pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
-    pub config: C,
-    pub comments: ArenaVec<'a, Comment>,
-    pub tokens: ArenaVec<'a, Token>,
-    pub collect_comments: bool,
-    pub source: &'a [u8],
-    pub cursor: u32,
+    source: &'a [u8],
+
     /// Whether Annex B HTML-like comments are recognized.
-    pub allow_html_like_comments: bool,
-    pub hashbang: Option<Hashbang>,
-    pub state: LexerState,
-    pub mode: LexerMode,
+    allow_html_like_comments: bool,
+    collect_comments: bool,
+    pub(crate) hashbang: Option<Hashbang>,
+
+    pub(crate) config: C,
+    pub(crate) tokens: ArenaVec<'a, Token>,
+    pub(crate) comments: ArenaVec<'a, Comment>,
+
+    pub(crate) cursor: u32,
+    pub(crate) state: LexerState,
+    pub(crate) mode: LexerMode,
 }
 
 impl<'a, C: ParserConfig> Lexer<'a, C> {
     pub fn init(
         allocator: &'a Allocator,
-        source: &'a [u8],
+        source: &'a str,
         allow_html_like_comments: bool,
         collect_comments: bool,
         config: C,
@@ -149,7 +152,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             comments: ArenaVec::with_capacity_in(comment_capacity, allocator),
             tokens,
             collect_comments,
-            source,
+            source: source.as_bytes(),
             cursor: 0,
             allow_html_like_comments,
             hashbang: None,
@@ -543,19 +546,19 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             .ok_or(LexicalError::InvalidUnicodeEscape)?;
         match context {
             ConsumeUnicodeContext::IdentifierStart => {
-                if !can_start_id(parsed.value) {
+                if !can_start_id(parsed.value.to_u32()) {
                     return Err(LexicalError::InvalidIdentifierStart);
                 }
             }
             ConsumeUnicodeContext::IdentifierContinue => {
-                if !can_continue_id(parsed.value) {
+                if !can_continue_id(parsed.value.to_u32()) {
                     return Err(LexicalError::InvalidIdentifierContinue);
                 }
             }
             ConsumeUnicodeContext::Normal => {}
         }
         self.cursor = parsed.end as u32;
-        Ok(parsed.value)
+        Ok(parsed.value.to_u32())
     }
 
     fn scan_number(&mut self) -> Result<Token, LexicalError> {
@@ -777,7 +780,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 self.cursor = pos as u32;
                 let cp = code_point_at(src, pos).map_err(|_| LexicalError::InvalidUtf8)?;
 
-                if can_continue_id(cp.value) {
+                if can_continue_id(cp.value.to_u32()) {
                     pos += cp.len as usize;
                     continue;
                 }
@@ -827,7 +830,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             let c_cp = code_point_at(self.source, self.cursor as usize)
                 .map_err(|_| LexicalError::InvalidUtf8)?;
 
-            if !can_start_id(c_cp.value) {
+            if !can_start_id(c_cp.value.to_u32()) {
                 return Err(LexicalError::InvalidIdentifierStart);
             }
 
@@ -1218,7 +1221,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 }
 
                 let code_point = code_point_at(src, pos).map_err(|_| LexicalError::InvalidUtf8)?;
-                if !is_multi_byte_space(code_point.value) {
+                if !is_multi_byte_space(code_point.value.to_u32()) {
                     return Ok(false);
                 }
                 self.cursor += u32::from(code_point.len);
@@ -1450,10 +1453,10 @@ fn get_escaped_keyword_type(lexeme: &[u8]) -> TokenTag {
             let Some(parsed) = parse_unicode_escape(lexeme, i + 2) else {
                 return TokenTag::Identifier;
             };
-            if parsed.value >= 0x80 {
+            if parsed.value.to_u32() >= 0x80 {
                 return TokenTag::Identifier;
             }
-            buf[out] = parsed.value as u8;
+            buf[out] = parsed.value.to_u32() as u8;
             out += 1;
             i = parsed.end;
         } else {
@@ -1706,7 +1709,7 @@ fn get_keyword_type(lexeme: &[u8]) -> TokenTag {
 mod tests {
     use super::*;
 
-    fn next_template(source: &[u8]) -> Result<Token, LexicalError> {
+    fn next_template(source: &str) -> Result<Token, LexicalError> {
         let allocator = Allocator::new();
         let mut lexer = Lexer::init(&allocator, source, false, false, NoTokenParserConfig);
         let mut token = Token::eof(0);
@@ -1714,7 +1717,7 @@ mod tests {
         Ok(token)
     }
 
-    fn next_after_trivia(source: &[u8], allow_html_like_comments: bool) -> Token {
+    fn next_after_trivia(source: &str, allow_html_like_comments: bool) -> Token {
         let allocator = Allocator::new();
         let mut lexer = Lexer::init(
             &allocator,
@@ -1731,12 +1734,12 @@ mod tests {
     #[test]
     fn reserves_capacity_only_when_collecting_comments() {
         let allocator = Allocator::new();
-        let small_source = [b' '; 512];
+        let small_source = " ".repeat(512);
 
         let small = Lexer::init(&allocator, &small_source, false, true, NoTokenParserConfig);
         assert_eq!(small.comments.capacity(), 0);
 
-        let large_source = vec![b' '; 2 * 1024 * 1024];
+        let large_source = " ".repeat(2 * 1024 * 1024);
         let collecting = Lexer::init(&allocator, &large_source, false, true, NoTokenParserConfig);
         assert_eq!(collecting.comments.capacity(), large_source.len() / 256);
 
@@ -1746,18 +1749,19 @@ mod tests {
 
     #[test]
     fn skips_ascii_and_slow_path_trivia() {
-        let token = next_after_trivia(b" \t\x0B\x0Cname", false);
+        let token = next_after_trivia(" \t\x0B\x0Cname", false);
         assert_eq!(token.span, Span::new(4, 8));
         assert!(!token.has_line_terminator_before());
 
         for source in [
-            b"\r\nname".as_slice(),
-            b"// line\nname",
-            b"/* block\ncomment */name",
-            b"\xe2\x80\xa8name",
+            "\r\nname",
+            "// line\nname",
+            "/* block\ncomment */name",
+            "\u{2028}name",
         ] {
             let token = next_after_trivia(source, false);
             let start = source
+                .as_bytes()
                 .windows(4)
                 .position(|window| window == b"name")
                 .unwrap() as u32;
@@ -1765,17 +1769,18 @@ mod tests {
             assert!(token.has_line_terminator_before());
         }
 
-        let token = next_after_trivia(b"\xc2\xa0name", false);
+        let token = next_after_trivia("\u{00A0}name", false);
         assert_eq!(token.span, Span::new(2, 6));
         assert!(!token.has_line_terminator_before());
 
-        let token = next_after_trivia(b"<!-- comment\nname", true);
+        let token = next_after_trivia("<!-- comment\nname", true);
         assert_eq!(token.span, Span::new(13, 17));
         assert!(token.has_line_terminator_before());
 
-        for source in [b"--> comment\nname".as_slice(), b" \t--> comment\nname"] {
+        for source in ["--> comment\nname", " \t--> comment\nname"] {
             let token = next_after_trivia(source, true);
             let start = source
+                .as_bytes()
                 .windows(4)
                 .position(|window| window == b"name")
                 .unwrap() as u32;
@@ -1786,22 +1791,22 @@ mod tests {
 
     #[test]
     fn scans_template_sentinels() {
-        let token = next_template(b"`plain $ value`").unwrap();
+        let token = next_template("`plain $ value`").unwrap();
         assert_eq!(token.tag, TokenTag::NoSubstitutionTemplate);
         assert_eq!(token.span, Span::new(0, 15));
 
-        let token = next_template(b"`head ${value}`").unwrap();
+        let token = next_template("`head ${value}`").unwrap();
         assert_eq!(token.tag, TokenTag::TemplateHead);
         assert_eq!(token.span, Span::new(0, 8));
 
-        let token = next_template(b"`escaped \\` value`").unwrap();
+        let token = next_template("`escaped \\` value`").unwrap();
         assert_eq!(token.tag, TokenTag::NoSubstitutionTemplate);
         assert!(token.is_escaped());
     }
 
     #[test]
     fn marks_carriage_returns_for_template_normalization() {
-        let token = next_template(b"`first\r\nsecond`").unwrap();
+        let token = next_template("`first\r\nsecond`").unwrap();
         assert_eq!(token.tag, TokenTag::NoSubstitutionTemplate);
         assert!(token.is_escaped());
     }
@@ -1812,7 +1817,7 @@ mod tests {
 
         let mut lexer = Lexer::init(
             &allocator,
-            b"}middle ${value}",
+            "}middle ${value}",
             false,
             false,
             NoTokenParserConfig,
@@ -1821,7 +1826,7 @@ mod tests {
         assert_eq!(token.tag, TokenTag::TemplateMiddle);
         assert_eq!(token.span, Span::new(0, 10));
 
-        let mut lexer = Lexer::init(&allocator, b"}tail`", false, false, NoTokenParserConfig);
+        let mut lexer = Lexer::init(&allocator, "}tail`", false, false, NoTokenParserConfig);
         let token = lexer.re_scan_template_continuation(0).unwrap();
         assert_eq!(token.tag, TokenTag::TemplateTail);
         assert_eq!(token.span, Span::new(0, 6));
@@ -1830,7 +1835,7 @@ mod tests {
     #[test]
     fn reports_unterminated_templates() {
         assert_eq!(
-            next_template(b"`unterminated"),
+            next_template("`unterminated"),
             Err(LexicalError::NonTerminatedTemplateLiteral)
         );
     }
