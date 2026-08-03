@@ -1,10 +1,10 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use std::{env, hint::black_box};
+use std::hint::black_box;
 
 use gungraun::prelude::*;
-use gungraun::{Callgrind, CallgrindMetrics, Dhat, DhatMetric, EventKind, FlamegraphConfig};
+use gungraun::{Callgrind, EventKind, FlamegraphConfig};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
     Ast, BindingIdentifier, IdentifierName, IdentifierReference, LabelIdentifier, Lang,
@@ -249,32 +249,11 @@ library_benchmark_group!(
 
 fn benchmark_config() -> LibraryBenchmarkConfig {
     let mut config = LibraryBenchmarkConfig::default();
-    if env::var("GUNGRAUN_PROFILE").as_deref() == Ok("memory") {
-        config.tool(
-            Callgrind::with_args(["--branch-sim=no", "--cache-sim=yes"])
-                .format([CallgrindMetrics::All])
-                .flamegraph(FlamegraphConfig::default().event_kinds([
-                    EventKind::Ir,
-                    EventKind::D1mr,
-                    EventKind::D1mw,
-                    EventKind::DLmr,
-                    EventKind::DLmw,
-                    EventKind::EstimatedCycles,
-                ])),
-        );
-        config.tool(Dhat::default().format([
-            DhatMetric::TotalBytes,
-            DhatMetric::TotalBlocks,
-            DhatMetric::AtTGmaxBytes,
-            DhatMetric::AtTGmaxBlocks,
-        ]));
-    } else {
-        config.tool(
-            Callgrind::with_args(["--branch-sim=no", "--cache-sim=no"])
-                .format([EventKind::Ir])
-                .flamegraph(FlamegraphConfig::default().event_kinds([EventKind::Ir])),
-        );
-    }
+    config.tool(
+        Callgrind::with_args(["--branch-sim=no", "--cache-sim=no"])
+            .format([EventKind::Ir])
+            .flamegraph(FlamegraphConfig::default().event_kinds([EventKind::Ir])),
+    );
     config
 }
 

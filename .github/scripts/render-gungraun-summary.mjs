@@ -386,7 +386,7 @@ export function renderSummary(summaries) {
   return [
     "### Gungraun metric changes",
     "",
-    "Exact profiling counts for the merge and base revisions. D1 and LL data misses combine reads and writes. Estimated cycles are a cache-simulation metric, not wall-clock time. Markers: 🟢 fewer events, 🔴 more events, ⚪ unchanged.",
+    "Exact profiling counts for the head and base revisions. D1 and LL data misses combine reads and writes. Estimated cycles are a cache-simulation metric, not wall-clock time. Markers: 🟢 fewer events, 🔴 more events, ⚪ unchanged.",
     "",
     tables,
   ].join("\n");
