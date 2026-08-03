@@ -33,12 +33,15 @@ impl<'traverse, 'ast> SemanticVisitCtx<'traverse, 'ast> {
 
     pub fn leave_node(&mut self, node: NodeId) {
         debug_assert_eq!(self.current_node, Some(node));
-        self.current_node = self.state.node_parents[node.index()];
+        let parent = self.state.node_parents[node.index()];
+        self.current_node = (parent != node).then_some(parent);
     }
 
     pub fn parent(&self) -> Option<NodeId> {
-        self.current_node
-            .and_then(|node| self.state.node_parents[node.index()])
+        self.current_node.and_then(|node| {
+            let parent = self.state.node_parents[node.index()];
+            (parent != node).then_some(parent)
+        })
     }
 
     pub fn current_node(&self) -> Option<NodeId> {
@@ -47,7 +50,8 @@ impl<'traverse, 'ast> SemanticVisitCtx<'traverse, 'ast> {
 
     pub fn ancestors(&self) -> impl Iterator<Item = NodeId> + '_ {
         std::iter::successors(self.current_node, |node| {
-            self.state.node_parents[node.index()]
+            let parent = self.state.node_parents[node.index()];
+            (parent != *node).then_some(parent)
         })
     }
 
@@ -67,17 +71,18 @@ pub(crate) struct SemanticContext<'a> {
     reference_flags: ReferenceFlags,
     // per-node tables carried into the final `Semantic`
     node_scopes: ArenaVec<'a, ScopeId>,
-    node_parents: ArenaVec<'a, Option<NodeId>>,
+    node_parents: ArenaVec<'a, NodeId>,
 }
 
 impl<'a> SemanticContext<'a> {
     pub fn init(root: Program, tree: &Ast<'a>) -> Self {
         let allocator = tree.allocator();
+        let root_node = root.node_id();
         let mut node_scopes = ArenaVec::with_capacity_in(tree.node_count(), allocator);
         let mut node_parents = ArenaVec::with_capacity_in(tree.node_count(), allocator);
         for _ in 0..tree.node_count() {
             node_scopes.push(ScopeId::ROOT);
-            node_parents.push(None);
+            node_parents.push(root_node);
         }
         Self {
             scope: ScopeTracker::init(root, tree),
@@ -104,7 +109,7 @@ impl<'a> SemanticContext<'a> {
     #[inline]
     pub fn enter_node(&mut self, node: NodeId, parent: Option<NodeId>) -> ReferenceFlags {
         self.node_scopes[node.index()] = self.scope.current;
-        self.node_parents[node.index()] = parent;
+        self.node_parents[node.index()] = parent.unwrap_or(node);
         let flags = self.reference_flags;
         self.reference_flags = self.default_reference_flags();
         flags

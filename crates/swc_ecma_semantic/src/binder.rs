@@ -1339,7 +1339,7 @@ impl<'a> SymbolTracker<'a> {
         tree: &Ast,
         scopes: ScopeTree<'a>,
         node_scopes: ArenaVec<'a, ScopeId>,
-        node_parents: ArenaVec<'a, Option<NodeId>>,
+        node_parents: ArenaVec<'a, NodeId>,
     ) -> Semantic<'a> {
         // The walk must have ended balanced.
         assert!(self.saved_stack.is_empty());
@@ -1498,7 +1498,7 @@ fn type_parameter_visible(
     symbol: Symbol,
     reference_node: NodeId,
     scopes: &ScopeTree<'_>,
-    node_parents: &[Option<NodeId>],
+    node_parents: &[NodeId],
 ) -> bool {
     if !symbol.flags.type_parameter {
         return true;
@@ -1519,33 +1519,32 @@ fn type_parameter_visible(
 }
 
 // Whether walking up from `node` reaches `root` through `subtree`.
-fn in_subtree(
-    node_parents: &[Option<NodeId>],
-    node: NodeId,
-    root: NodeId,
-    subtree: NodeId,
-) -> bool {
+fn in_subtree(node_parents: &[NodeId], node: NodeId, root: NodeId, subtree: NodeId) -> bool {
     let mut child = node;
-    let mut parent = node_parents[child.index()];
-    while let Some(current_parent) = parent {
+    loop {
+        let current_parent = node_parents[child.index()];
+        if current_parent == child {
+            return false;
+        }
         if current_parent == root {
             return child == subtree;
         }
         child = current_parent;
-        parent = node_parents[current_parent.index()];
     }
-    false
 }
 
 fn class_type_parameter_hidden(
     tree: &Ast<'_>,
-    node_parents: &[Option<NodeId>],
+    node_parents: &[NodeId],
     reference_node: NodeId,
     class_node: NodeId,
 ) -> bool {
     let mut child = reference_node;
-    let mut parent = node_parents[child.index()];
-    while let Some(current_parent) = parent {
+    loop {
+        let current_parent = node_parents[child.index()];
+        if current_parent == child {
+            return false;
+        }
         match tree.kind_data(current_parent) {
             NodeKindData::MethodDefinition(method) => {
                 if method.computed(tree)
@@ -1572,9 +1571,8 @@ fn class_type_parameter_hidden(
                 }
             }
             NodeKindData::ClassBody(_) => {
-                if node_parents[current_parent.index()] != Some(class_node) {
+                if node_parents[current_parent.index()] != class_node {
                     child = current_parent;
-                    parent = node_parents[current_parent.index()];
                     continue;
                 }
                 return match tree.kind_data(child) {
@@ -1589,13 +1587,13 @@ fn class_type_parameter_hidden(
             _ => {}
         }
         child = current_parent;
-        parent = node_parents[current_parent.index()];
     }
-    false
 }
 
-fn member_owner(node_parents: &[Option<NodeId>], member: NodeId) -> Option<NodeId> {
-    node_parents[member.index()].and_then(|body| node_parents[body.index()])
+fn member_owner(node_parents: &[NodeId], member: NodeId) -> Option<NodeId> {
+    let body = node_parents[member.index()];
+    let owner = node_parents[body.index()];
+    (owner != body).then_some(owner)
 }
 
 fn nearest_conditional_scope(tree: &Ast<'_>, scope: &ScopeTracker<'_>) -> ScopeId {
