@@ -1,4 +1,4 @@
 interface:
   display_name: "Gungraun Optimize"
-  short_description: "Optimize Rust code with Gungraun CI"
-  default_prompt: "Use $gungraun-optimize to iteratively optimize this Rust code with Gungraun benchmarks in GitHub Actions."
+  short_description: "Optimize Rust with Gungraun stacked PRs"
+  default_prompt: "Use $gungraun-optimize to profile and optimize this Rust code with Gungraun CI, publishing each accepted change as a separate stacked PR."

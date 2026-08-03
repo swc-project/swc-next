@@ -8,6 +8,7 @@ Use this reference only when creating, auditing, or repairing a Gungraun harness
 - Reproducible benchmark design
 - Version and runner setup
 - Base and head comparison
+- Temporary harness stack
 - Profiles and machine-readable output
 - GitHub security and reporting
 
@@ -66,9 +67,22 @@ cargo bench --quiet -p <package> --bench <bench> -- \
 - Do not add `--callgrind-limits`, `--cachegrind-limits`, or `--dhat-limits` to a new reporting-only workflow.
 - Preserve existing regression limits unless the user asks to change them. Distinguish their exit code from build or harness errors.
 - When bootstrapping a new harness against a base that lacks it, restore only benchmark plumbing from head after checking out base. Never restore the optimized production source. Confirm that the harness calls an API available on base.
-- If benchmark source, features, or inputs differ between revisions, stop and establish a harness-only prerequisite change.
+- If benchmark source, features, or inputs differ between revisions, stop and establish a temporary harness-only bottom layer before optimizing. Do not make that layer permanent unless the user explicitly requests a permanent harness.
 
 See the official [baseline guide](https://gungraun.github.io/gungraun/latest/html/cli_and_env/baselines.html) and [basic CLI reference](https://gungraun.github.io/gungraun/latest/html/cli_and_env/basics.html).
+
+## Temporary harness stack
+
+Use a temporary harness only when the repository lacks valid measurement plumbing. Manage it as the bottom layer of a dedicated `gh stack`, never as an unrelated prerequisite pull request.
+
+- Initialize the temporary branch from trunk with `gh stack init --base <trunk> <temporary-ci-branch>` and publish it as a draft pull request with `gh stack submit --auto`.
+- Keep only benchmark definitions, workflow steps, reporting code, fixtures, and required manifest changes in the temporary commit. Do not mix production optimizations into it.
+- Record its branch, pull request, commit, paths, and exact manifest hunks before adding optimization layers above it.
+- Use the temporary layer to produce the baseline, summaries, profiles, and artifact URLs needed to judge each optimization pull request.
+- At the end, use `gh stack modify` to drop the temporary layer and cascade-rebase accepted optimization layers onto trunk. Resubmit it with `gh stack submit --auto` so every pull request base is updated.
+- Close the temporary pull request, delete its remote branch, and run `gh stack sync --prune` after the accepted stack has been resubmitted.
+- Verify the temporary commit is unreachable from every accepted branch and the recorded paths and hunks are absent from the cumulative trunk-to-top diff. A cleanup revert commit is not acceptable because it leaves temporary CI in the final history.
+- Retain links to the pre-cleanup CI runs and artifacts as measurement evidence, then run normal correctness CI against the rewritten stack.
 
 ## Profiles and machine-readable output
 
