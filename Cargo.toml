@@ -76,6 +76,12 @@ lto           = "fat"
 opt-level     = 3
 strip         = "none"
 
+[profile.release]
+codegen-units = 1
+lto           = "fat"
+opt-level     = 3
+panic         = "abort"
+
 [profile.test]
 codegen-units    = 256
 debug-assertions = true
