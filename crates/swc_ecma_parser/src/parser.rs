@@ -11560,37 +11560,8 @@ pub fn build_line_starts(ast: &mut Ast<'_>, source: &str) {
     debug_assert!(source.len() <= u32::MAX as usize);
     let mut starts = Vec::with_capacity(std::cmp::max(8, source.len() / 24));
     starts.push(0);
-
-    const BYTE_LOW_BITS: u64 = 0x0101_0101_0101_0101;
-    const BYTE_HIGH_BITS: u64 = 0x8080_8080_8080_8080;
-    const LINE_FEEDS: u64 = u64::from_le_bytes([b'\n'; 8]);
-
-    // subtract-and-mask marks zero bytes after xor converts line feeds to zero
-    let mut chunks = source.chunks_exact(8);
-    for (chunk_index, chunk) in chunks.by_ref().enumerate() {
-        let bytes: [u8; 8] = chunk.try_into().expect("chunk size is fixed");
-        let mut matches = u64::from_le_bytes(bytes) ^ LINE_FEEDS;
-        for _ in 0..8 {
-            let zero_high_bits = matches.wrapping_sub(BYTE_LOW_BITS) & !matches & BYTE_HIGH_BITS;
-            if zero_high_bits == 0 {
-                break;
-            }
-            let byte_index = zero_high_bits.trailing_zeros() as usize / 8;
-            let source_index = chunk_index * 8 + byte_index;
-            if source[source_index] == b'\n' {
-                starts.push((source_index + 1) as u32);
-            }
-            matches |= 0xff << (byte_index * 8);
-        }
-        let zero_high_bits = matches.wrapping_sub(BYTE_LOW_BITS) & !matches & BYTE_HIGH_BITS;
-        debug_assert_eq!(zero_high_bits, 0);
-    }
-
-    let remainder_start = source.len() - chunks.remainder().len();
-    for (remainder_index, byte) in chunks.remainder().iter().enumerate() {
-        if *byte == b'\n' {
-            starts.push((remainder_start + remainder_index + 1) as u32);
-        }
+    for index in memchr::memchr_iter(b'\n', source) {
+        starts.push((index + 1) as u32);
     }
     debug_assert!(!starts.is_empty());
     debug_assert_eq!(starts[0], 0);
@@ -11836,6 +11807,17 @@ mod tests {
         let (nodes, extra) = estimate_ast_capacity(8_000_000);
         assert_eq!(nodes, 1_500_000);
         assert_eq!(extra, 666_666);
+    }
+
+    #[test]
+    fn builds_line_starts() {
+        let allocator = Allocator::new();
+        let source = "first\n\nthird\r\nfifth";
+        let mut ast = Ast::new(source, &allocator);
+
+        build_line_starts(&mut ast, source);
+
+        assert_eq!(ast.line_starts(), &[0, 6, 7, 14]);
     }
 
     #[test]
