@@ -302,6 +302,155 @@ impl SymbolFlags {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CompactSymbol {
+    pub(crate) name: AstString,
+    pub(crate) scope: ScopeId,
+    pub(crate) flags: CompactSymbolFlags,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CompactSymbolFlags(u32);
+
+impl CompactSymbolFlags {
+    const FUNCTION_SCOPED_VAR: u32 = 1 << 0;
+    const BLOCK_SCOPED_VAR: u32 = 1 << 1;
+    const FUNCTION: u32 = 1 << 2;
+    const CLASS: u32 = 1 << 3;
+    const REGULAR_ENUM: u32 = 1 << 4;
+    const CONST_ENUM: u32 = 1 << 5;
+    const VALUE_MODULE: u32 = 1 << 6;
+    const INTERFACE: u32 = 1 << 7;
+    const TYPE_ALIAS: u32 = 1 << 8;
+    const TYPE_PARAMETER: u32 = 1 << 9;
+    const NAMESPACE_MODULE: u32 = 1 << 10;
+    const IMPORT: u32 = 1 << 11;
+    const TYPE_IMPORT: u32 = 1 << 12;
+    const CONST_VAR: u32 = 1 << 13;
+    const AMBIENT: u32 = 1 << 14;
+    const PARAMETER: u32 = 1 << 15;
+    const CATCH_VAR: u32 = 1 << 16;
+    const EXPORTED: u32 = 1 << 17;
+    const IS_DEFAULT: u32 = 1 << 18;
+    const ENUM_MEMBER: u32 = 1 << 19;
+
+    fn from_public(flags: SymbolFlags) -> Self {
+        let mut bits = 0;
+        bits |= u32::from(flags.function_scoped_var) * Self::FUNCTION_SCOPED_VAR;
+        bits |= u32::from(flags.block_scoped_var) * Self::BLOCK_SCOPED_VAR;
+        bits |= u32::from(flags.function) * Self::FUNCTION;
+        bits |= u32::from(flags.class) * Self::CLASS;
+        bits |= u32::from(flags.regular_enum) * Self::REGULAR_ENUM;
+        bits |= u32::from(flags.const_enum) * Self::CONST_ENUM;
+        bits |= u32::from(flags.value_module) * Self::VALUE_MODULE;
+        bits |= u32::from(flags.interface) * Self::INTERFACE;
+        bits |= u32::from(flags.type_alias) * Self::TYPE_ALIAS;
+        bits |= u32::from(flags.type_parameter) * Self::TYPE_PARAMETER;
+        bits |= u32::from(flags.namespace_module) * Self::NAMESPACE_MODULE;
+        bits |= u32::from(flags.import) * Self::IMPORT;
+        bits |= u32::from(flags.type_import) * Self::TYPE_IMPORT;
+        bits |= u32::from(flags.const_var) * Self::CONST_VAR;
+        bits |= u32::from(flags.ambient) * Self::AMBIENT;
+        bits |= u32::from(flags.parameter) * Self::PARAMETER;
+        bits |= u32::from(flags.catch_var) * Self::CATCH_VAR;
+        bits |= u32::from(flags.exported) * Self::EXPORTED;
+        bits |= u32::from(flags.is_default) * Self::IS_DEFAULT;
+        bits |= u32::from(flags.enum_member) * Self::ENUM_MEMBER;
+        Self(bits)
+    }
+
+    fn to_public(self) -> SymbolFlags {
+        SymbolFlags {
+            function_scoped_var: self.contains(Self::FUNCTION_SCOPED_VAR),
+            block_scoped_var: self.contains(Self::BLOCK_SCOPED_VAR),
+            function: self.contains(Self::FUNCTION),
+            class: self.contains(Self::CLASS),
+            regular_enum: self.contains(Self::REGULAR_ENUM),
+            const_enum: self.contains(Self::CONST_ENUM),
+            value_module: self.contains(Self::VALUE_MODULE),
+            interface: self.contains(Self::INTERFACE),
+            type_alias: self.contains(Self::TYPE_ALIAS),
+            type_parameter: self.contains(Self::TYPE_PARAMETER),
+            namespace_module: self.contains(Self::NAMESPACE_MODULE),
+            import: self.contains(Self::IMPORT),
+            type_import: self.contains(Self::TYPE_IMPORT),
+            const_var: self.contains(Self::CONST_VAR),
+            ambient: self.contains(Self::AMBIENT),
+            parameter: self.contains(Self::PARAMETER),
+            catch_var: self.contains(Self::CATCH_VAR),
+            exported: self.contains(Self::EXPORTED),
+            is_default: self.contains(Self::IS_DEFAULT),
+            enum_member: self.contains(Self::ENUM_MEMBER),
+            _reserved: 0,
+        }
+    }
+
+    fn contains(self, flag: u32) -> bool {
+        self.0 & flag != 0
+    }
+
+    fn intersects(self, flags: SymbolFlags) -> bool {
+        self.0 & Self::from_public(flags).0 != 0
+    }
+
+    fn merge(&mut self, flags: SymbolFlags) {
+        self.0 |= Self::from_public(flags).0;
+    }
+
+    fn set(&mut self, flag: u32, value: bool) {
+        if value {
+            self.0 |= flag;
+        } else {
+            self.0 &= !flag;
+        }
+    }
+
+    pub(crate) fn visible_in(self, space: ReferenceSpace) -> bool {
+        let mask = match space {
+            ReferenceSpace::Value | ReferenceSpace::Typeof => {
+                Self::FUNCTION_SCOPED_VAR
+                    | Self::BLOCK_SCOPED_VAR
+                    | Self::FUNCTION
+                    | Self::CLASS
+                    | Self::REGULAR_ENUM
+                    | Self::CONST_ENUM
+                    | Self::VALUE_MODULE
+                    | Self::ENUM_MEMBER
+            }
+            ReferenceSpace::Type => {
+                Self::CLASS
+                    | Self::REGULAR_ENUM
+                    | Self::CONST_ENUM
+                    | Self::INTERFACE
+                    | Self::TYPE_ALIAS
+                    | Self::TYPE_PARAMETER
+                    | Self::ENUM_MEMBER
+            }
+            ReferenceSpace::Namespace => {
+                Self::VALUE_MODULE | Self::NAMESPACE_MODULE | Self::REGULAR_ENUM | Self::CONST_ENUM
+            }
+            ReferenceSpace::Any => return true,
+        } | Self::IMPORT
+            | Self::TYPE_IMPORT;
+        self.0 & mask != 0
+    }
+
+    fn is_type_parameter(self) -> bool {
+        self.contains(Self::TYPE_PARAMETER)
+    }
+}
+
+impl CompactSymbol {
+    pub(crate) fn expand(self, decls: Range) -> Symbol {
+        Symbol {
+            name: self.name,
+            flags: self.flags.to_public(),
+            scope: self.scope,
+            decls,
+        }
+    }
+}
+
 /// Per-declaration redeclaration excludes. A new declaration using one
 /// of these sets conflicts with any matching existing flag. Otherwise
 /// both declarations merge into one symbol.
@@ -508,7 +657,7 @@ impl ReferenceSpace {
 /// them into a [`Semantic`].
 pub(crate) struct SymbolTracker<'a> {
     allocator: &'a Allocator,
-    symbols: ArenaVec<'a, Symbol>,
+    symbols: ArenaVec<'a, CompactSymbol>,
     references: ArenaVec<'a, Reference>,
     decl_pairs: ArenaVec<'a, DeclPair>,
     // first declarator of each symbol, parallel to `symbols`
@@ -1224,13 +1373,22 @@ impl<'a> SymbolTracker<'a> {
         let id = if let Some(existing) = self.binding(target, name_text) {
             let symbol = &mut self.symbols[existing.index()];
             if !symbol.flags.intersects(self.pending.excludes) {
-                let mut merged = symbol.flags.merge(self.pending.flags);
-                merged.exported = merged.exported || self.export_state != ExportState::None;
-                merged.is_default = merged.is_default || self.export_state == ExportState::Default;
+                let ambient = symbol.flags.contains(CompactSymbolFlags::AMBIENT)
+                    && self.pending.flags.ambient;
+                symbol.flags.merge(self.pending.flags);
+                symbol.flags.set(
+                    CompactSymbolFlags::EXPORTED,
+                    symbol.flags.contains(CompactSymbolFlags::EXPORTED)
+                        || self.export_state != ExportState::None,
+                );
+                symbol.flags.set(
+                    CompactSymbolFlags::IS_DEFAULT,
+                    symbol.flags.contains(CompactSymbolFlags::IS_DEFAULT)
+                        || self.export_state == ExportState::Default,
+                );
                 // An overload implementation emits at runtime, so the merged
                 // symbol is non-ambient.
-                merged.ambient = symbol.flags.ambient && self.pending.flags.ambient;
-                symbol.flags = merged;
+                symbol.flags.set(CompactSymbolFlags::AMBIENT, ambient);
             }
             existing
         } else {
@@ -1239,11 +1397,10 @@ impl<'a> SymbolTracker<'a> {
             let mut flags = self.pending.flags;
             flags.exported = self.export_state != ExportState::None;
             flags.is_default = self.export_state == ExportState::Default;
-            self.symbols.push(Symbol {
+            self.symbols.push(CompactSymbol {
                 name,
-                flags,
+                flags: CompactSymbolFlags::from_public(flags),
                 scope: target,
-                decls: Range::default(),
             });
             self.first_decls.push(node);
             let key = tree.string(name).clone_in(self.allocator);
@@ -1283,7 +1440,7 @@ impl<'a> SymbolTracker<'a> {
     /// The symbol with the given id.
     pub fn symbol(&self, id: SymbolId) -> Symbol {
         assert!(id.index() < self.symbols.len());
-        self.symbols[id.index()]
+        self.symbols[id.index()].expand(Range::default())
     }
 
     /// The `binding_identifier` node of the earliest declaration of `id`.
@@ -1353,25 +1510,26 @@ impl<'a> SymbolTracker<'a> {
         for _ in 0..self.decl_pairs.len() {
             decl_nodes.push(NodeId::from_usize_unchecked(0));
         }
-        for symbol in &mut self.symbols {
-            symbol.decls = Range::default();
+        let mut decl_ranges = ArenaVec::with_capacity_in(symbol_count, self.allocator);
+        for _ in 0..symbol_count {
+            decl_ranges.push(Range::default());
         }
         for pair in &self.decl_pairs {
-            self.symbols[pair.symbol_id.index()].decls.len += 1;
+            decl_ranges[pair.symbol_id.index()].len += 1;
         }
         let mut declaration_offset = 0u32;
-        for symbol in &mut self.symbols {
-            let count = symbol.decls.len;
-            symbol.decls.start = declaration_offset;
-            symbol.decls.len = 0;
+        for range in &mut decl_ranges {
+            let count = range.len;
+            range.start = declaration_offset;
+            range.len = 0;
             declaration_offset += count;
         }
         assert_eq!(declaration_offset as usize, self.decl_pairs.len());
         for pair in &self.decl_pairs {
-            let symbol = &mut self.symbols[pair.symbol_id.index()];
-            let index = (symbol.decls.start + symbol.decls.len) as usize;
+            let range = &mut decl_ranges[pair.symbol_id.index()];
+            let index = (range.start + range.len) as usize;
             decl_nodes[index] = pair.node;
-            symbol.decls.len += 1;
+            range.len += 1;
         }
 
         let node_count = tree.node_count();
@@ -1407,7 +1565,8 @@ impl<'a> SymbolTracker<'a> {
                     if symbol.flags.visible_in(reference.flags.space)
                         && type_parameter_visible(
                             tree,
-                            symbol,
+                            symbol.flags.is_type_parameter(),
+                            symbol.scope,
                             reference.node,
                             &scopes,
                             &node_parents,
@@ -1457,6 +1616,7 @@ impl<'a> SymbolTracker<'a> {
         Semantic {
             scopes,
             symbols: self.symbols,
+            decl_ranges,
             references: self.references,
             decl_nodes,
             use_ids,
@@ -1495,15 +1655,16 @@ fn import_pending(kind: ImportOrExportKind, scope: ScopeId) -> PendingBinding {
 // member keys (TS2467).
 fn type_parameter_visible(
     tree: &Ast<'_>,
-    symbol: Symbol,
+    is_type_parameter: bool,
+    symbol_scope: ScopeId,
     reference_node: NodeId,
     scopes: &ScopeTree<'_>,
     node_parents: &[Option<NodeId>],
 ) -> bool {
-    if !symbol.flags.type_parameter {
+    if !is_type_parameter {
         return true;
     }
-    let scope_node = scopes.get(symbol.scope).node;
+    let scope_node = scopes.get(symbol_scope).node;
     match tree.kind_data(scope_node) {
         NodeKindData::TsConditionalType(conditional) => in_subtree(
             node_parents,
@@ -1713,4 +1874,43 @@ fn symbol_id(index: usize) -> SymbolId {
 fn reference_id(index: usize) -> ReferenceId {
     assert!(index < ReferenceId::MAX);
     ReferenceId::from_usize(index)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CompactSymbolFlags, ReferenceSpace, SymbolFlags};
+
+    #[test]
+    fn compact_symbol_flags_preserve_public_flags_and_visibility() {
+        let cases = [
+            SymbolFlags::NONE,
+            SymbolFlags::VALUE_SPACE,
+            SymbolFlags::TYPE_SPACE,
+            SymbolFlags::NAMESPACE_SPACE,
+            SymbolFlags::ANY_IMPORT,
+            SymbolFlags {
+                const_var: true,
+                ambient: true,
+                parameter: true,
+                catch_var: true,
+                exported: true,
+                is_default: true,
+                ..SymbolFlags::NONE
+            },
+        ];
+
+        for flags in cases {
+            let compact = CompactSymbolFlags::from_public(flags);
+            assert_eq!(format!("{:?}", compact.to_public()), format!("{flags:?}"));
+            for space in [
+                ReferenceSpace::Value,
+                ReferenceSpace::Type,
+                ReferenceSpace::Namespace,
+                ReferenceSpace::Typeof,
+                ReferenceSpace::Any,
+            ] {
+                assert_eq!(compact.visible_in(space), flags.visible_in(space));
+            }
+        }
+    }
 }

@@ -13,7 +13,11 @@ use swc_next_allocator::{
 };
 use swc_next_ecma_ast::{Ast, Diagnostic, NodeId, Program, ScopeId, SymbolId, VisitWith};
 
-use crate::{binder::Range, checker::Checker, scope::ScopeTree};
+use crate::{
+    binder::{CompactSymbol, Range},
+    checker::Checker,
+    scope::ScopeTree,
+};
 
 mod binder;
 mod checker;
@@ -38,7 +42,8 @@ pub struct Semantic<'a> {
     /// Every scope, indexed by [`ScopeId`].
     scopes: ScopeTree<'a>,
     /// Every symbol, in declaration order, indexed by [`SymbolId`].
-    symbols: ArenaVec<'a, Symbol>,
+    symbols: ArenaVec<'a, CompactSymbol>,
+    decl_ranges: ArenaVec<'a, Range>,
     /// Every reference, in source order, indexed by [`ReferenceId`].
     references: ArenaVec<'a, Reference>,
     decl_nodes: ArenaVec<'a, NodeId>,
@@ -56,7 +61,7 @@ impl<'a> Semantic<'a> {
     /// The symbol with the given id.
     pub fn symbol(&self, id: SymbolId) -> Symbol {
         assert!(id.index() < self.symbols.len());
-        self.symbols[id.index()]
+        self.symbols[id.index()].expand(self.decl_ranges[id.index()])
     }
 
     /// The reference with the given id.
@@ -132,7 +137,8 @@ impl<'a> Semantic<'a> {
     /// A conflicting redeclaration is recorded here too, aliased onto
     /// the existing symbol so tooling on broken code still maps the node.
     pub fn decls(&self, id: SymbolId) -> &[NodeId] {
-        let range = self.symbol(id).decls;
+        assert!(id.index() < self.decl_ranges.len());
+        let range = self.decl_ranges[id.index()];
         let start = range.start as usize;
         let end = start + range.len as usize;
         assert!(end <= self.decl_nodes.len());
@@ -198,7 +204,7 @@ impl<'a> Semantic<'a> {
             let Some(&id) = self.scope_maps[ancestor.index()].get(name) else {
                 continue;
             };
-            if self.symbol(id).flags.visible_in(space) {
+            if self.symbols[id.index()].flags.visible_in(space) {
                 return Some(id);
             }
         }
@@ -217,6 +223,7 @@ impl<'a> Semantic<'a> {
     pub fn iter_symbols(&self) -> SymbolIterator<'_> {
         SymbolIterator {
             symbols: &self.symbols,
+            decl_ranges: &self.decl_ranges,
             index: 0,
         }
     }
@@ -296,7 +303,8 @@ impl Iterator for BindingIterator<'_> {
 }
 
 pub struct SymbolIterator<'a> {
-    symbols: &'a [Symbol],
+    symbols: &'a [CompactSymbol],
+    decl_ranges: &'a [Range],
     index: u32,
 }
 
@@ -305,7 +313,7 @@ impl Iterator for SymbolIterator<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let index = self.index as usize;
-        let symbol = *self.symbols.get(index)?;
+        let symbol = self.symbols.get(index)?.expand(self.decl_ranges[index]);
         self.index += 1;
         Some(SymbolEntry {
             id: SymbolId::from_usize(index),
