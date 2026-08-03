@@ -26,6 +26,38 @@ pub use swc_next_ecma_ast::ReferenceId;
 
 type ScopeMap<'a> = ArenaHashMap<'a, &'a [u8], SymbolId>;
 
+/// A compact optional node index for per-node tables.
+///
+/// `NodeId` uses the full `u32` range, so `Option<NodeId>` occupies 8 bytes.
+/// Semantic trees cannot contain `u32::MAX` nodes, allowing that value to be
+/// reserved for `None` in private storage while public APIs keep returning
+/// `Option<NodeId>`.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+struct OptionalNodeId(u32);
+
+impl OptionalNodeId {
+    const NONE: Self = Self(u32::MAX);
+
+    #[inline(always)]
+    fn new(node: Option<NodeId>) -> Self {
+        match node {
+            Some(node) => Self(node.raw()),
+            None => Self::NONE,
+        }
+    }
+
+    #[inline(always)]
+    fn get(self) -> Option<NodeId> {
+        if self == Self::NONE {
+            None
+        } else {
+            Some(NodeId::from_raw_unchecked(self.0))
+        }
+    }
+}
+
+const _: () = assert!(std::mem::size_of::<OptionalNodeId>() == 4);
+
 /// The complete semantic model of a tree, with every scope, symbol,
 /// and reference fully resolved and cross-indexed. Backed by the
 /// tree's arena and valid for the lifetime of the tree.
@@ -47,7 +79,7 @@ pub struct Semantic<'a> {
     scope_maps: ArenaVec<'a, ScopeMap<'a>>,
     hoisting_variables: ArenaVec<'a, ScopeMap<'a>>,
     node_scopes: ArenaVec<'a, ScopeId>,
-    node_parents: ArenaVec<'a, Option<NodeId>>,
+    node_parents: ArenaVec<'a, OptionalNodeId>,
     node_symbols: ArenaVec<'a, Option<SymbolId>>,
     node_references: ArenaVec<'a, Option<ReferenceId>>,
 }
@@ -104,7 +136,7 @@ impl<'a> Semantic<'a> {
     /// The structural parent of `node`, or `None` at the root.
     pub fn parent_of(&self, node: NodeId) -> Option<NodeId> {
         assert!(node.index() < self.node_parents.len());
-        self.node_parents[node.index()]
+        self.node_parents[node.index()].get()
     }
 
     /// Walks from `node` up to the root, yielding `node` first.
@@ -268,7 +300,7 @@ impl Iterator for ScopeIterator<'_> {
 }
 
 pub struct SemanticAncestorIterator<'a> {
-    node_parents: &'a [Option<NodeId>],
+    node_parents: &'a [OptionalNodeId],
     current: Option<NodeId>,
 }
 
@@ -278,7 +310,7 @@ impl Iterator for SemanticAncestorIterator<'_> {
     fn next(&mut self) -> Option<Self::Item> {
         let node = self.current?;
         assert!(node.index() < self.node_parents.len());
-        self.current = self.node_parents[node.index()];
+        self.current = self.node_parents[node.index()].get();
         Some(node)
     }
 }
