@@ -31,6 +31,8 @@ impl StickyRegex {
         let reg_exp_name = ast.add_string(b"RegExp");
         let callee = ast.expr_identifier_reference(span, reg_exp_name);
         let replacement = ast.new_expression(span, callee, arguments, None);
-        ast.replace_data(literal, replacement);
+        // SAFETY: `replacement` is the unattached last node, and this exit hook
+        // does not access `literal` after replacing it.
+        unsafe { ast.replace_data(literal, replacement) };
     }
 }

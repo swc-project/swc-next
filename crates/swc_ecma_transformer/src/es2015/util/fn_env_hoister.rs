@@ -135,7 +135,9 @@ impl<'semantic> FnEnvHoister<'semantic> {
         }
         let name = self.capture_this(ast);
         let replacement = ast.identifier_reference(node.span(ast), name);
-        ast.replace_data(node, replacement);
+        // SAFETY: `replacement` is the unattached last node, and `node` is not
+        // accessed again after this replacement.
+        unsafe { ast.replace_data(node, replacement) };
     }
 
     pub fn visit_identifier_reference(&mut self, node: IdentifierReference, ast: &mut Ast<'_>) {
@@ -153,7 +155,9 @@ impl<'semantic> FnEnvHoister<'semantic> {
         if self.in_arrow && self.is_new_target(node, ast) {
             let name = self.capture_new_target(ast);
             let replacement = ast.identifier_reference(node.span(ast), name);
-            ast.replace_data(node, replacement);
+            // SAFETY: `replacement` is the unattached last node, and `node` is
+            // not accessed again after this replacement.
+            unsafe { ast.replace_data(node, replacement) };
         }
     }
 
@@ -322,7 +326,9 @@ fn rewrite_derived_super_calls(body: FunctionBody, this_name: AstString, ast: &m
             let sequence = self
                 .ast
                 .sequence_expression(call.span(self.ast), expressions);
-            self.ast.replace_data(call, sequence);
+            // SAFETY: `sequence` is the unattached last node, and `call` is not
+            // accessed again after this replacement.
+            unsafe { self.ast.replace_data(call, sequence) };
         }
     }
 

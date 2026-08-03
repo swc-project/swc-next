@@ -7857,7 +7857,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                             None,
                             false,
                         );
-                        rest = Some(self.ast.replace_data(spread, temporary));
+                        // SAFETY: `temporary` is the unattached last node, and
+                        // `spread` is retired in favor of the returned handle.
+                        rest = Some(unsafe { self.ast.replace_data(spread, temporary) });
                     }
                 }
             }
@@ -8233,7 +8235,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     None,
                     false,
                 );
-                let binding = self.ast.replace_data(identifier, binding);
+                // SAFETY: `binding` is the unattached last node, and
+                // `identifier` is retired in favor of the returned handle.
+                let binding = unsafe { self.ast.replace_data(identifier, binding) };
                 Some(BindingPattern::BindingIdentifier(binding))
             }
             ExprData::AssignmentExpression(assignment)
@@ -8336,7 +8340,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     None,
                     false,
                 );
-                let pattern = self.ast.replace_data(assignment, pattern);
+                // SAFETY: `pattern` is the unattached last node, and
+                // `assignment` is retired in favor of the returned handle.
+                let pattern = unsafe { self.ast.replace_data(assignment, pattern) };
                 Some(BindingPattern::AssignmentPattern(pattern))
             }
             ExprData::ArrayExpression(array) => self.convert_array_pattern(array, context),
@@ -8516,7 +8522,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                             None,
                             false,
                         );
-                        rest = Some(self.ast.replace_data(spread, temporary));
+                        // SAFETY: `temporary` is the unattached last node, and
+                        // `spread` is retired in favor of the returned handle.
+                        rest = Some(unsafe { self.ast.replace_data(spread, temporary) });
                         break;
                     }
                 }
@@ -8533,7 +8541,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 self.ast
                     .array_pattern(span, elements, rest, TypedSubRange::empty(), None, false);
             let pattern = if let Some(array) = mutate_node {
-                self.ast.replace_data(array, temporary)
+                // SAFETY: `temporary` is the unattached last node, and `array`
+                // is retired in favor of the returned handle.
+                unsafe { self.ast.replace_data(array, temporary) }
             } else {
                 temporary
             };
@@ -8619,7 +8629,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                             property.shorthand(self.ast),
                             property.computed(self.ast),
                         );
-                        let property = self.ast.replace_data(property, temporary);
+                        // SAFETY: `temporary` is the unattached last node, and
+                        // `property` is retired in favor of the returned handle.
+                        let property = unsafe { self.ast.replace_data(property, temporary) };
                         self.scratch_cover.append(property);
                     }
                     ObjectPropertyKindData::SpreadElement(spread) => {
@@ -8669,7 +8681,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                             None,
                             false,
                         );
-                        rest = Some(self.ast.replace_data(spread, temporary));
+                        // SAFETY: `temporary` is the unattached last node, and
+                        // `spread` is retired in favor of the returned handle.
+                        rest = Some(unsafe { self.ast.replace_data(spread, temporary) });
                         break;
                     }
                 }
@@ -8684,7 +8698,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 false,
             );
             let pattern = if let Some(object) = mutate_node {
-                self.ast.replace_data(object, temporary)
+                // SAFETY: `temporary` is the unattached last node, and `object`
+                // is retired in favor of the returned handle.
+                unsafe { self.ast.replace_data(object, temporary) }
             } else {
                 temporary
             };
@@ -8714,7 +8730,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                             None,
                             false,
                         );
-                        let binding = self.ast.replace_data(identifier, binding);
+                        // SAFETY: `binding` is the unattached last node, and
+                        // `identifier` is retired in favor of the returned handle.
+                        let binding = unsafe { self.ast.replace_data(identifier, binding) };
                         Some(BindingPattern::BindingIdentifier(binding))
                     }
                     SimpleAssignmentTargetData::MemberExpression(_) => {
@@ -11774,7 +11792,10 @@ fn strip_parenthesized_nodes(ast: &mut Ast<'_>) {
         while let ExprData::ParenthesizedExpression(parenthesized) = ast.expr_data(inner) {
             inner = parenthesized.expression(ast);
         }
-        ast.set_data(node, inner.node_id());
+        // SAFETY: parsing has not exposed any concrete handles yet. This pass
+        // retires the parenthesized node, and all expression edges that refer
+        // to it accept the replacement expression kind.
+        unsafe { ast.set_data(node, inner.node_id()) };
     }
 }
 

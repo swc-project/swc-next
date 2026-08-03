@@ -91,7 +91,9 @@ impl<'visit, 'ast> ArrowVisitor<'visit, 'ast> {
             None,
             None,
         );
-        self.ast.replace_data(arrow, function);
+        // SAFETY: `function` is the unattached last node, and `arrow` is not
+        // accessed again after this replacement.
+        unsafe { self.ast.replace_data(arrow, function) };
     }
 }
 
