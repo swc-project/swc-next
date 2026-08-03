@@ -1,5 +1,3 @@
-use std::mem::MaybeUninit;
-
 use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId, Program,
@@ -68,20 +66,17 @@ pub(crate) struct SemanticContext<'a> {
     type_position_depth: u32,
     reference_flags: ReferenceFlags,
     // per-node tables carried into the final `Semantic`
-    node_scopes: ArenaVec<'a, MaybeUninit<ScopeId>>,
+    node_scopes: ArenaVec<'a, ScopeId>,
     node_parents: ArenaVec<'a, Option<NodeId>>,
 }
 
 impl<'a> SemanticContext<'a> {
     pub fn init(root: Program, tree: &Ast<'a>) -> Self {
         let allocator = tree.allocator();
-        let mut node_scopes =
-            ArenaVec::<MaybeUninit<ScopeId>>::with_capacity_in(tree.node_count(), allocator);
-        // SAFETY: `MaybeUninit` permits uninitialized elements. Traversal writes
-        // every node's scope before the table is read.
-        unsafe { node_scopes.set_len(tree.node_count()) };
+        let mut node_scopes = ArenaVec::with_capacity_in(tree.node_count(), allocator);
         let mut node_parents = ArenaVec::with_capacity_in(tree.node_count(), allocator);
         for _ in 0..tree.node_count() {
+            node_scopes.push(ScopeId::ROOT);
             node_parents.push(None);
         }
         Self {
@@ -108,7 +103,7 @@ impl<'a> SemanticContext<'a> {
 
     #[inline]
     pub fn enter_node(&mut self, node: NodeId, parent: Option<NodeId>) -> ReferenceFlags {
-        self.node_scopes[node.index()].write(self.scope.current);
+        self.node_scopes[node.index()] = self.scope.current;
         self.node_parents[node.index()] = parent;
         let flags = self.reference_flags;
         self.reference_flags = self.default_reference_flags();
@@ -262,30 +257,8 @@ impl<'a> SemanticContext<'a> {
     }
 
     pub fn finalize(self, tree: &Ast) -> Semantic<'a> {
-        // SAFETY: The visitor enters every AST node exactly once, initializing
-        // the complete scope table before finalization.
-        let node_scopes = unsafe { assume_init_node_scopes(self.node_scopes) };
         let scopes = self.scope.into_scope_tree();
         self.symbols
-            .finalize(tree, scopes, node_scopes, self.node_parents)
+            .finalize(tree, scopes, self.node_scopes, self.node_parents)
     }
-}
-
-/// Reuses the fully initialized `MaybeUninit` allocation without copying it.
-///
-/// # Safety
-///
-/// Every element in `node_scopes` must contain a valid `ScopeId`.
-#[inline(always)]
-unsafe fn assume_init_node_scopes<'a>(
-    mut node_scopes: ArenaVec<'a, MaybeUninit<ScopeId>>,
-) -> ArenaVec<'a, ScopeId> {
-    let allocator = node_scopes.bump();
-    let length = node_scopes.len();
-    let capacity = node_scopes.capacity();
-    let pointer = node_scopes.as_mut_ptr().cast::<ScopeId>();
-    // SAFETY: `MaybeUninit<T>` has the same layout as `T`; the caller promises
-    // every element is initialized, all allocation metadata is unchanged, and
-    // arena vectors have no destructor that could invalidate the allocation.
-    unsafe { ArenaVec::from_raw_parts_in(pointer, length, capacity, allocator) }
 }
