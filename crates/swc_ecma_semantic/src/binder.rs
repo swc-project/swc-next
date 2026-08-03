@@ -1,3 +1,5 @@
+use std::hash::BuildHasher;
+
 use oxc_index::Idx;
 use swc_next_allocator::{Allocator, CloneIn, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
@@ -1392,6 +1394,9 @@ impl<'a> SymbolTracker<'a> {
         for reference_index in 0..self.references.len() {
             let reference = self.references[reference_index];
             let name = tree.string(reference.name);
+            let hash = self.scope_maps[ScopeId::ROOT.index()]
+                .hasher()
+                .hash_one(name);
             // The implicit arguments object (10.2.11
             // argumentsObjectNeeded) shadows outer bindings; an own
             // parameter or var still wins.
@@ -1401,7 +1406,10 @@ impl<'a> SymbolTracker<'a> {
             ) && name == b"arguments";
             let mut resolved = None;
             for ancestor in scopes.ancestors(Some(reference.scope)) {
-                if let Some(&id) = self.scope_maps[ancestor.index()].get(name) {
+                if let Some((_, &id)) = self.scope_maps[ancestor.index()]
+                    .raw_entry()
+                    .from_hash(hash, |candidate| *candidate == name)
+                {
                     let symbol = self.symbols[id.index()];
                     // A binding outside the reference's space does not
                     // shadow; keep walking.
