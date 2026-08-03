@@ -53,11 +53,11 @@ impl From<AstUtf8> for AstWtf8 {
     }
 }
 
-#[derive(Debug)]
 pub(crate) struct StringPool<'a> {
+    allocator: &'a Allocator,
     pub(crate) source: &'a str,
     pub(crate) extra: ArenaVec<'a, u8>,
-    dedup: ArenaHashMap<'a, Vec<u8>, (u32, u32)>,
+    dedup: ArenaHashMap<'a, ArenaVec<'a, u8>, (u32, u32)>,
 }
 
 impl<'a> StringPool<'a> {
@@ -65,6 +65,7 @@ impl<'a> StringPool<'a> {
         assert!(source.len() <= u32::MAX as usize);
         Self {
             source,
+            allocator,
             extra: ArenaVec::new_in(allocator),
             dedup: ArenaHashMap::new_in(allocator),
         }
@@ -148,7 +149,9 @@ impl<'a> StringPool<'a> {
         self.extra.extend_from_slice(text);
 
         let id = (start as u32, end as u32);
-        self.dedup.insert(text.to_vec(), id);
+        let mut key = ArenaVec::with_capacity_in(text.len(), self.allocator);
+        key.extend_from_slice(text);
+        self.dedup.insert(key, id);
         id
     }
 }
