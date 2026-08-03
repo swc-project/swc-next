@@ -870,7 +870,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     fn decode_escaped_string(&mut self, start: u32, end: u32) -> AstWtf8 {
-        let mut decoded = Wtf8Buf::new();
+        let mut decoded = Wtf8Buf::with_capacity((end - start) as usize);
         decode_string_escapes(&self.source[start as usize..end as usize], &mut decoded);
         self.ast.add_wtf8(&decoded)
     }

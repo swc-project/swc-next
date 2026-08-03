@@ -295,7 +295,7 @@ pub fn decode_string_escapes(raw_str: &str, out: &mut Wtf8Buf) {
                     let Some(value) = raw_str[i..].chars().next() else {
                         break;
                     };
-                    out.push(Wtf8CodePoint::from_char(value));
+                    out.push_char(value);
                     i += value.len_utf8();
                 }
             }
