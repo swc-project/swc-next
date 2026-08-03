@@ -11064,6 +11064,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
     }
 
+    #[inline(always)]
     fn parse_binding_identifier(&mut self) -> Option<BindingIdentifier> {
         let token = self.current_token;
         self.validate_identifier(token, "a binding identifier");
