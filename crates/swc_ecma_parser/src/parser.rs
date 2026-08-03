@@ -7051,6 +7051,10 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
         loop {
             let token = self.current_token;
+            let encoded_precedence = token.tag.precedence();
+            if encoded_precedence == Precedence::Lowest {
+                break;
+            }
             if is_ts
                 && is_angle_open(token.tag)
                 && max_left_precedence(left, self.ast) >= Precedence::Call
@@ -7059,7 +7063,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 left = expression;
                 continue;
             }
-            let precedence = self.infix_precedence(token);
+            let precedence = self.infix_precedence(token, encoded_precedence);
             if precedence < minimum || precedence == Precedence::Lowest {
                 break;
             }
@@ -7088,7 +7092,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         self.parse_expression_in_cover(Precedence::Assignment)
     }
 
-    fn infix_precedence(&self, token: Token) -> Precedence {
+    fn infix_precedence(&self, token: Token, encoded: Precedence) -> Precedence {
         match token.tag {
             TokenTag::Increment | TokenTag::Decrement | TokenTag::As | TokenTag::Satisfies
                 if token.has_line_terminator_before() =>
@@ -7100,7 +7104,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             {
                 Precedence::Lowest
             }
-            _ => token.tag.precedence(),
+            _ => encoded,
         }
     }
 
