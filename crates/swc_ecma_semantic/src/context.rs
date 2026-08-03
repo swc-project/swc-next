@@ -5,7 +5,7 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    OptionalNodeId, Semantic,
+    Semantic,
     binder::{ReferenceFlags, ReferenceSpace, SymbolTracker},
     scope::{ScopeKind, ScopeTracker},
 };
@@ -13,7 +13,7 @@ use crate::{
 pub(crate) struct SemanticVisitCtx<'traverse, 'ast> {
     pub state: SemanticContext<'ast>,
     pub ast: &'traverse Ast<'ast>,
-    current_node: OptionalNodeId,
+    current_node: Option<NodeId>,
 }
 
 impl<'traverse, 'ast> SemanticVisitCtx<'traverse, 'ast> {
@@ -21,34 +21,33 @@ impl<'traverse, 'ast> SemanticVisitCtx<'traverse, 'ast> {
         Self {
             state,
             ast,
-            current_node: OptionalNodeId::NONE,
+            current_node: None,
         }
     }
 
     pub fn enter_node(&mut self, node: NodeId) -> ReferenceFlags {
         let parent = self.current_node;
-        self.current_node = OptionalNodeId::some(node);
+        self.current_node = Some(node);
         self.state.enter_node(node, parent)
     }
 
     pub fn leave_node(&mut self, node: NodeId) {
-        debug_assert_eq!(self.current_node.get(), Some(node));
+        debug_assert_eq!(self.current_node, Some(node));
         self.current_node = self.state.node_parents[node.index()];
     }
 
     pub fn parent(&self) -> Option<NodeId> {
         self.current_node
-            .get()
-            .and_then(|node| self.state.node_parents[node.index()].get())
+            .and_then(|node| self.state.node_parents[node.index()])
     }
 
     pub fn current_node(&self) -> Option<NodeId> {
-        self.current_node.get()
+        self.current_node
     }
 
     pub fn ancestors(&self) -> impl Iterator<Item = NodeId> + '_ {
-        std::iter::successors(self.current_node.get(), |node| {
-            self.state.node_parents[node.index()].get()
+        std::iter::successors(self.current_node, |node| {
+            self.state.node_parents[node.index()]
         })
     }
 
@@ -68,18 +67,17 @@ pub(crate) struct SemanticContext<'a> {
     reference_flags: ReferenceFlags,
     // per-node tables carried into the final `Semantic`
     node_scopes: ArenaVec<'a, ScopeId>,
-    node_parents: ArenaVec<'a, OptionalNodeId>,
+    node_parents: ArenaVec<'a, Option<NodeId>>,
 }
 
 impl<'a> SemanticContext<'a> {
     pub fn init(root: Program, tree: &Ast<'a>) -> Self {
         let allocator = tree.allocator();
-        assert!(tree.node_count() < u32::MAX as usize);
         let mut node_scopes = ArenaVec::with_capacity_in(tree.node_count(), allocator);
         let mut node_parents = ArenaVec::with_capacity_in(tree.node_count(), allocator);
         for _ in 0..tree.node_count() {
             node_scopes.push(ScopeId::ROOT);
-            node_parents.push(OptionalNodeId::NONE);
+            node_parents.push(None);
         }
         Self {
             scope: ScopeTracker::init(root, tree),
@@ -104,7 +102,7 @@ impl<'a> SemanticContext<'a> {
     }
 
     #[inline]
-    pub fn enter_node(&mut self, node: NodeId, parent: OptionalNodeId) -> ReferenceFlags {
+    pub fn enter_node(&mut self, node: NodeId, parent: Option<NodeId>) -> ReferenceFlags {
         self.node_scopes[node.index()] = self.scope.current;
         self.node_parents[node.index()] = parent;
         let flags = self.reference_flags;
