@@ -106,12 +106,146 @@ jobs:
           fi
           exit "$summary_status"
 
+      - name: Prepare Valgrind artifact metadata
+        if: always()
+        env:
+          ARTIFACT_NAME: gungraun-valgrind-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          COMPARE_SHA: ${{ github.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          JOB_STATUS: ${{ job.status }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          RUN_ID: ${{ github.run_id }}
+          RUNNER_ARCH: ${{ runner.arch }}
+          RUNNER_OS: ${{ runner.os }}
+        run: |
+          metadata="$RUNNER_TEMP/gungraun-metadata.json"
+          generated_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          rustc_version="$(rustc --version 2>/dev/null || echo unavailable)"
+          cargo_version="$(cargo --version 2>/dev/null || echo unavailable)"
+          gungraun_version="$(gungraun-runner --version 2>/dev/null || echo unavailable)"
+          valgrind_version="$(valgrind --version 2>/dev/null || echo unavailable)"
+
+          jq -n \
+            --arg artifact_name "$ARTIFACT_NAME" \
+            --arg base_ref "$BASE_REF" \
+            --arg base_sha "$BASE_SHA" \
+            --arg cargo_version "$cargo_version" \
+            --arg compare_sha "$COMPARE_SHA" \
+            --arg event_name "$GITHUB_EVENT_NAME" \
+            --arg generated_at "$generated_at" \
+            --arg gungraun_version "$gungraun_version" \
+            --arg head_ref "$HEAD_REF" \
+            --arg job_status "$JOB_STATUS" \
+            --arg pr_head_sha "$PR_HEAD_SHA" \
+            --arg pr_number "$PR_NUMBER" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg run_attempt "$RUN_ATTEMPT" \
+            --arg run_id "$RUN_ID" \
+            --arg run_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --arg runner_arch "$RUNNER_ARCH" \
+            --arg runner_os "$RUNNER_OS" \
+            --arg rustc_version "$rustc_version" \
+            --arg valgrind_version "$valgrind_version" \
+            --arg workflow_name "$GITHUB_WORKFLOW" \
+            '{
+              schema_version: 1,
+              repository: $repository,
+              workflow: {
+                name: $workflow_name,
+                event: $event_name,
+                run_id: $run_id,
+                run_attempt: ($run_attempt | tonumber),
+                run_url: $run_url,
+                job_status: $job_status
+              },
+              pull_request: {
+                number: ($pr_number | tonumber),
+                base_ref: $base_ref,
+                head_ref: $head_ref,
+                base_sha: $base_sha,
+                head_sha: $pr_head_sha,
+                compare_sha: $compare_sha
+              },
+              runner: {
+                os: $runner_os,
+                arch: $runner_arch
+              },
+              tools: {
+                rustc: $rustc_version,
+                cargo: $cargo_version,
+                gungraun_runner: $gungraun_version,
+                valgrind: $valgrind_version
+              },
+              benchmark: {
+                package: "benchmark",
+                bench: "gungraun",
+                baseline: "base",
+                base_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --save-baseline=base",
+                compare_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --baseline=base --save-summary=json"
+              },
+              files: {
+                data_root: "gungraun",
+                diff_report: "gungraun-diff.txt",
+                rendered_summary: "gungraun-summary.md"
+              },
+              artifact: {
+                name: $artifact_name,
+                retention_days: 90
+              },
+              generated_at: $generated_at
+            }' > "$metadata"
+
+          jq -e \
+            --arg base_sha "$BASE_SHA" \
+            --arg compare_sha "$COMPARE_SHA" \
+            --arg pr_head_sha "$PR_HEAD_SHA" \
+            '.schema_version == 1 and
+             .pull_request.base_sha == $base_sha and
+             .pull_request.head_sha == $pr_head_sha and
+             .pull_request.compare_sha == $compare_sha and
+             .files.data_root == "gungraun" and
+             .artifact.retention_days == 90' \
+            "$metadata" > /dev/null
+
+      - name: Upload Valgrind analysis bundle
+        id: upload-valgrind
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gungraun-valgrind-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/gungraun
+            ${{ runner.temp }}/gungraun-diff.txt
+            ${{ runner.temp }}/gungraun-summary.md
+            ${{ runner.temp }}/gungraun-metadata.json
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 6
+
+      - name: Link Valgrind analysis bundle
+        if: >-
+          always() &&
+          steps.upload-valgrind.outputs.artifact-url != ''
+        env:
+          ARTIFACT_URL: ${{ steps.upload-valgrind.outputs.artifact-url }}
+        run: |
+          {
+            echo "### Valgrind analysis artifact"
+            echo
+            echo "[Download the raw Gungraun and Valgrind data]($ARTIFACT_URL) (retained for 90 days)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Publish benchmark diff to pull request
         if: >-
           always() &&
           github.event.pull_request.head.repo.full_name == github.repository &&
           github.event.pull_request.user.login != 'dependabot[bot]'
         env:
+          ARTIFACT_URL: ${{ steps.upload-valgrind.outputs.artifact-url }}
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
@@ -129,6 +263,11 @@ jobs:
             echo
             echo 'Values are shown as `merge | base`.'
             echo
+            if [[ -n "$ARTIFACT_URL" ]]
+            then
+              echo "[Download the raw Gungraun and Valgrind data]($ARTIFACT_URL) (retained for 90 days)."
+              echo
+            fi
             if [[ -s "$summary" ]]
             then
               cat "$summary"
