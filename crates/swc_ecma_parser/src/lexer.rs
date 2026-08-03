@@ -1379,6 +1379,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     }
 }
 
+#[cfg(not(target_arch = "x86_64"))]
 const IDENTIFIER_BATCH_SIZE: usize = 32;
 
 const NOT_ASCII_IDENTIFIER_CONTINUE: [bool; 256] = {
@@ -1404,6 +1405,55 @@ const NOT_ASCII_IDENTIFIER_CONTINUE: [bool; 256] = {
 };
 
 #[inline(always)]
+#[cfg(target_arch = "x86_64")]
+fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
+    use core::arch::x86_64::{
+        __m128i, _mm_and_si128, _mm_cmpeq_epi8, _mm_cmpgt_epi8, _mm_loadu_si128, _mm_movemask_epi8,
+        _mm_or_si128, _mm_set1_epi8,
+    };
+
+    debug_assert!(u32::try_from(source.len()).is_ok());
+    debug_assert!((start as usize) <= source.len());
+    let mut position = start as usize;
+
+    while source.len() - position >= 16 {
+        // SAFETY: x86_64 guarantees SSE2 support, and the loop condition guarantees
+        // that the unaligned load stays within `source`.
+        let valid_mask = unsafe {
+            let bytes = _mm_loadu_si128(source.as_ptr().add(position).cast::<__m128i>());
+            let lower = _mm_or_si128(bytes, _mm_set1_epi8(0x20));
+            let letters = _mm_and_si128(
+                _mm_cmpgt_epi8(lower, _mm_set1_epi8((b'a' - 1) as i8)),
+                _mm_cmpgt_epi8(_mm_set1_epi8((b'z' + 1) as i8), lower),
+            );
+            let digits = _mm_and_si128(
+                _mm_cmpgt_epi8(bytes, _mm_set1_epi8((b'0' - 1) as i8)),
+                _mm_cmpgt_epi8(_mm_set1_epi8((b'9' + 1) as i8), bytes),
+            );
+            let special = _mm_or_si128(
+                _mm_cmpeq_epi8(bytes, _mm_set1_epi8(b'_' as i8)),
+                _mm_cmpeq_epi8(bytes, _mm_set1_epi8(b'$' as i8)),
+            );
+            _mm_movemask_epi8(_mm_or_si128(_mm_or_si128(letters, digits), special)) as u32
+        };
+        if valid_mask != 0xffff {
+            position += ((!valid_mask) & 0xffff).trailing_zeros() as usize;
+            debug_assert!(position <= source.len());
+            return position as u32;
+        }
+        position += 16;
+    }
+    while position < source.len() && !NOT_ASCII_IDENTIFIER_CONTINUE[source[position] as usize] {
+        position += 1;
+    }
+
+    debug_assert!(position >= start as usize);
+    debug_assert!(position <= source.len());
+    position as u32
+}
+
+#[inline(always)]
+#[cfg(not(target_arch = "x86_64"))]
 fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
     debug_assert!(u32::try_from(source.len()).is_ok());
     debug_assert!((start as usize) <= source.len());
@@ -1742,6 +1792,23 @@ mod tests {
 
         let ignoring = Lexer::init(&allocator, &large_source, false, false, NoTokenParserConfig);
         assert_eq!(ignoring.comments.capacity(), 0);
+    }
+
+    #[test]
+    fn scans_ascii_identifier_batches() {
+        for padding in 0..16 {
+            let mut source = vec![b'!'; padding];
+            source.extend_from_slice(b"a0123456789_$BCDEFGHIJKLMNOPQRSTUVWXYZ;");
+            let start = padding as u32;
+            assert_eq!(
+                scan_ascii_identifier_continue(&source, start + 1),
+                start + 38
+            );
+        }
+
+        assert_eq!(scan_ascii_identifier_continue(b"a\\u0062", 1), 1);
+        assert_eq!(scan_ascii_identifier_continue(b"a\xc3\xa9", 1), 1);
+        assert_eq!(scan_ascii_identifier_continue(b"identifier", 1), 10);
     }
 
     #[test]
