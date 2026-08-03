@@ -48,6 +48,7 @@ struct CheckerState<'a> {
     exported_names: ArenaHashMap<'a, &'a [u8], NodeId>,
     export_specifiers: ArenaVec<'a, ExportSpecifierInfo<'a>>,
     diagnostics: Vec<Diagnostic<'a>>,
+    message_buffer: String,
 }
 
 impl<'traverse, 'a> Checker<'traverse, 'a> {
@@ -104,6 +105,7 @@ impl<'a> CheckerState<'a> {
             exported_names: ArenaHashMap::new_in(allocator),
             export_specifiers: ArenaVec::new_in(allocator),
             diagnostics: Vec::new(),
+            message_buffer: String::new(),
         }
     }
 
@@ -145,7 +147,7 @@ impl<'a> CheckerState<'a> {
         existing: Symbol,
         context: &SemanticContext<'a>,
     ) {
-        let name = tree.get_utf8(identifier.name(tree)).as_bytes();
+        let name = tree.get_utf8(identifier.name(tree));
         let current_span = tree.span(node);
         let existing_span = tree.span(context.symbols.first_decl_of(existing_id));
         let kind = existing.flags.to_string();
@@ -154,20 +156,21 @@ impl<'a> CheckerState<'a> {
         } else {
             "a"
         };
-        let message = self.fmt(format_args!(
-            "Identifier '{}' has already been declared",
-            String::from_utf8_lossy(name)
-        ));
-        let first = self.fmt(format_args!(
-            "'{}' was first declared as {} {} here",
-            String::from_utf8_lossy(name),
+        let message = self.concat(&["Identifier '", name, "' has already been declared"]);
+        let first = self.concat(&[
+            "'",
+            name,
+            "' was first declared as ",
             article,
-            kind
-        ));
-        let help = self.fmt(format_args!(
-            "Consider removing or renaming this declaration of '{}'",
-            String::from_utf8_lossy(name)
-        ));
+            " ",
+            kind,
+            " here",
+        ]);
+        let help = self.concat(&[
+            "Consider removing or renaming this declaration of '",
+            name,
+            "'",
+        ]);
         self.report(
             current_span,
             message,
@@ -214,6 +217,16 @@ impl<'a> CheckerState<'a> {
             .expect("formatting into an arena vector is infallible");
         std::str::from_utf8(writer.bytes.into_bump_slice())
             .expect("Rust formatting produces valid UTF-8")
+    }
+
+    fn concat(&mut self, parts: &[&str]) -> &'a str {
+        let len = parts.iter().map(|part| part.len()).sum();
+        self.message_buffer.clear();
+        self.message_buffer.reserve(len);
+        for part in parts {
+            self.message_buffer.push_str(part);
+        }
+        self.allocator.alloc_str(&self.message_buffer)
     }
 }
 
