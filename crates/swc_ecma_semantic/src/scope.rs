@@ -273,17 +273,21 @@ impl<'a> ScopeTracker<'a> {
         //
         //   catch (e)       { let e }   // shared, conflict found
         //   catch ([e = 1]) { let e }   // split; default cannot see let
-        let catch = match tree.kind_data(self.current_scope().node) {
-            NodeKindData::CatchClause(catch) => Some(catch),
-            _ => None,
+        let current = self.current_scope();
+        let catch = if current.kind == ScopeKind::Block {
+            match tree.kind_data(current.node) {
+                NodeKindData::CatchClause(catch) => Some(catch),
+                _ => None,
+            }
+        } else {
+            None
         };
-        let shares_catch_scope = self.current_scope().kind == ScopeKind::Block
-            && catch.is_some_and(|catch| {
-                catch.body(tree).node_id() == node
-                    && catch.param(tree).is_none_or(|param| {
-                        ecmascript::find_pattern_expression(tree, Some(param.node_id())).is_none()
-                    })
-            });
+        let shares_catch_scope = catch.is_some_and(|catch| {
+            catch.body(tree).node_id() == node
+                && catch.param(tree).is_none_or(|param| {
+                    ecmascript::find_pattern_expression(tree, Some(param.node_id())).is_none()
+                })
+        });
         if !shares_catch_scope {
             self.enter_block_scope(node);
         }
