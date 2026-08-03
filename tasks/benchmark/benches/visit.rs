@@ -12,7 +12,7 @@ use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
 fn bench_visit(b: &mut Bencher, src: &'static str) {
     let allocator = Allocator::new();
-    let mut ast = Ast::new(src.as_bytes(), &allocator);
+    let mut ast = Ast::new(src, &allocator);
     let program = Parser::init(&mut ast, Options::default(), NoTokenParserConfig)
         .parse()
         .program;
@@ -108,7 +108,7 @@ fn bench_visit_mut(b: &mut Bencher, src: &'static str) {
     }
 
     let allocator = Allocator::new();
-    let mut ast = Ast::new(src.as_bytes(), &allocator);
+    let mut ast = Ast::new(src, &allocator);
     let program = Parser::init(&mut ast, Options::default(), NoTokenParserConfig)
         .parse()
         .program;
@@ -176,7 +176,7 @@ fn bench_traverse(b: &mut Bencher, src: &'static str) {
     }
 
     let allocator = Allocator::new();
-    let mut ast = Ast::new(src.as_bytes(), &allocator);
+    let mut ast = Ast::new(src, &allocator);
     let program = Parser::init(&mut ast, Options::default(), NoTokenParserConfig)
         .parse()
         .program;

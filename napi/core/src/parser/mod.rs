@@ -14,7 +14,7 @@ pub mod options;
 #[napi]
 pub fn parse_sync(source: String, options: Option<ParserOptions>) -> Buffer {
     let allocator = Allocator::default();
-    let mut ast = Ast::new(source.as_bytes(), &allocator);
+    let mut ast = Ast::new(&source, &allocator);
     let program = Parser::init(
         &mut ast,
         options.unwrap_or_default().into(),

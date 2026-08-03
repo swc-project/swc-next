@@ -60,7 +60,7 @@ fn run_case(case: &BabelTransformCase) -> Result<(), String> {
 }
 
 fn transform_input(case: &BabelTransformCase) -> Result<Vec<u8>, String> {
-    let source = case.input.as_bytes();
+    let source = case.input.as_str();
     let allocator = Allocator::new();
     let mut ast = Ast::new(source, &allocator);
     let program = parse_program(&mut ast, case)?;
@@ -84,7 +84,7 @@ fn transform_input(case: &BabelTransformCase) -> Result<Vec<u8>, String> {
 }
 
 fn normalize_expected_output(case: &BabelTransformCase) -> Result<Vec<u8>, String> {
-    let source = case.output.as_bytes();
+    let source = case.output.as_str();
     let allocator = Allocator::new();
     let mut ast = Ast::new(source, &allocator);
     let program = parse_program(&mut ast, case)?;

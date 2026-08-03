@@ -9,7 +9,7 @@ use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 fn bench_new(b: &mut Bencher, src: &'static str) {
     b.iter(|| {
         let allocator = Allocator::new();
-        let mut ast = Ast::new(src.as_bytes(), &allocator);
+        let mut ast = Ast::new(src, &allocator);
         Parser::init(&mut ast, Options::default(), NoTokenParserConfig).parse();
     });
 }

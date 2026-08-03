@@ -45,7 +45,9 @@ fn run_case<C: Case>(case: &C) -> Result<(), String> {
     let (program, ast) = parse_case(&allocator, case)?;
     let codegen1 = print(&allocator, &ast, program, CodegenOptions::default()).code;
 
-    let (program, ast) = parse(&allocator, codegen1, case.source_type(), case.lang())?;
+    let codegen1_source = str::from_utf8(codegen1)
+        .map_err(|error| format!("codegen produced invalid UTF-8: {error}"))?;
+    let (program, ast) = parse(&allocator, codegen1_source, case.source_type(), case.lang())?;
     let codegen2 = print(&allocator, &ast, program, CodegenOptions::default()).code;
 
     if codegen1 == codegen2 {

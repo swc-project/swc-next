@@ -39,7 +39,7 @@ const CAL_COM_TSX: &str = include_str!("../files/cal.com.tsx");
 fn bench_parser(source: &str) {
     let source = black_box(source);
     let allocator = Allocator::new();
-    let mut ast = Ast::new(source.as_bytes(), &allocator);
+    let mut ast = Ast::new(source, &allocator);
     black_box(Parser::init(&mut ast, Options::default(), NoTokenParserConfig).parse());
 }
 
@@ -50,7 +50,7 @@ struct ParsedProgram {
 
 fn setup_program(source: &'static str) -> ParsedProgram {
     let allocator = Box::leak(Box::new(Allocator::new()));
-    let mut ast = Ast::new(source.as_bytes(), allocator);
+    let mut ast = Ast::new(source, allocator);
     let program = Parser::init(&mut ast, Options::default(), NoTokenParserConfig)
         .parse()
         .program;

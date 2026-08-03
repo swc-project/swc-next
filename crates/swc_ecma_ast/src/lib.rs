@@ -104,7 +104,7 @@ impl ExtraData {
 
 impl<'a> Ast<'a> {
     /// Create a flattening AST backed by `source` and `allocator`.
-    pub fn new(source: &'a [u8], allocator: &'a Allocator) -> Self {
+    pub fn new(source: &'a str, allocator: &'a Allocator) -> Self {
         Self {
             allocator,
             source_type: SourceType::Module,
@@ -113,7 +113,7 @@ impl<'a> Ast<'a> {
             attached_comments: ArenaVec::new_in(allocator),
             nodes: NodeData::new_in(allocator),
             extra_data: ArenaVec::with_capacity_in(0, allocator),
-            strings: StringPool::new(source),
+            strings: StringPool::new(source.as_bytes()),
         }
     }
 

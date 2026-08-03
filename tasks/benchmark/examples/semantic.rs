@@ -11,7 +11,7 @@ fn main() {
         .map(|p| read_to_string(p).unwrap())
         .unwrap_or(include_str!("../files/typescript.js").to_owned());
     let allocator = Allocator::new();
-    let mut ast = Ast::new(source.as_bytes(), &allocator);
+    let mut ast = Ast::new(&source, &allocator);
     let root = Parser::init(&mut ast, Options::default(), NoTokenParserConfig)
         .parse()
         .program;

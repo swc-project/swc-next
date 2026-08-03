@@ -25,12 +25,12 @@ fn parse_case<'a, C: Case>(
     let source = case.code();
     let source_type = case.source_type();
     let lang = case.lang();
-    parse(allocator, source.as_bytes(), source_type, lang)
+    parse(allocator, source, source_type, lang)
 }
 
 fn parse<'a>(
     allocator: &'a Allocator,
-    source: &'a [u8],
+    source: &'a str,
     source_type: SourceType,
     lang: Lang,
 ) -> Result<(Program, Ast<'a>), String> {

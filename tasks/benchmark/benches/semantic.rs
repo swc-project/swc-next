@@ -20,7 +20,7 @@ fn bench_semantic(c: &mut Criterion) {
             let allocator = Allocator::new();
             b.iter_batched(
                 || {
-                    let mut ast = Ast::new(source.as_bytes(), &allocator);
+                    let mut ast = Ast::new(source, &allocator);
                     let program = Parser::init(&mut ast, Options::default(), NoTokenParserConfig)
                         .parse()
                         .program;

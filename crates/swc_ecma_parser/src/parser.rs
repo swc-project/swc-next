@@ -11824,7 +11824,7 @@ mod tests {
     #[test]
     fn validates_identifier_fast_and_diagnostic_paths() {
         let allocator = Allocator::new();
-        let mut ast = Ast::new(b"name", &allocator);
+        let mut ast = Ast::new("name", &allocator);
         let mut parser = Parser::init(&mut ast, Options::default(), NoTokenParserConfig);
         parser.validate_identifier(
             Token {
@@ -11837,7 +11837,7 @@ mod tests {
         assert!(parser.diagnostics.is_empty());
 
         let allocator = Allocator::new();
-        let mut ast = Ast::new(b"if", &allocator);
+        let mut ast = Ast::new("if", &allocator);
         let mut parser = Parser::init(&mut ast, Options::default(), NoTokenParserConfig);
         parser.validate_identifier(
             Token {
@@ -11857,7 +11857,7 @@ mod tests {
     #[test]
     fn preserves_line_terminator_when_rescanning_jsx_identifier() {
         let allocator = Allocator::new();
-        let source = b"<Comp<T>\nfoo />";
+        let source = "<Comp<T>\nfoo />";
         let mut ast = Ast::new(source, &allocator);
         let options = Options {
             lang: Lang::Tsx,

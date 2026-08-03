@@ -65,6 +65,7 @@ fn expect_printed_common(
     ascii_only: bool,
 ) {
     let allocator = Allocator::new();
+    let source = str::from_utf8(source).expect("source must be valid UTF-8");
     let mut ast = Ast::new(source, &allocator);
     let parse_options = ParseOptions {
         source_type,
@@ -93,7 +94,7 @@ fn expect_printed_common(
         result.code,
         expected,
         "failed for {}\nactual:\n{}\nexpected:\n{}",
-        String::from_utf8_lossy(source),
+        source,
         String::from_utf8_lossy(result.code),
         String::from_utf8_lossy(expected),
     );

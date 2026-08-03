@@ -20,7 +20,7 @@ fn main() -> Result<(), String> {
     // Read source file
     let path = Path::new(&name);
     let source_text = fs::read_to_string(path).map_err(|_| format!("Missing '{name}'"))?;
-    let source = source_text.as_bytes();
+    let source = source_text.as_str();
     let source_type = SourceType::from_path(&name);
     let lang = Lang::from_path(&name);
 

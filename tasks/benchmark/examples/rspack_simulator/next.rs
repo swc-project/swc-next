@@ -24,7 +24,7 @@ fn run_parse<'a>(
     src: &'a str,
     allocator: &'a Allocator,
 ) -> (Program, Ast<'a>, ArenaVec<'a, Token>) {
-    let mut ast = Ast::new(src.as_bytes(), allocator);
+    let mut ast = Ast::new(src, allocator);
     let result = Parser::init(
         &mut ast,
         Options {
