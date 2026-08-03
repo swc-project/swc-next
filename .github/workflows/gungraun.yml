@@ -14,14 +14,26 @@ concurrency:
 
 jobs:
   benchmarks:
-    name: Compare Gungraun benchmarks
+    name: Compare semantic ${{ matrix.profile }} metrics
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: instructions
+            bench: gungraun
+            filter: "gungraun::semantic::*"
+          - profile: memory
+            bench: gungraun_memory
+            filter: "gungraun_memory::semantic::*"
+    env:
+      GUNGRAUN_COLOR: never
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Setup rust toolchain and cache
         uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1
@@ -34,44 +46,42 @@ jobs:
         with:
           runner-version: 0.19.4
 
+      - name: Test benchmark summary renderer
+        run: node --test .github/scripts/render-gungraun-summary.test.mjs
+
       - name: Save base benchmark
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          COMPARE_SHA: ${{ github.sha }}
-          GUNGRAUN_COLOR: never
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           git checkout --detach "$BASE_SHA"
 
-          # Bootstrap the benchmark harness while this workflow is not on the
-          # base branch yet. Later PRs benchmark the base branch as-is.
-          if ! git cat-file -e \
-            "${BASE_SHA}:tasks/benchmark/benches/gungraun.rs" 2>/dev/null
-          then
-            git checkout "$COMPARE_SHA" -- \
-              Cargo.toml \
-              Cargo.lock \
-              tasks/benchmark/Cargo.toml \
-              tasks/benchmark/benches/gungraun.rs
-          fi
+          # Use the pull request's benchmark definition for both revisions.
+          # Production code still comes from the exact base SHA.
+          git checkout "$HEAD_SHA" -- \
+            tasks/benchmark/Cargo.toml \
+            tasks/benchmark/benches/gungraun.rs \
+            tasks/benchmark/benches/gungraun_memory.rs
 
-          cargo bench --quiet -p benchmark --bench gungraun -- \
+          cargo bench --quiet -p benchmark --bench '${{ matrix.bench }}' -- \
             --home="$RUNNER_TEMP/gungraun" \
-            --save-baseline=base
+            --save-baseline=base \
+            '${{ matrix.filter }}'
 
-      - name: Compare merge benchmark
+      - name: Compare head benchmark
         env:
-          COMPARE_SHA: ${{ github.sha }}
-          GUNGRAUN_COLOR: never
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          git checkout --detach "$COMPARE_SHA"
+          git checkout --detach "$HEAD_SHA"
 
           report="$RUNNER_TEMP/gungraun-diff.txt"
           summary="$RUNNER_TEMP/gungraun-summary.md"
           set +e
-          cargo bench --quiet -p benchmark --bench gungraun -- \
+          cargo bench --quiet -p benchmark --bench '${{ matrix.bench }}' -- \
             --home="$RUNNER_TEMP/gungraun" \
             --baseline=base \
-            --save-summary=json 2>&1 | tee "$report"
+            --save-summary=json \
+            '${{ matrix.filter }}' 2>&1 | tee "$report"
           benchmark_status="${PIPESTATUS[0]}"
 
           node .github/scripts/render-gungraun-summary.mjs \
@@ -91,7 +101,7 @@ jobs:
           {
             echo "## Gungraun benchmark diff"
             echo
-            echo 'Values are shown as `merge | base`.'
+            echo 'Values are shown as `head | base`.'
             echo
             cat "$summary"
             echo
@@ -109,12 +119,15 @@ jobs:
       - name: Prepare Valgrind artifact metadata
         if: always()
         env:
-          ARTIFACT_NAME: gungraun-valgrind-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
+          ARTIFACT_NAME: gungraun-semantic-${{ matrix.profile }}-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          COMPARE_SHA: ${{ github.sha }}
+          BENCH: ${{ matrix.bench }}
+          COMPARE_SHA: ${{ github.event.pull_request.head.sha }}
+          FILTER: ${{ matrix.filter }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           JOB_STATUS: ${{ job.status }}
+          PROFILE: ${{ matrix.profile }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
@@ -133,15 +146,18 @@ jobs:
             --arg artifact_name "$ARTIFACT_NAME" \
             --arg base_ref "$BASE_REF" \
             --arg base_sha "$BASE_SHA" \
+            --arg bench "$BENCH" \
             --arg cargo_version "$cargo_version" \
             --arg compare_sha "$COMPARE_SHA" \
             --arg event_name "$GITHUB_EVENT_NAME" \
             --arg generated_at "$generated_at" \
             --arg gungraun_version "$gungraun_version" \
+            --arg filter "$FILTER" \
             --arg head_ref "$HEAD_REF" \
             --arg job_status "$JOB_STATUS" \
             --arg pr_head_sha "$PR_HEAD_SHA" \
             --arg pr_number "$PR_NUMBER" \
+            --arg profile "$PROFILE" \
             --arg repository "$GITHUB_REPOSITORY" \
             --arg run_attempt "$RUN_ATTEMPT" \
             --arg run_id "$RUN_ID" \
@@ -182,10 +198,12 @@ jobs:
               },
               benchmark: {
                 package: "benchmark",
-                bench: "gungraun",
+                bench: $bench,
+                profile: $profile,
+                filter: $filter,
                 baseline: "base",
-                base_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --save-baseline=base",
-                compare_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --baseline=base --save-summary=json"
+                base_command: "cargo bench --quiet -p benchmark --bench \($bench) -- --home=$RUNNER_TEMP/gungraun --save-baseline=base \($filter)",
+                compare_command: "cargo bench --quiet -p benchmark --bench \($bench) -- --home=$RUNNER_TEMP/gungraun --baseline=base --save-summary=json \($filter)"
               },
               files: {
                 data_root: "gungraun",
@@ -216,7 +234,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: gungraun-valgrind-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: gungraun-semantic-${{ matrix.profile }}-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/gungraun
             ${{ runner.temp }}/gungraun-diff.txt
@@ -242,6 +260,7 @@ jobs:
       - name: Publish benchmark diff to pull request
         if: >-
           always() &&
+          matrix.profile == 'instructions' &&
           github.event.pull_request.head.repo.full_name == github.repository &&
           github.event.pull_request.user.login != 'dependabot[bot]'
         env:
@@ -261,7 +280,7 @@ jobs:
             echo '<!-- gungraun-benchmark-diff -->'
             echo '## Gungraun benchmark diff'
             echo
-            echo 'Values are shown as `merge | base`.'
+            echo 'Values are shown as `head | base`.'
             echo
             if [[ -n "$ARTIFACT_URL" ]]
             then

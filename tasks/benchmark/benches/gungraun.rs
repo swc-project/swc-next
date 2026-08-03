@@ -4,7 +4,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use std::hint::black_box;
 
 use gungraun::prelude::*;
-use gungraun::{Callgrind, EventKind};
+use gungraun::{Callgrind, EventKind, FlamegraphConfig};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
     Ast, BindingIdentifier, IdentifierName, IdentifierReference, LabelIdentifier, Lang,
@@ -83,6 +83,17 @@ fn bench_semantic(parsed: ParsedProgram) {
         parsed.program,
         &parsed.ast,
         AnalyzeOptions::default(),
+    ));
+}
+
+#[library_benchmark]
+#[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
+#[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
+fn bench_semantic_with_syntax(parsed: ParsedProgram) {
+    black_box(analyze(
+        parsed.program,
+        &parsed.ast,
+        AnalyzeOptions { check_syntax: true },
     ));
 }
 
@@ -250,17 +261,27 @@ fn bench_traverse(mut parsed: ParsedProgram) {
 
 library_benchmark_group!(name = parser, benchmarks = bench_parser);
 
-library_benchmark_group!(name = semantic, benchmarks = bench_semantic);
+library_benchmark_group!(
+    name = semantic,
+    benchmarks = [bench_semantic, bench_semantic_with_syntax]
+);
 
 library_benchmark_group!(
     name = visit,
     benchmarks = [bench_visit, bench_visit_mut, bench_traverse]
 );
 
+fn benchmark_config() -> LibraryBenchmarkConfig {
+    let mut config = LibraryBenchmarkConfig::default();
+    config.tool(
+        Callgrind::with_args(["--branch-sim=no", "--cache-sim=no"])
+            .format([EventKind::Ir])
+            .flamegraph(FlamegraphConfig::default().event_kinds([EventKind::Ir])),
+    );
+    config
+}
+
 main!(
-    config =
-        LibraryBenchmarkConfig::default().tool(
-            Callgrind::with_args(["--branch-sim=no", "--cache-sim=no",]).format([EventKind::Ir]),
-        ),
+    config = benchmark_config(),
     library_benchmark_groups = [parser, semantic, visit]
 );
