@@ -1064,16 +1064,17 @@ impl<'a> SymbolTracker<'a> {
         if space.in_type_position() && !self.pending.flags.type_parameter {
             return;
         }
-        let symbol_id = self.declare(tree, identifier.name(tree), node);
+        let name = identifier.name(tree);
+        let symbol_id = self.declare(tree, name, node);
 
         // Register a hoisting var in every block it passes through so
         // block-scoped redeclarations see it.
-        if self.pending.flags.is_hoisting_var() {
+        if self.pending.flags.is_hoisting_var() && scope.current != self.pending.scope {
+            let name = tree.string(name).clone_in(self.allocator);
             for scope_id in scope.ancestors(Some(scope.current)) {
                 if scope_id == self.pending.scope {
                     break;
                 }
-                let name = tree.string(identifier.name(tree)).clone_in(self.allocator);
                 self.hoisting_variables[scope_id.index()]
                     .entry(name)
                     .or_insert(symbol_id);
