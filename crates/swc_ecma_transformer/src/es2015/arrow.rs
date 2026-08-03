@@ -52,7 +52,7 @@ impl<'visit, 'ast> ArrowVisitor<'visit, 'ast> {
         }
     }
 
-    fn convert_arrow(&mut self, arrow: swc_next_ecma_ast::ArrowFunctionExpression) {
+    fn convert_arrow(&mut self, arrow: swc_next_ecma_ast::ArrowFunctionExpression) -> Function {
         let (span, params, body, is_async) = (
             arrow.span(self.ast),
             arrow.params(self.ast),
@@ -61,8 +61,8 @@ impl<'visit, 'ast> ArrowVisitor<'visit, 'ast> {
         );
 
         let old_in_arrow = self.hoister.set_in_arrow(true);
-        params.visit_mut_with(self);
-        body.visit_mut_with(self);
+        let params = params.visit_mut_with(self);
+        let body = body.visit_mut_with(self);
         self.hoister.set_in_arrow(old_in_arrow);
 
         params.set_kind(self.ast, FormalParameterKind::FormalParameters);
@@ -80,7 +80,7 @@ impl<'visit, 'ast> ArrowVisitor<'visit, 'ast> {
                 .function_body(DUMMY_SP, TypedSubRange::empty(), body_items)
         };
 
-        let function = self.ast.function(
+        self.ast.function(
             span,
             FunctionType::FunctionExpression,
             None,
@@ -90,10 +90,7 @@ impl<'visit, 'ast> ArrowVisitor<'visit, 'ast> {
             body,
             None,
             None,
-        );
-        // SAFETY: `function` is the unattached last node, and `arrow` is not
-        // accessed again after this replacement.
-        unsafe { self.ast.replace_data(arrow, function) };
+        )
     }
 }
 
@@ -102,65 +99,69 @@ impl<'ast> VisitMut<'ast> for ArrowVisitor<'_, 'ast> {
         self.ast
     }
 
-    fn visit_mut_expr(&mut self, node: Expr) {
+    fn visit_mut_expr(&mut self, node: Expr) -> Expr {
         if let Some(arrow) = node.as_arrow_function_expression(self.ast) {
-            self.convert_arrow(arrow);
+            Expr::Function(self.convert_arrow(arrow))
+        } else if let Some(this) = node.as_this_expression(self.ast) {
+            self.hoister.transform_this_expression(this, self.ast)
+        } else if let Some(meta) = node.as_meta_property(self.ast) {
+            self.hoister.transform_meta_property(meta, self.ast)
         } else {
-            node.visit_mut_children_with(self);
+            node.visit_mut_children_with(self)
         }
     }
 
-    fn visit_mut_this_expression(&mut self, node: swc_next_ecma_ast::ThisExpression) {
-        self.hoister.visit_this_expression(node, self.ast);
-    }
-
-    fn visit_mut_identifier_reference(&mut self, node: IdentifierReference) {
+    fn visit_mut_identifier_reference(&mut self, node: IdentifierReference) -> IdentifierReference {
         self.hoister.visit_identifier_reference(node, self.ast);
+        node
     }
 
-    fn visit_mut_meta_property(&mut self, node: swc_next_ecma_ast::MetaProperty) {
-        self.hoister.visit_meta_property(node, self.ast);
-    }
-
-    fn visit_mut_function(&mut self, node: Function) {
+    fn visit_mut_function(&mut self, node: Function) -> Function {
         let derived_constructor = self
             .next_method_is_derived_constructor
             .take()
             .unwrap_or(false);
         let old_in_arrow = self.hoister.set_in_arrow(false);
         self.hoister.push_frame();
-        node.visit_mut_children_with(self);
+        let node = node.visit_mut_children_with(self);
         let frame = self.hoister.take_frame();
         self.hoister
             .inject_into_function(node, frame, derived_constructor, self.ast);
         self.hoister.set_in_arrow(old_in_arrow);
+        node
     }
 
-    fn visit_mut_class(&mut self, node: Class) {
+    fn visit_mut_class(&mut self, node: Class) -> Class {
         let old = self.in_subclass;
         self.in_subclass = node.super_class(self.ast).is_some();
-        node.visit_mut_children_with(self);
+        let node = node.visit_mut_children_with(self);
         self.in_subclass = old;
+        node
     }
 
-    fn visit_mut_method_definition(&mut self, node: MethodDefinition) {
+    fn visit_mut_method_definition(&mut self, node: MethodDefinition) -> MethodDefinition {
         let decorators = node.decorators(self.ast);
         let key = node.key(self.ast);
-        decorators.visit_mut_with(self);
-        key.visit_mut_with(self);
+        let decorators = decorators.visit_mut_with(self);
+        let key = key.visit_mut_with(self);
+        node.set_decorators(self.ast, decorators);
+        node.set_key(self.ast, key);
 
         self.next_method_is_derived_constructor =
             Some(self.in_subclass && node.kind(self.ast) == MethodDefinitionKind::Constructor);
-        node.value(self.ast).visit_mut_with(self);
+        let value = node.value(self.ast).visit_mut_with(self);
+        node.set_value(self.ast, value);
         debug_assert!(self.next_method_is_derived_constructor.is_none());
+        node
     }
 
-    fn visit_mut_static_block(&mut self, node: StaticBlock) {
+    fn visit_mut_static_block(&mut self, node: StaticBlock) -> StaticBlock {
         let old_in_arrow = self.hoister.set_in_arrow(false);
         self.hoister.push_frame();
-        node.visit_mut_children_with(self);
+        let node = node.visit_mut_children_with(self);
         let frame = self.hoister.take_frame();
         self.hoister.inject_into_static_block(node, frame, self.ast);
         self.hoister.set_in_arrow(old_in_arrow);
+        node
     }
 }

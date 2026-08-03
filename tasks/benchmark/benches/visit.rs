@@ -69,24 +69,32 @@ fn bench_visit_mut(b: &mut Bencher, src: &'static str) {
             self.ast
         }
 
-        fn visit_mut_identifier_reference(&mut self, _node: IdentifierReference) {
+        fn visit_mut_identifier_reference(
+            &mut self,
+            node: IdentifierReference,
+        ) -> IdentifierReference {
             self.count += 1;
+            node
         }
 
-        fn visit_mut_private_identifier(&mut self, _node: PrivateIdentifier) {
+        fn visit_mut_private_identifier(&mut self, node: PrivateIdentifier) -> PrivateIdentifier {
             self.count += 1;
+            node
         }
 
-        fn visit_mut_binding_identifier(&mut self, _node: BindingIdentifier) {
+        fn visit_mut_binding_identifier(&mut self, node: BindingIdentifier) -> BindingIdentifier {
             self.count += 1;
+            node
         }
 
-        fn visit_mut_identifier_name(&mut self, _node: IdentifierName) {
+        fn visit_mut_identifier_name(&mut self, node: IdentifierName) -> IdentifierName {
             self.count += 1;
+            node
         }
 
-        fn visit_mut_label_identifier(&mut self, _node: LabelIdentifier) {
+        fn visit_mut_label_identifier(&mut self, node: LabelIdentifier) -> LabelIdentifier {
             self.count += 1;
+            node
         }
     }
 
@@ -116,7 +124,7 @@ fn bench_traverse(b: &mut Bencher, src: &'static str) {
             &mut self,
             _node: IdentifierReference,
             _ctx: &mut TraverseCtx<'_, 'ast>,
-        ) -> TraverseAction {
+        ) -> TraverseAction<IdentifierReference> {
             self.count += 1;
             TraverseAction::Proceed
         }
@@ -125,7 +133,7 @@ fn bench_traverse(b: &mut Bencher, src: &'static str) {
             &mut self,
             _node: PrivateIdentifier,
             _ctx: &mut TraverseCtx<'_, 'ast>,
-        ) -> TraverseAction {
+        ) -> TraverseAction<PrivateIdentifier> {
             self.count += 1;
             TraverseAction::Proceed
         }
@@ -134,7 +142,7 @@ fn bench_traverse(b: &mut Bencher, src: &'static str) {
             &mut self,
             _node: BindingIdentifier,
             _ctx: &mut TraverseCtx<'_, 'ast>,
-        ) -> TraverseAction {
+        ) -> TraverseAction<BindingIdentifier> {
             self.count += 1;
             TraverseAction::Proceed
         }
@@ -143,7 +151,7 @@ fn bench_traverse(b: &mut Bencher, src: &'static str) {
             &mut self,
             _node: IdentifierName,
             _ctx: &mut TraverseCtx<'_, 'ast>,
-        ) -> TraverseAction {
+        ) -> TraverseAction<IdentifierName> {
             self.count += 1;
             TraverseAction::Proceed
         }
@@ -152,7 +160,7 @@ fn bench_traverse(b: &mut Bencher, src: &'static str) {
             &mut self,
             _node: LabelIdentifier,
             _ctx: &mut TraverseCtx<'_, 'ast>,
-        ) -> TraverseAction {
+        ) -> TraverseAction<LabelIdentifier> {
             self.count += 1;
             TraverseAction::Proceed
         }

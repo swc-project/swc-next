@@ -46,7 +46,11 @@ impl Transformer {
 }
 
 impl<'a> Traverse<'a, TransformerState> for TransformerImpl<'_> {
-    fn enter_program(&mut self, node: Program, ctx: &mut TransformerCtx<'_, 'a>) -> TraverseAction {
+    fn enter_program(
+        &mut self,
+        node: Program,
+        ctx: &mut TransformerCtx<'_, 'a>,
+    ) -> TraverseAction<Program> {
         self.x0_es2015.transform(node, self.semantic, ctx);
         TraverseAction::Proceed
     }

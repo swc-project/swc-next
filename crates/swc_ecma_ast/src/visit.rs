@@ -1,15 +1,16 @@
 use crate::{
-    Accessibility, AssignmentOperator, Ast, BinaryOperator, ClassType, FormalParameterKind,
-    FunctionType, ImportOrExportKind, ImportPhase, LogicalOperator, MethodDefinitionKind, NodeId,
-    NodeKind, NumericLiteralKind, PropertyKind, SourceType, Span, String as AstString,
-    TsMappedTypeModifier, TsMethodSignatureKind, TsModuleDeclarationKind, TsTypeOperatorKind,
-    UnaryOperator, UpdateOperator, VariableKind, Visit, VisitMut, VisitMutWith, VisitWith,
+    Accessibility, AssignmentOperator, Ast, AstNode, BinaryOperator, ClassType,
+    FormalParameterKind, FunctionType, ImportOrExportKind, ImportPhase, LogicalOperator,
+    MethodDefinitionKind, NodeId, NodeKind, NumericLiteralKind, PropertyKind, SourceType, Span,
+    String as AstString, TsMappedTypeModifier, TsMethodSignatureKind, TsModuleDeclarationKind,
+    TsTypeOperatorKind, UnaryOperator, UpdateOperator, VariableKind, Visit, VisitMut, VisitMutWith,
+    VisitWith,
 };
 
 /// Controls how traversal continues after an enter hook.
 #[must_use]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub enum TraverseAction {
+pub enum TraverseAction<T: AstNode> {
     /// Visit this node's children and invoke its exit hooks.
     #[default]
     Proceed,
@@ -17,6 +18,11 @@ pub enum TraverseAction {
     Skip,
     /// Stop the entire traversal immediately without invoking pending exit hooks.
     Stop,
+    /// Replace this node in its parent with another node of the same AST type.
+    /// The replacement is not traversed, and the replaced node's remaining
+    /// hooks are not invoked. For a root node, the replacement is returned to
+    /// the caller of [`crate::TraverseWith::traverse_with`].
+    Replace(T),
 }
 
 /// Mutable AST state passed to every [`Traverse`] hook.
@@ -105,10 +111,14 @@ macro_rules! dummy_visit_mut_impl {
 
         impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for $ty {
             #[inline]
-            fn visit_mut_with(self, _visitor: &mut V) {}
+            fn visit_mut_with(self, _visitor: &mut V) -> Self {
+                self
+            }
 
             #[inline]
-            fn visit_mut_children_with(self, _visitor: &mut V) {}
+            fn visit_mut_children_with(self, _visitor: &mut V) -> Self {
+                self
+            }
         }
     };
 }
