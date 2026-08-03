@@ -1224,7 +1224,17 @@ impl<'a> SymbolTracker<'a> {
         assert!(node.index() < tree.node_count());
 
         let name_text = tree.string(name);
-        let id = if let Some(existing) = self.binding(target, name_text) {
+        let hash = self.scope_maps[target.index()].hasher().hash_one(name_text);
+        let existing = self.scope_maps[target.index()]
+            .raw_entry()
+            .from_hash(hash, |candidate| *candidate == name_text)
+            .or_else(|| {
+                self.hoisting_variables[target.index()]
+                    .raw_entry()
+                    .from_hash(hash, |candidate| *candidate == name_text)
+            })
+            .map(|(_, &id)| id);
+        let id = if let Some(existing) = existing {
             let symbol = &mut self.symbols[existing.index()];
             if !symbol.flags.intersects(self.pending.excludes) {
                 let mut merged = symbol.flags.merge(self.pending.flags);
@@ -1249,7 +1259,7 @@ impl<'a> SymbolTracker<'a> {
                 decls: Range::default(),
             });
             self.first_decls.push(node);
-            let key = tree.string(name).clone_in(self.allocator);
+            let key = name_text.clone_in(self.allocator);
             self.scope_maps[target.index()].insert(key, new_id);
             new_id
         };
