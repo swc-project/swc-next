@@ -1387,9 +1387,12 @@ impl<'a> SymbolTracker<'a> {
         for pair in &self.decl_pairs {
             node_symbols[pair.node.index()] = Some(pair.symbol_id);
         }
+        for (index, reference) in self.references.iter().enumerate() {
+            node_references[reference.node.index()] = Some(reference_id(index));
+        }
+
         for reference_index in 0..self.references.len() {
             let reference = self.references[reference_index];
-            node_references[reference.node.index()] = Some(reference_id(reference_index));
             let name = tree.string(reference.name);
             let hash = self.scope_maps[ScopeId::ROOT.index()]
                 .hasher()
