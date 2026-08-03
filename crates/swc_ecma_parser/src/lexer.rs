@@ -1,4 +1,4 @@
-use memchr::{memchr, memchr3};
+use memchr::{memchr, memchr3, memmem};
 use swc_next_allocator::Allocator;
 use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
@@ -12,6 +12,8 @@ use super::util::{
     code_point_at, is_multi_byte_space, parse_hex2, parse_octal, parse_unicode_escape,
     unicode_separator_len,
 };
+
+const BLOCK_COMMENT_SCALAR_PREFIX_SIZE: usize = 32;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LexicalError {
@@ -1303,24 +1305,27 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         debug_assert_eq!(self.source[self.cursor as usize + 1], b'*');
         let start = self.cursor;
         let src = self.source;
-        let mut pos = start as usize + 2;
-        while pos < src.len() {
+        let body_start = start as usize + 2;
+        let scalar_end = src
+            .len()
+            .min(body_start.saturating_add(BLOCK_COMMENT_SCALAR_PREFIX_SIZE));
+        let mut pos = body_start;
+        while pos < scalar_end {
             match src[pos] {
                 b'*' if pos + 1 < src.len() && src[pos + 1] == b'/' => {
-                    pos += 2;
-                    self.cursor = pos as u32;
-                    return self.record_comment(CommentKind::Block, start, pos as u32);
+                    let end = pos + 2;
+                    self.cursor = end as u32;
+                    return self.record_comment(CommentKind::Block, start, end as u32);
                 }
-                b'*' => pos += 1,
                 b'\n' | b'\r' => {
                     self.set_token_flag(TokenFlag::LineTerminatorBefore);
                     pos += 1;
                 }
                 0x80..=0xFF => {
-                    let lt_len = unicode_separator_len(src, pos) as usize;
-                    if lt_len > 0 {
+                    let separator_len = unicode_separator_len(src, pos) as usize;
+                    if separator_len > 0 {
                         self.set_token_flag(TokenFlag::LineTerminatorBefore);
-                        pos += lt_len;
+                        pos += separator_len;
                     } else {
                         pos += 1;
                     }
@@ -1328,8 +1333,27 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 _ => pos += 1,
             }
         }
-        self.cursor = pos as u32;
-        Err(LexicalError::UnterminatedMultiLineComment)
+
+        let closing_start = memmem::find(&src[pos..], b"*/").map(|offset| pos + offset);
+        let body_end = closing_start.unwrap_or(src.len());
+
+        let mut search_start = pos;
+        while let Some(offset) = memchr3(b'\n', b'\r', 0xE2, &src[search_start..body_end]) {
+            let pos = search_start + offset;
+            if src[pos] != 0xE2 || unicode_separator_len(src, pos) > 0 {
+                self.set_token_flag(TokenFlag::LineTerminatorBefore);
+                break;
+            }
+            search_start = pos + 1;
+        }
+
+        let Some(closing_start) = closing_start else {
+            self.cursor = src.len() as u32;
+            return Err(LexicalError::UnterminatedMultiLineComment);
+        };
+        let end = closing_start + 2;
+        self.cursor = end as u32;
+        self.record_comment(CommentKind::Block, start, end as u32)
     }
 
     fn scan_html_comment(&mut self) -> Result<(), LexicalError> {
@@ -1782,6 +1806,37 @@ mod tests {
             assert_eq!(token.span, Span::new(start, start + 4));
             assert!(token.has_line_terminator_before());
         }
+    }
+
+    #[test]
+    fn scans_block_comment_sentinels() {
+        let token = next_after_trivia(b"/* stars ** still comment */name", false);
+        assert_eq!(token.span, Span::new(28, 32));
+        assert!(!token.has_line_terminator_before());
+
+        let token = next_after_trivia(b"/* euro \xe2\x82\xac */name", false);
+        assert_eq!(token.span, Span::new(14, 18));
+        assert!(!token.has_line_terminator_before());
+
+        let mut long_comment = b"/*".to_vec();
+        long_comment.extend_from_slice(&[b'a'; 40]);
+        long_comment.push(b'\n');
+        long_comment.extend_from_slice(&[b'a'; 24]);
+        long_comment.extend_from_slice(b"*/name");
+        let token = next_after_trivia(&long_comment, false);
+        assert_eq!(token.span.end as usize, long_comment.len());
+        assert!(token.has_line_terminator_before());
+
+        let source = b"/* unterminated\n";
+        let allocator = Allocator::new();
+        let mut lexer = Lexer::init(&allocator, source, false, false, NoTokenParserConfig);
+        let mut token = Token::eof(0);
+        assert_eq!(
+            lexer.next_token(&mut token),
+            Err(LexicalError::UnterminatedMultiLineComment)
+        );
+        assert_eq!(lexer.cursor as usize, source.len());
+        assert!(lexer.has_token_flag(TokenFlag::LineTerminatorBefore));
     }
 
     #[test]
