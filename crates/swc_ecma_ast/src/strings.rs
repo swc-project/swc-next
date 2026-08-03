@@ -114,12 +114,6 @@ impl<'a> StringPool<'a> {
     }
 
     #[inline]
-    pub fn ensure_unused_capacity(&mut self, bytes: u32, entries: u32) {
-        self.extra.reserve(bytes as usize);
-        self.dedup.reserve(entries as usize);
-    }
-
-    #[inline]
     pub fn add_utf8(&mut self, text: &str) -> AstUtf8 {
         let (start, end) = self.add_bytes(text.as_bytes());
         AstUtf8 { start, end }

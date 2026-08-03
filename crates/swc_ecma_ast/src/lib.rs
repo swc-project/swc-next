@@ -306,11 +306,6 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
-    pub fn ensure_unused_string_capacity(&mut self, bytes: u32, entries: u32) {
-        self.strings.ensure_unused_capacity(bytes, entries);
-    }
-
-    #[inline]
     pub fn get_utf8(&self, id: AstUtf8) -> &str {
         self.strings.get_utf8(id)
     }
