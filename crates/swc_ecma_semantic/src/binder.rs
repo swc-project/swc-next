@@ -1353,9 +1353,7 @@ impl<'a> SymbolTracker<'a> {
         // doubles as the write cursor during the fill.
         let symbol_count = self.symbols.len();
         let mut decl_nodes = ArenaVec::with_capacity_in(self.decl_pairs.len(), self.allocator);
-        for _ in 0..self.decl_pairs.len() {
-            decl_nodes.push(NodeId::from_usize_unchecked(0));
-        }
+        decl_nodes.resize(self.decl_pairs.len(), NodeId::from_usize_unchecked(0));
         for symbol in &mut self.symbols {
             symbol.decls = Range::default();
         }
@@ -1380,10 +1378,8 @@ impl<'a> SymbolTracker<'a> {
         let node_count = tree.node_count();
         let mut node_symbols = ArenaVec::with_capacity_in(node_count, self.allocator);
         let mut node_references = ArenaVec::with_capacity_in(node_count, self.allocator);
-        for _ in 0..node_count {
-            node_symbols.push(None);
-            node_references.push(None);
-        }
+        node_symbols.resize(node_count, None);
+        node_references.resize(node_count, None);
         for pair in &self.decl_pairs {
             node_symbols[pair.node.index()] = Some(pair.symbol_id);
         }
@@ -1436,9 +1432,7 @@ impl<'a> SymbolTracker<'a> {
         // Use index: count, prefix-sum, fill. `len` doubles as the write
         // cursor during the fill.
         let mut use_ranges = ArenaVec::with_capacity_in(symbol_count, self.allocator);
-        for _ in 0..symbol_count {
-            use_ranges.push(Range::default());
-        }
+        use_ranges.resize(symbol_count, Range::default());
         for reference in &self.references {
             if let Some(symbol) = reference.symbol {
                 use_ranges[symbol.index()].len += 1;
@@ -1451,9 +1445,7 @@ impl<'a> SymbolTracker<'a> {
             range.len = 0;
         }
         let mut use_ids = ArenaVec::with_capacity_in(use_offset as usize, self.allocator);
-        for _ in 0..use_offset {
-            use_ids.push(reference_id(0));
-        }
+        use_ids.resize(use_offset as usize, reference_id(0));
         for (index, reference) in self.references.iter().enumerate() {
             let Some(symbol) = reference.symbol else {
                 continue;

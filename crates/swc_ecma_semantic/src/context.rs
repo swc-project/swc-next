@@ -75,10 +75,8 @@ impl<'a> SemanticContext<'a> {
         let allocator = tree.allocator();
         let mut node_scopes = ArenaVec::with_capacity_in(tree.node_count(), allocator);
         let mut node_parents = ArenaVec::with_capacity_in(tree.node_count(), allocator);
-        for _ in 0..tree.node_count() {
-            node_scopes.push(ScopeId::ROOT);
-            node_parents.push(None);
-        }
+        node_scopes.resize(tree.node_count(), ScopeId::ROOT);
+        node_parents.resize(tree.node_count(), None);
         Self {
             scope: ScopeTracker::init(root, tree),
             symbols: SymbolTracker::init(tree),
