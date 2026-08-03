@@ -1392,6 +1392,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     }
 }
 
+#[cfg(not(target_arch = "x86_64"))]
 const IDENTIFIER_BATCH_SIZE: usize = 32;
 
 const NOT_ASCII_IDENTIFIER_CONTINUE: [bool; 256] = {
@@ -1422,6 +1423,46 @@ fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
     debug_assert!((start as usize) <= source.len());
     let mut position = start as usize;
 
+    #[cfg(target_arch = "x86_64")]
+    {
+        use std::arch::x86_64::{
+            __m128i, _mm_and_si128, _mm_cmpeq_epi8, _mm_cmpgt_epi8, _mm_loadu_si128,
+            _mm_movemask_epi8, _mm_or_si128, _mm_set1_epi8,
+        };
+
+        while source.len() - position >= 16 {
+            // SAFETY: SSE2 is available on every x86-64 target. The loop
+            // condition guarantees that 16 bytes are available, and the load
+            // explicitly supports unaligned pointers.
+            let valid_mask = unsafe {
+                let bytes = _mm_loadu_si128(source.as_ptr().add(position).cast::<__m128i>());
+                let folded = _mm_or_si128(bytes, _mm_set1_epi8(0x20));
+                let alpha = _mm_and_si128(
+                    _mm_cmpgt_epi8(folded, _mm_set1_epi8(b'a' as i8 - 1)),
+                    _mm_cmpgt_epi8(_mm_set1_epi8(b'z' as i8 + 1), folded),
+                );
+                let digit = _mm_and_si128(
+                    _mm_cmpgt_epi8(bytes, _mm_set1_epi8(b'0' as i8 - 1)),
+                    _mm_cmpgt_epi8(_mm_set1_epi8(b'9' as i8 + 1), bytes),
+                );
+                let valid = _mm_or_si128(
+                    _mm_or_si128(alpha, digit),
+                    _mm_or_si128(
+                        _mm_cmpeq_epi8(bytes, _mm_set1_epi8(b'_' as i8)),
+                        _mm_cmpeq_epi8(bytes, _mm_set1_epi8(b'$' as i8)),
+                    ),
+                );
+                _mm_movemask_epi8(valid) as u32
+            };
+            if valid_mask != 0xFFFF {
+                position += ((!valid_mask) & 0xFFFF).trailing_zeros() as usize;
+                return position as u32;
+            }
+            position += 16;
+        }
+    }
+
+    #[cfg(not(target_arch = "x86_64"))]
     'search: while source.len() - position >= IDENTIFIER_BATCH_SIZE {
         let batch = &source[position..position + IDENTIFIER_BATCH_SIZE];
         for (offset, byte) in batch.iter().enumerate() {
@@ -1797,6 +1838,21 @@ mod tests {
             assert_eq!(token.span, Span::new(start, start + 4));
             assert!(token.has_line_terminator_before());
         }
+    }
+
+    #[test]
+    fn scans_ascii_identifier_boundaries() {
+        for len in 0..64 {
+            let source = format!("{}.", "a".repeat(len));
+            assert_eq!(
+                scan_ascii_identifier_continue(source.as_bytes(), 0),
+                len as u32
+            );
+        }
+
+        let source = b"abc_09$XYZ.non_identifier";
+        assert_eq!(scan_ascii_identifier_continue(source, 0), 10);
+        assert_eq!(scan_ascii_identifier_continue("abcé".as_bytes(), 0), 3);
     }
 
     #[test]
