@@ -1,5 +1,7 @@
 name: Gungraun Benchmarks
 
+# Temporary task-owned marker used to capture the parser baseline profile.
+
 on:
   pull_request:
     types: ["opened", "reopened", "synchronize"]
