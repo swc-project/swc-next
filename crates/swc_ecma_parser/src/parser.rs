@@ -6,9 +6,9 @@
 use std::{borrow::Cow, mem, string::String};
 
 use rustc_hash::FxHashSet;
-use swc_next_allocator::vec::Vec as ArenaVec;
-use swc_next_ecma_ast::AstUtf8;
+use swc_next_allocator::{vec::Vec as ArenaVec, wtf8::Wtf8};
 use swc_next_ecma_ast::*;
+use swc_next_ecma_ast::{AstUtf8, AstWtf8};
 
 use crate::{
     TokenFlag,
@@ -841,18 +841,18 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     /// Returns the decoded string value without the surrounding quotes.
-    pub fn string_value(&mut self, token: Token) -> AstUtf8 {
+    pub fn string_value(&mut self, token: Token) -> AstWtf8 {
         if token.is_escaped() {
             return self.decode_escaped_string(token.span.start + 1, token.span.end - 1);
         }
         self.ast
-            .source_slice(token.span.start + 1, token.span.end - 1)
+            .source_slice_wtf8(token.span.start + 1, token.span.end - 1)
     }
 
     /// Returns the decoded content of a template quasi span.
-    pub fn template_element_value(&mut self, token: Token, span: Span) -> AstUtf8 {
+    pub fn template_element_value(&mut self, token: Token, span: Span) -> AstWtf8 {
         if !token.is_escaped() {
-            return self.ast.source_slice(span.start, span.end);
+            return self.ast.source_slice_wtf8(span.start, span.end);
         }
         self.decode_escaped_string(span.start, span.end)
     }
@@ -861,13 +861,22 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let mut buffer = [0u8; 256];
         let value =
             decode_identifier_escapes(&self.source[start as usize..end as usize], &mut buffer);
-        self.ast.add_string(value)
+        // Safety:
+        // Source code is guaranteed to be valid UTF-8.
+        // Lone surrogates are not valid in identifiers.
+        // All of them are rejected by the lexer with `LexicalError::InvalidIdentifierContinue`
+        let value = unsafe { std::str::from_utf8_unchecked(value) };
+        self.ast.add_utf8(value)
     }
 
-    fn decode_escaped_string(&mut self, start: u32, end: u32) -> AstUtf8 {
+    fn decode_escaped_string(&mut self, start: u32, end: u32) -> AstWtf8 {
         let mut decoded = Vec::new();
         decode_string_escapes(&self.source[start as usize..end as usize], &mut decoded);
-        self.ast.add_string(&decoded)
+        // Safety:
+        // Source code is guaranteed to be valid UTF-8.
+        // So it's impossible to have invalid WTF-8 in the source code with `\u`.
+        let value = unsafe { Wtf8::from_bytes_unchecked(&decoded) };
+        self.ast.add_wtf8(value)
     }
 
     pub fn describe_token(&self, token: Token) -> Cow<'a, [u8]> {
@@ -2468,7 +2477,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         if matches!(
             self.ast.property_key_data(key),
             PropertyKeyData::PrivateIdentifier(private)
-                if self.ast.string(private.name(self.ast)) == b"constructor"
+                if self.ast.get_utf8(private.name(self.ast)) == "constructor"
         ) {
             self.report(
                 key.span(self.ast),
@@ -2830,10 +2839,10 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     fn prop_name_eq(&self, key: PropertyKey, expected: &str) -> Option<Span> {
         let matches = match self.ast.property_key_data(key) {
             PropertyKeyData::IdentifierName(identifier) => {
-                self.ast.string(identifier.name(self.ast)) == expected.as_bytes()
+                self.ast.get_utf8(identifier.name(self.ast)) == expected
             }
             PropertyKeyData::StringLiteral(string) => {
-                self.ast.string(string.value(self.ast)) == expected.as_bytes()
+                self.ast.get_wtf8(string.value(self.ast)) == expected
             }
             _ => false,
         };
@@ -6830,7 +6839,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         matches!(
             self.ast.expr_data(expression),
             ExprData::IdentifierReference(identifier)
-                if self.ast.string(identifier.name(self.ast)) == b"async"
+                if self.ast.get_utf8(identifier.name(self.ast)) == "async"
                     && self.span_text(identifier.span(self.ast)) == b"async"
         )
     }
@@ -7558,7 +7567,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             );
         }
         let cooked = if is_cooked_undefined {
-            AstUtf8::EMPTY
+            AstWtf8::EMPTY
         } else {
             self.template_element_value(token, span)
         };

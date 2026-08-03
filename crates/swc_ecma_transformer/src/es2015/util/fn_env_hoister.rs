@@ -35,10 +35,10 @@ impl<'semantic> FnEnvHoister<'semantic> {
     pub fn new(ast: &Ast<'_>, semantic: &'semantic Semantic<'semantic>) -> Self {
         let mut used_names = HashSet::new();
         for entry in semantic.iter_symbols() {
-            used_names.insert(ast.string(entry.symbol.name).to_vec());
+            used_names.insert(ast.get_wtf8(entry.symbol.name).as_bytes().to_vec());
         }
         for entry in semantic.iter_references() {
-            used_names.insert(ast.string(entry.reference.name).to_vec());
+            used_names.insert(ast.get_utf8(entry.reference.name).as_bytes().to_vec());
         }
         Self {
             semantic,
@@ -62,24 +62,24 @@ impl<'semantic> FnEnvHoister<'semantic> {
             .expect("a function environment frame exists")
     }
 
-    fn fresh_name(&mut self, base: &[u8], ast: &mut Ast<'_>) -> AstUtf8 {
-        let mut candidate = base.to_vec();
+    fn fresh_name(&mut self, base: &str, ast: &mut Ast<'_>) -> AstUtf8 {
+        let mut candidate = base.to_string();
         let mut suffix = 2u32;
-        while self.used_names.contains(&candidate) {
+        while self.used_names.contains(candidate.as_bytes()) {
             candidate.clear();
-            candidate.extend_from_slice(base);
-            candidate.extend_from_slice(suffix.to_string().as_bytes());
+            candidate.push_str(base);
+            candidate.push_str(&suffix.to_string());
             suffix += 1;
         }
-        self.used_names.insert(candidate.clone());
-        ast.add_string(&candidate)
+        self.used_names.insert(candidate.as_bytes().to_vec());
+        ast.add_utf8(&candidate)
     }
 
     fn capture_this(&mut self, ast: &mut Ast<'_>) -> AstUtf8 {
         if let Some(name) = self.frames.last().and_then(|frame| frame.this) {
             return name;
         }
-        let name = self.fresh_name(b"_this", ast);
+        let name = self.fresh_name("_this", ast);
         self.frames.last_mut().expect("a capture frame exists").this = Some(name);
         name
     }
@@ -88,7 +88,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
         if let Some(name) = self.frames.last().and_then(|frame| frame.arguments) {
             return name;
         }
-        let name = self.fresh_name(b"_arguments", ast);
+        let name = self.fresh_name("_arguments", ast);
         self.frames
             .last_mut()
             .expect("a capture frame exists")
@@ -100,7 +100,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
         if let Some(name) = self.frames.last().and_then(|frame| frame.new_target) {
             return name;
         }
-        let name = self.fresh_name(b"_newtarget", ast);
+        let name = self.fresh_name("_newtarget", ast);
         self.frames
             .last_mut()
             .expect("a capture frame exists")
@@ -109,7 +109,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
     }
 
     fn is_unresolved_arguments(&self, node: IdentifierReference, ast: &Ast<'_>) -> bool {
-        if ast.string(node.name(ast)) != b"arguments" {
+        if ast.get_utf8(node.name(ast)) != "arguments" {
             return false;
         }
         let Some(reference_id) = self.semantic.reference_of(node.node_id()) else {
@@ -122,7 +122,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
     fn is_new_target(&self, node: swc_next_ecma_ast::MetaProperty, ast: &Ast<'_>) -> bool {
         let meta = node.meta(ast);
         let property = node.property(ast);
-        ast.string(meta.name(ast)) == b"new" && ast.string(property.name(ast)) == b"target"
+        ast.get_utf8(meta.name(ast)) == "new" && ast.get_utf8(property.name(ast)) == "target"
     }
 
     pub fn transform_this_expression(
@@ -189,7 +189,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
                 None,
                 false,
             );
-            let arguments_name = ast.add_string(b"arguments");
+            let arguments_name = ast.add_utf8("arguments");
             let init = ast.expr_identifier_reference(DUMMY_SP, arguments_name);
             declarators.push(ast.variable_declarator(DUMMY_SP, id, Some(init), false));
         }
@@ -201,8 +201,8 @@ impl<'semantic> FnEnvHoister<'semantic> {
                 None,
                 false,
             );
-            let new_name = ast.add_string(b"new");
-            let target_name = ast.add_string(b"target");
+            let new_name = ast.add_utf8("new");
+            let target_name = ast.add_utf8("target");
             let meta = ast.identifier_name(DUMMY_SP, new_name);
             let property = ast.identifier_name(DUMMY_SP, target_name);
             let init = ast.expr_meta_property(DUMMY_SP, meta, property);

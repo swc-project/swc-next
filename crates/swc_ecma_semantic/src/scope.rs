@@ -214,7 +214,7 @@ impl<'a> ScopeTracker<'a> {
     }
 
     pub fn enter_directive(&mut self, tree: &Ast, directive: Directive) {
-        if tree.string(directive.value(tree)) == b"use strict" {
+        if tree.get_utf8(directive.value(tree)) == "use strict" {
             self.current_mut().flags.strict = true;
         }
     }
@@ -360,7 +360,7 @@ impl<'a> ScopeTracker<'a> {
     fn has_retroactive_use_strict(&self, tree: &Ast, body: FunctionBody) -> bool {
         for directive in body.directives(tree).iter() {
             let directive = tree.get_node_in_sub_range(directive);
-            if tree.string(directive.value(tree)) == b"use strict" {
+            if tree.get_utf8(directive.value(tree)) == "use strict" {
                 return true;
             }
         }

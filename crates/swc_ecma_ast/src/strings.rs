@@ -1,48 +1,67 @@
 use std::collections::HashMap;
 
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct AstUtf8 {
-    pub start: u32,
-    pub end: u32,
+use swc_next_allocator::wtf8::Wtf8;
+
+macro_rules! define_ast_string {
+    ($name:ident) => {
+        #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+        pub struct $name {
+            pub start: u32,
+            pub end: u32,
+        }
+
+        impl $name {
+            pub const EMPTY: Self = Self { start: 0, end: 0 };
+
+            #[inline]
+            pub const fn len(self) -> u32 {
+                debug_assert!(self.end >= self.start);
+                self.end - self.start
+            }
+
+            #[inline]
+            pub const fn is_empty(self) -> bool {
+                self.start == self.end
+            }
+
+            #[inline]
+            pub(crate) const fn from_raw(raw: u64) -> Self {
+                Self {
+                    start: raw as u32,
+                    end: (raw >> 32) as u32,
+                }
+            }
+
+            #[inline]
+            pub(crate) const fn raw(self) -> u64 {
+                self.start as u64 | ((self.end as u64) << 32)
+            }
+        }
+    };
 }
 
-impl AstUtf8 {
-    pub const EMPTY: Self = Self { start: 0, end: 0 };
+define_ast_string!(AstUtf8);
+define_ast_string!(AstWtf8);
 
+impl From<AstUtf8> for AstWtf8 {
     #[inline]
-    pub const fn len(self) -> u32 {
-        debug_assert!(self.end >= self.start);
-        self.end - self.start
-    }
-
-    #[inline]
-    pub const fn is_empty(self) -> bool {
-        self.start == self.end
-    }
-
-    #[inline]
-    pub(crate) const fn from_raw(raw: u64) -> Self {
+    fn from(value: AstUtf8) -> Self {
         Self {
-            start: raw as u32,
-            end: (raw >> 32) as u32,
+            start: value.start,
+            end: value.end,
         }
-    }
-
-    #[inline]
-    pub(crate) const fn raw(self) -> u64 {
-        self.start as u64 | ((self.end as u64) << 32)
     }
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct StringPool<'a> {
-    pub source: &'a [u8],
+    pub source: &'a str,
     pub extra: Vec<u8>,
-    dedup: HashMap<Vec<u8>, AstUtf8>,
+    dedup: HashMap<Vec<u8>, (u32, u32)>,
 }
 
 impl<'a> StringPool<'a> {
-    pub fn new(source: &'a [u8]) -> Self {
+    pub fn new(source: &'a str) -> Self {
         assert!(source.len() <= u32::MAX as usize);
         Self {
             source,
@@ -52,18 +71,30 @@ impl<'a> StringPool<'a> {
     }
 
     #[inline]
-    pub fn get(&self, id: AstUtf8) -> &[u8] {
-        debug_assert!(id.end >= id.start);
-        if id.start == id.end {
+    pub fn get_utf8(&self, id: AstUtf8) -> &str {
+        // SAFETY: `AstUtf8` is guaranteed to reference valid UTF-8.
+        unsafe { std::str::from_utf8_unchecked(self.get_bytes(id.start, id.end)) }
+    }
+
+    #[inline]
+    pub fn get_wtf8(&self, id: AstWtf8) -> &Wtf8 {
+        // SAFETY: `AstWtf8` is guaranteed to reference valid WTF-8.
+        unsafe { Wtf8::from_bytes_unchecked(self.get_bytes(id.start, id.end)) }
+    }
+
+    #[inline]
+    fn get_bytes(&self, start: u32, end: u32) -> &[u8] {
+        debug_assert!(end >= start);
+        if start == end {
             return b"";
         }
         let source_len = self.source.len() as u32;
-        if id.start < source_len {
-            debug_assert!(id.end <= source_len);
-            &self.source[id.start as usize..id.end as usize]
+        if start < source_len {
+            debug_assert!(end <= source_len);
+            &self.source.as_bytes()[start as usize..end as usize]
         } else {
-            let start = (id.start - source_len) as usize;
-            let end = (id.end - source_len) as usize;
+            let start = (start - source_len) as usize;
+            let end = (end - source_len) as usize;
             &self.extra[start..end]
         }
     }
@@ -75,14 +106,34 @@ impl<'a> StringPool<'a> {
         AstUtf8 { start, end }
     }
 
+    #[inline]
+    pub fn source_slice_wtf8(&self, start: u32, end: u32) -> AstWtf8 {
+        debug_assert!(start <= end);
+        debug_assert!(end <= self.source.len() as u32);
+        AstWtf8 { start, end }
+    }
+
+    #[inline]
     pub fn ensure_unused_capacity(&mut self, bytes: u32, entries: u32) {
         self.extra.reserve(bytes as usize);
         self.dedup.reserve(entries as usize);
     }
 
-    pub fn add_string(&mut self, text: &[u8]) -> AstUtf8 {
+    #[inline]
+    pub fn add_utf8(&mut self, text: &str) -> AstUtf8 {
+        let (start, end) = self.add_bytes(text.as_bytes());
+        AstUtf8 { start, end }
+    }
+
+    #[inline]
+    pub fn add_wtf8(&mut self, text: &Wtf8) -> AstWtf8 {
+        let (start, end) = self.add_bytes(text.as_bytes());
+        AstWtf8 { start, end }
+    }
+
+    fn add_bytes(&mut self, text: &[u8]) -> (u32, u32) {
         if text.is_empty() {
-            return AstUtf8::EMPTY;
+            return (0, 0);
         }
         if let Some(&id) = self.dedup.get(text) {
             return id;
@@ -97,10 +148,8 @@ impl<'a> StringPool<'a> {
             .expect("string pool offset overflow");
         assert!(end <= u32::MAX as usize, "string pool exceeds u32 range");
         self.extra.extend_from_slice(text);
-        let id = AstUtf8 {
-            start: start as u32,
-            end: end as u32,
-        };
+
+        let id = (start as u32, end as u32);
         self.dedup.insert(text.to_vec(), id);
         id
     }

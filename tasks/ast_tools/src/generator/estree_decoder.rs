@@ -195,7 +195,7 @@ fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_u32: b
             inner => panic!("unsupported optional decoder type: {}", inner.name()),
         },
         AstType::Primitive(primitive) => match primitive.name {
-            "AstUtf8" => {
+            "AstUtf8" | "AstWtf8" => {
                 let start = read_u32(location, aligned_u32);
                 let end = read_u32(&format!("{location} + 4"), aligned_u32);
                 format!("str({start}, {end})")

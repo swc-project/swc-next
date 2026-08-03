@@ -35,7 +35,7 @@ impl<'a> Visit<'a> for ScopeDisplayVisitor<'a> {
     fn visit_identifier_reference(&mut self, node: IdentifierReference) {
         println!(
             "{} ({:?}) -> {:?}",
-            String::from_utf8_lossy(self.ast.string(node.name(self.ast))),
+            self.ast.get_utf8(node.name(self.ast)),
             node.name(self.ast),
             self.semantic.scope_of(node.node_id()),
         );

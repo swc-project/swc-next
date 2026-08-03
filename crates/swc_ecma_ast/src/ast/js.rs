@@ -587,7 +587,7 @@ pub struct ThisExpression {}
 #[ast]
 pub struct StringLiteral {
     /// decoded content with escape sequences resolved and quotes stripped
-    value: AstUtf8,
+    value: AstWtf8,
     /// raw source lexeme including the surrounding quotes, exactly as written.
     raw: AstUtf8,
 }
@@ -691,7 +691,7 @@ pub struct TemplateLiteral {
 #[ast]
 pub struct TemplateElement {
     /// escape-decoded content, empty when `is_cooked_undefined`
-    cooked: AstUtf8,
+    cooked: AstWtf8,
     /// verbatim source text, line endings normalized to `\n`. empty for
     /// synthetic nodes
     raw: AstUtf8,

@@ -1772,7 +1772,7 @@ impl Super {}
 impl ThisExpression {}
 impl StringLiteral {
     #[inline]
-    pub fn value<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
+    pub fn value<'a>(self, ast: &crate::Ast<'a>) -> AstWtf8 {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
     }
@@ -1782,7 +1782,7 @@ impl StringLiteral {
         unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
     }
     #[inline]
-    pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: AstUtf8) {
+    pub fn set_value<'a>(self, ast: &mut crate::Ast<'a>, value: AstWtf8) {
         let field_val: u64 = unsafe { value.to_extra_data(ast).other };
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920938463444927863358058659840u128)
@@ -1905,7 +1905,7 @@ impl TemplateLiteral {
 }
 impl TemplateElement {
     #[inline]
-    pub fn cooked<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
+    pub fn cooked<'a>(self, ast: &crate::Ast<'a>) -> AstWtf8 {
         let raw = (unsafe { ast.nodes.data_unchecked(self.0).0 } >> 16usize) as u64;
         unsafe { ExtraDataCompact::from_extra_data(ExtraData { other: raw }, ast) }
     }
@@ -1936,7 +1936,7 @@ impl TemplateElement {
         }
     }
     #[inline]
-    pub fn set_cooked<'a>(self, ast: &mut crate::Ast<'a>, cooked: AstUtf8) {
+    pub fn set_cooked<'a>(self, ast: &mut crate::Ast<'a>, cooked: AstWtf8) {
         let field_val: u64 = unsafe { cooked.to_extra_data(ast).other };
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
         payload.0 = (payload.0 & 340282366920937254537554992802593570815u128)

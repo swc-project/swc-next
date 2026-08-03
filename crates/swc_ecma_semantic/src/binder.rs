@@ -3,7 +3,7 @@ use std::hash::BuildHasher;
 use oxc_index::Idx;
 use swc_next_allocator::{Allocator, CloneIn, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
-    Ast, AstUtf8, BindingIdentifier, Class, ClassType, ExportNamedDeclaration, Function,
+    Ast, AstUtf8, AstWtf8, BindingIdentifier, Class, ClassType, ExportNamedDeclaration, Function,
     FunctionType, IdentifierReference, ImportDeclaration, ImportOrExportKind, ImportSpecifier,
     JsxClosingElement, JsxElementName, JsxElementNameData, JsxIdentifier,
     JsxMemberExpressionObjectData, JsxOpeningElement, NodeId, NodeKind, NodeKindData, ReferenceId,
@@ -43,7 +43,7 @@ pub struct Range {
 /// the symbol occupies.
 #[derive(Debug, Clone, Copy)]
 pub struct Symbol {
-    pub name: AstUtf8,
+    pub name: AstWtf8,
     pub flags: SymbolFlags,
     /// The scope the symbol is declared in. For a hoisting `var`,
     /// this is the hoist target it lands in, not the block it is
@@ -1067,12 +1067,12 @@ impl<'a> SymbolTracker<'a> {
             return;
         }
         let name = identifier.name(tree);
-        let symbol_id = self.declare(tree, name, node);
+        let symbol_id = self.declare(tree, name.into(), node);
 
         // Register a hoisting var in every block it passes through so
         // block-scoped redeclarations see it.
         if self.pending.flags.is_hoisting_var() && scope.current != self.pending.scope {
-            let name = tree.string(name).clone_in(self.allocator);
+            let name = tree.get_utf8(name).as_bytes().clone_in(self.allocator);
             for scope_id in scope.ancestors(Some(scope.current)) {
                 if scope_id == self.pending.scope {
                     break;
@@ -1119,7 +1119,8 @@ impl<'a> SymbolTracker<'a> {
             return;
         };
         let name = parameter_name.name(tree);
-        let Some(parameter) = self.own_binding(scope.current, tree.string(name)) else {
+        let Some(parameter) = self.own_binding(scope.current, tree.get_utf8(name).as_bytes())
+        else {
             return;
         };
         if !self.symbol(parameter).flags.parameter {
@@ -1157,7 +1158,7 @@ impl<'a> SymbolTracker<'a> {
         }
         let member_id = member.id(tree).node_id();
         let name = match tree.kind_data(member_id) {
-            NodeKindData::IdentifierName(identifier) => identifier.name(tree),
+            NodeKindData::IdentifierName(identifier) => identifier.name(tree).into(),
             NodeKindData::StringLiteral(literal) => literal.value(tree),
             _ => return,
         };
@@ -1202,8 +1203,8 @@ impl<'a> SymbolTracker<'a> {
         let Some(identifier) = jsx_tag_root(tree, tree.jsx_element_name_data(name)) else {
             return;
         };
-        let text = tree.string(identifier.name(tree));
-        if text.first().is_some_and(u8::is_ascii_uppercase) {
+        let text = tree.get_utf8(identifier.name(tree));
+        if text.as_bytes().first().is_some_and(u8::is_ascii_uppercase) {
             self.add_reference(
                 tree,
                 identifier.name(tree),
@@ -1218,12 +1219,12 @@ impl<'a> SymbolTracker<'a> {
     /// existing binding is merged. On conflict, its flags remain unchanged
     /// because the caller reports the diagnostic. Every node is still stored
     /// as a declaration for error recovery.
-    pub fn declare(&mut self, tree: &Ast, name: AstUtf8, node: NodeId) -> SymbolId {
+    pub fn declare(&mut self, tree: &Ast, name: AstWtf8, node: NodeId) -> SymbolId {
         let target = self.pending.scope;
         assert!(target.index() < self.scope_maps.len());
         assert!(node.index() < tree.node_count());
 
-        let name_text = tree.string(name);
+        let name_text = tree.get_wtf8(name).as_bytes();
         let id = if let Some(existing) = self.binding(target, name_text) {
             let symbol = &mut self.symbols[existing.index()];
             if !symbol.flags.intersects(self.pending.excludes) {
@@ -1249,7 +1250,7 @@ impl<'a> SymbolTracker<'a> {
                 decls: Range::default(),
             });
             self.first_decls.push(node);
-            let key = tree.string(name).clone_in(self.allocator);
+            let key = tree.get_wtf8(name).as_bytes().clone_in(self.allocator);
             self.scope_maps[target.index()].insert(key, new_id);
             new_id
         };
@@ -1389,7 +1390,7 @@ impl<'a> SymbolTracker<'a> {
 
         for reference_index in 0..self.references.len() {
             let reference = self.references[reference_index];
-            let name = tree.string(reference.name);
+            let name = tree.get_utf8(reference.name).as_bytes();
             let hash = self.scope_maps[ScopeId::ROOT.index()]
                 .hasher()
                 .hash_one(name);

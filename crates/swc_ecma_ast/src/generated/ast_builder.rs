@@ -609,7 +609,7 @@ impl<'a> Ast<'a> {
         Expr::MetaProperty(self.meta_property(span, meta, property).into())
     }
     #[inline]
-    pub fn expr_string_literal(&mut self, span: Span, value: AstUtf8, raw: AstUtf8) -> Expr {
+    pub fn expr_string_literal(&mut self, span: Span, value: AstWtf8, raw: AstUtf8) -> Expr {
         Expr::StringLiteral(self.string_literal(span, value, raw).into())
     }
     #[inline]
@@ -1326,7 +1326,7 @@ impl<'a> Ast<'a> {
     pub fn property_key_string_literal(
         &mut self,
         span: Span,
-        value: AstUtf8,
+        value: AstWtf8,
         raw: AstUtf8,
     ) -> PropertyKey {
         PropertyKey::StringLiteral(self.string_literal(span, value, raw).into())
@@ -1377,7 +1377,7 @@ impl<'a> Ast<'a> {
     pub fn property_key_expr_string_literal(
         &mut self,
         span: Span,
-        value: AstUtf8,
+        value: AstWtf8,
         raw: AstUtf8,
     ) -> PropertyKey {
         PropertyKey::Expr(Expr::StringLiteral(
@@ -1832,7 +1832,7 @@ impl<'a> Ast<'a> {
     pub fn module_export_name_string_literal(
         &mut self,
         span: Span,
-        value: AstUtf8,
+        value: AstWtf8,
         raw: AstUtf8,
     ) -> ModuleExportName {
         ModuleExportName::StringLiteral(self.string_literal(span, value, raw).into())
@@ -1866,7 +1866,7 @@ impl<'a> Ast<'a> {
     pub fn argument_expr_string_literal(
         &mut self,
         span: Span,
-        value: AstUtf8,
+        value: AstWtf8,
         raw: AstUtf8,
     ) -> Argument {
         Argument::Expr(Expr::StringLiteral(
@@ -2371,7 +2371,7 @@ impl<'a> Ast<'a> {
     pub fn for_statement_init_expr_string_literal(
         &mut self,
         span: Span,
-        value: AstUtf8,
+        value: AstWtf8,
         raw: AstUtf8,
     ) -> ForStatementInit {
         ForStatementInit::Expr(Expr::StringLiteral(
@@ -2996,7 +2996,7 @@ impl<'a> Ast<'a> {
     pub fn arrow_function_body_expr_string_literal(
         &mut self,
         span: Span,
-        value: AstUtf8,
+        value: AstWtf8,
         raw: AstUtf8,
     ) -> ArrowFunctionBody {
         ArrowFunctionBody::Expr(Expr::StringLiteral(
@@ -3847,7 +3847,7 @@ impl<'a> Ast<'a> {
     pub fn export_default_declaration_kind_expr_string_literal(
         &mut self,
         span: Span,
-        value: AstUtf8,
+        value: AstWtf8,
         raw: AstUtf8,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::Expr(Expr::StringLiteral(
@@ -4413,7 +4413,7 @@ impl<'a> Ast<'a> {
         ThisExpression(self.add_node(span, NodeKind::ThisExpression, NodePayload(0)))
     }
     #[inline]
-    pub fn string_literal(&mut self, span: Span, value: AstUtf8, raw: AstUtf8) -> StringLiteral {
+    pub fn string_literal(&mut self, span: Span, value: AstWtf8, raw: AstUtf8) -> StringLiteral {
         StringLiteral(self.add_node(
             span,
             NodeKind::StringLiteral,
@@ -4499,7 +4499,7 @@ impl<'a> Ast<'a> {
     pub fn template_element(
         &mut self,
         span: Span,
-        cooked: AstUtf8,
+        cooked: AstWtf8,
         raw: AstUtf8,
         tail: bool,
         is_cooked_undefined: bool,
@@ -6235,7 +6235,7 @@ impl<'a> Ast<'a> {
     pub fn ts_literal_string_literal(
         &mut self,
         span: Span,
-        value: AstUtf8,
+        value: AstWtf8,
         raw: AstUtf8,
     ) -> TsLiteral {
         TsLiteral::StringLiteral(self.string_literal(span, value, raw).into())
@@ -6756,7 +6756,7 @@ impl<'a> Ast<'a> {
     pub fn ts_enum_member_name_string_literal(
         &mut self,
         span: Span,
-        value: AstUtf8,
+        value: AstWtf8,
         raw: AstUtf8,
     ) -> TsEnumMemberName {
         TsEnumMemberName::StringLiteral(self.string_literal(span, value, raw).into())
@@ -6803,7 +6803,7 @@ impl<'a> Ast<'a> {
     pub fn ts_enum_member_name_expr_string_literal(
         &mut self,
         span: Span,
-        value: AstUtf8,
+        value: AstWtf8,
         raw: AstUtf8,
     ) -> TsEnumMemberName {
         TsEnumMemberName::Expr(Expr::StringLiteral(
@@ -7272,7 +7272,7 @@ impl<'a> Ast<'a> {
     pub fn ts_module_name_string_literal(
         &mut self,
         span: Span,
-        value: AstUtf8,
+        value: AstWtf8,
         raw: AstUtf8,
     ) -> TsModuleName {
         TsModuleName::StringLiteral(self.string_literal(span, value, raw).into())
@@ -8499,7 +8499,7 @@ impl<'a> Ast<'a> {
     pub fn jsx_attribute_value_string_literal(
         &mut self,
         span: Span,
-        value: AstUtf8,
+        value: AstWtf8,
         raw: AstUtf8,
     ) -> JsxAttributeValue {
         JsxAttributeValue::StringLiteral(self.string_literal(span, value, raw).into())
@@ -8573,7 +8573,7 @@ impl<'a> Ast<'a> {
     pub fn jsx_expression_expr_string_literal(
         &mut self,
         span: Span,
-        value: AstUtf8,
+        value: AstWtf8,
         raw: AstUtf8,
     ) -> JsxExpression {
         JsxExpression::Expr(Expr::StringLiteral(

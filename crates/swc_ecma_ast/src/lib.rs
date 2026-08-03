@@ -31,7 +31,7 @@ pub use generated::ast_node::{NodeKind, NodeKindData};
 pub use generated::ast_visitor::*;
 pub use node_id::{AstNode, ExtraDataCompact, ExtraDataId, NodeId, SubRange, TypedSubRange};
 pub use semantic::{ReferenceId, ScopeId, SymbolId};
-pub use strings::{AstUtf8, StringPool};
+pub use strings::{AstUtf8, AstWtf8, StringPool};
 pub use syntax::*;
 pub use visit::{TraverseAction, TraverseCtx};
 
@@ -113,7 +113,7 @@ impl<'a> Ast<'a> {
             attached_comments: ArenaVec::new_in(allocator),
             nodes: NodeData::new_in(allocator),
             extra_data: ArenaVec::with_capacity_in(0, allocator),
-            strings: StringPool::new(source.as_bytes()),
+            strings: StringPool::new(source),
         }
     }
 
@@ -282,7 +282,7 @@ impl<'a> Ast<'a> {
 
     #[inline]
     pub fn source(&self) -> &'a [u8] {
-        self.strings.source
+        self.strings.source.as_bytes()
     }
 
     #[inline]
@@ -291,8 +291,18 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
-    pub fn add_string(&mut self, value: &[u8]) -> AstUtf8 {
-        self.strings.add_string(value)
+    pub fn source_slice_wtf8(&self, start: u32, end: u32) -> AstWtf8 {
+        self.strings.source_slice_wtf8(start, end)
+    }
+
+    #[inline]
+    pub fn add_utf8(&mut self, value: &str) -> AstUtf8 {
+        self.strings.add_utf8(value)
+    }
+
+    #[inline]
+    pub fn add_wtf8(&mut self, value: &swc_next_allocator::wtf8::Wtf8) -> AstWtf8 {
+        self.strings.add_wtf8(value)
     }
 
     #[inline]
@@ -301,13 +311,23 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
-    pub fn string(&self, id: AstUtf8) -> &[u8] {
-        self.strings.get(id)
+    pub fn get_utf8(&self, id: AstUtf8) -> &str {
+        self.strings.get_utf8(id)
     }
 
     #[inline]
-    pub fn empty_string(&self) -> AstUtf8 {
+    pub fn get_wtf8(&self, id: AstWtf8) -> &swc_next_allocator::wtf8::Wtf8 {
+        self.strings.get_wtf8(id)
+    }
+
+    #[inline]
+    pub fn empty_utf8(&self) -> AstUtf8 {
         AstUtf8::EMPTY
+    }
+
+    #[inline]
+    pub fn empty_wtf8(&self) -> AstWtf8 {
+        AstWtf8::EMPTY
     }
 
     #[inline]

@@ -1,4 +1,4 @@
-use swc_next_allocator::vec::Vec as ArenaVec;
+use swc_next_allocator::{vec::Vec as ArenaVec, wtf8::Wtf8};
 
 const HEX: &[u8; 16] = b"0123456789ABCDEF";
 
@@ -44,7 +44,8 @@ pub(crate) fn parse_numeric_literal(raw: &[u8]) -> Option<f64> {
     text.parse().ok()
 }
 
-pub(crate) fn quote_into(out: &mut ArenaVec<'_, u8>, value: &[u8], quote: u8, ascii_only: bool) {
+pub(crate) fn quote_into(out: &mut ArenaVec<'_, u8>, value: &Wtf8, quote: u8, ascii_only: bool) {
+    let value = value.as_bytes();
     out.push(quote);
     let mut i = 0;
     while i < value.len() {

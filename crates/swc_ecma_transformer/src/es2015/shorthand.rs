@@ -21,8 +21,8 @@ impl Shorthand {
         if self.is_proto_key(property, ctx.ast) {
             let span = property.key(ctx.ast).span(ctx.ast);
             let ast = &mut *ctx.ast;
-            let value = ast.add_string(b"__proto__");
-            let key = ast.property_key_string_literal(span, value, ast.empty_string());
+            let value = ast.add_wtf8("__proto__".into());
+            let key = ast.property_key_string_literal(span, value, ast.empty_utf8());
             property.set_key(ast, key);
             property.set_computed(ast, true);
         }
@@ -38,10 +38,10 @@ impl Shorthand {
     fn is_proto_key(&self, property: ObjectProperty, ast: &Ast) -> bool {
         let key: PropertyKey = property.key(ast);
         if let Some(identifier) = key.as_identifier_name(ast) {
-            return ast.string(identifier.name(ast)) == b"__proto__";
+            return ast.get_utf8(identifier.name(ast)) == "__proto__";
         }
         if let Some(string) = key.as_string_literal(ast) {
-            return ast.string(string.value(ast)) == b"__proto__";
+            return ast.get_wtf8(string.value(ast)).as_bytes() == b"__proto__";
         }
         false
     }
