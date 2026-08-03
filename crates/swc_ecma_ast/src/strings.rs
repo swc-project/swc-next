@@ -101,15 +101,15 @@ impl<'a> StringPool<'a> {
 
     #[inline]
     pub fn source_slice(&self, start: u32, end: u32) -> AstUtf8 {
-        debug_assert!(start <= end);
-        debug_assert!(end <= self.source.len() as u32);
+        assert!(start <= end);
+        assert!(end <= self.source.len() as u32);
         AstUtf8 { start, end }
     }
 
     #[inline]
     pub fn source_slice_wtf8(&self, start: u32, end: u32) -> AstWtf8 {
-        debug_assert!(start <= end);
-        debug_assert!(end <= self.source.len() as u32);
+        assert!(start <= end);
+        assert!(end <= self.source.len() as u32);
         AstWtf8 { start, end }
     }
 
