@@ -31,11 +31,13 @@ pub use generated::ast_node::{NodeKind, NodeKindData};
 pub use generated::ast_visitor::*;
 pub use node_id::{AstNode, ExtraDataCompact, ExtraDataId, NodeId, SubRange, TypedSubRange};
 pub use semantic::{ReferenceId, ScopeId, SymbolId};
-pub use strings::{AstUtf8, AstWtf8, StringPool};
+pub use strings::{AstUtf8, AstWtf8};
 pub use syntax::*;
 pub use visit::{TraverseAction, TraverseCtx};
 
 use swc_next_allocator::multi_index_vec;
+
+use crate::strings::StringPool;
 
 /// AST context that stores everything about the flattening AST.
 pub struct Ast<'a> {
@@ -113,7 +115,7 @@ impl<'a> Ast<'a> {
             attached_comments: ArenaVec::new_in(allocator),
             nodes: NodeData::new_in(allocator),
             extra_data: ArenaVec::with_capacity_in(0, allocator),
-            strings: StringPool::new(source),
+            strings: StringPool::new_in(allocator, source),
         }
     }
 
