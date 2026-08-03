@@ -1,13 +1,13 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use std::hint::black_box;
+use std::{env, hint::black_box};
 
 use gungraun::prelude::*;
-use gungraun::{Callgrind, EventKind};
+use gungraun::{Callgrind, CallgrindMetrics, Dhat, DhatMetric, EventKind, FlamegraphConfig};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
-    Ast, BindingIdentifier, IdentifierName, IdentifierReference, LabelIdentifier,
+    Ast, BindingIdentifier, IdentifierName, IdentifierReference, LabelIdentifier, Lang,
     PrivateIdentifier, Program, Traverse, TraverseAction, TraverseCtx, TraverseWith, Visit,
     VisitMut, VisitMutWith, VisitWith,
 };
@@ -48,23 +48,42 @@ struct ParsedProgram {
     program: Program,
 }
 
-fn setup_program(source: &'static str) -> ParsedProgram {
+fn setup_program(source: &'static str, lang: Lang) -> ParsedProgram {
     let allocator = Box::leak(Box::new(Allocator::new()));
     let mut ast = Ast::new(source.as_bytes(), allocator);
-    let program = Parser::init(&mut ast, Options::default(), NoTokenParserConfig)
-        .parse()
-        .program;
+    let result = Parser::init(
+        &mut ast,
+        Options {
+            lang,
+            ..Options::default()
+        },
+        NoTokenParserConfig,
+    )
+    .parse();
+    assert!(result.diagnostics.is_empty());
+    let program = result.program;
     ParsedProgram { ast, program }
 }
 
 #[library_benchmark]
-#[bench::typescript(setup_program(TYPESCRIPT))]
-#[bench::cal_com_tsx(setup_program(CAL_COM_TSX))]
+#[bench::typescript_js(setup_program(TYPESCRIPT, Lang::Js))]
+#[bench::cal_com_tsx_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
 fn bench_semantic(parsed: ParsedProgram) {
     black_box(analyze(
         parsed.program,
         &parsed.ast,
         AnalyzeOptions::default(),
+    ));
+}
+
+#[library_benchmark]
+#[bench::typescript_js(setup_program(TYPESCRIPT, Lang::Js))]
+#[bench::cal_com_tsx_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
+fn bench_semantic_with_syntax(parsed: ParsedProgram) {
+    black_box(analyze(
+        parsed.program,
+        &parsed.ast,
+        AnalyzeOptions { check_syntax: true },
     ));
 }
 
@@ -182,8 +201,8 @@ impl<'ast> Traverse<'ast> for TraverseCounter {
 }
 
 #[library_benchmark]
-#[bench::typescript(setup_program(TYPESCRIPT))]
-#[bench::cal_com_tsx(setup_program(CAL_COM_TSX))]
+#[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
+#[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
 fn bench_visit(parsed: ParsedProgram) {
     let mut counter = VisitCounter {
         ast: &parsed.ast,
@@ -194,8 +213,8 @@ fn bench_visit(parsed: ParsedProgram) {
 }
 
 #[library_benchmark]
-#[bench::typescript(setup_program(TYPESCRIPT))]
-#[bench::cal_com_tsx(setup_program(CAL_COM_TSX))]
+#[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
+#[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
 fn bench_visit_mut(mut parsed: ParsedProgram) {
     let mut counter = VisitMutCounter {
         ast: &mut parsed.ast,
@@ -206,8 +225,8 @@ fn bench_visit_mut(mut parsed: ParsedProgram) {
 }
 
 #[library_benchmark]
-#[bench::typescript(setup_program(TYPESCRIPT))]
-#[bench::cal_com_tsx(setup_program(CAL_COM_TSX))]
+#[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
+#[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
 fn bench_traverse(mut parsed: ParsedProgram) {
     let mut counter = TraverseCounter { count: 0 };
     let _ = parsed
@@ -218,17 +237,48 @@ fn bench_traverse(mut parsed: ParsedProgram) {
 
 library_benchmark_group!(name = parser, benchmarks = bench_parser);
 
-library_benchmark_group!(name = semantic, benchmarks = bench_semantic);
+library_benchmark_group!(
+    name = semantic,
+    benchmarks = [bench_semantic, bench_semantic_with_syntax]
+);
 
 library_benchmark_group!(
     name = visit,
     benchmarks = [bench_visit, bench_visit_mut, bench_traverse]
 );
 
+fn benchmark_config() -> LibraryBenchmarkConfig {
+    let mut config = LibraryBenchmarkConfig::default();
+    if env::var("GUNGRAUN_PROFILE").as_deref() == Ok("memory") {
+        config.tool(
+            Callgrind::with_args(["--branch-sim=no", "--cache-sim=yes"])
+                .format([CallgrindMetrics::All])
+                .flamegraph(FlamegraphConfig::default().event_kinds([
+                    EventKind::Ir,
+                    EventKind::D1mr,
+                    EventKind::D1mw,
+                    EventKind::DLmr,
+                    EventKind::DLmw,
+                    EventKind::EstimatedCycles,
+                ])),
+        );
+        config.tool(Dhat::default().format([
+            DhatMetric::TotalBytes,
+            DhatMetric::TotalBlocks,
+            DhatMetric::AtTGmaxBytes,
+            DhatMetric::AtTGmaxBlocks,
+        ]));
+    } else {
+        config.tool(
+            Callgrind::with_args(["--branch-sim=no", "--cache-sim=no"])
+                .format([EventKind::Ir])
+                .flamegraph(FlamegraphConfig::default().event_kinds([EventKind::Ir])),
+        );
+    }
+    config
+}
+
 main!(
-    config =
-        LibraryBenchmarkConfig::default().tool(
-            Callgrind::with_args(["--branch-sim=no", "--cache-sim=no",]).format([EventKind::Ir]),
-        ),
+    config = benchmark_config(),
     library_benchmark_groups = [parser, semantic, visit]
 );
