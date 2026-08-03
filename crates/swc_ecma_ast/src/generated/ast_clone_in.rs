@@ -1213,7 +1213,8 @@ impl<'a> CloneIn<'a> for ImportExpression {
         let source = self.source(ast).clone_in(ast);
         let options = self.options(ast).clone_in(ast);
         let phase = self.phase(ast).clone_in(ast);
-        ast.import_expression(span, source, options, phase)
+        let sync = self.sync(ast).clone_in(ast);
+        ast.import_expression(span, source, options, phase, sync)
     }
 }
 impl<'a> CloneIn<'a> for ImportDeclaration {

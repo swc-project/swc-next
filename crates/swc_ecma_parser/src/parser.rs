@@ -9940,7 +9940,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = import_name.span(&self.ast).start;
         match self.current_token.tag {
             TokenTag::Dot => self.parse_import_meta_or_phase_import(import_name),
-            TokenTag::LeftParen => self.parse_dynamic_import(start, None),
+            TokenTag::LeftParen => self.parse_dynamic_import(start, None, false),
             _ => {
                 self.report(
                     self.current_token.span,
@@ -9955,9 +9955,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_import_meta_or_phase_import(&mut self, import_name: IdentifierName) -> Option<Expr> {
         self.advance()?;
         let property = self.current_token;
-        let phase = match property.tag {
-            TokenTag::Source => Some(ImportPhase::Source),
-            TokenTag::Defer => Some(ImportPhase::Defer),
+        let (phase, sync) = match property.tag {
+            TokenTag::Source => (Some(ImportPhase::Source), false),
+            TokenTag::Defer => (Some(ImportPhase::Defer), false),
+            TokenTag::Identifier if property.text(self.source) == "sync" => (None, true),
             TokenTag::Identifier if property.text(self.source) == "meta" => {
                 let property = self.parse_identifier_name()?;
                 self.has_module_syntax = true;
@@ -9983,10 +9984,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
         };
         self.advance()?;
-        self.parse_dynamic_import(import_name.span(&self.ast).start, phase)
+        self.parse_dynamic_import(import_name.span(&self.ast).start, phase, sync)
     }
 
-    fn parse_dynamic_import(&mut self, start: u32, phase: Option<ImportPhase>) -> Option<Expr> {
+    fn parse_dynamic_import(
+        &mut self,
+        start: u32,
+        phase: Option<ImportPhase>,
+        sync: bool,
+    ) -> Option<Expr> {
         if !self.expect(TokenTag::LeftParen, "Expected '(' after import", None) {
             return None;
         }
@@ -10012,7 +10018,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         Some(
             self.ast
-                .expr_import_expression(Span::new(start, end), source, options, phase),
+                .expr_import_expression(Span::new(start, end), source, options, phase, sync),
         )
     }
 

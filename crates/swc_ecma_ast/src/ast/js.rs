@@ -1899,6 +1899,7 @@ pub struct MetaProperty {
 /// import("m", { with: {} })   // options set
 /// import.source("m")          // phase = Source
 /// import.defer("m")           // phase = Defer
+/// import.sync("m")            // phase = null, sync = true
 /// ```
 #[ast]
 pub struct ImportExpression {
@@ -1908,6 +1909,10 @@ pub struct ImportExpression {
     options: Option<Expr>,
     /// `null` for a plain `import(...)`.
     phase: Option<ImportPhase>,
+    /// Import Sync
+    /// See: <https://github.com/tc39/proposal-import-sync>
+    #[estree(skip = "https://github.com/estree/estree/pull/335 get merged but not yet released")]
+    sync: bool,
 }
 
 /// A static `import` declaration.

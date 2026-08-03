@@ -291,7 +291,13 @@ impl Parser {
         let type_id = self
             .parse_type_name(&field.ty)
             .unwrap_or_else(|| panic!("Cannot parse type {}", field.ty.to_token_stream()));
-        AstStructField { type_id, name }
+        let attrs = parse_field_attrs(&field.attrs);
+
+        AstStructField {
+            type_id,
+            name,
+            _attrs: attrs,
+        }
     }
 
     fn parse_enum(&mut self, type_id: TypeId, attrs: AstAttrs, item: ItemEnum) -> AstType {
@@ -404,5 +410,25 @@ impl Parser {
             _ => return None,
         };
         Some(type_id)
+    }
+}
+
+fn parse_field_attrs(attrs: &[Attribute]) -> AstAttrs {
+    let mut ast_attrs = HashSet::new();
+
+    for attr in attrs {
+        if let Meta::List(meta_list) = &attr.meta
+            && meta_list.path.is_ident("estree")
+        {
+            let args = meta_list
+                .parse_args_with(Punctuated::<Ident, Comma>::parse_terminated)
+                .expect("Unable to parse `#[estree]`");
+            ast_attrs.extend(args.into_iter().map(|arg| arg.to_string()));
+        }
+    }
+
+    AstAttrs {
+        ast_attrs,
+        generate_derives: HashSet::new(),
     }
 }

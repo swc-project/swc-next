@@ -139,6 +139,7 @@ fn write_node_case(output: &mut String, kind: usize, ast: &AstStruct, schema: &S
 
     let mut extra_offset = 0usize;
     for (field_index, field) in ast.fields.iter().enumerate() {
+        let skip = field._attrs.ast_attrs.contains("skip");
         let field_ty = &schema.types[field.type_id];
         let (location, aligned_u32) = if let Some((_, byte_offset, _)) =
             layout.as_ref().and_then(|layout| {
@@ -153,6 +154,9 @@ fn write_node_case(output: &mut String, kind: usize, ast: &AstStruct, schema: &S
             extra_offset += 1;
             (location, true)
         };
+        if skip {
+            continue;
+        }
         let expression = read_expression(field_ty, schema, &location, aligned_u32);
         let field_name = estree_field_name(&ast.name, &field.name);
         fields.push(DecodedField {

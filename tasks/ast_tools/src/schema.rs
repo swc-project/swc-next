@@ -77,6 +77,7 @@ pub struct AstStruct {
 pub struct AstStructField {
     pub type_id: TypeId,
     pub name: String,
+    pub _attrs: AstAttrs,
 }
 
 #[derive(Debug)]

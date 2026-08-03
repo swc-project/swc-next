@@ -1918,7 +1918,9 @@ impl<'a> Printer<'a> {
                 let old_forbid_in = self.forbid_in;
                 self.forbid_in = false;
                 self.add_source_mapping(expr.span(self.ast).start);
-                if e.phase(self.ast) == Some(ImportPhase::Source) {
+                if e.sync(self.ast) {
+                    self.print("import.sync(");
+                } else if e.phase(self.ast) == Some(ImportPhase::Source) {
                     self.print("import.source(");
                 } else {
                     self.print("import(");

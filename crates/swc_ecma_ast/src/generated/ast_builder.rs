@@ -876,8 +876,12 @@ impl<'a> Ast<'a> {
         source: Expr,
         options: Option<Expr>,
         phase: Option<ImportPhase>,
+        sync: bool,
     ) -> Expr {
-        Expr::ImportExpression(self.import_expression(span, source, options, phase).into())
+        Expr::ImportExpression(
+            self.import_expression(span, source, options, phase, sync)
+                .into(),
+        )
     }
     #[inline]
     pub fn expr_await_expression(&mut self, span: Span, argument: Expr) -> Expr {
@@ -1685,9 +1689,11 @@ impl<'a> Ast<'a> {
         source: Expr,
         options: Option<Expr>,
         phase: Option<ImportPhase>,
+        sync: bool,
     ) -> PropertyKey {
         PropertyKey::Expr(Expr::ImportExpression(
-            self.import_expression(span, source, options, phase).into(),
+            self.import_expression(span, source, options, phase, sync)
+                .into(),
         ))
     }
     #[inline]
@@ -2170,9 +2176,11 @@ impl<'a> Ast<'a> {
         source: Expr,
         options: Option<Expr>,
         phase: Option<ImportPhase>,
+        sync: bool,
     ) -> Argument {
         Argument::Expr(Expr::ImportExpression(
-            self.import_expression(span, source, options, phase).into(),
+            self.import_expression(span, source, options, phase, sync)
+                .into(),
         ))
     }
     #[inline]
@@ -2687,9 +2695,11 @@ impl<'a> Ast<'a> {
         source: Expr,
         options: Option<Expr>,
         phase: Option<ImportPhase>,
+        sync: bool,
     ) -> ForStatementInit {
         ForStatementInit::Expr(Expr::ImportExpression(
-            self.import_expression(span, source, options, phase).into(),
+            self.import_expression(span, source, options, phase, sync)
+                .into(),
         ))
     }
     #[inline]
@@ -3312,9 +3322,11 @@ impl<'a> Ast<'a> {
         source: Expr,
         options: Option<Expr>,
         phase: Option<ImportPhase>,
+        sync: bool,
     ) -> ArrowFunctionBody {
         ArrowFunctionBody::Expr(Expr::ImportExpression(
-            self.import_expression(span, source, options, phase).into(),
+            self.import_expression(span, source, options, phase, sync)
+                .into(),
         ))
     }
     #[inline]
@@ -4168,9 +4180,11 @@ impl<'a> Ast<'a> {
         source: Expr,
         options: Option<Expr>,
         phase: Option<ImportPhase>,
+        sync: bool,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::Expr(Expr::ImportExpression(
-            self.import_expression(span, source, options, phase).into(),
+            self.import_expression(span, source, options, phase, sync)
+                .into(),
         ))
     }
     #[inline]
@@ -5629,6 +5643,7 @@ impl<'a> Ast<'a> {
         source: Expr,
         options: Option<Expr>,
         phase: Option<ImportPhase>,
+        sync: bool,
     ) -> ImportExpression {
         let _f0 = self.add_extra(phase.to_extra_data(self));
         ImportExpression(self.add_node(
@@ -5636,9 +5651,10 @@ impl<'a> Ast<'a> {
             NodeKind::ImportExpression,
             NodePayload(
                 0u128
-                    | ((source.node_id().index() as u32 as u128) << 0usize)
+                    | ((source.node_id().index() as u32 as u128) << 8usize)
                     | ((options.map_or(u32::MAX, |node| node.node_id().index() as u32) as u128)
-                        << 32usize)
+                        << 40usize)
+                    | ((sync as u32 as u128) << 0usize)
                     | ((_f0.index() as u128) << 96usize),
             ),
         ))
@@ -7103,9 +7119,11 @@ impl<'a> Ast<'a> {
         source: Expr,
         options: Option<Expr>,
         phase: Option<ImportPhase>,
+        sync: bool,
     ) -> TsEnumMemberName {
         TsEnumMemberName::Expr(Expr::ImportExpression(
-            self.import_expression(span, source, options, phase).into(),
+            self.import_expression(span, source, options, phase, sync)
+                .into(),
         ))
     }
     #[inline]
@@ -8872,9 +8890,11 @@ impl<'a> Ast<'a> {
         source: Expr,
         options: Option<Expr>,
         phase: Option<ImportPhase>,
+        sync: bool,
     ) -> JsxExpression {
         JsxExpression::Expr(Expr::ImportExpression(
-            self.import_expression(span, source, options, phase).into(),
+            self.import_expression(span, source, options, phase, sync)
+                .into(),
         ))
     }
     #[inline]

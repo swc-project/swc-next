@@ -4936,14 +4936,19 @@ impl ImportExpression {
     #[inline]
     pub fn source<'a>(self, ast: &crate::Ast<'a>) -> Expr {
         let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 4294967295u32;
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 8usize) as u32) & 4294967295u32;
         Expr(NodeId::from_raw_unchecked(raw))
     }
     #[inline]
     pub fn options<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
         let raw =
-            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 32usize) as u32) & 4294967295u32;
+            ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 40usize) as u32) & 4294967295u32;
         (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+    }
+    #[inline]
+    pub fn sync<'a>(self, ast: &crate::Ast<'a>) -> bool {
+        let raw = ((unsafe { ast.nodes.data_unchecked(self.0).0 } >> 0usize) as u32) & 255u32;
+        raw != 0
     }
     #[inline]
     pub fn phase<'a>(self, ast: &crate::Ast<'a>) -> Option<ImportPhase> {
@@ -4965,15 +4970,22 @@ impl ImportExpression {
     pub fn set_source<'a>(self, ast: &mut crate::Ast<'a>, source: Expr) {
         let field_val: u32 = source.node_id().index() as u32;
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463463374607427473244160u128)
-            | (((field_val as u128) & 4294967295u128) << 0usize);
+        payload.0 = (payload.0 & 340282366920938463463374606332256583935u128)
+            | (((field_val as u128) & 4294967295u128) << 8usize);
     }
     #[inline]
     pub fn set_options<'a>(self, ast: &mut crate::Ast<'a>, options: Option<Expr>) {
         let field_val: u32 = options.map_or(u32::MAX, |node| node.node_id().index() as u32);
         let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
-        payload.0 = (payload.0 & 340282366920938463444927863362353627135u128)
-            | (((field_val as u128) & 4294967295u128) << 32usize);
+        payload.0 = (payload.0 & 340282366920938458741008125661634625535u128)
+            | (((field_val as u128) & 4294967295u128) << 40usize);
+    }
+    #[inline]
+    pub fn set_sync<'a>(self, ast: &mut crate::Ast<'a>, sync: bool) {
+        let field_val: u32 = sync as u32;
+        let payload = unsafe { ast.nodes.data_mut_unchecked(self.0) };
+        payload.0 = (payload.0 & 340282366920938463463374607431768211200u128)
+            | (((field_val as u128) & 255u128) << 0usize);
     }
     #[inline]
     pub fn set_phase<'a>(self, ast: &mut crate::Ast<'a>, phase: Option<ImportPhase>) {

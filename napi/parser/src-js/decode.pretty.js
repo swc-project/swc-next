@@ -944,8 +944,8 @@ export function decode(buffer, source) {
       case 75: {
         const extraId = _u32[(payload + 12) >> 2];
         result = { type: "ImportExpression", start, end,
-          source: node(_u32[(payload + 0) >> 2]),
-          options: optionalNode(_u32[(payload + 4) >> 2]),
+          source: node(_dv.getUint32(payload + 1, true)),
+          options: optionalNode(_dv.getUint32(payload + 5, true)),
           phase: optionalEnum("ImportPhase", _dv.getUint8(extra + (extraId + 0) * 8)),
         };
         break;
