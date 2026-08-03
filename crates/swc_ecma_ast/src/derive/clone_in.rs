@@ -1,5 +1,5 @@
 use crate::{
-    Accessibility, AssignmentOperator, Ast, AstString, BinaryOperator, ClassType,
+    Accessibility, AssignmentOperator, Ast, AstUtf8, BinaryOperator, ClassType,
     FormalParameterKind, FunctionType, ImportOrExportKind, ImportPhase, LogicalOperator,
     MethodDefinitionKind, NumericLiteralKind, PropertyKind, SourceType, Span, TsMappedTypeModifier,
     TsMethodSignatureKind, TsModuleDeclarationKind, TsTypeOperatorKind, TypedSubRange,
@@ -84,7 +84,7 @@ where
     }
 }
 
-impl<'a> CloneIn<'a> for AstString {
+impl<'a> CloneIn<'a> for AstUtf8 {
     type Cloned = Self;
 
     fn clone_in(&self, _ast: &mut Ast<'a>) -> Self::Cloned {

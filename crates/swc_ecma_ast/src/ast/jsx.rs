@@ -146,7 +146,7 @@ pub struct JsxClosingFragment {}
 /// The tag `Foo` is also a `jsx_identifier`.
 #[ast]
 pub struct JsxIdentifier {
-    name: AstString,
+    name: AstUtf8,
 }
 
 /// A JSX name of the form `namespace:name`.
@@ -239,7 +239,7 @@ pub struct JsxEmptyExpression {}
 /// ```
 #[ast]
 pub struct JsxText {
-    value: AstString,
+    value: AstUtf8,
 }
 
 /// A spread child `{...children}` inside a JSX element.

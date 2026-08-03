@@ -587,9 +587,9 @@ pub struct ThisExpression {}
 #[ast]
 pub struct StringLiteral {
     /// decoded content with escape sequences resolved and quotes stripped
-    value: AstString,
+    value: AstUtf8,
     /// raw source lexeme including the surrounding quotes, exactly as written.
-    raw: AstString,
+    raw: AstUtf8,
 }
 
 /// A numeric literal in one of four bases.
@@ -606,7 +606,7 @@ pub struct StringLiteral {
 pub struct NumericLiteral {
     kind: NumericLiteralKind,
     /// the raw lexeme, including prefix (`0x`, `0b`, `0o`) and separators
-    raw: AstString,
+    raw: AstUtf8,
 }
 
 /// A BigInt literal (a numeric literal with a trailing `n`).
@@ -624,7 +624,7 @@ pub struct NumericLiteral {
 #[ast]
 pub struct BigIntLiteral {
     /// digits without the trailing `n`
-    raw: AstString,
+    raw: AstUtf8,
 }
 
 /// A `true` or `false` literal.
@@ -655,8 +655,8 @@ pub struct NullLiteral {}
 /// ```
 #[ast]
 pub struct RegExpLiteral {
-    pattern: AstString,
-    flags: AstString,
+    pattern: AstUtf8,
+    flags: AstUtf8,
 }
 
 /// A template literal with zero or more interpolations.
@@ -691,10 +691,10 @@ pub struct TemplateLiteral {
 #[ast]
 pub struct TemplateElement {
     /// escape-decoded content, empty when `is_cooked_undefined`
-    cooked: AstString,
+    cooked: AstUtf8,
     /// verbatim source text, line endings normalized to `\n`. empty for
     /// synthetic nodes
-    raw: AstString,
+    raw: AstUtf8,
     /// true for the final element (after the last interpolation)
     tail: bool,
     /// true when the cooked value is undefined per ECMAScript TV semantics
@@ -716,7 +716,7 @@ pub struct TemplateElement {
 /// as a value reference.
 #[ast]
 pub struct IdentifierReference {
-    name: AstString,
+    name: AstUtf8,
 }
 
 /// A `#privateName` identifier used inside a class.
@@ -733,7 +733,7 @@ pub struct IdentifierReference {
 /// ```
 #[ast]
 pub struct PrivateIdentifier {
-    name: AstString,
+    name: AstUtf8,
 }
 
 /// An identifier that introduces a new binding.
@@ -746,7 +746,7 @@ pub struct PrivateIdentifier {
 /// ```
 #[ast]
 pub struct BindingIdentifier {
-    name: AstString,
+    name: AstUtf8,
     /// `decorator[]`. Decorators on a parameter binding (legacy
     /// `experimentalDecorators`). Empty for non-parameter bindings.
     decorators: Vec<Decorator>,
@@ -767,7 +767,7 @@ pub struct BindingIdentifier {
 /// ```
 #[ast]
 pub struct IdentifierName {
-    name: AstString,
+    name: AstUtf8,
 }
 
 /// An identifier used as a statement label or as the target of `break` or
@@ -781,7 +781,7 @@ pub struct IdentifierName {
 /// ```
 #[ast]
 pub struct LabelIdentifier {
-    name: AstString,
+    name: AstUtf8,
 }
 
 /// A binding pattern with a default value.
@@ -1306,7 +1306,7 @@ pub struct Directive {
     /// `string_literal`
     expression: StringLiteral,
     /// the directive text without surrounding quotes
-    value: AstString,
+    value: AstUtf8,
 }
 
 /// A decorator applied to a class or class member.
@@ -2102,5 +2102,5 @@ pub struct ExportSpecifier {
 /// `value` is everything after `#!`, so `/usr/bin/env node` here.
 #[ast]
 pub struct Hashbang {
-    value: AstString,
+    value: AstUtf8,
 }

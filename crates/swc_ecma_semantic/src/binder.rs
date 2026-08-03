@@ -3,7 +3,7 @@ use std::hash::BuildHasher;
 use oxc_index::Idx;
 use swc_next_allocator::{Allocator, CloneIn, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
-    Ast, AstString, BindingIdentifier, Class, ClassType, ExportNamedDeclaration, Function,
+    Ast, AstUtf8, BindingIdentifier, Class, ClassType, ExportNamedDeclaration, Function,
     FunctionType, IdentifierReference, ImportDeclaration, ImportOrExportKind, ImportSpecifier,
     JsxClosingElement, JsxElementName, JsxElementNameData, JsxIdentifier,
     JsxMemberExpressionObjectData, JsxOpeningElement, NodeId, NodeKind, NodeKindData, ReferenceId,
@@ -43,7 +43,7 @@ pub struct Range {
 /// the symbol occupies.
 #[derive(Debug, Clone, Copy)]
 pub struct Symbol {
-    pub name: AstString,
+    pub name: AstUtf8,
     pub flags: SymbolFlags,
     /// The scope the symbol is declared in. For a hoisting `var`,
     /// this is the hoist target it lands in, not the block it is
@@ -432,7 +432,7 @@ impl Excludes {
 /// ```
 #[derive(Debug, Clone, Copy)]
 pub struct Reference {
-    pub name: AstString,
+    pub name: AstUtf8,
     /// The scope the reference appears in.
     pub scope: ScopeId,
     /// The referencing node.
@@ -1218,7 +1218,7 @@ impl<'a> SymbolTracker<'a> {
     /// existing binding is merged. On conflict, its flags remain unchanged
     /// because the caller reports the diagnostic. Every node is still stored
     /// as a declaration for error recovery.
-    pub fn declare(&mut self, tree: &Ast, name: AstString, node: NodeId) -> SymbolId {
+    pub fn declare(&mut self, tree: &Ast, name: AstUtf8, node: NodeId) -> SymbolId {
         let target = self.pending.scope;
         assert!(target.index() < self.scope_maps.len());
         assert!(node.index() < tree.node_count());
@@ -1265,7 +1265,7 @@ impl<'a> SymbolTracker<'a> {
     pub fn add_reference(
         &mut self,
         tree: &Ast,
-        name: AstString,
+        name: AstUtf8,
         scope: ScopeId,
         node: NodeId,
         flags: ReferenceFlags,

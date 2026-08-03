@@ -1,4 +1,4 @@
-use crate::AstString;
+use crate::AstUtf8;
 use crate::Span;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -31,7 +31,7 @@ impl Comment {
         }
     }
 
-    pub fn value(&self, source: &[u8]) -> AstString {
+    pub fn value(&self, source: &[u8]) -> AstUtf8 {
         let start = self.span.start;
         let head = match source[start as usize] {
             b'<' => 4,
@@ -44,7 +44,7 @@ impl Comment {
             0
         };
 
-        AstString {
+        AstUtf8 {
             start: self.span.start + head,
             end: self.span.end - tail,
         }

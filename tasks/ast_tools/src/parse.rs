@@ -174,7 +174,7 @@ impl Parser {
             "Span" => primitive("Span"),
             "ScopeId" => primitive("ScopeId"),
             "SymbolId" => primitive("SymbolId"),
-            "AstString" => primitive("AstString"),
+            "AstUtf8" => primitive("AstUtf8"),
             "ImportPhase" => primitive("ImportPhase"),
             "SourceType" => primitive("SourceType"),
             "MethodDefinitionKind" => primitive("MethodDefinitionKind"),

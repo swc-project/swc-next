@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct AstString {
+pub struct AstUtf8 {
     pub start: u32,
     pub end: u32,
 }
 
-impl AstString {
+impl AstUtf8 {
     pub const EMPTY: Self = Self { start: 0, end: 0 };
 
     #[inline]
@@ -38,7 +38,7 @@ impl AstString {
 pub struct StringPool<'a> {
     pub source: &'a [u8],
     pub extra: Vec<u8>,
-    dedup: HashMap<Vec<u8>, AstString>,
+    dedup: HashMap<Vec<u8>, AstUtf8>,
 }
 
 impl<'a> StringPool<'a> {
@@ -52,7 +52,7 @@ impl<'a> StringPool<'a> {
     }
 
     #[inline]
-    pub fn get(&self, id: AstString) -> &[u8] {
+    pub fn get(&self, id: AstUtf8) -> &[u8] {
         debug_assert!(id.end >= id.start);
         if id.start == id.end {
             return b"";
@@ -69,10 +69,10 @@ impl<'a> StringPool<'a> {
     }
 
     #[inline]
-    pub fn source_slice(&self, start: u32, end: u32) -> AstString {
+    pub fn source_slice(&self, start: u32, end: u32) -> AstUtf8 {
         debug_assert!(start <= end);
         debug_assert!(end <= self.source.len() as u32);
-        AstString { start, end }
+        AstUtf8 { start, end }
     }
 
     pub fn ensure_unused_capacity(&mut self, bytes: u32, entries: u32) {
@@ -80,9 +80,9 @@ impl<'a> StringPool<'a> {
         self.dedup.reserve(entries as usize);
     }
 
-    pub fn add_string(&mut self, text: &[u8]) -> AstString {
+    pub fn add_string(&mut self, text: &[u8]) -> AstUtf8 {
         if text.is_empty() {
-            return AstString::EMPTY;
+            return AstUtf8::EMPTY;
         }
         if let Some(&id) = self.dedup.get(text) {
             return id;
@@ -97,7 +97,7 @@ impl<'a> StringPool<'a> {
             .expect("string pool offset overflow");
         assert!(end <= u32::MAX as usize, "string pool exceeds u32 range");
         self.extra.extend_from_slice(text);
-        let id = AstString {
+        let id = AstUtf8 {
             start: start as u32,
             end: end as u32,
         };

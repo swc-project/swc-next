@@ -31,7 +31,7 @@ pub use generated::ast_node::{NodeKind, NodeKindData};
 pub use generated::ast_visitor::*;
 pub use node_id::{AstNode, ExtraDataCompact, ExtraDataId, NodeId, SubRange, TypedSubRange};
 pub use semantic::{ReferenceId, ScopeId, SymbolId};
-pub use strings::{AstString, StringPool};
+pub use strings::{AstUtf8, StringPool};
 pub use syntax::*;
 pub use visit::{TraverseAction, TraverseCtx};
 
@@ -286,12 +286,12 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
-    pub fn source_slice(&self, start: u32, end: u32) -> AstString {
+    pub fn source_slice(&self, start: u32, end: u32) -> AstUtf8 {
         self.strings.source_slice(start, end)
     }
 
     #[inline]
-    pub fn add_string(&mut self, value: &[u8]) -> AstString {
+    pub fn add_string(&mut self, value: &[u8]) -> AstUtf8 {
         self.strings.add_string(value)
     }
 
@@ -301,13 +301,13 @@ impl<'a> Ast<'a> {
     }
 
     #[inline]
-    pub fn string(&self, id: AstString) -> &[u8] {
+    pub fn string(&self, id: AstUtf8) -> &[u8] {
         self.strings.get(id)
     }
 
     #[inline]
-    pub fn empty_string(&self) -> AstString {
-        AstString::EMPTY
+    pub fn empty_string(&self) -> AstUtf8 {
+        AstUtf8::EMPTY
     }
 
     #[inline]

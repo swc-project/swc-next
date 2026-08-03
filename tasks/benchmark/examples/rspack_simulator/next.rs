@@ -1,7 +1,7 @@
 use rustc_hash::FxHashSet;
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
-    Ast, AstString, BindingIdentifier, BreakStatement, ClassElement, ClassElementData,
+    Ast, AstUtf8, BindingIdentifier, BreakStatement, ClassElement, ClassElementData,
     ContinueStatement, DebuggerStatement, ExportAllDeclaration, ExportDefaultDeclaration,
     ExportNamedDeclaration, ExpressionStatement, GetSpan, IdentifierReference, ImportDeclaration,
     LabelIdentifier, Program, ReturnStatement, Span, ThrowStatement, UpdateExpression,
@@ -45,7 +45,7 @@ fn run_semantic<'a>(root: Program, ast: &Ast<'a>) -> Semantic<'a> {
 }
 
 #[inline(never)]
-fn run_scan_dependencies(root: Program, ast: &Ast<'_>) -> Vec<AstString> {
+fn run_scan_dependencies(root: Program, ast: &Ast<'_>) -> Vec<AstUtf8> {
     let mut parser = JavascriptParser {
         ast,
         idents: Vec::new(),
@@ -206,7 +206,7 @@ impl<'ast> Visit<'ast> for InsertedSemicolons<'_, 'ast, '_> {
 
 struct JavascriptParser<'visit, 'ast> {
     ast: &'visit Ast<'ast>,
-    idents: Vec<AstString>,
+    idents: Vec<AstUtf8>,
 }
 
 impl<'ast> Visit<'ast> for JavascriptParser<'_, 'ast> {

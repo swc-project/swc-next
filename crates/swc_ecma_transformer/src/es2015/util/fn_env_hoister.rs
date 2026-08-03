@@ -1,17 +1,17 @@
 use std::collections::HashSet;
 
 use swc_next_ecma_ast::{
-    AssignmentOperator, Ast, AstString, Class, DUMMY_SP, Decl, Expr, Function, FunctionBody,
-    GetSpan, IdentifierReference, Program, StaticBlock, Stmt, TypedSubRange, VariableKind,
-    VisitMut, VisitMutWith,
+    AssignmentOperator, Ast, AstUtf8, Class, DUMMY_SP, Decl, Expr, Function, FunctionBody, GetSpan,
+    IdentifierReference, Program, StaticBlock, Stmt, TypedSubRange, VariableKind, VisitMut,
+    VisitMutWith,
 };
 use swc_next_ecma_semantic::{ReferenceSpace, Semantic};
 
 #[derive(Default)]
 pub struct CaptureFrame {
-    this: Option<AstString>,
-    arguments: Option<AstString>,
-    new_target: Option<AstString>,
+    this: Option<AstUtf8>,
+    arguments: Option<AstUtf8>,
+    new_target: Option<AstUtf8>,
 }
 
 impl CaptureFrame {
@@ -62,7 +62,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
             .expect("a function environment frame exists")
     }
 
-    fn fresh_name(&mut self, base: &[u8], ast: &mut Ast<'_>) -> AstString {
+    fn fresh_name(&mut self, base: &[u8], ast: &mut Ast<'_>) -> AstUtf8 {
         let mut candidate = base.to_vec();
         let mut suffix = 2u32;
         while self.used_names.contains(&candidate) {
@@ -75,7 +75,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
         ast.add_string(&candidate)
     }
 
-    fn capture_this(&mut self, ast: &mut Ast<'_>) -> AstString {
+    fn capture_this(&mut self, ast: &mut Ast<'_>) -> AstUtf8 {
         if let Some(name) = self.frames.last().and_then(|frame| frame.this) {
             return name;
         }
@@ -84,7 +84,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
         name
     }
 
-    fn capture_arguments(&mut self, ast: &mut Ast<'_>) -> AstString {
+    fn capture_arguments(&mut self, ast: &mut Ast<'_>) -> AstUtf8 {
         if let Some(name) = self.frames.last().and_then(|frame| frame.arguments) {
             return name;
         }
@@ -96,7 +96,7 @@ impl<'semantic> FnEnvHoister<'semantic> {
         name
     }
 
-    fn capture_new_target(&mut self, ast: &mut Ast<'_>) -> AstString {
+    fn capture_new_target(&mut self, ast: &mut Ast<'_>) -> AstUtf8 {
         if let Some(name) = self.frames.last().and_then(|frame| frame.new_target) {
             return name;
         }
@@ -275,10 +275,10 @@ fn prepend_statement(
     ast.add_typed_sub_range(items)
 }
 
-fn rewrite_derived_super_calls(body: FunctionBody, this_name: AstString, ast: &mut Ast<'_>) {
+fn rewrite_derived_super_calls(body: FunctionBody, this_name: AstUtf8, ast: &mut Ast<'_>) {
     struct InitThis<'visit, 'ast> {
         ast: &'visit mut Ast<'ast>,
-        this_name: AstString,
+        this_name: AstUtf8,
     }
 
     impl<'ast> VisitMut<'ast> for InitThis<'_, 'ast> {

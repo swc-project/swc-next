@@ -7,7 +7,7 @@ use std::{borrow::Cow, mem, string::String};
 
 use rustc_hash::FxHashSet;
 use swc_next_allocator::vec::Vec as ArenaVec;
-use swc_next_ecma_ast::AstString;
+use swc_next_ecma_ast::AstUtf8;
 use swc_next_ecma_ast::*;
 
 use crate::{
@@ -821,7 +821,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     ///
     /// This strips `#` from private identifiers and decodes Unicode escapes.
     #[inline]
-    pub fn identifier_name(&mut self, token: Token) -> AstString {
+    pub fn identifier_name(&mut self, token: Token) -> AstUtf8 {
         if token.tag != TokenTag::PrivateIdentifier && !token.is_escaped() {
             return self.ast.source_slice(token.span.start, token.span.end);
         }
@@ -831,7 +831,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
     #[cold]
     #[inline(never)]
-    fn identifier_name_slow(&mut self, token: Token) -> AstString {
+    fn identifier_name_slow(&mut self, token: Token) -> AstUtf8 {
         let start = token.span.start + u32::from(token.tag == TokenTag::PrivateIdentifier);
         if token.is_escaped() {
             return self.decode_escaped_identifier(start, token.span.end);
@@ -841,7 +841,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     /// Returns the decoded string value without the surrounding quotes.
-    pub fn string_value(&mut self, token: Token) -> AstString {
+    pub fn string_value(&mut self, token: Token) -> AstUtf8 {
         if token.is_escaped() {
             return self.decode_escaped_string(token.span.start + 1, token.span.end - 1);
         }
@@ -850,21 +850,21 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     /// Returns the decoded content of a template quasi span.
-    pub fn template_element_value(&mut self, token: Token, span: Span) -> AstString {
+    pub fn template_element_value(&mut self, token: Token, span: Span) -> AstUtf8 {
         if !token.is_escaped() {
             return self.ast.source_slice(span.start, span.end);
         }
         self.decode_escaped_string(span.start, span.end)
     }
 
-    fn decode_escaped_identifier(&mut self, start: u32, end: u32) -> AstString {
+    fn decode_escaped_identifier(&mut self, start: u32, end: u32) -> AstUtf8 {
         let mut buffer = [0u8; 256];
         let value =
             decode_identifier_escapes(&self.source[start as usize..end as usize], &mut buffer);
         self.ast.add_string(value)
     }
 
-    fn decode_escaped_string(&mut self, start: u32, end: u32) -> AstString {
+    fn decode_escaped_string(&mut self, start: u32, end: u32) -> AstUtf8 {
         let mut decoded = Vec::new();
         decode_string_escapes(&self.source[start as usize..end as usize], &mut decoded);
         self.ast.add_string(&decoded)
@@ -7558,7 +7558,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             );
         }
         let cooked = if is_cooked_undefined {
-            AstString::EMPTY
+            AstUtf8::EMPTY
         } else {
             self.template_element_value(token, span)
         };
