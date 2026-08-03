@@ -1059,13 +1059,13 @@ impl<'a> SymbolTracker<'a> {
         scope: &ScopeTracker<'a>,
         space: ReferenceSpace,
     ) {
+        self.sync_scope_maps_from(scope);
         let node = identifier.node_id();
         // Type-position identifiers are parameter labels. Only type
         // parameters are real declarations there.
         if space.in_type_position() && !self.pending.flags.type_parameter {
             return;
         }
-        self.sync_scope_maps_from(scope);
         let name = identifier.name(tree);
         let symbol_id = self.declare(tree, name, node);
 
@@ -1143,6 +1143,7 @@ impl<'a> SymbolTracker<'a> {
         member: TsEnumMember,
         scope: &ScopeTracker<'a>,
     ) {
+        self.sync_scope_maps_from(scope);
         // Members are lexically visible inside the enum body:
         //
         //   enum E { a, b = a }
@@ -1160,7 +1161,6 @@ impl<'a> SymbolTracker<'a> {
             NodeKindData::StringLiteral(literal) => literal.value(tree),
             _ => return,
         };
-        self.sync_scope_maps_from(scope);
         let saved = self.pending;
         self.pending = PendingBinding {
             flags: SymbolFlags {
