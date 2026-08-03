@@ -7172,7 +7172,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let tag = self.current_token.tag;
 
         if tag == TokenTag::Identifier {
-            return self.parse_identifier();
+            return self.parse_plain_identifier();
         }
 
         if matches!(tag, TokenTag::Increment | TokenTag::Decrement) {
@@ -7315,6 +7315,18 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     fn parse_identifier(&mut self) -> Option<Expr> {
         let token = self.current_token;
         self.validate_identifier(token, "an identifier");
+        self.parse_identifier_from_token(token)
+    }
+
+    #[inline(always)]
+    fn parse_plain_identifier(&mut self) -> Option<Expr> {
+        let token = self.current_token;
+        debug_assert_eq!(token.tag, TokenTag::Identifier);
+        self.parse_identifier_from_token(token)
+    }
+
+    #[inline(always)]
+    fn parse_identifier_from_token(&mut self, token: Token) -> Option<Expr> {
         self.advance_without_escape_check()?;
         let name = self.identifier_name(token);
         Some(self.ast.expr_identifier_reference(token.span, name))
