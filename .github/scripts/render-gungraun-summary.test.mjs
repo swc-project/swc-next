@@ -36,7 +36,7 @@ test("renders exact instruction counts", () => {
     ]),
   ]);
 
-  assert.match(output, /Instructions \(merge \\\| base\)/);
+  assert.match(output, /Instructions \(head \\\| base\)/);
   assert.match(output, /90 \\\| 100/);
   assert.match(output, /−10\.0000% 🟢/);
 });

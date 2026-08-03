@@ -289,7 +289,7 @@ function renderMetricTable(rows, definitions) {
   const benchmarkCount = new Set(rows.map((row) => row.benchmark)).size;
   const includeBenchmark = benchmarkCount > 1;
   const header = definitions.flatMap((definition) => [
-    `${definition.label} (merge \\| base)`,
+    `${definition.label} (head \\| base)`,
     "Change",
   ]);
   const lines = [
