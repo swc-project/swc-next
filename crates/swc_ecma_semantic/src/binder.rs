@@ -53,168 +53,89 @@ pub struct Symbol {
     pub decls: Range,
 }
 
-#[derive(Debug, Default, Clone, Copy)]
-pub struct SymbolFlags {
-    pub function_scoped_var: bool,
-    pub block_scoped_var: bool,
-    pub function: bool,
-    pub class: bool,
-    pub regular_enum: bool,
-    pub const_enum: bool,
-    pub value_module: bool,
-    pub interface: bool,
-    pub type_alias: bool,
-    pub type_parameter: bool,
-    pub namespace_module: bool,
-    pub import: bool,
-    pub type_import: bool,
-    pub const_var: bool,
-    pub ambient: bool,
-    pub parameter: bool,
-    pub catch_var: bool,
-    pub exported: bool,
-    pub is_default: bool,
-    pub enum_member: bool,
-    pub _reserved: u16,
+bitflags::bitflags! {
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+    pub struct SymbolFlags: u32 {
+        const FUNCTION_SCOPED_VAR = 1 << 0;
+        const BLOCK_SCOPED_VAR = 1 << 1;
+        const FUNCTION = 1 << 2;
+        const CLASS = 1 << 3;
+        const REGULAR_ENUM = 1 << 4;
+        const CONST_ENUM = 1 << 5;
+        const VALUE_MODULE = 1 << 6;
+        const INTERFACE = 1 << 7;
+        const TYPE_ALIAS = 1 << 8;
+        const TYPE_PARAMETER = 1 << 9;
+        const NAMESPACE_MODULE = 1 << 10;
+        const IMPORT = 1 << 11;
+        const TYPE_IMPORT = 1 << 12;
+        const CONST_VAR = 1 << 13;
+        const AMBIENT = 1 << 14;
+        const PARAMETER = 1 << 15;
+        const CATCH_VAR = 1 << 16;
+        const EXPORTED = 1 << 17;
+        const IS_DEFAULT = 1 << 18;
+        const ENUM_MEMBER = 1 << 19;
+
+        /// `var` / `let` / `const`, parameters and catch bindings included.
+        const VARIABLE = Self::FUNCTION_SCOPED_VAR.bits() | Self::BLOCK_SCOPED_VAR.bits();
+
+        /// Any import binding, value (`import x`) or type-only (`import type x`).
+        const ANY_IMPORT = Self::IMPORT.bits() | Self::TYPE_IMPORT.bits();
+
+        /// Declarations that live in JS value space (visible at runtime).
+        const VALUE_SPACE = Self::FUNCTION_SCOPED_VAR.bits()
+            | Self::BLOCK_SCOPED_VAR.bits()
+            | Self::FUNCTION.bits()
+            | Self::CLASS.bits()
+            | Self::REGULAR_ENUM.bits()
+            | Self::CONST_ENUM.bits()
+            | Self::VALUE_MODULE.bits()
+            | Self::ENUM_MEMBER.bits();
+
+        /// Declarations that live in TS type space.
+        const TYPE_SPACE = Self::CLASS.bits()
+            | Self::REGULAR_ENUM.bits()
+            | Self::CONST_ENUM.bits()
+            | Self::INTERFACE.bits()
+            | Self::TYPE_ALIAS.bits()
+            | Self::TYPE_PARAMETER.bits()
+            | Self::ENUM_MEMBER.bits();
+
+        /// Declarations a dotted type name can start from.
+        const NAMESPACE_SPACE = Self::VALUE_MODULE.bits()
+            | Self::NAMESPACE_MODULE.bits()
+            | Self::REGULAR_ENUM.bits()
+            | Self::CONST_ENUM.bits();
+
+        const BLOCK_SCOPED_LIKE = Self::BLOCK_SCOPED_VAR.bits()
+            | Self::CLASS.bits()
+            | Self::FUNCTION.bits();
+    }
 }
 
+const _: () = assert!(std::mem::size_of::<SymbolFlags>() == std::mem::size_of::<u32>());
+
 impl SymbolFlags {
-    /// `var` / `let` / `const`, parameters and catch bindings included.
-    pub const VARIABLE: Self = Self {
-        function_scoped_var: true,
-        block_scoped_var: true,
-        ..Self::NONE
-    };
-
-    /// Any import binding, value (`import x`) or type-only (`import type x`).
-    pub const ANY_IMPORT: Self = Self {
-        import: true,
-        type_import: true,
-        ..Self::NONE
-    };
-
-    /// Declarations that live in JS value space (visible at runtime).
-    pub const VALUE_SPACE: Self = Self {
-        function_scoped_var: true,
-        block_scoped_var: true,
-        function: true,
-        class: true,
-        regular_enum: true,
-        const_enum: true,
-        value_module: true,
-        enum_member: true,
-        ..Self::NONE
-    };
-
-    /// Declarations that live in TS type space.
-    pub const TYPE_SPACE: Self = Self {
-        class: true,
-        regular_enum: true,
-        const_enum: true,
-        interface: true,
-        type_alias: true,
-        type_parameter: true,
-        enum_member: true,
-        ..Self::NONE
-    };
-
-    /// Declarations a dotted type name can start from.
-    pub const NAMESPACE_SPACE: Self = Self {
-        value_module: true,
-        namespace_module: true,
-        regular_enum: true,
-        const_enum: true,
-        ..Self::NONE
-    };
-
-    pub const NONE: Self = Self {
-        function_scoped_var: false,
-        block_scoped_var: false,
-        function: false,
-        class: false,
-        regular_enum: false,
-        const_enum: false,
-        value_module: false,
-        interface: false,
-        type_alias: false,
-        type_parameter: false,
-        namespace_module: false,
-        import: false,
-        type_import: false,
-        const_var: false,
-        ambient: false,
-        parameter: false,
-        catch_var: false,
-        exported: false,
-        is_default: false,
-        enum_member: false,
-        _reserved: 0,
-    };
-
-    const BLOCK_SCOPED_LIKE: Self = Self {
-        block_scoped_var: true,
-        class: true,
-        function: true,
-        ..Self::NONE
-    };
-
-    /// True when `a` and `b` have at least one flag in common.
-    pub fn intersects(self, other: Self) -> bool {
-        (self.function_scoped_var & other.function_scoped_var)
-            | (self.block_scoped_var & other.block_scoped_var)
-            | (self.function & other.function)
-            | (self.class & other.class)
-            | (self.regular_enum & other.regular_enum)
-            | (self.const_enum & other.const_enum)
-            | (self.value_module & other.value_module)
-            | (self.interface & other.interface)
-            | (self.type_alias & other.type_alias)
-            | (self.type_parameter & other.type_parameter)
-            | (self.namespace_module & other.namespace_module)
-            | (self.import & other.import)
-            | (self.type_import & other.type_import)
-            | (self.const_var & other.const_var)
-            | (self.ambient & other.ambient)
-            | (self.parameter & other.parameter)
-            | (self.catch_var & other.catch_var)
-            | (self.exported & other.exported)
-            | (self.is_default & other.is_default)
-            | (self.enum_member & other.enum_member)
-    }
+    pub const NONE: Self = Self::empty();
 
     /// The union of two flag sets. Used when merging two compatible
     /// declarations into a single symbol.
     pub fn merge(self, other: Self) -> Self {
-        Self {
-            function_scoped_var: self.function_scoped_var || other.function_scoped_var,
-            block_scoped_var: self.block_scoped_var || other.block_scoped_var,
-            function: self.function || other.function,
-            class: self.class || other.class,
-            regular_enum: self.regular_enum || other.regular_enum,
-            const_enum: self.const_enum || other.const_enum,
-            value_module: self.value_module || other.value_module,
-            interface: self.interface || other.interface,
-            type_alias: self.type_alias || other.type_alias,
-            type_parameter: self.type_parameter || other.type_parameter,
-            namespace_module: self.namespace_module || other.namespace_module,
-            import: self.import || other.import,
-            type_import: self.type_import || other.type_import,
-            const_var: self.const_var || other.const_var,
-            ambient: self.ambient || other.ambient,
-            parameter: self.parameter || other.parameter,
-            catch_var: self.catch_var || other.catch_var,
-            exported: self.exported || other.exported,
-            is_default: self.is_default || other.is_default,
-            enum_member: self.enum_member || other.enum_member,
-            _reserved: 0,
-        }
+        self | other
+    }
+
+    fn with(mut self, flag: Self, value: bool) -> Self {
+        self.set(flag, value);
+        self
     }
 
     /// True for a `var` that hoists past intermediate blocks.
     /// Parameters and catch variables are function-scoped but do
     /// not hoist, so they return false here.
     pub fn is_hoisting_var(self) -> bool {
-        self.function_scoped_var && !self.parameter && !self.catch_var
+        self.contains(Self::FUNCTION_SCOPED_VAR)
+            && !self.intersects(Self::PARAMETER | Self::CATCH_VAR)
     }
 
     /// True for a JavaScript value-space binding visible at runtime,
@@ -274,29 +195,29 @@ impl SymbolFlags {
 
     /// Human-readable category for diagnostics.
     pub fn to_string(self) -> &'static str {
-        if self.function {
+        if self.contains(Self::FUNCTION) {
             "function"
-        } else if self.class {
+        } else if self.contains(Self::CLASS) {
             "class"
-        } else if self.regular_enum || self.const_enum {
+        } else if self.intersects(Self::REGULAR_ENUM | Self::CONST_ENUM) {
             "enum"
-        } else if self.value_module || self.namespace_module {
+        } else if self.intersects(Self::VALUE_MODULE | Self::NAMESPACE_MODULE) {
             "namespace"
-        } else if self.interface {
+        } else if self.contains(Self::INTERFACE) {
             "interface"
-        } else if self.type_alias {
+        } else if self.contains(Self::TYPE_ALIAS) {
             "type alias"
-        } else if self.type_import {
+        } else if self.contains(Self::TYPE_IMPORT) {
             "type import"
-        } else if self.import {
+        } else if self.contains(Self::IMPORT) {
             "import"
-        } else if self.parameter {
+        } else if self.contains(Self::PARAMETER) {
             "parameter"
-        } else if self.catch_var {
+        } else if self.contains(Self::CATCH_VAR) {
             "catch parameter"
-        } else if self.type_parameter {
+        } else if self.contains(Self::TYPE_PARAMETER) {
             "type parameter"
-        } else if self.enum_member {
+        } else if self.contains(Self::ENUM_MEMBER) {
             "enum member"
         } else {
             "variable"
@@ -311,112 +232,80 @@ pub struct Excludes;
 
 impl Excludes {
     pub const BLOCK_SCOPED_VAR: SymbolFlags = SymbolFlags::VALUE_SPACE;
-    pub const FUNCTION_SCOPED_VAR: SymbolFlags = SymbolFlags {
-        function_scoped_var: false,
-        function: false,
-        ..SymbolFlags::VALUE_SPACE
-    };
+    pub const FUNCTION_SCOPED_VAR: SymbolFlags = SymbolFlags::VALUE_SPACE
+        .difference(SymbolFlags::FUNCTION_SCOPED_VAR.union(SymbolFlags::FUNCTION));
     /// Function in a hoist scope (function/global/static block). TS
     /// allows function overloads and sloppy JS permits merging with
     /// `var`. Lexical scopes use the block-scoped excludes instead.
-    pub const FUNCTION: SymbolFlags = SymbolFlags {
-        function_scoped_var: false,
-        function: false,
-        value_module: false,
-        class: false,
-        ..SymbolFlags::VALUE_SPACE
-    };
-    pub const CLASS: SymbolFlags = SymbolFlags {
-        function_scoped_var: true,
-        block_scoped_var: true,
-        function: true,
-        class: true,
-        regular_enum: true,
-        const_enum: true,
-        value_module: false,
-        interface: false,
-        type_alias: true,
-        type_parameter: true,
-        enum_member: true,
-        ..SymbolFlags::NONE
-    };
-    pub const INTERFACE: SymbolFlags = SymbolFlags {
-        class: false,
-        regular_enum: true,
-        const_enum: true,
-        interface: false,
-        type_alias: true,
-        type_parameter: true,
-        enum_member: true,
-        ..SymbolFlags::NONE
-    };
+    pub const FUNCTION: SymbolFlags = SymbolFlags::VALUE_SPACE.difference(
+        SymbolFlags::FUNCTION_SCOPED_VAR
+            .union(SymbolFlags::FUNCTION)
+            .union(SymbolFlags::VALUE_MODULE)
+            .union(SymbolFlags::CLASS),
+    );
+    pub const CLASS: SymbolFlags = SymbolFlags::from_bits_retain(
+        SymbolFlags::FUNCTION_SCOPED_VAR.bits()
+            | SymbolFlags::BLOCK_SCOPED_VAR.bits()
+            | SymbolFlags::FUNCTION.bits()
+            | SymbolFlags::CLASS.bits()
+            | SymbolFlags::REGULAR_ENUM.bits()
+            | SymbolFlags::CONST_ENUM.bits()
+            | SymbolFlags::TYPE_ALIAS.bits()
+            | SymbolFlags::TYPE_PARAMETER.bits()
+            | SymbolFlags::ENUM_MEMBER.bits(),
+    );
+    pub const INTERFACE: SymbolFlags = SymbolFlags::from_bits_retain(
+        SymbolFlags::REGULAR_ENUM.bits()
+            | SymbolFlags::CONST_ENUM.bits()
+            | SymbolFlags::TYPE_ALIAS.bits()
+            | SymbolFlags::TYPE_PARAMETER.bits()
+            | SymbolFlags::ENUM_MEMBER.bits(),
+    );
     pub const TYPE_ALIAS: SymbolFlags = SymbolFlags::TYPE_SPACE;
-    pub const REGULAR_ENUM: SymbolFlags = SymbolFlags {
-        function_scoped_var: true,
-        block_scoped_var: true,
-        function: true,
-        class: true,
-        regular_enum: false,
-        const_enum: true,
-        value_module: false,
-        interface: true,
-        type_alias: true,
-        type_parameter: true,
-        enum_member: true,
-        ..SymbolFlags::NONE
-    };
-    pub const CONST_ENUM: SymbolFlags = SymbolFlags {
-        function_scoped_var: true,
-        block_scoped_var: true,
-        function: true,
-        class: true,
-        regular_enum: true,
-        const_enum: false,
-        value_module: true,
-        interface: true,
-        type_alias: true,
-        type_parameter: true,
-        enum_member: true,
-        ..SymbolFlags::NONE
-    };
-    pub const VALUE_MODULE: SymbolFlags = SymbolFlags {
-        function_scoped_var: true,
-        block_scoped_var: true,
-        function: false,
-        class: false,
-        regular_enum: false,
-        const_enum: true,
-        value_module: false,
-        enum_member: true,
-        ..SymbolFlags::NONE
-    };
+    pub const REGULAR_ENUM: SymbolFlags = SymbolFlags::from_bits_retain(
+        SymbolFlags::FUNCTION_SCOPED_VAR.bits()
+            | SymbolFlags::BLOCK_SCOPED_VAR.bits()
+            | SymbolFlags::FUNCTION.bits()
+            | SymbolFlags::CLASS.bits()
+            | SymbolFlags::CONST_ENUM.bits()
+            | SymbolFlags::INTERFACE.bits()
+            | SymbolFlags::TYPE_ALIAS.bits()
+            | SymbolFlags::TYPE_PARAMETER.bits()
+            | SymbolFlags::ENUM_MEMBER.bits(),
+    );
+    pub const CONST_ENUM: SymbolFlags = SymbolFlags::from_bits_retain(
+        SymbolFlags::FUNCTION_SCOPED_VAR.bits()
+            | SymbolFlags::BLOCK_SCOPED_VAR.bits()
+            | SymbolFlags::FUNCTION.bits()
+            | SymbolFlags::CLASS.bits()
+            | SymbolFlags::REGULAR_ENUM.bits()
+            | SymbolFlags::VALUE_MODULE.bits()
+            | SymbolFlags::INTERFACE.bits()
+            | SymbolFlags::TYPE_ALIAS.bits()
+            | SymbolFlags::TYPE_PARAMETER.bits()
+            | SymbolFlags::ENUM_MEMBER.bits(),
+    );
+    pub const VALUE_MODULE: SymbolFlags = SymbolFlags::from_bits_retain(
+        SymbolFlags::FUNCTION_SCOPED_VAR.bits()
+            | SymbolFlags::BLOCK_SCOPED_VAR.bits()
+            | SymbolFlags::CONST_ENUM.bits()
+            | SymbolFlags::ENUM_MEMBER.bits(),
+    );
     pub const NAMESPACE_MODULE: SymbolFlags = SymbolFlags::NONE;
     pub const IMPORT_BINDING: SymbolFlags = SymbolFlags::ANY_IMPORT;
-    pub const PARAMETER: SymbolFlags = SymbolFlags {
-        function_scoped_var: false,
-        ..SymbolFlags::VALUE_SPACE
-    };
+    pub const PARAMETER: SymbolFlags =
+        SymbolFlags::VALUE_SPACE.difference(SymbolFlags::FUNCTION_SCOPED_VAR);
     pub const CATCH_VAR: SymbolFlags = SymbolFlags::VALUE_SPACE;
     // Type parameters merge (multiple `infer T` in one conditional
     // unify). Duplicate explicit `<T, T>` is caught structurally.
-    pub const TYPE_PARAMETER: SymbolFlags = SymbolFlags {
-        type_parameter: false,
-        ..SymbolFlags::TYPE_SPACE
-    };
-    pub const ENUM_MEMBER: SymbolFlags = SymbolFlags {
-        function_scoped_var: true,
-        block_scoped_var: true,
-        function: true,
-        class: true,
-        regular_enum: true,
-        const_enum: true,
-        value_module: true,
-        interface: true,
-        type_alias: true,
-        type_parameter: true,
-        enum_member: true,
-        ..SymbolFlags::NONE
-    };
+    pub const TYPE_PARAMETER: SymbolFlags =
+        SymbolFlags::TYPE_SPACE.difference(SymbolFlags::TYPE_PARAMETER);
+    pub const ENUM_MEMBER: SymbolFlags = SymbolFlags::from_bits_retain(
+        SymbolFlags::VALUE_SPACE.bits()
+            | SymbolFlags::INTERFACE.bits()
+            | SymbolFlags::TYPE_ALIAS.bits()
+            | SymbolFlags::TYPE_PARAMETER.bits(),
+    );
 }
 
 /// A use of a name. One is recorded for every `identifier_reference`
@@ -453,7 +342,6 @@ pub struct ReferenceFlags {
     pub write: bool,
     /// The declaration space this position resolves in.
     pub space: ReferenceSpace,
-    pub _reserved: u8,
 }
 
 impl Default for ReferenceFlags {
@@ -461,7 +349,6 @@ impl Default for ReferenceFlags {
         Self {
             write: false,
             space: ReferenceSpace::Value,
-            _reserved: 0,
         }
     }
 }
@@ -626,36 +513,32 @@ impl<'a> SymbolTracker<'a> {
                 // Module-level function declarations are lexical;
                 // everywhere else (and in TS) `var` merges with them.
                 if !tree.is_ts() && scope.get(target).kind == ScopeKind::Module {
-                    excludes.function = true;
+                    excludes.insert(SymbolFlags::FUNCTION);
                 }
                 PendingBinding {
-                    flags: SymbolFlags {
-                        function_scoped_var: true,
-                        ambient: declaration.declare(tree) || self.ambient,
-                        ..SymbolFlags::NONE
-                    },
+                    flags: SymbolFlags::FUNCTION_SCOPED_VAR.with(
+                        SymbolFlags::AMBIENT,
+                        declaration.declare(tree) || self.ambient,
+                    ),
                     excludes,
                     scope: target,
                 }
             }
             VariableKind::Const | VariableKind::Using | VariableKind::AwaitUsing => {
                 PendingBinding {
-                    flags: SymbolFlags {
-                        block_scoped_var: true,
-                        const_var: true,
-                        ambient: declaration.declare(tree) || self.ambient,
-                        ..SymbolFlags::NONE
-                    },
+                    flags: (SymbolFlags::BLOCK_SCOPED_VAR | SymbolFlags::CONST_VAR).with(
+                        SymbolFlags::AMBIENT,
+                        declaration.declare(tree) || self.ambient,
+                    ),
                     excludes: Excludes::BLOCK_SCOPED_VAR,
                     scope: scope.current,
                 }
             }
             VariableKind::Let => PendingBinding {
-                flags: SymbolFlags {
-                    block_scoped_var: true,
-                    ambient: declaration.declare(tree) || self.ambient,
-                    ..SymbolFlags::NONE
-                },
+                flags: SymbolFlags::BLOCK_SCOPED_VAR.with(
+                    SymbolFlags::AMBIENT,
+                    declaration.declare(tree) || self.ambient,
+                ),
                 excludes: Excludes::BLOCK_SCOPED_VAR,
                 scope: scope.current,
             },
@@ -685,11 +568,7 @@ impl<'a> SymbolTracker<'a> {
         // TS overloads, sloppy JS Annex B.3.2, and global merge with
         // var. Lexical scopes (block/module) do not.
         self.pending = PendingBinding {
-            flags: SymbolFlags {
-                function: true,
-                ambient: self.ambient,
-                ..SymbolFlags::NONE
-            },
+            flags: SymbolFlags::FUNCTION.with(SymbolFlags::AMBIENT, self.ambient),
             excludes: if allow_overload {
                 Excludes::FUNCTION
             } else {
@@ -710,11 +589,7 @@ impl<'a> SymbolTracker<'a> {
             .parent
             .expect("a TypeScript function scope has a parent");
         self.pending = PendingBinding {
-            flags: SymbolFlags {
-                function: true,
-                ambient: true,
-                ..SymbolFlags::NONE
-            },
+            flags: SymbolFlags::FUNCTION | SymbolFlags::AMBIENT,
             excludes: Excludes::FUNCTION,
             scope: target,
         };
@@ -724,11 +599,8 @@ impl<'a> SymbolTracker<'a> {
         self.push_saved_context();
         let is_declaration = class.class_type(tree) == ClassType::ClassDeclaration;
         self.pending = PendingBinding {
-            flags: SymbolFlags {
-                class: true,
-                ambient: class.declare(tree) || self.ambient,
-                ..SymbolFlags::NONE
-            },
+            flags: SymbolFlags::CLASS
+                .with(SymbolFlags::AMBIENT, class.declare(tree) || self.ambient),
             excludes: Excludes::CLASS,
             scope: if is_declaration {
                 scope
@@ -748,12 +620,10 @@ impl<'a> SymbolTracker<'a> {
     pub fn enter_formal_parameters(&mut self, scope: &ScopeTracker<'a>) {
         self.push_saved_context();
         self.pending = PendingBinding {
-            flags: SymbolFlags {
-                function_scoped_var: true,
-                parameter: true,
-                ambient: self.pending.flags.ambient,
-                ..SymbolFlags::NONE
-            },
+            flags: (SymbolFlags::FUNCTION_SCOPED_VAR | SymbolFlags::PARAMETER).with(
+                SymbolFlags::AMBIENT,
+                self.pending.flags.contains(SymbolFlags::AMBIENT),
+            ),
             excludes: Excludes::PARAMETER,
             scope: scope.current,
         };
@@ -795,10 +665,7 @@ impl<'a> SymbolTracker<'a> {
     pub fn enter_import_specifier(&mut self, tree: &Ast, specifier: ImportSpecifier) {
         self.push_saved_context();
         if specifier.import_kind(tree) == ImportOrExportKind::Type {
-            self.pending.flags = SymbolFlags {
-                type_import: true,
-                ..SymbolFlags::NONE
-            };
+            self.pending.flags = SymbolFlags::TYPE_IMPORT;
             self.pending.excludes = Excludes::IMPORT_BINDING;
         }
     }
@@ -806,11 +673,7 @@ impl<'a> SymbolTracker<'a> {
     pub fn enter_catch_clause(&mut self, scope: &ScopeTracker<'a>) {
         self.push_saved_context();
         self.pending = PendingBinding {
-            flags: SymbolFlags {
-                function_scoped_var: true,
-                catch_var: true,
-                ..SymbolFlags::NONE
-            },
+            flags: SymbolFlags::FUNCTION_SCOPED_VAR | SymbolFlags::CATCH_VAR,
             excludes: Excludes::CATCH_VAR,
             scope: scope.current,
         };
@@ -826,11 +689,10 @@ impl<'a> SymbolTracker<'a> {
         // body bindings live in a scope pushed by the tracker.
         self.push_saved_context();
         self.pending = PendingBinding {
-            flags: SymbolFlags {
-                interface: true,
-                ambient: declaration.declare(tree) || self.ambient,
-                ..SymbolFlags::NONE
-            },
+            flags: SymbolFlags::INTERFACE.with(
+                SymbolFlags::AMBIENT,
+                declaration.declare(tree) || self.ambient,
+            ),
             excludes: Excludes::INTERFACE,
             scope: scope
                 .current_scope()
@@ -847,11 +709,10 @@ impl<'a> SymbolTracker<'a> {
     ) {
         self.push_saved_context();
         self.pending = PendingBinding {
-            flags: SymbolFlags {
-                type_alias: true,
-                ambient: declaration.declare(tree) || self.ambient,
-                ..SymbolFlags::NONE
-            },
+            flags: SymbolFlags::TYPE_ALIAS.with(
+                SymbolFlags::AMBIENT,
+                declaration.declare(tree) || self.ambient,
+            ),
             excludes: Excludes::TYPE_ALIAS,
             scope: scope
                 .current_scope()
@@ -869,18 +730,14 @@ impl<'a> SymbolTracker<'a> {
         self.push_saved_context();
         self.pending = PendingBinding {
             flags: if declaration.is_const(tree) {
-                SymbolFlags {
-                    const_enum: true,
-                    ambient: declaration.declare(tree) || self.ambient,
-                    ..SymbolFlags::NONE
-                }
+                SymbolFlags::CONST_ENUM
             } else {
-                SymbolFlags {
-                    regular_enum: true,
-                    ambient: declaration.declare(tree) || self.ambient,
-                    ..SymbolFlags::NONE
-                }
-            },
+                SymbolFlags::REGULAR_ENUM
+            }
+            .with(
+                SymbolFlags::AMBIENT,
+                declaration.declare(tree) || self.ambient,
+            ),
             excludes: if declaration.is_const(tree) {
                 Excludes::CONST_ENUM
             } else {
@@ -899,12 +756,12 @@ impl<'a> SymbolTracker<'a> {
         self.push_saved_context();
         let instantiated = namespace_is_instantiated(tree, declaration.body(tree));
         self.pending = PendingBinding {
-            flags: SymbolFlags {
-                value_module: instantiated,
-                namespace_module: true,
-                ambient: declaration.declare(tree) || self.ambient,
-                ..SymbolFlags::NONE
-            },
+            flags: SymbolFlags::NAMESPACE_MODULE
+                .with(SymbolFlags::VALUE_MODULE, instantiated)
+                .with(
+                    SymbolFlags::AMBIENT,
+                    declaration.declare(tree) || self.ambient,
+                ),
             excludes: if instantiated {
                 Excludes::VALUE_MODULE
             } else {
@@ -926,10 +783,7 @@ impl<'a> SymbolTracker<'a> {
     pub fn enter_ts_namespace_export_declaration(&mut self, scope: &ScopeTracker<'a>) {
         self.push_saved_context();
         self.pending = PendingBinding {
-            flags: SymbolFlags {
-                namespace_module: true,
-                ..SymbolFlags::NONE
-            },
+            flags: SymbolFlags::NAMESPACE_MODULE,
             excludes: Excludes::NAMESPACE_MODULE,
             scope: scope.current,
         };
@@ -952,10 +806,7 @@ impl<'a> SymbolTracker<'a> {
             scope.current
         };
         self.pending = PendingBinding {
-            flags: SymbolFlags {
-                type_parameter: true,
-                ..SymbolFlags::NONE
-            },
+            flags: SymbolFlags::TYPE_PARAMETER,
             excludes: Excludes::TYPE_PARAMETER,
             scope: target,
         };
@@ -978,10 +829,7 @@ impl<'a> SymbolTracker<'a> {
             scope.current
         };
         self.pending = PendingBinding {
-            flags: SymbolFlags {
-                type_parameter: true,
-                ..SymbolFlags::NONE
-            },
+            flags: SymbolFlags::TYPE_PARAMETER,
             excludes: Excludes::TYPE_PARAMETER,
             scope: target,
         };
@@ -1063,7 +911,7 @@ impl<'a> SymbolTracker<'a> {
         let node = identifier.node_id();
         // Type-position identifiers are parameter labels. Only type
         // parameters are real declarations there.
-        if space.in_type_position() && !self.pending.flags.type_parameter {
+        if space.in_type_position() && !self.pending.flags.contains(SymbolFlags::TYPE_PARAMETER) {
             return;
         }
         let name = identifier.name(tree);
@@ -1123,7 +971,11 @@ impl<'a> SymbolTracker<'a> {
         else {
             return;
         };
-        if !self.symbol(parameter).flags.parameter {
+        if !self
+            .symbol(parameter)
+            .flags
+            .contains(SymbolFlags::PARAMETER)
+        {
             return;
         }
         self.add_reference(
@@ -1164,11 +1016,7 @@ impl<'a> SymbolTracker<'a> {
         };
         let saved = self.pending;
         self.pending = PendingBinding {
-            flags: SymbolFlags {
-                enum_member: true,
-                ambient: self.ambient,
-                ..SymbolFlags::NONE
-            },
+            flags: SymbolFlags::ENUM_MEMBER.with(SymbolFlags::AMBIENT, self.ambient),
             excludes: Excludes::ENUM_MEMBER,
             scope: scope.current,
         };
@@ -1229,11 +1077,19 @@ impl<'a> SymbolTracker<'a> {
             let symbol = &mut self.symbols[existing.index()];
             if !symbol.flags.intersects(self.pending.excludes) {
                 let mut merged = symbol.flags.merge(self.pending.flags);
-                merged.exported = merged.exported || self.export_state != ExportState::None;
-                merged.is_default = merged.is_default || self.export_state == ExportState::Default;
+                if self.export_state != ExportState::None {
+                    merged.insert(SymbolFlags::EXPORTED);
+                }
+                if self.export_state == ExportState::Default {
+                    merged.insert(SymbolFlags::IS_DEFAULT);
+                }
                 // An overload implementation emits at runtime, so the merged
                 // symbol is non-ambient.
-                merged.ambient = symbol.flags.ambient && self.pending.flags.ambient;
+                merged.set(
+                    SymbolFlags::AMBIENT,
+                    symbol.flags.contains(SymbolFlags::AMBIENT)
+                        && self.pending.flags.contains(SymbolFlags::AMBIENT),
+                );
                 symbol.flags = merged;
             }
             existing
@@ -1241,8 +1097,14 @@ impl<'a> SymbolTracker<'a> {
             assert!(self.symbols.len() < u32::MAX as usize);
             let new_id = symbol_id(self.symbols.len());
             let mut flags = self.pending.flags;
-            flags.exported = self.export_state != ExportState::None;
-            flags.is_default = self.export_state == ExportState::Default;
+            flags.set(
+                SymbolFlags::EXPORTED,
+                self.export_state != ExportState::None,
+            );
+            flags.set(
+                SymbolFlags::IS_DEFAULT,
+                self.export_state == ExportState::Default,
+            );
             self.symbols.push(Symbol {
                 name,
                 flags,
@@ -1476,15 +1338,9 @@ impl<'a> SymbolTracker<'a> {
 fn import_pending(kind: ImportOrExportKind, scope: ScopeId) -> PendingBinding {
     PendingBinding {
         flags: if kind == ImportOrExportKind::Type {
-            SymbolFlags {
-                type_import: true,
-                ..SymbolFlags::NONE
-            }
+            SymbolFlags::TYPE_IMPORT
         } else {
-            SymbolFlags {
-                import: true,
-                ..SymbolFlags::NONE
-            }
+            SymbolFlags::IMPORT
         },
         excludes: Excludes::IMPORT_BINDING,
         scope,
@@ -1502,7 +1358,7 @@ fn type_parameter_visible(
     scopes: &ScopeTree<'_>,
     node_parents: &[Option<NodeId>],
 ) -> bool {
-    if !symbol.flags.type_parameter {
+    if !symbol.flags.contains(SymbolFlags::TYPE_PARAMETER) {
         return true;
     }
     let scope_node = scopes.get(symbol.scope).node;

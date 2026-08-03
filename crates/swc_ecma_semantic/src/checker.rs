@@ -728,10 +728,11 @@ impl Checker<'_, '_> {
                     .get_utf8(identifier.name(context.ast))
                     .as_bytes();
                 let flags = context.state.symbols.pending.flags;
-                if context.state.in_type_position() && !flags.type_parameter {
+                if context.state.in_type_position() && !flags.contains(SymbolFlags::TYPE_PARAMETER)
+                {
                     return;
                 }
-                if context.state.scope.is_strict() && !flags.ambient {
+                if context.state.scope.is_strict() && !flags.contains(SymbolFlags::AMBIENT) {
                     checks.check_strict_reserved(name, node_id, context, "a binding identifier");
                     if is_eval_or_arguments(name) {
                         let message = checks.fmt(format_args!(
@@ -740,7 +741,7 @@ impl Checker<'_, '_> {
                         ));
                         checks.report(context.ast.span(node_id), message, ReportOptions::default());
                     }
-                } else if flags.block_scoped_var && name == b"let" {
+                } else if flags.contains(SymbolFlags::BLOCK_SCOPED_VAR) && name == b"let" {
                     checks.report(
                         context.ast.span(node_id),
                         "'let' is not allowed as a variable name in a lexical declaration",
@@ -2347,7 +2348,8 @@ impl<'a> CheckerState<'a> {
         let excludes = context.state.symbols.pending.excludes;
         if let Some(existing_id) = existing_id {
             let existing = context.state.symbols.symbol(existing_id);
-            let merging_with_ambient = flags.ambient || existing.flags.ambient;
+            let merging_with_ambient = flags.contains(SymbolFlags::AMBIENT)
+                || existing.flags.contains(SymbolFlags::AMBIENT);
             if !merging_with_ambient && existing.flags.intersects(excludes) {
                 self.report_redeclaration(
                     context.ast,
@@ -2364,8 +2366,8 @@ impl<'a> CheckerState<'a> {
             // Duplicate parameters are allowed in sloppy simple-parameter-list
             // functions. Re-add the conflict for strict, unique, arrow, and
             // non-simple cases.
-            if existing.flags.parameter
-                && flags.parameter
+            if existing.flags.contains(SymbolFlags::PARAMETER)
+                && flags.contains(SymbolFlags::PARAMETER)
                 && let Some(parameters) = find_formal_parameters(context)
             {
                 let kind = parameters.kind(context.ast);
@@ -2395,7 +2397,7 @@ impl<'a> CheckerState<'a> {
         //
         //   function f(a = 1) { let a }   // still an error
         //   function f(a = 1) { var a }   // legal, var stays out
-        if !flags.function_scoped_var && !flags.function {
+        if !flags.intersects(SymbolFlags::FUNCTION_SCOPED_VAR | SymbolFlags::FUNCTION) {
             let target_scope = context.state.scope.get(target);
             let outer = target_scope.parent;
             let outer_holds_parameters = outer.is_some_and(|outer| match target_scope.kind {
@@ -2415,7 +2417,9 @@ impl<'a> CheckerState<'a> {
                 && let Some(symbol_id) = context.state.symbols.own_binding(outer, name)
             {
                 let existing = context.state.symbols.symbol(symbol_id);
-                if (existing.flags.parameter || existing.flags.catch_var)
+                if existing
+                    .flags
+                    .intersects(SymbolFlags::PARAMETER | SymbolFlags::CATCH_VAR)
                     && existing.flags.intersects(excludes)
                 {
                     self.report_redeclaration(
@@ -2456,7 +2460,7 @@ impl<'a> CheckerState<'a> {
                     );
                     break;
                 }
-                if existing.flags.catch_var {
+                if existing.flags.contains(SymbolFlags::CATCH_VAR) {
                     // https://tc39.es/ecma262/#sec-variablestatements-in-catch-blocks
                     // (14.15.1): a var colliding with a catch parameter is a
                     // syntax error, except for the Annex B.3.4 simple-binding

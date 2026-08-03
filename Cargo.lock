@@ -2831,6 +2831,7 @@ dependencies = [
 name = "swc_next_ecma_semantic"
 version = "0.11.0"
 dependencies = [
+ "bitflags",
  "oxc_index",
  "swc_next_allocator",
  "swc_next_ecma_ast",

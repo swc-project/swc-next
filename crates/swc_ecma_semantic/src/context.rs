@@ -117,7 +117,6 @@ impl<'a> SemanticContext<'a> {
             } else {
                 ReferenceSpace::Value
             },
-            _reserved: 0,
         }
     }
 
