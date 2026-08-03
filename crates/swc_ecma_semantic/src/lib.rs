@@ -353,7 +353,18 @@ pub struct AnalyzeOptions {
 /// errors are returned separately from parser diagnostics. Their messages use
 /// the tree's arena, so the result is valid as long as the tree is alive.
 pub fn analyze<'a>(root: Program, ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a> {
-    let mut visitor = Checker::new(root, ast, options.check_syntax);
+    if options.check_syntax {
+        analyze_with_syntax_checks::<true>(root, ast)
+    } else {
+        analyze_with_syntax_checks::<false>(root, ast)
+    }
+}
+
+fn analyze_with_syntax_checks<'a, const CHECK_SYNTAX: bool>(
+    root: Program,
+    ast: &Ast<'a>,
+) -> SemanticReturn<'a> {
+    let mut visitor = Checker::<CHECK_SYNTAX>::new(root, ast);
     root.visit_with(&mut visitor);
     let (semantic, diagnostics) = visitor.finish();
     SemanticReturn {
