@@ -47,7 +47,7 @@ pub struct Semantic<'a> {
     scope_maps: ArenaVec<'a, ScopeMap<'a>>,
     hoisting_variables: ArenaVec<'a, ScopeMap<'a>>,
     node_scopes: ArenaVec<'a, ScopeId>,
-    node_parents: ArenaVec<'a, NodeId>,
+    node_parents: ArenaVec<'a, Option<NodeId>>,
     node_symbols: ArenaVec<'a, Option<SymbolId>>,
     node_references: ArenaVec<'a, Option<ReferenceId>>,
 }
@@ -104,8 +104,7 @@ impl<'a> Semantic<'a> {
     /// The structural parent of `node`, or `None` at the root.
     pub fn parent_of(&self, node: NodeId) -> Option<NodeId> {
         assert!(node.index() < self.node_parents.len());
-        let parent = self.node_parents[node.index()];
-        (parent != node).then_some(parent)
+        self.node_parents[node.index()]
     }
 
     /// Walks from `node` up to the root, yielding `node` first.
@@ -269,7 +268,7 @@ impl Iterator for ScopeIterator<'_> {
 }
 
 pub struct SemanticAncestorIterator<'a> {
-    node_parents: &'a [NodeId],
+    node_parents: &'a [Option<NodeId>],
     current: Option<NodeId>,
 }
 
@@ -279,8 +278,7 @@ impl Iterator for SemanticAncestorIterator<'_> {
     fn next(&mut self) -> Option<Self::Item> {
         let node = self.current?;
         assert!(node.index() < self.node_parents.len());
-        let parent = self.node_parents[node.index()];
-        self.current = (parent != node).then_some(parent);
+        self.current = self.node_parents[node.index()];
         Some(node)
     }
 }
