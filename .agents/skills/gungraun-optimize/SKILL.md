@@ -81,13 +81,19 @@ When temporary CI is required:
 
 ### 4. Compare and decide
 
-- Compare the provisional head with its pull request base and with the preceding accepted head when available.
-- Accept the layer when at least one target case improves by 1% or more, no target case regresses, no related case regresses by 1% or more, and correctness checks pass.
-- Accept an exact improvement below 1% only when the code is equally simple or simpler and no target or related case regresses.
-- Reject any target regression. Reject a related regression of 1% or more unless the user explicitly accepts the tradeoff.
+- Compare both the layer's incremental effect against its pull request base and the cumulative stack effect against trunk. Judge the new layer on its incremental effect; never use earlier wins to justify a newly harmful layer.
+- Define the comparable target portfolio, related cases, and any user-designated or workload-critical protected cases before deciding. Use documented production frequencies as weights when they are trustworthy; otherwise weight comparable target cases equally.
+- Compute the target portfolio score as the geometric mean of each `head / base` metric ratio, or the corresponding weighted geometric mean. Express portfolio improvement as `1 - score`. Also inspect the absolute metric delta, the count and distribution of improvements and regressions, the largest individual regression, and profile evidence. Treat a raw sum as supporting evidence, not the decision by itself, because benchmark input sizes can dominate it.
+- Require correctness checks to pass. When the target portfolio improves by at least 1%, accept automatically if every individual target and related regression is below 1%.
+- Also accept an isolated non-protected regression of at least 1% but below 3% when the target portfolio improves by at least 5%, the regression is not repeated across a related workload family, and profile evidence explains the tradeoff.
+- Do not automatically accept a protected-case regression of 1% or more or any individual regression of 3% or more. Keep the provisional layer, report the exact tradeoff, and ask the user to decide.
+- Apply the same portfolio reasoning to related cases. Do not discard a large target improvement solely because a non-representative case outside the target portfolio has a sub-1% regression.
+- Reject a layer when its target portfolio worsens or when small regressions are broad enough to make the overall effect negative. Accept an improvement below 1% only when the code is equally simple or simpler, the portfolio still improves, and no individual regression reaches 1%.
+- Re-run the matching CI comparison once before deciding when a result is near a threshold or the aggregate, individual cases, and profile evidence conflict.
 - Report an improvement of 5% or more as an intermediate result with exact base/head counts, percentages, the run link, and the profile evidence before continuing.
+- For every accepted tradeoff, report the portfolio score, absolute metric change, individual regressions, protected-case status, and profile evidence.
 - Keep an accepted layer unchanged and add the next attempt as a new layer above it.
-- For a rejected layer, use `gh stack modify` to drop it, resubmit the remaining stack with `gh stack submit --auto`, then use `gh pr close <task-owned-pr> --delete-branch` only to close and delete that rejected pull request branch. Do not retain a revert commit in an accepted pull request.
+- After a layer is conclusively rejected, use `gh stack modify` to drop it, resubmit the remaining stack with `gh stack submit --auto`, then use `gh pr close <task-owned-pr> --delete-branch` only to close and delete that rejected pull request branch. Do not drop an ambiguous tradeoff while awaiting the user's decision, and do not retain a revert commit in an accepted pull request.
 - After two failed hypotheses for the same hot path, move to the next profile-supported target without treating the failures as a reason to finish.
 
 Repeat with fresh profiles because the hot path can move after each accepted optimization.
