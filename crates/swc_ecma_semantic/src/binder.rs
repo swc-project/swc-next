@@ -1247,7 +1247,9 @@ impl<'a> SymbolTracker<'a> {
             });
             self.first_decls.push(node);
             let key = tree.string(name).clone_in(self.allocator);
-            self.scope_maps[target.index()].insert(key, new_id);
+            let scope_map = &mut self.scope_maps[target.index()];
+            reserve_large_scope_map(scope_map);
+            scope_map.insert(key, new_id);
             new_id
         };
 
@@ -1469,6 +1471,23 @@ impl<'a> SymbolTracker<'a> {
             node_references,
         }
     }
+}
+
+/// Avoid repeatedly copying the buckets of declaration-heavy scopes. Most
+/// scopes stay tiny and retain the hash table's default growth policy; maps
+/// that fill a medium-sized table jump over the otherwise repeated doublings.
+#[inline]
+fn reserve_large_scope_map(map: &mut ScopeMap<'_>) {
+    let len = map.len();
+    if len != map.capacity() {
+        return;
+    }
+    let target = match len {
+        64..256 => 896,
+        256..2048 => 7168,
+        _ => return,
+    };
+    map.reserve(target - len);
 }
 
 fn import_pending(kind: ImportOrExportKind, scope: ScopeId) -> PendingBinding {
