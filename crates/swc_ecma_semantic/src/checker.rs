@@ -3,6 +3,7 @@
 
 use std::{borrow::Cow, fmt::Write};
 
+use memchr::memchr;
 use swc_next_allocator::{
     Allocator, CloneIn, hash_map::HashMap as ArenaHashMap, vec::Vec as ArenaVec,
 };
@@ -611,7 +612,7 @@ fn module_export_name<'b>(tree: &'b Ast<'_>, node: NodeId) -> &'b [u8] {
 
 fn has_octal_escape(value: &[u8]) -> bool {
     let mut position = 0;
-    while let Some(offset) = value[position..].iter().position(|&byte| byte == b'\\') {
+    while let Some(offset) = memchr(b'\\', &value[position..]) {
         let slash = position + offset;
         let next = slash + 1;
         if next >= value.len() {
