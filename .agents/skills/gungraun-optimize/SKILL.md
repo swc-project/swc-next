@@ -61,6 +61,7 @@ When temporary CI is required:
 - Scope subsequent runs with Gungraun's benchmark filter when the workflow permits it.
 - Rank target cases by the requested metric. Start with `Ir` unless another metric was requested.
 - Inspect regular and differential flamegraphs or annotate the retained Callgrind data. Find functions with high self cost, unexpectedly repeated work, avoidable allocations, poor locality, expensive conversions, or unnecessary library calls.
+- Before creating or measuring a provisional layer, record and freeze the comparable target portfolio, related cases, user-designated or workload-critical protected cases, and case frequencies. Use trustworthy documented production frequencies when available; otherwise assign and disclose an equal frequency of one to every case. Do not change these classifications or weights after seeing provisional results without disclosing the reason and obtaining user approval.
 - Select one hypothesis that the available profile evidence supports. Do not optimize from intuition alone.
 
 ### 2. Create one provisional layer
@@ -81,17 +82,17 @@ When temporary CI is required:
 
 ### 4. Compare and decide
 
-- Compare both the layer's incremental effect against its pull request base and the cumulative stack effect against trunk. Judge the new layer on its incremental effect; never use earlier wins to justify a newly harmful layer.
-- Define the comparable target portfolio, related cases, and any user-designated or workload-critical protected cases before deciding. Use documented production frequencies as weights when they are trustworthy; otherwise weight comparable target cases equally.
-- Compute the target portfolio score as the geometric mean of each `head / base` metric ratio, or the corresponding weighted geometric mean. Express portfolio improvement as `1 - score`. Also inspect the absolute metric delta, the count and distribution of improvements and regressions, the largest individual regression, and profile evidence. Treat a raw sum as supporting evidence, not the decision by itself, because benchmark input sizes can dominate it.
-- Require correctness checks to pass. When the target portfolio improves by at least 1%, accept automatically if every individual target and related regression is below 1%.
-- Also accept an isolated non-protected regression of at least 1% but below 3% when the target portfolio improves by at least 5%, the regression is not repeated across a related workload family, and profile evidence explains the tradeoff.
-- Do not automatically accept a protected-case regression of 1% or more or any individual regression of 3% or more. Keep the provisional layer, report the exact tradeoff, and ask the user to decide.
+- Compare the layer's incremental effect against its pull request base and the cumulative stack effect against trunk. Require both comparisons to satisfy the applicable portfolio and per-case thresholds below; never use earlier wins to justify a newly harmful layer or let individually small regressions evade the cumulative thresholds.
+- Compute the primary target portfolio score as `sum(frequency * head) / sum(frequency * base)`, equivalently the arithmetic mean of `head / base` ratios weighted by `frequency * base`. Express portfolio improvement as `1 - score`. Use the equal-weight geometric mean of case ratios only as a secondary suite statistic.
+- Also inspect the frequency-weighted absolute metric delta, the count and distribution of improvements and regressions, the largest individual regression, and profile evidence.
+- Require correctness checks to pass. Accept automatically when both incremental and cumulative primary target portfolio scores improve by at least 1% and every incremental and cumulative individual target and related regression is below 1%.
+- Also accept an isolated non-protected regression of at least 1% but below 3% when both primary target portfolio scores improve by at least 5%, neither the incremental nor cumulative regression reaches 3%, the regression is not repeated across a related workload family, and profile evidence explains the tradeoff.
+- Do not automatically accept when either comparison has a protected-case regression of 1% or more or any individual regression of 3% or more. Keep the provisional layer, report the exact tradeoff, and ask the user to decide.
 - Apply the same portfolio reasoning to related cases. Do not discard a large target improvement solely because a non-representative case outside the target portfolio has a sub-1% regression.
-- Reject a layer when its target portfolio worsens or when small regressions are broad enough to make the overall effect negative. Accept an improvement below 1% only when the code is equally simple or simpler, the portfolio still improves, and no individual regression reaches 1%.
+- Reject a layer when its incremental primary target portfolio worsens or when small regressions are broad enough to make the overall effect negative. Accept an improvement below 1% only when the code is equally simple or simpler, both primary portfolio scores still improve, and no incremental or cumulative individual regression reaches 1%.
 - Re-run the matching CI comparison once before deciding when a result is near a threshold or the aggregate, individual cases, and profile evidence conflict.
 - Report an improvement of 5% or more as an intermediate result with exact base/head counts, percentages, the run link, and the profile evidence before continuing.
-- For every accepted tradeoff, report the portfolio score, absolute metric change, individual regressions, protected-case status, and profile evidence.
+- For every accepted tradeoff, report both incremental and cumulative primary portfolio scores, the secondary geometric means, frequency-weighted absolute metric changes, individual regressions, protected-case status, and profile evidence.
 - Keep an accepted layer unchanged and add the next attempt as a new layer above it.
 - After a layer is conclusively rejected, use `gh stack modify` to drop it, resubmit the remaining stack with `gh stack submit --auto`, then use `gh pr close <task-owned-pr> --delete-branch` only to close and delete that rejected pull request branch. Do not drop an ambiguous tradeoff while awaiting the user's decision, and do not retain a revert commit in an accepted pull request.
 - After two failed hypotheses for the same hot path, move to the next profile-supported target without treating the failures as a reason to finish.
