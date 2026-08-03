@@ -1,3 +1,5 @@
+use std::mem::MaybeUninit;
+
 use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId, Program,
@@ -33,12 +35,15 @@ impl<'traverse, 'ast> SemanticVisitCtx<'traverse, 'ast> {
 
     pub fn leave_node(&mut self, node: NodeId) {
         debug_assert_eq!(self.current_node, Some(node));
-        self.current_node = self.state.node_parents[node.index()];
+        // SAFETY: `enter_node` initialized this slot before visiting children.
+        self.current_node = unsafe { *self.state.node_parents[node.index()].assume_init_ref() };
     }
 
     pub fn parent(&self) -> Option<NodeId> {
-        self.current_node
-            .and_then(|node| self.state.node_parents[node.index()])
+        self.current_node.and_then(|node| {
+            // SAFETY: Every current node has already passed through `enter_node`.
+            unsafe { *self.state.node_parents[node.index()].assume_init_ref() }
+        })
     }
 
     pub fn current_node(&self) -> Option<NodeId> {
@@ -47,7 +52,8 @@ impl<'traverse, 'ast> SemanticVisitCtx<'traverse, 'ast> {
 
     pub fn ancestors(&self) -> impl Iterator<Item = NodeId> + '_ {
         std::iter::successors(self.current_node, |node| {
-            self.state.node_parents[node.index()]
+            // SAFETY: Ancestors were initialized when traversal entered them.
+            unsafe { *self.state.node_parents[node.index()].assume_init_ref() }
         })
     }
 
@@ -66,19 +72,15 @@ pub(crate) struct SemanticContext<'a> {
     type_position_depth: u32,
     reference_flags: ReferenceFlags,
     // per-node tables carried into the final `Semantic`
-    node_scopes: ArenaVec<'a, ScopeId>,
-    node_parents: ArenaVec<'a, Option<NodeId>>,
+    node_scopes: ArenaVec<'a, MaybeUninit<ScopeId>>,
+    node_parents: ArenaVec<'a, MaybeUninit<Option<NodeId>>>,
 }
 
 impl<'a> SemanticContext<'a> {
     pub fn init(root: Program, tree: &Ast<'a>) -> Self {
         let allocator = tree.allocator();
-        let mut node_scopes = ArenaVec::with_capacity_in(tree.node_count(), allocator);
-        let mut node_parents = ArenaVec::with_capacity_in(tree.node_count(), allocator);
-        for _ in 0..tree.node_count() {
-            node_scopes.push(ScopeId::ROOT);
-            node_parents.push(None);
-        }
+        let node_scopes = uninit_node_table(tree.node_count(), allocator);
+        let node_parents = uninit_node_table(tree.node_count(), allocator);
         Self {
             scope: ScopeTracker::init(root, tree),
             symbols: SymbolTracker::init(tree),
@@ -103,8 +105,8 @@ impl<'a> SemanticContext<'a> {
 
     #[inline]
     pub fn enter_node(&mut self, node: NodeId, parent: Option<NodeId>) -> ReferenceFlags {
-        self.node_scopes[node.index()] = self.scope.current;
-        self.node_parents[node.index()] = parent;
+        self.node_scopes[node.index()].write(self.scope.current);
+        self.node_parents[node.index()].write(parent);
         let flags = self.reference_flags;
         self.reference_flags = self.default_reference_flags();
         flags
@@ -257,8 +259,43 @@ impl<'a> SemanticContext<'a> {
     }
 
     pub fn finalize(self, tree: &Ast) -> Semantic<'a> {
+        // SAFETY: The visitor enters every AST node exactly once, initializing
+        // both complete per-node tables before finalization.
+        let node_scopes = unsafe { assume_init_node_table(self.node_scopes) };
+        let node_parents = unsafe { assume_init_node_table(self.node_parents) };
         let scopes = self.scope.into_scope_tree();
         self.symbols
-            .finalize(tree, scopes, self.node_scopes, self.node_parents)
+            .finalize(tree, scopes, node_scopes, node_parents)
     }
+}
+
+#[inline]
+fn uninit_node_table<'a, T>(
+    length: usize,
+    allocator: &'a swc_next_allocator::Allocator,
+) -> ArenaVec<'a, MaybeUninit<T>> {
+    let mut table = ArenaVec::with_capacity_in(length, allocator);
+    // SAFETY: `MaybeUninit` permits uninitialized elements. Traversal writes
+    // every node's slot before it can be read.
+    unsafe { table.set_len(length) };
+    table
+}
+
+/// Reuses a fully initialized `MaybeUninit` allocation without copying it.
+///
+/// # Safety
+///
+/// Every element in `table` must contain a valid `T`.
+#[inline(always)]
+unsafe fn assume_init_node_table<'a, T>(
+    mut table: ArenaVec<'a, MaybeUninit<T>>,
+) -> ArenaVec<'a, T> {
+    let allocator = table.bump();
+    let length = table.len();
+    let capacity = table.capacity();
+    let pointer = table.as_mut_ptr().cast::<T>();
+    // SAFETY: `MaybeUninit<T>` has the same layout as `T`; the caller promises
+    // every element is initialized, all allocation metadata is unchanged, and
+    // arena vectors have no destructor that could invalidate the allocation.
+    unsafe { ArenaVec::from_raw_parts_in(pointer, length, capacity, allocator) }
 }
