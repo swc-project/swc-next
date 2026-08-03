@@ -31,10 +31,6 @@ name    = "gungraun"
 
 [[bench]]
 harness = false
-name    = "gungraun_memory"
-
-[[bench]]
-harness = false
 name    = "parser"
 
 [[bench]]

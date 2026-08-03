@@ -4,81 +4,25 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-const countFormatter = new Intl.NumberFormat("en-US");
-
-const metricGroups = [
-  {
-    title: "Callgrind",
-    definitions: [
-      {
-        key: "instructions",
-        label: "Instructions",
-        tool: "Callgrind",
-        summary: "Callgrind",
-        events: ["Ir"],
-      },
-      {
-        key: "estimatedCycles",
-        label: "Estimated cycles",
-        tool: "Callgrind",
-        summary: "Callgrind",
-        events: ["EstimatedCycles"],
-      },
-      {
-        key: "d1DataMisses",
-        label: "D1 data misses",
-        tool: "Callgrind",
-        summary: "Callgrind",
-        events: ["D1mr", "D1mw"],
-      },
-      {
-        key: "llDataMisses",
-        label: "LL data misses",
-        tool: "Callgrind",
-        summary: "Callgrind",
-        events: ["DLmr", "DLmw"],
-      },
-    ],
-  },
-  {
-    title: "DHAT",
-    definitions: [
-      {
-        key: "totalBytes",
-        label: "Total bytes",
-        tool: "DHAT",
-        summary: "Dhat",
-        events: ["TotalBytes"],
-      },
-      {
-        key: "totalBlocks",
-        label: "Total blocks",
-        tool: "DHAT",
-        summary: "Dhat",
-        events: ["TotalBlocks"],
-      },
-      {
-        key: "peakBytes",
-        label: "Peak bytes",
-        tool: "DHAT",
-        summary: "Dhat",
-        events: ["AtTGmaxBytes"],
-      },
-      {
-        key: "peakBlocks",
-        label: "Peak blocks",
-        tool: "DHAT",
-        summary: "Dhat",
-        events: ["AtTGmaxBlocks"],
-      },
-    ],
-  },
-];
-
-const allDefinitions = metricGroups.flatMap((group) => group.definitions);
+const instructionFormatter = new Intl.NumberFormat("en-US");
 
 function hasOwn(value, key) {
   return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function parseDiff(value) {
+  if (value === "inf") {
+    return Number.POSITIVE_INFINITY;
+  }
+  if (value === "-inf") {
+    return Number.NEGATIVE_INFINITY;
+  }
+
+  const parsed = Number(value);
+  if (Number.isNaN(parsed)) {
+    throw new Error(`Invalid instruction difference: ${value}`);
+  }
+  return parsed;
 }
 
 function benchmarkName(summary) {
@@ -92,87 +36,71 @@ function benchmarkName(summary) {
   return `${groupName}::${functionName}`;
 }
 
-function integerCount(metric, side, event, benchmark) {
+function instructionCount(metric, side, benchmark) {
   if (!metric || typeof metric !== "object" || !hasOwn(metric, "Int")) {
-    throw new Error(`Missing ${side} ${event} value for ${benchmark}`);
+    throw new Error(`Missing ${side} instruction value for ${benchmark}`);
   }
-  if (!Number.isSafeInteger(metric.Int) || metric.Int < 0) {
-    throw new Error(`Invalid ${side} ${event} value for ${benchmark}`);
+
+  const count = metric.Int;
+  if (!Number.isSafeInteger(count) || count < 0) {
+    throw new Error(`Invalid ${side} instruction count for ${benchmark}`);
   }
-  return metric.Int;
+  return count;
 }
 
-function comparisonVariant(values, event, benchmark) {
-  if (!values || typeof values !== "object") {
-    throw new Error(`Missing ${event} values for ${benchmark}`);
-  }
-  if (hasOwn(values, "Both")) {
-    if (!Array.isArray(values.Both) || values.Both.length !== 2) {
-      throw new Error(`Invalid merge/base ${event} values for ${benchmark}`);
-    }
-    return "both";
-  }
-  if (hasOwn(values, "Left")) {
-    return "new";
-  }
-  if (hasOwn(values, "Right")) {
-    return "removed";
-  }
-  throw new Error(`Unsupported ${event} values for ${benchmark}`);
-}
-
-function percentChange(merge, base) {
-  if (base === 0) {
-    return merge === 0 ? 0 : Number.POSITIVE_INFINITY;
-  }
-  return ((merge - base) / base) * 100;
-}
-
-function metricComparison(summary, definition, benchmark) {
-  const profile = summary.profiles.find(
-    (candidate) => candidate.tool === definition.tool,
+function instructionComparison(summary) {
+  const benchmark = benchmarkName(summary);
+  const callgrind = summary.profiles.find(
+    (profile) => profile.tool === "Callgrind",
   );
-  if (!profile) {
-    return null;
+  const metrics = callgrind?.summaries?.total?.summary?.Callgrind;
+  const instruction = metrics?.Ir;
+  const values = instruction?.metrics;
+  if (!values || typeof values !== "object") {
+    throw new Error(`Missing instruction values for ${benchmark}`);
   }
 
-  const metrics = profile.summaries?.total?.summary?.[definition.summary];
-  if (!metrics || typeof metrics !== "object") {
-    throw new Error(`Missing ${definition.tool} metrics for ${benchmark}`);
-  }
-  if (definition.events.some((event) => !hasOwn(metrics, event))) {
-    return null;
-  }
-
-  let comparison;
-  let merge = 0;
-  let base = 0;
-  for (const event of definition.events) {
-    const values = metrics[event]?.metrics;
-    const eventComparison = comparisonVariant(values, event, benchmark);
-    if (comparison && comparison !== eventComparison) {
-      throw new Error(
-        `Mismatched comparison sides for ${definition.label} in ${benchmark}`,
-      );
+  if (hasOwn(values, "Both")) {
+    const pair = values.Both;
+    if (!Array.isArray(pair) || pair.length !== 2) {
+      throw new Error(`Invalid merge/base instruction values for ${benchmark}`);
     }
-    comparison = eventComparison;
 
-    if (comparison === "both") {
-      merge += integerCount(values.Both[0], "merge", event, benchmark);
-      base += integerCount(values.Both[1], "base", event, benchmark);
-    } else if (comparison === "new") {
-      merge += integerCount(values.Left, "merge", event, benchmark);
-    } else {
-      base += integerCount(values.Right, "base", event, benchmark);
-    }
+    const mergeInstructions = instructionCount(pair[0], "merge", benchmark);
+    const baseInstructions = instructionCount(pair[1], "base", benchmark);
+    return {
+      mergeInstructions,
+      baseInstructions,
+      comparison: "both",
+      change: parseDiff(String(instruction.diffs?.diff_pct)),
+    };
   }
 
-  return {
-    merge: comparison === "removed" ? null : merge,
-    base: comparison === "new" ? null : base,
-    comparison,
-    change: comparison === "both" ? percentChange(merge, base) : null,
-  };
+  if (hasOwn(values, "Left")) {
+    const mergeInstructions = instructionCount(
+      values.Left,
+      "merge",
+      benchmark,
+    );
+    return {
+      mergeInstructions,
+      baseInstructions: null,
+      comparison: "new",
+      change: null,
+    };
+  }
+
+  if (hasOwn(values, "Right")) {
+    const baseInstructions = instructionCount(values.Right, "base", benchmark);
+    return {
+      mergeInstructions: null,
+      baseInstructions,
+      comparison: "removed",
+      change: null,
+    };
+  }
+
+  throw new Error(`Unsupported instruction values for ${benchmark}`);
 }
 
 function summaryRow(summary) {
@@ -185,27 +113,24 @@ function summaryRow(summary) {
     throw new Error("Gungraun summary is missing profiles");
   }
 
-  const benchmark = benchmarkName(summary);
-  const metrics = Object.fromEntries(
-    allDefinitions.map((definition) => [
-      definition.key,
-      metricComparison(summary, definition, benchmark),
-    ]),
-  );
-  if (Object.values(metrics).every((metric) => metric === null)) {
-    throw new Error(`No supported metrics for ${benchmark}`);
-  }
+  const comparison = instructionComparison(summary);
   return {
-    benchmark,
+    benchmark: benchmarkName(summary),
     caseName: summary.id ?? summary.details ?? "default",
-    metrics,
+    ...comparison,
   };
 }
 
 function compareRows(left, right) {
-  return `${left.benchmark}\0${left.caseName}`.localeCompare(
-    `${right.benchmark}\0${right.caseName}`,
-  );
+  const leftKey = `${left.benchmark}\0${left.caseName}`;
+  const rightKey = `${right.benchmark}\0${right.caseName}`;
+  if (leftKey < rightKey) {
+    return -1;
+  }
+  if (leftKey > rightKey) {
+    return 1;
+  }
+  return 0;
 }
 
 function benchmarkGroup(row) {
@@ -216,7 +141,10 @@ function benchmarkGroup(row) {
 function benchmarkLabel(row, includeBenchmark) {
   const segments = row.benchmark.split("::");
   const functionName = segments.at(-1).replace(/^bench_/, "");
-  return includeBenchmark ? `${functionName}/${row.caseName}` : row.caseName;
+  if (includeBenchmark) {
+    return `${functionName}/${row.caseName}`;
+  }
+  return row.caseName;
 }
 
 function groupTitle(group) {
@@ -233,93 +161,81 @@ function escapeTableCell(value) {
     .trim();
 }
 
+function formatChange(row) {
+  if (row.comparison === "new") {
+    return "New";
+  }
+  if (row.comparison === "removed") {
+    return "Removed";
+  }
+  if (row.change === 0) {
+    return "0% ⚪";
+  }
+
+  const marker = row.change < 0 ? "🟢" : "🔴";
+  if (!Number.isFinite(row.change)) {
+    const change = row.change < 0 ? "−∞" : "+∞";
+    return `${change}% ${marker}`;
+  }
+  return `${formatSignedShort(row.change)}% ${marker}`;
+}
+
 function formatSignedShort(value) {
   const magnitude = Math.abs(value);
-  const fractionDigits =
-    magnitude < 10
-      ? 5
-      : magnitude < 100
-        ? 4
-        : magnitude < 1_000
-          ? 3
-          : magnitude < 10_000
-            ? 2
-            : magnitude < 100_000
-              ? 1
-              : 0;
+  let fractionDigits;
+  if (magnitude < 10) {
+    fractionDigits = 5;
+  } else if (magnitude < 100) {
+    fractionDigits = 4;
+  } else if (magnitude < 1_000) {
+    fractionDigits = 3;
+  } else if (magnitude < 10_000) {
+    fractionDigits = 2;
+  } else if (magnitude < 100_000) {
+    fractionDigits = 1;
+  } else {
+    fractionDigits = 0;
+  }
+
   const sign = value < 0 ? "−" : "+";
   return `${sign}${magnitude.toFixed(fractionDigits)}`;
 }
 
-function formatChange(metric) {
-  if (metric.comparison === "new") {
-    return "New";
-  }
-  if (metric.comparison === "removed") {
-    return "Removed";
-  }
-  if (metric.change === 0) {
-    return "0% ⚪";
-  }
-  const marker = metric.change < 0 ? "🟢" : "🔴";
-  if (!Number.isFinite(metric.change)) {
-    return `+∞% ${marker}`;
-  }
-  return `${formatSignedShort(metric.change)}% ${marker}`;
-}
-
-function formatCounts(metric) {
-  const merge = metric.merge === null ? "—" : countFormatter.format(metric.merge);
-  const base = metric.base === null ? "—" : countFormatter.format(metric.base);
-  return `${merge} \\| ${base}`;
+function formatInstructionCount(value) {
+  return value === null ? "—" : instructionFormatter.format(value);
 }
 
 function groupRows(rows) {
   const groups = new Map();
   for (const row of rows) {
     const group = benchmarkGroup(row);
-    const rowsInGroup = groups.get(group) ?? [];
-    rowsInGroup.push(row);
-    groups.set(group, rowsInGroup);
+    const groupRows = groups.get(group) ?? [];
+    groupRows.push(row);
+    groups.set(group, groupRows);
   }
   return groups;
 }
 
-function renderMetricTable(rows, definitions) {
+function renderGroupTable(group, rows) {
   const benchmarkCount = new Set(rows.map((row) => row.benchmark)).size;
   const includeBenchmark = benchmarkCount > 1;
-  const header = definitions.flatMap((definition) => [
-    `${definition.label} (head \\| base)`,
-    "Change",
-  ]);
   const lines = [
-    `| Benchmark | ${header.join(" | ")} |`,
-    `| --- | ${definitions.map(() => "---: | ---:").join(" | ")} |`,
+    `##### ${groupTitle(group)}`,
+    "",
+    "| Benchmark | Merge instructions | Base instructions | Change |",
+    "| --- | ---: | ---: | ---: |",
   ];
   for (const row of rows) {
     const label = escapeTableCell(benchmarkLabel(row, includeBenchmark));
-    const cells = definitions.flatMap((definition) => {
-      const metric = row.metrics[definition.key];
-      return [formatCounts(metric), formatChange(metric)];
-    });
-    lines.push(`| \`${label}\` | ${cells.join(" | ")} |`);
-  }
-  return lines.join("\n");
-}
-
-function renderGroupTables(group, rows) {
-  const sections = [`##### ${groupTitle(group)}`, ""];
-  for (const metricGroup of metricGroups) {
-    const definitions = metricGroup.definitions.filter((definition) =>
-      rows.every((row) => row.metrics[definition.key] !== null),
+    const mergeInstructions = formatInstructionCount(row.mergeInstructions);
+    const baseInstructions = formatInstructionCount(row.baseInstructions);
+    const change = formatChange(row);
+    lines.push(
+      `| \`${label}\` | ${mergeInstructions} | ${baseInstructions} | ${change} |`,
     );
-    if (definitions.length === 0) {
-      continue;
-    }
-    sections.push(`###### ${metricGroup.title}`, "");
-    sections.push(renderMetricTable(rows, definitions), "");
   }
-  return sections.join("\n");
+  lines.push("");
+  return lines.join("\n");
 }
 
 export function parseSummaries(input) {
@@ -327,6 +243,7 @@ export function parseSummaries(input) {
   if (!trimmed) {
     return [];
   }
+
   if (trimmed.startsWith("[")) {
     const summaries = JSON.parse(trimmed);
     if (!Array.isArray(summaries)) {
@@ -334,9 +251,11 @@ export function parseSummaries(input) {
     }
     return summaries;
   }
+
   if (!trimmed.includes("\n")) {
     return [JSON.parse(trimmed)];
   }
+
   return trimmed.split(/\r?\n/).map((line, index) => {
     try {
       return JSON.parse(line);
@@ -351,7 +270,8 @@ export function parseSummaries(input) {
 export async function loadSummaries(inputPath) {
   const inputStat = await stat(inputPath);
   if (inputStat.isFile()) {
-    return parseSummaries(await readFile(inputPath, "utf8"));
+    const input = await readFile(inputPath, "utf8");
+    return parseSummaries(input);
   }
   if (!inputStat.isDirectory()) {
     throw new Error(`Expected a file or directory: ${inputPath}`);
@@ -363,12 +283,14 @@ export async function loadSummaries(inputPath) {
     const directory = directories[index];
     const entries = await readdir(directory, { withFileTypes: true });
     entries.sort((left, right) => left.name.localeCompare(right.name));
+
     for (const entry of entries) {
       const path = join(directory, entry.name);
       if (entry.isDirectory()) {
         directories.push(path);
       } else if (entry.isFile() && entry.name === "summary.json") {
-        summaries.push(...parseSummaries(await readFile(path, "utf8")));
+        const input = await readFile(path, "utf8");
+        summaries.push(...parseSummaries(input));
       }
     }
   }
@@ -378,15 +300,18 @@ export async function loadSummaries(inputPath) {
 export function renderSummary(summaries) {
   const rows = summaries.map(summaryRow).sort(compareRows);
   if (rows.length === 0) {
-    throw new Error("No benchmark comparisons to summarize");
+    throw new Error("No instruction comparisons to summarize");
   }
-  const tables = Array.from(groupRows(rows), ([group, rowsInGroup]) =>
-    renderGroupTables(group, rowsInGroup),
+
+  const groups = groupRows(rows);
+  const tables = Array.from(groups, ([group, rowsInGroup]) =>
+    renderGroupTable(group, rowsInGroup),
   ).join("\n");
+
   return [
-    "### Gungraun metric changes",
+    "### Instruction-count changes",
     "",
-    "Exact profiling counts for the head and base revisions. D1 and LL data misses combine reads and writes. Estimated cycles are a cache-simulation metric, not wall-clock time. Markers: 🟢 fewer events, 🔴 more events, ⚪ unchanged.",
+    "Exact Callgrind instruction counts for the merge and base revisions. New and Removed identify benchmarks that exist on only one side; the missing count is shown as a dash. Percentages use the same precision as the Gungraun text report. Markers: 🟢 fewer instructions, 🔴 more instructions, ⚪ unchanged.",
     "",
     tables,
   ].join("\n");
@@ -399,7 +324,7 @@ export function renderFailureSummary(message) {
     .trim();
   const detail = safeMessage ? ` Renderer error: ${safeMessage}` : "";
   return [
-    "### Gungraun metric changes",
+    "### Instruction-count changes",
     "",
     `⚠️ **The comparison summary could not be generated.** See the workflow log.${detail}`,
     "",
@@ -411,6 +336,7 @@ async function main() {
   if (!inputPath) {
     throw new Error("Usage: render-gungraun-summary.mjs <summary path>");
   }
+
   const summaries = await loadSummaries(inputPath);
   if (summaries.length === 0) {
     throw new Error("No Gungraun summary files found");
