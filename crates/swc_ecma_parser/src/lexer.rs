@@ -1379,7 +1379,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     }
 }
 
-const IDENTIFIER_BATCH_SIZE: usize = 32;
+#[cfg(target_arch = "x86_64")]
+const IDENTIFIER_BATCH_SIZE: usize = 16;
+#[cfg(target_arch = "x86_64")]
+const IDENTIFIER_SCALAR_PREFIX_SIZE: usize = 4;
 
 const NOT_ASCII_IDENTIFIER_CONTINUE: [bool; 256] = {
     let mut table = [true; 256];
@@ -1409,13 +1412,25 @@ fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
     debug_assert!((start as usize) <= source.len());
     let mut position = start as usize;
 
-    'search: while source.len() - position >= IDENTIFIER_BATCH_SIZE {
-        let batch = &source[position..position + IDENTIFIER_BATCH_SIZE];
-        for (offset, byte) in batch.iter().enumerate() {
-            if NOT_ASCII_IDENTIFIER_CONTINUE[*byte as usize] {
-                position += offset;
-                break 'search;
+    #[cfg(target_arch = "x86_64")]
+    {
+        let scalar_end = source.len().min(position + IDENTIFIER_SCALAR_PREFIX_SIZE);
+        while position < scalar_end {
+            if NOT_ASCII_IDENTIFIER_CONTINUE[source[position] as usize] {
+                return position as u32;
             }
+            position += 1;
+        }
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    while source.len() - position >= IDENTIFIER_BATCH_SIZE {
+        // SAFETY: The loop condition guarantees that 16 bytes are available,
+        // and SSE2 is part of the x86_64 baseline.
+        let invalid = unsafe { ascii_identifier_invalid_mask(source.as_ptr().add(position)) };
+        if invalid != 0 {
+            position += invalid.trailing_zeros() as usize;
+            return position as u32;
         }
         position += IDENTIFIER_BATCH_SIZE;
     }
@@ -1426,6 +1441,33 @@ fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
     debug_assert!(position >= start as usize);
     debug_assert!(position <= source.len());
     position as u32
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "sse2")]
+unsafe fn ascii_identifier_invalid_mask(source: *const u8) -> u32 {
+    use core::arch::x86_64::{
+        __m128i, _mm_and_si128, _mm_cmpeq_epi8, _mm_cmpgt_epi8, _mm_loadu_si128, _mm_movemask_epi8,
+        _mm_or_si128, _mm_set1_epi8,
+    };
+
+    let bytes = unsafe { _mm_loadu_si128(source.cast::<__m128i>()) };
+    let lowercase = _mm_or_si128(bytes, _mm_set1_epi8(0x20));
+    let letters = _mm_and_si128(
+        _mm_cmpgt_epi8(lowercase, _mm_set1_epi8((b'a' - 1) as i8)),
+        _mm_cmpgt_epi8(_mm_set1_epi8((b'z' + 1) as i8), lowercase),
+    );
+    let digits = _mm_and_si128(
+        _mm_cmpgt_epi8(bytes, _mm_set1_epi8((b'0' - 1) as i8)),
+        _mm_cmpgt_epi8(_mm_set1_epi8((b'9' + 1) as i8), bytes),
+    );
+    let underscore = _mm_cmpeq_epi8(bytes, _mm_set1_epi8(b'_' as i8));
+    let dollar = _mm_cmpeq_epi8(bytes, _mm_set1_epi8(b'$' as i8));
+    let valid = _mm_or_si128(
+        _mm_or_si128(letters, digits),
+        _mm_or_si128(underscore, dollar),
+    );
+    !(_mm_movemask_epi8(valid) as u32) & 0xffff
 }
 
 fn is_surrogate_codepoint(cp: u32) -> bool {
@@ -1742,6 +1784,56 @@ mod tests {
 
         let ignoring = Lexer::init(&allocator, &large_source, false, false, NoTokenParserConfig);
         assert_eq!(ignoring.comments.capacity(), 0);
+    }
+
+    #[test]
+    fn scans_ascii_identifier_boundaries() {
+        for len in [1, 15, 16, 17, 31, 32, 33, 64] {
+            let source = vec![b'a'; len];
+            assert_eq!(
+                scan_ascii_identifier_continue(&source, 1),
+                source.len() as u32
+            );
+
+            let mut terminated = source;
+            terminated.push(b'.');
+            assert_eq!(
+                scan_ascii_identifier_continue(&terminated, 1),
+                (terminated.len() - 1) as u32
+            );
+        }
+
+        for (source, expected) in [
+            (b"a0_$Z.".as_slice(), 5),
+            (b"a\\u0062".as_slice(), 1),
+            (b"a\xc3\xa9".as_slice(), 1),
+        ] {
+            assert_eq!(scan_ascii_identifier_continue(source, 1), expected);
+        }
+
+        for terminator in 1..=32 {
+            let mut source = [b'a'; 34];
+            source[terminator] = b'.';
+            assert_eq!(
+                scan_ascii_identifier_continue(&source, 1),
+                terminator as u32
+            );
+        }
+    }
+
+    #[test]
+    fn classifies_every_byte_in_ascii_identifier_batches() {
+        for byte in u8::MIN..=u8::MAX {
+            let mut source = [b'a'; 33];
+            source[16] = byte;
+            let is_continue = byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'$');
+            let expected = if is_continue { source.len() } else { 16 };
+            assert_eq!(
+                scan_ascii_identifier_continue(&source, 1),
+                expected as u32,
+                "byte {byte:#04x}"
+            );
+        }
     }
 
     #[test]
