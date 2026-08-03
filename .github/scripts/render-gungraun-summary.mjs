@@ -4,25 +4,28 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-const instructionFormatter = new Intl.NumberFormat("en-US");
+const countFormatter = new Intl.NumberFormat("en-US");
+
+const primaryMetrics = [
+  { key: "d1Data", label: "D1 data misses", events: ["D1mr", "D1mw"] },
+  { key: "llData", label: "LL data misses", events: ["DLmr", "DLmw"] },
+  {
+    key: "estimatedCycles",
+    label: "Estimated cycles",
+    events: ["EstimatedCycles"],
+  },
+];
+
+const secondaryMetrics = [
+  { key: "i1Read", label: "I1mr", events: ["I1mr"] },
+  { key: "llInstructionRead", label: "ILmr", events: ["ILmr"] },
+  { key: "instructions", label: "Instructions", events: ["Ir"] },
+];
+
+const allMetrics = [...primaryMetrics, ...secondaryMetrics];
 
 function hasOwn(value, key) {
   return Object.prototype.hasOwnProperty.call(value, key);
-}
-
-function parseDiff(value) {
-  if (value === "inf") {
-    return Number.POSITIVE_INFINITY;
-  }
-  if (value === "-inf") {
-    return Number.NEGATIVE_INFINITY;
-  }
-
-  const parsed = Number(value);
-  if (Number.isNaN(parsed)) {
-    throw new Error(`Invalid instruction difference: ${value}`);
-  }
-  return parsed;
 }
 
 function benchmarkName(summary) {
@@ -36,71 +39,75 @@ function benchmarkName(summary) {
   return `${groupName}::${functionName}`;
 }
 
-function instructionCount(metric, side, benchmark) {
+function integerCount(metric, side, event, benchmark) {
   if (!metric || typeof metric !== "object" || !hasOwn(metric, "Int")) {
-    throw new Error(`Missing ${side} instruction value for ${benchmark}`);
+    throw new Error(`Missing ${side} ${event} value for ${benchmark}`);
   }
 
   const count = metric.Int;
   if (!Number.isSafeInteger(count) || count < 0) {
-    throw new Error(`Invalid ${side} instruction count for ${benchmark}`);
+    throw new Error(`Invalid ${side} ${event} count for ${benchmark}`);
   }
   return count;
 }
 
-function instructionComparison(summary) {
-  const benchmark = benchmarkName(summary);
-  const callgrind = summary.profiles.find(
-    (profile) => profile.tool === "Callgrind",
-  );
-  const metrics = callgrind?.summaries?.total?.summary?.Callgrind;
-  const instruction = metrics?.Ir;
-  const values = instruction?.metrics;
+function comparisonVariant(values, event, benchmark) {
   if (!values || typeof values !== "object") {
-    throw new Error(`Missing instruction values for ${benchmark}`);
+    throw new Error(`Missing ${event} values for ${benchmark}`);
   }
-
   if (hasOwn(values, "Both")) {
-    const pair = values.Both;
-    if (!Array.isArray(pair) || pair.length !== 2) {
-      throw new Error(`Invalid merge/base instruction values for ${benchmark}`);
+    if (!Array.isArray(values.Both) || values.Both.length !== 2) {
+      throw new Error(`Invalid merge/base ${event} values for ${benchmark}`);
     }
-
-    const mergeInstructions = instructionCount(pair[0], "merge", benchmark);
-    const baseInstructions = instructionCount(pair[1], "base", benchmark);
-    return {
-      mergeInstructions,
-      baseInstructions,
-      comparison: "both",
-      change: parseDiff(String(instruction.diffs?.diff_pct)),
-    };
+    return "both";
   }
-
   if (hasOwn(values, "Left")) {
-    const mergeInstructions = instructionCount(
-      values.Left,
-      "merge",
-      benchmark,
-    );
-    return {
-      mergeInstructions,
-      baseInstructions: null,
-      comparison: "new",
-      change: null,
-    };
+    return "new";
   }
-
   if (hasOwn(values, "Right")) {
-    const baseInstructions = instructionCount(values.Right, "base", benchmark);
-    return {
-      mergeInstructions: null,
-      baseInstructions,
-      comparison: "removed",
-      change: null,
-    };
+    return "removed";
+  }
+  throw new Error(`Unsupported ${event} values for ${benchmark}`);
+}
+
+function percentChange(merge, base) {
+  if (base === 0) {
+    return merge === 0 ? 0 : Number.POSITIVE_INFINITY;
+  }
+  return ((merge - base) / base) * 100;
+}
+
+function metricComparison(metrics, definition, benchmark) {
+  let comparison;
+  let merge = 0;
+  let base = 0;
+
+  for (const event of definition.events) {
+    const values = metrics?.[event]?.metrics;
+    const eventComparison = comparisonVariant(values, event, benchmark);
+    if (comparison && comparison !== eventComparison) {
+      throw new Error(
+        `Mismatched comparison sides for ${definition.label} in ${benchmark}`,
+      );
+    }
+    comparison = eventComparison;
+
+    if (comparison === "both") {
+      merge += integerCount(values.Both[0], "merge", event, benchmark);
+      base += integerCount(values.Both[1], "base", event, benchmark);
+    } else if (comparison === "new") {
+      merge += integerCount(values.Left, "merge", event, benchmark);
+    } else {
+      base += integerCount(values.Right, "base", event, benchmark);
+    }
   }
 
-  throw new Error(`Unsupported instruction values for ${benchmark}`);
+  return {
+    merge: comparison === "removed" ? null : merge,
+    base: comparison === "new" ? null : base,
+    comparison,
+    change: comparison === "both" ? percentChange(merge, base) : null,
+  };
 }
 
 function summaryRow(summary) {
@@ -113,24 +120,31 @@ function summaryRow(summary) {
     throw new Error("Gungraun summary is missing profiles");
   }
 
-  const comparison = instructionComparison(summary);
+  const benchmark = benchmarkName(summary);
+  const callgrind = summary.profiles.find(
+    (profile) => profile.tool === "Callgrind",
+  );
+  const metrics = callgrind?.summaries?.total?.summary?.Callgrind;
+  if (!metrics || typeof metrics !== "object") {
+    throw new Error(`Missing Callgrind metrics for ${benchmark}`);
+  }
+
   return {
-    benchmark: benchmarkName(summary),
+    benchmark,
     caseName: summary.id ?? summary.details ?? "default",
-    ...comparison,
+    metrics: Object.fromEntries(
+      allMetrics.map((definition) => [
+        definition.key,
+        metricComparison(metrics, definition, benchmark),
+      ]),
+    ),
   };
 }
 
 function compareRows(left, right) {
   const leftKey = `${left.benchmark}\0${left.caseName}`;
   const rightKey = `${right.benchmark}\0${right.caseName}`;
-  if (leftKey < rightKey) {
-    return -1;
-  }
-  if (leftKey > rightKey) {
-    return 1;
-  }
-  return 0;
+  return leftKey.localeCompare(rightKey);
 }
 
 function benchmarkGroup(row) {
@@ -141,10 +155,7 @@ function benchmarkGroup(row) {
 function benchmarkLabel(row, includeBenchmark) {
   const segments = row.benchmark.split("::");
   const functionName = segments.at(-1).replace(/^bench_/, "");
-  if (includeBenchmark) {
-    return `${functionName}/${row.caseName}`;
-  }
-  return row.caseName;
+  return includeBenchmark ? `${functionName}/${row.caseName}` : row.caseName;
 }
 
 function groupTitle(group) {
@@ -159,25 +170,6 @@ function escapeTableCell(value) {
     .replaceAll("`", "'")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-function formatChange(row) {
-  if (row.comparison === "new") {
-    return "New";
-  }
-  if (row.comparison === "removed") {
-    return "Removed";
-  }
-  if (row.change === 0) {
-    return "0% ⚪";
-  }
-
-  const marker = row.change < 0 ? "🟢" : "🔴";
-  if (!Number.isFinite(row.change)) {
-    const change = row.change < 0 ? "−∞" : "+∞";
-    return `${change}% ${marker}`;
-  }
-  return `${formatSignedShort(row.change)}% ${marker}`;
 }
 
 function formatSignedShort(value) {
@@ -201,41 +193,73 @@ function formatSignedShort(value) {
   return `${sign}${magnitude.toFixed(fractionDigits)}`;
 }
 
-function formatInstructionCount(value) {
-  return value === null ? "—" : instructionFormatter.format(value);
+function formatChange(metric) {
+  if (metric.comparison === "new") {
+    return "New";
+  }
+  if (metric.comparison === "removed") {
+    return "Removed";
+  }
+  if (metric.change === 0) {
+    return "0% ⚪";
+  }
+
+  const marker = metric.change < 0 ? "🟢" : "🔴";
+  if (!Number.isFinite(metric.change)) {
+    return `+∞% ${marker}`;
+  }
+  return `${formatSignedShort(metric.change)}% ${marker}`;
+}
+
+function formatCounts(metric) {
+  const merge = metric.merge === null ? "—" : countFormatter.format(metric.merge);
+  const base = metric.base === null ? "—" : countFormatter.format(metric.base);
+  return `${merge} \\| ${base}`;
 }
 
 function groupRows(rows) {
   const groups = new Map();
   for (const row of rows) {
     const group = benchmarkGroup(row);
-    const groupRows = groups.get(group) ?? [];
-    groupRows.push(row);
-    groups.set(group, groupRows);
+    const rowsInGroup = groups.get(group) ?? [];
+    rowsInGroup.push(row);
+    groups.set(group, rowsInGroup);
   }
   return groups;
 }
 
-function renderGroupTable(group, rows) {
+function renderMetricTable(rows, definitions) {
   const benchmarkCount = new Set(rows.map((row) => row.benchmark)).size;
   const includeBenchmark = benchmarkCount > 1;
+  const header = definitions.flatMap((definition) => [
+    `${definition.label} (merge \\| base)`,
+    "Change",
+  ]);
   const lines = [
-    `##### ${groupTitle(group)}`,
-    "",
-    "| Benchmark | Merge instructions | Base instructions | Change |",
-    "| --- | ---: | ---: | ---: |",
+    `| Benchmark | ${header.join(" | ")} |`,
+    `| --- | ${definitions.map(() => "---: | ---:").join(" | ")} |`,
   ];
+
   for (const row of rows) {
     const label = escapeTableCell(benchmarkLabel(row, includeBenchmark));
-    const mergeInstructions = formatInstructionCount(row.mergeInstructions);
-    const baseInstructions = formatInstructionCount(row.baseInstructions);
-    const change = formatChange(row);
-    lines.push(
-      `| \`${label}\` | ${mergeInstructions} | ${baseInstructions} | ${change} |`,
-    );
+    const cells = definitions.flatMap((definition) => {
+      const metric = row.metrics[definition.key];
+      return [formatCounts(metric), formatChange(metric)];
+    });
+    lines.push(`| \`${label}\` | ${cells.join(" | ")} |`);
   }
-  lines.push("");
   return lines.join("\n");
+}
+
+function renderGroupTables(group, rows) {
+  return [
+    `##### ${groupTitle(group)}`,
+    "",
+    renderMetricTable(rows, primaryMetrics),
+    "",
+    renderMetricTable(rows, secondaryMetrics),
+    "",
+  ].join("\n");
 }
 
 export function parseSummaries(input) {
@@ -300,18 +324,17 @@ export async function loadSummaries(inputPath) {
 export function renderSummary(summaries) {
   const rows = summaries.map(summaryRow).sort(compareRows);
   if (rows.length === 0) {
-    throw new Error("No instruction comparisons to summarize");
+    throw new Error("No cache comparisons to summarize");
   }
 
-  const groups = groupRows(rows);
-  const tables = Array.from(groups, ([group, rowsInGroup]) =>
-    renderGroupTable(group, rowsInGroup),
+  const tables = Array.from(groupRows(rows), ([group, rowsInGroup]) =>
+    renderGroupTables(group, rowsInGroup),
   ).join("\n");
 
   return [
-    "### Instruction-count changes",
+    "### Cache and instruction changes",
     "",
-    "Exact Callgrind instruction counts for the merge and base revisions. New and Removed identify benchmarks that exist on only one side; the missing count is shown as a dash. Percentages use the same precision as the Gungraun text report. Markers: 🟢 fewer instructions, 🔴 more instructions, ⚪ unchanged.",
+    "Exact Callgrind cache-simulation counts for the merge and base revisions. D1 and LL data misses combine reads and writes. Estimated cycles and instruction counts are profiling metrics, not wall-clock time. Markers: 🟢 fewer events, 🔴 more events, ⚪ unchanged.",
     "",
     tables,
   ].join("\n");
@@ -324,7 +347,7 @@ export function renderFailureSummary(message) {
     .trim();
   const detail = safeMessage ? ` Renderer error: ${safeMessage}` : "";
   return [
-    "### Instruction-count changes",
+    "### Cache and instruction changes",
     "",
     `⚠️ **The comparison summary could not be generated.** See the workflow log.${detail}`,
     "",
