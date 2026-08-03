@@ -4,18 +4,30 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use criterion::{Bencher, Criterion, criterion_group, criterion_main};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
-    Ast, BindingIdentifier, IdentifierName, IdentifierReference, LabelIdentifier,
-    PrivateIdentifier, Traverse, TraverseAction, TraverseCtx, TraverseWith, Visit, VisitMut,
-    VisitMutWith, VisitWith,
+    Ast, BindingIdentifier, IdentifierName, IdentifierReference, LabelIdentifier, Lang,
+    PrivateIdentifier, Program, Traverse, TraverseAction, TraverseCtx, TraverseWith, Visit,
+    VisitMut, VisitMutWith, VisitWith,
 };
 use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
-fn bench_visit(b: &mut Bencher, src: &'static str) {
+fn parse_program<'a>(src: &'a str, allocator: &'a Allocator, lang: Lang) -> (Ast<'a>, Program) {
+    let mut ast = Ast::new(src, allocator);
+    let result = Parser::init(
+        &mut ast,
+        Options {
+            lang,
+            ..Options::default()
+        },
+        NoTokenParserConfig,
+    )
+    .parse();
+    assert!(result.diagnostics.is_empty());
+    (ast, result.program)
+}
+
+fn bench_visit(b: &mut Bencher, src: &'static str, lang: Lang) {
     let allocator = Allocator::new();
-    let mut ast = Ast::new(src, &allocator);
-    let program = Parser::init(&mut ast, Options::default(), NoTokenParserConfig)
-        .parse()
-        .program;
+    let (ast, program) = parse_program(src, &allocator, lang);
 
     struct Counter<'a> {
         ast: &'a Ast<'a>,
@@ -58,7 +70,7 @@ fn bench_visit(b: &mut Bencher, src: &'static str) {
     });
 }
 
-fn bench_visit_mut(b: &mut Bencher, src: &'static str) {
+fn bench_visit_mut(b: &mut Bencher, src: &'static str, lang: Lang) {
     struct Counter<'visit, 'ast> {
         ast: &'visit mut Ast<'ast>,
         count: usize,
@@ -108,10 +120,7 @@ fn bench_visit_mut(b: &mut Bencher, src: &'static str) {
     }
 
     let allocator = Allocator::new();
-    let mut ast = Ast::new(src, &allocator);
-    let program = Parser::init(&mut ast, Options::default(), NoTokenParserConfig)
-        .parse()
-        .program;
+    let (mut ast, program) = parse_program(src, &allocator, lang);
 
     b.iter(|| {
         let mut counter = Counter {
@@ -123,7 +132,7 @@ fn bench_visit_mut(b: &mut Bencher, src: &'static str) {
     });
 }
 
-fn bench_traverse(b: &mut Bencher, src: &'static str) {
+fn bench_traverse(b: &mut Bencher, src: &'static str, lang: Lang) {
     struct Counter {
         count: usize,
     }
@@ -176,10 +185,7 @@ fn bench_traverse(b: &mut Bencher, src: &'static str) {
     }
 
     let allocator = Allocator::new();
-    let mut ast = Ast::new(src, &allocator);
-    let program = Parser::init(&mut ast, Options::default(), NoTokenParserConfig)
-        .parse()
-        .program;
+    let (mut ast, program) = parse_program(src, &allocator, lang);
 
     b.iter(|| {
         let mut counter = Counter { count: 0 };
@@ -189,18 +195,28 @@ fn bench_traverse(b: &mut Bencher, src: &'static str) {
 }
 
 fn bench_files(c: &mut Criterion) {
-    let bench_cases = &[
-        ("typescript", include_str!("../files/typescript.js")),
-        ("cal.com.tsx", include_str!("../files/cal.com.tsx")),
+    let bench_cases = [
+        (
+            "typescript",
+            include_str!("../files/typescript.js"),
+            Lang::Js,
+        ),
+        (
+            "cal.com.tsx",
+            include_str!("../files/cal.com.tsx"),
+            Lang::Tsx,
+        ),
     ];
 
-    for (name, source) in bench_cases {
-        c.bench_function(&format!("{name}/visit/new"), |b| bench_visit(b, source));
+    for (name, source, lang) in bench_cases {
+        c.bench_function(&format!("{name}/visit/new"), |b| {
+            bench_visit(b, source, lang)
+        });
         c.bench_function(&format!("{name}/visit_mut/new"), |b| {
-            bench_visit_mut(b, source)
+            bench_visit_mut(b, source, lang)
         });
         c.bench_function(&format!("{name}/traverse/new"), |b| {
-            bench_traverse(b, source)
+            bench_traverse(b, source, lang)
         });
     }
 }
