@@ -1,4 +1,4 @@
-use crate::{Ast, ExtraData, String, TypedSubRange};
+use crate::{Ast, AstString, ExtraData, TypedSubRange};
 
 oxc_index::define_index_type! {
     pub struct ExtraDataId = u32;
@@ -27,7 +27,7 @@ impl<'a, T> ExtraDataCompact<'a> for TypedSubRange<T> {
     }
 }
 
-impl<'a> ExtraDataCompact<'a> for String {
+impl<'a> ExtraDataCompact<'a> for AstString {
     #[inline]
     fn to_extra_data(self, _ast: &Ast<'a>) -> ExtraData {
         ExtraData { other: self.raw() }

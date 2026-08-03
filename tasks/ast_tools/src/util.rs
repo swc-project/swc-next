@@ -56,7 +56,7 @@ pub fn field_byte_size(ty: &AstType, schema: &Schema) -> Option<usize> {
                 "u8" | "i8" => Some(1),
                 "u16" | "i16" => Some(2),
                 "u32" | "i32" => Some(4),
-                "u64" | "f64" | "Span" | "String" => Some(8),
+                "u64" | "f64" | "Span" | "AstString" => Some(8),
                 // For other types, check if they have #[repr(uN)] in schema
                 name => schema.repr_sizes.get(name).copied(),
             }

@@ -3,11 +3,11 @@ use std::hash::BuildHasher;
 use oxc_index::Idx;
 use swc_next_allocator::{Allocator, CloneIn, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
-    Ast, BindingIdentifier, Class, ClassType, ExportNamedDeclaration, Function, FunctionType,
-    IdentifierReference, ImportDeclaration, ImportOrExportKind, ImportSpecifier, JsxClosingElement,
-    JsxElementName, JsxElementNameData, JsxIdentifier, JsxMemberExpressionObjectData,
-    JsxOpeningElement, NodeId, NodeKind, NodeKindData, ReferenceId, ScopeId, SourceType,
-    String as AstString, SymbolId, TsEnumDeclaration, TsEnumMember, TsInterfaceDeclaration,
+    Ast, AstString, BindingIdentifier, Class, ClassType, ExportNamedDeclaration, Function,
+    FunctionType, IdentifierReference, ImportDeclaration, ImportOrExportKind, ImportSpecifier,
+    JsxClosingElement, JsxElementName, JsxElementNameData, JsxIdentifier,
+    JsxMemberExpressionObjectData, JsxOpeningElement, NodeId, NodeKind, NodeKindData, ReferenceId,
+    ScopeId, SourceType, SymbolId, TsEnumDeclaration, TsEnumMember, TsInterfaceDeclaration,
     TsModuleDeclaration, TsTypeAliasDeclaration, TsTypePredicate, VariableDeclaration,
     VariableKind,
 };

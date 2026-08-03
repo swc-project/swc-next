@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 
 use swc_next_ecma_ast::{
-    AssignmentOperator, Ast, Class, DUMMY_SP, Decl, Expr, Function, FunctionBody, GetSpan,
-    IdentifierReference, Program, StaticBlock, Stmt, String as AstString, TypedSubRange,
-    VariableKind, VisitMut, VisitMutWith,
+    AssignmentOperator, Ast, AstString, Class, DUMMY_SP, Decl, Expr, Function, FunctionBody,
+    GetSpan, IdentifierReference, Program, StaticBlock, Stmt, TypedSubRange, VariableKind,
+    VisitMut, VisitMutWith,
 };
 use swc_next_ecma_semantic::{ReferenceSpace, Semantic};
 

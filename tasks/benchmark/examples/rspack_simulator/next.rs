@@ -1,10 +1,10 @@
 use rustc_hash::FxHashSet;
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
-    Ast, BindingIdentifier, BreakStatement, ClassElement, ClassElementData, ContinueStatement,
-    DebuggerStatement, ExportAllDeclaration, ExportDefaultDeclaration, ExportNamedDeclaration,
-    ExpressionStatement, GetSpan, IdentifierReference, ImportDeclaration, LabelIdentifier, Program,
-    ReturnStatement, Span, String as AstString, ThrowStatement, UpdateExpression,
+    Ast, AstString, BindingIdentifier, BreakStatement, ClassElement, ClassElementData,
+    ContinueStatement, DebuggerStatement, ExportAllDeclaration, ExportDefaultDeclaration,
+    ExportNamedDeclaration, ExpressionStatement, GetSpan, IdentifierReference, ImportDeclaration,
+    LabelIdentifier, Program, ReturnStatement, Span, ThrowStatement, UpdateExpression,
     VariableDeclaration, Visit, VisitWith, YieldExpression,
 };
 use swc_next_ecma_parser::{Options, Parser, Token, TokenParserConfig, TokenTag};

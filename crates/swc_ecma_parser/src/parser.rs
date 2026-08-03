@@ -7,7 +7,7 @@ use std::{borrow::Cow, mem, string::String};
 
 use rustc_hash::FxHashSet;
 use swc_next_allocator::vec::Vec as ArenaVec;
-use swc_next_ecma_ast::String as AstString;
+use swc_next_ecma_ast::AstString;
 use swc_next_ecma_ast::*;
 
 use crate::{

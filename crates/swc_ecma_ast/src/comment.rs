@@ -1,5 +1,5 @@
+use crate::AstString;
 use crate::Span;
-use crate::String;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum CommentKind {
@@ -31,7 +31,7 @@ impl Comment {
         }
     }
 
-    pub fn value(&self, source: &[u8]) -> String {
+    pub fn value(&self, source: &[u8]) -> AstString {
         let start = self.span.start;
         let head = match source[start as usize] {
             b'<' => 4,
@@ -44,7 +44,7 @@ impl Comment {
             0
         };
 
-        String {
+        AstString {
             start: self.span.start + head,
             end: self.span.end - tail,
         }
