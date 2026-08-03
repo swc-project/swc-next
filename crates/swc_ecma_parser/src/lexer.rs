@@ -1287,11 +1287,13 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         let src = self.source;
         let mut pos = start as usize + 2;
         while pos < src.len() {
-            let c = src[pos];
-            if c == b'\n' || c == b'\r' {
+            let rest = &src[pos..];
+            let Some(offset) = memchr3(b'\n', b'\r', 0xE2, rest) else {
+                pos = src.len();
                 break;
-            }
-            if c == 0xE2 && unicode_separator_len(src, pos) > 0 {
+            };
+            pos += offset;
+            if src[pos] != 0xE2 || unicode_separator_len(src, pos) > 0 {
                 break;
             }
             pos += 1;
@@ -1308,6 +1310,14 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         let src = self.source;
         let mut pos = start as usize + 2;
         while pos < src.len() {
+            let rest = &src[pos..];
+            let ascii_offset = memchr3(b'*', b'\n', b'\r', rest).unwrap_or(rest.len());
+            let unicode_offset = memchr(0xE2, &rest[..ascii_offset]).unwrap_or(ascii_offset);
+            pos += ascii_offset.min(unicode_offset);
+            if pos == src.len() {
+                break;
+            }
+
             match src[pos] {
                 b'*' if pos + 1 < src.len() && src[pos + 1] == b'/' => {
                     pos += 2;
