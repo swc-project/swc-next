@@ -7340,6 +7340,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         Some(self.ast.private_identifier(token.span, name))
     }
 
+    #[inline(always)]
     fn parse_identifier_name(&mut self) -> Option<IdentifierName> {
         debug_assert!(self.current_token.tag.is_identifier_like());
         let token = self.current_token;
