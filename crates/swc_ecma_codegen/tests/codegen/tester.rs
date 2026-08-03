@@ -4,22 +4,22 @@ use swc_next_ecma_codegen::{Options as PrintOptions, print};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParseOptions, Parser};
 
 #[track_caller]
-pub fn expect_printed(source: &[u8], expected: &[u8]) {
+pub fn expect_printed(source: &str, expected: &str) {
     expect_printed_common(source, expected, Lang::Js, SourceType::Module, false, false);
 }
 
 #[track_caller]
-pub fn expect_printed_minify(source: &[u8], expected: &[u8]) {
+pub fn expect_printed_minify(source: &str, expected: &str) {
     expect_printed_common(source, expected, Lang::Js, SourceType::Module, true, false);
 }
 
 #[track_caller]
-pub fn expect_printed_ts(source: &[u8], expected: &[u8]) {
+pub fn expect_printed_ts(source: &str, expected: &str) {
     expect_printed_common(source, expected, Lang::Ts, SourceType::Module, false, false);
 }
 
 #[track_caller]
-pub fn expect_printed_jsx(source: &[u8], expected: &[u8]) {
+pub fn expect_printed_jsx(source: &str, expected: &str) {
     expect_printed_common(
         source,
         expected,
@@ -31,41 +31,40 @@ pub fn expect_printed_jsx(source: &[u8], expected: &[u8]) {
 }
 
 #[track_caller]
-pub fn expect_printed_jsx_minify(source: &[u8], expected: &[u8]) {
+pub fn expect_printed_jsx_minify(source: &str, expected: &str) {
     expect_printed_common(source, expected, Lang::Jsx, SourceType::Module, true, false);
 }
 
 #[track_caller]
-pub fn expect_printed_ascii(source: &[u8], expected: &[u8]) {
+pub fn expect_printed_ascii(source: &str, expected: &str) {
     expect_printed_common(source, expected, Lang::Js, SourceType::Module, false, true);
 }
 
 #[track_caller]
-pub fn expect_printed_minify_ascii(source: &[u8], expected: &[u8]) {
+pub fn expect_printed_minify_ascii(source: &str, expected: &str) {
     expect_printed_common(source, expected, Lang::Js, SourceType::Module, true, true);
 }
 
 #[track_caller]
-pub fn expect_printed_jsx_ascii(source: &[u8], expected: &[u8]) {
+pub fn expect_printed_jsx_ascii(source: &str, expected: &str) {
     expect_printed_common(source, expected, Lang::Jsx, SourceType::Module, false, true);
 }
 
 #[track_caller]
-pub fn expect_printed_script(source: &[u8], expected: &[u8]) {
+pub fn expect_printed_script(source: &str, expected: &str) {
     expect_printed_common(source, expected, Lang::Js, SourceType::Script, false, false);
 }
 
 #[track_caller]
 fn expect_printed_common(
-    source: &[u8],
-    expected: &[u8],
+    source: &str,
+    expected: &str,
     lang: Lang,
     source_type: SourceType,
     minify: bool,
     ascii_only: bool,
 ) {
     let allocator = Allocator::new();
-    let source = str::from_utf8(source).expect("source must be valid UTF-8");
     let mut ast = Ast::new(source, &allocator);
     let parse_options = ParseOptions {
         source_type,
@@ -91,11 +90,8 @@ fn expect_printed_common(
     let result = print(&allocator, &ast, program, print_options);
 
     assert_eq!(
-        result.code,
-        expected,
+        result.code, expected,
         "failed for {}\nactual:\n{}\nexpected:\n{}",
-        source,
-        String::from_utf8_lossy(result.code),
-        String::from_utf8_lossy(expected),
+        source, result.code, expected,
     );
 }

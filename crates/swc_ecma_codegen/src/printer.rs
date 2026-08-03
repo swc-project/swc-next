@@ -33,7 +33,7 @@ impl Default for Options {
 }
 
 pub struct PrintResult<'a> {
-    pub code: &'a [u8],
+    pub code: &'a str,
     pub legal_comments: Vec<Comment>,
     pub map: Option<SourceMap<'a>>,
 }
@@ -135,7 +135,7 @@ pub fn print<'a>(
         None
     };
 
-    let code = js.into_bump_slice();
+    let code = str::from_utf8(js.into_bump_slice()).expect("generated code must be valid UTF-8");
     let legal_comments = comments
         .iter()
         .filter(|comment| is_legal_comment(tree, **comment))

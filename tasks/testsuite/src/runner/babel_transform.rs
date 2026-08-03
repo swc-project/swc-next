@@ -59,7 +59,7 @@ fn run_case(case: &BabelTransformCase) -> Result<(), String> {
     }
 }
 
-fn transform_input(case: &BabelTransformCase) -> Result<Vec<u8>, String> {
+fn transform_input(case: &BabelTransformCase) -> Result<String, String> {
     let source = case.input.as_str();
     let allocator = Allocator::new();
     let mut ast = Ast::new(source, &allocator);
@@ -80,17 +80,17 @@ fn transform_input(case: &BabelTransformCase) -> Result<Vec<u8>, String> {
     Transformer::transform(program, &mut ast, &semantic_ret.semantic, options);
     Ok(print(&allocator, &ast, program, CodegenOptions::default())
         .code
-        .to_vec())
+        .to_owned())
 }
 
-fn normalize_expected_output(case: &BabelTransformCase) -> Result<Vec<u8>, String> {
+fn normalize_expected_output(case: &BabelTransformCase) -> Result<String, String> {
     let source = case.output.as_str();
     let allocator = Allocator::new();
     let mut ast = Ast::new(source, &allocator);
     let program = parse_program(&mut ast, case)?;
     Ok(print(&allocator, &ast, program, CodegenOptions::default())
         .code
-        .to_vec())
+        .to_owned())
 }
 
 fn parse_program(ast: &mut Ast<'_>, case: &BabelTransformCase) -> Result<Program, String> {
