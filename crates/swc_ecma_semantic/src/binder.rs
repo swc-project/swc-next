@@ -1387,17 +1387,12 @@ impl<'a> SymbolTracker<'a> {
         for pair in &self.decl_pairs {
             node_symbols[pair.node.index()] = Some(pair.symbol_id);
         }
-
-        // Use index: count, prefix-sum, fill. `len` doubles as the write
-        // cursor during the fill.
-        let mut use_ranges = ArenaVec::with_capacity_in(symbol_count, self.allocator);
-        for _ in 0..symbol_count {
-            use_ranges.push(Range::default());
+        for (index, reference) in self.references.iter().enumerate() {
+            node_references[reference.node.index()] = Some(reference_id(index));
         }
 
         for reference_index in 0..self.references.len() {
             let reference = self.references[reference_index];
-            node_references[reference.node.index()] = Some(reference_id(reference_index));
             let name = tree.string(reference.name);
             let hash = self.scope_maps[ScopeId::ROOT.index()]
                 .hasher()
@@ -1436,7 +1431,16 @@ impl<'a> SymbolTracker<'a> {
                 }
             }
             self.references[reference_index].symbol = resolved;
-            if let Some(symbol) = resolved {
+        }
+
+        // Use index: count, prefix-sum, fill. `len` doubles as the write
+        // cursor during the fill.
+        let mut use_ranges = ArenaVec::with_capacity_in(symbol_count, self.allocator);
+        for _ in 0..symbol_count {
+            use_ranges.push(Range::default());
+        }
+        for reference in &self.references {
+            if let Some(symbol) = reference.symbol {
                 use_ranges[symbol.index()].len += 1;
             }
         }
