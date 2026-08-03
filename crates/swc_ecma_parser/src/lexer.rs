@@ -1,4 +1,4 @@
-use memchr::{memchr, memchr3};
+use memchr::{memchr, memchr_iter, memchr2, memchr3, memmem};
 use swc_next_allocator::Allocator;
 use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
@@ -1304,7 +1304,8 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         let start = self.cursor;
         let src = self.source;
         let mut pos = start as usize + 2;
-        while pos < src.len() {
+        let scalar_end = (pos + 32).min(src.len());
+        while pos < scalar_end {
             match src[pos] {
                 b'*' if pos + 1 < src.len() && src[pos + 1] == b'/' => {
                     pos += 2;
@@ -1328,8 +1329,24 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 _ => pos += 1,
             }
         }
-        self.cursor = pos as u32;
-        Err(LexicalError::UnterminatedMultiLineComment)
+
+        let tail = &src[pos..];
+        let closing_offset = memmem::find(tail, b"*/");
+        let closing_start = closing_offset.map_or(src.len(), |offset| pos + offset);
+        let comment_tail = &src[pos..closing_start];
+        if memchr2(b'\n', b'\r', comment_tail).is_some()
+            || memchr_iter(0xE2, comment_tail)
+                .any(|offset| unicode_separator_len(comment_tail, offset) > 0)
+        {
+            self.set_token_flag(TokenFlag::LineTerminatorBefore);
+        }
+
+        let Some(_) = closing_offset else {
+            self.cursor = src.len() as u32;
+            return Err(LexicalError::UnterminatedMultiLineComment);
+        };
+        self.cursor = (closing_start + 2) as u32;
+        self.record_comment(CommentKind::Block, start, self.cursor)
     }
 
     fn scan_html_comment(&mut self) -> Result<(), LexicalError> {
@@ -1754,6 +1771,8 @@ mod tests {
             b"\r\nname".as_slice(),
             b"// line\nname",
             b"/* block\ncomment */name",
+            b"/* block comment beyond the scalar prefix\xe2\x80\xa8more */name",
+            b"/* block comment beyond the scalar prefix\xe2\x80\xa9more */name",
             b"\xe2\x80\xa8name",
         ] {
             let token = next_after_trivia(source, false);
@@ -1767,6 +1786,13 @@ mod tests {
 
         let token = next_after_trivia(b"\xc2\xa0name", false);
         assert_eq!(token.span, Span::new(2, 6));
+        assert!(!token.has_line_terminator_before());
+
+        let token = next_after_trivia(
+            b"/* block comment beyond the scalar prefix without a newline */name",
+            false,
+        );
+        assert_eq!(token.tag, TokenTag::Identifier);
         assert!(!token.has_line_terminator_before());
 
         let token = next_after_trivia(b"<!-- comment\nname", true);
