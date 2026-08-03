@@ -6,8 +6,8 @@ macro_rules! define_ast_string {
     ($name:ident) => {
         #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
         pub struct $name {
-            pub start: u32,
-            pub end: u32,
+            pub(crate) start: u32,
+            pub(crate) end: u32,
         }
 
         impl $name {
