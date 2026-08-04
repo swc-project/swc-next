@@ -825,7 +825,19 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         self.ensure_capacity();
         let expr = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default());
         match expr {
-            Some(expr) if self.diagnostics.is_empty() => Ok(expr),
+            Some(expr) if self.diagnostics.is_empty() => {
+                build_line_starts(self.ast, self.source);
+                if self.comment_mode == CommentMode::Attached {
+                    self.ast.set_attached_comments(&self.lexer.comments);
+                } else {
+                    self.ast.set_attached_comments(&[]);
+                }
+
+                if !self.preserve_parens {
+                    strip_parenthesized_nodes(self.ast);
+                }
+                Ok(expr)
+            }
             _ => Err(self.diagnostics),
         }
     }
