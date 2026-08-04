@@ -7516,9 +7516,8 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             .source_slice(result.pattern.start, result.pattern.end);
         let flags = self.ast.source_slice(result.flags.start, result.flags.end);
         let is_valid = {
-            let allocator = swc_next_allocator::Allocator::new();
             swc_next_regular_expression::LiteralParser::new(
-                &allocator,
+                self.ast.allocator(),
                 self.ast.get_utf8(pattern),
                 Some(self.ast.get_utf8(flags)),
                 swc_next_regular_expression::Options {
