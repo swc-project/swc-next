@@ -1658,7 +1658,11 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     // https://tc39.es/ecma262/#sec-functiondeclarations-in-ifstatement-statement-clauses (B.3.3)
     //   Bare FunctionDeclaration in if/else is allowed in non-strict code only.
     fn visit_function(&mut self, node: Function) {
-        self.context.state.enter_function(self.context.ast, node);
+        let annex_b_if_body =
+            is_annex_b_if_function(self.context.ast, self.context.current_node(), node);
+        self.context
+            .state
+            .enter_function(self.context.ast, node, annex_b_if_body);
         self.context.enter_node(node.node_id());
         let state = &mut self.context.state;
         state
@@ -2333,6 +2337,23 @@ impl<'a> Visit<'a> for Checker<'_, 'a> {
     }
 }
 
+fn is_annex_b_if_function(tree: &Ast<'_>, parent: Option<NodeId>, function: Function) -> bool {
+    if function.function_type(tree) != FunctionType::FunctionDeclaration {
+        return false;
+    }
+    let Some(parent) = parent else {
+        return false;
+    };
+    let NodeKindData::IfStatement(statement) = tree.kind_data(parent) else {
+        return false;
+    };
+    let function = function.node_id();
+    statement.consequent(tree).node_id() == function
+        || statement
+            .alternate(tree)
+            .is_some_and(|alternate| alternate.node_id() == function)
+}
+
 impl<'a> CheckerState<'a> {
     fn check_redeclaration(
         &mut self,
@@ -2350,7 +2371,14 @@ impl<'a> CheckerState<'a> {
             let existing = context.state.symbols.symbol(existing_id);
             let merging_with_ambient = flags.contains(SymbolFlags::AMBIENT)
                 || existing.flags.contains(SymbolFlags::AMBIENT);
-            if !merging_with_ambient && existing.flags.intersects(excludes) {
+            if !merging_with_ambient
+                && existing.flags.intersects(excludes)
+                && !context
+                    .state
+                    .symbols
+                    .pending
+                    .allows_annex_b_function_duplicate(existing.flags)
+            {
                 self.report_redeclaration(
                     context.ast,
                     identifier,

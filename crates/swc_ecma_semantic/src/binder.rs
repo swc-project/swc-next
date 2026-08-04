@@ -76,6 +76,10 @@ bitflags::bitflags! {
         const EXPORTED = 1 << 17;
         const IS_DEFAULT = 1 << 18;
         const ENUM_MEMBER = 1 << 19;
+        /// An ordinary (non-async, non-generator) function declaration.
+        /// Used internally to identify Annex B.3.3.4's duplicate-function
+        /// exception.
+        const ANNEX_B_FUNCTION = 1 << 20;
 
         /// `var` / `let` / `const`, parameters and catch bindings included.
         const VARIABLE = Self::FUNCTION_SCOPED_VAR.bits() | Self::BLOCK_SCOPED_VAR.bits();
@@ -242,6 +246,12 @@ impl Excludes {
             .union(SymbolFlags::FUNCTION)
             .union(SymbolFlags::VALUE_MODULE)
             .union(SymbolFlags::CLASS),
+    );
+    /// Annex B.3.3.4 permits duplicate ordinary function declarations in a
+    /// sloppy block. The marker check in `allows_annex_b_function_duplicate`
+    /// narrows this otherwise-all-value-space exclusion to that exact case.
+    pub const ANNEX_B_BLOCK_FUNCTION: SymbolFlags = SymbolFlags::from_bits_retain(
+        SymbolFlags::VALUE_SPACE.bits() | SymbolFlags::ANNEX_B_FUNCTION.bits(),
     );
     pub const CLASS: SymbolFlags = SymbolFlags::from_bits_retain(
         SymbolFlags::FUNCTION_SCOPED_VAR.bits()
@@ -436,6 +446,14 @@ pub(crate) struct PendingBinding {
     pub scope: ScopeId,
 }
 
+impl PendingBinding {
+    pub(crate) fn allows_annex_b_function_duplicate(self, existing: SymbolFlags) -> bool {
+        self.excludes == Excludes::ANNEX_B_BLOCK_FUNCTION
+            && self.flags.contains(SymbolFlags::ANNEX_B_FUNCTION)
+            && existing.contains(SymbolFlags::ANNEX_B_FUNCTION)
+    }
+}
+
 impl Default for PendingBinding {
     fn default() -> Self {
         Self {
@@ -556,8 +574,20 @@ impl<'a> SymbolTracker<'a> {
         } else {
             expression_name_scope(scope)
         };
-        let target_kind = scope.get(target).kind;
-        let allow_overload = tree.is_ts()
+
+        let target_scope = scope.get(target);
+        let target_kind = target_scope.kind;
+        // TS permits var/function merges in ordinary blocks, but not in
+        // catch scopes.
+        let ts_catch_scope =
+            tree.is_ts() && tree.node_kind(target_scope.node) == NodeKind::CatchClause;
+        let annex_b_block_function = !tree.is_ts()
+            && is_declaration
+            && target_kind == ScopeKind::Block
+            && !target_scope.flags.strict
+            && !function.generator(tree)
+            && !function.r#async(tree);
+        let allow_overload = (tree.is_ts() && !ts_catch_scope)
             || matches!(
                 target_kind,
                 ScopeKind::Function
@@ -566,10 +596,17 @@ impl<'a> SymbolTracker<'a> {
                     | ScopeKind::StaticBlock
             );
         // TS overloads, sloppy JS Annex B.3.2, and global merge with
-        // var. Lexical scopes (block/module) do not.
+        // var. Strict lexical scopes (block/module) do not.
         self.pending = PendingBinding {
-            flags: SymbolFlags::FUNCTION.with(SymbolFlags::AMBIENT, self.ambient),
-            excludes: if allow_overload {
+            flags: SymbolFlags::FUNCTION
+                .with(
+                    SymbolFlags::ANNEX_B_FUNCTION,
+                    is_declaration && !function.generator(tree) && !function.r#async(tree),
+                )
+                .with(SymbolFlags::AMBIENT, self.ambient),
+            excludes: if annex_b_block_function {
+                Excludes::ANNEX_B_BLOCK_FUNCTION
+            } else if allow_overload {
                 Excludes::FUNCTION
             } else {
                 Excludes::BLOCK_SCOPED_VAR
@@ -1075,7 +1112,9 @@ impl<'a> SymbolTracker<'a> {
         let name_text = tree.get_wtf8(name).as_bytes();
         let id = if let Some(existing) = self.binding(target, name_text) {
             let symbol = &mut self.symbols[existing.index()];
-            if !symbol.flags.intersects(self.pending.excludes) {
+            if !symbol.flags.intersects(self.pending.excludes)
+                || self.pending.allows_annex_b_function_duplicate(symbol.flags)
+            {
                 let mut merged = symbol.flags.merge(self.pending.flags);
                 if self.export_state != ExportState::None {
                     merged.insert(SymbolFlags::EXPORTED);

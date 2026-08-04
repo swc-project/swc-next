@@ -2835,6 +2835,7 @@ dependencies = [
  "oxc_index",
  "swc_next_allocator",
  "swc_next_ecma_ast",
+ "swc_next_ecma_parser",
 ]
 
 [[package]]

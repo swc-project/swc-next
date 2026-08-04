@@ -361,3 +361,72 @@ pub fn analyze<'a>(root: Program, ast: &Ast<'a>, options: AnalyzeOptions) -> Sem
         diagnostics,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use swc_next_allocator::Allocator;
+    use swc_next_ecma_ast::{Ast, Lang, SourceType};
+    use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
+
+    use super::{AnalyzeOptions, analyze};
+
+    fn diagnostics(source: &str, lang: Lang) -> Vec<String> {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new(source, &allocator);
+        let parse = Parser::init(
+            &mut ast,
+            Options {
+                source_type: SourceType::Script,
+                lang,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+        analyze(parse.program, &ast, AnalyzeOptions { check_syntax: true })
+            .diagnostics
+            .into_iter()
+            .map(|diagnostic| diagnostic.message.into_owned())
+            .collect()
+    }
+
+    #[test]
+    fn annex_b() {
+        // Sloppy JavaScript blocks allow duplicate ordinary functions and
+        // isolate functions declared directly in if/else clauses.
+        for source in [
+            "{ function f() {} function f() {} }",
+            "{ function f() {} function f() { 'use strict'; } }",
+            "{ function f() { 'use strict'; } function f() {} }",
+            "switch (0) { case 0: function f() {} case 1: function f() {} }",
+            "function outer() { { let f; if (true) function f() {} else function f() {} } try {} catch (f) { if (true) function f() {} } }",
+        ] {
+            assert!(diagnostics(source, Lang::Js).is_empty(), "{source}");
+        }
+
+        // Strict blocks and collisions with other value declarations remain
+        // errors.
+        for source in [
+            "'use strict'; { function f() {} function f() {} }",
+            "{ var f; function f() {} }",
+            "{ function f() {} function* f() {} }",
+            "{ function f() {} async function f() {} }",
+        ] {
+            assert!(!diagnostics(source, Lang::Js).is_empty(), "{source}");
+        }
+
+        // TypeScript retains its var/function merge rules outside catch
+        // scopes.
+        for source in [
+            "{ var f; function f() {} }",
+            "switch (0) { case 0: var f; case 1: function f() {} }",
+        ] {
+            assert!(diagnostics(source, Lang::Ts).is_empty(), "{source}");
+        }
+
+        // A TypeScript catch scope still rejects the merge.
+        let source = "try {} catch (e) { var f; function f() {} }";
+        assert!(!diagnostics(source, Lang::Ts).is_empty());
+    }
+}

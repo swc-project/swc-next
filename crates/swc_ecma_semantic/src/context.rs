@@ -141,8 +141,8 @@ impl<'a> SemanticContext<'a> {
         self.scope.enter_directive(tree, directive);
     }
 
-    pub fn enter_function(&mut self, tree: &Ast, function: Function) {
-        self.scope.enter_function(tree, function);
+    pub fn enter_function(&mut self, tree: &Ast, function: Function, annex_b_if_body: bool) {
+        self.scope.enter_function(tree, function, annex_b_if_body);
     }
 
     pub fn enter_ts_function(&mut self, node: NodeId) {

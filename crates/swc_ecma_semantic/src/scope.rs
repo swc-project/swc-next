@@ -222,12 +222,20 @@ impl<'a> ScopeTracker<'a> {
         }
     }
 
-    pub fn enter_function(&mut self, tree: &Ast, function: Function) {
+    pub fn enter_function(&mut self, tree: &Ast, function: Function, annex_b_if_body: bool) {
         let flags = if self.has_retroactive_use_strict(tree, function.body(tree)) {
             ScopeFlags { strict: true }
         } else {
             self.inherit_strict_flag()
         };
+        // Annex B.3.3 permits a FunctionDeclaration directly in a sloppy
+        // if/else clause. Its lexical binding is distinct from bindings in
+        // the enclosing scope, just as if the clause had an implicit block.
+        // Use the function node as the scope creator so `exit_scope` removes
+        // this scope together with the function scope below.
+        if annex_b_if_body && !flags.strict {
+            self.push_scope(ScopeKind::Block, function.node_id(), flags);
+        }
         if is_named_function_expression(tree, function) {
             // The expression-name scope sits between outer and body.
             self.push_scope(ScopeKind::ExpressionName, function.node_id(), flags);
