@@ -9547,6 +9547,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         self.parse_member_property(object, optional)
     }
 
+    #[inline(always)]
     fn parse_member_property(&mut self, object: Expr, optional: bool) -> Option<Expr> {
         let start = object.span(self.ast).start;
         let token = self.current_token;
