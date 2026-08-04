@@ -822,6 +822,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         if self.advance().is_none() {
             self.current_token = Token::eof(0);
         }
+        self.ensure_capacity();
         let expr = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default());
         match expr {
             Some(expr) if self.diagnostics.is_empty() => Ok(expr),
