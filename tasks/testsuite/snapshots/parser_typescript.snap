@@ -1,7 +1,7 @@
 parser * typescript
 ========================
 Positive Passed: 21798/22023 (98.98%)
-Negative Passed: 1597/3448 (46.32%)
+Negative Passed: 1598/3448 (46.35%)
 Panicked: 0/25471 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -261,7 +261,6 @@ Failed: fixtures/typescript/tests/cases/compiler/duplicateClassElements.ts - dup
 Failed: fixtures/typescript/tests/cases/compiler/duplicateIdentifierComputedName.ts - duplicateIdentifierComputedName.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/duplicateIdentifierDifferentSpelling.ts - duplicateIdentifierDifferentSpelling.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/duplicateIdentifierEnum.ts - duplicateIdentifierEnum_B.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/duplicateIdentifierInCatchBlock.ts - duplicateIdentifierInCatchBlock.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/duplicateIdentifierRelatedSpans1.ts - file1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/duplicateIdentifierRelatedSpans1.ts - file2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/duplicateIdentifierRelatedSpans1.ts - file3.ts: expected a parse or early error, but pipeline succeeded

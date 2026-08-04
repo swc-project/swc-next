@@ -361,3 +361,74 @@ pub fn analyze<'a>(root: Program, ast: &Ast<'a>, options: AnalyzeOptions) -> Sem
         diagnostics,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use swc_next_allocator::Allocator;
+    use swc_next_ecma_ast::{Ast, SourceType};
+    use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
+
+    use super::{AnalyzeOptions, analyze};
+
+    fn diagnostics(source: &str) -> Vec<String> {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new(source, &allocator);
+        let parse = Parser::init(
+            &mut ast,
+            Options {
+                source_type: SourceType::Script,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(parse.diagnostics.is_empty(), "{:#?}", parse.diagnostics);
+        analyze(parse.program, &ast, AnalyzeOptions { check_syntax: true })
+            .diagnostics
+            .into_iter()
+            .map(|diagnostic| diagnostic.message.into_owned())
+            .collect()
+    }
+
+    #[test]
+    fn accepts_annex_b_duplicate_functions_in_sloppy_blocks_and_switches() {
+        for source in [
+            "{ function f() {} function f() {} }",
+            "switch (0) { case 0: function f() {} case 1: function f() {} }",
+        ] {
+            assert!(diagnostics(source).is_empty(), "{source}");
+        }
+    }
+
+    #[test]
+    fn keeps_annex_b_conditional_functions_out_of_the_enclosing_sloppy_block() {
+        let source = "function outer() { { let f; if (true) function f() {} else function f() {} } try {} catch (f) { if (true) function f() {} } }";
+        assert!(diagnostics(source).is_empty());
+    }
+
+    #[test]
+    fn rejects_duplicate_functions_in_strict_blocks() {
+        let diagnostics = diagnostics("'use strict'; { function f() {} function f() {} }");
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.contains("already been declared"))
+        );
+    }
+
+    #[test]
+    fn does_not_apply_annex_b_to_var_or_generator_collisions() {
+        for source in [
+            "{ var f; function f() {} }",
+            "{ function f() {} function* f() {} }",
+            "{ function f() {} async function f() {} }",
+        ] {
+            assert!(
+                diagnostics(source)
+                    .iter()
+                    .any(|diagnostic| diagnostic.contains("already been declared")),
+                "{source}"
+            );
+        }
+    }
+}

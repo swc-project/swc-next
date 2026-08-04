@@ -1,16 +1,12 @@
 parser * babel
 ========================
-Positive Passed: 2200/2238 (98.30%)
+Positive Passed: 2204/2238 (98.48%)
 Negative Passed: 1600/1743 (91.80%)
 Panicked: 0/3981 (0.00%)
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/3.2.4-duplicate-function-in-block/input.js - annex-b/enabled/3.2.4-duplicate-function-in-block: semantic: Identifier 'f' has already been declared at 31..32
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/3.2.5-duplicate-function-in-switch/input.js - annex-b/enabled/3.2.5-duplicate-function-in-switch: semantic: Identifier 'f' has already been declared at 66..67
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/escape-keyword/async/input.js - core/escape-keyword/async: parser: Keywords cannot contain escape characters at 1..11
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/opts/allowAwaitOutsideFunction-false/input.js - core/opts/allowAwaitOutsideFunction-false: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/scope/dupl-bind-catch-hang-func/input.js - core/scope/dupl-bind-catch-hang-func: semantic: Identifier 'foo' has already been declared at 40..43
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/scope/dupl-bind-class-func/input.js - core/scope/dupl-bind-class-func: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/scope/dupl-bind-func-script-sloppy/input.js - core/scope/dupl-bind-func-script-sloppy: semantic: Identifier 'foo' has already been declared at 29..32
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/arrow-functions/inner-parens-array-pattern-2/input.js - es2015/arrow-functions/inner-parens-array-pattern-2: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/arrow-functions/inner-parens-array-pattern-3/input.js - es2015/arrow-functions/inner-parens-array-pattern-3: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/arrow-functions/inner-parens-object-pattern-member/input.js - es2015/arrow-functions/inner-parens-object-pattern-member: expected a parse or early error, but pipeline succeeded

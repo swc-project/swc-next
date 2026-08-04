@@ -1,60 +1,8 @@
 parser * test262
 ========================
-Positive Passed: 91040/91092 (99.94%)
+Positive Passed: 91092/91092 (100.00%)
 Negative Passed: 7936/8648 (91.77%)
 Panicked: 0/99740 (0.00%)
-Failed: fixtures/test262/test/annexB/language/function-code/function-redeclaration-block.js - sloppy: semantic: Identifier 'a' has already been declared at 832..833
-Failed: fixtures/test262/test/annexB/language/function-code/function-redeclaration-switch.js - sloppy: semantic: Identifier 'a' has already been declared at 1368..1369
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-a-func-no-skip-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1812..1813
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-a-func-skip-early-err-block.js - sloppy: semantic: Identifier 'f' has already been declared at 1545..1546
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-a-func-skip-early-err-switch.js - sloppy: semantic: Identifier 'f' has already been declared at 1569..1570
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-a-func-skip-early-err-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1969..1970
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-a-func-skip-early-err.js - sloppy: semantic: Identifier 'f' has already been declared at 1304..1305
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-b-func-no-skip-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1835..1836
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-b-func-skip-early-err-block.js - sloppy: semantic: Identifier 'f' has already been declared at 1568..1569
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-b-func-skip-early-err-switch.js - sloppy: semantic: Identifier 'f' has already been declared at 1592..1593
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-b-func-skip-early-err-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1992..1993
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-decl-b-func-skip-early-err.js - sloppy: semantic: Identifier 'f' has already been declared at 1327..1328
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-stmt-func-no-skip-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1814..1815
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-stmt-func-skip-early-err-block.js - sloppy: semantic: Identifier 'f' has already been declared at 1547..1548
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-stmt-func-skip-early-err-switch.js - sloppy: semantic: Identifier 'f' has already been declared at 1571..1572
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-stmt-func-skip-early-err-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1971..1972
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-else-stmt-func-skip-early-err.js - sloppy: semantic: Identifier 'f' has already been declared at 1306..1307
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-no-else-func-no-skip-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1784..1785
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-no-else-func-skip-early-err-block.js - sloppy: semantic: Identifier 'f' has already been declared at 1517..1518
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-no-else-func-skip-early-err-switch.js - sloppy: semantic: Identifier 'f' has already been declared at 1541..1542
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-no-else-func-skip-early-err-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1941..1942
-Failed: fixtures/test262/test/annexB/language/function-code/if-decl-no-else-func-skip-early-err.js - sloppy: semantic: Identifier 'f' has already been declared at 1276..1277
-Failed: fixtures/test262/test/annexB/language/function-code/if-stmt-else-decl-func-no-skip-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1823..1824
-Failed: fixtures/test262/test/annexB/language/function-code/if-stmt-else-decl-func-skip-early-err-block.js - sloppy: semantic: Identifier 'f' has already been declared at 1556..1557
-Failed: fixtures/test262/test/annexB/language/function-code/if-stmt-else-decl-func-skip-early-err-switch.js - sloppy: semantic: Identifier 'f' has already been declared at 1580..1581
-Failed: fixtures/test262/test/annexB/language/function-code/if-stmt-else-decl-func-skip-early-err-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1980..1981
-Failed: fixtures/test262/test/annexB/language/function-code/if-stmt-else-decl-func-skip-early-err.js - sloppy: semantic: Identifier 'f' has already been declared at 1315..1316
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-else-decl-a-global-no-skip-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1735..1736
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-else-decl-a-global-skip-early-err-block.js - sloppy: semantic: Identifier 'f' has already been declared at 1456..1457
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-else-decl-a-global-skip-early-err-switch.js - sloppy: semantic: Identifier 'f' has already been declared at 1478..1479
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-else-decl-a-global-skip-early-err-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1882..1883
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-else-decl-a-global-skip-early-err.js - sloppy: semantic: Identifier 'f' has already been declared at 1275..1276
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-else-decl-b-global-no-skip-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1758..1759
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-else-decl-b-global-skip-early-err-block.js - sloppy: semantic: Identifier 'f' has already been declared at 1479..1480
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-else-decl-b-global-skip-early-err-switch.js - sloppy: semantic: Identifier 'f' has already been declared at 1501..1502
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-else-decl-b-global-skip-early-err-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1905..1906
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-else-decl-b-global-skip-early-err.js - sloppy: semantic: Identifier 'f' has already been declared at 1298..1299
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-else-stmt-global-no-skip-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1737..1738
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-else-stmt-global-skip-early-err-block.js - sloppy: semantic: Identifier 'f' has already been declared at 1458..1459
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-else-stmt-global-skip-early-err-switch.js - sloppy: semantic: Identifier 'f' has already been declared at 1480..1481
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-else-stmt-global-skip-early-err-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1884..1885
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-else-stmt-global-skip-early-err.js - sloppy: semantic: Identifier 'f' has already been declared at 1277..1278
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-no-else-global-no-skip-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1707..1708
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-no-else-global-skip-early-err-block.js - sloppy: semantic: Identifier 'f' has already been declared at 1428..1429
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-no-else-global-skip-early-err-switch.js - sloppy: semantic: Identifier 'f' has already been declared at 1450..1451
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-no-else-global-skip-early-err-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1854..1855
-Failed: fixtures/test262/test/annexB/language/global-code/if-decl-no-else-global-skip-early-err.js - sloppy: semantic: Identifier 'f' has already been declared at 1247..1248
-Failed: fixtures/test262/test/annexB/language/global-code/if-stmt-else-decl-global-no-skip-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1746..1747
-Failed: fixtures/test262/test/annexB/language/global-code/if-stmt-else-decl-global-skip-early-err-block.js - sloppy: semantic: Identifier 'f' has already been declared at 1467..1468
-Failed: fixtures/test262/test/annexB/language/global-code/if-stmt-else-decl-global-skip-early-err-switch.js - sloppy: semantic: Identifier 'f' has already been declared at 1489..1490
-Failed: fixtures/test262/test/annexB/language/global-code/if-stmt-else-decl-global-skip-early-err-try.js - sloppy: semantic: Identifier 'f' has already been declared at 1893..1894
-Failed: fixtures/test262/test/annexB/language/global-code/if-stmt-else-decl-global-skip-early-err.js - sloppy: semantic: Identifier 'f' has already been declared at 1286..1287
 Failed: fixtures/test262/test/built-ins/RegExp/property-escapes/binary-property-with-value-ASCII_-_F-negated.js - sloppy: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/built-ins/RegExp/property-escapes/binary-property-with-value-ASCII_-_F-negated.js - strict: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/built-ins/RegExp/property-escapes/binary-property-with-value-ASCII_-_F.js - sloppy: expected a parse or early error, but pipeline succeeded
