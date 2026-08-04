@@ -394,6 +394,8 @@ mod tests {
     fn accepts_annex_b_duplicate_functions_in_sloppy_blocks_and_switches() {
         for source in [
             "{ function f() {} function f() {} }",
+            "{ function f() {} function f() { 'use strict'; } }",
+            "{ function f() { 'use strict'; } function f() {} }",
             "switch (0) { case 0: function f() {} case 1: function f() {} }",
         ] {
             assert!(diagnostics(source).is_empty(), "{source}");

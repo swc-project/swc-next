@@ -577,7 +577,7 @@ impl<'a> SymbolTracker<'a> {
         let target_kind = scope.get(target).kind;
         let annex_b_block_function = is_declaration
             && target_kind == ScopeKind::Block
-            && !scope.is_strict()
+            && !scope.get(target).flags.strict
             && !function.generator(tree)
             && !function.r#async(tree);
         let allow_overload = tree.is_ts()
