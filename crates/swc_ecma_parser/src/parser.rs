@@ -7055,6 +7055,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         )
     }
 
+    #[inline(always)]
     fn parse_expr(&mut self, minimum: Precedence, opts: ParseExpressionOpts) -> Option<Expr> {
         let mut left = self.parse_prefix(opts.in_cover, minimum)?;
         let is_ts = self.lang.is_typescript();
