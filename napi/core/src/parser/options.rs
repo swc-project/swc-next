@@ -26,6 +26,7 @@ impl From<AstSourceType> for SourceType {
             AstSourceType::Module => Self::Module,
             AstSourceType::Script => Self::Script,
             AstSourceType::CommonJs => Self::CommonJs,
+            AstSourceType::Unambiguous => unreachable!(),
         }
     }
 }
