@@ -47,8 +47,6 @@ pub struct Ast<'a> {
 
     lang: Lang,
 
-    line_starts: Vec<u32>,
-
     attached_comments: ArenaVec<'a, Comment>,
 
     /// Flattening AST nodes.
@@ -111,7 +109,6 @@ impl<'a> Ast<'a> {
             allocator,
             source_type: SourceType::Module,
             lang: Lang::Js,
-            line_starts: vec![0],
             attached_comments: ArenaVec::new_in(allocator),
             nodes: NodeData::new_in(allocator),
             extra_data: ArenaVec::with_capacity_in(0, allocator),
@@ -234,16 +231,6 @@ impl<'a> Ast<'a> {
     pub fn set_source_metadata(&mut self, source_type: SourceType, lang: Lang) {
         self.source_type = source_type;
         self.lang = lang;
-    }
-
-    pub fn set_line_starts(&mut self, line_starts: Vec<u32>) {
-        debug_assert!(!line_starts.is_empty());
-        debug_assert_eq!(line_starts[0], 0);
-        self.line_starts = line_starts;
-    }
-
-    pub fn line_starts(&self) -> &[u32] {
-        &self.line_starts
     }
 
     /// Replaces the attached-comment table used by source consumers.

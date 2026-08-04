@@ -789,7 +789,6 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             body,
             hashbang,
         );
-        build_line_starts(self.ast, self.source);
         if self.comment_mode == CommentMode::Attached {
             self.ast.set_attached_comments(&self.lexer.comments);
         } else {
@@ -826,7 +825,6 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let expr = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default());
         match expr {
             Some(expr) if self.diagnostics.is_empty() => {
-                build_line_starts(self.ast, self.source);
                 if self.comment_mode == CommentMode::Attached {
                     self.ast.set_attached_comments(&self.lexer.comments);
                 } else {
@@ -11528,20 +11526,6 @@ fn can_follow_readonly_modifier(tag: TokenTag) -> bool {
         || matches!(tag, TokenTag::LeftBrace | TokenTag::Star | TokenTag::Spread)
 }
 
-fn build_line_starts(ast: &mut Ast<'_>, source: &str) {
-    let source = source.as_bytes();
-
-    debug_assert!(source.len() <= u32::MAX as usize);
-    let mut starts = Vec::with_capacity(std::cmp::max(8, source.len() / 24));
-    starts.push(0);
-    for index in memchr::memchr_iter(b'\n', source) {
-        starts.push((index + 1) as u32);
-    }
-    debug_assert!(!starts.is_empty());
-    debug_assert_eq!(starts[0], 0);
-    ast.set_line_starts(starts);
-}
-
 fn can_start_binding(tag: TokenTag) -> bool {
     tag.is_identifier_like() || matches!(tag, TokenTag::LeftBracket | TokenTag::LeftBrace)
 }
@@ -11781,17 +11765,6 @@ mod tests {
         let (nodes, extra) = estimate_ast_capacity(8_000_000);
         assert_eq!(nodes, 1_500_000);
         assert_eq!(extra, 666_666);
-    }
-
-    #[test]
-    fn builds_line_starts() {
-        let allocator = Allocator::new();
-        let source = "first\n\nthird\r\nfifth";
-        let mut ast = Ast::new(source, &allocator);
-
-        build_line_starts(&mut ast, source);
-
-        assert_eq!(ast.line_starts(), &[0, 6, 7, 14]);
     }
 
     #[test]
