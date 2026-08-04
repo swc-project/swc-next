@@ -1,5 +1,5 @@
 AST Parsed     : 11509/11509 (100.00%)
-Positive Passed: 7174/11509 (62.33%)
+Positive Passed: 7175/11509 (62.34%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/APISample_Watch.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/APISample_WatchWithDefaults.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/APISample_WatchWithOwnWatchHost.ts
@@ -796,7 +796,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/exportAssignm
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/exportAssignmentWithExportModifier.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/exportDeclarationForModuleOrEnumWithMemberOfSameName.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/exportDeclareClass1.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/exportDefaultAsyncFunction2.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/exportDefaultDuplicateCrash.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/exportDefaultMarksIdentifierAsUsed.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/exportDefaultParenthesizeES6.ts
