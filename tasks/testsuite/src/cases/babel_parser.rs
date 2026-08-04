@@ -46,12 +46,20 @@ pub struct BabelParserCase {
     name: String,
     input: String,
     options: BabelOptions,
+    oracle_source_type: Option<SourceType>,
     expects_error: bool,
 }
 
 #[derive(Deserialize)]
 struct BabelParserOutput {
     errors: Option<Vec<String>>,
+    program: Option<BabelParserProgram>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct BabelParserProgram {
+    source_type: String,
 }
 
 impl BabelParserCase {
@@ -83,13 +91,14 @@ impl BabelParserCase {
                     .unwrap_or(case_dir)
                     .to_string_lossy()
                     .replace('\\', "/");
-                let expects_error = parser_expects_error(case_dir)?;
+                let (expects_error, oracle_source_type) = parser_expectation(case_dir)?;
                 let input = read_to_string(&path)?;
                 Ok(Self {
                     path,
                     name,
                     input,
                     options,
+                    oracle_source_type,
                     expects_error,
                 })
             })
@@ -135,15 +144,24 @@ fn is_supported_parser_path(path: &Path) -> bool {
         .any(|path| normalized_path.contains(path))
 }
 
-fn parser_expects_error(case_dir: &Path) -> io::Result<bool> {
+fn parser_expectation(case_dir: &Path) -> io::Result<(bool, Option<SourceType>)> {
     for file_name in ["output.json", "output.extended.json"] {
         let output_path = case_dir.join(file_name);
         if output_path.is_file() {
             let output = serde_json::from_str::<BabelParserOutput>(&read_to_string(&output_path)?)?;
-            return Ok(output.errors.is_some_and(|errors| !errors.is_empty()));
+            let expects_error = output.errors.is_some_and(|errors| !errors.is_empty());
+            let source_type =
+                output
+                    .program
+                    .and_then(|program| match program.source_type.as_str() {
+                        "script" => Some(SourceType::Script),
+                        "module" => Some(SourceType::Module),
+                        _ => None,
+                    });
+            return Ok((expects_error, source_type));
         }
     }
-    Ok(true)
+    Ok((true, None))
 }
 
 impl Case for BabelParserCase {
@@ -166,7 +184,14 @@ impl Case for BabelParserCase {
     }
 
     fn source_type(&self) -> SourceType {
-        source_type(&self.path, &self.options)
+        let configured_source_type = source_type(&self.path, &self.options);
+        // Babel serializes CommonJS programs as `script`, but parses them with
+        // CommonJS allowances such as top-level `return` and `new.target`.
+        if configured_source_type == SourceType::CommonJs {
+            return configured_source_type;
+        }
+
+        self.oracle_source_type.unwrap_or(configured_source_type)
     }
 
     fn lang(&self) -> Lang {
