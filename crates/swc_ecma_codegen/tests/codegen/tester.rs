@@ -71,6 +71,7 @@ fn expect_printed_common(
         lang,
         preserve_parens: false,
         comments: CommentMode::Attached,
+        ..Default::default()
     };
     let result = Parser::init(&mut ast, parse_options, NoTokenParserConfig).parse();
     let has_errors = result
