@@ -606,7 +606,7 @@ pub struct Parser<'parser, 'a, C: ParserConfig = NoTokenParserConfig> {
     preserve_parens: bool,
     comment_mode: CommentMode,
     lexer: Lexer<'a, C>,
-    diagnostics: Vec<Diagnostic<'static>>,
+    pub(super) diagnostics: Vec<Diagnostic<'static>>,
     current_token: Token,
     /// End offset of the most recently consumed token.
     ///
@@ -768,7 +768,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
     }
 
-    pub(super) fn parse_program(mut self) -> ParseReturn<'a> {
+    pub fn parse(mut self) -> ParseReturn<'a> {
         self.context = self.source_type.into();
         if self.advance().is_none() {
             self.current_token = Token::eof(0);
@@ -814,6 +814,18 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             program,
             tokens,
             diagnostics,
+        }
+    }
+
+    pub fn parse_expression(mut self) -> Result<Expr, Vec<Diagnostic<'a>>> {
+        self.context = self.source_type.into();
+        if self.advance().is_none() {
+            self.current_token = Token::eof(0);
+        }
+        let expr = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default());
+        match expr {
+            Some(expr) if self.diagnostics.is_empty() => Ok(expr),
+            _ => Err(self.diagnostics),
         }
     }
 
@@ -1076,7 +1088,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             let is_directive = (|| {
                 if in_directive_prologue && self.current_token.tag == TokenTag::StringLiteral {
                     let expression =
-                        self.parse_expression(Precedence::Lowest, ParseExpressionOpts::default())?;
+                        self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default())?;
                     if let ExprData::StringLiteral(string_literal) = self.ast.expr_data(expression)
                     {
                         let directive =
@@ -1389,7 +1401,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         if !self.expect(TokenTag::LeftParen, "Expected '(' after 'if'", None) {
             return None;
         }
-        let test = self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
+        let test = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after if condition",
@@ -1420,7 +1432,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         if !self.expect(TokenTag::LeftParen, "Expected '(' after 'while'", None) {
             return None;
         }
-        let test = self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
+        let test = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after while condition",
@@ -1451,7 +1463,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         if !self.expect(TokenTag::LeftParen, "Expected '(' after 'while'", None) {
             return None;
         }
-        let test = self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
+        let test = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after while condition",
@@ -1490,7 +1502,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             ) {
             None
         } else {
-            Some(self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?)
+            Some(self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?)
         };
         let end = self.eat_semicolon(self.prev_token_end)?;
         Some(
@@ -1514,7 +1526,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 None
             };
         }
-        let argument = self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
+        let argument = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
         let end = self.eat_semicolon(self.prev_token_end)?;
         Some(
             self.ast
@@ -1570,7 +1582,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         if !self.expect(TokenTag::LeftParen, "Expected '(' after 'with'", None) {
             return None;
         }
-        let object = self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
+        let object = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after with expression",
@@ -1587,8 +1599,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     fn parse_expression_or_labeled_statement(&mut self) -> Option<Stmt> {
-        let expression =
-            self.parse_expression(Precedence::Lowest, ParseExpressionOpts::default())?;
+        let expression = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default())?;
         if self.ast.node_kind(expression.node_id()) == NodeKind::IdentifierReference
             && self.current_token.tag == TokenTag::Colon
         {
@@ -1599,8 +1610,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
     fn parse_expression_statement(&mut self) -> Option<Stmt> {
         let start = self.current_token.span.start;
-        let expression =
-            self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
+        let expression = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
         self.parse_expression_statement_with_expression(start, expression)
     }
 
@@ -1752,7 +1762,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             self.apply_type_annotation_to_pattern(id, annotation);
         }
         let init = if self.eat(TokenTag::Assign)? {
-            let expression = self.parse_expression(
+            let expression = self.parse_expr(
                 Precedence::Assignment,
                 ParseExpressionOpts {
                     respect_in_parameter: true,
@@ -1849,8 +1859,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         if !self.eat(TokenTag::Assign)? {
             return Some(left);
         }
-        let right =
-            self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
+        let right = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
         let span = Span::new(left.span(self.ast).start, right.span(self.ast).end);
         let decorators = TypedSubRange::empty();
         Some(
@@ -2696,8 +2705,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
         let value = if self.eat(TokenTag::Assign)? {
             let context = enter_grammar_context![&mut self.context, ~Yield, ~Await];
-            let value =
-                self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default());
+            let value = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
             self.context = context;
             Some(value?)
         } else {
@@ -3608,8 +3616,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
     fn parse_ts_export_assignment(&mut self, start: u32) -> Option<Stmt> {
         self.advance()?;
-        let expression =
-            self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
+        let expression = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
         let end = self.eat_semicolon(self.prev_token_end)?;
         Some(
             self.ast
@@ -3756,8 +3763,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             }
         }
 
-        let expression =
-            self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
+        let expression = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
         Some(DefaultExportPart {
             declaration: ExportDefaultDeclarationKind::Expr(expression),
             needs_semi: true,
@@ -4583,7 +4589,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let (id, computed) = self.parse_enum_member_name()?;
         let start = id.span(self.ast).start;
         let initializer = if self.eat(TokenTag::Assign)? {
-            Some(self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?)
+            Some(self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?)
         } else {
             None
         };
@@ -4607,7 +4613,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let token = self.current_token;
         if self.eat(TokenTag::LeftBracket)? {
             let expression =
-                self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
+                self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
             if !self.expect(
                 TokenTag::RightBracket,
                 "Expected ']' to close a computed enum member name",
@@ -5551,8 +5557,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         if self.current_token.tag == TokenTag::RightParen {
             return Some(None);
         }
-        let options =
-            self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
+        let options = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
         self.eat(TokenTag::Comma)?;
         Some(Some(options))
     }
@@ -6656,7 +6661,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let head = self.current_token;
         let head_is_let = head.tag == TokenTag::Let && !head.is_escaped();
         let context = enter_grammar_context![&mut self.context, ~In];
-        let expression = self.parse_expression(
+        let expression = self.parse_expr(
             Precedence::Comma,
             ParseExpressionOpts {
                 respect_in_parameter: true,
@@ -6733,7 +6738,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let test = if self.current_token.tag == TokenTag::Semicolon {
             None
         } else {
-            Some(self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?)
+            Some(self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?)
         };
         if !self.expect(
             TokenTag::Semicolon,
@@ -6745,7 +6750,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let update = if self.current_token.tag == TokenTag::RightParen {
             None
         } else {
-            Some(self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?)
+            Some(self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?)
         };
         if !self.expect(
             TokenTag::RightParen,
@@ -6781,7 +6786,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
         self.report_if_escaped_keyword(self.current_token);
         self.advance_without_escape_check()?;
-        let right = self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
+        let right = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after for-in expression",
@@ -6805,8 +6810,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     ) -> Option<Stmt> {
         self.report_if_escaped_keyword(self.current_token);
         self.advance_without_escape_check()?;
-        let right =
-            self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
+        let right = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after for-of expression",
@@ -6869,8 +6873,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         if !self.expect(TokenTag::LeftParen, "Expected '(' after 'switch'", None) {
             return None;
         }
-        let discriminant =
-            self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
+        let discriminant = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
         if !self.expect(
             TokenTag::RightParen,
             "Expected ')' after switch expression",
@@ -6920,7 +6923,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         ));
         let case_start = self.current_token.span.start;
         let test = if self.eat(TokenTag::Case)? {
-            Some(self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?)
+            Some(self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?)
         } else {
             self.advance()?;
             None
@@ -7041,7 +7044,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         )
     }
 
-    fn parse_expression(&mut self, minimum: Precedence, opts: ParseExpressionOpts) -> Option<Expr> {
+    fn parse_expr(&mut self, minimum: Precedence, opts: ParseExpressionOpts) -> Option<Expr> {
         let mut left = self.parse_prefix(opts.in_cover, minimum)?;
         let is_ts = self.lang.is_typescript();
 
@@ -7071,7 +7074,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     fn parse_expression_in_cover(&mut self, precedence: Precedence) -> Option<Expr> {
-        self.parse_expression(
+        self.parse_expr(
             precedence,
             ParseExpressionOpts {
                 in_cover: true,
@@ -7479,7 +7482,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             self.advance()?;
             let end = loop {
                 let expression =
-                    self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
+                    self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
                 self.scratch_b.append(expression);
                 if self.current_token.tag != TokenTag::RightBrace {
                     self.report_expected(
@@ -7627,7 +7630,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             {
                 let element = if self.eat(TokenTag::Spread)? {
                     let spread_start = self.prev_token_end - 3;
-                    let argument = self.parse_expression(
+                    let argument = self.parse_expr(
                         Precedence::Assignment,
                         ParseExpressionOpts {
                             in_cover: true,
@@ -7639,7 +7642,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                         argument,
                     ))
                 } else {
-                    Argument::Expr(self.parse_expression(
+                    Argument::Expr(self.parse_expr(
                         Precedence::Assignment,
                         ParseExpressionOpts {
                             in_cover: true,
@@ -8197,8 +8200,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 is_expression: false,
             });
         }
-        let expression =
-            self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
+        let expression = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
         Some(ArrowBodyResult {
             body: ArrowFunctionBody::Expr(expression),
             is_expression: true,
@@ -8979,7 +8981,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             {
                 let property = if self.eat(TokenTag::Spread)? {
                     let spread_start = self.prev_token_end - 3;
-                    let expression = self.parse_expression(
+                    let expression = self.parse_expr(
                         Precedence::Assignment,
                         ParseExpressionOpts {
                             in_cover: true,
@@ -9146,7 +9148,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
         if self.current_token.tag == TokenTag::Colon {
             self.advance()?;
-            let value = self.parse_expression(
+            let value = self.parse_expr(
                 Precedence::Assignment,
                 ParseExpressionOpts {
                     in_cover: true,
@@ -9197,7 +9199,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             };
 
             self.advance()?;
-            let default_value = self.parse_expression(
+            let default_value = self.parse_expr(
                 Precedence::Assignment,
                 ParseExpressionOpts {
                     in_cover: true,
@@ -9372,7 +9374,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         if token.tag == TokenTag::LeftBracket {
             self.advance()?;
             let expression =
-                self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
+                self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
             if !self.expect(
                 TokenTag::RightBracket,
                 "Expected ']' after computed property key",
@@ -9424,7 +9426,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         match token.tag {
             TokenTag::LeftBracket => {
                 self.advance()?;
-                let expression = self.parse_expression(
+                let expression = self.parse_expr(
                     Precedence::Assignment,
                     ParseExpressionOpts {
                         in_cover,
@@ -9500,7 +9502,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let open_bracket_span = self.current_token.span;
         self.advance()?;
         let context = enter_grammar_context![&mut self.context, +In];
-        let expression = self.parse_expression(Precedence::Lowest, ParseExpressionOpts::default());
+        let expression = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default());
         self.context = context;
         let expression = expression?;
         let property = PropertyKey::Expr(expression);
@@ -9738,18 +9740,15 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             {
                 let argument = if self.eat(TokenTag::Spread)? {
                     let start = self.prev_token_end - 3;
-                    let expression = self
-                        .parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
+                    let expression =
+                        self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
                     Argument::SpreadElement(self.ast.spread_element(
                         Span::new(start, expression.span(self.ast).end),
                         expression,
                     ))
                 } else {
                     Argument::Expr(
-                        self.parse_expression(
-                            Precedence::Assignment,
-                            ParseExpressionOpts::default(),
-                        )?,
+                        self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?,
                     )
                 };
                 self.scratch_a.append(argument);
@@ -9905,13 +9904,12 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         if !self.expect(TokenTag::LeftParen, "Expected '(' after import", None) {
             return None;
         }
-        let source =
-            self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
+        let source = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
         let options = if phase.is_none() && self.eat(TokenTag::Comma)? {
             let options = if self.current_token.tag == TokenTag::RightParen {
                 None
             } else {
-                Some(self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?)
+                Some(self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?)
             };
             self.eat(TokenTag::Comma)?;
             options
@@ -10253,16 +10251,14 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             );
         }
         if self.eat(TokenTag::Spread)? {
-            let expression =
-                self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
+            let expression = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
             let end = self.expect_jsx_child_right_brace("JSX spread")?;
             return Some(
                 self.ast
                     .jsx_child_jsx_spread_child(Span::new(start, end), expression),
             );
         }
-        let expression =
-            self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
+        let expression = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
         let end = self.expect_jsx_child_right_brace("JSX expression")?;
         Some(self.ast.jsx_child_jsx_expression_container(
             Span::new(start, end),
@@ -10507,8 +10503,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 JsxExpression::JsxEmptyExpression(empty),
             ));
         }
-        let expression =
-            self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
+        let expression = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
         let end = self.current_token.span.end;
         if context == JsxExprContext::Tag {
             self.enter_jsx_tag();
@@ -10538,7 +10533,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         ) {
             return None;
         }
-        let argument = self.parse_expression(Precedence::Comma, ParseExpressionOpts::default())?;
+        let argument = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
         let end = self.current_token.span.end;
         self.enter_jsx_tag();
         if !self.expect(
@@ -10555,7 +10550,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     fn parse_await_expression(&mut self, start: u32) -> Option<Expr> {
-        let argument = self.parse_expression(Precedence::Prefix, ParseExpressionOpts::default())?;
+        let argument = self.parse_expr(Precedence::Prefix, ParseExpressionOpts::default())?;
         if self.current_token.tag == TokenTag::Exponent {
             self.report(
                 Span::new(start, argument.span(self.ast).end),
@@ -10637,8 +10632,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         ) {
             return None;
         }
-        let expression =
-            self.parse_expression(Precedence::Prefix, ParseExpressionOpts::default())?;
+        let expression = self.parse_expr(Precedence::Prefix, ParseExpressionOpts::default())?;
         Some(self.ast.expr_ts_type_assertion(
             Span::new(start, expression.span(self.ast).end),
             type_annotation,
@@ -10697,7 +10691,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             ) {
             None
         } else {
-            Some(self.parse_expression(
+            Some(self.parse_expr(
                 Precedence::Assignment,
                 ParseExpressionOpts {
                     respect_in_parameter: true,
@@ -10724,7 +10718,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         debug_assert!(self.current_token.tag.is_unary_operator());
         let token = self.current_token;
         self.advance()?;
-        let argument = self.parse_expression(Precedence::Prefix, ParseExpressionOpts::default())?;
+        let argument = self.parse_expr(Precedence::Prefix, ParseExpressionOpts::default())?;
         if self.current_token.tag == TokenTag::Exponent {
             self.report(
                 Span::new(token.span.start, argument.span(self.ast).end),
@@ -10758,7 +10752,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let token = self.current_token;
         self.advance()?;
         let argument = if prefix {
-            self.parse_expression(Precedence::Prefix, ParseExpressionOpts::default())?
+            self.parse_expr(Precedence::Prefix, ParseExpressionOpts::default())?
         } else {
             left.expect("a postfix update expression has a left operand")
         };
@@ -10802,7 +10796,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let start = left.span(self.ast).start;
         let precedence = tag.precedence();
         self.advance()?;
-        let right = self.parse_expression(
+        let right = self.parse_expr(
             if tag == TokenTag::Exponent {
                 precedence
             } else {
@@ -10830,7 +10824,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let start = left.span(self.ast).start;
         let precedence = tag.precedence();
         self.advance()?;
-        let right = self.parse_expression(precedence.next(), ParseExpressionOpts::default())?;
+        let right = self.parse_expr(precedence.next(), ParseExpressionOpts::default())?;
         let operator = match tag {
             TokenTag::LogicalAnd => LogicalOperator::And,
             TokenTag::LogicalOr => LogicalOperator::Or,
@@ -10889,7 +10883,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             return None;
         };
         self.advance()?;
-        let right = self.parse_expression(precedence, ParseExpressionOpts::default())?;
+        let right = self.parse_expr(precedence, ParseExpressionOpts::default())?;
         Some(self.ast.expr_assignment_expression(
             Span::new(start, right.span(self.ast).end),
             target,
@@ -10905,8 +10899,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let context = enter_grammar_context![&mut self.context, +In];
         let old_allow_arrow_return_type = self.ts_context.allow_arrow_return_type;
         self.ts_context.allow_arrow_return_type = false;
-        let consequent =
-            self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default());
+        let consequent = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
         self.context = context;
         self.ts_context.allow_arrow_return_type = old_allow_arrow_return_type;
         let consequent = consequent?;
@@ -10919,7 +10912,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         ) {
             return None;
         }
-        let alternate = self.parse_expression(
+        let alternate = self.parse_expr(
             Precedence::Assignment,
             ParseExpressionOpts {
                 respect_in_parameter: true,
@@ -10942,7 +10935,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             let mut end = left.span(self.ast).end;
             while self.eat(TokenTag::Comma)? {
                 let expression =
-                    self.parse_expression(precedence.next(), ParseExpressionOpts::default())?;
+                    self.parse_expr(precedence.next(), ParseExpressionOpts::default())?;
                 end = expression.span(self.ast).end;
                 self.scratch_a.append(expression);
             }
