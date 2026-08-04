@@ -152,11 +152,12 @@ export function decode(buffer, source) {
         const f_directives = nodeArray(_u32[(payload + 4) >> 2], _u32[(payload + 4 + 4) >> 2], false);
         const f_body = nodeArray(_u32[(extra + (extraId + 1) * 8) >> 2], _u32[(extra + (extraId + 1) * 8 + 4) >> 2], false);
         const f_hashbang = optionalNode(_u32[(payload + 0) >> 2]);
+        const body = [...f_directives, ...f_body];
         result = {
-          type: "Program", start, end,
+          type: "Program", start: isTs ? (body.length !== 0 ? body[0].start : end) : start, end,
           sourceType: f_sourceType,
           hashbang: f_hashbang,
-          body: [...f_directives, ...f_body],
+          body,
         };
         break;
       }

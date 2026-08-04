@@ -39,8 +39,8 @@ pub struct Options {
     ///
     /// Defaults to plain JavaScript.
     pub lang: Lang,
-    /// Represents parenthesized expressions as [`ParenthesizedExpression`]
-    /// nodes when true. Otherwise only the inner expression is kept.
+    /// Represents parenthesized expressions and TypeScript types as explicit
+    /// parenthesized nodes when true. Otherwise only the inner node is kept.
     pub preserve_parens: bool,
     /// Determines whether comments are attached to AST nodes.
     pub comments: CommentMode,
@@ -11777,19 +11777,29 @@ fn assignment_operator(tag: TokenTag) -> AssignmentOperator {
 fn strip_parenthesized_nodes(ast: &mut Ast<'_>) {
     for index in 0..ast.node_count() {
         let node = NodeId::from_raw_unchecked(index as u32);
-        let NodeKindData::ParenthesizedExpression(parenthesized) = ast.kind_data(node) else {
-            continue;
+        let replacement = match ast.kind_data(node) {
+            NodeKindData::ParenthesizedExpression(parenthesized) => {
+                let mut inner = parenthesized.expression(ast);
+                // Resolve nested wrappers to the innermost non-parenthesized node.
+                while let ExprData::ParenthesizedExpression(parenthesized) = ast.expr_data(inner) {
+                    inner = parenthesized.expression(ast);
+                }
+                inner.node_id()
+            }
+            NodeKindData::TsParenthesizedType(parenthesized) => {
+                let mut inner = parenthesized.type_annotation(ast);
+                // Resolve nested wrappers to the innermost non-parenthesized node.
+                while let TsTypeData::TsParenthesizedType(parenthesized) = ast.ts_type_data(inner) {
+                    inner = parenthesized.type_annotation(ast);
+                }
+                inner.node_id()
+            }
+            _ => continue,
         };
-
-        let mut inner = parenthesized.expression(ast);
-        // Resolve nested wrappers to the innermost non-parenthesized node.
-        while let ExprData::ParenthesizedExpression(parenthesized) = ast.expr_data(inner) {
-            inner = parenthesized.expression(ast);
-        }
         // SAFETY: parsing has not exposed any concrete handles yet. This pass
-        // retires the parenthesized node, and all expression edges that refer
-        // to it accept the replacement expression kind.
-        unsafe { ast.set_data(node, inner.node_id()) };
+        // retires the parenthesized node, and all expression or type edges that
+        // refer to it accept the corresponding replacement kind.
+        unsafe { ast.set_data(node, replacement) };
     }
 }
 

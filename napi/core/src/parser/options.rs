@@ -92,7 +92,8 @@ pub struct ParserOptions {
     ///
     /// @default "js"
     pub lang: Option<Lang>,
-    /// Preserve parenthesized expressions as `ParenthesizedExpression` nodes.
+    /// Preserve parenthesized expressions and TypeScript types as explicit
+    /// parenthesized nodes.
     ///
     /// @default true
     pub preserve_parens: Option<bool>,
