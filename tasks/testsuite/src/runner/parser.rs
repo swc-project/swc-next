@@ -23,6 +23,17 @@ impl<C: Case> Runner<C> for ParserRunner {
                 Err(_) if case.expects_error() => return Ok(()),
                 Err(error) => return Err(format!("{}: {error}", case.name())),
             };
+            if !case.expects_error()
+                && let Some(expected) = case.expected_source_type()
+            {
+                let actual = program.source_type(&ast);
+                if actual != expected {
+                    return Err(format!(
+                        "{}: expected source type {expected:?}, but parser produced {actual:?}",
+                        case.name()
+                    ));
+                }
+            }
             let semantic_ret = analyze(program, &ast, AnalyzeOptions { check_syntax: true });
             match (case.expects_error(), semantic_ret.diagnostics.first()) {
                 (true, Some(_)) | (false, None) => Ok(()),

@@ -135,6 +135,10 @@ impl BabelParserCase {
                 .syntax_typescript
                 .is_some_and(|options| options.disallow_ambiguous_jsx_like)
     }
+
+    fn configured_source_type(&self) -> SourceType {
+        source_type(&self.path, &self.options)
+    }
 }
 
 fn is_supported_parser_path(path: &Path) -> bool {
@@ -184,7 +188,13 @@ impl Case for BabelParserCase {
     }
 
     fn source_type(&self) -> SourceType {
-        let configured_source_type = source_type(&self.path, &self.options);
+        let configured_source_type = self.configured_source_type();
+        // Unambiguous is parser input, while the oracle records the resolved
+        // source type expected after parsing.
+        if configured_source_type == SourceType::Unambiguous {
+            return configured_source_type;
+        }
+
         // Babel serializes CommonJS programs as `script`, but parses them with
         // CommonJS allowances such as top-level `return` and `new.target`.
         if configured_source_type == SourceType::CommonJs {
@@ -192,6 +202,14 @@ impl Case for BabelParserCase {
         }
 
         self.oracle_source_type.unwrap_or(configured_source_type)
+    }
+
+    fn expected_source_type(&self) -> Option<SourceType> {
+        if self.configured_source_type() == SourceType::Unambiguous {
+            self.oracle_source_type
+        } else {
+            None
+        }
     }
 
     fn lang(&self) -> Lang {

@@ -17,6 +17,9 @@ pub trait Case: Sized + Sync {
     fn name(&self) -> &str;
     fn code(&self) -> &str;
     fn source_type(&self) -> SourceType;
+    fn expected_source_type(&self) -> Option<SourceType> {
+        None
+    }
     fn lang(&self) -> Lang;
     fn expects_error(&self) -> bool;
 
