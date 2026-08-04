@@ -181,6 +181,9 @@ impl<'a> ScopeTracker<'a> {
                 self.push_scope(ScopeKind::Function, root_node, ScopeFlags::default());
             }
             SourceType::Script => {}
+            SourceType::Unambiguous => {
+                unreachable!("unambiguous source type must be resolved before semantic analysis")
+            }
         }
     }
 

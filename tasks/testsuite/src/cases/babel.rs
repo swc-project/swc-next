@@ -177,7 +177,8 @@ pub(super) fn source_type(path: &Path, options: &BabelOptions) -> SourceType {
     match options.source_type.as_deref() {
         Some("script") => SourceType::Script,
         Some("commonjs") => SourceType::CommonJs,
-        Some("module" | "unambiguous") | None => SourceType::Module,
+        Some("module") | None => SourceType::Module,
+        Some("unambiguous") => SourceType::Unambiguous,
         Some(_) => SourceType::Module,
     }
 }

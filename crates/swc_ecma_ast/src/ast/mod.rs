@@ -24,6 +24,8 @@ pub enum SourceType {
     Module = 0,
     Script = 1,
     CommonJs = 2,
+    /// Resolve to a module when module syntax is present, otherwise a script.
+    Unambiguous = 3,
 }
 
 impl SourceType {
@@ -33,18 +35,22 @@ impl SourceType {
             Self::Module => "module",
             Self::Script => "script",
             Self::CommonJs => "commonjs",
+            Self::Unambiguous => "unambiguous",
         }
     }
 
     /// Infers the source type from a file path.
     ///
-    /// CommonJS extensions (`.cjs` and `.cts`) are scripts; all other paths
-    /// default to modules.
+    /// Explicit module extensions (`.mjs` and `.mts`) are modules, explicit
+    /// CommonJS extensions (`.cjs` and `.cts`) are CommonJS modules, and all
+    /// other paths use content-based detection.
     pub fn from_path(path: &str) -> Self {
-        if path.ends_with(".cjs") || path.ends_with(".cts") {
-            Self::Script
-        } else {
+        if path.ends_with(".mjs") || path.ends_with(".mts") {
             Self::Module
+        } else if path.ends_with(".cjs") || path.ends_with(".cts") {
+            Self::CommonJs
+        } else {
+            Self::Unambiguous
         }
     }
 }

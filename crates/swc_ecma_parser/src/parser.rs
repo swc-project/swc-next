@@ -118,7 +118,7 @@ impl Default for Context {
 impl From<SourceType> for Context {
     fn from(source_type: SourceType) -> Self {
         match source_type {
-            SourceType::Script => Self::default(),
+            SourceType::Script | SourceType::Unambiguous => Self::default(),
             SourceType::CommonJs => Self {
                 r#return: true,
                 ..Self::default()
@@ -309,7 +309,7 @@ impl From<SourceType> for StatementContext {
     fn from(source_type: SourceType) -> Self {
         match source_type {
             SourceType::Script | SourceType::CommonJs => Self::StatementListItem,
-            SourceType::Module => Self::ModuleItem,
+            SourceType::Module | SourceType::Unambiguous => Self::ModuleItem,
         }
     }
 }
@@ -602,6 +602,8 @@ pub struct Parser<'parser, 'a, C: ParserConfig = NoTokenParserConfig> {
     ast: &'parser mut Ast<'a>,
     source: &'a str,
     source_type: SourceType,
+    /// Whether the source contains syntax which is only valid in a module.
+    has_module_syntax: bool,
     lang: Lang,
     preserve_parens: bool,
     comment_mode: CommentMode,
@@ -659,6 +661,7 @@ struct Checkpoint {
     statement_context: StatementContext,
     ts_context: TsContext,
     state: ParserState,
+    has_module_syntax: bool,
 }
 
 struct Peek<'peek, 'a, C: ParserConfig = NoTokenParserConfig> {
@@ -745,6 +748,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             ast,
             source,
             source_type: options.source_type,
+            has_module_syntax: false,
             lang: options.lang,
             preserve_parens: options.preserve_parens,
             comment_mode: options.comments,
@@ -782,6 +786,14 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             let value = self.ast.source_slice(start, end);
             self.ast.hashbang(Span::new(0, end), value)
         });
+        if self.source_type == SourceType::Unambiguous {
+            self.source_type = if self.has_module_syntax {
+                SourceType::Module
+            } else {
+                SourceType::Script
+            };
+            self.ast.set_source_metadata(self.source_type, self.lang);
+        }
         let program = self.ast.program(
             Span::new(0, end),
             self.source_type,
@@ -1030,6 +1042,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             statement_context: self.statement_context,
             ts_context: self.ts_context,
             state: self.state,
+            has_module_syntax: self.has_module_syntax,
         }
     }
 
@@ -1049,6 +1062,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         self.statement_context = checkpoint.statement_context;
         self.ts_context = checkpoint.ts_context;
         self.state = checkpoint.state;
+        self.has_module_syntax = checkpoint.has_module_syntax;
     }
 
     fn begin_peek(&mut self) -> Peek<'_, 'a, C> {
@@ -1114,6 +1128,19 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     return Some(false);
                 }
                 let statement = self.parse_statement(self.statement_context)?;
+                if terminator.is_none()
+                    && matches!(
+                        self.ast.node_kind(statement.node_id()),
+                        NodeKind::ImportDeclaration
+                            | NodeKind::ExportNamedDeclaration
+                            | NodeKind::ExportDefaultDeclaration
+                            | NodeKind::ExportAllDeclaration
+                            | NodeKind::TsExportAssignment
+                            | NodeKind::TsNamespaceExportDeclaration
+                    )
+                {
+                    self.has_module_syntax = true;
+                }
                 self.scratch_statements.append(statement);
                 Some(false)
             })();
@@ -9886,6 +9913,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             TokenTag::Defer => Some(ImportPhase::Defer),
             TokenTag::Identifier if property.text(self.source) == "meta" => {
                 let property = self.parse_identifier_name()?;
+                self.has_module_syntax = true;
                 return Some(self.ast.expr_meta_property(
                     Span::new(
                         import_name.span(self.ast).start,
@@ -11752,6 +11780,42 @@ mod tests {
     use crate::TokenParserConfig;
 
     use super::*;
+
+    #[test]
+    fn parse_expression() {
+        let allocator = Allocator::default();
+        let source = "1 + 1";
+        let mut ast = Ast::new(source, &allocator);
+        let parser = Parser::init(&mut ast, Options::default(), NoTokenParserConfig);
+        let expr = parser.parse_expression().unwrap();
+        assert!(matches!(
+            ast.expr_data(expr),
+            swc_next_ecma_ast::ExprData::BinaryExpression(_)
+        ));
+    }
+
+    fn assert_unambiguous_source_type(source: &str, expected: SourceType) {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new(source, &allocator);
+        let options = Options {
+            source_type: SourceType::Unambiguous,
+            ..Options::default()
+        };
+        let result = Parser::init(&mut ast, options, NoTokenParserConfig).parse();
+
+        assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
+        assert_eq!(result.program.source_type(&ast), expected);
+        assert_eq!(ast.source_type(), expected);
+    }
+
+    #[test]
+    fn resolves_unambiguous_program_source_type() {
+        assert_unambiguous_source_type("const value = 1;", SourceType::Script);
+        assert_unambiguous_source_type("import value from 'value';", SourceType::Module);
+        assert_unambiguous_source_type("export const value = 1;", SourceType::Module);
+        assert_unambiguous_source_type("const value = import.meta.url;", SourceType::Module);
+        assert_unambiguous_source_type("import('value');", SourceType::Script);
+    }
 
     #[test]
     fn bounds_small_capacity_estimates() {
