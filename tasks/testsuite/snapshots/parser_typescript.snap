@@ -1,7 +1,12 @@
 parser * typescript
 ========================
+<<<<<<< HEAD
 Positive Passed: 21870/22023 (99.31%)
 Negative Passed: 1584/3448 (45.94%)
+=======
+Positive Passed: 21798/22023 (98.98%)
+Negative Passed: 1618/3448 (46.93%)
+>>>>>>> 67ccd57 (refactor(parser): use swc allocator for regexp validation)
 Panicked: 0/25471 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -761,11 +766,15 @@ Failed: fixtures/typescript/tests/cases/compiler/recursiveBaseCheck6.ts - recurs
 Failed: fixtures/typescript/tests/cases/compiler/recursiveComplicatedClasses.ts - recursiveComplicatedClasses.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/recursiveFunctionTypes.ts - recursiveFunctionTypes.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/recursiveTypeRelations.ts - recursiveTypeRelations.ts: expected a parse or early error, but pipeline succeeded
+<<<<<<< HEAD
 Failed: fixtures/typescript/tests/cases/compiler/regExpWithOpenBracketInCharClass.ts - regExpWithOpenBracketInCharClass.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/regularExpressionAnnexB.ts - regularExpressionAnnexB.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/regularExpressionCharacterClassRangeOrder.ts - regularExpressionCharacterClassRangeOrder.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/regularExpressionGroupNameSuggestions.ts - regularExpressionGroupNameSuggestions.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/regularExpressionUnicodePropertyValueExpressionSuggestions.ts - regularExpressionUnicodePropertyValueExpressionSuggestions.ts: expected a parse or early error, but pipeline succeeded
+=======
+Failed: fixtures/typescript/tests/cases/compiler/reexportedMissingAlias.ts - second.d.ts: parser: expected an import-equals declaration after 'export' at 23..60
+>>>>>>> 67ccd57 (refactor(parser): use swc allocator for regexp validation)
 Failed: fixtures/typescript/tests/cases/compiler/requireOfJsonFileInJsFile.ts - /js.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/requireOfJsonFileInJsFile.ts - /user.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/requireOfJsonFileWithComputedPropertyName.ts - file1.ts: expected a parse or early error, but pipeline succeeded
@@ -1138,11 +1147,6 @@ Failed: fixtures/typescript/tests/cases/conformance/es6/templates/taggedTemplate
 Failed: fixtures/typescript/tests/cases/conformance/es6/templates/taggedTemplateStringsWithOverloadResolution3_ES6.ts - taggedTemplateStringsWithOverloadResolution3_ES6.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/templates/templateStringInDeleteExpression.ts - templateStringInDeleteExpression.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/templates/templateStringInDeleteExpressionES6.ts - templateStringInDeleteExpressionES6.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions07.ts - unicodeExtendedEscapesInRegularExpressions07.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions12.ts - unicodeExtendedEscapesInRegularExpressions12.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions14.ts - unicodeExtendedEscapesInRegularExpressions14.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions17.ts - unicodeExtendedEscapesInRegularExpressions17.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions19.ts - unicodeExtendedEscapesInRegularExpressions19.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/variableDeclarations/VariableDeclaration6_es6.ts - VariableDeclaration6_es6.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/yieldExpressions/YieldExpression1_es6.ts - YieldExpression1_es6.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/yieldExpressions/YieldExpression8_es6.ts - YieldExpression8_es6.ts: expected a parse or early error, but pipeline succeeded
@@ -1751,11 +1755,6 @@ Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2018/forAwa
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2018/forAwait/parser.forAwait.es2018.ts - inAsyncGeneratorWithDeclIsOk.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2018/forAwait/parser.forAwait.es2018.ts - inAsyncGeneratorWithExpressionIsOk.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.decmialNegative.ts - 1.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 12.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 16.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 20.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 24.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 28.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 29.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 30.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 31.ts: expected a parse or early error, but pipeline succeeded
@@ -1764,11 +1763,6 @@ Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numeri
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 34.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 35.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 36.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 4.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 40.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 44.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 48.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript2021/numericSeparators/parser.numericSeparators.unicodeEscape.ts - 8.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript3/Accessors/parserES3Accessors1.ts - parserES3Accessors1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript3/Accessors/parserES3Accessors3.ts - parserES3Accessors3.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Accessors/parserAccessors1.ts - parserAccessors1.ts: expected a parse or early error, but pipeline succeeded
@@ -1855,7 +1849,6 @@ Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Parameter
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Protected/Protected6.ts - Protected6.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegressionTests/parser509618.ts - parser509618.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegressionTests/parser553699.ts - parser553699.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegressionTests/parser579071.ts - parser579071.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Statements/parserES5ForOfStatement5.ts - parserES5ForOfStatement5.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Statements/parserForInStatement5.ts - parserForInStatement5.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Statements/parserForInStatement8.ts - parserForInStatement8.ts: expected a parse or early error, but pipeline succeeded

@@ -17,7 +17,6 @@ hashbrown        = "0.17.1"
 indexmap         = "2.14.0"
 memchr           = "2.7.6"
 oxc_index        = { version = "5.0.0", features = ["nonmax"] }
-oxc_regular_expression = "0.137.0"
 rayon            = "1.12.0"
 regex            = "1.12.2"
 rustc-hash       = "2.1.2"
@@ -55,6 +54,7 @@ swc_next_ast_macros       = { version = "0.11.0", path = "crates/swc_ast_macros"
 swc_next_ecma_ast         = { version = "0.11.0", path = "crates/swc_ecma_ast" }
 swc_next_ecma_codegen     = { version = "0.11.0", path = "crates/swc_ecma_codegen" }
 swc_next_ecma_parser      = { version = "0.11.0", path = "crates/swc_ecma_parser" }
+swc_next_regular_expression = { version = "0.11.0", path = "crates/swc_regular_expression" }
 swc_next_ecma_semantic    = { version = "0.11.0", path = "crates/swc_ecma_semantic" }
 swc_next_ecma_transformer = { version = "0.11.0", path = "crates/swc_ecma_transformer" }
 
