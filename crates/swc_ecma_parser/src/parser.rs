@@ -44,6 +44,8 @@ pub struct Options {
     pub preserve_parens: bool,
     /// Determines whether comments are attached to AST nodes.
     pub comments: CommentMode,
+    /// Allows `return` statements outside functions.
+    pub allow_return_outside_function: bool,
 }
 
 impl Default for Options {
@@ -53,6 +55,7 @@ impl Default for Options {
             lang: Lang::Js,
             preserve_parens: true,
             comments: CommentMode::Attached,
+            allow_return_outside_function: false,
         }
     }
 }
@@ -607,6 +610,7 @@ pub struct Parser<'parser, 'a, C: ParserConfig = NoTokenParserConfig> {
     lang: Lang,
     preserve_parens: bool,
     comment_mode: CommentMode,
+    allow_return_outside_function: bool,
     lexer: Lexer<'a, C>,
     pub(super) diagnostics: Vec<Diagnostic<'static>>,
     current_token: Token,
@@ -752,6 +756,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             lang: options.lang,
             preserve_parens: options.preserve_parens,
             comment_mode: options.comments,
+            allow_return_outside_function: options.allow_return_outside_function,
             lexer,
             diagnostics: Vec::new(),
             current_token: Token::eof(0),
@@ -774,6 +779,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
     pub fn parse(mut self) -> ParseReturn<'a> {
         self.context = self.source_type.into();
+        self.context.r#return |= self.allow_return_outside_function;
         if self.advance().is_none() {
             self.current_token = Token::eof(0);
         }
@@ -830,6 +836,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
     pub fn parse_expression(mut self) -> Result<Expr, Vec<Diagnostic<'a>>> {
         self.context = self.source_type.into();
+        self.context.r#return |= self.allow_return_outside_function;
         if self.advance().is_none() {
             self.current_token = Token::eof(0);
         }
@@ -11830,6 +11837,21 @@ mod tests {
         assert_unambiguous_source_type("import value = require('value');", SourceType::Module);
         assert_unambiguous_source_type("import Value = Namespace.Value;", SourceType::Script);
         assert_unambiguous_source_type("export as namespace Foo", SourceType::Script);
+    }
+
+    #[test]
+    fn allows_return_outside_function_when_enabled() {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new("return;", &allocator);
+        let options = Options {
+            source_type: SourceType::Unambiguous,
+            allow_return_outside_function: true,
+            ..Options::default()
+        };
+        let result = Parser::init(&mut ast, options, NoTokenParserConfig).parse();
+
+        assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
+        assert_eq!(result.program.source_type(&ast), SourceType::Script);
     }
 
     #[test]
