@@ -370,11 +370,7 @@ mod tests {
 
     use super::{AnalyzeOptions, analyze};
 
-    fn diagnostics(source: &str) -> Vec<String> {
-        diagnostics_with_lang(source, Lang::Js)
-    }
-
-    fn diagnostics_with_lang(source: &str, lang: Lang) -> Vec<String> {
+    fn diagnostics(source: &str, lang: Lang) -> Vec<String> {
         let allocator = Allocator::new();
         let mut ast = Ast::new(source, &allocator);
         let parse = Parser::init(
@@ -396,69 +392,41 @@ mod tests {
     }
 
     #[test]
-    fn accepts_annex_b_duplicate_functions_in_sloppy_blocks_and_switches() {
+    fn annex_b() {
+        // Sloppy JavaScript blocks allow duplicate ordinary functions and
+        // isolate functions declared directly in if/else clauses.
         for source in [
             "{ function f() {} function f() {} }",
             "{ function f() {} function f() { 'use strict'; } }",
             "{ function f() { 'use strict'; } function f() {} }",
             "switch (0) { case 0: function f() {} case 1: function f() {} }",
+            "function outer() { { let f; if (true) function f() {} else function f() {} } try {} catch (f) { if (true) function f() {} } }",
         ] {
-            assert!(diagnostics(source).is_empty(), "{source}");
+            assert!(diagnostics(source, Lang::Js).is_empty(), "{source}");
         }
-    }
 
-    #[test]
-    fn preserves_typescript_var_function_block_merges() {
+        // Strict blocks and collisions with other value declarations remain
+        // errors.
         for source in [
-            "{ var f; function f() {} }",
-            "switch (0) { case 0: var f; case 1: function f() {} }",
-        ] {
-            assert!(
-                diagnostics_with_lang(source, Lang::Ts).is_empty(),
-                "{source}"
-            );
-        }
-    }
-
-    #[test]
-    fn rejects_typescript_var_function_merges_in_catch_blocks() {
-        let source = "try {} catch (e) { var f; function f() {} }";
-        assert!(
-            diagnostics_with_lang(source, Lang::Ts)
-                .iter()
-                .any(|diagnostic| diagnostic.contains("already been declared"))
-        );
-    }
-
-    #[test]
-    fn keeps_annex_b_conditional_functions_out_of_the_enclosing_sloppy_block() {
-        let source = "function outer() { { let f; if (true) function f() {} else function f() {} } try {} catch (f) { if (true) function f() {} } }";
-        assert!(diagnostics(source).is_empty());
-    }
-
-    #[test]
-    fn rejects_duplicate_functions_in_strict_blocks() {
-        let diagnostics = diagnostics("'use strict'; { function f() {} function f() {} }");
-        assert!(
-            diagnostics
-                .iter()
-                .any(|diagnostic| diagnostic.contains("already been declared"))
-        );
-    }
-
-    #[test]
-    fn does_not_apply_annex_b_to_var_or_generator_collisions() {
-        for source in [
+            "'use strict'; { function f() {} function f() {} }",
             "{ var f; function f() {} }",
             "{ function f() {} function* f() {} }",
             "{ function f() {} async function f() {} }",
         ] {
-            assert!(
-                diagnostics(source)
-                    .iter()
-                    .any(|diagnostic| diagnostic.contains("already been declared")),
-                "{source}"
-            );
+            assert!(!diagnostics(source, Lang::Js).is_empty(), "{source}");
         }
+
+        // TypeScript retains its var/function merge rules outside catch
+        // scopes.
+        for source in [
+            "{ var f; function f() {} }",
+            "switch (0) { case 0: var f; case 1: function f() {} }",
+        ] {
+            assert!(diagnostics(source, Lang::Ts).is_empty(), "{source}");
+        }
+
+        // A TypeScript catch scope still rejects the merge.
+        let source = "try {} catch (e) { var f; function f() {} }";
+        assert!(!diagnostics(source, Lang::Ts).is_empty());
     }
 }
