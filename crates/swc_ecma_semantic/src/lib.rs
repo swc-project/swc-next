@@ -365,18 +365,23 @@ pub fn analyze<'a>(root: Program, ast: &Ast<'a>, options: AnalyzeOptions) -> Sem
 #[cfg(test)]
 mod tests {
     use swc_next_allocator::Allocator;
-    use swc_next_ecma_ast::{Ast, SourceType};
+    use swc_next_ecma_ast::{Ast, Lang, SourceType};
     use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
     use super::{AnalyzeOptions, analyze};
 
     fn diagnostics(source: &str) -> Vec<String> {
+        diagnostics_with_lang(source, Lang::Js)
+    }
+
+    fn diagnostics_with_lang(source: &str, lang: Lang) -> Vec<String> {
         let allocator = Allocator::new();
         let mut ast = Ast::new(source, &allocator);
         let parse = Parser::init(
             &mut ast,
             Options {
                 source_type: SourceType::Script,
+                lang,
                 ..Options::default()
             },
             NoTokenParserConfig,
@@ -400,6 +405,29 @@ mod tests {
         ] {
             assert!(diagnostics(source).is_empty(), "{source}");
         }
+    }
+
+    #[test]
+    fn preserves_typescript_var_function_block_merges() {
+        for source in [
+            "{ var f; function f() {} }",
+            "switch (0) { case 0: var f; case 1: function f() {} }",
+        ] {
+            assert!(
+                diagnostics_with_lang(source, Lang::Ts).is_empty(),
+                "{source}"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_typescript_var_function_merges_in_catch_blocks() {
+        let source = "try {} catch (e) { var f; function f() {} }";
+        assert!(
+            diagnostics_with_lang(source, Lang::Ts)
+                .iter()
+                .any(|diagnostic| diagnostic.contains("already been declared"))
+        );
     }
 
     #[test]

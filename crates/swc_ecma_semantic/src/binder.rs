@@ -574,13 +574,20 @@ impl<'a> SymbolTracker<'a> {
         } else {
             expression_name_scope(scope)
         };
-        let target_kind = scope.get(target).kind;
-        let annex_b_block_function = is_declaration
+
+        let target_scope = scope.get(target);
+        let target_kind = target_scope.kind;
+        // TS permits var/function merges in ordinary blocks, but not in
+        // catch scopes.
+        let ts_catch_scope =
+            tree.is_ts() && tree.node_kind(target_scope.node) == NodeKind::CatchClause;
+        let annex_b_block_function = !tree.is_ts()
+            && is_declaration
             && target_kind == ScopeKind::Block
-            && !scope.get(target).flags.strict
+            && !target_scope.flags.strict
             && !function.generator(tree)
             && !function.r#async(tree);
-        let allow_overload = tree.is_ts()
+        let allow_overload = (tree.is_ts() && !ts_catch_scope)
             || matches!(
                 target_kind,
                 ScopeKind::Function
