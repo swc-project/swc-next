@@ -3674,12 +3674,28 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     fn parse_export_default_part(&mut self) -> Option<DefaultExportPart> {
-        if self.current_token.tag == TokenTag::Async
-            && !self.current_token.has_line_terminator_before()
-        {
-            let async_start = self.current_token.span.start;
-            self.advance()?;
-            if self.current_token.tag == TokenTag::Function {
+        let is_ts = self.lang.is_typescript();
+        let tag = self.current_token.tag;
+
+        if tag == TokenTag::Function {
+            let function = self.parse_function(
+                ParseFunctionOpts {
+                    is_default_export: true,
+                    ..ParseFunctionOpts::default()
+                },
+                None,
+            )?;
+            return Some(DefaultExportPart {
+                declaration: function.into_default_export_declaration(),
+                needs_semi: false,
+            });
+        }
+
+        if tag == TokenTag::Async && !self.current_token.has_line_terminator_before() {
+            let next = self.peek_ahead()?;
+            if next.tag == TokenTag::Function && !next.has_line_terminator_before() {
+                let async_start = self.current_token.span.start;
+                self.advance()?;
                 let function = self.parse_function(
                     ParseFunctionOpts {
                         is_async: true,
@@ -3693,26 +3709,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     needs_semi: false,
                 });
             }
-            let async_end = async_start + 5;
-            let name = self.ast.source_slice(async_start, async_end);
-            let expression = self
-                .ast
-                .expr_identifier_reference(Span::new(async_start, async_end), name);
-            return Some(DefaultExportPart {
-                declaration: ExportDefaultDeclarationKind::Expr(expression),
-                needs_semi: true,
-            });
         }
-        let (declaration, needs_semicolon) = if self.current_token.tag == TokenTag::Function {
-            let function = self.parse_function(
-                ParseFunctionOpts {
-                    is_default_export: true,
-                    ..ParseFunctionOpts::default()
-                },
-                None,
-            )?;
-            (function.into_default_export_declaration(), false)
-        } else if self.current_token.tag == TokenTag::Class {
+
+        if tag == TokenTag::Class {
             let class = self.parse_class(
                 ParseClassOpts {
                     is_default_export: true,
@@ -3720,8 +3719,13 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 },
                 None,
             )?;
-            (ExportDefaultDeclarationKind::Class(class), false)
-        } else if self.current_token.tag == TokenTag::At {
+            return Some(DefaultExportPart {
+                declaration: ExportDefaultDeclarationKind::Class(class),
+                needs_semi: false,
+            });
+        }
+
+        if tag == TokenTag::At {
             let (decorators_start, decorators) = self.parse_decorators()?;
             let class = self.parse_class_decorated(
                 ParseClassOpts {
@@ -3731,45 +3735,50 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 Some(decorators_start),
                 decorators,
             )?;
-            (ExportDefaultDeclarationKind::Class(class), false)
-        } else if self.lang.is_typescript()
-            && self.current_token.tag == TokenTag::Abstract
-            && self.is_abstract_class_next()?
-        {
-            let class_start = self.current_token.span.start;
-            self.advance()?;
-            let class = self.parse_class(
-                ParseClassOpts {
-                    is_default_export: true,
-                    is_abstract: true,
-                    ..ParseClassOpts::default()
-                },
-                Some(class_start),
-            )?;
-            (ExportDefaultDeclarationKind::Class(class), false)
-        } else if self.lang.is_typescript() && self.current_token.tag == TokenTag::Interface {
-            let interface_start = self.current_token.span.start;
-            let statement = self.parse_interface_declaration(interface_start, false)?;
-            let NodeKindData::TsInterfaceDeclaration(interface) =
-                self.ast.kind_data(statement.node_id())
-            else {
-                unreachable!()
-            };
-            (
-                ExportDefaultDeclarationKind::TsInterfaceDeclaration(interface),
-                false,
-            )
-        } else {
-            (
-                ExportDefaultDeclarationKind::Expr(
-                    self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?,
-                ),
-                true,
-            )
-        };
+            return Some(DefaultExportPart {
+                declaration: ExportDefaultDeclarationKind::Class(class),
+                needs_semi: false,
+            });
+        }
+
+        if is_ts {
+            if tag == TokenTag::Abstract && self.is_abstract_class_next()? {
+                let abstract_start = self.current_token.span.start;
+                self.advance()?;
+                let class = self.parse_class(
+                    ParseClassOpts {
+                        is_default_export: true,
+                        is_abstract: true,
+                        ..ParseClassOpts::default()
+                    },
+                    Some(abstract_start),
+                )?;
+                return Some(DefaultExportPart {
+                    declaration: ExportDefaultDeclarationKind::Class(class),
+                    needs_semi: false,
+                });
+            }
+
+            if tag == TokenTag::Interface {
+                let interface_start = self.current_token.span.start;
+                let statement = self.parse_interface_declaration(interface_start, false)?;
+                let NodeKindData::TsInterfaceDeclaration(interface) =
+                    self.ast.kind_data(statement.node_id())
+                else {
+                    unreachable!()
+                };
+                return Some(DefaultExportPart {
+                    declaration: ExportDefaultDeclarationKind::TsInterfaceDeclaration(interface),
+                    needs_semi: false,
+                });
+            }
+        }
+
+        let expression =
+            self.parse_expression(Precedence::Assignment, ParseExpressionOpts::default())?;
         Some(DefaultExportPart {
-            declaration,
-            needs_semi: needs_semicolon,
+            declaration: ExportDefaultDeclarationKind::Expr(expression),
+            needs_semi: true,
         })
     }
 
