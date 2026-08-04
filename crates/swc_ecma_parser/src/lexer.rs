@@ -1392,27 +1392,12 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
 const IDENTIFIER_BATCH_SIZE: usize = 32;
 
-const NOT_ASCII_IDENTIFIER_CONTINUE: [bool; 256] = {
-    let mut table = [true; 256];
-    let mut byte = b'0' as usize;
-    while byte <= b'9' as usize {
-        table[byte] = false;
-        byte += 1;
-    }
-    byte = b'A' as usize;
-    while byte <= b'Z' as usize {
-        table[byte] = false;
-        byte += 1;
-    }
-    byte = b'a' as usize;
-    while byte <= b'z' as usize {
-        table[byte] = false;
-        byte += 1;
-    }
-    table[b'_' as usize] = false;
-    table[b'$' as usize] = false;
-    table
-};
+#[inline(always)]
+fn is_ascii_identifier_continue(byte: u8) -> bool {
+    byte.wrapping_sub(b'0') <= 9
+        || (byte | 0x20).wrapping_sub(b'a') <= 25
+        || matches!(byte, b'$' | b'_')
+}
 
 #[inline(always)]
 fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
@@ -1423,14 +1408,14 @@ fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
     'search: while source.len() - position >= IDENTIFIER_BATCH_SIZE {
         let batch = &source[position..position + IDENTIFIER_BATCH_SIZE];
         for (offset, byte) in batch.iter().enumerate() {
-            if NOT_ASCII_IDENTIFIER_CONTINUE[*byte as usize] {
+            if !is_ascii_identifier_continue(*byte) {
                 position += offset;
                 break 'search;
             }
         }
         position += IDENTIFIER_BATCH_SIZE;
     }
-    while position < source.len() && !NOT_ASCII_IDENTIFIER_CONTINUE[source[position] as usize] {
+    while position < source.len() && is_ascii_identifier_continue(source[position]) {
         position += 1;
     }
 
@@ -1715,6 +1700,25 @@ fn get_keyword_type(lexeme: &[u8]) -> TokenTag {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn scans_ascii_identifier_continuations() {
+        for byte in u8::MIN..=u8::MAX {
+            let expected = byte.is_ascii_alphanumeric() || matches!(byte, b'$' | b'_');
+            assert_eq!(is_ascii_identifier_continue(byte), expected, "{byte:#04x}");
+        }
+
+        let mut source = [b'a'; IDENTIFIER_BATCH_SIZE + 1];
+        assert_eq!(
+            scan_ascii_identifier_continue(&source, 0),
+            source.len() as u32
+        );
+        source[IDENTIFIER_BATCH_SIZE - 1] = b'-';
+        assert_eq!(
+            scan_ascii_identifier_continue(&source, 0),
+            (IDENTIFIER_BATCH_SIZE - 1) as u32
+        );
+    }
 
     fn next_template(source: &str) -> Result<Token, LexicalError> {
         let allocator = Allocator::new();
