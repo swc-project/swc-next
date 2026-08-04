@@ -39,6 +39,7 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           COMPARE_SHA: ${{ github.sha }}
           GUNGRAUN_COLOR: never
+          GUNGRAUN_FILTER: "gungraun::parser::*"
         run: |
           git checkout --detach "$BASE_SHA"
 
@@ -62,6 +63,7 @@ jobs:
         env:
           COMPARE_SHA: ${{ github.sha }}
           GUNGRAUN_COLOR: never
+          GUNGRAUN_FILTER: "gungraun::parser::*"
         run: |
           git checkout --detach "$COMPARE_SHA"
 
@@ -128,6 +130,8 @@ jobs:
           cargo_version="$(cargo --version 2>/dev/null || echo unavailable)"
           gungraun_version="$(gungraun-runner --version 2>/dev/null || echo unavailable)"
           valgrind_version="$(valgrind --version 2>/dev/null || echo unavailable)"
+          runner_image_os="${ImageOS:-unavailable}"
+          runner_image_version="${ImageVersion:-unavailable}"
 
           jq -n \
             --arg artifact_name "$ARTIFACT_NAME" \
@@ -147,6 +151,8 @@ jobs:
             --arg run_id "$RUN_ID" \
             --arg run_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             --arg runner_arch "$RUNNER_ARCH" \
+            --arg runner_image_os "$runner_image_os" \
+            --arg runner_image_version "$runner_image_version" \
             --arg runner_os "$RUNNER_OS" \
             --arg rustc_version "$rustc_version" \
             --arg valgrind_version "$valgrind_version" \
@@ -172,7 +178,9 @@ jobs:
               },
               runner: {
                 os: $runner_os,
-                arch: $runner_arch
+                arch: $runner_arch,
+                image_os: $runner_image_os,
+                image_version: $runner_image_version
               },
               tools: {
                 rustc: $rustc_version,
@@ -183,6 +191,7 @@ jobs:
               benchmark: {
                 package: "benchmark",
                 bench: "gungraun",
+                filter: "gungraun::parser::*",
                 baseline: "base",
                 base_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --save-baseline=base",
                 compare_command: "cargo bench --quiet -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --baseline=base --save-summary=json"
@@ -207,6 +216,7 @@ jobs:
              .pull_request.base_sha == $base_sha and
              .pull_request.head_sha == $pr_head_sha and
              .pull_request.compare_sha == $compare_sha and
+             .benchmark.filter == "gungraun::parser::*" and
              .files.data_root == "gungraun" and
              .artifact.retention_days == 90' \
             "$metadata" > /dev/null
