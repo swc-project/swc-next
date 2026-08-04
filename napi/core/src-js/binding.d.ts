@@ -40,6 +40,12 @@ export interface ParserOptions {
    * @default "attached"
    */
   comments?: CommentMode
+  /**
+   * Allows `return` statements outside functions.
+   *
+   * @default false
+   */
+  allowReturnOutsideFunction?: boolean
 }
 
 export declare function parseSync(source: string, options?: ParserOptions | undefined | null): Buffer

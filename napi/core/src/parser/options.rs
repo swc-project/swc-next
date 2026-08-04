@@ -100,6 +100,10 @@ pub struct ParserOptions {
     ///
     /// @default "attached"
     pub comments: Option<CommentMode>,
+    /// Allows `return` statements outside functions.
+    ///
+    /// @default false
+    pub allow_return_outside_function: Option<bool>,
 }
 
 impl From<ParserOptions> for AstParserOptions {
@@ -116,6 +120,27 @@ impl From<ParserOptions> for AstParserOptions {
                 .comments
                 .map(Into::into)
                 .unwrap_or(defaults.comments),
+            allow_return_outside_function: options
+                .allow_return_outside_function
+                .unwrap_or(defaults.allow_return_outside_function),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn converts_allow_return_outside_function() {
+        let defaults: AstParserOptions = ParserOptions::default().into();
+        assert!(!defaults.allow_return_outside_function);
+
+        let options: AstParserOptions = ParserOptions {
+            allow_return_outside_function: Some(true),
+            ..ParserOptions::default()
+        }
+        .into();
+        assert!(options.allow_return_outside_function);
     }
 }
