@@ -1166,7 +1166,10 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             StmtData::ExportDefaultDeclaration(_) => true,
             StmtData::ExportAllDeclaration(_) => true,
             StmtData::TsExportAssignment(_) => true,
-            StmtData::Declaration(declaration) => {
+            _ => {
+                let Some(declaration) = statement.as_decl(self.ast) else {
+                    return false;
+                };
                 let DeclData::TsImportEqualsDeclaration(declaration) =
                     self.ast.decl_data(declaration)
                 else {
@@ -1176,7 +1179,6 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     .module_reference(self.ast)
                     .is_ts_external_module_reference(self.ast)
             }
-            _ => false,
         }
     }
 
@@ -3135,6 +3137,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         if decorators.is_empty() {
             return;
         }
+        if pattern.as_simple_assignment_target(self.ast).is_some() {
+            return;
+        }
         match self.ast.binding_pattern_data(pattern) {
             BindingPatternData::BindingIdentifier(node) => {
                 node.set_decorators(self.ast, decorators)
@@ -3147,7 +3152,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             }
             BindingPatternData::ArrayPattern(node) => node.set_decorators(self.ast, decorators),
             BindingPatternData::ObjectPattern(node) => node.set_decorators(self.ast, decorators),
-            BindingPatternData::SimpleAssignmentTarget(_) => {}
+            _ => unreachable!(),
         }
     }
 
@@ -3876,19 +3881,13 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     fn parse_export_with_declaration(&mut self, start: u32) -> Option<Stmt> {
         if self.lang.is_typescript() && self.is_start_of_ts_declaration()? {
             let statement = self.parse_ts_declaration()?;
-            let declaration = match self.ast.stmt_data(statement) {
-                StmtData::Declaration(declaration) => declaration,
-                StmtData::TsImportEqualsDeclaration(declaration) => {
-                    Decl::TsImportEqualsDeclaration(declaration)
-                }
-                _ => {
-                    self.report(
-                        statement.span(self.ast),
-                        "expected a TypeScript declaration after 'export'",
-                        ReportOptions::default(),
-                    );
-                    return None;
-                }
+            let Some(declaration) = statement.as_decl(self.ast) else {
+                self.report(
+                    statement.span(self.ast),
+                    "expected a TypeScript declaration after 'export'",
+                    ReportOptions::default(),
+                );
+                return None;
             };
             let export_kind = self.export_kind_for_declaration(declaration);
             let end = declaration.span(self.ast).end;
@@ -7013,7 +7012,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             let Some(statement) = self.parse_statement(StatementContext::StatementListItem) else {
                 break;
             };
-            if let StmtData::Declaration(declaration) = self.ast.stmt_data(statement)
+            if let Some(declaration) = statement.as_decl(self.ast)
                 && let DeclData::VariableDeclaration(declaration) = self.ast.decl_data(declaration)
                 && matches!(
                     declaration.kind(self.ast),
@@ -7782,19 +7781,17 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let checkpoint = self.scratch_cover.begin();
         let expression_result = (|| {
             for argument in arguments {
-                match self.ast.argument_data(argument) {
-                    ArgumentData::Expr(expression) => {
-                        self.validate_no_cover_initialized_syntax(expression)?;
-                        self.scratch_cover.append(expression);
-                    }
-                    ArgumentData::SpreadElement(spread) => {
-                        self.report(
-                            spread.span(self.ast),
-                            "Rest element is not allowed in parenthesized expression",
-                            ReportOptions::default(),
-                        );
-                        return None;
-                    }
+                if let Some(expression) = argument.as_expr(self.ast) {
+                    self.validate_no_cover_initialized_syntax(expression)?;
+                    self.scratch_cover.append(expression);
+                } else {
+                    let spread = argument.as_spread_element(self.ast).unwrap();
+                    self.report(
+                        spread.span(self.ast),
+                        "Rest element is not allowed in parenthesized expression",
+                        ReportOptions::default(),
+                    );
+                    return None;
                 }
             }
             Some(if self.scratch_cover.items.len() - checkpoint == 1 {
@@ -7857,76 +7854,73 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let result = (|| {
             let mut rest = None;
             for (index, argument) in arguments.iter().copied().enumerate() {
-                match self.ast.argument_data(argument) {
-                    ArgumentData::Expr(expression) => {
-                        if rest.is_some() {
-                            self.report(
-                                expression.span(self.ast),
-                                "Rest parameter must be last formal parameter",
-                                ReportOptions {
-                                    help: Some(Cow::Borrowed(
-                                        "Move the rest parameter to the end of the parameter list",
-                                    )),
-                                    ..ReportOptions::default()
-                                },
-                            );
-                            return None;
-                        }
-                        let parameter = self.convert_to_formal_parameter(expression)?;
-                        self.scratch_cover.append(parameter);
-                    }
-                    ArgumentData::SpreadElement(spread) => {
-                        if index + 1 != arguments.len() {
-                            self.report(
-                                spread.span(self.ast),
-                                "Rest parameter must be last formal parameter",
-                                ReportOptions {
-                                    help: Some(Cow::Borrowed(
-                                        "Move the rest parameter to the end of the parameter list",
-                                    )),
-                                    ..ReportOptions::default()
-                                },
-                            );
-                            return None;
-                        }
-                        if cover.has_trailing_comma {
-                            self.report(
-                                spread.span(self.ast),
-                                "Rest parameter must be last formal parameter",
-                                ReportOptions {
-                                    help: Some(Cow::Borrowed(
-                                        "Remove the trailing comma after the rest parameter",
-                                    )),
-                                    ..ReportOptions::default()
-                                },
-                            );
-                            return None;
-                        }
-                        let argument =
-                            self.expression_to_binding_pattern(spread.argument(self.ast))?;
-                        if self.ast.node_kind(argument.node_id()) == NodeKind::AssignmentPattern {
-                            self.report(
-                                argument.span(self.ast),
-                                "A rest element cannot have an initializer",
-                                ReportOptions {
-                                    help: Some(Cow::Borrowed(
-                                        "Remove the '= ...' from the rest element.",
-                                    )),
-                                    ..ReportOptions::default()
-                                },
-                            );
-                        }
-                        let temporary = self.ast.binding_rest_element(
-                            spread.span(self.ast),
-                            argument,
-                            TypedSubRange::empty(),
-                            None,
-                            false,
+                if let Some(expression) = argument.as_expr(self.ast) {
+                    if rest.is_some() {
+                        self.report(
+                            expression.span(self.ast),
+                            "Rest parameter must be last formal parameter",
+                            ReportOptions {
+                                help: Some(Cow::Borrowed(
+                                    "Move the rest parameter to the end of the parameter list",
+                                )),
+                                ..ReportOptions::default()
+                            },
                         );
-                        // SAFETY: `temporary` is the unattached last node, and
-                        // `spread` is retired in favor of the returned handle.
-                        rest = Some(unsafe { self.ast.replace_data(spread, temporary) });
+                        return None;
                     }
+                    let parameter = self.convert_to_formal_parameter(expression)?;
+                    self.scratch_cover.append(parameter);
+                } else {
+                    let spread = argument.as_spread_element(self.ast).unwrap();
+                    if index + 1 != arguments.len() {
+                        self.report(
+                            spread.span(self.ast),
+                            "Rest parameter must be last formal parameter",
+                            ReportOptions {
+                                help: Some(Cow::Borrowed(
+                                    "Move the rest parameter to the end of the parameter list",
+                                )),
+                                ..ReportOptions::default()
+                            },
+                        );
+                        return None;
+                    }
+                    if cover.has_trailing_comma {
+                        self.report(
+                            spread.span(self.ast),
+                            "Rest parameter must be last formal parameter",
+                            ReportOptions {
+                                help: Some(Cow::Borrowed(
+                                    "Remove the trailing comma after the rest parameter",
+                                )),
+                                ..ReportOptions::default()
+                            },
+                        );
+                        return None;
+                    }
+                    let argument = self.expression_to_binding_pattern(spread.argument(self.ast))?;
+                    if self.ast.node_kind(argument.node_id()) == NodeKind::AssignmentPattern {
+                        self.report(
+                            argument.span(self.ast),
+                            "A rest element cannot have an initializer",
+                            ReportOptions {
+                                help: Some(Cow::Borrowed(
+                                    "Remove the '= ...' from the rest element.",
+                                )),
+                                ..ReportOptions::default()
+                            },
+                        );
+                    }
+                    let temporary = self.ast.binding_rest_element(
+                        spread.span(self.ast),
+                        argument,
+                        TypedSubRange::empty(),
+                        None,
+                        false,
+                    );
+                    // SAFETY: `temporary` is the unattached last node, and
+                    // `spread` is retired in favor of the returned handle.
+                    rest = Some(unsafe { self.ast.replace_data(spread, temporary) });
                 }
             }
             let items = self.add_extra_from_scratch_cover(checkpoint);
@@ -8535,27 +8529,26 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     self.scratch_cover.items.push(none);
                     continue;
                 };
-                match self.ast.argument_data(argument) {
-                    ArgumentData::Expr(expression) => {
-                        let pattern = self.expression_to_pattern(expression, context)?;
-                        self.scratch_cover.append(pattern);
+                if let Some(expression) = argument.as_expr(self.ast) {
+                    let pattern = self.expression_to_pattern(expression, context)?;
+                    self.scratch_cover.append(pattern);
+                } else {
+                    let spread = argument.as_spread_element(self.ast).unwrap();
+                    if self.state.cover_has_trailing_comma == Some(span.start) {
+                        self.report(
+                            span,
+                            "Rest element cannot have a trailing comma in array destructuring.",
+                            ReportOptions {
+                                help: Some(Cow::Borrowed(
+                                    "Remove the trailing comma after the rest element",
+                                )),
+                                ..ReportOptions::default()
+                            },
+                        );
+                        self.state.cover_has_trailing_comma = None;
                     }
-                    ArgumentData::SpreadElement(spread) => {
-                        if self.state.cover_has_trailing_comma == Some(span.start) {
-                            self.report(
-                                span,
-                                "Rest element cannot have a trailing comma in array destructuring.",
-                                ReportOptions {
-                                    help: Some(Cow::Borrowed(
-                                        "Remove the trailing comma after the rest element",
-                                    )),
-                                    ..ReportOptions::default()
-                                },
-                            );
-                            self.state.cover_has_trailing_comma = None;
-                        }
-                        if index + 1 != source_elements_len {
-                            self.report(
+                    if index + 1 != source_elements_len {
+                        self.report(
                                 spread.span(self.ast),
                                 "Rest element must be the last element",
                                 ReportOptions {
@@ -8565,33 +8558,32 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                                     ..ReportOptions::default()
                                 },
                             );
-                        }
-                        let argument =
-                            self.expression_to_pattern(spread.argument(self.ast), context)?;
-                        if self.ast.node_kind(argument.node_id()) == NodeKind::AssignmentPattern {
-                            self.report(
-                                spread.span(self.ast),
-                                "A rest element cannot have an initializer",
-                                ReportOptions {
-                                    help: Some(Cow::Borrowed(
-                                        "Remove the '= ...' from the rest element.",
-                                    )),
-                                    ..ReportOptions::default()
-                                },
-                            );
-                        }
-                        let temporary = self.ast.binding_rest_element(
-                            spread.span(self.ast),
-                            argument,
-                            TypedSubRange::empty(),
-                            None,
-                            false,
-                        );
-                        // SAFETY: `temporary` is the unattached last node, and
-                        // `spread` is retired in favor of the returned handle.
-                        rest = Some(unsafe { self.ast.replace_data(spread, temporary) });
-                        break;
                     }
+                    let argument =
+                        self.expression_to_pattern(spread.argument(self.ast), context)?;
+                    if self.ast.node_kind(argument.node_id()) == NodeKind::AssignmentPattern {
+                        self.report(
+                            spread.span(self.ast),
+                            "A rest element cannot have an initializer",
+                            ReportOptions {
+                                help: Some(Cow::Borrowed(
+                                    "Remove the '= ...' from the rest element.",
+                                )),
+                                ..ReportOptions::default()
+                            },
+                        );
+                    }
+                    let temporary = self.ast.binding_rest_element(
+                        spread.span(self.ast),
+                        argument,
+                        TypedSubRange::empty(),
+                        None,
+                        false,
+                    );
+                    // SAFETY: `temporary` is the unattached last node, and
+                    // `spread` is retired in favor of the returned handle.
+                    rest = Some(unsafe { self.ast.replace_data(spread, temporary) });
+                    break;
                 }
             }
             let elements =
@@ -8780,63 +8772,64 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         target: AssignmentTarget,
         context: PatternContext,
     ) -> Option<BindingPattern> {
-        match self.ast.assignment_target_data(target) {
-            AssignmentTargetData::SimpleAssignmentTarget(target) => {
-                if context == PatternContext::Assignment {
-                    return Some(BindingPattern::SimpleAssignmentTarget(target));
-                }
-                match self.ast.simple_assignment_target_data(target) {
-                    SimpleAssignmentTargetData::IdentifierReference(identifier) => {
-                        let decorators = TypedSubRange::empty();
-                        let binding = self.ast.binding_identifier(
-                            identifier.span(self.ast),
-                            identifier.name(self.ast),
-                            decorators,
-                            None,
-                            false,
-                        );
-                        // SAFETY: `binding` is the unattached last node, and
-                        // `identifier` is retired in favor of the returned handle.
-                        let binding = unsafe { self.ast.replace_data(identifier, binding) };
-                        Some(BindingPattern::BindingIdentifier(binding))
-                    }
-                    SimpleAssignmentTargetData::MemberExpression(_) => {
-                        self.report(
-                            target.span(self.ast),
-                            "Member expression is not allowed in binding pattern",
-                            ReportOptions {
-                                help: Some(Cow::Borrowed(
-                                    "Function parameters and variable declarations can only bind to identifiers, not member expressions like 'obj.prop' or obj[key]. Use a simple identifier instead.",
-                                )),
-                                ..ReportOptions::default()
-                            },
-                        );
-                        Some(BindingPattern::SimpleAssignmentTarget(target))
-                    }
-                    SimpleAssignmentTargetData::TsAsExpression(_)
-                    | SimpleAssignmentTargetData::TsSatisfiesExpression(_)
-                    | SimpleAssignmentTargetData::TsTypeAssertion(_)
-                    | SimpleAssignmentTargetData::TsNonNullExpression(_) => {
-                        self.report(
-                            target.span(self.ast),
-                            "TypeScript assertion is not allowed in binding pattern",
-                            ReportOptions {
-                                help: Some(Cow::Borrowed(
-                                    "Non-null ('!') and type ('as', 'satisfies', '<T>') assertions can only appear in assignment targets.",
-                                )),
-                                ..ReportOptions::default()
-                            },
-                        );
-                        Some(BindingPattern::SimpleAssignmentTarget(target))
-                    }
-                }
+        if let Some(target) = target.as_simple_assignment_target(self.ast) {
+            if context == PatternContext::Assignment {
+                return Some(BindingPattern::SimpleAssignmentTarget(target));
             }
+            return match self.ast.simple_assignment_target_data(target) {
+                SimpleAssignmentTargetData::IdentifierReference(identifier) => {
+                    let decorators = TypedSubRange::empty();
+                    let binding = self.ast.binding_identifier(
+                        identifier.span(self.ast),
+                        identifier.name(self.ast),
+                        decorators,
+                        None,
+                        false,
+                    );
+                    // SAFETY: `binding` is the unattached last node, and
+                    // `identifier` is retired in favor of the returned handle.
+                    let binding = unsafe { self.ast.replace_data(identifier, binding) };
+                    Some(BindingPattern::BindingIdentifier(binding))
+                }
+                SimpleAssignmentTargetData::MemberExpression(_) => {
+                    self.report(
+                        target.span(self.ast),
+                        "Member expression is not allowed in binding pattern",
+                        ReportOptions {
+                            help: Some(Cow::Borrowed(
+                                "Function parameters and variable declarations can only bind to identifiers, not member expressions like 'obj.prop' or obj[key]. Use a simple identifier instead.",
+                            )),
+                            ..ReportOptions::default()
+                        },
+                    );
+                    Some(BindingPattern::SimpleAssignmentTarget(target))
+                }
+                SimpleAssignmentTargetData::TsAsExpression(_)
+                | SimpleAssignmentTargetData::TsSatisfiesExpression(_)
+                | SimpleAssignmentTargetData::TsTypeAssertion(_)
+                | SimpleAssignmentTargetData::TsNonNullExpression(_) => {
+                    self.report(
+                        target.span(self.ast),
+                        "TypeScript assertion is not allowed in binding pattern",
+                        ReportOptions {
+                            help: Some(Cow::Borrowed(
+                                "Non-null ('!') and type ('as', 'satisfies', '<T>') assertions can only appear in assignment targets.",
+                            )),
+                            ..ReportOptions::default()
+                        },
+                    );
+                    Some(BindingPattern::SimpleAssignmentTarget(target))
+                }
+            };
+        }
+        match self.ast.assignment_target_data(target) {
             AssignmentTargetData::ArrayAssignmentTarget(pattern) => {
                 Some(BindingPattern::ArrayPattern(pattern))
             }
             AssignmentTargetData::ObjectAssignmentTarget(pattern) => {
                 Some(BindingPattern::ObjectPattern(pattern))
             }
+            _ => unreachable!(),
         }
     }
 
@@ -8884,10 +8877,12 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     else {
                         continue;
                     };
-                    let expression = match self.ast.argument_data(argument) {
-                        ArgumentData::Expr(expression) => expression,
-                        ArgumentData::SpreadElement(spread) => spread.argument(self.ast),
-                    };
+                    let expression = argument.as_expr(self.ast).unwrap_or_else(|| {
+                        argument
+                            .as_spread_element(self.ast)
+                            .unwrap()
+                            .argument(self.ast)
+                    });
                     self.validate_no_cover_initialized_syntax(expression)?;
                 }
             }
@@ -9673,10 +9668,12 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             })
             .collect::<Vec<_>>();
         for argument in arguments {
-            let expression = match self.ast.argument_data(argument) {
-                ArgumentData::Expr(expression) => expression,
-                ArgumentData::SpreadElement(spread) => spread.argument(self.ast),
-            };
+            let expression = argument.as_expr(self.ast).unwrap_or_else(|| {
+                argument
+                    .as_spread_element(self.ast)
+                    .unwrap()
+                    .argument(self.ast)
+            });
             self.validate_no_cover_initialized_syntax(expression)?;
         }
         Some(self.ast.expr_call_expression(
@@ -11552,14 +11549,9 @@ fn is_start_of_type(tag: TokenTag) -> bool {
 }
 
 fn tuple_element_as_type(element: TsTupleElement, ast: &Ast<'_>) -> TsType {
-    match ast.ts_tuple_element_data(element) {
-        TsTupleElementData::TsType(ty) => ty,
-        TsTupleElementData::TsOptionalType(ty) => TsType::TsOptionalType(ty),
-        TsTupleElementData::TsRestType(ty) => TsType::TsRestType(ty),
-        TsTupleElementData::TsNamedTupleMember(_) => {
-            unreachable!("a named tuple member is handled before conversion")
-        }
-    }
+    element
+        .as_ts_type(ast)
+        .expect("a named tuple member is handled before conversion")
 }
 
 fn can_follow_accessor_keyword(tag: TokenTag) -> bool {

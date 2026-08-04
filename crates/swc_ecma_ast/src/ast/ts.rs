@@ -2,8 +2,8 @@ use std::mem;
 
 use swc_next_ast_macros::ast;
 
-use super::js::*;
-use crate::{Ast, ExtraData, node_id::ExtraDataCompact};
+use super::{js::*, jsx::*};
+use crate::{Ast, ExtraData, NodeKind, node_id::ExtraDataCompact};
 
 macro_rules! impl_extra_data_compact {
     ($($ty:ty),+ $(,)?) => {
@@ -139,7 +139,10 @@ pub enum TsImportTypeQualifier {
 
 #[ast(repr)]
 pub enum TsTypeQueryExprName {
-    TsTypeName(TsTypeName),
+    // =========== TsTypeName =========
+    IdentifierReference(IdentifierReference),
+    TsQualifiedName(TsQualifiedName),
+    // =========== Query-specific =========
     ThisExpression(ThisExpression),
     TsImportType(TsImportType),
 }
@@ -156,10 +159,47 @@ pub enum TsLiteral {
 
 #[ast(repr)]
 pub enum TsTupleElement {
-    TsType(TsType),
-    TsNamedTupleMember(TsNamedTupleMember),
+    // =========== TsType =========
+    TsAnyKeyword(TsAnyKeyword),
+    TsUnknownKeyword(TsUnknownKeyword),
+    TsNeverKeyword(TsNeverKeyword),
+    TsVoidKeyword(TsVoidKeyword),
+    TsNullKeyword(TsNullKeyword),
+    TsUndefinedKeyword(TsUndefinedKeyword),
+    TsStringKeyword(TsStringKeyword),
+    TsNumberKeyword(TsNumberKeyword),
+    TsBigIntKeyword(TsBigIntKeyword),
+    TsBooleanKeyword(TsBooleanKeyword),
+    TsSymbolKeyword(TsSymbolKeyword),
+    TsObjectKeyword(TsObjectKeyword),
+    TsIntrinsicKeyword(TsIntrinsicKeyword),
+    TsThisType(TsThisType),
+    TsTypeReference(TsTypeReference),
+    TsTypeQuery(TsTypeQuery),
+    TsImportType(TsImportType),
+    TsLiteralType(TsLiteralType),
+    TsTemplateLiteralType(TsTemplateLiteralType),
+    TsArrayType(TsArrayType),
+    TsIndexedAccessType(TsIndexedAccessType),
+    TsTupleType(TsTupleType),
     TsOptionalType(TsOptionalType),
     TsRestType(TsRestType),
+    TsJsDocNullableType(TsJsDocNullableType),
+    TsJsDocNonNullableType(TsJsDocNonNullableType),
+    TsJsDocUnknownType(TsJsDocUnknownType),
+    TsUnionType(TsUnionType),
+    TsIntersectionType(TsIntersectionType),
+    TsConditionalType(TsConditionalType),
+    TsInferType(TsInferType),
+    TsTypeOperator(TsTypeOperator),
+    TsParenthesizedType(TsParenthesizedType),
+    TsFunctionType(TsFunctionType),
+    TsConstructorType(TsConstructorType),
+    TsTypePredicate(TsTypePredicate),
+    TsTypeLiteral(TsTypeLiteral),
+    TsMappedType(TsMappedType),
+    // =========== Tuple-specific =========
+    TsNamedTupleMember(TsNamedTupleMember),
 }
 
 #[ast(repr)]
@@ -182,7 +222,45 @@ pub enum TsEnumMemberName {
     IdentifierName(IdentifierName),
     StringLiteral(StringLiteral),
     TemplateLiteral(TemplateLiteral),
-    Expr(Expr),
+    // =========== Expr =========
+    IdentifierReference(IdentifierReference),
+    ThisExpression(ThisExpression),
+    Super(Super),
+    MetaProperty(MetaProperty),
+    NumericLiteral(NumericLiteral),
+    BigIntLiteral(BigIntLiteral),
+    BooleanLiteral(BooleanLiteral),
+    NullLiteral(NullLiteral),
+    RegExpLiteral(RegExpLiteral),
+    BinaryExpression(BinaryExpression),
+    LogicalExpression(LogicalExpression),
+    UnaryExpression(UnaryExpression),
+    UpdateExpression(UpdateExpression),
+    AssignmentExpression(AssignmentExpression),
+    ConditionalExpression(ConditionalExpression),
+    SequenceExpression(SequenceExpression),
+    MemberExpression(MemberExpression),
+    CallExpression(CallExpression),
+    ChainExpression(ChainExpression),
+    NewExpression(NewExpression),
+    TaggedTemplateExpression(TaggedTemplateExpression),
+    ArrowFunctionExpression(ArrowFunctionExpression),
+    ArrayExpression(ArrayExpression),
+    ObjectExpression(ObjectExpression),
+    ParenthesizedExpression(ParenthesizedExpression),
+    Function(Function),
+    Class(Class),
+    ImportExpression(ImportExpression),
+    AwaitExpression(AwaitExpression),
+    YieldExpression(YieldExpression),
+    PrivateIdentifier(PrivateIdentifier),
+    TsAsExpression(TsAsExpression),
+    TsSatisfiesExpression(TsSatisfiesExpression),
+    TsTypeAssertion(TsTypeAssertion),
+    TsNonNullExpression(TsNonNullExpression),
+    TsInstantiationExpression(TsInstantiationExpression),
+    JsxElement(JsxElement),
+    JsxFragment(JsxFragment),
 }
 
 #[ast(repr)]
@@ -200,8 +278,50 @@ pub enum TsModuleBody {
 
 #[ast(repr)]
 pub enum TsModuleReference {
-    TsTypeName(TsTypeName),
+    // =========== TsTypeName =========
+    IdentifierReference(IdentifierReference),
+    TsQualifiedName(TsQualifiedName),
+    // =========== Module-reference-specific =========
     TsExternalModuleReference(TsExternalModuleReference),
+}
+
+impl_union_conversion!(TsTypeQueryExprName, TsTypeName, TsTypeName);
+impl_union_conversion!(TsTupleElement, TsType, TsType);
+impl_union_conversion!(TsEnumMemberName, Expr, Expr);
+impl_union_conversion!(TsModuleReference, TsTypeName, TsTypeName);
+
+impl TsTypeQueryExprName {
+    pub fn as_ts_type_name(self, ast: &Ast<'_>) -> Option<TsTypeName> {
+        matches!(
+            ast.node_kind(self.node_id()),
+            NodeKind::IdentifierReference | NodeKind::TsQualifiedName
+        )
+        .then_some(TsTypeName(self.node_id()))
+    }
+}
+
+impl TsTupleElement {
+    pub fn as_ts_type(self, ast: &Ast<'_>) -> Option<TsType> {
+        (ast.node_kind(self.node_id()) != NodeKind::TsNamedTupleMember)
+            .then_some(TsType(self.node_id()))
+    }
+}
+
+impl TsEnumMemberName {
+    pub fn as_expr(self, ast: &Ast<'_>) -> Option<Expr> {
+        (!matches!(
+            ast.node_kind(self.node_id()),
+            NodeKind::IdentifierName | NodeKind::StringLiteral | NodeKind::TemplateLiteral
+        ))
+        .then_some(Expr(self.node_id()))
+    }
+}
+
+impl TsModuleReference {
+    pub fn as_ts_type_name(self, ast: &Ast<'_>) -> Option<TsTypeName> {
+        (ast.node_kind(self.node_id()) != NodeKind::TsExternalModuleReference)
+            .then_some(TsTypeName(self.node_id()))
+    }
 }
 
 /// A body-less TypeScript function declaration or overload signature.

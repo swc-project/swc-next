@@ -3,6 +3,18 @@
 //! This module is a Rust port of the AST design from
 //! [yuku-toolchain/yuku](https://github.com/yuku-toolchain/yuku).
 
+macro_rules! impl_union_conversion {
+    ($outer:ident, $constructor:ident, $inner:ty) => {
+        impl $outer {
+            #[allow(non_snake_case)]
+            #[inline]
+            pub fn $constructor(node: $inner) -> Self {
+                Self(node.node_id())
+            }
+        }
+    };
+}
+
 mod js;
 mod jsx;
 mod ts;

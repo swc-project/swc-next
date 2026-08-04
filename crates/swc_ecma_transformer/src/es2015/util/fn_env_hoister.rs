@@ -314,10 +314,7 @@ fn rewrite_derived_super_calls(body: FunctionBody, this_name: AstUtf8, ast: &mut
             );
             let left = self
                 .ast
-                .assignment_target_simple_assignment_target_identifier_reference(
-                    DUMMY_SP,
-                    self.this_name,
-                );
+                .assignment_target_identifier_reference(DUMMY_SP, self.this_name);
             let this = self.ast.expr_this_expression(DUMMY_SP);
             let assignment = self.ast.expr_assignment_expression(
                 DUMMY_SP,
