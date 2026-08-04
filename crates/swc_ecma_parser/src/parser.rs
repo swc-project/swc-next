@@ -1128,17 +1128,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     return Some(false);
                 }
                 let statement = self.parse_statement(self.statement_context)?;
-                if terminator.is_none()
-                    && matches!(
-                        self.ast.node_kind(statement.node_id()),
-                        NodeKind::ImportDeclaration
-                            | NodeKind::ExportNamedDeclaration
-                            | NodeKind::ExportDefaultDeclaration
-                            | NodeKind::ExportAllDeclaration
-                            | NodeKind::TsExportAssignment
-                            | NodeKind::TsNamespaceExportDeclaration
-                    )
-                {
+                if terminator.is_none() && self.statement_has_module_syntax(statement) {
                     self.has_module_syntax = true;
                 }
                 self.scratch_statements.append(statement);
@@ -1160,6 +1150,27 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         self.scratch_statements.reset(statements_checkpoint);
         self.statement_context = statement_context;
         ParsedBody { directives, body }
+    }
+
+    fn statement_has_module_syntax(&self, statement: Stmt) -> bool {
+        match self.ast.stmt_data(statement) {
+            StmtData::ImportDeclaration(_) => true,
+            StmtData::ExportNamedDeclaration(_) => true,
+            StmtData::ExportDefaultDeclaration(_) => true,
+            StmtData::ExportAllDeclaration(_) => true,
+            StmtData::TsExportAssignment(_) => true,
+            StmtData::Declaration(declaration) => {
+                let DeclData::TsImportEqualsDeclaration(declaration) =
+                    self.ast.decl_data(declaration)
+                else {
+                    return false;
+                };
+                declaration
+                    .module_reference(self.ast)
+                    .is_ts_external_module_reference(self.ast)
+            }
+            _ => false,
+        }
     }
 
     fn is_at_body_end(&self, terminator: Option<TokenTag>) -> bool {
@@ -11799,13 +11810,14 @@ mod tests {
         let mut ast = Ast::new(source, &allocator);
         let options = Options {
             source_type: SourceType::Unambiguous,
+            lang: Lang::Ts,
             ..Options::default()
         };
         let result = Parser::init(&mut ast, options, NoTokenParserConfig).parse();
 
         assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
-        assert_eq!(result.program.source_type(&ast), expected);
-        assert_eq!(ast.source_type(), expected);
+        assert_eq!(result.program.source_type(&ast), expected, "{source}");
+        assert_eq!(ast.source_type(), expected, "{source}");
     }
 
     #[test]
@@ -11815,6 +11827,9 @@ mod tests {
         assert_unambiguous_source_type("export const value = 1;", SourceType::Module);
         assert_unambiguous_source_type("const value = import.meta.url;", SourceType::Module);
         assert_unambiguous_source_type("import('value');", SourceType::Script);
+        assert_unambiguous_source_type("import value = require('value');", SourceType::Module);
+        assert_unambiguous_source_type("import Value = Namespace.Value;", SourceType::Script);
+        assert_unambiguous_source_type("export as namespace Foo", SourceType::Script);
     }
 
     #[test]
