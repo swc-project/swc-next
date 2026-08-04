@@ -1620,6 +1620,7 @@ pub fn lexical_error_help(error_type: LexicalError) -> &'static str {
     }
 }
 
+#[inline(always)]
 fn get_keyword_type(lexeme: &[u8]) -> TokenTag {
     match lexeme {
         b"if" => TokenTag::If,
