@@ -1383,7 +1383,9 @@ impl<'a> Printer<'a> {
             }
             if let Some(item) = self.ast.get_node_in_sub_range(id) {
                 self.print_binding(item);
-            } else if i + 1 == elements.len() {
+            // The separator before a rest element also represents the final
+            // elision. Emitting one here would add an elision on every reparse.
+            } else if i + 1 == elements.len() && a.rest(self.ast).is_none() {
                 self.print(",");
             }
         }

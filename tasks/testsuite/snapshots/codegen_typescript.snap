@@ -1,6 +1,6 @@
 codegen * typescript
 ========================
-Positive Passed: 20644/22023 (93.74%)
+Positive Passed: 20652/22023 (93.77%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/22023 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/APISample_jsdoc.ts - parser: Expected '=' in type alias declaration, but found 'Annotations' at 1532..1543
@@ -827,7 +827,6 @@ Failed: fixtures/typescript/tests/cases/compiler/sourceMapValidationImport.ts - 
 Failed: fixtures/typescript/tests/cases/compiler/specedNoStackBlown.ts - parser: Expected '=' in type alias declaration, but found 'Spec' at 642..646
 Failed: fixtures/typescript/tests/cases/compiler/spellingSuggestionLeadingUnderscores01.ts - parser: Expected '=' in type alias declaration, but found 'let' at 40..43
 Failed: fixtures/typescript/tests/cases/compiler/spreadInvalidArgumentType.ts - spreadInvalidArgumentType.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/compiler/spreadTupleAccessedByTypeParameter.ts - spreadTupleAccessedByTypeParameter.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/compiler/spuriousCircularityOnTypeImport.ts - parser: Expected '=' in type alias declaration, but found 'SelectorMap' at 17..28
 Failed: fixtures/typescript/tests/cases/compiler/spuriousCircularityOnTypeImport.ts - parser: Expected '=' in type alias declaration, but found 'SelectorMap' at 17..28
 Failed: fixtures/typescript/tests/cases/compiler/stableTypeOrdering.ts - stableTypeOrdering.ts: codegen output changed after reparse 
@@ -988,21 +987,16 @@ Failed: fixtures/typescript/tests/cases/conformance/es2017/useObjectValuesAndEnt
 Failed: fixtures/typescript/tests/cases/conformance/es2020/modules/exportAsNamespace5.ts - parser: Expected '=' in type alias declaration, but found 'Named' at 17..22
 Failed: fixtures/typescript/tests/cases/conformance/es2022/arbitraryModuleNamespaceIdentifiers/arbitraryModuleNamespaceIdentifiers_module.ts - parser: Expected '=' in type alias declaration, but found 'otherType' at 1368..1377
 Failed: fixtures/typescript/tests/cases/conformance/es6/Symbols/symbolType19.ts - symbolType19.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/es6/arrowFunction/emitArrowFunctionES6.ts - emitArrowFunctionES6.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/computedProperties/computedPropertyNames47_ES5.ts - computedPropertyNames47_ES5.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/computedProperties/computedPropertyNames47_ES6.ts - computedPropertyNames47_ES6.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/computedProperties/computedPropertyNames48_ES5.ts - computedPropertyNames48_ES5.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/computedProperties/computedPropertyNames48_ES6.ts - computedPropertyNames48_ES6.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/computedProperties/computedPropertyNames7_ES5.ts - computedPropertyNames7_ES5.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/computedProperties/computedPropertyNames7_ES6.ts - computedPropertyNames7_ES6.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringArrayBindingPatternAndAssignment1ES5.ts - destructuringArrayBindingPatternAndAssignment1ES5.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringArrayBindingPatternAndAssignment1ES5iterable.ts - destructuringArrayBindingPatternAndAssignment1ES5iterable.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringArrayBindingPatternAndAssignment1ES6.ts - destructuringArrayBindingPatternAndAssignment1ES6.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringObjectBindingPatternAndAssignment7.ts - destructuringObjectBindingPatternAndAssignment7.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringParameterDeclaration3ES5.ts - destructuringParameterDeclaration3ES5.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringParameterDeclaration3ES5iterable.ts - destructuringParameterDeclaration3ES5iterable.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringParameterDeclaration3ES6.ts - destructuringParameterDeclaration3ES6.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/es6/destructuring/destructuringVariableDeclaration2.ts - destructuringVariableDeclaration2.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/for-ofStatements/for-of47.ts - for-of47.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/for-ofStatements/for-of48.ts - for-of48.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/es6/modules/defaultExportsCannotMerge01.ts - parser: Expected '=' in type alias declaration, but found 'Decl' at 69..73
@@ -1044,7 +1038,6 @@ Failed: fixtures/typescript/tests/cases/conformance/expressions/binaryOperators/
 Failed: fixtures/typescript/tests/cases/conformance/expressions/contextualTyping/functionExpressionContextualTyping1.ts - functionExpressionContextualTyping1.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/expressions/elementAccess/stringEnumInElementAccess01.ts - stringEnumInElementAccess01.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/expressions/functionCalls/typeArgumentInferenceWithObjectLiteral.ts - typeArgumentInferenceWithObjectLiteral.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/expressions/functions/arrowFunctionExpressions.ts - arrowFunctionExpressions.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/expressions/optionalChaining/optionalChainingInArrow.ts - optionalChainingInArrow.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/expressions/typeAssertions/constAssertionOnEnum.ts - enum.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/expressions/typeAssertions/constAssertionOnEnum.ts - more.ts: codegen output changed after reparse 
@@ -1271,7 +1264,6 @@ Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/parserRea
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/parserRealSource3.ts - parserRealSource3.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript6/Iterators/parserForOfStatement24.ts - parser: 'for (async of ...)' is not allowed, it is ambiguous with 'for await' at 16..21
 Failed: fixtures/typescript/tests/cases/conformance/pedantic/noUncheckedIndexedAccess.ts - noUncheckedIndexedAccess.ts: codegen output changed after reparse 
-Failed: fixtures/typescript/tests/cases/conformance/pedantic/noUncheckedIndexedAccessDestructuring.ts - noUncheckedIndexedAccessDestructuring.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/salsa/enumMergeWithExpando.ts - lovefield-ts.d.ts: codegen output changed after reparse 
 Failed: fixtures/typescript/tests/cases/conformance/salsa/importingExportingTypes.ts - parser: Expected '=' in type alias declaration, but found 'WriteFileOptions' at 46..62
 Failed: fixtures/typescript/tests/cases/conformance/salsa/prototypePropertyAssignmentMergeWithInterfaceMethod.ts - parser: Expected '=' in type alias declaration, but found 'Transaction' at 103..114

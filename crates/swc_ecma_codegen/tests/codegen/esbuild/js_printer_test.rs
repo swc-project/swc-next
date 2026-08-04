@@ -6,6 +6,18 @@ use crate::{
 };
 
 #[test]
+fn test_class_method_rest_pattern_elision() {
+    expect_printed(
+        "const C = class { method([, , ...rest]) {} };",
+        "const C = class {\n  method([, , ...rest]) {\n  }\n};\n",
+    );
+    expect_printed(
+        "class C { method([, , ...rest]) {} }",
+        "class C {\n  method([, , ...rest]) {\n  }\n}\n",
+    );
+}
+
+#[test]
 fn test_number() {
     expect_printed("x = 1e-100", "x = 1e-100;\n");
     expect_printed("x = 1e-4", "x = 1e-4;\n");
