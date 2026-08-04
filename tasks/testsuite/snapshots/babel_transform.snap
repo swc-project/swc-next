@@ -4,8 +4,8 @@ babel transform
 Total
 -----
 Cases: 4069
-Passed: 440/4069 (10.81%)
-Failed: 63/4069 (1.55%)
+Passed: 441/4069 (10.84%)
+Failed: 62/4069 (1.52%)
 Panicked: 0/4069 (0.00%)
 Skipped: 3566/4069 (87.64%)
 
@@ -23,8 +23,8 @@ Skipped: 12/21 (57.14%)
 babel-generator
 ---------------
 Cases: 560
-Passed: 412/560 (73.57%)
-Failed: 56/560 (10.00%)
+Passed: 413/560 (73.75%)
+Failed: 55/560 (9.82%)
 Panicked: 0/560 (0.00%)
 Skipped: 92/560 (16.43%)
 Messages:
@@ -69,7 +69,6 @@ Failed: fixtures/babel/packages/babel-generator/test/fixtures/sourcemaps/comment
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/sourcemaps/real-world-babel-file1/input.ts - babel-generator/test/fixtures/sourcemaps/real-world-babel-file1: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/sourcemaps/real-world-babel-file2/input.ts - babel-generator/test/fixtures/sourcemaps/real-world-babel-file2: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/ClassBody-ClassProperty/input.js - parse: Expected '(' for method definition, but found '}' at 629..630
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/ExportDefaultDeclaration11/input.js - parse: Expected a semicolon or an implicit semicolon after a statement, but found '(' at 21..22
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/LogicalExpression/input.js - babel-generator/test/fixtures/types/LogicalExpression: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/UnaryExpression/input.js - semantic: Deleting a variable in strict mode is not allowed at 7..15
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/WithStatement/input.js - semantic: 'with' statements are not allowed in strict mode at 0..13
