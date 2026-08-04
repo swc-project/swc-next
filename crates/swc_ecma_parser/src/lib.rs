@@ -12,11 +12,12 @@ mod unicode_id;
 mod util;
 
 pub use config::{NoTokenParserConfig, ParserConfig, TokenParserConfig};
-pub use lexer::{Hashbang, Lexer, LexerMode, LexicalError, RegexResult};
-pub use parser::{
-    ArrayCover, Checkpoint, CommentMode, Context, ObjectCover, Options, ParenthesizedCover,
-    ParseReturn, Parser, ParserState, Peek, ReportOptions, ScratchBuffer, TsContext,
-    build_line_starts,
-};
+pub use parser::{CommentMode, Options, ParseReturn, Parser};
 pub use swc_next_ecma_ast::{Diagnostic, Label, Lang, Severity};
 pub use token::{Token, TokenFlag, TokenTag};
+
+impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
+    pub fn parse(self) -> ParseReturn<'a> {
+        self.parse_program()
+    }
+}

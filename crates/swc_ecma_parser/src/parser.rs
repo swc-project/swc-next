@@ -61,15 +61,15 @@ impl Default for Options {
 ///
 /// See <https://tc39.es/ecma262/multipage/notational-conventions.html#sec-grammatical-parameters>.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Context {
+struct Context {
     /// The grammar's `[In]` parameter.
-    pub r#in: bool,
+    r#in: bool,
     /// The grammar's `[Yield]` parameter.
-    pub r#yield: bool,
+    r#yield: bool,
     /// The grammar's `[Await]` parameter.
-    pub r#await: bool,
+    r#await: bool,
     /// The grammar's `[Return]` parameter.
-    pub r#return: bool,
+    r#return: bool,
 }
 
 /// Enters a derived grammatical context and returns the previous context.
@@ -132,21 +132,21 @@ impl From<SourceType> for Context {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct TsContext {
+struct TsContext {
     /// Whether parsing is inside a `declare`-prefixed declaration.
     ///
     /// Nested declarations inherit ambient-context rules such as body-less
     /// functions and initializer-less `const` declarations.
-    pub ambient: bool,
+    ambient: bool,
     /// Whether a trailing `?` after a type is forbidden from starting a new
     /// conditional type.
-    pub disallow_conditional_types: bool,
+    disallow_conditional_types: bool,
     /// Whether a speculatively parsed arrow with a return type can commit
     /// without an outer `:`.
     ///
     /// This is false only while reparsing the consequent of a conditional
     /// expression after a `(x): T => ...` arrow consumed the ternary `:`.
-    pub allow_arrow_return_type: bool,
+    allow_arrow_return_type: bool,
 }
 
 impl Default for TsContext {
@@ -165,16 +165,16 @@ struct ParsedBody {
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub struct ParserState {
+struct ParserState {
     /// Start offset of an array or object cover grammar with a trailing comma.
-    pub cover_has_trailing_comma: Option<u32>,
+    cover_has_trailing_comma: Option<u32>,
     /// Whether the current cover grammar parsed a
     /// `CoverInitializedName` (`{ a = 1 }`).
-    pub cover_has_init_name: bool,
+    cover_has_init_name: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ReportOptions {
+struct ReportOptions {
     pub severity: Severity,
     pub help: Option<Cow<'static, str>>,
     pub labels: Vec<Label<'static>>,
@@ -191,20 +191,20 @@ impl Default for ReportOptions {
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct ScratchBuffer {
-    pub items: Vec<NodeId>,
+struct ScratchBuffer {
+    items: Vec<NodeId>,
 }
 
 impl ScratchBuffer {
-    pub fn begin(&self) -> usize {
+    fn begin(&self) -> usize {
         self.items.len()
     }
 
-    pub fn append(&mut self, index: impl AstNode) {
+    fn append(&mut self, index: impl AstNode) {
         self.items.push(index.node_id());
     }
 
-    pub fn reset(&mut self, checkpoint: usize) {
+    fn reset(&mut self, checkpoint: usize) {
         self.items.truncate(checkpoint);
     }
 }
@@ -333,25 +333,25 @@ struct ArrowBodyResult {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct ArrayCover {
-    pub elements: TypedSubRange<Option<Argument>>,
-    pub start: u32,
-    pub end: u32,
+struct ArrayCover {
+    elements: TypedSubRange<Option<Argument>>,
+    start: u32,
+    end: u32,
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct ObjectCover {
-    pub properties: TypedSubRange<ObjectPropertyKind>,
-    pub start: u32,
-    pub end: u32,
+struct ObjectCover {
+    properties: TypedSubRange<ObjectPropertyKind>,
+    start: u32,
+    end: u32,
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct ParenthesizedCover {
-    pub elements: TypedSubRange<Argument>,
-    pub start: u32,
-    pub end: u32,
-    pub has_trailing_comma: bool,
+struct ParenthesizedCover {
+    elements: TypedSubRange<Argument>,
+    start: u32,
+    end: u32,
+    has_trailing_comma: bool,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -599,32 +599,32 @@ impl From<MethodDefinitionKind> for PropertyOrMethodKind {
 
 /// Parser state and typed AST writer.
 pub struct Parser<'parser, 'a, C: ParserConfig = NoTokenParserConfig> {
-    pub ast: &'parser mut Ast<'a>,
-    pub source: &'a str,
-    pub source_type: SourceType,
-    pub lang: Lang,
-    pub preserve_parens: bool,
-    pub comment_mode: CommentMode,
-    pub lexer: Lexer<'a, C>,
-    pub diagnostics: Vec<Diagnostic<'static>>,
-    pub current_token: Token,
+    ast: &'parser mut Ast<'a>,
+    source: &'a str,
+    source_type: SourceType,
+    lang: Lang,
+    preserve_parens: bool,
+    comment_mode: CommentMode,
+    lexer: Lexer<'a, C>,
+    diagnostics: Vec<Diagnostic<'static>>,
+    current_token: Token,
     /// End offset of the most recently consumed token.
     ///
     /// This is used for spans after a closing delimiter has been consumed,
     /// where the parent node must end at that delimiter instead of at the next
     /// token beyond whitespace or newlines.
-    pub prev_token_end: u32,
-    pub scratch_statements: ScratchBuffer,
-    pub scratch_cover: ScratchBuffer,
-    pub scratch_decorators: ScratchBuffer,
+    prev_token_end: u32,
+    scratch_statements: ScratchBuffer,
+    scratch_cover: ScratchBuffer,
+    scratch_decorators: ScratchBuffer,
     /// General-purpose scratch buffers used when two extra-data lists are
     /// assembled at the same time.
-    pub scratch_a: ScratchBuffer,
-    pub scratch_b: ScratchBuffer,
-    pub context: Context,
+    scratch_a: ScratchBuffer,
+    scratch_b: ScratchBuffer,
+    context: Context,
     statement_context: StatementContext,
-    pub ts_context: TsContext,
-    pub state: ParserState,
+    ts_context: TsContext,
+    state: ParserState,
     /// Start offsets which failed speculative parenthesized-arrow parsing.
     ///
     /// This cache is intentionally not part of [`Checkpoint`]: a failed
@@ -640,28 +640,28 @@ pub struct ParseReturn<'a> {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Checkpoint {
+struct Checkpoint {
     // Lexer state.
-    pub lexer_cursor: u32,
-    pub lexer_state: LexerState,
-    pub lexer_mode: LexerMode,
-    pub lexer_comments_len: usize,
-    pub lexer_tokens_len: usize,
+    lexer_cursor: u32,
+    lexer_state: LexerState,
+    lexer_mode: LexerMode,
+    lexer_comments_len: usize,
+    lexer_tokens_len: usize,
     // Parser token stream.
-    pub current_token: Token,
-    pub prev_token_end: u32,
+    current_token: Token,
+    prev_token_end: u32,
     // Append-only AST storage.
-    pub nodes_len: usize,
-    pub extra_len: usize,
-    pub diagnostics_len: usize,
+    nodes_len: usize,
+    extra_len: usize,
+    diagnostics_len: usize,
     // Parser flags, copied by value.
-    pub context: Context,
+    context: Context,
     statement_context: StatementContext,
-    pub ts_context: TsContext,
-    pub state: ParserState,
+    ts_context: TsContext,
+    state: ParserState,
 }
 
-pub struct Peek<'peek, 'a, C: ParserConfig = NoTokenParserConfig> {
+struct Peek<'peek, 'a, C: ParserConfig = NoTokenParserConfig> {
     lexer: &'peek mut Lexer<'a, C>,
     state: LexerState,
     cursor: u32,
@@ -671,7 +671,7 @@ pub struct Peek<'peek, 'a, C: ParserConfig = NoTokenParserConfig> {
 }
 
 impl<C: ParserConfig> Peek<'_, '_, C> {
-    pub fn end(mut self) {
+    fn end(mut self) {
         self.restore();
     }
 
@@ -768,7 +768,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
     }
 
-    pub fn parse(mut self) -> ParseReturn<'a> {
+    pub(super) fn parse_program(mut self) -> ParseReturn<'a> {
         self.context = self.source_type.into();
         if self.advance().is_none() {
             self.current_token = Token::eof(0);
@@ -821,7 +821,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     ///
     /// This strips `#` from private identifiers and decodes Unicode escapes.
     #[inline]
-    pub fn identifier_name(&mut self, token: Token) -> AstUtf8 {
+    fn identifier_name(&mut self, token: Token) -> AstUtf8 {
         if token.tag != TokenTag::PrivateIdentifier && !token.is_escaped() {
             return self.ast.source_slice(token.span.start, token.span.end);
         }
@@ -841,7 +841,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     /// Returns the decoded string value without the surrounding quotes.
-    pub fn string_value(&mut self, token: Token) -> AstWtf8 {
+    fn string_value(&mut self, token: Token) -> AstWtf8 {
         if token.is_escaped() {
             return self.decode_escaped_string(token.span.start + 1, token.span.end - 1);
         }
@@ -850,7 +850,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     /// Returns the decoded content of a template quasi span.
-    pub fn template_element_value(&mut self, token: Token, span: Span) -> AstWtf8 {
+    fn template_element_value(&mut self, token: Token, span: Span) -> AstWtf8 {
         if !token.is_escaped() {
             return self.ast.source_slice_wtf8(span.start, span.end);
         }
@@ -875,7 +875,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         self.ast.add_wtf8(&decoded)
     }
 
-    pub fn describe_token(&self, token: Token) -> Cow<'a, str> {
+    fn describe_token(&self, token: Token) -> Cow<'a, str> {
         if token.tag == TokenTag::Eof {
             return Cow::Borrowed("end of file");
         }
@@ -886,34 +886,16 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
     }
 
-    pub fn set_lexer_mode(&mut self, mode: LexerMode) {
+    fn set_lexer_mode(&mut self, mode: LexerMode) {
         self.lexer.mode = mode;
     }
 
-    pub fn span_text(&self, span: Span) -> &'a str {
+    fn span_text(&self, span: Span) -> &'a str {
         &self.source[span.start as usize..span.end as usize]
     }
 
-    pub fn add_extra_from_scratch<N>(
-        &mut self,
-        scratch: &ScratchBuffer,
-        scratch_checkpoint: usize,
-    ) -> TypedSubRange<N>
-    where
-        N: AstNode + ExtraDataCompact<'a>,
-    {
-        debug_assert!(scratch_checkpoint <= scratch.items.len());
-        let range = self.ast.add_typed_sub_range(
-            scratch.items[scratch_checkpoint..]
-                .iter()
-                .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
-        );
-        debug_assert_eq!(range.len(), scratch.items.len() - scratch_checkpoint);
-        range
-    }
-
     // field-specific helpers avoid allocating scratch copies while splitting mutable borrows
-    pub fn add_extra_from_scratch_a<N>(&mut self, scratch_checkpoint: usize) -> TypedSubRange<N>
+    fn add_extra_from_scratch_a<N>(&mut self, scratch_checkpoint: usize) -> TypedSubRange<N>
     where
         N: AstNode + ExtraDataCompact<'a>,
     {
@@ -927,7 +909,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         range
     }
 
-    pub fn add_extra_from_scratch_b<N>(&mut self, scratch_checkpoint: usize) -> TypedSubRange<N>
+    fn add_extra_from_scratch_b<N>(&mut self, scratch_checkpoint: usize) -> TypedSubRange<N>
     where
         N: AstNode + ExtraDataCompact<'a>,
     {
@@ -941,7 +923,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         range
     }
 
-    pub fn add_extra_from_scratch_cover<N>(&mut self, scratch_checkpoint: usize) -> TypedSubRange<N>
+    fn add_extra_from_scratch_cover<N>(&mut self, scratch_checkpoint: usize) -> TypedSubRange<N>
     where
         N: AstNode + ExtraDataCompact<'a>,
     {
@@ -958,7 +940,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         range
     }
 
-    pub fn add_extra_from_scratch_decorators<N>(
+    fn add_extra_from_scratch_decorators<N>(
         &mut self,
         scratch_checkpoint: usize,
     ) -> TypedSubRange<N>
@@ -978,7 +960,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         range
     }
 
-    pub fn add_extra_from_scratch_statements<N>(
+    fn add_extra_from_scratch_statements<N>(
         &mut self,
         scratch_checkpoint: usize,
     ) -> TypedSubRange<N>
@@ -1009,7 +991,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     /// Captures all state needed to commit or discard a speculative parse.
-    pub fn checkpoint(&self) -> Checkpoint {
+    fn checkpoint(&self) -> Checkpoint {
         Checkpoint {
             lexer_cursor: self.lexer.cursor,
             lexer_state: self.lexer.state,
@@ -1029,7 +1011,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     /// Restores parser state captured by [`Parser::checkpoint`].
-    pub fn rewind(&mut self, checkpoint: Checkpoint) {
+    fn rewind(&mut self, checkpoint: Checkpoint) {
         self.lexer.cursor = checkpoint.lexer_cursor;
         self.lexer.state = checkpoint.lexer_state;
         self.lexer.mode = checkpoint.lexer_mode;
@@ -1046,7 +1028,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         self.state = checkpoint.state;
     }
 
-    pub fn begin_peek(&mut self) -> Peek<'_, 'a, C> {
+    fn begin_peek(&mut self) -> Peek<'_, 'a, C> {
         Peek {
             state: self.lexer.state,
             cursor: self.lexer.cursor,
@@ -1060,14 +1042,14 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     /// Peeks at the token immediately after `current_token` without advancing.
     ///
     /// For multi-token lookahead, use [`Parser::begin_peek`].
-    pub fn peek_ahead(&mut self) -> Option<Token> {
+    fn peek_ahead(&mut self) -> Option<Token> {
         let mut peek = self.begin_peek();
         let token = peek.next();
         peek.end();
         token
     }
 
-    pub fn ensure_capacity(&mut self) {
+    fn ensure_capacity(&mut self) {
         let (estimated_nodes, estimated_extra) = estimate_ast_capacity(self.source.len());
         self.ast.reserve(estimated_nodes, estimated_extra);
         self.scratch_cover.items.reserve(256);
@@ -1130,7 +1112,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         ParsedBody { directives, body }
     }
 
-    pub fn is_at_body_end(&self, terminator: Option<TokenTag>) -> bool {
+    fn is_at_body_end(&self, terminator: Option<TokenTag>) -> bool {
         self.current_token.tag == TokenTag::Eof
             || terminator.is_some_and(|tag| self.current_token.tag == tag)
     }
@@ -11200,7 +11182,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     /// Reports an error when an escaped keyword is consumed in a keyword
     /// position.
     #[inline(always)]
-    pub fn advance(&mut self) -> Option<()> {
+    fn advance(&mut self) -> Option<()> {
         self.check_escaped_keyword();
         self.prev_token_end = self.current_token.span.end;
         self.next_token()
@@ -11217,12 +11199,12 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
     /// Advances without checking whether the current token is an escaped
     /// keyword.
-    pub fn advance_without_escape_check(&mut self) -> Option<()> {
+    fn advance_without_escape_check(&mut self) -> Option<()> {
         self.prev_token_end = self.current_token.span.end;
         self.next_token()
     }
 
-    pub fn check_escaped_keyword(&mut self) {
+    fn check_escaped_keyword(&mut self) {
         let current_token = self.current_token;
         if !current_token.is_escaped() {
             return;
@@ -11232,7 +11214,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
     }
 
-    pub fn report_escaped_keyword(&mut self, span: Span) {
+    fn report_escaped_keyword(&mut self, span: Span) {
         self.diagnostics.push(Diagnostic {
             severity: Severity::Error,
             message: Cow::Borrowed("Keywords cannot contain escape characters"),
@@ -11246,7 +11228,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     ///
     /// Use this for deferred checks where the token was consumed before its
     /// syntactic role was known.
-    pub fn report_if_escaped_keyword(&mut self, token: Token) {
+    fn report_if_escaped_keyword(&mut self, token: Token) {
         if token.is_escaped() {
             self.report_escaped_keyword(token.span);
         }
@@ -11257,7 +11239,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     /// Use this when retokenizing the current source range, such as for
     /// regular expressions and template continuations.
     #[inline]
-    pub fn advance_with_rescanned_token(&mut self, mut token: Token) -> Option<()> {
+    fn advance_with_rescanned_token(&mut self, mut token: Token) -> Option<()> {
         if self.lexer.config.tokens() {
             token.flags |= self.current_token.flags & flag_mask(TokenFlag::LineTerminatorBefore);
         }
@@ -11267,7 +11249,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     }
 
     /// Retokenizes the current token in the current lexer mode.
-    pub fn re_scan_current(&mut self) -> Option<()> {
+    fn re_scan_current(&mut self) -> Option<()> {
         let line_terminator_before =
             self.current_token.flags & flag_mask(TokenFlag::LineTerminatorBefore);
         self.lexer.rewind_to(self.current_token.span.start);
@@ -11282,12 +11264,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         Some(())
     }
 
-    pub fn expect(
-        &mut self,
-        tag: TokenTag,
-        message: &'static str,
-        help: Option<&'static str>,
-    ) -> bool {
+    fn expect(&mut self, tag: TokenTag, message: &'static str, help: Option<&'static str>) -> bool {
         if self.current_token.tag == tag {
             return self.advance().is_some();
         }
@@ -11305,13 +11282,13 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
 
     /// Implements the ECMAScript
     /// [automatic semicolon insertion rules](https://tc39.es/ecma262/#sec-rules-of-automatic-semicolon-insertion).
-    pub fn can_insert_implicit_semicolon(&self, token: Token) -> bool {
+    fn can_insert_implicit_semicolon(&self, token: Token) -> bool {
         token.tag == TokenTag::Eof
             || token.has_line_terminator_before()
             || token.tag == TokenTag::RightBrace
     }
 
-    pub fn eat_semicolon(&mut self, end: u32) -> Option<u32> {
+    fn eat_semicolon(&mut self, end: u32) -> Option<u32> {
         if self.current_token.tag == TokenTag::Semicolon {
             let semicolon_end = self.current_token.span.end;
             self.advance()?;
@@ -11331,21 +11308,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         Some(end)
     }
 
-    /// Lenient semicolon consumption for statements with special ASI
-    /// exceptions.
-    ///
-    /// ES2015+ allows the semicolon after a `do ... while (...)` statement to
-    /// be omitted even when another statement follows on the same line.
-    pub fn eat_semicolon_lenient(&mut self, end: u32) -> Option<u32> {
-        if self.current_token.tag == TokenTag::Semicolon {
-            let semicolon_end = self.current_token.span.end;
-            self.advance()?;
-            return Some(semicolon_end);
-        }
-        Some(end)
-    }
-
-    pub fn report(
+    fn report(
         &mut self,
         span: Span,
         message: impl Into<Cow<'static, str>>,
@@ -11360,7 +11323,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         });
     }
 
-    pub fn report_expected(&mut self, span: Span, message: &str, options: ReportOptions) {
+    fn report_expected(&mut self, span: Span, message: &str, options: ReportOptions) {
         let found = self.describe_token(self.current_token);
         self.report(
             span,
@@ -11369,18 +11332,14 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         );
     }
 
-    pub fn label(&self, span: Span, message: &'static str) -> Label<'static> {
+    fn label(&self, span: Span, message: &'static str) -> Label<'static> {
         Label {
             span,
             message: Cow::Borrowed(message),
         }
     }
 
-    pub fn labels(&self, items: &[Label<'static>]) -> Vec<Label<'static>> {
-        items.to_vec()
-    }
-
-    pub fn recover(&mut self, terminator: Option<TokenTag>) {
+    fn recover(&mut self, terminator: Option<TokenTag>) {
         while self.current_token.tag != TokenTag::Eof {
             self.current_token = self.recover_next_token();
             if self.current_token.tag == TokenTag::Eof {
@@ -11563,7 +11522,7 @@ fn can_follow_readonly_modifier(tag: TokenTag) -> bool {
         || matches!(tag, TokenTag::LeftBrace | TokenTag::Star | TokenTag::Spread)
 }
 
-pub fn build_line_starts(ast: &mut Ast<'_>, source: &str) {
+fn build_line_starts(ast: &mut Ast<'_>, source: &str) {
     let source = source.as_bytes();
 
     debug_assert!(source.len() <= u32::MAX as usize);
