@@ -7515,6 +7515,28 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             .ast
             .source_slice(result.pattern.start, result.pattern.end);
         let flags = self.ast.source_slice(result.flags.start, result.flags.end);
+        let is_valid = {
+            let allocator = oxc_allocator::Allocator::new();
+            oxc_regular_expression::LiteralParser::new(
+                &allocator,
+                self.ast.get_utf8(pattern),
+                Some(self.ast.get_utf8(flags)),
+                oxc_regular_expression::Options {
+                    pattern_span_offset: result.pattern.start,
+                    flags_span_offset: result.flags.start,
+                },
+            )
+            .parse()
+            .is_ok()
+        };
+        if !is_valid {
+            self.report(
+                result.span,
+                "Invalid regular expression literal",
+                ReportOptions::default(),
+            );
+            return None;
+        }
         Some(self.ast.expr_reg_exp_literal(result.span, pattern, flags))
     }
 
@@ -11930,5 +11952,34 @@ mod tests {
             .expect("expected JSX identifier token");
         assert_eq!(foo.tag, TokenTag::JsxIdentifier);
         assert!(foo.has_line_terminator_before());
+    }
+
+    fn assert_regexp_valid(source: &str, expected: bool) {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new(source, &allocator);
+        let result = Parser::init(&mut ast, Options::default(), NoTokenParserConfig).parse();
+
+        assert_eq!(result.diagnostics.is_empty(), expected, "{source}");
+    }
+
+    #[test]
+    fn validates_unicode_property_escapes() {
+        for source in [
+            r"/\p{ASCII}/u;",
+            r"/\p{Script=Latin}/u;",
+            r"/\p{Basic_Emoji}/v;",
+        ] {
+            assert_regexp_valid(source, true);
+        }
+
+        for source in [
+            r"/\p{ASCII=Yes}/u;",
+            r"/[\p{ASCII}-a]/u;",
+            r"/\p{Basic_Emoji}/u;",
+            r"/\P{Basic_Emoji}/v;",
+            r"/[^\p{Basic_Emoji}]/v;",
+        ] {
+            assert_regexp_valid(source, false);
+        }
     }
 }

@@ -13,6 +13,8 @@ unstable = []
 
 [dependencies]
 memchr             = { workspace = true }
+oxc_allocator      = { workspace = true }
+oxc_regular_expression = { workspace = true }
 rustc-hash         = { workspace = true }
 swc_next_allocator = { workspace = true }
 swc_next_ecma_ast  = { workspace = true }

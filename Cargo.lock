@@ -2821,6 +2821,8 @@ name = "swc_next_ecma_parser"
 version = "0.11.0"
 dependencies = [
  "memchr",
+ "oxc_allocator",
+ "oxc_regular_expression",
  "pico-args",
  "rustc-hash",
  "swc_next_allocator",

@@ -17,6 +17,7 @@ hashbrown        = "0.17.1"
 indexmap         = "2.14.0"
 memchr           = "2.7.6"
 oxc_index        = { version = "5.0.0", features = ["nonmax"] }
+oxc_regular_expression = "0.137.0"
 rayon            = "1.12.0"
 regex            = "1.12.2"
 rustc-hash       = "2.1.2"
