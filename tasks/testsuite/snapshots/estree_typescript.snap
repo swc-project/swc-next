@@ -1,6 +1,5 @@
 AST Parsed     : 11509/11509 (100.00%)
-Positive Passed: 10945/11509 (95.10%)
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/APISample_jsdoc.ts
+Positive Passed: 11010/11509 (95.66%)
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/ClassDeclarationWithInvalidConstOnPropertyDeclaration.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/accessOverriddenBaseClassMember1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/accessorBodyInTypeContext.ts
@@ -24,10 +23,8 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/awaitInClassI
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/awaitInNonAsyncFunction.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/awaitLiteralValues.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/baseCheck.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/bestChoiceType.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/capturedLetConstInLoop9.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/capturedLetConstInLoop9_ES6.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/castExpressionParentheses.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/chainedAssignment1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/chainedAssignmentChecking.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/chainedCallsWithTypeParameterConstrainedToOtherTypeParameter.ts
@@ -46,7 +43,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/collisionCode
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/collisionRestParameterClassConstructor.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/collisionSuperAndPropertyNameAsConstuctorParameter.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/collisionThisExpressionAndPropertyNameAsConstuctorParameter.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/commaOperatorLeftSideUnused.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/commentsdoNotEmitComments.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/commentsemitComments.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/comparabilityTypeParametersRelatedByUnion.ts
@@ -56,7 +52,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/constInClassE
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/constructorArgs.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/constructorWithParameterPropertiesAndPrivateFields.es2015.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/controlFlowInstanceofWithSymbolHasInstance.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/controlFlowPropertyDeclarations.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/covariance1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/customAsyncIterator.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/declFileConstructors.ts
@@ -74,8 +69,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/declareAlread
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/decoratorMetadataRestParameterWithImportedType.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/deferredConditionalTypes2.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/destructuringUnspreadableIntoRest.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/doYouNeedToChangeYourTargetLibraryES2015.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/doYouNeedToChangeYourTargetLibraryES2016Plus.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/duplicateLocalVariable1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/duplicateLocalVariable2.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/emitHelpersWithLocalCollisions.ts
@@ -111,8 +104,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/fatArrowSelf.
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/fatarrowfunctionsOptionalArgsErrors1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/fileWithNextLine2.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/fileWithNextLine3.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/firstMatchRegExpMatchArray.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/flatArrayNoExcessiveStackDepth.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/functionArgShadowing.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/fuzzy.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/genericClassWithStaticFactory.ts
@@ -158,7 +149,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/letDeclaratio
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/letDeclarations-scopes.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/letDeclarations-validContexts.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/lift.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/literals1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/misspelledNewMetaProperty.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/mixinPrivateAndProtected.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/modulePreserveImportHelpers.ts
@@ -173,7 +163,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/objectBinding
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/objectCreationOfElementAccessExpression.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/objectLiteralMemberWithQuestionMark1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/optionalParameterProperty.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/overloadResolutionOverNonCTLambdas.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/overrideBaseIntersectionMethod.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/parameterPropertyInConstructor3.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/parameterPropertyInConstructor4.ts
@@ -184,7 +173,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/parameterRefe
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/parseInvalidNonNullableTypes.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/parseInvalidNullableTypes.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/parsingDeepParenthensizedExpression.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/primitiveMembers.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/privacyCheckExternalModuleExportAssignmentOfGenericClass.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/privacyFunctionCannotNameParameterTypeDeclFile.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/privacyFunctionParameterDeclFile.ts
@@ -198,12 +186,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/raiseErrorOnP
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/recursiveClassReferenceTest.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/recursiveFieldSetting.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/recursiveSpecializationOfSignatures.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/regExpWithOpenBracketInCharClass.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/regExpWithSlashInCharClass.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/regexMatchAll-esnext.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/regexMatchAll.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/regularExpressionAnnexB.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/regularExpressionExtendedUnicodeEscapes.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/regularExpressionScanning.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/regularExpressionWithNonBMPFlags.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/relatedViaDiscriminatedTypeNoError.ts
@@ -222,7 +204,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/sourceMapVali
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/staticMethodReferencingTypeArgument1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/statics.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/strictModeReservedWordInClassDeclaration.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/stringMatchAll.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/superCallArgsMustMatch.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/superCallFromClassThatDerivesFromGenericTypeButWithIncorrectNumberOfTypeArguments1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/superCallFromClassThatDerivesFromGenericTypeButWithNoTypeArguments1.ts
@@ -238,15 +219,10 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/topLevel.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/tslibReExportHelpers.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/typeConstraintsWithConstructSignatures.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/typeVariableTypeGuards.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/underscoreTest1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/unspecializedConstraints.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/unusedIdentifiersConsolidated1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/unusedLocalProperty.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/unusedParameterProperty1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/unusedParameterProperty2.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/unusedVariablesinNamespaces1.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/unusedVariablesinNamespaces2.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/unusedVariablesinNamespaces3.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/usingModuleWithExportImportInValuePosition.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/validUseOfThisInSuper.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/compiler/vardecl.ts
@@ -303,11 +279,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/pr
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/propertyMemberDeclarations/propertyOverridesAccessors5.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/propertyMemberDeclarations/redefinedPararameterProperty.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/controlFlow/controlFlowAliasing.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/controlFlow/controlFlowDoWhileStatement.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/controlFlow/controlFlowForInStatement.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/controlFlow/controlFlowIfStatement.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/controlFlow/controlFlowWhileStatement.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/controlFlow/typeGuardsNestedAssignments.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/declarationEmit/declarationEmitWorkWithInlineComments.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/decorators/class/constructor/parameter/decoratorOnClassConstructorParameter5.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/decorators/class/decoratedClassExportsCommonJS1.ts
@@ -320,7 +291,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/decorators
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/decorators/decoratorMetadata.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/decorators/decoratorMetadataWithTypeOnlyImport.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/dynamicImport/importCallExpressionWithTypeArgument.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es2018/useRegexpGroups.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es2019/importMeta/importMeta.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/Symbols/symbolProperty61.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/arrowFunction/disallowLineTerminatorBeforeArrow.ts
@@ -344,20 +314,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/module
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/moduleExportsCommonjs/decoratedDefaultExportsGetExportedCommonjs.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/moduleExportsSystem/decoratedDefaultExportsGetExportedSystem.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/moduleExportsUmd/decoratedDefaultExportsGetExportedUmd.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions01.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions02.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions03.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions04.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions05.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions06.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions08.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions09.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions10.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions11.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions13.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions15.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions16.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInRegularExpressions18.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/yieldExpressions/YieldExpression12_es6.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/yieldExpressions/YieldExpression14_es6.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/yieldExpressions/YieldExpression15_es6.ts
@@ -376,7 +332,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/esDecorato
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-parameterProperties.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-setFunctionName.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/expressions/assignmentOperator/assignmentTypeNarrowing.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/expressions/binaryOperators/instanceofOperator/instanceofOperatorWithRHSHasSymbolHasInstance.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/expressions/contextualTyping/generatedContextualTyping.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/expressions/contextualTyping/superCallParameterContextualTyping1.ts
@@ -397,7 +352,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/externalMo
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/externalModules/esnext/esnextmodulekindWithES5Target3.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/externalModules/topLevelAwaitErrors.4.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/externalModules/topLevelAwaitNonModule.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/fixSignatureCaching.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/functions/functionOverloadErrorsSyntax.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/functions/parameterInitializersForwardReferencing1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/functions/parameterInitializersForwardReferencing1_es6.ts
@@ -456,7 +410,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecm
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/ParameterLists/parserErrorRecovery_ParameterList6.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/VariableLists/parserErrorRecovery_VariableList1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Expressions/parserAssignmentExpression1.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Fuzz/parser768531.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Generics/parserGreaterThanTokenAmbiguity11.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Generics/parserGreaterThanTokenAmbiguity15.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Generics/parserGreaterThanTokenAmbiguity16.ts
@@ -482,18 +435,7 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecm
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ParameterLists/parserParameterList9.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Protected/Protected9.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RealWorld/parserindenter.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegressionTests/parser596700.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegressionTests/parser618973.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegressionTests/parser630933.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegressionTests/parser645086_3.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegressionTests/parser645086_4.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegularExpressions/parseRegularExpressionMixedWithComments.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegularExpressions/parserRegularExpression1.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegularExpressions/parserRegularExpression2.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegularExpressions/parserRegularExpression3.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegularExpressions/parserRegularExpression4.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegularExpressions/parserRegularExpression5.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegularExpressions/parserRegularExpression6.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegularExpressions/parserRegularExpressionDivideAmbiguity3.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/VariableDeclarations/parserVariableDeclaration10.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/parser/ecmascript5/VariableDeclarations/parserVariableDeclaration5.ts
@@ -521,14 +463,10 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/statements
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/statements/VariableStatements/usingDeclarations/usingDeclarationsWithLegacyClassDecorators.4.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/statements/VariableStatements/usingDeclarations/usingDeclarationsWithLegacyClassDecorators.8.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/statements/VariableStatements/usingDeclarations/usingDeclarationsWithLegacyClassDecorators.9.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/statements/for-inStatements/for-inStatements.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/statements/for-ofStatements/ES5For-of12.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/statements/ifDoWhileStatements/ifDoWhileStatements.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/statements/labeledStatements/labeledStatementWithLabel.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/statements/labeledStatements/labeledStatementWithLabel_es2015.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/statements/labeledStatements/labeledStatementWithLabel_strict.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/statements/switchStatements/switchStatements.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/statements/throwStatements/throwStatements.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/import/importTypeGeneric.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/import/importTypeNested.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/import/importTypeNestedNoRef.ts
@@ -558,9 +496,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/type
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/typeParameters/typeArgumentLists/constraintSatisfactionWithEmptyObject.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/typeParameters/typeArgumentLists/wrappedAndRecursiveConstraints.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/typeRelationships/instanceOf/narrowingGenericTypeFromInstanceof01.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/typeRelationships/subtypesAndSuperTypes/nullIsSubtypeOfEverythingButUndefined.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/typeRelationships/subtypesAndSuperTypes/subtypesOfTypeParameter.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/typeRelationships/subtypesAndSuperTypes/subtypesOfTypeParameterWithConstraints2.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/typeRelationships/typeInference/genericCallTypeArgumentInference.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/typeRelationships/typeInference/genericCallWithConstraintsTypeArgumentInference.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/typeRelationships/typeInference/noInfer.ts
