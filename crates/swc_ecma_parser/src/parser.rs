@@ -1287,6 +1287,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             decorators_before_default,
             decorators_after_default,
         ]);
+        if class_start.is_none() && self.current_token.tag != TokenTag::Class {
+            class_start = Some(export_start);
+        }
         let class = self.parse_class_decorated(
             ParseClassOpts {
                 is_default_export: is_default,
@@ -3206,11 +3209,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         debug_assert_eq!(self.current_token.tag, TokenTag::Spread);
         self.advance()?;
         let argument = self.parse_binding_pattern()?;
-        let optional = if self.lang.is_typescript() && self.eat(TokenTag::Question)? {
-            true
-        } else {
-            false
-        };
+        let optional = self.lang.is_typescript() && self.eat(TokenTag::Question)?;
         let type_annotation =
             if self.lang.is_typescript() && self.current_token.tag == TokenTag::Colon {
                 Some(self.parse_type_annotation()?)
@@ -13003,6 +13002,29 @@ mod tests {
                 panic!("expected a class declaration");
             };
             assert_eq!(class.decorators(&ast).len(), expected_decorators);
+        }
+    }
+
+    #[test]
+    fn decorated_abstract_exports_do_not_panic() {
+        for source in [
+            "@dec export abstract class C {}",
+            "@dec export default abstract class C {}",
+        ] {
+            let allocator = Allocator::new();
+            let mut ast = Ast::new(source, &allocator);
+            let result = Parser::init(
+                &mut ast,
+                Options {
+                    lang: Lang::Ts,
+                    source_type: SourceType::Module,
+                    ..Options::default()
+                },
+                NoTokenParserConfig,
+            )
+            .parse();
+
+            assert!(!result.diagnostics.is_empty());
         }
     }
 

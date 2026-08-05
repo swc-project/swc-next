@@ -1,6 +1,6 @@
 codegen * babel
 ========================
-Positive Passed: 2127/2238 (95.04%)
+Positive Passed: 2122/2238 (94.82%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/2238 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - parser: Invalid assignment target at 22..29
@@ -84,6 +84,7 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/esprima/statement-ite
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/typescript/enum/input.js - estree/typescript/enum: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/typescript/loc-index-property/input.js - parser: Expected '=' in type alias declaration, but found 'const' at 20..25
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/arrow-function/async-call-in-conditional/input.ts - parser: Expected ',' or ')' in parenthesized expression, but found ':' at 365..366
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/static-static/input.ts - parser: Duplicate or conflicting class element modifier at 21..27
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/const/initializer-ambient-context/input.ts - typescript/const/initializer-ambient-context: codegen output changed after reparse 
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/function-rest-trailing-comma/input.ts - parser: Rest parameter must be the last parameter at 37..38
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/dts/valid-trailing-comma-for-rest/input.ts - parser: Rest parameter must be the last parameter at 29..30
@@ -103,6 +104,11 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/enum/membe
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/export/declare/input.ts - parser: Expected '=' in type alias declaration, but found 'const' at 20..25
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/export/export-type-declaration/input.ts - parser: Expected '=' in type alias declaration, but found 'A' at 17..18
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/export/export-value-declaration/input.ts - typescript/export/export-value-declaration: codegen output changed after reparse 
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/export-import-require/input.ts - parser: An ECMAScript import cannot have an 'export' modifier at 7..13
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/export-import-type-as-identifier/input.ts - parser: An ECMAScript import cannot have an 'export' modifier at 7..13
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/export-import-type-require/input.ts - parser: An ECMAScript import cannot have an 'export' modifier at 7..13
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/export-import/input.ts - parser: An ECMAScript import cannot have an 'export' modifier at 7..13
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/type-asi/input.ts - parser: An ECMAScript import cannot have an 'export' modifier at 69..75
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/interface/export/input.ts - parser: Expected '=' in type alias declaration, but found 'I' at 22..23
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/regression/is-default-export/input.ts - parser: Expected '=' in type alias declaration, but found 'T' at 17..18
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/scope/enum-block-scoped/input.ts - typescript/scope/enum-block-scoped: codegen output changed after reparse 
@@ -113,4 +119,3 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/scope/rede
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-alias/export/input.ts - parser: Expected '=' in type alias declaration, but found 'T' at 17..18
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-arguments/instantiation-expression-false-positive-5/input.ts - parser: Invalid assignment target at 3..13
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/const-type-parameters/input.ts - parser: Type parameter modifiers must appear in the order 'const in out' at 346..351
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/tuple-labeled-spread/input.ts - parser: Expected a type, but found '...' at 22..25

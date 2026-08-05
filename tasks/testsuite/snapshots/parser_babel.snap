@@ -1,7 +1,7 @@
 parser * babel
 ========================
-Positive Passed: 2209/2238 (98.70%)
-Negative Passed: 1599/1743 (91.74%)
+Positive Passed: 2203/2238 (98.44%)
+Negative Passed: 1592/1743 (91.34%)
 Panicked: 0/3981 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/escape-keyword/async/input.js - core/escape-keyword/async: parser: Keywords cannot contain escape characters at 1..11
@@ -13,6 +13,8 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/arrow-function
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/arrow-functions/inner-parens-object-pattern/input.js - es2015/arrow-functions/inner-parens-object-pattern: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/arrow-functions/no-for-in-init-concise-binary-in/input.js - es2015/arrow-functions/no-for-in-init-concise-binary-in: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/class-methods/disallow-super-call-after-new/input.js - es2015/class-methods/disallow-super-call-after-new: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/regex/duplicate-flags/input.js - es2015/regex/duplicate-flags: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2015/uncategorised/127/input.js - es2015/uncategorised/127: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-arrow/invalid-single-binding-binary-argument/input.js - es2017/async-arrow/invalid-single-binding-binary-argument: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-arrow/invalid-single-binding-unary-argument/input.js - es2017/async-arrow/invalid-single-binding-unary-argument: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2017/async-arrow/parenthesized-array-pattern-nested-2/input.js - es2017/async-arrow/parenthesized-array-pattern-nested-2: expected a parse or early error, but pipeline succeeded
@@ -34,10 +36,16 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-sp
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/no-pattern-in-rest-with-ts/input.js - es2018/object-rest-spread/no-pattern-in-rest-with-ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/no-pattern-in-rest/input.js - es2018/object-rest-spread/no-pattern-in-rest: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2020/nullish-coalescing-operator/no-paren-nullish-or/input.js - es2020/nullish-coalescing-operator/no-paren-nullish-or: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/class-private-properties/invalid-object-method/input.js - es2022/class-private-properties/invalid-object-method: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/class-private-properties/invalid-object-property-with-assignment/input.js - es2022/class-private-properties/invalid-object-property-with-assignment: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/class-private-properties/invalid-object-property/input.js - es2022/class-private-properties/invalid-object-property: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/class-private-properties/invalid-ts-type-literal/input.js - es2022/class-private-properties/invalid-ts-type-literal: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/class-properties/arguments-in-key/input.js - es2022/class-properties/arguments-in-key: semantic: 'arguments' is not allowed in class field initializers or static blocks at 33..42
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/class-properties/await-identifier-in-computed-property-in-arguments-of-async-call/input.js - es2022/class-properties/await-identifier-in-computed-property-in-arguments-of-async-call: parser: Unexpected token ']' at 25..26
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/class-properties/edge-cases/input.js - es2022/class-properties/edge-cases: parser: Expected '(' for method definition, but found '}' at 249..250
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2022/private-in/invalid-private-followed-by-in-4/input.js - es2022/private-in/invalid-private-followed-by-in-4: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2024/regexp-unicode-sets/uv-error/input.js - es2024/regexp-unicode-sets/uv-error: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2024/regexp-unicode-sets/vu-error/input.js - es2024/regexp-unicode-sets/vu-error: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/invalid-for-of-await-using-linebreak/input.js - es2026/async-explicit-resource-management/invalid-for-of-await-using-linebreak: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/valid-await-expr-using-in/input.js - es2026/async-explicit-resource-management/valid-await-expr-using-in: parser: 'in' is reserved and cannot be used as a binding identifier at 35..37
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/es2026/async-explicit-resource-management/valid-await-expr-using-instanceof/input.js - es2026/async-explicit-resource-management/valid-await-expr-using-instanceof: parser: 'instanceof' is reserved and cannot be used as a binding identifier at 35..45
@@ -55,6 +63,7 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/class-private-
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/typescript/invalid-class-method-empty-body/input.js - estree/typescript/invalid-class-method-empty-body: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/arrow-function/async-arrow-function-after-binary-operator/input.ts - typescript/arrow-function/async-arrow-function-after-binary-operator: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/arrow-function/async-call-in-conditional/input.ts - typescript/arrow-function/async-call-in-conditional: parser: Expected ',' or ')' in parenthesized expression, but found ':' at 365..366
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/arrow-function/async-rest-optional-parameter/input.ts - typescript/arrow-function/async-rest-optional-parameter: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/arrow-function/generic-tsx/input.ts - typescript/arrow-function/generic-tsx: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/async-call/with-optional-parameter/input.ts - typescript/async-call/with-optional-parameter: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/cast/invalid/input.ts - typescript/cast/invalid: expected a parse or early error, but pipeline succeeded
@@ -88,7 +97,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/meth
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/modifiers-incompatible/input.ts - typescript/class/modifiers-incompatible: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/modifiers-index-signatures/input.ts - typescript/class/modifiers-index-signatures: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/modifiers-invalid-order/input.ts - typescript/class/modifiers-invalid-order: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/modifiers-override-errors/input.ts - typescript/class/modifiers-override-errors: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/optional-generator-method-with-invalid-modifiers/input.ts - typescript/class/optional-generator-method-with-invalid-modifiers: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/parameter-properties-binding-patterns/input.ts - typescript/class/parameter-properties-binding-patterns: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/private-fields-modifier-abstract/input.ts - typescript/class/private-fields-modifier-abstract: expected a parse or early error, but pipeline succeeded
@@ -96,6 +104,7 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/priv
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/private-fields-modifier-protected/input.ts - typescript/class/private-fields-modifier-protected: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/private-fields-modifier-public/input.ts - typescript/class/private-fields-modifier-public: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/private-method-overload/input.ts - typescript/class/private-method-overload: semantic: Duplicate private name '#f' at 40..62
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/static-static/input.ts - typescript/class/static-static: parser: Duplicate or conflicting class element modifier at 21..27
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/conditional/arrow-ambiguity/input.ts - typescript/conditional/arrow-ambiguity: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/conditional/arrow-like/input.ts - typescript/conditional/arrow-like: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/conditional/arrow-param/input.ts - typescript/conditional/arrow-param: expected a parse or early error, but pipeline succeeded
@@ -124,7 +133,11 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/function/p
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/function/pattern-optional-parameters/input.ts - typescript/function/pattern-optional-parameters: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/equals-in-script/input.ts - typescript/import/equals-in-script: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/equals-require-in-script/input.ts - typescript/import/equals-require-in-script: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/export-import-type/input.ts - typescript/import/export-import-type: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/export-import-require/input.ts - typescript/import/export-import-require: parser: An ECMAScript import cannot have an 'export' modifier at 7..13
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/export-import-type-as-identifier/input.ts - typescript/import/export-import-type-as-identifier: parser: An ECMAScript import cannot have an 'export' modifier at 7..13
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/export-import-type-require/input.ts - typescript/import/export-import-type-require: parser: An ECMAScript import cannot have an 'export' modifier at 7..13
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/export-import/input.ts - typescript/import/export-import: parser: An ECMAScript import cannot have an 'export' modifier at 7..13
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/type-asi/input.ts - typescript/import/type-asi: parser: An ECMAScript import cannot have an 'export' modifier at 69..75
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/type-equals/input.ts - typescript/import/type-equals: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/interface/get-set-invalid-optional-parameter/input.ts - typescript/interface/get-set-invalid-optional-parameter: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/interface/get-set-invalid-parameters/input.ts - typescript/interface/get-set-invalid-parameters: expected a parse or early error, but pipeline succeeded

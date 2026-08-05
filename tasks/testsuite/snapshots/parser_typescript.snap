@@ -1,7 +1,7 @@
 parser * typescript
 ========================
-Positive Passed: 21869/22023 (99.30%)
-Negative Passed: 1584/3448 (45.94%)
+Positive Passed: 21802/22023 (99.00%)
+Negative Passed: 1581/3448 (45.85%)
 Panicked: 0/25471 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -24,9 +24,14 @@ Failed: fixtures/typescript/tests/cases/compiler/InterfaceDeclaration8.ts - Inte
 Failed: fixtures/typescript/tests/cases/compiler/ParameterList7.ts - ParameterList7.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ParameterList8.ts - ParameterList8.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/abstractPropertyNegative.ts - abstractPropertyNegative.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/acceptableAlias1.ts - acceptableAlias1.ts: parser: An ECMAScript import cannot have an 'export' modifier at 56..62
 Failed: fixtures/typescript/tests/cases/compiler/accessorInferredReturnTypeErrorInReturnStatement.ts - accessorInferredReturnTypeErrorInReturnStatement.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/accessorWithInitializer.ts - accessorWithInitializer.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/accessorsInAmbientContext.ts - accessorsInAmbientContext.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/aliasInaccessibleModule.ts - aliasInaccessibleModule.ts: parser: An ECMAScript import cannot have an 'export' modifier at 49..55
+Failed: fixtures/typescript/tests/cases/compiler/aliasInaccessibleModule2.ts - aliasInaccessibleModule2.ts: parser: An ECMAScript import cannot have an 'export' modifier at 104..110
+Failed: fixtures/typescript/tests/cases/compiler/aliasesInSystemModule1.ts - aliasesInSystemModule1.ts: parser: An ECMAScript import cannot have an 'export' modifier at 64..70
+Failed: fixtures/typescript/tests/cases/compiler/aliasesInSystemModule2.ts - aliasesInSystemModule2.ts: parser: An ECMAScript import cannot have an 'export' modifier at 60..66
 Failed: fixtures/typescript/tests/cases/compiler/allowImportClausesToMergeWithTypes.ts - a.ts: semantic: Duplicate export of 'default' at 114..128
 Failed: fixtures/typescript/tests/cases/compiler/allowSyntheticDefaultImports10.ts - a.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/allowSyntheticDefaultImports10.ts - b.d.ts: expected a parse or early error, but pipeline succeeded
@@ -49,7 +54,6 @@ Failed: fixtures/typescript/tests/cases/compiler/anyIdenticalToItself.ts - anyId
 Failed: fixtures/typescript/tests/cases/compiler/argumentsBindsToFunctionScopeArgumentList.ts - argumentsBindsToFunctionScopeArgumentList.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/argumentsReferenceInObjectLiteral_Js.ts - /a.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/arrayConcatMap.ts - arrayConcatMap.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/arrowFunctionErrorSpan.ts - arrowFunctionErrorSpan.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/asiAbstract.ts - asiAbstract.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/asiPublicPrivateProtected.ts - asiPublicPrivateProtected.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/assignmentCompatFunctionsWithOptionalArgs.ts - assignmentCompatFunctionsWithOptionalArgs.ts: expected a parse or early error, but pipeline succeeded
@@ -92,12 +96,12 @@ Failed: fixtures/typescript/tests/cases/compiler/checkSuperCallBeforeThisAccessi
 Failed: fixtures/typescript/tests/cases/compiler/checkTypePredicateForRedundantProperties.ts - checkTypePredicateForRedundantProperties.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/checkerInitializationCrash.ts - /index.tsx: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/checkerInitializationCrash.ts - /node_modules/@fullcalendar/core/index.d.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/checkerInitializationCrash.ts - /node_modules/@fullcalendar/react/index.d.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/checkerInitializationCrash.ts - /node_modules/@types/react/index.d.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/checkerInitializationCrash.ts - /node_modules/preact/index.d.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/checkingObjectDefinePropertyOnFunctionNonexistentPropertyNoCrash1.ts - index.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/checkingObjectWithThisInNamePositionNoCrash.ts - checkingObjectWithThisInNamePositionNoCrash.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/circularOptionalityRemoval.ts - circularOptionalityRemoval.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/circularReferenceInImport.ts - db.d.ts: parser: An ECMAScript import cannot have an 'export' modifier at 34..40
 Failed: fixtures/typescript/tests/cases/compiler/classExpressionWithDecorator1.ts - classExpressionWithDecorator1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/classExtendingQualifiedName.ts - classExtendingQualifiedName.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/classExtendsInterface_not.ts - classExtendsInterface_not.ts: expected a parse or early error, but pipeline succeeded
@@ -126,7 +130,7 @@ Failed: fixtures/typescript/tests/cases/compiler/collisionExportsRequireAndClass
 Failed: fixtures/typescript/tests/cases/compiler/collisionExportsRequireAndEnum.ts - collisionExportsRequireAndEnum_externalmodule.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/collisionExportsRequireAndEnum.ts - collisionExportsRequireAndEnum_globalFile.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/collisionExportsRequireAndFunction.ts - collisionExportsRequireAndFunction.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/collisionExportsRequireAndInternalModuleAlias.ts - collisionExportsRequireAndInternalModuleAlias.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/collisionExportsRequireAndInternalModuleAliasInGlobalFile.ts - collisionExportsRequireAndInternalModuleAliasInGlobalFile.ts: parser: An ECMAScript import cannot have an 'export' modifier at 307..313
 Failed: fixtures/typescript/tests/cases/compiler/collisionExportsRequireAndModule.ts - collisionExportsRequireAndModule_externalmodule.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/collisionExportsRequireAndModule.ts - collisionExportsRequireAndModule_globalFile.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/collisionExportsRequireAndVar.ts - collisionExportsRequireAndVar_externalmodule.ts: expected a parse or early error, but pipeline succeeded
@@ -179,6 +183,11 @@ Failed: fixtures/typescript/tests/cases/compiler/crashDeclareGlobalTypeofExport.
 Failed: fixtures/typescript/tests/cases/compiler/crashOnMethodSignatures.ts - crashOnMethodSignatures.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/crashRegressionTest.ts - crashRegressionTest.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ctsFileInEsnextHelpers.ts - notmodule.cts: semantic: Cannot use 'export' declaration outside a module at 0..42
+Failed: fixtures/typescript/tests/cases/compiler/declFileExportImportChain.ts - declFileExportImportChain_b.ts: parser: An ECMAScript import cannot have an 'export' modifier at 7..13
+Failed: fixtures/typescript/tests/cases/compiler/declFileExportImportChain.ts - declFileExportImportChain_c.ts: parser: An ECMAScript import cannot have an 'export' modifier at 7..13
+Failed: fixtures/typescript/tests/cases/compiler/declFileExportImportChain2.ts - declFileExportImportChain2_c.ts: parser: An ECMAScript import cannot have an 'export' modifier at 7..13
+Failed: fixtures/typescript/tests/cases/compiler/declFileForExportedImport.ts - declFileForExportedImport_1.ts: parser: An ECMAScript import cannot have an 'export' modifier at 61..67
+Failed: fixtures/typescript/tests/cases/compiler/declFileInternalAliases.ts - declFileInternalAliases.ts: parser: An ECMAScript import cannot have an 'export' modifier at 158..164
 Failed: fixtures/typescript/tests/cases/compiler/declFileWithErrorsInInputDeclarationFile.ts - client.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/declFileWithErrorsInInputDeclarationFile.ts - declFile.d.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/declFileWithErrorsInInputDeclarationFileWithOut.ts - client.ts: expected a parse or early error, but pipeline succeeded
@@ -199,6 +208,8 @@ Failed: fixtures/typescript/tests/cases/compiler/declarationEmitIndexTypeNotFoun
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitMonorepoBaseUrl.ts - /node_modules/.pnpm/@babel+parser@7.23.6/node_modules/@babel/parser/typings/babel-parser.d.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitMonorepoBaseUrl.ts - /packages/compiler-core/src/index.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitMonorepoBaseUrl.ts - /packages/compiler-sfc/src/index.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/declarationEmitNameConflicts.ts - declarationEmit_nameConflicts_0.ts: parser: An ECMAScript import cannot have an 'export' modifier at 237..243
+Failed: fixtures/typescript/tests/cases/compiler/declarationEmitNameConflictsWithAlias.ts - declarationEmitNameConflictsWithAlias.ts: parser: An ECMAScript import cannot have an 'export' modifier at 53..59
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitNestedBindingPattern.ts - declarationEmitNestedBindingPattern.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitObjectAssignedDefaultExport.ts - index.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/declarationEmitObjectAssignedDefaultExport.ts - node_modules/styled-components/index.d.ts: expected a parse or early error, but pipeline succeeded
@@ -323,7 +334,6 @@ Failed: fixtures/typescript/tests/cases/compiler/errorSupression1.ts - errorSupr
 Failed: fixtures/typescript/tests/cases/compiler/es5-asyncFunctionWithStatements.ts - es5-asyncFunctionWithStatements.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/es5-oldStyleOctalLiteralInEnums.ts - es5-oldStyleOctalLiteralInEnums.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/es5ExportEquals.ts - es5ExportEquals.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/es5ModuleInternalNamedImports.ts - es5ModuleInternalNamedImports.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/es6ClassTest.ts - es6ClassTest.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/es6DeclOrdering.ts - es6DeclOrdering.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/es6ExportEquals.ts - es6ExportEquals.ts: expected a parse or early error, but pipeline succeeded
@@ -347,8 +357,7 @@ Failed: fixtures/typescript/tests/cases/compiler/es6ImportWithoutFromClauseInEs5
 Failed: fixtures/typescript/tests/cases/compiler/es6ImportWithoutFromClauseNonInstantiatedModule.ts - es6ImportWithoutFromClauseNonInstantiatedModule_0.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/es6ImportWithoutFromClauseNonInstantiatedModule.ts - es6ImportWithoutFromClauseNonInstantiatedModule_1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/es6ImportWithoutFromClauseWithExport.ts - server.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/es6ModuleInternalNamedImports.ts - es6ModuleInternalNamedImports.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/es6ModuleInternalNamedImports2.ts - es6ModuleInternalNamedImports2.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/es6ModuleInternalImport.ts - es6ModuleInternalImport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 53..59
 Failed: fixtures/typescript/tests/cases/compiler/escapedIdentifiers.ts - escapedIdentifiers.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/esmNoSynthesizedDefault.ts - /index.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/esmNoSynthesizedDefault.ts - /node_modules/mdast-util-to-string/index.d.ts: expected a parse or early error, but pipeline succeeded
@@ -374,6 +383,12 @@ Failed: fixtures/typescript/tests/cases/compiler/exportEqualMemberMissing.ts - e
 Failed: fixtures/typescript/tests/cases/compiler/exportEqualsClassRedeclarationError.ts - exportEqualsClassRedeclarationError.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/exportEqualsDefaultProperty.ts - exp.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/exportEqualsDefaultProperty.ts - imp.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/exportImport.ts - exporter.ts: parser: An ECMAScript import cannot have an 'export' modifier at 7..13
+Failed: fixtures/typescript/tests/cases/compiler/exportImportAndClodule.ts - exportImportAndClodule.ts: parser: An ECMAScript import cannot have an 'export' modifier at 260..266
+Failed: fixtures/typescript/tests/cases/compiler/exportImportCanSubstituteConstEnumForValue.ts - exportImportCanSubstituteConstEnumForValue.ts: parser: An ECMAScript import cannot have an 'export' modifier at 667..673
+Failed: fixtures/typescript/tests/cases/compiler/exportImportMultipleFiles.ts - exportImportMultipleFiles_library.ts: parser: An ECMAScript import cannot have an 'export' modifier at 7..13
+Failed: fixtures/typescript/tests/cases/compiler/exportImportNonInstantiatedModule.ts - exportImportNonInstantiatedModule.ts: parser: An ECMAScript import cannot have an 'export' modifier at 79..85
+Failed: fixtures/typescript/tests/cases/compiler/exportImportNonInstantiatedModule2.ts - exporter.ts: parser: An ECMAScript import cannot have an 'export' modifier at 7..13
 Failed: fixtures/typescript/tests/cases/compiler/exportInterfaceClassAndValue.ts - exportInterfaceClassAndValue.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/exportSameNameFuncVar.ts - exportSameNameFuncVar.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/exportSpecifierForAGlobal.ts - b.ts: semantic: Export 'X' is not defined at 8..9
@@ -395,12 +410,13 @@ Failed: fixtures/typescript/tests/cases/compiler/externSemantics.ts - externSema
 Failed: fixtures/typescript/tests/cases/compiler/externSyntax.ts - externSyntax.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/externalModuleImmutableBindings.ts - f1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/externalModuleImmutableBindings.ts - f2.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/externalModuleReferenceDoubleUnderscore1.ts - externalModuleReferenceDoubleUnderscore1.ts: parser: An ECMAScript import cannot have an 'export' modifier at 105..111
+Failed: fixtures/typescript/tests/cases/compiler/externalModuleReferenceOfImportDeclarationWithExportModifier.ts - externalModuleReferenceOfImportDeclarationWithExportModifier_1.ts: parser: An ECMAScript import cannot have an 'export' modifier at 7..13
 Failed: fixtures/typescript/tests/cases/compiler/externalModuleRefernceResolutionOrderInImportDeclaration.ts - externalModuleRefernceResolutionOrderInImportDeclaration_file1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/externalModuleRefernceResolutionOrderInImportDeclaration.ts - externalModuleRefernceResolutionOrderInImportDeclaration_file2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/externalModuleRefernceResolutionOrderInImportDeclaration.ts - externalModuleRefernceResolutionOrderInImportDeclaration_file3.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/fatarrowfunctionsOptionalArgsErrors4.ts - fatarrowfunctionsOptionalArgsErrors4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/fieldAndGetterWithSameName.ts - fieldAndGetterWithSameName.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/fileWithNextLine2.ts - fileWithNextLine2.ts: parser: Invalid character at start of identifier at 132..132
 Failed: fixtures/typescript/tests/cases/compiler/fillInMissingTypeArgsOnJSConstructCalls.ts - BaseA.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/fillInMissingTypeArgsOnJSConstructCalls.ts - SubA.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/forIn.ts - forIn.ts: expected a parse or early error, but pipeline succeeded
@@ -451,14 +467,14 @@ Failed: fixtures/typescript/tests/cases/compiler/impliedNodeFormatEmit3.ts - /c.
 Failed: fixtures/typescript/tests/cases/compiler/impliedNodeFormatEmit3.ts - /i.cts: semantic: Cannot use import statement outside a module at 0..21
 Failed: fixtures/typescript/tests/cases/compiler/impliedNodeFormatEmit4.ts - /c.cts: semantic: Cannot use 'export' declaration outside a module at 0..19
 Failed: fixtures/typescript/tests/cases/compiler/impliedNodeFormatEmit4.ts - /i.cts: semantic: Cannot use import statement outside a module at 0..21
-Failed: fixtures/typescript/tests/cases/compiler/importAliasInModuleAugmentation.ts - importAliasInModuleAugmentation.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/importAliasAnExternalModuleInsideAnInternalModule.ts - importAliasAnExternalModuleInsideAnInternalModule_file1.ts: parser: An ECMAScript import cannot have an 'export' modifier at 164..170
 Failed: fixtures/typescript/tests/cases/compiler/importAndVariableDeclarationConflict1.ts - importAndVariableDeclarationConflict1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/importAndVariableDeclarationConflict4.ts - importAndVariableDeclarationConflict4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/importAssertionsDeprecated.ts - /a.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/importAssertionsDeprecated.ts - /b.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/importAssertionsDeprecated.ts - /c.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/importDeclWithExportModifierAndExportAssignment.ts - importDeclWithExportModifierAndExportAssignment.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/importDeclWithExportModifierAndExportAssignmentInAmbientContext.ts - importDeclWithExportModifierAndExportAssignmentInAmbientContext.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/importDeclWithExportModifier.ts - importDeclWithExportModifier.ts: parser: An ECMAScript import cannot have an 'export' modifier at 47..53
+Failed: fixtures/typescript/tests/cases/compiler/importDeclWithExportModifierInAmbientContext.ts - importDeclWithExportModifierInAmbientContext.ts: parser: An ECMAScript import cannot have an 'export' modifier at 88..94
 Failed: fixtures/typescript/tests/cases/compiler/importDeclarationInModuleDeclaration1.ts - importDeclarationInModuleDeclaration1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/importExportInternalComments.ts - default.ts: semantic: Cannot use 'export default' declaration outside a module at 6..45
 Failed: fixtures/typescript/tests/cases/compiler/importExportInternalComments.ts - index.ts: semantic: Cannot use import statement outside a module at 6..110
@@ -492,11 +508,25 @@ Failed: fixtures/typescript/tests/cases/compiler/interfaceDeclaration1.ts - inte
 Failed: fixtures/typescript/tests/cases/compiler/interfaceMemberValidation.ts - interfaceMemberValidation.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/interfaceMergeWithNonGenericTypeArguments.ts - interfaceMergeWithNonGenericTypeArguments.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/interfaceWithMultipleDeclarations.ts - interfaceWithMultipleDeclarations.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasClassInsideLocalModuleWithExport.ts - internalAliasClassInsideLocalModuleWithExport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 171..177
 Failed: fixtures/typescript/tests/cases/compiler/internalAliasClassInsideLocalModuleWithoutExportAccessError.ts - internalAliasClassInsideLocalModuleWithoutExportAccessError.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasClassInsideTopLevelModuleWithExport.ts - internalAliasClassInsideTopLevelModuleWithExport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 115..121
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasEnumInsideLocalModuleWithExport.ts - internalAliasEnumInsideLocalModuleWithExport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 137..143
 Failed: fixtures/typescript/tests/cases/compiler/internalAliasEnumInsideLocalModuleWithoutExportAccessError.ts - internalAliasEnumInsideLocalModuleWithoutExportAccessError.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasEnumInsideTopLevelModuleWithExport.ts - internalAliasEnumInsideTopLevelModuleWithExport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 112..118
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasFunctionInsideLocalModuleWithExport.ts - internalAliasFunctionInsideLocalModuleWithExport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 117..123
 Failed: fixtures/typescript/tests/cases/compiler/internalAliasFunctionInsideLocalModuleWithoutExportAccessError.ts - internalAliasFunctionInsideLocalModuleWithoutExportAccessError.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasFunctionInsideTopLevelModuleWithExport.ts - internalAliasFunctionInsideTopLevelModuleWithExport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 92..98
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasInitializedModuleInsideLocalModuleWithExport.ts - internalAliasInitializedModuleInsideLocalModuleWithExport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 122..128
 Failed: fixtures/typescript/tests/cases/compiler/internalAliasInitializedModuleInsideLocalModuleWithoutExportAccessError.ts - internalAliasInitializedModuleInsideLocalModuleWithoutExportAccessError.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasInitializedModuleInsideTopLevelModuleWithExport.ts - internalAliasInitializedModuleInsideTopLevelModuleWithExport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 97..103
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasInterfaceInsideLocalModuleWithExport.ts - internalAliasInterfaceInsideLocalModuleWithExport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 87..93
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasInterfaceInsideTopLevelModuleWithExport.ts - internalAliasInterfaceInsideTopLevelModuleWithExport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 62..68
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasUninitializedModuleInsideLocalModuleWithExport.ts - internalAliasUninitializedModuleInsideLocalModuleWithExport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 145..151
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasUninitializedModuleInsideTopLevelModuleWithExport.ts - internalAliasUninitializedModuleInsideTopLevelModuleWithExport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 120..126
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasVarInsideLocalModuleWithExport.ts - internalAliasVarInsideLocalModuleWithExport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 79..85
 Failed: fixtures/typescript/tests/cases/compiler/internalAliasVarInsideLocalModuleWithoutExportAccessError.ts - internalAliasVarInsideLocalModuleWithoutExportAccessError.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/internalAliasVarInsideTopLevelModuleWithExport.ts - internalAliasVarInsideTopLevelModuleWithExport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 54..60
 Failed: fixtures/typescript/tests/cases/compiler/internalImportInstantiatedModuleMergedWithClassNotReferencingInstance.ts - internalImportInstantiatedModuleMergedWithClassNotReferencingInstance.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/internalImportInstantiatedModuleNotReferencingInstance.ts - internalImportInstantiatedModuleNotReferencingInstance.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/internalImportUnInstantiatedModuleMergedWithClassNotReferencingInstance.ts - internalImportUnInstantiatedModuleMergedWithClassNotReferencingInstance.ts: expected a parse or early error, but pipeline succeeded
@@ -511,6 +541,8 @@ Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesExportDeclaratio
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesExportDeclarationType.ts - /test3.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesExportDeclarationType.ts - /test4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesExportDeclarationType.ts - /type.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesExportImportUninstantiatedNamespace.ts - factory.ts: parser: An ECMAScript import cannot have an 'export' modifier at 44..50
+Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesReExportType.ts - /user.ts: parser: An ECMAScript import cannot have an 'export' modifier at 94..100
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesShadowGlobalTypeNotValue.ts - ./bad.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesShadowGlobalTypeNotValue.ts - ./good.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/isolatedModulesShadowGlobalTypeNotValue.ts - ./node.d.ts: expected a parse or early error, but pipeline succeeded
@@ -534,6 +566,9 @@ Failed: fixtures/typescript/tests/cases/compiler/jsxElementTypeLiteral.tsx - jsx
 Failed: fixtures/typescript/tests/cases/compiler/jsxElementTypeLiteralWithGeneric.tsx - jsxElementTypeLiteralWithGeneric.tsx: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/jsxFactoryQualifiedNameWithEs5.ts - index.tsx: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/jsxImportForSideEffectsNonExtantNoError.tsx - jsxImportForSideEffectsNonExtantNoError.tsx: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceGlobalReexport.tsx - /node_modules/preact/jsx-runtime/index.d.ts: parser: An ECMAScript import cannot have an 'export' modifier at 1456..1462
+Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceGlobalReexportMissingAliasTarget.tsx - /node_modules/preact/jsx-runtime/index.d.ts: parser: An ECMAScript import cannot have an 'export' modifier at 1296..1302
+Failed: fixtures/typescript/tests/cases/compiler/jsxNamespaceImplicitImportJSXNamespace.tsx - /node_modules/preact/jsx-runtime/index.d.ts: parser: An ECMAScript import cannot have an 'export' modifier at 1259..1265
 Failed: fixtures/typescript/tests/cases/compiler/jsxNamespacePrefixIntrinsics.tsx - jsxNamespacePrefixIntrinsics.tsx: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/jsxPreserveWithJsInput.ts - c.js: parser: Unexpected token '<' at 12..13
 Failed: fixtures/typescript/tests/cases/compiler/keyofIsLiteralContexualType.ts - keyofIsLiteralContexualType.ts: expected a parse or early error, but pipeline succeeded
@@ -642,9 +677,11 @@ Failed: fixtures/typescript/tests/cases/compiler/moduleProperty2.ts - moduleProp
 Failed: fixtures/typescript/tests/cases/compiler/moduleResolutionWithExtensions_unexpected2.ts - /a.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/moduleResolution_packageJson_yesAtPackageRoot.ts - /node_modules/foo/bar/index.js: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'read' at 4..8
 Failed: fixtures/typescript/tests/cases/compiler/moduleResolution_packageJson_yesAtPackageRoot_fakeScopedPackage.ts - /node_modules/foo/@bar/index.js: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'read' at 129..133
+Failed: fixtures/typescript/tests/cases/compiler/moduleSharesNameWithImportDeclarationInsideIt2.ts - moduleSharesNameWithImportDeclarationInsideIt2.ts: parser: An ECMAScript import cannot have an 'export' modifier at 120..126
 Failed: fixtures/typescript/tests/cases/compiler/moduleVariableArrayIndexer.ts - moduleVariableArrayIndexer.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/moduleVisibilityTest2.ts - moduleVisibilityTest2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/module_augmentExistingAmbientVariable.ts - module_augmentExistingAmbientVariable.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/multiImportExport.ts - Drawing.ts: parser: An ECMAScript import cannot have an 'export' modifier at 7..13
 Failed: fixtures/typescript/tests/cases/compiler/multipleClassPropertyModifiers.ts - multipleClassPropertyModifiers.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/multipleExportAssignments.ts - multipleExportAssignments.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/multipleExportAssignmentsInAmbientDeclaration.ts - multipleExportAssignmentsInAmbientDeclaration.ts: expected a parse or early error, but pipeline succeeded
@@ -655,6 +692,8 @@ Failed: fixtures/typescript/tests/cases/compiler/namespaceMergedWithImportAliasN
 Failed: fixtures/typescript/tests/cases/compiler/namespaceNotMergedWithFunctionDefaultExport.ts - replace-in-file/types/index.d.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/narrowByClauseExpressionInSwitchTrue3.ts - narrowByClauseExpressionInSwitchTrue3.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/narrowByClauseExpressionInSwitchTrue6.ts - narrowByClauseExpressionInSwitchTrue6.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/newNamesInGlobalAugmentations1.ts - f1.d.ts: parser: An ECMAScript import cannot have an 'export' modifier at 205..211
+Failed: fixtures/typescript/tests/cases/compiler/noCrashOnMixin2.ts - noCrashOnMixin2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/noImplicitAnyForIn.ts - noImplicitAnyForIn.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/noImplicitAnyIndexing.ts - noImplicitAnyIndexing.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/noImplicitAnyIndexingSuppressed.ts - noImplicitAnyIndexingSuppressed.ts: expected a parse or early error, but pipeline succeeded
@@ -719,8 +758,9 @@ Failed: fixtures/typescript/tests/cases/compiler/primitiveMembers.ts - primitive
 Failed: fixtures/typescript/tests/cases/compiler/primitiveTypeAsClassName.ts - primitiveTypeAsClassName.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/primitiveTypeAsInterfaceName.ts - primitiveTypeAsInterfaceName.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/primitiveTypeAsInterfaceNameGeneric.ts - primitiveTypeAsInterfaceNameGeneric.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/privacyGloImportParseErrors.ts - privacyGloImportParseErrors.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/privacyTopLevelAmbientExternalModuleImportWithExport.ts - privacyTopLevelAmbientExternalModuleImportWithExport_core.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/privacyGloImport.ts - privacyGloImport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 2965..2971
+Failed: fixtures/typescript/tests/cases/compiler/privacyImport.ts - privacyImport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 2972..2978
+Failed: fixtures/typescript/tests/cases/compiler/privacyLocalInternalReferenceImportWithExport.ts - privacyLocalInternalReferenceImportWithExport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 985..991
 Failed: fixtures/typescript/tests/cases/compiler/privacyTopLevelAmbientExternalModuleImportWithExport.ts - privacyTopLevelAmbientExternalModuleImportWithExport_require.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/privacyTopLevelAmbientExternalModuleImportWithExport.ts - privacyTopLevelAmbientExternalModuleImportWithExport_require1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/privacyTopLevelAmbientExternalModuleImportWithExport.ts - privacyTopLevelAmbientExternalModuleImportWithExport_require2.ts: expected a parse or early error, but pipeline succeeded
@@ -730,6 +770,7 @@ Failed: fixtures/typescript/tests/cases/compiler/privacyTopLevelAmbientExternalM
 Failed: fixtures/typescript/tests/cases/compiler/privacyTopLevelAmbientExternalModuleImportWithoutExport.ts - privacyTopLevelAmbientExternalModuleImportWithoutExport_require1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/privacyTopLevelAmbientExternalModuleImportWithoutExport.ts - privacyTopLevelAmbientExternalModuleImportWithoutExport_require2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/privacyTopLevelAmbientExternalModuleImportWithoutExport.ts - privacyTopLevelAmbientExternalModuleImportWithoutExport_require3.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/privacyTopLevelInternalReferenceImportWithExport.ts - privacyTopLevelInternalReferenceImportWithExport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 944..950
 Failed: fixtures/typescript/tests/cases/compiler/privateNameJsx.tsx - privateNameJsx.tsx: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/privateNameWeakMapCollision.ts - privateNameWeakMapCollision.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/promiseDefinitionTest.ts - promiseDefinitionTest.ts: expected a parse or early error, but pipeline succeeded
@@ -761,11 +802,14 @@ Failed: fixtures/typescript/tests/cases/compiler/recursiveBaseCheck6.ts - recurs
 Failed: fixtures/typescript/tests/cases/compiler/recursiveComplicatedClasses.ts - recursiveComplicatedClasses.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/recursiveFunctionTypes.ts - recursiveFunctionTypes.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/recursiveTypeRelations.ts - recursiveTypeRelations.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/reexportedMissingAlias.ts - second.d.ts: parser: An ECMAScript import cannot have an 'export' modifier at 23..29
 Failed: fixtures/typescript/tests/cases/compiler/regExpWithOpenBracketInCharClass.ts - regExpWithOpenBracketInCharClass.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/regularExpressionAnnexB.ts - regularExpressionAnnexB.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/regularExpressionCharacterClassRangeOrder.ts - regularExpressionCharacterClassRangeOrder.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/regularExpressionGroupNameSuggestions.ts - regularExpressionGroupNameSuggestions.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/regularExpressionScanning.ts - regularExpressionScanning.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/regularExpressionUnicodePropertyValueExpressionSuggestions.ts - regularExpressionUnicodePropertyValueExpressionSuggestions.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/regularExpressionWithNonBMPFlags.ts - regularExpressionWithNonBMPFlags.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/requireOfJsonFileInJsFile.ts - /js.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/requireOfJsonFileInJsFile.ts - /user.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/requireOfJsonFileWithComputedPropertyName.ts - file1.ts: expected a parse or early error, but pipeline succeeded
@@ -775,6 +819,7 @@ Failed: fixtures/typescript/tests/cases/compiler/requireOfJsonFileWithNoContent.
 Failed: fixtures/typescript/tests/cases/compiler/requireOfJsonFileWithoutResolveJsonModule.ts - file1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/requiredMappedTypeModifierTrumpsVariance.ts - requiredMappedTypeModifierTrumpsVariance.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/reservedNameOnInterfaceImport.ts - reservedNameOnInterfaceImport.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/reservedNameOnModuleImport.ts - reservedNameOnModuleImport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 129..135
 Failed: fixtures/typescript/tests/cases/compiler/reservedNameOnModuleImportWithInterface.ts - reservedNameOnModuleImportWithInterface.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/restUnion.ts - restUnion.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/returnValueInSetter.ts - returnValueInSetter.ts: expected a parse or early error, but pipeline succeeded
@@ -785,9 +830,9 @@ Failed: fixtures/typescript/tests/cases/compiler/semicolonsInModuleDeclarations.
 Failed: fixtures/typescript/tests/cases/compiler/setterWithReturn.ts - setterWithReturn.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/shorthandPropertyUndefined.ts - shorthandPropertyUndefined.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/sideEffectImports1.ts - sideEffectImports1.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/sourceMap-LineBreaks.ts - sourceMap-LineBreaks.ts: parser: Invalid character at start of identifier at 100..100
 Failed: fixtures/typescript/tests/cases/compiler/sourceMapValidationDecorators.ts - sourceMapValidationDecorators.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/sourceMapValidationEnums.ts - sourceMapValidationEnums.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/sourceMapValidationImport.ts - sourceMapValidationImport.ts: parser: An ECMAScript import cannot have an 'export' modifier at 73..79
 Failed: fixtures/typescript/tests/cases/compiler/sourceMapValidationLabeled.ts - sourceMapValidationLabeled.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/sourceMapValidationStatements.ts - sourceMapValidationStatements.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/spyComparisonChecking.ts - spyComparisonChecking.ts: expected a parse or early error, but pipeline succeeded
@@ -810,6 +855,7 @@ Failed: fixtures/typescript/tests/cases/compiler/superInConstructorParam1.ts - s
 Failed: fixtures/typescript/tests/cases/compiler/superNewCall1.ts - superNewCall1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/superPropertyAccess2.ts - superPropertyAccess2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/superPropertyAccessInSuperCall01.ts - superPropertyAccessInSuperCall01.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/systemModule18.ts - index.ts: parser: An ECMAScript import cannot have an 'export' modifier at 7..13
 Failed: fixtures/typescript/tests/cases/compiler/systemModule9.ts - systemModule9.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/targetTypeCastTest.ts - targetTypeCastTest.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/targetTypeTest1.ts - targetTypeTest1.ts: expected a parse or early error, but pipeline succeeded
@@ -866,9 +912,9 @@ Failed: fixtures/typescript/tests/cases/compiler/unknownSymbols1.ts - unknownSym
 Failed: fixtures/typescript/tests/cases/compiler/unreachableDeclarations.ts - unreachableDeclarations.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/untypedModuleImport_withAugmentation2.ts - /node_modules/js/index.js: parser: Expected a semicolon or an implicit semicolon after a statement, but found 'file' at 5..9
 Failed: fixtures/typescript/tests/cases/compiler/useBeforeDeclaration_classDecorators.2.ts - useBeforeDeclaration_classDecorators.2.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/compiler/usingModuleWithExportImportInValuePosition.ts - usingModuleWithExportImportInValuePosition.ts: parser: An ECMAScript import cannot have an 'export' modifier at 254..260
 Failed: fixtures/typescript/tests/cases/compiler/varAndFunctionShareName.ts - varAndFunctionShareName.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/varBlock.ts - varBlock.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/varNameConflictsWithImportInDifferentPartOfModule.ts - varNameConflictsWithImportInDifferentPartOfModule.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/variableDeclaratorResolvedDuringContextualTyping.ts - variableDeclaratorResolvedDuringContextualTyping.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/varianceReferences.ts - varianceReferences.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/voidAsNonAmbiguousReturnType.ts - voidAsNonAmbiguousReturnType_0.ts: expected a parse or early error, but pipeline succeeded
@@ -936,9 +982,13 @@ Failed: fixtures/typescript/tests/cases/conformance/classes/members/instanceAndS
 Failed: fixtures/typescript/tests/cases/conformance/classes/members/instanceAndStaticMembers/typeOfThisInStaticMembers13.ts - typeOfThisInStaticMembers13.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/classes/members/instanceAndStaticMembers/typeOfThisInStaticMembers8.ts - typeOfThisInStaticMembers8.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameAndObjectRestSpread.ts - privateNameAndObjectRestSpread.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameAndPropertySignature.ts - privateNameAndPropertySignature.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameBadSuper.ts - privateNameBadSuper.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameBadSuperUseDefineForClassFields.ts - privateNameBadSuperUseDefineForClassFields.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameDeclarationMerging.ts - privateNameDeclarationMerging.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameInObjectLiteral-1.ts - privateNameInObjectLiteral-1.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameInObjectLiteral-2.ts - privateNameInObjectLiteral-2.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameInObjectLiteral-3.ts - privateNameInObjectLiteral-3.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameNestedClassAccessorsShadowing.ts - privateNameNestedClassAccessorsShadowing.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameNestedClassFieldShadowing.ts - privateNameNestedClassFieldShadowing.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/classes/members/privateNames/privateNameNestedClassMethodShadowing.ts - privateNameNestedClassMethodShadowing.ts: expected a parse or early error, but pipeline succeeded
@@ -980,6 +1030,7 @@ Failed: fixtures/typescript/tests/cases/conformance/controlFlow/controlFlowDelet
 Failed: fixtures/typescript/tests/cases/conformance/controlFlow/controlFlowGenericTypes.ts - controlFlowGenericTypes.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/controlFlow/definiteAssignmentAssertions.ts - definiteAssignmentAssertions.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/controlFlow/exhaustiveSwitchStatements1.ts - exhaustiveSwitchStatements1.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/declarationEmit/leaveOptionalParameterAsWritten.ts - b.ts: parser: An ECMAScript import cannot have an 'export' modifier at 107..113
 Failed: fixtures/typescript/tests/cases/conformance/decorators/class/accessor/decoratorOnClassAccessor7.ts - decoratorOnClassAccessor7.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/decorators/class/constructor/decoratorOnClassConstructor1.ts - decoratorOnClassConstructor1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/decorators/class/constructor/decoratorOnClassConstructor2.ts - 0.ts: expected a parse or early error, but pipeline succeeded
@@ -991,6 +1042,7 @@ Failed: fixtures/typescript/tests/cases/conformance/decorators/class/decoratorOn
 Failed: fixtures/typescript/tests/cases/conformance/decorators/class/method/decoratorOnClassMethod11.ts - decoratorOnClassMethod11.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/decorators/class/method/decoratorOnClassMethodOverload1.ts - decoratorOnClassMethodOverload1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/decorators/class/method/parameter/decoratorOnClassMethodThisParameter.ts - decoratorOnClassMethodThisParameter.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/decorators/decoratorMetadata-jsdoc.ts - decoratorMetadata-jsdoc.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/decorators/invalid/decoratorOnFunctionParameter.ts - decoratorOnFunctionParameter.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/decorators/invalid/decoratorOnImportEquals2.ts - decoratorOnImportEquals2_0.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/dynamicImport/importCallExpressionInScriptContext1.ts - 0.ts: expected a parse or early error, but pipeline succeeded
@@ -1127,6 +1179,9 @@ Failed: fixtures/typescript/tests/cases/conformance/es6/functionDeclarations/Fun
 Failed: fixtures/typescript/tests/cases/conformance/es6/moduleExportsSystem/topLevelVarHoistingCommonJS.ts - topLevelVarHoistingCommonJS.ts: semantic: 'with' statements are not allowed in strict mode at 534..561
 Failed: fixtures/typescript/tests/cases/conformance/es6/modules/defaultExportWithOverloads01.ts - defaultExportWithOverloads01.ts: semantic: Duplicate export of 'default' at 29..66
 Failed: fixtures/typescript/tests/cases/conformance/es6/modules/defaultExportsCannotMerge04.ts - defaultExportsCannotMerge04.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImports3-amd.ts - t1.ts: parser: An ECMAScript import cannot have an 'export' modifier at 276..282
+Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImports3-es6.ts - t1.ts: parser: An ECMAScript import cannot have an 'export' modifier at 276..282
+Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImports3.ts - t1.ts: parser: An ECMAScript import cannot have an 'export' modifier at 276..282
 Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImportsWithContextualKeywordNames01.ts - t1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImportsWithContextualKeywordNames01.ts - t2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/modules/exportsAndImportsWithContextualKeywordNames01.ts - t4.ts: expected a parse or early error, but pipeline succeeded
@@ -1163,9 +1218,11 @@ Failed: fixtures/typescript/tests/cases/conformance/es7/exponentiationOperator/e
 Failed: fixtures/typescript/tests/cases/conformance/es7/exponentiationOperator/exponentiationOperatorWithUndefinedValueAndInvalidOperands.ts - exponentiationOperatorWithUndefinedValueAndInvalidOperands.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es7/exponentiationOperator/exponentiationOperatorWithUndefinedValueAndValidOperands.ts - exponentiationOperatorWithUndefinedValueAndValidOperands.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/accessors/esDecorators-classDeclaration-accessors-nonStaticAbstract.ts - esDecorators-classDeclaration-accessors-nonStaticAbstract.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - file3.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - file4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - file5.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.2.ts - global.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.ts - file3.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.ts - file4.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.ts - file5.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-exportModifier.ts - global.js: expected a parse or early error, but pipeline succeeded
@@ -1409,10 +1466,11 @@ Failed: fixtures/typescript/tests/cases/conformance/internalModules/DeclarationM
 Failed: fixtures/typescript/tests/cases/conformance/internalModules/exportDeclarations/ModuleWithExportedAndNonExportedClasses.ts - ModuleWithExportedAndNonExportedClasses.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/internalModules/exportDeclarations/ModuleWithExportedAndNonExportedEnums.ts - ModuleWithExportedAndNonExportedEnums.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/internalModules/exportDeclarations/ModuleWithExportedAndNonExportedFunctions.ts - ModuleWithExportedAndNonExportedFunctions.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/internalModules/exportDeclarations/ModuleWithExportedAndNonExportedImportAlias.ts - ModuleWithExportedAndNonExportedImportAlias.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/internalModules/exportDeclarations/ModuleWithExportedAndNonExportedVariables.ts - ModuleWithExportedAndNonExportedVariables.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/internalModules/importDeclarations/shadowedInternalModule.ts - shadowedInternalModule.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/internalModules/importDeclarations/circularImportAlias.ts - circularImportAlias.ts: parser: An ECMAScript import cannot have an 'export' modifier at 47..53
+Failed: fixtures/typescript/tests/cases/conformance/internalModules/importDeclarations/exportImportAlias.ts - exportImportAlias.ts: parser: An ECMAScript import cannot have an 'export' modifier at 290..296
 Failed: fixtures/typescript/tests/cases/conformance/internalModules/moduleDeclarations/invalidNestedModules.ts - invalidNestedModules.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/internalModules/moduleDeclarations/reExportAliasMakesInstantiated.ts - reExportAliasMakesInstantiated.ts: parser: An ECMAScript import cannot have an 'export' modifier at 156..162
 Failed: fixtures/typescript/tests/cases/conformance/jsdoc/checkExportsObjectAssignPrototypeProperty.ts - mod1.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/jsdoc/checkExportsObjectAssignPrototypeProperty.ts - validator.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/jsdoc/checkJsdocOptionalParamOrder.ts - 0.js: expected a parse or early error, but pipeline succeeded
@@ -1509,7 +1567,6 @@ Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxDynamicTagName3.tsx -
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxElementResolution1.tsx - file.tsx: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxElementResolution6.tsx - file.tsx: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxElementResolution7.tsx - file.tsx: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxOpeningClosingNames.tsx - file.tsx: parser: Expected closing tag for '<A.B.C.D>' but found '</A . B . C.D>' at 107..118
 Failed: fixtures/typescript/tests/cases/conformance/jsx/tsxStatelessFunctionComponents2.tsx - file.tsx: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/bundler/bundlerConditionsExcludesNode.ts - /main.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/moduleResolution/bundler/bundlerConditionsExcludesNode.ts - /node_modules/conditions/index.node.d.ts: expected a parse or early error, but pipeline succeeded
@@ -1643,6 +1700,9 @@ Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesForbidenSynt
 Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesGeneratedNameCollisions.ts - index.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesGeneratedNameCollisions.ts - subfolder/index.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesImportAssertions.ts - otherc.cts: semantic: Cannot use import statement outside a module at 0..56
+Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesImportAssignments.ts - file.ts: parser: An ECMAScript import cannot have an 'export' modifier at 119..125
+Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesImportAssignments.ts - index.ts: parser: An ECMAScript import cannot have an 'export' modifier at 66..72
+Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesImportAssignments.ts - subfolder/index.ts: parser: An ECMAScript import cannot have an 'export' modifier at 66..72
 Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesImportAttributes.ts - otherc.cts: semantic: Cannot use import statement outside a module at 0..56
 Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesImportAttributesTypeModeDeclarationEmitErrors.ts - /index.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/node/nodeModulesImportAttributesTypeModeDeclarationEmitErrors.ts - /node_modules/pkg/import.d.ts: expected a parse or early error, but pipeline succeeded
@@ -1810,7 +1870,6 @@ Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/EnumDecla
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/AccessibilityAfterStatic/parserAccessibilityAfterStatic1.ts - parserAccessibilityAfterStatic1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/AccessibilityAfterStatic/parserAccessibilityAfterStatic10.ts - parserAccessibilityAfterStatic10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/AccessibilityAfterStatic/parserAccessibilityAfterStatic7.ts - parserAccessibilityAfterStatic7.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/ParameterLists/parserErrorRecovery_ParameterList6.ts - parserErrorRecovery_ParameterList6.ts: parser: Expected a type, but found 'break' at 34..39
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/parserCommaInTypeMemberList2.ts - parserCommaInTypeMemberList2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ErrorRecovery/parserModifierOnStatementInBlock2.ts - parserModifierOnStatementInBlock2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ExportAssignments/parserExportAssignment5.ts - parserExportAssignment5.ts: expected a parse or early error, but pipeline succeeded
@@ -1827,6 +1886,7 @@ Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Generics/
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/IndexMemberDeclarations/parserIndexMemberDeclaration5.ts - parserIndexMemberDeclaration5.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/IndexMemberDeclarations/parserIndexMemberDeclaration7.ts - parserIndexMemberDeclaration7.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/IndexMemberDeclarations/parserIndexMemberDeclaration8.ts - parserIndexMemberDeclaration8.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/IndexSignatures/parserIndexSignature9.ts - parserIndexSignature9.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/InterfaceDeclarations/parserInterfaceDeclaration8.ts - parserInterfaceDeclaration8.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/MemberAccessorDeclarations/parserMemberAccessor1.ts - parserMemberAccessor1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/MemberAccessorDeclarations/parserMemberAccessorDeclaration1.ts - parserMemberAccessorDeclaration1.ts: expected a parse or early error, but pipeline succeeded
@@ -1844,6 +1904,7 @@ Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ModuleDec
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ModuleDeclarations/parserModuleDeclaration10.ts - parserModuleDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ModuleDeclarations/parserModuleDeclaration3.ts - parserModuleDeclaration3.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ModuleDeclarations/parserModuleDeclaration5.ts - parserModuleDeclaration5.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ParameterLists/parserParameterList11.ts - parserParameterList11.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ParameterLists/parserParameterList14.ts - parserParameterList14.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ParameterLists/parserParameterList15.ts - parserParameterList15.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ParameterLists/parserParameterList16.ts - parserParameterList16.ts: expected a parse or early error, but pipeline succeeded
@@ -1852,10 +1913,12 @@ Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Parameter
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ParameterLists/parserParameterList3.ts - parserParameterList3.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ParameterLists/parserParameterList7.ts - parserParameterList7.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ParameterLists/parserParameterList8.ts - parserParameterList8.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/ParameterLists/parserParameterList9.ts - parserParameterList9.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Protected/Protected6.ts - Protected6.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegressionTests/parser509618.ts - parser509618.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegressionTests/parser553699.ts - parser553699.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegressionTests/parser579071.ts - parser579071.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/RegularExpressions/parserRegularExpressionDivideAmbiguity3.ts - parserRegularExpressionDivideAmbiguity3.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Statements/parserES5ForOfStatement5.ts - parserES5ForOfStatement5.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Statements/parserForInStatement5.ts - parserForInStatement5.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/Statements/parserForInStatement8.ts - parserForInStatement8.ts: expected a parse or early error, but pipeline succeeded
@@ -1875,15 +1938,18 @@ Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/parserRea
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/parserRealSource14.ts - parserRealSource14.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/parserRealSource6.ts - parserRealSource6.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/parserRealSource8.ts - parserRealSource8.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript5/parservoidInQualifiedName1.ts - parservoidInQualifiedName1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript6/ComputedPropertyNames/parserComputedPropertyName16.ts - parserComputedPropertyName16.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript6/ComputedPropertyNames/parserComputedPropertyName26.ts - parserComputedPropertyName26.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript6/ComputedPropertyNames/parserComputedPropertyName34.ts - parserComputedPropertyName34.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript6/ComputedPropertyNames/parserComputedPropertyName35.ts - parserComputedPropertyName35.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript6/ComputedPropertyNames/parserComputedPropertyName37.ts - parserComputedPropertyName37.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript6/ComputedPropertyNames/parserComputedPropertyName4.ts - parserComputedPropertyName4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript6/ComputedPropertyNames/parserComputedPropertyName41.ts - parserComputedPropertyName41.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/parser/ecmascript6/Iterators/parserForOfStatement5.ts - parserForOfStatement5.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/salsa/assignmentToVoidZero2.ts - assignmentToVoidZero2.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/salsa/assignmentToVoidZero2.ts - importer.js: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/salsa/constructorNameInGenerator.ts - constructorNameInGenerator.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/salsa/expandoOnAlias.ts - test.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/salsa/expandoOnAlias.ts - vue.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/salsa/exportNestedNamespaces2.ts - first.js: expected a parse or early error, but pipeline succeeded
@@ -1975,7 +2041,6 @@ Failed: fixtures/typescript/tests/cases/conformance/types/objectTypeLiteral/meth
 Failed: fixtures/typescript/tests/cases/conformance/types/objectTypeLiteral/propertySignatures/numericStringNamedPropertyEquivalence.ts - numericStringNamedPropertyEquivalence.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/specifyingTypes/predefinedTypes/objectTypesWithPredefinedTypesAsName.ts - objectTypesWithPredefinedTypesAsName.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/specifyingTypes/typeQueries/typeofANonExportedType.ts - typeofANonExportedType.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/types/specifyingTypes/typeQueries/typeofAnExportedType.ts - typeofAnExportedType.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/specifyingTypes/typeQueries/typeofThis.ts - typeofThis.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/specifyingTypes/typeReferences/genericTypeReferenceWithoutTypeArgument.ts - genericTypeReferenceWithoutTypeArgument.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/specifyingTypes/typeReferences/genericTypeReferenceWithoutTypeArgument2.ts - genericTypeReferenceWithoutTypeArgument2.ts: expected a parse or early error, but pipeline succeeded
@@ -1992,6 +2057,7 @@ Failed: fixtures/typescript/tests/cases/conformance/types/thisType/thisTypeInAcc
 Failed: fixtures/typescript/tests/cases/conformance/types/thisType/thisTypeInAccessorsNegative.ts - thisTypeInAccessorsNegative.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/thisType/thisTypeInFunctions.ts - thisTypeInFunctions.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/tuple/contextualTypeTupleEnd.ts - contextualTypeTupleEnd.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/conformance/types/tuple/named/namedTupleMembersErrors.ts - namedTupleMembersErrors.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/tuple/optionalTupleElements1.ts - optionalTupleElements1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/tuple/readonlyArraysAndTuples.ts - readonlyArraysAndTuples.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/tuple/restTupleElements1.ts - restTupleElements1.ts: expected a parse or early error, but pipeline succeeded
@@ -2021,3 +2087,7 @@ Failed: fixtures/typescript/tests/cases/fourslash/jsFileJsdocTypedefTagTypeExpre
 Failed: fixtures/typescript/tests/cases/fourslash/jsFileJsdocTypedefTagTypeExpressionCompletion3.ts - jsFileJsdocTypedefTagTypeExpressionCompletion3_typedef.js: parser: Expected ',' or ')' in parenthesized expression, but found ':' at 744..745
 Failed: fixtures/typescript/tests/cases/fourslash/server/importSuggestionsCache_coreNodeModules.ts - /home/src/workspaces/project/a.js: parser: Expected ')' to close parameter list, but found ':' at 211..212
 Failed: fixtures/typescript/tests/cases/projects/baseline/emit.ts - emit.ts: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/typescript/tests/cases/projects/privacyCheck-ImportInParent/test.ts - test.ts: parser: An ECMAScript import cannot have an 'export' modifier at 33..39
+Failed: fixtures/typescript/tests/cases/projects/privacyCheck-InsideModule/test.ts - test.ts: parser: An ECMAScript import cannot have an 'export' modifier at 51..57
+Failed: fixtures/typescript/tests/cases/projects/privacyCheck-InsideModule/testGlo.ts - testGlo.ts: parser: An ECMAScript import cannot have an 'export' modifier at 26..32
+Failed: fixtures/typescript/tests/cases/projects/privacyCheck-SimpleReference/test.ts - test.ts: parser: An ECMAScript import cannot have an 'export' modifier at 7..13

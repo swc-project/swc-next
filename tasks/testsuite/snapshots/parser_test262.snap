@@ -1,7 +1,7 @@
 parser * test262
 ========================
 Positive Passed: 91092/91092 (100.00%)
-Negative Passed: 7936/8648 (91.77%)
+Negative Passed: 7894/8648 (91.28%)
 Panicked: 0/99740 (0.00%)
 Failed: fixtures/test262/test/built-ins/RegExp/property-escapes/binary-property-with-value-ASCII_-_F-negated.js - sloppy: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/built-ins/RegExp/property-escapes/binary-property-with-value-ASCII_-_F-negated.js - strict: expected a parse or early error, but pipeline succeeded
@@ -385,6 +385,38 @@ Failed: fixtures/test262/test/built-ins/RegExp/prototype/unicodeSets/breaking-ch
 Failed: fixtures/test262/test/built-ins/RegExp/prototype/unicodeSets/breaking-change-from-u-to-v-27.js - strict: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/built-ins/RegExp/prototype/unicodeSets/breaking-change-from-u-to-v-28.js - sloppy: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/built-ins/RegExp/prototype/unicodeSets/breaking-change-from-u-to-v-28.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/built-ins/RegExp/prototype/unicodeSets/uv-flags.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/built-ins/RegExp/prototype/unicodeSets/uv-flags.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/class/elements/syntax/early-errors/grammar-private-field-on-object-destructuring.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/class/elements/syntax/early-errors/grammar-private-field-on-object-destructuring.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/class/elements/syntax/early-errors/grammar-special-meth-ctor-async-gen.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/class/elements/syntax/early-errors/grammar-special-meth-ctor-async-gen.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/class/elements/syntax/early-errors/grammar-special-meth-ctor-gen.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/class/elements/syntax/early-errors/grammar-special-meth-ctor-gen.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-async-fn-inside-class.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-async-fn-inside-class.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-async-fn.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-async-fn.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-async-gen-inside-class.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-async-gen-inside-class.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-async-gen.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-async-gen.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-gen-inside-class.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-gen-inside-class.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-gen.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-gen.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-get-method-inside-class.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-get-method-inside-class.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-get-method.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-get-method.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-method-inside-class.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-method-inside-class.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-method.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-method.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-set-method-inside-class.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-set-method-inside-class.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-set-method.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/expressions/object/method-definition/private-name-early-error-set-method.js - strict: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/language/literals/regexp/early-err-arithmetic-modifiers-add-remove-i.js - sloppy: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/language/literals/regexp/early-err-arithmetic-modifiers-add-remove-i.js - strict: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/language/literals/regexp/early-err-arithmetic-modifiers-add-remove-m.js - sloppy: expected a parse or early error, but pipeline succeeded
@@ -501,6 +533,10 @@ Failed: fixtures/test262/test/language/literals/regexp/early-err-arithmetic-modi
 Failed: fixtures/test262/test/language/literals/regexp/early-err-arithmetic-modifiers-should-not-unicode-case-fold-i.js - strict: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/language/literals/regexp/early-err-arithmetic-modifiers-should-not-unicode-case-fold-s.js - sloppy: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/language/literals/regexp/early-err-arithmetic-modifiers-should-not-unicode-case-fold-s.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/literals/regexp/early-err-bad-flag.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/literals/regexp/early-err-bad-flag.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/literals/regexp/early-err-dup-flag.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/literals/regexp/early-err-dup-flag.js - strict: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/language/literals/regexp/early-err-modifiers-code-point-repeat-i-1.js - sloppy: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/language/literals/regexp/early-err-modifiers-code-point-repeat-i-1.js - strict: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/language/literals/regexp/early-err-modifiers-code-point-repeat-i-2.js - sloppy: expected a parse or early error, but pipeline succeeded
@@ -715,3 +751,9 @@ Failed: fixtures/test262/test/language/literals/regexp/u-unicode-esc-non-hex.js 
 Failed: fixtures/test262/test/language/literals/regexp/u-unicode-esc-non-hex.js - strict: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/language/literals/regexp/unicode-escape-nls-err.js - sloppy: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/test262/test/language/literals/regexp/unicode-escape-nls-err.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/statements/class/elements/syntax/early-errors/grammar-private-field-on-object-destructuring.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/statements/class/elements/syntax/early-errors/grammar-private-field-on-object-destructuring.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/statements/class/elements/syntax/early-errors/grammar-special-meth-ctor-async-gen.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/statements/class/elements/syntax/early-errors/grammar-special-meth-ctor-async-gen.js - strict: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/statements/class/elements/syntax/early-errors/grammar-special-meth-ctor-gen.js - sloppy: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/test262/test/language/statements/class/elements/syntax/early-errors/grammar-special-meth-ctor-gen.js - strict: expected a parse or early error, but pipeline succeeded
