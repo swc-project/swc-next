@@ -214,10 +214,6 @@ impl Stmt {
         ast.node_kind(self.0) == NodeKind::TsNamespaceExportDeclaration
     }
     #[inline]
-    pub fn is_ts_import_equals_declaration(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::TsImportEqualsDeclaration
-    }
-    #[inline]
     pub fn as_block_statement(self, ast: &Ast<'_>) -> Option<BlockStatement> {
         match ast.stmt_data(self) {
             StmtData::BlockStatement(it) => Some(it),
@@ -392,16 +388,6 @@ impl Stmt {
     ) -> Option<TsNamespaceExportDeclaration> {
         match ast.stmt_data(self) {
             StmtData::TsNamespaceExportDeclaration(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_ts_import_equals_declaration(
-        self,
-        ast: &Ast<'_>,
-    ) -> Option<TsImportEqualsDeclaration> {
-        match ast.stmt_data(self) {
-            StmtData::TsImportEqualsDeclaration(it) => Some(it),
             _ => None,
         }
     }
@@ -6201,14 +6187,6 @@ impl TsTupleElement {
         ast.node_kind(self.0) == NodeKind::TsNamedTupleMember
     }
     #[inline]
-    pub fn is_ts_optional_type(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::TsOptionalType
-    }
-    #[inline]
-    pub fn is_ts_rest_type(self, ast: &Ast<'_>) -> bool {
-        ast.node_kind(self.0) == NodeKind::TsRestType
-    }
-    #[inline]
     pub fn as_ts_type(self, ast: &Ast<'_>) -> Option<TsType> {
         match ast.ts_tuple_element_data(self) {
             TsTupleElementData::TsType(it) => Some(it),
@@ -6219,20 +6197,6 @@ impl TsTupleElement {
     pub fn as_ts_named_tuple_member(self, ast: &Ast<'_>) -> Option<TsNamedTupleMember> {
         match ast.ts_tuple_element_data(self) {
             TsTupleElementData::TsNamedTupleMember(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_ts_optional_type(self, ast: &Ast<'_>) -> Option<TsOptionalType> {
-        match ast.ts_tuple_element_data(self) {
-            TsTupleElementData::TsOptionalType(it) => Some(it),
-            _ => None,
-        }
-    }
-    #[inline]
-    pub fn as_ts_rest_type(self, ast: &Ast<'_>) -> Option<TsRestType> {
-        match ast.ts_tuple_element_data(self) {
-            TsTupleElementData::TsRestType(it) => Some(it),
             _ => None,
         }
     }

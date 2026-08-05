@@ -1,6 +1,6 @@
 codegen * babel
 ========================
-Positive Passed: 2122/2238 (94.82%)
+Positive Passed: 2127/2238 (95.04%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/2238 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - parser: Invalid assignment target at 22..29
@@ -103,11 +103,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/enum/membe
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/export/declare/input.ts - parser: Expected '=' in type alias declaration, but found 'const' at 20..25
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/export/export-type-declaration/input.ts - parser: Expected '=' in type alias declaration, but found 'A' at 17..18
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/export/export-value-declaration/input.ts - typescript/export/export-value-declaration: codegen output changed after reparse 
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/export-import-require/input.ts - parser: expected an import-equals declaration after 'export' at 7..31
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/export-import-type-as-identifier/input.ts - parser: expected an import-equals declaration after 'export' at 7..34
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/export-import-type-require/input.ts - parser: expected an import-equals declaration after 'export' at 7..36
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/export-import/input.ts - parser: expected an import-equals declaration after 'export' at 7..22
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/import/type-asi/input.ts - parser: expected an import-equals declaration after 'export' at 69..98
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/interface/export/input.ts - parser: Expected '=' in type alias declaration, but found 'I' at 22..23
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/regression/is-default-export/input.ts - parser: Expected '=' in type alias declaration, but found 'T' at 17..18
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/scope/enum-block-scoped/input.ts - typescript/scope/enum-block-scoped: codegen output changed after reparse 

@@ -29,7 +29,8 @@ export interface ParserOptions {
    */
   lang?: Lang
   /**
-   * Preserve parenthesized expressions as `ParenthesizedExpression` nodes.
+   * Preserve parenthesized expressions and TypeScript types as explicit
+   * parenthesized nodes.
    *
    * @default true
    */

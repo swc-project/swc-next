@@ -48,9 +48,6 @@ impl<'a> CloneIn<'a> for Stmt {
             StmtData::TsNamespaceExportDeclaration(it) => {
                 Self::TsNamespaceExportDeclaration(it.clone_in(ast))
             }
-            StmtData::TsImportEqualsDeclaration(it) => {
-                Self::TsImportEqualsDeclaration(it.clone_in(ast))
-            }
         }
     }
 }
@@ -1461,8 +1458,6 @@ impl<'a> CloneIn<'a> for TsTupleElement {
             TsTupleElementData::TsNamedTupleMember(it) => {
                 Self::TsNamedTupleMember(it.clone_in(ast))
             }
-            TsTupleElementData::TsOptionalType(it) => Self::TsOptionalType(it.clone_in(ast)),
-            TsTupleElementData::TsRestType(it) => Self::TsRestType(it.clone_in(ast)),
         }
     }
 }

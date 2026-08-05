@@ -1515,9 +1515,6 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Stmt {
             StmtData::TsNamespaceExportDeclaration(it) => {
                 <TsNamespaceExportDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
             }
-            StmtData::TsImportEqualsDeclaration(it) => {
-                <TsImportEqualsDeclaration as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
         }
     }
 }
@@ -3296,12 +3293,6 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for TsTupleElement {
             TsTupleElementData::TsType(it) => <TsType as VisitWith<'a, V>>::visit_with(it, visitor),
             TsTupleElementData::TsNamedTupleMember(it) => {
                 <TsNamedTupleMember as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            TsTupleElementData::TsOptionalType(it) => {
-                <TsOptionalType as VisitWith<'a, V>>::visit_with(it, visitor)
-            }
-            TsTupleElementData::TsRestType(it) => {
-                <TsRestType as VisitWith<'a, V>>::visit_with(it, visitor)
             }
         }
     }
@@ -6880,10 +6871,6 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Stmt {
                 <TsNamespaceExportDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(Stmt::TsNamespaceExportDeclaration)
             }
-            StmtData::TsImportEqualsDeclaration(it) => {
-                <TsImportEqualsDeclaration as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(Stmt::TsImportEqualsDeclaration)
-            }
         }
     }
 }
@@ -9602,14 +9589,6 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for TsTupleElement {
             TsTupleElementData::TsNamedTupleMember(it) => {
                 <TsNamedTupleMember as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
                     .map(TsTupleElement::TsNamedTupleMember)
-            }
-            TsTupleElementData::TsOptionalType(it) => {
-                <TsOptionalType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(TsTupleElement::TsOptionalType)
-            }
-            TsTupleElementData::TsRestType(it) => {
-                <TsRestType as VisitMutWith<'a, V>>::visit_mut_with(it, visitor)
-                    .map(TsTupleElement::TsRestType)
             }
         }
     }
@@ -14967,18 +14946,6 @@ impl<'a, State> TraverseWith<'a, State> for Stmt {
                     }
                 }
             }
-            StmtData::TsImportEqualsDeclaration(it) => {
-                match <TsImportEqualsDeclaration as TraverseWith<'a, State>>::traverse_with(
-                    it, traverser, ctx,
-                ) {
-                    TraverseAction::Proceed => TraverseAction::Proceed,
-                    TraverseAction::Skip => TraverseAction::Skip,
-                    TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(Stmt::TsImportEqualsDeclaration(replacement))
-                    }
-                }
-            }
         }
     }
 }
@@ -17987,27 +17954,6 @@ impl<'a, State> TraverseWith<'a, State> for TsTupleElement {
                     TraverseAction::Stop => TraverseAction::Stop,
                     TraverseAction::Replace(replacement) => {
                         TraverseAction::Replace(TsTupleElement::TsNamedTupleMember(replacement))
-                    }
-                }
-            }
-            TsTupleElementData::TsOptionalType(it) => {
-                match <TsOptionalType as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx)
-                {
-                    TraverseAction::Proceed => TraverseAction::Proceed,
-                    TraverseAction::Skip => TraverseAction::Skip,
-                    TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(TsTupleElement::TsOptionalType(replacement))
-                    }
-                }
-            }
-            TsTupleElementData::TsRestType(it) => {
-                match <TsRestType as TraverseWith<'a, State>>::traverse_with(it, traverser, ctx) {
-                    TraverseAction::Proceed => TraverseAction::Proceed,
-                    TraverseAction::Skip => TraverseAction::Skip,
-                    TraverseAction::Stop => TraverseAction::Stop,
-                    TraverseAction::Replace(replacement) => {
-                        TraverseAction::Replace(TsTupleElement::TsRestType(replacement))
                     }
                 }
             }

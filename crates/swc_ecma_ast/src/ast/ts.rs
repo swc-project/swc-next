@@ -158,8 +158,6 @@ pub enum TsLiteral {
 pub enum TsTupleElement {
     TsType(TsType),
     TsNamedTupleMember(TsNamedTupleMember),
-    TsOptionalType(TsOptionalType),
-    TsRestType(TsRestType),
 }
 
 #[ast(repr)]
