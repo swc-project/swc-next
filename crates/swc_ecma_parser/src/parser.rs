@@ -11851,6 +11851,72 @@ mod tests {
     }
 
     #[test]
+    fn parses_export_import_equals_declarations() {
+        let cases = [
+            (
+                "export import Alias = Namespace.Value;",
+                ImportOrExportKind::Value,
+                false,
+            ),
+            (
+                "export import value = require('value');",
+                ImportOrExportKind::Value,
+                true,
+            ),
+            (
+                "export import type Value = require('value');",
+                ImportOrExportKind::Type,
+                true,
+            ),
+            (
+                "export import type = require('value');",
+                ImportOrExportKind::Value,
+                true,
+            ),
+            (
+                "export\nimport\ntype\nValue = require('value');",
+                ImportOrExportKind::Type,
+                true,
+            ),
+        ];
+
+        for (source, expected_kind, expected_external_reference) in cases {
+            let allocator = Allocator::new();
+            let mut ast = Ast::new(source, &allocator);
+            let options = Options {
+                lang: Lang::Ts,
+                ..Options::default()
+            };
+            let result = Parser::init(&mut ast, options, NoTokenParserConfig).parse();
+
+            assert!(
+                result.diagnostics.is_empty(),
+                "{source}: {:#?}",
+                result.diagnostics
+            );
+            let mut body = result.program.body(&ast).iter();
+            let statement = ast.get_node_in_sub_range(body.next().expect("expected a statement"));
+            assert!(body.next().is_none(), "{source}");
+            let StmtData::ExportNamedDeclaration(export) = ast.stmt_data(statement) else {
+                panic!("expected an export declaration for {source}");
+            };
+            let declaration = export.declaration(&ast).expect("expected a declaration");
+            let DeclData::TsImportEqualsDeclaration(declaration) = ast.decl_data(declaration)
+            else {
+                panic!("expected an import-equals declaration for {source}");
+            };
+            assert_eq!(declaration.import_kind(&ast), expected_kind, "{source}");
+            assert_eq!(
+                declaration
+                    .module_reference(&ast)
+                    .is_ts_external_module_reference(&ast),
+                expected_external_reference,
+                "{source}"
+            );
+        }
+    }
+
+    #[test]
     fn allows_return_outside_function_when_enabled() {
         let allocator = Allocator::new();
         let mut ast = Ast::new("return;", &allocator);
