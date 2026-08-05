@@ -429,4 +429,46 @@ mod tests {
         let source = "try {} catch (e) { var f; function f() {} }";
         assert!(!diagnostics(source, Lang::Ts).is_empty());
     }
+
+    #[test]
+    fn reports_typescript_class_member_early_errors() {
+        let cases = [
+            (
+                "class C { abstract method(): void; }",
+                "Abstract members can only appear within an abstract class",
+            ),
+            (
+                "abstract class C { abstract property = 1; }",
+                "An abstract property cannot have an initializer",
+            ),
+            (
+                "abstract class C { abstract method() {} }",
+                "An abstract method cannot have an implementation",
+            ),
+            (
+                "abstract class C { abstract get value() { return 1; } }",
+                "An abstract method cannot have an implementation",
+            ),
+            (
+                "class C { accessor value?: number; }",
+                "An 'accessor' property cannot be declared optional",
+            ),
+            (
+                "class C { accessor value!; }",
+                "Declarations with definite assignment assertions must also have type annotations",
+            ),
+            (
+                "abstract class C { abstract #value: number; }",
+                "Private elements cannot have the 'abstract' modifier",
+            ),
+        ];
+
+        for (source, expected) in cases {
+            let diagnostics = diagnostics(source, Lang::Ts);
+            assert!(
+                diagnostics.iter().any(|message| message == expected),
+                "expected {expected:?} for {source:?}, got {diagnostics:#?}"
+            );
+        }
+    }
 }

@@ -1073,12 +1073,101 @@ impl Checker<'_, '_> {
             }
             NodeKindData::ClassBody(body) => {
                 let children = body.body(context.ast);
+                let class_is_abstract = context.parent().is_some_and(|parent| {
+                    let NodeKindData::Class(class) = context.ast.kind_data(parent) else {
+                        return false;
+                    };
+                    class.r#abstract(context.ast)
+                });
                 let mut first_constructor = None;
                 for index in 0..children.len() {
                     let child = children
                         .get_node(context.ast, index)
                         .expect("class child exists")
                         .node_id();
+                    if context.ast.is_ts() {
+                        match context.ast.kind_data(child) {
+                            NodeKindData::MethodDefinition(method) => {
+                                let key = method.key(context.ast).node_id();
+                                if method.r#abstract(context.ast) {
+                                    if !class_is_abstract {
+                                        checks.report(
+                                            context.ast.span(key),
+                                            "Abstract members can only appear within an abstract class",
+                                            ReportOptions::default(),
+                                        );
+                                    }
+                                    checks.report(
+                                        context.ast.span(key),
+                                        "An abstract method cannot have an implementation",
+                                        ReportOptions::default(),
+                                    );
+                                }
+                            }
+                            NodeKindData::TsMethodDefinition(method) => {
+                                if method.r#abstract(context.ast) && !class_is_abstract {
+                                    checks.report(
+                                        context.ast.span(method.key(context.ast).node_id()),
+                                        "Abstract members can only appear within an abstract class",
+                                        ReportOptions::default(),
+                                    );
+                                }
+                            }
+                            NodeKindData::PropertyDefinition(property) => {
+                                let key = property.key(context.ast).node_id();
+                                if property.r#abstract(context.ast) {
+                                    if !class_is_abstract {
+                                        checks.report(
+                                            context.ast.span(key),
+                                            "Abstract members can only appear within an abstract class",
+                                            ReportOptions::default(),
+                                        );
+                                    }
+                                    if context.ast.node_kind(key) == NodeKind::PrivateIdentifier {
+                                        checks.report(
+                                            context.ast.span(key),
+                                            "Private elements cannot have the 'abstract' modifier",
+                                            ReportOptions::default(),
+                                        );
+                                    }
+                                    if property.value(context.ast).is_some() {
+                                        checks.report(
+                                            context.ast.span(key),
+                                            "An abstract property cannot have an initializer",
+                                            ReportOptions::default(),
+                                        );
+                                    }
+                                }
+                                if property.accessor(context.ast) && property.optional(context.ast)
+                                {
+                                    checks.report(
+                                        context.ast.span(key),
+                                        "An 'accessor' property cannot be declared optional",
+                                        ReportOptions::default(),
+                                    );
+                                }
+                                if property.definite(context.ast)
+                                    && property.type_annotation(context.ast).is_none()
+                                {
+                                    checks.report(
+                                        context.ast.span(key),
+                                        "Declarations with definite assignment assertions must also have type annotations",
+                                        ReportOptions::default(),
+                                    );
+                                }
+                                if property.definite(context.ast)
+                                    && property.value(context.ast).is_some()
+                                {
+                                    checks.report(
+                                        context.ast.span(key),
+                                        "Declarations with initializers cannot also have definite assignment assertions",
+                                        ReportOptions::default(),
+                                    );
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
                     if let NodeKindData::MethodDefinition(method) = context.ast.kind_data(child)
                         && method.kind(context.ast)
                             == swc_next_ecma_ast::MethodDefinitionKind::Constructor

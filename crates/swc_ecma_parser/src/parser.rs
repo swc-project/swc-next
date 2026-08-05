@@ -2183,7 +2183,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         } else {
             TypedSubRange::empty()
         };
-        let body = self.parse_class_body(opts.is_abstract)?;
+        let body = self.parse_class_body()?;
         let end = body.span(self.ast).end;
         Some(self.ast.class(
             Span::new(start, end),
@@ -2229,7 +2229,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         Some(expression)
     }
 
-    fn parse_class_body(&mut self, is_abstract_class: bool) -> Option<ClassBody> {
+    fn parse_class_body(&mut self) -> Option<ClassBody> {
         let start = self.current_token.span.start;
         if !self.expect(
             TokenTag::LeftBrace,
@@ -2244,7 +2244,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 if self.eat(TokenTag::Semicolon)? {
                     continue;
                 }
-                let element = self.parse_class_element(is_abstract_class)?;
+                let element = self.parse_class_element()?;
                 self.scratch_a.append(element);
             }
             let end = self.current_token.span.end;
@@ -2264,7 +2264,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         result
     }
 
-    fn parse_class_element(&mut self, is_abstract_class: bool) -> Option<ClassElement> {
+    fn parse_class_element(&mut self) -> Option<ClassElement> {
         let element_start = self.current_token.span.start;
         let decorators = if self.current_token.tag == TokenTag::At {
             self.parse_decorators()?.1
@@ -2307,13 +2307,6 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
         let key = key.unwrap();
 
-        if modifiers.r#abstract && !is_abstract_class {
-            self.report(
-                Span::new(element_start, key.span(self.ast).end),
-                "Abstract members can only appear within an abstract class",
-                ReportOptions::default(),
-            );
-        }
         let mut optional = false;
         let mut definite = false;
         if self.lang.is_typescript() {
@@ -2399,18 +2392,6 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 },
             );
             return None;
-        }
-        if modifiers.r#abstract
-            && matches!(
-                self.ast.property_key_data(key),
-                PropertyKeyData::PrivateIdentifier(_)
-            )
-        {
-            self.report(
-                Span::new(element_start, key.span(self.ast).end),
-                "Private elements cannot have the 'abstract' modifier",
-                ReportOptions::default(),
-            );
         }
         self.parse_property_definition(
             element_start,
@@ -2696,13 +2677,6 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     None
                 };
             if self.current_token.tag == TokenTag::LeftBrace {
-                if modifiers.r#abstract {
-                    self.report(
-                        Span::new(start, key.span(self.ast).end),
-                        "An abstract method cannot have an implementation",
-                        ReportOptions::default(),
-                    );
-                }
                 let body = self.parse_function_body()?;
                 let end = body.span(self.ast).end;
                 Some((params, type_parameters, return_type, Some(body), end))
@@ -2801,13 +2775,6 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             };
 
         let value = if self.eat(TokenTag::Assign)? {
-            if modifiers.r#abstract {
-                self.report(
-                    Span::new(start, key.span(self.ast).end),
-                    "An abstract property cannot have an initializer",
-                    ReportOptions::default(),
-                );
-            }
             let context = enter_grammar_context![&mut self.context, ~Yield, ~Await];
             let value = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
             self.context = context;
@@ -2815,28 +2782,6 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         } else {
             None
         };
-
-        if modifiers.is_accessor && optional {
-            self.report(
-                Span::new(start, key.span(self.ast).end),
-                "An 'accessor' property cannot be declared optional",
-                ReportOptions::default(),
-            );
-        }
-        if definite && type_annotation.is_none() {
-            self.report(
-                Span::new(start, key.span(self.ast).end),
-                "Declarations with definite assignment assertions must also have type annotations",
-                ReportOptions::default(),
-            );
-        }
-        if definite && value.is_some() {
-            self.report(
-                Span::new(start, key.span(self.ast).end),
-                "Declarations with initializers cannot also have definite assignment assertions",
-                ReportOptions::default(),
-            );
-        }
 
         let mut end = self.prev_token_end;
         match self.current_token.tag {
@@ -12011,49 +11956,10 @@ mod tests {
     }
 
     #[test]
-    fn reports_typescript_class_member_early_errors() {
-        let cases = [
-            (
-                "class C { abstract method(): void; }",
-                "Abstract members can only appear within an abstract class",
-            ),
-            (
-                "abstract class C { abstract property = 1; }",
-                "An abstract property cannot have an initializer",
-            ),
-            (
-                "abstract class C { abstract method() {} }",
-                "An abstract method cannot have an implementation",
-            ),
-            (
-                "abstract class C { abstract get value() { return 1; } }",
-                "An abstract method cannot have an implementation",
-            ),
-            (
-                "class C { declare get value(): number; }",
-                "'declare' is not allowed in getters",
-            ),
-            (
-                "class C { accessor value?: number; }",
-                "An 'accessor' property cannot be declared optional",
-            ),
-            (
-                "class C { accessor value!; }",
-                "Declarations with definite assignment assertions must also have type annotations",
-            ),
-            (
-                "abstract class C { abstract #value: number; }",
-                "Private elements cannot have the 'abstract' modifier",
-            ),
-        ];
-
-        for (source, expected) in cases {
-            let diagnostics = parse_ts_diagnostic_messages(source);
-            assert!(
-                diagnostics.iter().any(|message| message == expected),
-                "expected {expected:?} for {source:?}, got {diagnostics:#?}"
-            );
-        }
+    fn reports_typescript_class_member_parser_errors() {
+        let source = "class C { declare get value(): number; }";
+        let diagnostics = parse_ts_diagnostic_messages(source);
+        assert_eq!(diagnostics, ["'declare' is not allowed in getters"]);
     }
 
     #[test]
