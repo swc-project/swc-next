@@ -128,6 +128,19 @@ function reorderAstFields(_key, value) {
   if (Object.hasOwn(value, "start")) reordered.start = value.start;
   if (Object.hasOwn(value, "end")) reordered.end = value.end;
 
+  // RegExp instances are not representable in JSON. Match the serialized
+  // Acorn and typescript-eslint oracles without changing parseSync's AST.
+  if (
+    value.type === "Literal" &&
+    Object.hasOwn(value, "regex") &&
+    value.regex &&
+    typeof value.regex === "object" &&
+    typeof value.regex.flags === "string" &&
+    Object.hasOwn(reordered, "value")
+  ) {
+    reordered.value = null;
+  }
+
   return reordered;
 }
 
