@@ -429,4 +429,29 @@ mod tests {
         let source = "try {} catch (e) { var f; function f() {} }";
         assert!(!diagnostics(source, Lang::Ts).is_empty());
     }
+
+    #[test]
+    fn validates_unicode_property_escapes() {
+        for source in [
+            r"/\p{ASCII}/u;",
+            r"/\p{Script=Latin}/u;",
+            r"/\p{Basic_Emoji}/v;",
+        ] {
+            assert!(diagnostics(source, Lang::Js).is_empty(), "{source}");
+        }
+
+        for source in [
+            r"/\p{ASCII=Yes}/u;",
+            r"/[\p{ASCII}-a]/u;",
+            r"/\p{Basic_Emoji}/u;",
+            r"/\P{Basic_Emoji}/v;",
+            r"/[^\p{Basic_Emoji}]/v;",
+        ] {
+            assert_eq!(
+                diagnostics(source, Lang::Js),
+                ["Invalid regular expression literal"],
+                "{source}"
+            );
+        }
+    }
 }

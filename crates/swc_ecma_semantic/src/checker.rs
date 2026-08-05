@@ -703,6 +703,25 @@ impl Checker<'_, '_> {
                     },
                 );
             }
+            NodeKindData::RegExpLiteral(literal) => {
+                let pattern = context.ast.get_utf8(literal.pattern(context.ast));
+                let flags = context.ast.get_utf8(literal.flags(context.ast));
+                if swc_next_regular_expression::LiteralParser::new(
+                    checks.allocator,
+                    pattern,
+                    Some(flags),
+                    swc_next_regular_expression::Options::default(),
+                )
+                .parse()
+                .is_err()
+                {
+                    checks.report(
+                        context.ast.span(literal.node_id()),
+                        "Invalid regular expression literal",
+                        ReportOptions::default(),
+                    );
+                }
+            }
             NodeKindData::IdentifierReference(identifier) => {
                 if context.state.in_type_position() {
                     return;

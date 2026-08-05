@@ -12,8 +12,9 @@ version               = "0.11.0"
 bitflags   = { workspace = true }
 oxc_index  = { workspace = true }
 
-swc_next_ecma_ast = { workspace = true }
-swc_next_allocator = { workspace = true }
+swc_next_allocator          = { workspace = true }
+swc_next_ecma_ast           = { workspace = true }
+swc_next_regular_expression = { workspace = true }
 
 [dev-dependencies]
 swc_next_ecma_parser = { workspace = true }
