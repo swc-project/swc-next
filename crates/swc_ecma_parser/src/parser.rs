@@ -5325,7 +5325,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
     fn parse_named_tuple_member(&mut self) -> Option<TsTupleElement> {
         let start = self.current_token.span.start;
         let label = self.parse_identifier_name()?;
-        let optional = self.eat(TokenTag::Question)?;
+        let mut optional = self.eat(TokenTag::Question)?;
         if !self.expect(
             TokenTag::Colon,
             "Expected ':' after named tuple element label",
@@ -5333,7 +5333,36 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         ) {
             return None;
         }
-        let element_type = self.parse_type()?;
+        let misplaced_rest_start = if self.current_token.tag == TokenTag::Spread {
+            let start = self.current_token.span.start;
+            self.advance()?;
+            Some(start)
+        } else {
+            None
+        };
+        let mut element_type = self.parse_type()?;
+        if let TsTypeData::TsJsDocNullableType(nullable) = self.ast.ts_type_data(element_type)
+            && nullable.postfix(self.ast)
+        {
+            self.report(
+                Span::new(nullable.span(self.ast).end - 1, nullable.span(self.ast).end),
+                "A labeled tuple optional element must use '?' after the label and before ':'",
+                ReportOptions::default(),
+            );
+            optional = true;
+            element_type = nullable.type_annotation(self.ast);
+        }
+        if let Some(rest_start) = misplaced_rest_start {
+            self.report(
+                Span::new(rest_start, rest_start + 3),
+                "A labeled tuple rest element must use '...' before the label",
+                ReportOptions::default(),
+            );
+            element_type = TsType::TsRestType(self.ast.ts_rest_type(
+                Span::new(rest_start, element_type.span(self.ast).end),
+                element_type,
+            ));
+        }
         let span = Span::new(start, element_type.span(self.ast).end);
         Some(TsTupleElement::TsNamedTupleMember(
             self.ast
@@ -6423,15 +6452,15 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         let mut is_const = false;
         let mut is_in = false;
         let mut is_out = false;
-        let mut modifier_step = 0u8;
         let mut start = self.current_token.span.start;
         let mut start_set = false;
         loop {
             let token = self.current_token;
-            let (step, flag) = match token.tag {
-                TokenTag::Const => (1, &mut is_const),
-                TokenTag::In => (2, &mut is_in),
-                TokenTag::Out => (3, &mut is_out),
+            let out_seen = is_out;
+            let flag = match token.tag {
+                TokenTag::Const => &mut is_const,
+                TokenTag::In => &mut is_in,
+                TokenTag::Out => &mut is_out,
                 _ => break,
             };
             let Some(next) = self.peek_ahead() else {
@@ -6447,15 +6476,14 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                     Cow::Owned(format!("Duplicate '{text}' modifier on type parameter")),
                     ReportOptions::default(),
                 );
-            } else if step < modifier_step {
+            } else if token.tag == TokenTag::In && out_seen {
                 self.report(
                     token.span,
-                    "Type parameter modifiers must appear in the order 'const in out'",
+                    "The 'in' modifier must precede the 'out' modifier",
                     ReportOptions::default(),
                 );
             }
             *flag = true;
-            modifier_step = modifier_step.max(step);
             if !start_set {
                 start = token.span.start;
                 start_set = true;
@@ -11821,6 +11849,77 @@ mod tests {
             ast.expr_data(expr),
             swc_next_ecma_ast::ExprData::BinaryExpression(_)
         ));
+    }
+
+    fn parse_ts_diagnostics(source: &str) -> Vec<String> {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new(source, &allocator);
+        Parser::init(
+            &mut ast,
+            Options {
+                lang: Lang::Ts,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse()
+        .diagnostics
+        .into_iter()
+        .map(|diagnostic| diagnostic.message.into_owned())
+        .collect()
+    }
+
+    #[test]
+    fn parses_labeled_tuple_rest_elements() {
+        for source in [
+            "type T = [...rest: string[]];",
+            "type T = [head: string, ...rest: number[]];",
+            "type T = [...rest: string[], tail: number];",
+        ] {
+            assert!(parse_ts_diagnostics(source).is_empty(), "{source}");
+        }
+    }
+
+    #[test]
+    fn diagnoses_misplaced_labeled_tuple_optional_marker() {
+        let diagnostics = parse_ts_diagnostics("type T = [value: string?];");
+        assert_eq!(diagnostics.len(), 1);
+        assert!(diagnostics[0].contains("must use '?' after the label"));
+    }
+
+    #[test]
+    fn recovers_misplaced_labeled_tuple_rest_marker() {
+        let diagnostics = parse_ts_diagnostics("type T = [head: string, rest: ...number[]];");
+        assert_eq!(diagnostics.len(), 1);
+        assert!(diagnostics[0].contains("must use '...' before the label"));
+    }
+
+    #[test]
+    fn parses_const_with_variance_modifiers_in_either_position() {
+        for source in [
+            "class C<const in T> {}",
+            "class C<in const T> {}",
+            "class C<const out T> {}",
+            "class C<out const T> {}",
+            "class C<const in out T> {}",
+            "class C<in const out T> {}",
+            "class C<in out const T> {}",
+        ] {
+            assert!(parse_ts_diagnostics(source).is_empty(), "{source}");
+        }
+    }
+
+    #[test]
+    fn diagnoses_out_before_in_with_interleaved_const() {
+        for source in [
+            "class C<out in T> {}",
+            "class C<out const in T> {}",
+            "class C<const out in T> {}",
+        ] {
+            let diagnostics = parse_ts_diagnostics(source);
+            assert_eq!(diagnostics.len(), 1, "{source}");
+            assert!(diagnostics[0].contains("must precede the 'out' modifier"));
+        }
     }
 
     fn assert_unambiguous_source_type(source: &str, expected: SourceType) {

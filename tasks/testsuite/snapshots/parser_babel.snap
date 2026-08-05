@@ -1,7 +1,7 @@
 parser * babel
 ========================
-Positive Passed: 2209/2238 (98.70%)
-Negative Passed: 1599/1743 (91.74%)
+Positive Passed: 2210/2238 (98.75%)
+Negative Passed: 1603/1743 (91.97%)
 Panicked: 0/3981 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions/input.js - annex-b/enabled/valid-assignment-target-type-createParenthesizedExpressions: parser: Invalid assignment target at 22..29
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/core/escape-keyword/async/input.js - core/escape-keyword/async: parser: Keywords cannot contain escape characters at 1..11
@@ -154,8 +154,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-only-
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-only-import-export-specifiers/expport-invalid-escaped-type-only/input.ts - typescript/type-only-import-export-specifiers/expport-invalid-escaped-type-only: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-only-import-export-specifiers/import-invalid-escaped-type-only/input.ts - typescript/type-only-import-export-specifiers/import-invalid-escaped-type-only: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-only-import-export-specifiers/import-invalid-type-in-type/input.ts - typescript/type-only-import-export-specifiers/import-invalid-type-in-type: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/const-type-parameters-invalid/input.ts - typescript/types/const-type-parameters-invalid: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/const-type-parameters/input.ts - typescript/types/const-type-parameters: parser: Type parameter modifiers must appear in the order 'const in out' at 346..351
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/import-type-declaration-error/input.ts - typescript/types/import-type-declaration-error: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/intrinsic-keyword-error/input.ts - typescript/types/intrinsic-keyword-error: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/invalid-import-type-dynamic-with-jsx-options/input.ts - typescript/types/invalid-import-type-dynamic-with-jsx-options: expected a parse or early error, but pipeline succeeded
@@ -169,9 +167,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/read
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/read-only-2/input.ts - typescript/types/read-only-2: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/read-only-3/input.ts - typescript/types/read-only-3: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/read-only-4/input.ts - typescript/types/read-only-4: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/tuple-labeled-invalid-optional/input.ts - typescript/types/tuple-labeled-invalid-optional: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/tuple-optional-invalid/input.ts - typescript/types/tuple-optional-invalid: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/tuple-required-after-labeled-optional/input.ts - typescript/types/tuple-required-after-labeled-optional: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/variable-declarator/invalid-definite-assignment/input.ts - typescript/variable-declarator/invalid-definite-assignment: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/variable-declarator/invalid-definite-pattern-assignment-const/input.ts - typescript/variable-declarator/invalid-definite-pattern-assignment-const: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/variable-declarator/invalid-definite-pattern-assignment-let/input.ts - typescript/variable-declarator/invalid-definite-pattern-assignment-let: expected a parse or early error, but pipeline succeeded

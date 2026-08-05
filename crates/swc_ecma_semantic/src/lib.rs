@@ -392,6 +392,25 @@ mod tests {
     }
 
     #[test]
+    fn checks_typescript_tuple_and_type_parameter_rules() {
+        for source in [
+            "type T = [first?: string, second: number];",
+            "type T = [...rest?: string[]];",
+            "type T<const U> = U;",
+        ] {
+            assert!(!diagnostics(source, Lang::Ts).is_empty(), "{source}");
+        }
+
+        for source in [
+            "type T = [first?: string, ...rest: number[]];",
+            "type T = [...rest: string[], last: number];",
+            "interface I<const T> {}",
+        ] {
+            assert!(diagnostics(source, Lang::Ts).is_empty(), "{source}");
+        }
+    }
+
+    #[test]
     fn annex_b() {
         // Sloppy JavaScript blocks allow duplicate ordinary functions and
         // isolate functions declared directly in if/else clauses.

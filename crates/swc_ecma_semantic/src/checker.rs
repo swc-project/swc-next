@@ -24,10 +24,10 @@ use swc_next_ecma_ast::{
     TsMethodSignature, TsModuleBlock, TsModuleDeclaration, TsNamedTupleMember,
     TsNamespaceExportDeclaration, TsNonNullExpression, TsOptionalType, TsParenthesizedType,
     TsPropertySignature, TsQualifiedName, TsRestType, TsSatisfiesExpression, TsTemplateLiteralType,
-    TsTupleType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeAssertion, TsTypeLiteral,
-    TsTypeOperator, TsTypeParameter, TsTypeParameterDeclaration, TsTypeParameterInstantiation,
-    TsTypePredicate, TsTypeQuery, TsTypeReference, TsUnionType, UnaryOperator, UpdateExpression,
-    VariableDeclaration, VariableKind, Visit, VisitWith,
+    TsTupleElementData, TsTupleType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeAssertion,
+    TsTypeData, TsTypeLiteral, TsTypeOperator, TsTypeParameter, TsTypeParameterDeclaration,
+    TsTypeParameterInstantiation, TsTypePredicate, TsTypeQuery, TsTypeReference, TsUnionType,
+    UnaryOperator, UpdateExpression, VariableDeclaration, VariableKind, Visit, VisitWith,
 };
 
 use crate::{
@@ -702,6 +702,60 @@ impl Checker<'_, '_> {
                         ..ReportOptions::default()
                     },
                 );
+            }
+            NodeKindData::TsTypeParameter(parameter) => {
+                let owner = context
+                    .ancestors()
+                    .nth(2)
+                    .map(|node| context.ast.node_kind(node));
+                if parameter.r#const(context.ast) && owner == Some(NodeKind::TsTypeAliasDeclaration)
+                {
+                    checks.report(
+                        context.ast.span(parameter.node_id()),
+                        "The 'const' modifier cannot appear on a type alias type parameter",
+                        ReportOptions::default(),
+                    );
+                }
+            }
+            NodeKindData::TsTupleType(tuple) => {
+                let mut optional_seen = false;
+                for element in tuple.element_types(context.ast).iter() {
+                    let element = context.ast.get_node_in_sub_range(element);
+                    let (optional, rest) = match context.ast.ts_tuple_element_data(element) {
+                        TsTupleElementData::TsNamedTupleMember(member) => (
+                            member.optional(context.ast),
+                            matches!(
+                                context.ast.ts_type_data(member.element_type(context.ast)),
+                                TsTypeData::TsRestType(_)
+                            ),
+                        ),
+                        TsTupleElementData::TsType(ty) => match context.ast.ts_type_data(ty) {
+                            TsTypeData::TsOptionalType(_) => (true, false),
+                            TsTypeData::TsRestType(rest) => {
+                                let optional = matches!(
+                                    context.ast.ts_type_data(rest.type_annotation(context.ast)),
+                                    TsTypeData::TsOptionalType(_)
+                                );
+                                (optional, true)
+                            }
+                            _ => (false, false),
+                        },
+                    };
+                    if optional && rest {
+                        checks.report(
+                            context.ast.span(element.node_id()),
+                            "A rest element cannot be optional",
+                            ReportOptions::default(),
+                        );
+                    } else if !optional && !rest && optional_seen {
+                        checks.report(
+                            context.ast.span(element.node_id()),
+                            "A required element cannot follow an optional element",
+                            ReportOptions::default(),
+                        );
+                    }
+                    optional_seen |= optional;
+                }
             }
             NodeKindData::IdentifierReference(identifier) => {
                 if context.state.in_type_position() {

@@ -1,7 +1,7 @@
 parser * typescript
 ========================
 Positive Passed: 21869/22023 (99.30%)
-Negative Passed: 1584/3448 (45.94%)
+Negative Passed: 1588/3448 (46.06%)
 Panicked: 0/25471 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -1992,17 +1992,13 @@ Failed: fixtures/typescript/tests/cases/conformance/types/thisType/thisTypeInAcc
 Failed: fixtures/typescript/tests/cases/conformance/types/thisType/thisTypeInAccessorsNegative.ts - thisTypeInAccessorsNegative.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/thisType/thisTypeInFunctions.ts - thisTypeInFunctions.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/tuple/contextualTypeTupleEnd.ts - contextualTypeTupleEnd.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/types/tuple/optionalTupleElements1.ts - optionalTupleElements1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/tuple/readonlyArraysAndTuples.ts - readonlyArraysAndTuples.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/types/tuple/restTupleElements1.ts - restTupleElements1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/tuple/unionsOfTupleTypes1.ts - unionsOfTupleTypes1.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/types/tuple/variadicTuples2.ts - variadicTuples2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/typeAliases/interfaceDoesNotDependOnBaseTypes.ts - interfaceDoesNotDependOnBaseTypes.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/typeAliases/intrinsicKeyword.ts - intrinsicKeyword.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/typeAliases/intrinsicTypes.ts - intrinsicTypes.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/typeParameters/typeParameterLists/propertyAccessOnTypeParameterWithConstraints4.ts - propertyAccessOnTypeParameterWithConstraints4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/typeParameters/typeParameterLists/propertyAccessOnTypeParameterWithConstraints5.ts - propertyAccessOnTypeParameterWithConstraints5.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/types/typeParameters/typeParameterLists/typeParameterConstModifiers.ts - typeParameterConstModifiers.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/typeParameters/typeParameterLists/typesWithDuplicateTypeParameters.ts - typesWithDuplicateTypeParameters.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/typeRelationships/assignmentCompatibility/nullAssignedToUndefined.ts - nullAssignedToUndefined.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/types/typeRelationships/comparable/equalityStrictNulls.ts - equalityStrictNulls.ts: expected a parse or early error, but pipeline succeeded
