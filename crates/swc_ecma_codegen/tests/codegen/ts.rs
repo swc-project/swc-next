@@ -16,3 +16,23 @@ fn test_export_default() {
 fn test_import() {
     expect_printed_ts("import type {} from \"m\"", "import type {} from \"m\";\n");
 }
+
+#[test]
+fn test_import_equals() {
+    expect_printed_ts(
+        "import value = require('value')",
+        "import value = require(\"value\");\n",
+    );
+    expect_printed_ts(
+        "export import value = require('value')",
+        "export import value = require(\"value\");\n",
+    );
+}
+
+#[test]
+fn test_optional_and_rest_tuple_elements() {
+    expect_printed_ts(
+        "type Tuple = [string?, ...number[]]",
+        "type Tuple = [string?, ...number[]];\n",
+    );
+}

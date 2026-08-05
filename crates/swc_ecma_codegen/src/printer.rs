@@ -921,12 +921,6 @@ impl<'a> Printer<'a> {
                 self.print_identifier(self.ast.get_utf8(s.id(self.ast).name(self.ast)));
                 self.print_semicolon_after_statement();
             }
-            StmtData::TsImportEqualsDeclaration(s) => {
-                self.print_indent();
-                self.add_source_mapping(stmt.span(self.ast).start);
-                self.print_ts_import_equals(s);
-                self.print_semicolon_after_statement();
-            }
         }
     }
 
@@ -3627,14 +3621,6 @@ impl<'a> Printer<'a> {
                 self.print(":");
                 self.print_space();
                 self.print_ts_type(n.element_type(self.ast), Precedence::Lowest);
-            }
-            TsTupleElementData::TsOptionalType(t) => {
-                self.print_ts_type(t.type_annotation(self.ast), Precedence::Postfix);
-                self.print("?");
-            }
-            TsTupleElementData::TsRestType(t) => {
-                self.print("...");
-                self.print_ts_type(t.type_annotation(self.ast), Precedence::Prefix);
             }
         }
     }

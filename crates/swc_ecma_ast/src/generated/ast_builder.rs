@@ -396,19 +396,6 @@ impl<'a> Ast<'a> {
         Stmt::TsNamespaceExportDeclaration(self.ts_namespace_export_declaration(span, id).into())
     }
     #[inline]
-    pub fn stmt_ts_import_equals_declaration(
-        &mut self,
-        span: Span,
-        id: BindingIdentifier,
-        module_reference: TsModuleReference,
-        import_kind: ImportOrExportKind,
-    ) -> Stmt {
-        Stmt::TsImportEqualsDeclaration(
-            self.ts_import_equals_declaration(span, id, module_reference, import_kind)
-                .into(),
-        )
-    }
-    #[inline]
     pub fn decl_variable_declaration(
         &mut self,
         span: Span,
@@ -6634,22 +6621,6 @@ impl<'a> Ast<'a> {
             self.ts_named_tuple_member(span, label, element_type, optional)
                 .into(),
         )
-    }
-    #[inline]
-    pub fn ts_tuple_element_ts_optional_type(
-        &mut self,
-        span: Span,
-        type_annotation: TsType,
-    ) -> TsTupleElement {
-        TsTupleElement::TsOptionalType(self.ts_optional_type(span, type_annotation).into())
-    }
-    #[inline]
-    pub fn ts_tuple_element_ts_rest_type(
-        &mut self,
-        span: Span,
-        type_annotation: TsType,
-    ) -> TsTupleElement {
-        TsTupleElement::TsRestType(self.ts_rest_type(span, type_annotation).into())
     }
     #[inline]
     pub fn ts_type_element_ts_property_signature(

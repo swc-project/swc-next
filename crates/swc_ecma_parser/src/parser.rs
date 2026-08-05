@@ -3552,7 +3552,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
         let module_reference = self.parse_module_reference()?;
         let end = self.eat_semicolon(self.prev_token_end)?;
-        Some(self.ast.stmt_ts_import_equals_declaration(
+        Some(self.ast.stmt_decl_ts_import_equals_declaration(
             Span::new(start, end),
             id,
             module_reference,
@@ -3878,9 +3878,6 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             let statement = self.parse_ts_declaration()?;
             let declaration = match self.ast.stmt_data(statement) {
                 StmtData::Declaration(declaration) => declaration,
-                StmtData::TsImportEqualsDeclaration(declaration) => {
-                    Decl::TsImportEqualsDeclaration(declaration)
-                }
                 _ => {
                     self.report(
                         statement.span(self.ast),
@@ -3905,8 +3902,7 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         }
         if self.lang.is_typescript() && self.current_token.tag == TokenTag::Import {
             let statement = self.parse_import_declaration()?;
-            let StmtData::TsImportEqualsDeclaration(declaration) = self.ast.stmt_data(statement)
-            else {
+            let StmtData::Declaration(declaration) = self.ast.stmt_data(statement) else {
                 self.report(
                     statement.span(self.ast),
                     "expected an import-equals declaration after 'export'",
@@ -3914,7 +3910,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
                 );
                 return None;
             };
-            let declaration = Decl::TsImportEqualsDeclaration(declaration);
+            let DeclData::TsImportEqualsDeclaration(_) = self.ast.decl_data(declaration) else {
+                unreachable!()
+            };
             return Some(self.ast.stmt_export_named_declaration(
                 Span::new(start, declaration.span(self.ast).end),
                 Some(declaration),
@@ -3934,11 +3932,12 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             let declaration_start = self.current_token.span.start;
             self.advance()?;
             let statement = self.parse_import_declaration_from(declaration_start)?;
-            let StmtData::TsImportEqualsDeclaration(declaration) = self.ast.stmt_data(statement)
-            else {
+            let StmtData::Declaration(declaration) = self.ast.stmt_data(statement) else {
                 unreachable!()
             };
-            let declaration = Decl::TsImportEqualsDeclaration(declaration);
+            let DeclData::TsImportEqualsDeclaration(_) = self.ast.decl_data(declaration) else {
+                unreachable!()
+            };
             return Some(self.ast.stmt_export_named_declaration(
                 Span::new(start, declaration.span(self.ast).end),
                 Some(declaration),
@@ -5278,9 +5277,9 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
             }
             let inner_type = tuple_element_as_type(inner, self.ast);
             let span = Span::new(start, inner_type.span(self.ast).end);
-            return Some(TsTupleElement::TsRestType(
+            return Some(TsTupleElement::TsType(TsType::TsRestType(
                 self.ast.ts_rest_type(span, inner_type),
-            ));
+            )));
         }
         self.parse_tuple_element_body()
     }
@@ -5293,9 +5292,11 @@ impl<'parser, 'a, C: ParserConfig> Parser<'parser, 'a, C> {
         if let TsTypeData::TsJsDocNullableType(nullable) = self.ast.ts_type_data(type_annotation)
             && nullable.postfix(self.ast)
         {
-            return Some(TsTupleElement::TsOptionalType(self.ast.ts_optional_type(
-                type_annotation.span(self.ast),
-                nullable.type_annotation(self.ast),
+            return Some(TsTupleElement::TsType(TsType::TsOptionalType(
+                self.ast.ts_optional_type(
+                    type_annotation.span(self.ast),
+                    nullable.type_annotation(self.ast),
+                ),
             )));
         }
         Some(TsTupleElement::TsType(type_annotation))
@@ -11554,8 +11555,6 @@ fn is_start_of_type(tag: TokenTag) -> bool {
 fn tuple_element_as_type(element: TsTupleElement, ast: &Ast<'_>) -> TsType {
     match ast.ts_tuple_element_data(element) {
         TsTupleElementData::TsType(ty) => ty,
-        TsTupleElementData::TsOptionalType(ty) => TsType::TsOptionalType(ty),
-        TsTupleElementData::TsRestType(ty) => TsType::TsRestType(ty),
         TsTupleElementData::TsNamedTupleMember(_) => {
             unreachable!("a named tuple member is handled before conversion")
         }

@@ -386,7 +386,6 @@ pub enum Stmt {
     ExportAllDeclaration(ExportAllDeclaration),
     TsExportAssignment(TsExportAssignment),
     TsNamespaceExportDeclaration(TsNamespaceExportDeclaration),
-    TsImportEqualsDeclaration(TsImportEqualsDeclaration),
 }
 
 #[ast(repr)]
