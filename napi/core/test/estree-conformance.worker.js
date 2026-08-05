@@ -109,6 +109,21 @@ function reorderAstFields(_key, value) {
   }
 
   const keys = fieldOrders[value.type];
+  // TSParameterProperty is missing from the upstream field-order table.
+  // Match typescript-eslint's serialized order only for oracle comparison.
+  if (!keys && value.type === "TSParameterProperty") {
+    return {
+      type: value.type,
+      accessibility: value.accessibility,
+      decorators: value.decorators,
+      override: value.override,
+      parameter: value.parameter,
+      readonly: value.readonly,
+      static: value.static,
+      start: value.start,
+      end: value.end,
+    };
+  }
   if (!keys) return value;
 
   const reordered = { type: value.type };
